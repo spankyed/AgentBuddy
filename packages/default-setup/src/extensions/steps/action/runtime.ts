@@ -1,8 +1,8 @@
-import type { ExecutionContext, TNodeEntity, FieldMapping } from '@abuddy/sdk/steps';
-import type { EARS } from '@abuddy/sdk';
+import type { ExecutionContext, TNodeEntity, FieldMapping } from '@apack/sdk/steps';
+import type { EARS } from '@apack/sdk';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
-import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { createLogger, reportError } from '@apack/sdk/logger';
 import { runActionCode } from './sandbox.ts';
 
 const brainLogger = createLogger('brain', { debug: true });

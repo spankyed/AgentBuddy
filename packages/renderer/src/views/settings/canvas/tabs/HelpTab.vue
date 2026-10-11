@@ -56,10 +56,10 @@
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
+import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants'
-import { openLink, usePlugin } from '@abuddy/sdk/fe'
-import type { SettingsState } from '@abuddy/host/fe'
+import { openLink, usePlugin } from '@apack/sdk/fe'
+import type { SettingsState } from '@apack/host/fe'
 
 function openDiscordLink() {
   openLink(DISCORD_URL)

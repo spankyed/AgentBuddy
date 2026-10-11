@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 /**
@@ -16,7 +16,7 @@ import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packa
  * `skipLibCheck: false` alone would also check every third-party declaration (vue, ai, xstate and
  * their trees), whose errors are not ours to fix and would make this fail for unrelated reasons. So
  * the program is built with checking on and the diagnostics are then filtered to the files under
- * `node_modules/@abuddy/`, the same way `facade-typing.spec.ts` scopes a pack's own facades.
+ * `node_modules/@apack/`, the same way `facade-typing.spec.ts` scopes a pack's own facades.
  */
 
 let consumer: string | undefined;
@@ -42,7 +42,7 @@ function publishedDeclarations(root: string): string[] {
     return entry.name.endsWith('.d.ts') || entry.name.endsWith('.d.vue.ts') ? [full] : [];
   });
   return ['ears', 'sdk', 'ui'].flatMap((pkg) =>
-    [...population(`@abuddy/${pkg}'s published declarations`, walk(path.join(root, 'node_modules', '@abuddy', pkg, 'dist')))]);
+    [...population(`@apack/${pkg}'s published declarations`, walk(path.join(root, 'node_modules', '@apack', pkg, 'dist')))]);
 }
 
 describe.skipIf(!PACKAGES_BUILT)('the published declarations', () => {
@@ -59,7 +59,7 @@ describe.skipIf(!PACKAGES_BUILT)('the published declarations', () => {
         skipLibCheck: false,
         noEmit: true,
         lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
-        // @abuddy/sdk/utils is Node-only by contract and its declarations name Node globals, so a
+        // @apack/sdk/utils is Node-only by contract and its declarations name Node globals, so a
         // consumer of those modules has @types/node; without this every one reads as a missing name
         types: ['node'],
       },

@@ -18,7 +18,7 @@ import {
 import { ProcessManager, broadcastEvent } from './process-manager.ts';
 import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.ts';
 import { getAppContext } from '../../app-context.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
@@ -44,7 +44,7 @@ export class ApiServer implements AppModule {
   private readonly apiToken = randomBytes(32).toString('base64url');
 
   constructor() {
-    process.env.AGENTBUDDY_STARTUP_ID = this.startupId;
+    process.env.APACK_STARTUP_ID = this.startupId;
     this.processManager = new ProcessManager({
       onReady: (port) => this.handleServerReady(port),
       onExit: (code, signal) => this.handleProcessExit(code, signal),
@@ -68,7 +68,7 @@ export class ApiServer implements AppModule {
     if (app.isPackaged) {
       logStartupBanner();
       logInfo('Startup ID:', this.startupId);
-      logInfo('AgentBuddy API Server Module Enabled');
+      logInfo('apack API Server Module Enabled');
       logInfo('Log file location:', getLogger().getLogPath());
       logInfo('Renderer log file location:', getLogger().getRendererLogPath());
       logInfo('App events log file location:', getLogger().getAppEventsLogPath());
@@ -157,7 +157,7 @@ export class ApiServer implements AppModule {
       const command = match[3];
       if (pid === process.pid) continue;
       if (!command.includes(serverPath)) continue;
-      if (!command.includes('AgentBuddy')) continue;
+      if (!command.includes('apack')) continue;
 
       if (ppid !== 1) {
         logWarn('[MAIN] Existing API child found before startup; leaving attached process alone', { pid, ppid });

@@ -1,6 +1,6 @@
-import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
+import type { NodeBase } from '@apack/sdk';
+import type { DSLNodeBase } from '@apack/sdk/build';
+import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
 
 /** How a transform step's script return value becomes the step's result */
 export type TransformOutputType = 'json' | 'text' | 'custom';

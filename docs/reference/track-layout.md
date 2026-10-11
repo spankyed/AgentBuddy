@@ -38,7 +38,7 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 
 ## Key files
 
-`packages/abuddy-ui/src/components/node-dimensions.ts`
+`packages/apack-ui/src/components/node-dimensions.ts`
 
 - Defines `NODE_DIMENSIONS` constants (shared between Vue components and layout engine) and a `NodeLayoutDescriptor` interface with `getHeight`, `getPorts`, and `hasInput`.
 - Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenerDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.

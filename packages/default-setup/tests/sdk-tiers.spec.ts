@@ -1,13 +1,13 @@
 /**
- * Tests verifying that default-setup imports from @abuddy/sdk and @abuddy/ears resolve to the
+ * Tests verifying that default-setup imports from @apack/sdk and @apack/ears resolve to the
  * runtime the harness binds.
  */
-import { untypedTx, exists } from '@abuddy/ears';
+import { untypedTx, exists } from '@apack/ears';
 import {
   findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
 } from '#generated/ears.ts';
-import { resetTestData } from '@abuddy/sdk/testing';
+import { resetTestData } from '@apack/sdk/testing';
 import { EARS } from '#generated/ears.ts';
 
 describe('Tier 1 — EARS delegates', () => {
@@ -75,7 +75,7 @@ describe('Tier 1 — EARS delegates', () => {
 
 describe('Tier 2 — EARS types', () => {
   it('SDK EARS namespace exports core Entity and helpers', async () => {
-    const { EARS: sdkEARS } = await import('@abuddy/sdk/types');
+    const { EARS: sdkEARS } = await import('@apack/sdk/types');
     expect(sdkEARS.Entity).toBeDefined();
     expect(sdkEARS.Entity.Relation).toBe('Relation');
     expect(typeof sdkEARS.AttrKind.Custom).toBe('function');
@@ -91,17 +91,17 @@ describe('Tier 2 — EARS types', () => {
 
 describe('Tier 3 — System Framework delegates', () => {
   it('defineSystem is callable', async () => {
-    const { defineSystem } = await import('@abuddy/sdk/framework');
+    const { defineSystem } = await import('@apack/sdk/framework');
     expect(typeof defineSystem).toBe('function');
   });
 
   it('safeEvents is exported', async () => {
-    const { safeEvents } = await import('@abuddy/sdk/helpers');
+    const { safeEvents } = await import('@apack/sdk/helpers');
     expect(typeof safeEvents).toBe('function');
   });
 
   it('the id grammar is exported', async () => {
-    const { FEATURE_ID_PATTERN, PACK_ID_PATTERN } = await import('@abuddy/sdk/ids');
+    const { FEATURE_ID_PATTERN, PACK_ID_PATTERN } = await import('@apack/sdk/ids');
     expect(PACK_ID_PATTERN.test('default-setup')).toBe(true);
     expect(FEATURE_ID_PATTERN.test('notes')).toBe(true);
   });
@@ -109,7 +109,7 @@ describe('Tier 3 — System Framework delegates', () => {
 
 describe('Tier 4 — Logger delegate', () => {
   it('createLogger returns a logger with standard methods', async () => {
-    const { createLogger } = await import('@abuddy/sdk/logger');
+    const { createLogger } = await import('@apack/sdk/logger');
     const logger = createLogger('test-logger');
     expect(logger).toBeDefined();
     expect(typeof logger.info).toBe('function');
@@ -120,7 +120,7 @@ describe('Tier 4 — Logger delegate', () => {
 
 describe('Tier 5 — Templates and app info', () => {
   it('executeTemplate runs a prompt function body with its params', async () => {
-    const { executeTemplate } = await import('@abuddy/sdk/templates');
+    const { executeTemplate } = await import('@apack/sdk/templates');
     expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
@@ -128,7 +128,7 @@ describe('Tier 5 — Templates and app info', () => {
 
 describe('Tier 6 — Utility delegates', () => {
   it('path utilities are callable', async () => {
-    const { createExportDir, ensureDirectoryExists } = await import('@abuddy/sdk/utils');
+    const { createExportDir, ensureDirectoryExists } = await import('@apack/sdk/utils');
     expect(typeof createExportDir).toBe('function');
     expect(typeof ensureDirectoryExists).toBe('function');
   });
@@ -142,26 +142,26 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('media utilities are callable', async () => {
-    const { extractMediaRefs, copyMediaByRef, restoreJsonMediaRefs } = await import('@abuddy/sdk/utils');
+    const { extractMediaRefs, copyMediaByRef, restoreJsonMediaRefs } = await import('@apack/sdk/utils');
     expect(typeof extractMediaRefs).toBe('function');
     expect(typeof copyMediaByRef).toBe('function');
     expect(typeof restoreJsonMediaRefs).toBe('function');
   });
 
   it('export utilities are callable', async () => {
-    const { writeExportJson, stripInternalFields, toSlug } = await import('@abuddy/sdk/utils');
+    const { writeExportJson, stripInternalFields, toSlug } = await import('@apack/sdk/utils');
     expect(typeof writeExportJson).toBe('function');
     expect(typeof stripInternalFields).toBe('function');
     expect(typeof toSlug).toBe('function');
   });
 
   it('randomId is callable', async () => {
-    const { randomId } = await import('@abuddy/sdk/utils');
+    const { randomId } = await import('@apack/sdk/utils');
     expect(typeof randomId).toBe('function');
   });
 
   it('BinaryOperator is accessible', async () => {
-    const { BinaryOperator } = await import('@abuddy/sdk/utils');
+    const { BinaryOperator } = await import('@apack/sdk/utils');
     expect(BinaryOperator).toBeDefined();
   });
 

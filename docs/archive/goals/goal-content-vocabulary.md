@@ -1,5 +1,5 @@
 > **Done** (master, `d3ff1a950`..`5a7717ff2`). The text below is the plan as written; the Outcome records where
-> it went further — the packaged-authoring template and the last of `@abuddy/ears`'s third sense of the word.
+> it went further — the packaged-authoring template and the last of `@apack/ears`'s third sense of the word.
 > For the vocabulary as it now stands, see `docs/public-facing/content.md`, "The four stages".
 
 > **Written in session** `bc6d43e0-1c60-4cad-8237-15508a9e6649` (Claude Code, 2026-09-24). Resume it with `claude -r bc6d43e0-1c60-4cad-8237-15508a9e6649`.
@@ -9,8 +9,8 @@
 
 Implement docs/goals/goal-content-vocabulary.md on master, at or after d0c811c2d — the base its
 Background was surveyed at.
-Before Phase 1, confirm the base: `importCompiledContent` in packages/abuddy-sdk/src/utils/apply.ts, `ImportContext`
-and `ImportCounts` beside it, and `builtInContentRevisions`/`externalContentRevisions` in packages/abuddy-host/src/app-state/
+Before Phase 1, confirm the base: `importCompiledContent` in packages/apack-sdk/src/utils/apply.ts, `ImportContext`
+and `ImportCounts` beside it, and `builtInContentRevisions`/`externalContentRevisions` in packages/apack-host/src/app-state/
 exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -28,10 +28,10 @@ Finished when:
   `Applier.content` no longer exist anywhere outside docs/archive/.
 - `AppState` carries `builtInContentRevisions`, `externalContentRevisions`, `builtInContentFingerprints` and
   `externalContentDeps`, and a migration moves data written under the old names.
-- docs/public-facing/content.md and packages/abuddy-sdk/CLAUDE.md name the four stages and say which
+- docs/public-facing/content.md and packages/apack-sdk/CLAUDE.md name the four stages and say which
   vocabulary belongs to each, and separate runtime content data from the parity golden.
 - `content-golden:check` and `content-golden:update` are named `content-parity:check` and `content-parity:update`.
-- npm run typecheck; npm run schema:check -w @abuddy/sdk; npm run api:check; npm run compile;
+- npm run typecheck; npm run schema:check -w @apack/sdk; npm run api:check; npm run compile;
   npm run test:unit; npm run content-golden:check -w @app/default-setup.
 - npm run build, npm test (E2E), npm run test:external-pack and npm run test:packaged-authoring, since
   codegen output, the pack manifest schema and the scaffolded test template all change.
@@ -49,12 +49,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - create a new migration file: 0.3.15 is the latest unreleased target and takes the new entry.
 - add a guard whose only job is to name a deleted identifier (docs/goals/README.md, "Invariants and
@@ -87,7 +87,7 @@ identifiers carry it, and nothing in a name says which stage it belongs to:
 ### The collision
 
 `content` is both the noun (the content) and the verb (applying it). The repo's own doc comment at
-`packages/abuddy-sdk/src/utils/apply.ts:30` cannot avoid it:
+`packages/apack-sdk/src/utils/apply.ts:30` cannot avoid it:
 
 > *"the only keys an **import** of its **content** can **content**"*
 
@@ -101,7 +101,7 @@ name; the migration was started and left unfinished.
 
 ### Two fields distinguished by a word that cannot distinguish them
 
-`packages/abuddy-host/src/app-state/index.ts`:
+`packages/apack-host/src/app-state/index.ts`:
 
 ```ts
 /** Each external pack's compiled content data last written, by pack id. Kept on uninstall */
@@ -118,19 +118,19 @@ built-in only and `externalContentDeps` is external only, neither of which its n
 
 ### Surface
 
-- **Published API:** 24 exported types and 12 exported values carry the word (`packages/abuddy-sdk/etc/*.api.md`).
+- **Published API:** 24 exported types and 12 exported values carry the word (`packages/apack-sdk/etc/*.api.md`).
 - **Manifest keys:** `content.sources`, `content.formats`, `contentWriters`, `contentPolicy`, and an entry's `applier`
-  (`packages/abuddy-sdk/src/build/manifest-schema.ts:98,122,252,254`). `abuddy.schema.json` is generated
+  (`packages/apack-sdk/src/build/manifest-schema.ts:98,122,252,254`). `apack.schema.json` is generated
   from that file.
 - **Codegen:** `generate-entries.ts:1377` emits `import { importCompiledContent, type Applier, type ImportCounts, type ContentSelectionSet }`
   into every pack's `src/__generated__/appliers.ts`, so the names reach generated pack code.
 - **Pack-author doc:** `docs/public-facing/content.md`, 72 mentions.
 - **Stored data:** the four `AppState` fields above are persisted, so renaming them needs a migration.
 - **Pack-author test API:** `importContent({ keys?, mode? })` and `ImportOptions`
-  (`packages/abuddy-testing/src/harness.ts:354,364`) are the most visible verb in the vocabulary — the
-  CLI scaffolds a call to it into every new pack (`abuddy-cli/src/commands/init.ts:259,269`) and
+  (`packages/apack-testing/src/harness.ts:354,364`) are the most visible verb in the vocabulary — the
+  CLI scaffolds a call to it into every new pack (`apack-cli/src/commands/init.ts:259,269`) and
   `docs/public-facing/testing.md` uses it seven times.
-- **A homonym in another package.** `@abuddy/ears` uses `content` for the starting set of a query chain:
+- **A homonym in another package.** `@apack/ears` uses `content` for the starting set of a query chain:
   `QxStart` (`src/query.ts:26`, published in `etc/index.api.md:602`), the parameter in
   `untypedQx(content?: QxStart)`, and "Written …" in the doc comments of `query.ts:280`, `runtime.ts:166`
   and `typed.ts:37`. Unrelated to pack content data, in a layer that has no such concept — but it is the
@@ -165,11 +165,11 @@ Three functions import content, in a caller relationship, and they must not coll
 
 | Name | Package | What it does |
 |---|---|---|
-| `importCompiledContent({ compiledDir, … })` | `@abuddy/sdk/utils` | runs the registered appliers over one already-compiled directory |
-| `importPackContent(packs, …)` | `@abuddy/host` | orchestrates that across packs at boot |
-| `importContent({ keys?, mode? })` | `@abuddy/testing/harness` | compiles the pack's content entries, then imports them |
+| `importCompiledContent({ compiledDir, … })` | `@apack/sdk/utils` | runs the registered appliers over one already-compiled directory |
+| `importPackContent(packs, …)` | `@apack/host` | orchestrates that across packs at boot |
+| `importContent({ keys?, mode? })` | `@apack/testing/harness` | compiles the pack's content entries, then imports them |
 
-The harness takes the plain name: it is the one pack authors call, `abuddy init` scaffolds it, and it
+The harness takes the plain name: it is the one pack authors call, `apack init` scaffolds it, and it
 sits beside the harness's existing `importFlows`. The SDK primitive says `Compiled` because that is the
 precondition distinguishing it — its first parameter is `compiledDir`, and only the harness function
 compiles (`harness.ts:389` calls the primitive).
@@ -201,7 +201,7 @@ running a mechanism and satisfies Decision 3.
 persisted, so the rename travels with a migration.
 
 **6. The stages are documented where pack authors and agents read.**
-`docs/public-facing/content.md` and `packages/abuddy-sdk/CLAUDE.md` gain a paragraph naming
+`docs/public-facing/content.md` and `packages/apack-sdk/CLAUDE.md` gain a paragraph naming
 author → compile → import → record and which vocabulary belongs to each, including the sentence that
 separates the two things this session conflated: re-recording the content golden is a fixture of the import
 stage's output and changes no user data; what changes user data is a new `sourceHash`, from compile.
@@ -223,13 +223,13 @@ failing spec (`tests/unit/content-parity/content-parity.spec.ts`) names its own 
 This is also the distinction the docs in Decision 6 have to draw. Re-recording the golden rewrites a
 test expectation and changes no user data; what changes user data is a new `sourceHash`, from compile.
 
-**8. The `@abuddy/ears` homonym goes too.**
+**8. The `@apack/ears` homonym goes too.**
 `QxStart` names the starting set of a query — a real and separate meaning, in a package that sits below
 the SDK and has no pack-content concept. "It is a different package" is exactly the reasoning that let
 `content` mean four things, so it is not a reason to keep a second meaning after this goal. Rename to
 `QxStart`, which says what it is; the parameter `untypedQx(content?)` becomes `start`, and the three
 "Written …" doc comments follow. `runtime.ts` and `typed.ts` are change-controlled
-(`packages/abuddy-sdk/TYPED-EARS.md`), but these are comment-only edits there.
+(`packages/apack-sdk/TYPED-EARS.md`), but these are comment-only edits there.
 
 ## Phases
 
@@ -244,29 +244,29 @@ the SDK and has no pack-content concept. "It is a different package" is exactly 
   default-setup's hand-written settings applier (`src/content/settings/applier.ts:9`), and the `Applier`
   object literals in the host and SDK specs.
 - `manifest-schema.ts:100`: the `applier` field's description names `apply(ctx)`, not `apply(ctx)`. Run
-  `npm run schema:update -w @abuddy/sdk`.
+  `npm run schema:update -w @apack/sdk`.
 - `generate-entries.ts:1377,1386-1388`: the emitted import and re-exports in `appliers.ts` follow the new
   names. Run `npm run compile` to regenerate default-setup.
-- `@abuddy/testing`: `importContent()` → `importContent()` (Decision 1), `ImportOptions` → `ImportOptions`
+- `@apack/testing`: `importContent()` → `importContent()` (Decision 1), `ImportOptions` → `ImportOptions`
   (`src/harness.ts:354,364`), the CLI's `init` template (`commands/init.ts:259,269`),
-  `docs/public-facing/testing.md` and `packages/abuddy-testing/CLAUDE.md`. This is the name pack authors
+  `docs/public-facing/testing.md` and `packages/apack-testing/CLAUDE.md`. This is the name pack authors
   see first, so it moves with the rest rather than later.
-- `@abuddy/host`: `PackImportFailure` → `PackImportFailure` and `importErrors()` → `importErrors()`
+- `@apack/host`: `PackImportFailure` → `PackImportFailure` and `importErrors()` → `importErrors()`
   (`src/packs/runtime/apply.ts:49,54`, re-exported from `runtime/index.ts:14`); the `content` parameter of
   `importPackContent(packs, content)` becomes `importCompiledContent`.
 - Test-local verb forms follow the rule rather than being left as the one place it does not hold:
   `writeAll` → `importAll`, `wipeContent` → `wipeImport`, `applyFn` → `applyFn`, `unwritable` → `failsImport`.
 - User-visible strings: `logger.info('Applying data for pack: …')`
-  (`abuddy-host/src/packs/runtime/apply.ts:119`) reads "Importing content for pack: …".
+  (`apack-host/src/packs/runtime/apply.ts:119`) reads "Importing content for pack: …".
 - `npm run api:update` and commit `etc/`.
 
-**Done when:** `npm run typecheck`; `npm test -w @abuddy/sdk`, `-w @abuddy/host`, `-w @app/default-setup`;
-`npm run schema:check -w @abuddy/sdk` and `npm run api:check` clean; `grep -rn` finds none of the six
+**Done when:** `npm run typecheck`; `npm test -w @apack/sdk`, `-w @apack/host`, `-w @app/default-setup`;
+`npm run schema:check -w @apack/sdk` and `npm run api:check` clean; `grep -rn` finds none of the six
 renamed identifiers or `Applier.content` outside `docs/archive/`.
 
 ### Phase 2 — Make the split checkable
 
-- Add a spec (beside the SDK's other boundary specs, e.g. `packages/abuddy-sdk/tests/`) implementing
+- Add a spec (beside the SDK's other boundary specs, e.g. `packages/apack-sdk/tests/`) implementing
   Decision 3: walk the SDK's and host's sources, find every function and method whose declared return
   type is `ImportCounts`, and fail if any name begins with `content`.
 - Give it a doc comment saying what property it holds and why — the noun/verb collision, not the old
@@ -277,14 +277,14 @@ a new `writeFoo(): ImportCounts` fails it.
 
 ### Phase 3 — Name the axis in `AppState`
 
-- Rename the four fields per Decision 5 in `packages/abuddy-host/src/app-state/`, its `APP_STATE_FIELDS`
+- Rename the four fields per Decision 5 in `packages/apack-host/src/app-state/`, its `APP_STATE_FIELDS`
   list, and every reader (the host's applying, the pack installer, the migrations runner, specs).
-- Add the field moves to `packages/abuddy-host/src/migrations/app/0.3.15.ts` — the latest unreleased
+- Add the field moves to `packages/apack-host/src/migrations/app/0.3.15.ts` — the latest unreleased
   target, which already has entries. Do **not** create a new version file. Guard each move so it is
   idempotent: the migration runs again on every development boot, on each beta of its release, and after
   a reset.
 
-**Done when:** `npm test -w @abuddy/host` and `-w @app/api` pass; a row written with the old field names
+**Done when:** `npm test -w @apack/host` and `-w @app/api` pass; a row written with the old field names
 is moved by the migration and reads back under the new ones; running the migration twice changes nothing
 the second time. **Mutation:** dropping the guard makes the idempotence case fail.
 
@@ -292,7 +292,7 @@ the second time. **Mutation:** dropping the guard makes the idempotence case fai
 
 - `docs/public-facing/content.md`: the four-stage paragraph from Decision 6, near the top, before the
   entry fields.
-- `packages/abuddy-sdk/CLAUDE.md`: the same split in its `content/` and `utils/` entries, so an agent
+- `packages/apack-sdk/CLAUDE.md`: the same split in its `content/` and `utils/` entries, so an agent
   reading the package map sees which vocabulary is which.
 - Root `CLAUDE.md`: one line in the apply-source row of "What to run after a change" pointing at the
   stage split, since that row is where the golden-vs-user-data confusion surfaces.
@@ -308,18 +308,18 @@ the sentence separating the parity golden from user data appears in `content.md`
 content-parity:check -w @app/default-setup` runs and `grep -rn content-golden` finds nothing outside
 `docs/archive/`.
 
-### Phase 5 — The query content in `@abuddy/ears`
+### Phase 5 — The query content in `@apack/ears`
 
 - Per Decision 8: `QxStart` → `QxStart` (`src/query.ts:26`), exported from `src/index.ts:11`; the
   parameter of `untypedQx(content?: QxStart)` becomes `start`; the "Written …" doc comments in
   `query.ts:280`, `runtime.ts:166` and `typed.ts:37` say "Starting from …".
-- `npm run api:update -w @abuddy/ears` and commit `etc/index.api.md`.
+- `npm run api:update -w @apack/ears` and commit `etc/index.api.md`.
 
 Lands independently of Phases 1–4: it is a different package and shares no file with them.
 
-**Done when:** `npm run typecheck:ears`; `npm test -w @abuddy/ears`; `npm run api:check -w @abuddy/ears`
+**Done when:** `npm run typecheck:ears`; `npm test -w @apack/ears`; `npm run api:check -w @apack/ears`
 clean; `grep -rn QxStart` finds nothing outside `docs/archive/`; the typed-EARS completions checklist in
-`packages/abuddy-sdk/TYPED-EARS.md` is run, since `runtime.ts` and `typed.ts` were touched.
+`packages/apack-sdk/TYPED-EARS.md` is run, since `runtime.ts` and `typed.ts` were touched.
 
 ## Outcome (2026-09-24)
 
@@ -334,10 +334,10 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — give the act its own word | done `9ce986ad0` | 68 files; `importCompiledContent`/`importPackContent`/`importContent`, `ImportCounts`, `ImportContext`, `ImportOptions`, `PackImportFailure`, `Applier.apply`; `schema:update`, `compile`, `api:update` |
-| 2 — make the split checkable | done `27573c9e9` | `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
+| 2 — make the split checkable | done `27573c9e9` | `apack-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
 | 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.3.15.ts`; 39 migration specs; idempotence mutation-checked |
-| 4 — write the stages down | done `847fa0799` | "The four stages" in `content.md`; the split in `abuddy-sdk/CLAUDE.md` and the root table; `content-parity:check`/`:update` |
-| 5 — the query content in `@abuddy/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
+| 4 — write the stages down | done `847fa0799` | "The four stages" in `content.md`; the split in `apack-sdk/CLAUDE.md` and the root table; `content-parity:check`/`:update` |
+| 5 — the query content in `@apack/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
 
 ### Conventional choices
 
@@ -346,7 +346,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 - **Phase 1** — `writingPackId` became `contentPackId`: it reads a pack id *from* the content, so the `-ing` was the verb
   leaking into a noun.
 - **Phase 3** — the migration addresses the `AppState` row by the literal `'AppState-app'`, as the file already does
-  for `SETTINGS_ID`. Importing `APP_STATE_ENTITY` instead broke an api spec that mocks `@abuddy/host/app-state`.
+  for `SETTINGS_ID`. Importing `APP_STATE_ENTITY` instead broke an api spec that mocks `@apack/host/app-state`.
 - **Phase 5** — the three "Written …" doc comments read "Started from …".
 
 ### What the plan did not list
@@ -354,17 +354,17 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 - **The packaged-authoring template** (`1a8f0e856`). `tests/scripts/test-packaged-authoring.sh` writes the example
   pack's specs itself, so they were the last callers of `applyPack`, and `test:packaged-authoring` was the check that
   found them. They are what a pack author copies, which is the reason the harness took the plain name.
-- **`hydrateRelationMetadata`** (then `seedRelationMetadata`) (`5a7717ff2`). A third sense of the word, in `@abuddy/ears`'s sharded router: not content
+- **`hydrateRelationMetadata`** (then `seedRelationMetadata`) (`5a7717ff2`). A third sense of the word, in `@apack/ears`'s sharded router: not content
   and not a query's start, but what hydration tells the router about a relation it has just read off disk. Renamed
   `hydrateRelationMetadata`, the word this repo already uses for loading persisted data into memory, and the last
-  `content` mentions in `query.ts` and `typed.ts` prose went with it. `@abuddy/ears/src` now holds one occurrence of the
+  `content` mentions in `query.ts` and `typed.ts` prose went with it. `@apack/ears/src` now holds one occurrence of the
   word, `index.ts:33`'s "a applier", which is the pack-applier noun and correct.
 
 ### Invariants and milestones
 
 One invariant, and it has a guard:
 
-- **Nothing that performs an import is named `content*`** — `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`, which
+- **Nothing that performs an import is named `content*`** — `apack-sdk/tests/utils/import-is-the-verb.spec.ts`, which
   reads the declared return type rather than a list of names, so a `writeFoo(): ImportCounts` written next year fails
   it. Mutation-checked both ways.
 
@@ -410,12 +410,12 @@ The repo's standing rules (root `CLAUDE.md`) apply:
 - commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request;
 - no publishing, releases or triggered workflows;
-- no real data dirs, no broad pkill, E2E in the `abuddy-test` namespace;
+- no real data dirs, no broad pkill, E2E in the `apack-test` namespace;
 - preload, example pack and release metadata rules;
-- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
 - published packages: no `any`, the TypeScript floor, `api:update` after export changes with `etc/`
   committed;
 - build order: `packages:build` before the CLI suite, `npm run compile` before the api suites and E2E;
-- migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`, and 0.3.15 is the target;
+- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`, and 0.3.15 is the target;
 - investigate failing tests, mutation-check new guards;
 - run the narrowest check that could fail during the work, and the full chain once per phase at its end.

@@ -3,7 +3,7 @@
 // reporter — listeners on one target fire in registration order, and the capture flag doesn't change that
 // for an event dispatched at the target itself — so both are installed by one call here, rather than in an
 // order that main.ts has to keep. The filter's own module says why it can't live in the editor component.
-import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
+import { installMonacoErrorFilters } from '@apack/ui/components/monaco-error-filters';
 
 /** A thrown value as the log takes it: an Error's message and stack, a string as itself, anything else as JSON */
 export function serializeRendererError(error: unknown): { message: string; stack?: string; meta?: unknown } {

@@ -1,4 +1,4 @@
-import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';
+import { formatProviderError as _formatProviderError } from '@apack/sdk/actions';
 
 const PROVIDER_ALTERNATIVES: Record<string, string> = {
   'Claude Code': 'Codex',

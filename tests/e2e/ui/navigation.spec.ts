@@ -1,4 +1,4 @@
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 // Every plugin renders as part of itself (usePlugin() in its components), its settings included, which the settings
 // plugin renders for each plugin in turn: a component that reaches for a plugin it isn't rendered in fails here

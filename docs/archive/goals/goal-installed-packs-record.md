@@ -1,7 +1,7 @@
 > **Done** (`908a3b1cf` on `AS/external-pack-authoring`). The text below is the plan as written; later
 > work moved the loaded packs onto the registry too (`goal-loaded-packs-on-the-registry.md`), so the
 > deferred note about `_loadedPacks` no longer applies. For the current layout, see
-> `packages/abuddy-host/CLAUDE.md`.
+> `packages/apack-host/CLAUDE.md`.
 
 # Goal: the packs directory is what's installed
 
@@ -26,7 +26,7 @@ Finished when:
   mutation-checked.
 - `reconcileInstalledPacks`, `ensureInstalledPack`, `InstalledPacksRecord`'s `found` discriminant and
   `recoverStagingDirs`'s installed-ids parameter no longer exist anywhere in the tree.
-- No module outside `packages/abuddy-host/src/packs/installed-packs.ts` reads or writes the record's
+- No module outside `packages/apack-host/src/packs/installed-packs.ts` reads or writes the record's
   file shape: no `entries.map`, no read-modify-write, no `addInstalledPack`/`removeInstalledPack` at a
   call site.
 - A pack present in `packs/<id>/` is listed as installed whether or not the record mentions it, and a
@@ -46,11 +46,11 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - change the on-disk file name or its top-level `{ packs: [...] }` shape (Decision 9).
 ```
@@ -80,7 +80,7 @@ what makes the row look like a list rather than a side table.
 
 ### The design already exists in this repo
 
-`packages/abuddy-host/src/database/schema.ts:70-84` — the path `abuddy db` uses on a data dir the app is
+`packages/apack-host/src/database/schema.ts:70-84` — the path `apack db` uses on a data dir the app is
 **not** running on — gets it right:
 
 ```ts
@@ -90,7 +90,7 @@ return discoverPacks(packsDir).filter(…not disabled); // the directory is the 
 
 Its comment says it outright: *"the app registers a pack it hasn't listed yet as enabled"*.
 `checkDependencies` (`pack-installer.ts`) does the same, testing
-`fs.existsSync(packsDir/<id>/abuddy.json)`. Two of the three consumers already treat the directory as the
+`fs.existsSync(packsDir/<id>/apack.json)`. Two of the three consumers already treat the directory as the
 list. The app's own runtime path is the one that mirrors, and the one that keeps breaking.
 `pruneHostPackOutputs` (`pack-layout.ts`) is the same shape for `host-packs/`: derive, then prune what the
 build no longer ships.
@@ -106,10 +106,10 @@ build no longer ships.
 | Two readers differing only in the absent case | `1d6cf3226` | same ambiguity, one layer up |
 | **`installedFrom` lost on an out-of-app reinstall** | **open** | see below |
 
-The last one is live and documented as a gotcha in `packages/abuddy-host/CLAUDE.md:214`:
+The last one is live and documented as a gotcha in `packages/apack-host/CLAUDE.md:214`:
 `reconcileInstalledPacks` rebuilds a row whose `version` or `dir` changed from only
 `id, name, version, dir, enabled`, so `installedFrom` and the update cache are destroyed. An
-`abuddy install` outside the app therefore makes the pack **stop offering updates** at the next boot,
+`apack install` outside the app therefore makes the pack **stop offering updates** at the next boot,
 silently. It exists only because the row duplicates `version` and `dir` and reconcile rewrites it.
 
 ### Readers and writers today
@@ -148,8 +148,8 @@ already moved it aside. The state the guard defends looks unreachable without ha
   uninstalled and reinstalled therefore skips its apply. The pack's *entities* survive an uninstall —
   `uninstallPack` deletes only the directory — so the end state is usually the same, but nothing records
   that as the intent, and the maps grow without bound. Deferred.
-- `pack-dev-servers/<packId>.json` is written by `abuddy dev` and removed by it on exit
-  (`abuddy-cli/src/commands/dev.ts:149,152`). A crashed `abuddy dev`, or an uninstall while it runs,
+- `pack-dev-servers/<packId>.json` is written by `apack dev` and removed by it on exit
+  (`apack-cli/src/commands/dev.ts:149,152`). A crashed `apack dev`, or an uninstall while it runs,
   leaves a marker naming a dead port that the `pack://` handler will still try to proxy to. Deferred.
 - `_loadedPacks` (`runtime/loaded-packs.ts`) and the registry's registrations are two in-memory lists of
   the same packs. Same mirror shape, one level up, in memory. **Done:** `goal-loaded-packs-on-the-registry.md`
@@ -193,7 +193,7 @@ Final.
 
 ## Phases
 
-### Phase 1 — one derivation, shared with `abuddy db`
+### Phase 1 — one derivation, shared with `apack db`
 
 - Extract the derivation `schema.ts:81` already performs into one exported function: the discovered packs
   minus those a row disables, taking the paths it needs so both an app and a tool can call it.
@@ -201,8 +201,8 @@ Final.
   value. Leave `reconcileInstalledPacks`'s writes in place for now; Phase 2 deletes them.
 
 **Done when:** boot and `schema.ts` derive the enabled external packs through one function; a pack in
-`packs/` with no row loads at boot. `npm test -w @abuddy/host` and
-`npx vitest run tests/database --root packages/abuddy-host` pass. Mutation: making the shared function
+`packs/` with no row loads at boot. `npm test -w @apack/host` and
+`npx vitest run tests/database --root packages/apack-host` pass. Mutation: making the shared function
 ignore the disabled set fails a spec that a disabled pack does not load.
 
 ### Phase 2 — the row stops copying the directory
@@ -210,10 +210,10 @@ ignore the disabled set fails a spec that a disabled pack does not load.
 - Delete `name`, `version` and `dir` from the record type (Decision 2) and rename it `PackRecord`
   (Decision 10). Consumers take those from discovery.
 - Delete `reconcileInstalledPacks` and its spec (Decision 4), and the gotcha it caused from
-  `packages/abuddy-host/CLAUDE.md:214`.
+  `packages/apack-host/CLAUDE.md:214`.
 
 **Done when:** `reconcileInstalledPacks` exists nowhere; `PackRecord` has no `name`/`version`/`dir`;
-`packages/abuddy-host/CLAUDE.md` no longer documents the lost-`installedFrom` gotcha. A new spec: a pack
+`packages/apack-host/CLAUDE.md` no longer documents the lost-`installedFrom` gotcha. A new spec: a pack
 installed out of the app, whose version then changes, keeps its `installedFrom`. Mutation: restoring a
 rebuild that rewrites the row from the manifest fails that spec.
 
@@ -231,7 +231,7 @@ rebuild that rewrites the row from the manifest fails that spec.
   up) and drops the record assertion.
 
 **Done when:** `ensureInstalledPack` and `InstalledPacksRecord` exist nowhere; a pack running with no row
-appears in `PACKS_LIST` as enabled; `npm test -w @abuddy/host` and `npm run test:external-pack` pass.
+appears in `PACKS_LIST` as enabled; `npm test -w @apack/host` and `npm run test:external-pack` pass.
 Mutation: making `packRecord` default `enabled` to false hides a running pack and fails that spec.
 
 ### Phase 4 — writes are intentions
@@ -252,7 +252,7 @@ Mutation: reintroducing a `map`-based write in `packs-system.ts` fails the guard
   saved (Decision 7). Boot and background writes log; a user action surfaces it.
 
 **Done when:** a spec with an unwritable record shows the enable/disable path reporting the lost decision
-rather than appearing to succeed; `npm test -w @abuddy/host` passes. Mutation: swallowing the write
+rather than appearing to succeed; `npm test -w @apack/host` passes. Mutation: swallowing the write
 failure again fails that spec. **Closes action item 1a.**
 
 ### Phase 6 — a pack that is gone
@@ -275,7 +275,7 @@ fails the accumulation spec. **Closes action item 1b.**
 
 **Done when:** `recoverStagingDirs(dir)` takes one argument; `InstalledIds` exists nowhere; an orphaned
 `.previous` is restored whatever the record says; `npx vitest run tests/packs/staging.spec.ts --root
-packages/abuddy-host` and `npx vitest run tests/unit/boot-recovery.spec.ts --root packages/api` pass.
+packages/apack-host` and `npx vitest run tests/unit/boot-recovery.spec.ts --root packages/api` pass.
 Mutation: deleting rather than restoring an orphaned `.previous` fails both boot-recovery specs.
 
 ## Outcome (2026-09-19, at `908a3b1cf`)
@@ -284,7 +284,7 @@ Done. Phases 1–7 landed as six commits — Phases 2 and 3 as one, see below.
 
 | Phase | Commit |
 |---|---|
-| 1 — one derivation, shared with `abuddy db` | `7ccdafb53` |
+| 1 — one derivation, shared with `apack db` | `7ccdafb53` |
 | 2 + 3 — the row stops copying the directory; a missing row is a defined state | `4890f5acf` |
 | 4 — writes are intentions | `a0756328b` |
 | 5 — a failed write names the lost decision (**item 1a**) | `0936c68d4` |
@@ -323,7 +323,7 @@ Done. Phases 1–7 landed as six commits — Phases 2 and 3 as one, see below.
 `recoverStagingDirs`'s installed-ids argument, and the exported `addInstalledPack` /
 `removeInstalledPack` / `updateInstalledPacks`. A boundary spec keeps the last three inside the module.
 
-Also deleted: the documented gotcha at `packages/abuddy-host/CLAUDE.md:214`, where an out-of-app
+Also deleted: the documented gotcha at `packages/apack-host/CLAUDE.md:214`, where an out-of-app
 reinstall silently lost a pack's update source. `tests/packs/discovery.spec.ts` pins that the slug now
 survives a version change on disk.
 
@@ -353,7 +353,7 @@ Found while surveying; out of scope, and the agent must not do them.
 - **`AppState.packVersions` / `packContentRevisions` are never pruned.** A pack uninstalled and reinstalled
   skips its apply. Probably benign — the entities survive an uninstall — but the intent is unrecorded and
   the maps grow without bound.
-- **Stale `pack-dev-servers/<packId>.json` markers.** A crashed `abuddy dev` leaves one naming a dead
+- **Stale `pack-dev-servers/<packId>.json` markers.** A crashed `apack dev` leaves one naming a dead
   port that `pack://` still proxies to.
 - **`_loadedPacks` and the registry are two in-memory lists of the same packs.** The same mirror shape,
   one level up.
@@ -366,15 +366,15 @@ Found while surveying; out of scope, and the agent must not do them.
 - Commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad pkill, E2E in the `abuddy-test` namespace.
+- No real data dirs, no broad pkill, E2E in the `apack-test` namespace.
 - Preload, example pack and release metadata rules.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes. This goal is
-  expected to touch none of `@abuddy/sdk`'s exports; if it does, run `api:update` and say why.
+  expected to touch none of `@apack/sdk`'s exports; if it does, run `api:update` and say why.
 - Build order: `packages:build` before the CLI suite, default-setup's runtime before the api suites and
   E2E.
 - Investigate failing tests; mutation-check every new guard.
 - External packs are first-class: keep the fixture packs, the example pack and
   `test:packaged-authoring` passing.
-- `abuddy install` and `abuddy dev` write the packs directory and never the record. That is the whole
+- `apack install` and `apack dev` write the packs directory and never the record. That is the whole
   premise: the directory has to be the list because tools change it while the app is not looking.

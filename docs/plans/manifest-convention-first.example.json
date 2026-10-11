@@ -1,9 +1,9 @@
 {
-  "$schema": "../abuddy-sdk/abuddy.schema.json",
+  "$schema": "../apack-sdk/apack.schema.json",
   "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",
-  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
+  "description": "The official apack starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
   "license": "MIT",
   "builtIn": true,
   "hostVersion": ">=0.3.0",

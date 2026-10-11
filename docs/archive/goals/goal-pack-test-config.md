@@ -12,7 +12,7 @@ Implement docs/goals/goal-pack-test-config.md on AS/test-pipeline, at or after 2
 Background was surveyed at.
 Before Phase 1, confirm the base: `cd packages/default-setup && npx vitest related --run
 src/features/notes/be/system.ts` fails with "Install @vitejs/plugin-vue", and packages/default-setup,
-tests/fixtures/external-pack and abuddy-cli's VITEST_CONFIG_TEMPLATE hold three different vitest configs.
+tests/fixtures/external-pack and apack-cli's VITEST_CONFIG_TEMPLATE hold three different vitest configs.
 If either is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. Its one Open decision was settled on 2026-09-26 and the section records what
@@ -25,7 +25,7 @@ fixture, template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard is mutation-checked.
 - One function defines a pack's vitest config, and packages/default-setup, every fixture pack and the
-  `abuddy init` template call it rather than restating it.
+  `apack init` template call it rather than restating it.
 - `npx vitest related` and `--changed` work inside a pack — through the `.vue` stub, with no pack config
   holding alias handling of its own — and `npm run spec -- <pack source>` runs the specs that cover it rather
   than that pack's whole suite. The before and after are measured and recorded.
@@ -44,32 +44,32 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - delete or loosen a test to make a number move.
-- declare the `@abuddy/source` condition in a pack's config: `check:specifiers` refuses it, and the reason
+- declare the `@apack/source` condition in a pack's config: `check:specifiers` refuses it, and the reason
   is the whole point of the two pools.
 ```
 
 ## Background (surveyed 2026-09-26 at `232f85e78`)
 
-`@abuddy/testing/vitest` exports one thing, `isolatedDataDir()`. Everything else a pack's vitest config needs
+`@apack/testing/vitest` exports one thing, `isolatedDataDir()`. Everything else a pack's vitest config needs
 is copied, and the three copies have already drifted:
 
 | | plugins | `globals` | timeouts | `fileParallelism` | `exclude` |
 |---|---|---|---|---|---|
 | `packages/default-setup/vitest.config.ts` | `tsconfigPaths` | ✓ | 15s / 15s | ✓ | `_support/**` |
 | `tests/fixtures/external-pack/vitest.config.ts` | — | **✗** | — | — | `tests/e2e/**` |
-| `abuddy-cli`'s `VITEST_CONFIG_TEMPLATE` (`init.ts:125`) | — | ✓ | — | — | `tests/e2e/**` |
+| `apack-cli`'s `VITEST_CONFIG_TEMPLATE` (`init.ts:125`) | — | ✓ | — | — | `tests/e2e/**` |
 
 The fixture pack runs without `globals` while the scaffold sets it. Nobody decided that; it is what three
 copies do.
 
 ### No pack's test config can load the pack's own frontend
 
-`abuddy add feature` writes `fe/plugin.ts` importing `canvas/list.vue`. No pack's vitest config has
+`apack add feature` writes `fe/plugin.ts` importing `canvas/list.vue`. No pack's vitest config has
 `@vitejs/plugin-vue`, so the first spec that reaches a plugin module fails with *"Install @vitejs/plugin-vue
 to handle .vue files"* — in the pack author's own repo, about a file the CLI generated for them.
 
@@ -89,9 +89,9 @@ applied inside an SFC, so `form.vue`'s own imports then fail to resolve. Chasing
 `vite-tsconfig-paths`' `loose: true` and to sharing the FE bundler's tsconfig reader. **Both were solving a
 problem that does not need to exist**, and the repo had already answered this question twice elsewhere:
 
-- `abuddy init`'s `env.d.ts` declares `*.vue` as a generic component, because *"Plain `tsc` can't read .vue
+- `apack init`'s `env.d.ts` declares `*.vue` as a generic component, because *"Plain `tsc` can't read .vue
   files"* — and adds that checking *inside* an SFC needs the real tool, `vue-tsc`.
-- `abuddy build` stubs `.vue` and `.css` to empty modules for the **backend** bundle
+- `apack build` stubs `.vue` and `.css` to empty modules for the **backend** bundle
   (`be-bundler.ts`, `stubFrontendAssetsPlugin`): *"The backend runtime never renders them."*
 
 Stubbing `.vue` in the test config is the third instance of that pattern, not an invention. And it makes the
@@ -122,7 +122,7 @@ no pack needs is rendering. That asymmetry is what makes the stub the default an
 
 Final.
 
-1. **One function defines a pack's vitest config**, exported from `@abuddy/testing/vitest` beside
+1. **One function defines a pack's vitest config**, exported from `@apack/testing/vitest` beside
    `isolatedDataDir`. That package is already every pack's test-time dependency and already owns the data-dir
    half of the config; the rest belongs with it. A pack's config becomes a call plus whatever that pack adds.
 2. **It stubs `.vue` to a generic component, and holds no alias handling at all.** The stub is what makes a
@@ -131,17 +131,17 @@ Final.
    `vite-tsconfig-paths`' `loose: true`. Measured: default-setup's existing config walks the graph with the
    stub and no other change. **The stub throws on mount**, naming `vue: true` as the fix, so a component test
    cannot silently assert against an empty component.
-3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@abuddy/testing`.** Peer because a
+3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@apack/testing`.** Peer because a
    vite plugin must match the vite instance vitest brings, and `vitest` is already a peer for that reason; a
    direct dependency invites two vites and a plugin bound to the wrong one. Optional because a pack that
    renders nothing needs nothing, and `peerDependenciesMeta` is how that is said. The helper imports it
    dynamically and, when it is missing, throws one sentence naming the install — rather than vitest's
    "Install @vitejs/plugin-vue" surfacing from inside a config file the author did not write. The scaffold
    adds it to no one.
-4. **It declares no `@abuddy/source` condition, ever.** A pack resolves the published `dist` because that is
+4. **It declares no `@apack/source` condition, ever.** A pack resolves the published `dist` because that is
    the one layout a pack author has, `check:specifiers` refuses a pack config that declares the condition, and
    this helper must not become the place that quietly does it. The two pools (`UnitSuite.kind`) depend on it.
-5. **The built-in pack, every fixture pack and the `abuddy init` template all call it.** A reference pack that
+5. **The built-in pack, every fixture pack and the `apack init` template all call it.** A reference pack that
    does not look like what the tool generates is how the three copies happened; nothing that can call it keeps
    a copy.
 6. **`npm run spec` narrows a pack source file once the graph walks.** `ownSuiteFor` in
@@ -166,7 +166,7 @@ means no alias inside an SFC is ever resolved, so the question stops being asked
 So Decision 3 stands where three options were: an **optional peer** for `vue: true`, nothing for anyone else,
 and the scaffold unchanged. The reasoning, kept, because "why not simply depend on it" will be asked again:
 
-- **A dependency of `@abuddy/testing`** would give a pack author working frontend specs from one install, and
+- **A dependency of `@apack/testing`** would give a pack author working frontend specs from one install, and
   it breaks that package's own pattern — `vitest` and `@playwright/test` are peers precisely because a test
   framework must be the consumer's single copy, and a plugin *of* vite has the same constraint.
 - **A plain peer** would have every pack declare a package most of them never load.
@@ -178,7 +178,7 @@ and the scaffold unchanged. The reasoning, kept, because "why not simply depend 
 
 ### Phase 1 — the function, and the built-in pack calls it
 
-Add `definePackTestConfig` to `@abuddy/testing/vitest`: the `.vue` stub, `globals`, the include/exclude
+Add `definePackTestConfig` to `@apack/testing/vitest`: the `.vue` stub, `globals`, the include/exclude
 (`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the data-dir
 wiring. No alias handling — Decision 2. `packages/default-setup/vitest.config.ts` becomes a call plus its own
 `_support` exclusion and, until
@@ -191,7 +191,7 @@ unchanged; and default-setup's config states nothing the helper already says.
 
 ### Phase 2 — the fixture packs and the scaffold
 
-`tests/fixtures/*/vitest.config.ts` and `abuddy-cli`'s `VITEST_CONFIG_TEMPLATE` call it too. The CLI's scaffold
+`tests/fixtures/*/vitest.config.ts` and `apack-cli`'s `VITEST_CONFIG_TEMPLATE` call it too. The CLI's scaffold
 specs and `docs/public-facing/testing.md` show the call.
 
 **Done when:** `npm run test:external-pack` and `npm run test:packaged-authoring` pass with their counts
@@ -238,7 +238,7 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
   suite exists to check that a pack works against the `dist` a pack author installs, `packages:check` and
   `test:packaged-authoring` defend that boundary, and dissolving it would make the largest suite test
   something nobody ships.
-- **A pack's Playwright config**, which has the same copy-paste shape (`abuddy init-tests` scaffolds one).
+- **A pack's Playwright config**, which has the same copy-paste shape (`apack init-tests` scaffolds one).
   Worth the same treatment, and a separate change: it runs a different runner against a built app.
 
 ## Constraints
@@ -247,8 +247,8 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
   that stops being collected, and `include`/`exclude` is exactly what this moves.
 - **Measure on an idle machine, and say what you measured on.** The 2.6s figures above were taken with the
   plugin added by hand and reverted; re-take them on the real implementation.
-- **`@abuddy/testing` resolves its built bundle for everyone**, the repo's own E2E included
-  (`packages/abuddy-testing/CLAUDE.md`), so a change here needs that bundle rebuilt before any pack suite
+- **`@apack/testing` resolves its built bundle for everyone**, the repo's own E2E included
+  (`packages/apack-testing/CLAUDE.md`), so a change here needs that bundle rebuilt before any pack suite
   sees it — `npm run packages:ensure` does it, and every entry point that triggers it is listed in that file.
 - **Don't relitigate settled decisions.** The two pools and why they cannot be one, a pack resolving `dist`,
   and where a spec lives are final.
@@ -258,12 +258,12 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — the function, and the built-in pack calls it | **done** | `c0f7b49de`. `related --run src/features/notes/be/system.ts` is 1 spec where it was `Install @vitejs/plugin-vue`; 87 files / 720 tests unchanged |
-| 2 — the fixture packs and the scaffold | **done** | `0bf5ec9ea`. `abuddy init` writes 4 lines where it wrote 18; external-pack 10 / 32 and 12 + 1 Playwright; `@abuddy/cli` 39 / 329 and 15 / 187; `test:packaged-authoring` green |
+| 2 — the fixture packs and the scaffold | **done** | `0bf5ec9ea`. `apack init` writes 4 lines where it wrote 18; external-pack 10 / 32 and 12 + 1 Playwright; `@apack/cli` 39 / 329 and 15 / 187; `test:packaged-authoring` green |
 | 3 — `spec` narrows inside a pack | **done** | `1fc522ed9`. 1–3 files in 2–6s against the whole suite's 87 and 18s |
 | 4 — the guard | **done** | `edd6ab382`. Three mutations, each caught |
 
 `npx vitest related` and `--changed` both work inside a pack now, which is what the whole thing turned on. No
-API report covers `@abuddy/testing`, so there was nothing to regenerate.
+API report covers `@apack/testing`, so there was nothing to regenerate.
 
 ### What the plan did not anticipate
 
@@ -287,7 +287,7 @@ API report covers `@abuddy/testing`, so there was nothing to regenerate.
 - **The guard's rule is "declares no `test` block"** rather than an enumeration of the keys the helper owns.
   Blunter, and it fails on any escape rather than on a list someone has to keep current — with an exception
   list that then records *which* pack escaped and why.
-- **The two CLI harness fixtures' inline configs moved too.** `harness-setup`'s was marked *"As `abuddy init`
+- **The two CLI harness fixtures' inline configs moved too.** `harness-setup`'s was marked *"As `apack init`
   scaffolds it"*, a claim that goes stale the moment the scaffold changes, which is the drift this goal is
   about.
 

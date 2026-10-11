@@ -1,9 +1,9 @@
-// Flows on the brain through @abuddy/testing, run as the app runs them: the brain starts the root flow (root: true)
+// Flows on the brain through @apack/testing, run as the app runs them: the brain starts the root flow (root: true)
 // and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
 // ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
 import { describe, expect, it, vi } from 'vitest'
 import { services } from '#generated/services.ts'
-import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
+import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@apack/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
 import type { Services } from '#generated/services.ts'

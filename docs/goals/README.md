@@ -8,7 +8,7 @@ This file describes how to write one. The best current examples are [`goal-packa
 
 - **`docs/goals/`**: goals not started or in progress.
 - **`docs/archive/goals/`**: finished, absorbed or abandoned goals. Moving a doc there takes a note at the top (see [Finishing a goal](#finishing-a-goal)). An archived doc records the code as it was, so it will name things that have since been renamed or removed: read it as history, and don't update it to match the code.
-- **File name:** `goal-<short-kebab-topic>.md`, named after what it achieves, not the ticket or the date (`goal-lmdb-only.md`, `goal-abuddy-db-cli.md`).
+- **File name:** `goal-<short-kebab-topic>.md`, named after what it achieves, not the ticket or the date (`goal-lmdb-only.md`, `goal-apack-db-cli.md`).
 
 ## When to write one
 
@@ -72,12 +72,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - <goal-specific prohibitions, e.g. approaches the spikes ruled out>
 ```
@@ -99,7 +99,7 @@ Rules for the prompt block:
 ### 2. Background
 
 What exists now, and why the goal is needed, as facts the agent can check:
-- file paths with line numbers where they matter (`packages/abuddy-ears/src/query.ts:57`);
+- file paths with line numbers where they matter (`packages/apack-ears/src/query.ts:57`);
 - how the current code works, and what depends on the part being changed;
 - the date, commit and branch the survey was made at (`## Background (2026-09-14, at 114d18e1b on AS/package-boundaries)`). The prompt block's base has to match it, and the branch is what says where that commit is.
 
@@ -144,12 +144,12 @@ The standing rules, as prose bullets (the prompt's "Never" list in fuller form),
 - commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request;
 - no publishing, releases or triggered workflows;
-- no real data dirs, no broad pkill, E2E in the `abuddy-test` namespace;
+- no real data dirs, no broad pkill, E2E in the `apack-test` namespace;
 - preload, example pack and release metadata rules;
-- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
 - published packages: no `any`, the TypeScript floor, `api:update` after export changes;
 - build order (`packages:build` before the CLI suite, default-setup's runtime before the api suites and E2E);
-- migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`;
+- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`;
 - investigate failing tests, mutation-check new guards;
 - external packs are first-class: keep the fixture packs, the example pack and `test:packaged-authoring` passing.
 

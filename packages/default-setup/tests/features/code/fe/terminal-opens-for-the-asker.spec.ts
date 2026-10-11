@@ -16,7 +16,7 @@
 // `answerTo` is how a spec with no delivery door in front of it builds an answer that names a call.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@abuddy/sdk/testing';
+import { answerTo } from '@apack/sdk/testing';
 import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());

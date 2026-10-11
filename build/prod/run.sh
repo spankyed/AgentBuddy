@@ -4,11 +4,11 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Channel detection
-APP_NAME="AgentBuddy"
+APP_NAME="apack"
 CHANNEL_LABEL="Production"
 for arg in "$@"; do
   if [[ "$arg" == "--beta" ]]; then
-    APP_NAME="AgentBuddy Beta"
+    APP_NAME="apack Beta"
     CHANNEL_LABEL="Beta"
   fi
 done
@@ -16,17 +16,17 @@ done
 # Get timestamp for log files
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_DIR="$SCRIPT_DIR/logs"
-LOG_FILE="${LOG_DIR}/agentbuddy_${TIMESTAMP}.log"
+LOG_FILE="${LOG_DIR}/apack_${TIMESTAMP}.log"
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
 
 # Kill any existing instances of this channel only
 echo "Stopping any existing ${APP_NAME} instances..."
-if [ "$APP_NAME" = "AgentBuddy" ]; then
-  pkill -f "AgentBuddy\.app" 2>/dev/null || true
+if [ "$APP_NAME" = "apack" ]; then
+  pkill -f "apack\.app" 2>/dev/null || true
 else
-  pkill -f "AgentBuddy Beta" 2>/dev/null || true
+  pkill -f "apack Beta" 2>/dev/null || true
 fi
 sleep 2
 

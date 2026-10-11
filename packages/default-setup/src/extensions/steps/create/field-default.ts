@@ -1,4 +1,4 @@
-import type { FieldMapping } from '@abuddy/sdk/steps';
+import type { FieldMapping } from '@apack/sdk/steps';
 
 /**
  * A mapping's fallback, between the text box a user types in and the value the runtime stores.

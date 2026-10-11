@@ -1,7 +1,7 @@
 > **Done** (on `AS/designations-and-addressing`, `6eb47edc7`, `b753a99dc`, `7af49d2c7`, `59e610eee` and the
 > reviews that followed). The text below is the plan as written; the Outcome records where the implementation
 > differed. For the current model, see the root `CLAUDE.md` (Event-driven actor system) and
-> `packages/abuddy-host/CLAUDE.md` (Packs).
+> `packages/apack-host/CLAUDE.md` (Packs).
 
 > **Written in session** `e6511a0f-3632-4fff-9504-43d61f8c4bba` (Claude Code, 2026-09-20). Resume it with `claude -r e6511a0f-3632-4fff-9504-43d61f8c4bba`.
 
@@ -11,9 +11,9 @@
 Implement docs/goals/goal-designations-and-addressing.md on AS/external-pack-authoring, at or after
 89133cf71 — the base its Background was surveyed at.
 Before Phase 1, confirm the base: `designation?: string` exists on PackSystemDef
-(packages/abuddy-sdk/src/framework/pack-registration.ts) and on Plugin
-(packages/abuddy-sdk/src/fe/plugin.ts), and `designationsOf` in
-packages/abuddy-host/src/packs/pack-registration.ts still reads both `systems` and `features`. If it
+(packages/apack-sdk/src/framework/pack-registration.ts) and on Plugin
+(packages/apack-sdk/src/fe/plugin.ts), and `designationsOf` in
+packages/apack-host/src/packs/pack-registration.ts still reads both `systems` and `features`. If it
 doesn't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -49,12 +49,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - create a new migration version file: the settings move goes in the latest unreleased target
   (packages/default-setup/src/migrations/0.3.15.ts), per migrations/CLAUDE.md.
@@ -101,7 +101,7 @@ fallback.
 
 ### The frontend has the same duplication, as a hidden binding
 
-`Plugin.designation` is a **public, optional, author-settable field** of `@abuddy/sdk/fe`
+`Plugin.designation` is a **public, optional, author-settable field** of `@apack/sdk/fe`
 (`fe/plugin.ts:11-12`). Codegen spreads over it on every build:
 
 ```js
@@ -109,7 +109,7 @@ const notes = { ...notes_module, designation: 'notes' } as typeof notes_module;
 ```
 
 — with the manifest's value, or with `undefined` when the manifest has none. So an author who sets
-`designation: 'brain'` in their plugin module and omits it from `abuddy.json` gets `undefined`, silently;
+`designation: 'brain'` in their plugin module and omits it from `apack.json` gets `undefined`, silently;
 `getDesignated('brain')` then throws *"No feature designated for brain"* at runtime, naming neither the
 manifest nor the overwrite. The type's doc comment admits the binding — on hover, in a field the API
 invites you to fill.
@@ -221,13 +221,13 @@ Final.
    the backend, not "the backend half", since `id`, `boot`, `migrations`, `ears` and `repositories` have no
    frontend counterpart and never will. A rename to `PackBERegistration` would mislabel them.
 5. **A designation is a role, not a name.** It need not equal the feature id, and may become many-to-one.
-   `build/validate.ts:41` is right; the root `CLAUDE.md:165`, `abuddy-sdk/CLAUDE.md:57` (which claims
+   `build/validate.ts:41` is right; the root `CLAUDE.md:165`, `apack-sdk/CLAUDE.md:57` (which claims
    `validateFeatures` checks `designation === id` — it does not) and the CLI's `--designation` rejection
-   (`abuddy-cli/src/commands/add/feature.ts:173`) are the stale spec. The CLI's is live code refusing a
+   (`apack-cli/src/commands/add/feature.ts:173`) are the stale spec. The CLI's is live code refusing a
    legitimate manifest.
 6. **`getDesignated(role)` returns the id that addresses the feature in this process**: its system on the
    backend, its own feature id when it has none (a plugin-only feature), its plugin on the frontend. Stated
-   once, in `@abuddy/sdk/designations`, and reflected in `abuddy-host/CLAUDE.md`.
+   once, in `@apack/sdk/designations`, and reflected in `apack-host/CLAUDE.md`.
 7. **One `systemIdFor(systemIds, packId, featureId)` resolver**, shared by `designationsOf` and
    `resolveSystemAddress`. `designationsOf` uses `flatMap`, so the `!` assertions go.
 8. **A duplicate plugin id is refused at registration**, by name, like services, commands, repositories and
@@ -308,13 +308,13 @@ a pack that has left. Each must fail a test.
 ### Phase 3 — one resolver, and the spec corrected
 
 `systemIdFor` shared by `designationsOf` and `resolveSystemAddress`. Correct the root `CLAUDE.md:165`,
-`abuddy-sdk/CLAUDE.md:57`, and remove the CLI's `--designation` ≠ name rejection with its usage line.
-State Decision 6's rule in `@abuddy/sdk/designations` and `abuddy-host/CLAUDE.md`.
+`apack-sdk/CLAUDE.md:57`, and remove the CLI's `--designation` ≠ name rejection with its usage line.
+State Decision 6's rule in `@apack/sdk/designations` and `apack-host/CLAUDE.md`.
 
-**Done when:** one bare-or-prefixed find in the file; `abuddy add feature --designation` accepts a role
+**Done when:** one bare-or-prefixed find in the file; `apack add feature --designation` accepts a role
 that differs from the feature name, covered by a CLI spec; no doc claims a designation must equal the
 feature id.
-**Mutation:** `abuddy add feature notes --designation inbox` must succeed and write `designation: "inbox"`.
+**Mutation:** `apack add feature notes --designation inbox` must succeed and write `designation: "inbox"`.
 
 ### Phase 4 — a duplicate plugin id is refused
 
@@ -353,14 +353,14 @@ spec fails.
 
 ## Outcome
 
-The goal holds: `designation` is a feature's, declared once in `abuddy.json` and carried on `PackFeature`, not grafted
+The goal holds: `designation` is a feature's, declared once in `apack.json` and carried on `PackFeature`, not grafted
 onto a system def or a plugin module; `BUILT_IN_OWNER` is gone and `registerPackFE` takes one argument; and a role is
 addressed through the designations rather than by a bare name.
 
 Two things ended up different from the plan:
 
 - **A feature is addressed `<packId>/<featureId>`, not `<packId>.<featureId>`.** The separator became a slash when the
-  ref grew a grammar of its own (`resolveName`, `splitRef`, `FEATURE_ID_PATTERN` in `@abuddy/sdk/ids`), so that neither
+  ref grew a grammar of its own (`resolveName`, `splitRef`, `FEATURE_ID_PATTERN` in `@apack/sdk/ids`), so that neither
   half can contain it and a ref splits one way.
 - **Plugin id collisions are no longer refused at registration, because they can no longer happen.** The plan wanted
   registration to reject a second pack declaring a plugin id another had registered. Ownership became structural
@@ -369,7 +369,7 @@ Two things ended up different from the plan:
 
 ## Deferred
 
-- **A role-addressed send** (`sendToRole(role, event)` on `@abuddy/sdk/events` and `services.emitter`,
+- **A role-addressed send** (`sendToRole(role, event)` on `@apack/sdk/events` and `services.emitter`,
   replacing `sendToBrainSystem`). It is what issue A asks for. Decision 12 settles its signature — one id
   in, no list — so what is left is the migration: 175 potential call sites and only 5 roles to aim at,
   which is worth its own change rather than a sweep inside this one.
@@ -384,7 +384,7 @@ Two things ended up different from the plan:
   All three are one `api:update`, in that phase's commit.
 - Phases 1–4 must not change any persisted key. Only Phase 5 migrates user data, and only through
   `0.3.15`.
-- `@abuddy/sdk` contract changes in Phases 1, 2 and 5 each need `npm run api:update` with `etc/` committed
+- `@apack/sdk` contract changes in Phases 1, 2 and 5 each need `npm run api:update` with `etc/` committed
   in the same commit; `npm run typecheck` fails until they are.
 - Every phase regenerating pack entries runs `npm run compile` for default-setup and rebuilds the fixtures,
   and commits the regenerated files.

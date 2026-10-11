@@ -1,7 +1,7 @@
-import type { StepRuntimeError } from '@abuddy/sdk/steps';
+import type { StepRuntimeError } from '@apack/sdk/steps';
 import type { EARS } from '#generated/ears.ts';
 
-import type { TrackTree, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
+import type { TrackTree, TNodeEntity, ExecutionContext } from '@apack/sdk/steps';
 
 export type JsonPath = string;
 

@@ -9,7 +9,7 @@
 // split because a flow is made in memory while a terminal spawns a process. What it pins is the pair:
 // the broadcast reaches everyone and the answer reaches the asker's connection alone.
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 
 const FLOWS = 'default-setup/flows'
 /** The connection the ask arrived on, which is what makes it a window's rather than the backend's */

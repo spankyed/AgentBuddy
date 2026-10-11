@@ -1,6 +1,6 @@
 # Content parity (`tests/content/`)
 
-**`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `abuddy build` ->
+**`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `apack build` ->
 `dist/*.content.json` -> the goldens here, which no module graph can see, so it is a declared route
 (`packBuildEdge`, `scripts/lib/spec-plan.ts`): naming a content item source prints what covers it, and
 `npm run spec:full -- <that file>` builds the pack and runs this directory. An apply *helper* that specs
@@ -61,7 +61,7 @@ fields — so a field added to an action later is covered without anyone remembe
 ### Why presence but not value
 
 A row with **no** `contentHash` is the user's for good: the merge reads an entity carrying none as `user-owned`
-(`@abuddy/sdk/src/content/merge.ts`). So whether a hash is there is the difference between "written by the pack"
+(`@apack/sdk/src/content/merge.ts`). So whether a hash is there is the difference between "written by the pack"
 and "hands off", which is parity. Which hash it is, is the compiler's business. One row in the goldens
 records `false` — `Action:Set Instructions` in the `untracked` scenario — and that row is the reason the field
 exists.

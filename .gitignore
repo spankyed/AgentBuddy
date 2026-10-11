@@ -32,7 +32,7 @@ tests/authoring-handoff/
 # A config a bundler compiled to load it (`bundle-require`, through tsup), written beside the config for the
 # length of a build. Ignored so a repo-wide walk that honours this file cannot enumerate one and then find it
 # gone: oxlint reads `.` with `--ignore-path .gitignore`, and a cold chain failed once on exactly that race.
-# `inputFiles` in @abuddy/host/build/packages-built skips the same pattern, for the walks that do not read this
+# `inputFiles` in @apack/host/build/packages-built skips the same pattern, for the walks that do not read this
 *.bundled_*.mjs
 *.bundled_*.cjs
 

@@ -178,17 +178,17 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackContentPicker from './ImportPackContentPicker.vue'
 import Hotkeys from './Hotkeys.vue'
-import { errorMessage } from '@abuddy/sdk/utils/pure';
-import type { SettingsEvents, SettingsState } from '@abuddy/host/fe'
-import type { ApplicationHotkeys } from '@abuddy/sdk/types'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import { errorMessage } from '@apack/sdk/utils/pure';
+import type { SettingsEvents, SettingsState } from '@apack/host/fe'
+import type { ApplicationHotkeys } from '@apack/sdk/types'
+import type { SettingUpdate } from '@apack/sdk/fe'
 
 /** The modes the Settings machine takes for a content import, so a widened string cannot reach its event */
 type ContentImportMode = Extract<SettingsEvents, { type: 'PACK_CONTENT.SET_MODE' }>['mode']

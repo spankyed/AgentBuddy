@@ -24,14 +24,14 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
-import { useDebounce } from '@abuddy/ui/composables/useDebounce'
+import { useDebounce } from '@apack/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
 import { pluginSettings } from '@/views/settings/plugin-settings';
-import { resolveName } from '@abuddy/sdk/ids';
-import type { SettingsState } from '@abuddy/host/fe'
+import { resolveName } from '@apack/sdk/ids';
+import type { SettingsState } from '@apack/host/fe'
 
 const { updateSettings } = useSettingsSaveStatus()
 

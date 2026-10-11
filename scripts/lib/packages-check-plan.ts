@@ -30,7 +30,7 @@ export interface PublishedTree {
  * Whether a published manifest offers declarations anywhere — a `types` field, or a `types` condition at any
  * depth of `exports`.
  *
- * It is what decides whether `attw` has anything to say, and `@abuddy/cli` is the one tree where it is false:
+ * It is what decides whether `attw` has anything to say, and `@apack/cli` is the one tree where it is false:
  * that package publishes a bundle and no declarations. Derived rather than named, so a sixth package shipping
  * none is skipped for the reason rather than by someone remembering to add it to a list — and one that starts
  * shipping them cannot be left out in silence.

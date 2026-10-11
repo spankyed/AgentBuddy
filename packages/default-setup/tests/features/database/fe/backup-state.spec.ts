@@ -44,15 +44,15 @@ it('keeps an import failure, also after leaving the backup view', () => {
   expect(backup(actor)).toEqual({ exporting: false, importing: false, backupResult: { operation: 'import', error: 'no manifest' } });
 });
 
-it("keeps the stores a newer AgentBuddy's backup holds, so the view can ask, and imports without them when told to", () => {
+it("keeps the stores a newer apack's backup holds, so the view can ask, and imports without them when told to", () => {
   const actor = backupView();
 
   actor.send({ type: 'BACKUP.IMPORT', path: '/backups/backup-1' });
-  actor.send({ type: 'IMPORT_DATABASE_ERROR', error: 'a newer AgentBuddy made it', unknownDatabases: ['searchIndex'] });
+  actor.send({ type: 'IMPORT_DATABASE_ERROR', error: 'a newer apack made it', unknownDatabases: ['searchIndex'] });
   expect(backup(actor)).toEqual({
     exporting: false,
     importing: false,
-    backupResult: { operation: 'import', error: 'a newer AgentBuddy made it', unknownDatabases: ['searchIndex'] },
+    backupResult: { operation: 'import', error: 'a newer apack made it', unknownDatabases: ['searchIndex'] },
   });
 
   // What the view sends once the user has said to import it anyway

@@ -1,5 +1,5 @@
 > **Done and closed.** Implemented in `85960abb9`: `npm run typecheck` borrows `api:check` and
-> `facade:check` from `CHAIN_STEPS`, `abuddy facade-report` takes `--skip-generate`, and codegen is a second
+> `facade:check` from `CHAIN_STEPS`, `apack facade-report` takes `--skip-generate`, and codegen is a second
 > ordered prerequisite. Stale both reports and typecheck exits 1 naming `api:update` and `facade:update`;
 > before, it exited 0. The three incidental findings below are closed too. The text after this is the plan as
 > written, with two corrections the work found.
@@ -30,7 +30,7 @@ Make both recorded reports stale and ask the three commands:
 
 ```
 packages/default-setup/etc/pack-types.api.md  + one line
-packages/abuddy-sdk/etc/index.api.md          + one line
+packages/apack-sdk/etc/index.api.md          + one line
 
 npm run typecheck     -> exit 0
 npm run facade:check  -> exit 1
@@ -42,7 +42,7 @@ nothing. The guide warns about it at [`CLAUDE.md:122-127`](../../../CLAUDE.md) �
 typecheck and believe every recorded artifact is current"* — which is the tell that it is a known trap rather
 than a surprise. A warning in a guide is the weakest available fix for something a command could answer.
 
-**Four recorded artifacts, split two and two.** `exports:check` (`@abuddy/ui`'s exports map) and
+**Four recorded artifacts, split two and two.** `exports:check` (`@apack/ui`'s exports map) and
 `schema:check` (the SDK's manifest schema) are `TYPECHECK_LEGS` entries, so `npm run typecheck` catches them.
 `api:check` (three packages' `etc/*.api.md`) and `facade:check` (the pack's `etc/pack-types.api.md`) are chain
 steps, so it does not. Closing both is what deletes the warning; closing one only shortens it.
@@ -91,7 +91,7 @@ describe, and `cores: coresFor(leg.name)` closes it for the legs as well.
 
 ## The one half that needs code: `facade:check` must not write while the pool runs
 
-It calls `generateEntries([])` (`packages/abuddy-cli/src/commands/facade-report.ts:42`), whose `outDir` is
+It calls `generateEntries([])` (`packages/apack-cli/src/commands/facade-report.ts:42`), whose `outDir` is
 `<pack>/src/__generated__` (`generate-entries.ts:108`) — the tree `typecheck:pack`'s `vue-tsc` compiles and
 that `check:specifiers` and `lint:check` walk. `computeInputsHash` covers **every file under `src/`**, because
 codegen reads pack sources (a system's events come from its `be/contract.ts`), so any source edit makes the
@@ -99,14 +99,14 @@ barrel stale and the write fire. In a pool beside repo-wide readers that is a ra
 
 **The fix is a flag the build already has, plus one more ordered step.**
 
-`abuddy build` takes `--skip-generate` (`build.ts:104`). Give `facade-report` the same flag, and have the
+`apack build` takes `--skip-generate` (`build.ts:104`). Give `facade-report` the same flag, and have the
 runner regenerate *before* the pool starts — the shape `packages:ensure` already is. The pool then invokes
 `facade:check --skip-generate` and the check writes nothing.
 
 ```
 npm run typecheck
   packages:ensure                     (ordered, writes — builds what the rest read)
-  abuddy generate-entries -w pack     (ordered, writes — regenerates what the rest read)
+  apack generate-entries -w pack     (ordered, writes — regenerates what the rest read)
   then all 17 legs + api:check + facade:check --skip-generate, concurrently, none of them writing
 ```
 
@@ -161,7 +161,7 @@ for this.
 
 - **`packages/*/.temp` is kept out of the root `oxlint .` walk only by oxlint's hidden-directory default.** The
   per-package `.gitignore` files list `.temp/`, but the root `.gitignore` — which is what `--ignore-path`
-  reads — does not. Measured: `oxlint packages/abuddy-sdk` reports 221 files, `oxlint packages/abuddy-sdk/.temp`
+  reads — does not. Measured: `oxlint packages/apack-sdk` reports 221 files, `oxlint packages/apack-sdk/.temp`
   reports 144 more with 17 errors, and the root run sees neither. Adding `.temp/` to the root `.gitignore`
   would rest it on a declaration instead of a tool default.
 - **`CLAUDE.md:651` cross-references a heading that does not exist** (*"api:check is not a chain step"*,
@@ -175,9 +175,9 @@ for this.
 ```bash
 # the trap is gone — the whole point, and the first thing to check
 printf '\nexport type X = never;\n' >> packages/default-setup/etc/pack-types.api.md
-printf '\n// x\n' >> packages/abuddy-sdk/etc/index.api.md
+printf '\n// x\n' >> packages/apack-sdk/etc/index.api.md
 npm run typecheck            # must FAIL, naming facade:update and api:update
-git checkout -- packages/default-setup/etc packages/abuddy-sdk/etc
+git checkout -- packages/default-setup/etc packages/apack-sdk/etc
 
 npm run spec -- typecheck-legs     # the leg count and declared sum are unchanged — confirm
 npm run spec -- dep-files          # both checks still honestly in byNothing

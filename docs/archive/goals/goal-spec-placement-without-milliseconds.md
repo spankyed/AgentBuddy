@@ -92,14 +92,14 @@ That was measured on `@app/repo-checks`' fast half. Measured 2026-10-05 across a
 
 | suite | specs | top spec's share of the body |
 |---|---|---|
-| `abuddy-ui` | 2 | 93% |
+| `apack-ui` | 2 | 93% |
 | `main` | 3 | 89% |
-| `abuddy-sdk` | 61 | 86% |
-| `abuddy-ears` | 9 | 79% |
-| `abuddy-testing` | 10 | 64% |
+| `apack-sdk` | 61 | 86% |
+| `apack-ears` | 9 | 79% |
+| `apack-testing` | 10 | 64% |
 | `repo-checks` | 46 | 12% — where the threshold was measured |
 
-`measure.ts:120-131`'s own table records the worst single spec moving 74% between two *quiet* runs. At 93% concentration that is ~69% body movement from noise, four and a half times `DRIFT_SHARE`: the report cannot avoid false-firing on those suites. Observed on 2026-10-05 — `@abuddy/testing` reported +16% and `@app/repo-checks` −14% on one run, opposite directions, which is the signature of jitter rather than the correlated drift the report exists to catch.
+`measure.ts:120-131`'s own table records the worst single spec moving 74% between two *quiet* runs. At 93% concentration that is ~69% body movement from noise, four and a half times `DRIFT_SHARE`: the report cannot avoid false-firing on those suites. Observed on 2026-10-05 — `@apack/testing` reported +16% and `@app/repo-checks` −14% on one run, opposite directions, which is the signature of jitter rather than the correlated drift the report exists to catch.
 
 **The remedy it prints does not fit the case that fires.** `spec-cost.ts:327` prints `--all --forget` on every branch, while that flag's own documentation calls it *"for a change you know about — a bundler bump, a policy change — and not to chase a drift you do not"*. For spec costs the report only prints: `drifted()` there is a `console.log`, and `spec-cost.ts:1100` records that a drift **gate** on the write already existed and was already removed (*"It replaced `rewritesEveryRow`, which was `all && drifted(body)` — a drift gate on a write"*). So the standing cost is a misleading sentence, not a blocked workflow.
 
@@ -137,7 +137,7 @@ Busy/quiet ratio over the 103 specs above 50 ms: **median 1.27x, p90 2.03x, max 
 
 A streak counts *consecutive* runs, and load persists — for hours on a working machine. Three specs flipped twice running, so N=2 files three wrong renames; nothing about N=3 or N=4 is different, because a box loaded for three runs flips three times. **The premise that a boolean verdict is machine-independent is false**: the edge is an absolute wall-clock threshold, and load moves durations across it by 2-3x, so the verdict is exactly as machine-dependent as the millisecond was.
 
-What the data does support is a **margin against the edge rather than repetition**. Load explains up to 3.29x here, so a spec over its edge by more than that is over it for reasons load cannot account for — `abuddy-sdk/tests/build/generate-entries.spec.ts` at 17 745 ms against a 2 500 ms edge is 7.1x and believable from one reading, where `spec-waits` at 2 509 ms is 1.004x and is noise. A ratio is machine-independent in the way a wall-clock threshold is not.
+What the data does support is a **margin against the edge rather than repetition**. Load explains up to 3.29x here, so a spec over its edge by more than that is over it for reasons load cannot account for — `apack-sdk/tests/build/generate-entries.spec.ts` at 17 745 ms against a 2 500 ms edge is 7.1x and believable from one reading, where `spec-waits` at 2 509 ms is 1.004x and is noise. A ratio is machine-independent in the way a wall-clock threshold is not.
 
 **`CONTENTION_RATIO_MAX = 2.5` is not that ratio, despite the name.** Its doc records it as an upper bound on how much more a spec reads *in the fast half than in the integration half*, measured on an idle box with each spec moved alone — a placement conversion, not a load factor. The 3.29x above neither confirms nor contradicts it; they are different quantities, and conflating them would size the band on the wrong measurement.
 
@@ -148,7 +148,7 @@ What the data does support is a **margin against the edge rather than repetition
 - a package with two vitest configs gets **`misplaced`** — the spec is in the wrong half and a rename is the remedy;
 - a package with one config gets **`outgrown`** — the spec costs more than a fast half allows and there is nowhere to move it, so the entry records *what makes it expensive* instead. Explicitly "not a queue of packages to split".
 
-Only three packages have a split (`@abuddy/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
+Only three packages have a split (`@apack/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
 
 A second effect Q4 exposes: the recorded costs were measured by `measure()` running one `npx vitest` **per package**, while specs actually run pooled across eleven projects. `generate-entries` is recorded at 11 308 ms and reads 17 745 ms pooled. Decision 2 already says a spec should be timed in the pool it runs in; the gap is larger than the doc assumed.
 
@@ -225,7 +225,7 @@ Needs Open decision 1 settled.
 ### Phase 4 — The docs catch up
 
 - Root `CLAUDE.md`: the "three kinds of recorded artifact" passage (Decision 8), the `spec-cost:check`/`spec-cost:update` entries in Commands, and the `check:idle` entry's claim about which commands refuse.
-- `packages/abuddy-cli/CLAUDE.md`'s "Tests" section states the 2.5 s/1.5 s band and that `spec-cost:update` records a measured cost; `packages/repo-checks/CLAUDE.md` has the row for `suite-split`.
+- `packages/apack-cli/CLAUDE.md`'s "Tests" section states the 2.5 s/1.5 s band and that `spec-cost:update` records a measured cost; `packages/repo-checks/CLAUDE.md` has the row for `suite-split`.
 - Any doc naming a deleted flag.
 
 **Done when:** `npm run spec -- doc-links` passes and `grep -rn "spec-cost:update -- --all\|RECORD_IDLE_FLOOR" docs/ packages/*/CLAUDE.md CLAUDE.md` finds nothing that describes the old behaviour. Docs outside `docs/archive/` describe the code as it is.
@@ -311,9 +311,9 @@ Two notes from those chain runs, neither of them this goal's:
 
 - Commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first; pushing, tagging and PRs are on request. Something outside the session stages files in this tree, so use `git commit -- <paths>`.
 - No publishing, releases or triggered workflows.
-- No real data dirs; no broad `pkill`/`killall`; E2E in the `abuddy-test` namespace with an isolated `ABUDDY_USER_DATA_DIR`.
+- No real data dirs; no broad `pkill`/`killall`; E2E in the `apack-test` namespace with an isolated `APACK_USER_DATA_DIR`.
 - No bare `tsc` on `packages/preload`; no `npm install` in the example pack; no edits to version or release metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes.
 - Investigate failing tests rather than loosening an assertion; mutation-check every new guard, and mutate a copy or a worktree rather than the shared tree.
 - Measure on a quiet machine and record runs, median and machine with any number this goal adds (`npm run measure`, `npm run check:idle`).

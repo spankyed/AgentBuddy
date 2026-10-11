@@ -1,11 +1,11 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*"],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../apack-sdk/src/fe/**/*"],
   "exclude": [],
   "compilerOptions": {
     "noUnusedLocals": true,
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
-    "customConditions": ["@abuddy/source"],
+    // Workspace @apack/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@apack/source"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {

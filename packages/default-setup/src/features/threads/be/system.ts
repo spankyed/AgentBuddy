@@ -5,21 +5,21 @@ import { services } from '#generated/services.ts';
 import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
 import { answer } from './answer.ts';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem } from '@apack/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { Contract } from './contract.ts';
 import type { MessageEntity, ThreadLinkItem } from './types.ts';
-import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@apack/sdk/utils';
 import { exportThreads } from './export-threads.ts';
 import { importThreads } from './import-threads.ts';
 import { runThreadTeardown } from './thread-teardown.ts';
 import { generateAsideText } from './services/chat.ts';
-import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { createLogger, reportError } from '@apack/sdk/logger';
 import { ref } from '#generated/ref.ts';
 
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('threads');
 /**

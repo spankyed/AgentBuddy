@@ -24,7 +24,7 @@ Modules, in order (`src/modules/`):
 | Factory | File | Does |
 |---|---|---|
 | `disallowMultipleAppInstance` | `SingleInstanceApp.ts` | `requestSingleInstanceLock()`, **scoped by the data dir**, so dev, beta, test and production run side by side — they have different ones — and two apps on one dir cannot; exits if the lock is taken |
-| `createProtocolHandler` | `ProtocolHandler.ts` | Registers the app as handler for `urlScheme` (`abuddy`, or `abuddy-beta`); `open-url` / `second-instance` URLs go to the first window as `protocol-action` `{ action: hostname, params }` |
+| `createProtocolHandler` | `ProtocolHandler.ts` | Registers the app as handler for `urlScheme` (`apack`, or `apack-beta`); `open-url` / `second-instance` URLs go to the first window as `protocol-action` `{ action: hostname, params }` |
 | `hardwareAccelerationMode` | `HardwareAccelerationModule.ts` | Currently `{ enable: true }`, so a no-op |
 | `createMediaProtocol` | `media-protocol/` | `media://` and `local-file://` (see Protocols) |
 | `createPackProtocol` | `pack-protocol/` | `pack://` (see Protocols) |
@@ -34,7 +34,7 @@ Modules, in order (`src/modules/`):
 | `createWindowManagerModule` | `window-manager/` | Main and popout windows, most IPC handlers (see Windows) |
 | `terminateAppOnLastWindowClose` | `ApplicationTerminatorOnLastWindowClose.ts` | Quits on `window-all-closed` except on macOS |
 | `createBrowserModule` | `browser/` | The browser plugin's tabs: `WebContentsView`s in the `persist:browser` session, driven by `browser:*` IPC (`BrowserTabManager.ts`) |
-| `createMacOSAppMenu` | `MacOSAppMenu.ts` | macOS menu: Cmd+Q hides, Cmd+Shift+Q quits; packaged builds add "Install 'abuddy' command in PATH" (`cli-command.ts`, symlinks `Resources/cli/abuddy` into `/usr/local/bin`, `abuddy-beta` for beta, via `osascript` on EACCES) |
+| `createMacOSAppMenu` | `MacOSAppMenu.ts` | macOS menu: Cmd+Q hides, Cmd+Shift+Q quits; packaged builds add "Install 'apack' command in PATH" (`cli-command.ts`, symlinks `Resources/cli/apack` into `/usr/local/bin`, `apack-beta` for beta, via `osascript` on EACCES) |
 | `allowInternalOrigins` | `BlockNotAllowdOrigins.ts` | Blocks `will-navigate` to origins other than the dev server's |
 | `allowExternalUrls` | `ExternalUrls.ts` | `setWindowOpenHandler` always denies, and sends the URL to the system browser through `shell-access.ts` (see Shell access) |
 
@@ -65,34 +65,34 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 `initAppContext()` runs first and is the only place the environment is decided:
 
-- `_inferElectronAppEnv` (`@abuddy/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__ABUDDY_CHANNEL__` and `process.env.ABUDDY_ENV`. `__ABUDDY_CHANNEL__` is `ABUDDY_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
-- `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
+- `_inferElectronAppEnv` (`@apack/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__APACK_CHANNEL__` and `process.env.APACK_ENV`. `__APACK_CHANNEL__` is `APACK_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
+- `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
 ## API server (`src/modules/api-server/`)
 
-- `ApiServer` creates the API token for this app run (`apiToken`, 32 random bytes). The API process gets it as `ABUDDY_API_TOKEN` (`getEnvironment`), the app's windows through the synchronous `api:token` IPC their preload sends. The in-app browser's tabs have no preload, so web pages never see it.
+- `ApiServer` creates the API token for this app run (`apiToken`, 32 random bytes). The API process gets it as `APACK_API_TOKEN` (`getEnvironment`), the app's windows through the synchronous `api:token` IPC their preload sends. The in-app browser's tabs have no preload, so web pages never see it.
 - `ApiServer.enable` registers IPC (`api:token`, `api:get-status`, `api:open-log-file`, `app:reload`, `app:relaunch`) and starts the server on `app.whenReady()`.
-- `startApiServer` SIGKILLs orphaned API processes (`ps`, macOS/Linux: same `dist/server.js` path, `AgentBuddy` in the command, parent pid 1), then spawns it:
+- `startApiServer` SIGKILLs orphaned API processes (`ps`, macOS/Linux: same `dist/server.js` path, `apack` in the command, parent pid 1), then spawns it:
   - `getApiPaths()`: `<appPath>/packages/api` from source, `<resources>/app/packages/api` packaged (no ASAR).
   - `getNodeExecutable()`: `node` from source; packaged, Electron itself with `ELECTRON_RUN_AS_NODE=1`.
-  - `getExecutionArgs()`: from source `--conditions=@abuddy/source dist/server.js`, so packs' `@abuddy/*` imports resolve to workspace source.
-  - `getEnvironment()`: `API_PORT`, `ABUDDY_API_TOKEN` (the run's API token), `NODE_ENV`, `SHIPPED_PACKS_DIR` (`packages/`), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR`, `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
+  - `getExecutionArgs()`: from source `--conditions=@apack/source dist/server.js`, so packs' `@apack/*` imports resolve to workspace source.
+  - `getEnvironment()`: `API_PORT`, `APACK_API_TOKEN` (the run's API token), `NODE_ENV`, `SHIPPED_PACKS_DIR` (`packages/`), `APACK_STARTUP_ID`, `APACK_LOG_DIR`, `APACK_ENV`, `APACK_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
   - Port: `getPort({ port: preferredPort })` (3001 first, then the last port that worked) after `clearLockedPorts()`, so a restart keeps the renderer's URL when it can.
 - `ProcessManager` (`process-manager.ts`) pipes stdout/stderr to the log. The server counts as ready at the first stdout line containing `WebSocket Server listening` with `ws://localhost:<port>`. Stderr lines starting with `{"__fatal":` are collected and broadcast as `api:fatal`.
 - On exit it broadcasts `api:stopped` (`{ error, restarting }`) and restarts after 2 s, up to 3 attempts (`API_CONFIG` in `config.ts`); the count resets once a launch has run for 5 s. After the last attempt it broadcasts `api:error` and rejects `waitForReady()`.
 - `broadcastEvent` sends `api:starting`, `api:started` (`{ port, startupId }`), `api:restarting`, `api:log` (dev only) and the events above to every window. The renderer reconnects its tRPC client on `api:started` (see `packages/renderer/CLAUDE.md`).
 - **`reloadApiServer()` is the one public way to replace the API, and it is deliberately not the path above.** It is `ProcessManager.stop()` — awaitable, where `kill()` is not — then `startApiServer()`, then `waitForReady()`. Two properties it has to keep: it **waits for the exit**, because the departing process holds the port the next one prefers and the LMDB store it is about to open; and it **never reaches `handleProcessExit`**, because `stop()` removes the handlers before signalling. That second one is not tidiness — every exit there costs one of three restart attempts, forgiven only 5 s after a launch, so a handful of quick edits would land on `api:stopped { restarting: false }`, the shell's terminal `error` state, and main refusing to start the API again. Calls coalesce, and the readiness it waits for carries `reloaded: true` so the window resubscribes at once instead of waiting out its client's backoff.
-- **`dev-reloader.ts` is what calls it**: a module that watches `dist/server.js` and reloads when it moves, armed only when the build is `development` **and** the launcher said so (`ABUDDY_DEV_RELOAD`, set by `npm start`). Both halves are deliberate — `development` alone is true of `abuddy dev` and of a bare `electron .`, and the variable alone must not arm a packaged or `test` app. It is the only file watcher in main. `packages/api/CLAUDE.md` has the loop and its measured cost.
+- **`dev-reloader.ts` is what calls it**: a module that watches `dist/server.js` and reloads when it moves, armed only when the build is `development` **and** the launcher said so (`APACK_DEV_RELOAD`, set by `npm start`). Both halves are deliberate — `development` alone is true of `apack dev` and of a bare `electron .`, and the variable alone must not arm a packaged or `test` app. It is the only file watcher in main. `packages/api/CLAUDE.md` has the loop and its measured cost.
 - Shutdown: `before-quit` (and `window-all-closed` off macOS) sends SIGTERM, then SIGKILL after 5 s.
-- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` beside the main log. Those four go through `appendCappedLine` (`@abuddy/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. All of them, electron-log included, are configured from `getAppContext().logsDir` — importing this module is what decides the context, so the module graph puts that before any log write.
+- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` beside the main log. Those four go through `appendCappedLine` (`@apack/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. All of them, electron-log included, are configured from `getAppContext().logsDir` — importing this module is what decides the context, so the module graph puts that before any log write.
 
 ## Windows (`src/modules/window-manager/`)
 
 - `WindowManager.enable` waits for `apiServer.waitForReady()` (60 s). On failure it shows a Relaunch/Quit dialog and exits.
-- `restoreOrCreateWindow` creates the main window (title `AgentBuddy-Main`, the key `isMainWindow` matches on) and waits for the renderer's `renderer:ready` IPC (15 s timeout) before showing it and closing the splash. `second-instance` and macOS `activate` restore or recreate it.
+- `restoreOrCreateWindow` creates the main window (title `apack-Main`, the key `isMainWindow` matches on) and waits for the renderer's `renderer:ready` IPC (15 s timeout) before showing it and closing the splash. `second-instance` and macOS `activate` restore or recreate it.
 - Windows get `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false`, the preload script, and `additionalArguments` `--api-port=<port>` and `--startup-id=<id>`, which the preload reads. The port is read when the window is created; later moves reach the renderer through `api:started`.
-- `plugin:popout` opens one popout per plugin id (`AgentBuddy-Popout-<id>`), loading the renderer with `?popout=plugin&pluginId=…&title=…`; Cmd/Ctrl+W closes it.
+- `plugin:popout` opens one popout per plugin id (`apack-Popout-<id>`), loading the renderer with `?popout=plugin&pluginId=…&title=…`; Cmd/Ctrl+W closes it.
 - Size: 1400×900 in a dev build, 1920×1200 otherwise (`constants.ts`, `import.meta.env.DEV`).
 - Under Playwright, windows are never shown or focused unless `PLAYWRIGHT_VISIBLE=1`; the same check guards the splash and protocol handler.
 - `attachRendererDiagnostics` logs console messages, crashes, hangs, load and preload failures to the renderer log. `getWindowIcon()` (`helpers.ts`) uses `build/resources/icon-dev.png` from source.
@@ -102,17 +102,17 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 - **`pack://<packId>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
   - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
-  - While `abuddy dev` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
+  - While `apack dev` runs, `devServerUrl(userDataDir, packId, path)` (`@apack/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
   - Serves from disk with a small MIME table.
-- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/abuddy/media`. Branching on `app.isPackaged` here would put the layout rule in both main and the API, where a mismatch serves every image a 404.
+- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/apack/media`. Branching on `app.isPackaged` here would put the layout rule in both main and the API, where a mismatch serves every image a 404.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).
 
 ## Build and dev
 
-- `vite build` (`vite.config.js`) produces a single SSR ES bundle `dist/index.js`. `@abuddy/sdk` and `@abuddy/host` are bundled in (`ssr.noExternal`), because packaged builds strip `.ts`. They resolve under `@abuddy/source`. Splash assets and `resources/logo.svg` are copied to `dist/assets`.
+- `vite build` (`vite.config.js`) produces a single SSR ES bundle `dist/index.js`. `@apack/sdk` and `@apack/host` are bundled in (`ssr.noExternal`), because packaged builds strip `.ts`. They resolve under `@apack/source`. Splash assets and `resources/logo.svg` are copied to `dist/assets`.
 - `npm start` (`packages/dev-mode.js`) starts the renderer dev server, builds the API, then builds preload and main in watch mode with the `@app/renderer-watch-server-provider` plugin. Main's `handleHotReload` restarts Electron after each rebuild (`ELECTRON_INSPECT=true`, via `npm run start:inspect`, adds `--inspect`).
 - `npm run typecheck -w @app/main` runs `tsc --noEmit`. Root `npm run typecheck` runs it as `typecheck:main`.
 
 ## Tests
 
-`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it and defines `__ABUDDY_CHANNEL__`, which the identity guard allows for the same reason it allows `vite.config.js`. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.
+`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it and defines `__APACK_CHANNEL__`, which the identity guard allows for the same reason it allows `vite.config.js`. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.

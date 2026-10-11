@@ -4,7 +4,7 @@
 **Status:** Open
 **Severity:** Critical — one finding writes user credentials to disk in plaintext; two more can lose work
 **Component:** `packages/default-setup/src/features/code` — terminal (xterm.js front end, node-pty back end),
-plus the app plumbing it depends on (`packages/main`, `packages/api`, `@abuddy/host/bus`)
+plus the app plumbing it depends on (`packages/main`, `packages/api`, `@apack/host/bus`)
 
 ## Symptom
 
@@ -71,7 +71,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 
 | | Sev | Finding | Where |
 |---|---|---|---|
-| **S2** | **Critical** | Every terminal keystroke is logged at `info` and written to `main.log` + `main.jsonl` in plaintext | `abuddy-host/src/bus/client-events.ts:54` |
+| **S2** | **Critical** | Every terminal keystroke is logged at `info` and written to `main.log` + `main.jsonl` in plaintext | `apack-host/src/bus/client-events.ts:54` |
 | **S1** | **High** | The API process's whole env — app API token included — is handed to every pty | `be/services/terminal.ts:318-331`, `main/.../api-server/config.ts:100` |
 | **S3** | **High** | The restore path spawns a persisted `shell` and `cwd` with no validation | `be/services/terminal.ts:379-385` |
 | **F3** | **High** | O(n²) string accumulation per terminal, on the renderer's main thread | `fe/utils/terminal-events.ts:106` |
@@ -105,14 +105,14 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **X5** | Medium | Windows: an OSC 7 URL decodes to an unusable path, which is persisted and respawned from | `be/features/terminal.ts:49,66` |
 | **X6** | Medium | Windows: the run-script path sends LF, which does not submit a line | `fe/features/terminal/state.ts:290` |
 | **X9** | Medium | Windows: `resize`/`write` have no error handling; ConPTY throws for ~1 s after exit | `be/services/terminal.ts:145-165` |
-| **X10** | Medium | Windows/Linux: the code plugin's `cmd`-based hotkeys can never match | `abuddy-sdk/src/fe/hotkeys.ts:31` |
+| **X10** | Medium | Windows/Linux: the code plugin's `cmd`-based hotkeys can never match | `apack-sdk/src/fe/hotkeys.ts:31` |
 | **X11** | Medium | Linux: the `$SHELL`-missing fallback is a hardcoded `/bin/bash` | `be/services/terminal.ts:48` |
 | **X12** | Medium | Windows: `pwsh.exe`/`bash.exe`/`wsl.exe` are silently replaced by PowerShell 5.1 | `be/services/terminal.ts:25-37` |
 | **G2** | Medium | `ELECTRON_RUN_AS_NODE=1` is handed to every agent child and everything its Bash tool spawns | `claude-code/runner.ts:117-121` |
 | **G3** | Medium | `onShutdown` kills ptys but not in-flight agent children | `src/features/hooks.ts:12-17` |
 | **G4** | Medium | "Open in terminal" hands the resumed CLI an env the agent runner exists to scrub | `be/services/terminal.ts:38-45` |
 | **G6** | Medium | `handle.close()` is awaited without a timeout; a held stdio pipe pins the thread `isRunning` | `claude-code/query.ts:244-248` |
-| **S4** | Medium | `openLink` and the in-app tab path apply no scheme filter; only the external branch does | `abuddy-sdk/src/fe/navigation.ts:32-35` |
+| **S4** | Medium | `openLink` and the in-app tab path apply no scheme filter; only the external branch does | `apack-sdk/src/fe/navigation.ts:32-35` |
 | **F13** | Low | The shell allow-list is inert on the default path | `be/services/terminal.ts:276` |
 | **F15** | Low | Focus is stolen on every attach | `TerminalView.vue:202`, `PanelTerminalSection.vue:316` |
 | **F16** | Low | Unhandled clipboard promise rejections | `terminal-pool.ts:194,200` |
@@ -134,7 +134,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 
 The chain, each link read: `terminal-pool.ts:227` `term.onData(sendInput)` fires per keystroke →
 `fe/features/terminal/state.ts:78` forwards `terminal.TERMINAL_INPUT { terminalId, data }` over
-`sendToSystem`, so it goes through the API's `bus.send` → `abuddy-host/src/bus/client-events.ts:54` logs
+`sendToSystem`, so it goes through the API's `bus.send` → `apack-host/src/bus/client-events.ts:54` logs
 `{ …, event: summarizeEventForLog(event) }` → `client-events.ts:19-34` shortens **arrays** over 5 items, so
 a string payload passes through whole → `api/src/adapters/logging.ts:37` prints it →
 `main/.../process-manager.ts:45` → `main/.../logger.ts:55,84` writes `main.log` **and** `main.jsonl`.
@@ -155,13 +155,13 @@ must be "not logged".
 
 `sanitizeEnvironment` is `{...process.env}` minus six names (`be/services/terminal.ts:38-45`), applied on
 both spawn paths (`:85`, `:376`). The env it copies is the one Electron main built for the API process,
-which sets `ABUDDY_API_TOKEN` (`main/src/modules/api-server/config.ts:100`) along with `API_PORT`,
-`ABUDDY_USER_DATA_DIR`, `AGENTBUDDY_LOG_DIR` and `SHIPPED_PACKS_DIR`. None is on the deny-list.
+which sets `APACK_API_TOKEN` (`main/src/modules/api-server/config.ts:100`) along with `API_PORT`,
+`APACK_USER_DATA_DIR`, `APACK_LOG_DIR` and `SHIPPED_PACKS_DIR`. None is on the deny-list.
 
 What the token buys is wider than a secrets read — `secrets.*` returns metadata only
 (`api/src/transport/secrets.ts:14-43`), correcting the original hypothesis. The escalation is `bus.send`:
 the Database system accepts `EXECUTE_TRANSACTION { code }` (`features/database/be/types.ts:46`), run through
-`new Function` with no isolation (`abuddy-sdk/src/database-console/index.ts:104-111`) **inside the API
+`new Function` with no isolation (`apack-sdk/src/database-console/index.ts:104-111`) **inside the API
 process** — the process holding the decrypted secrets data key. `bus.sub` streams results back.
 
 Severity is higher in the shipped app, not lower: `apiTokenFile` is written only in development or when the
@@ -176,9 +176,9 @@ app-owned variable appears in a spawned pty's env — the absence of that test i
 `be/services/terminal.ts:379-385` spawns `persistedTerminal.shell` with `cwd: persistedTerminal.cwd`.
 `validateShell` (`:276`) and `validateCwd` (`:292`) run only on the create path. `restoreTerminals` defaults
 to `true`, so this runs at every boot. Writes to a Terminal row therefore become an executable launched at
-next start, and such writes exist: the database console's `EXECUTE_TRANSACTION`, `abuddy db exec`, and a
+next start, and such writes exist: the database console's `EXECUTE_TRANSACTION`, `apack db exec`, and a
 backup import, which replaces the LMDB folders wholesale with no row-level validation
-(`abuddy-host/src/backup/index.ts:124-137`). "Import a backup someone sent you" is enough.
+(`apack-host/src/backup/index.ts:124-137`). "Import a backup someone sent you" is enough.
 
 Ordering: F13 must be settled first, because the allow-list's current fallback is the value it just
 rejected, so validating on restore would be inert.
@@ -255,7 +255,7 @@ away, so "main on Code" + "popout on Code" is immediate. At most two windows can
 (`WindowManager.ts:25,151`).
 
 The amplifier is broader: **every plugin's actor is spawned in every window regardless of what that window
-displays** (`abuddy-host/src/features/application/fe/machine.ts:416-418`), and the Code plugin's `entry`
+displays** (`apack-host/src/features/application/fe/machine.ts:416-418`), and the Code plugin's `entry`
 spawns the terminal child. So a popout of *Notes* runs a full Code plugin and terminal child that receives
 every terminal broadcast and writes every persisted key. M1, M3, M5 and M6 therefore need only a second
 window of **any** plugin.
@@ -309,7 +309,7 @@ mid-turn and `claude` keeps running, still using tools, still spending.
 
 Recorded so they are not re-investigated.
 
-- **Terminal output cannot produce a clickable `abuddy://` deep link.** Two independent facts:
+- **Terminal output cannot produce a clickable `apack://` deep link.** Two independent facts:
   `@xterm/addon-web-links@0.11.0`'s only regex matches `https?` (read out of the shipped bundle) and no
   `urlRegex` option is passed; and `main/src/modules/shell-access.ts:13` allows only `http:`/`https:` for the
   external branch. The remaining gap is S4, which the terminal cannot reach.

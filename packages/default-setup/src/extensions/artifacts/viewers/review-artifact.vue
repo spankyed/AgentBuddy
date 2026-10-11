@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { CheckSquare } from 'lucide-vue-next';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
 
 interface ReviewContent {
   message?: string;

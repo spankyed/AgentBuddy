@@ -1,4 +1,4 @@
-import type { ActionInput } from '@abuddy/sdk/repositories';
+import type { ActionInput } from '@apack/sdk/repositories';
 
 /**
  * Reusable action definitions for applying tests.

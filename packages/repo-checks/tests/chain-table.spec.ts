@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BUILD_UNITS, buildScriptFor, inputFiles, NOT_A_BUILD_INPUT, repoRelative, REPO_ROOT,
-  STAMP_READERS as HOST_STAMP_READERS, type BuildUnit } from '@abuddy/host/build/packages-built';
+  STAMP_READERS as HOST_STAMP_READERS, type BuildUnit } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableText, rootScripts } from '../../../scripts/lib/npm-scripts.ts';
@@ -24,7 +24,7 @@ import { ASSUMED_RUNGS } from '../../../scripts/lib/step-timeouts.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { importedCallsIn } from '../../../scripts/lib/imported-calls.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 /**
  * A vitest config as vitest resolves it, rather than as a regular expression reads it.
@@ -82,12 +82,12 @@ const runnerText = (stepName: string): string =>
 //
 // Two exclusions, and neither is an exception so much as a division of labour. `@app/default-setup`:
 // `compile` runs that exact command, and a second run of it rewrote the `dist` five steps read, which is
-// what made a warm chain uncacheable. `@abuddy/sdk`: its `build` is `tsc -p tsconfig.json` over a config
+// what made a warm chain uncacheable. `@apack/sdk`: its `build` is `tsc -p tsconfig.json` over a config
 // setting `noEmit`, so it emits nothing a step whose product is `APP_OUTPUTS` could carry, and
 // `typecheck:sdk` runs that identical compile as its own step.
 describe('the chain builds every workspace that has a build', () => {
   const OWNED_BY_COMPILE = '@app/default-setup';
-  const EMITS_NOTHING = '@abuddy/sdk';
+  const EMITS_NOTHING = '@apack/sdk';
   const ELSEWHERE = [OWNED_BY_COMPILE, EMITS_NOTHING];
 
   it('names them all in build:app, or leaves them to another step', () => {
@@ -549,7 +549,7 @@ describe("the chain runs every artifact's check", () => {
  * `BuildUnit.inputs` is a hand-written list of what a build reads, and a list of someone else's inputs is a
  * guess — the same shape that let `api:stamp` pass over an input nobody had listed. Measured 2026-09-27: the
  * three `compiled()` units declared `scripts/build-package.ts` and not
- * `@abuddy/host/build/published-manifest`, which it imports and which derives the manifest they stage. Editing
+ * `@apack/host/build/published-manifest`, which it imports and which derives the manifest they stage. Editing
  * that module left all three staged trees stale while every stamp read fresh.
  *
  * Derived, so it holds for the next module too: follow the script's imports and require the closure to be
@@ -559,7 +559,7 @@ describe("the chain runs every artifact's check", () => {
  */
 describe('a build unit declares the modules its build script imports', () => {
   /**
-   * The script to walk from, `buildScriptFor` (`@abuddy/host/build/packages-built`) — a workspace's own
+   * The script to walk from, `buildScriptFor` (`@apack/host/build/packages-built`) — a workspace's own
    * `build:package`, and deliberately **not** the unit's declared inputs, which are the thing under test.
    * Deriving the entry from that list made this case vacuous, and a mutation found it: drop
    * `scripts/build-package.ts` from `compiled()` and there was no entry left to walk from, so the check passed

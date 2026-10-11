@@ -1,16 +1,16 @@
 import { tx, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { flowRepository } from '@abuddy/sdk/repositories';
+import { flowRepository } from '@apack/sdk/repositories';
 import type {
   NodeEntity,
   FlowExtendedData,
   NodeCreateInput,
   FlowsConnectedData
 } from '../types.ts';
-import { availableModels } from '@abuddy/sdk/models';
+import { availableModels } from '@apack/sdk/models';
 import { repository } from '#generated/repository.ts';
-import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
-import type { FlowEntity } from '@abuddy/sdk';
+import { ROOT_FLOW_ROLE } from '@apack/sdk';
+import type { FlowEntity } from '@apack/sdk';
 
 /**
  * Flow Repository: the SDK's flow repository (`flowRepository`), which owns the reads and writes of flows, nodes

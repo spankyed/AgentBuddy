@@ -34,10 +34,10 @@ Created a ProseMirror plugin that collapses non-empty selections within empty te
 
 ## Key Files
 
-- `packages/abuddy-ui/src/components/tiptap/TiptapEditor.vue` — editor setup, editorProps
-- `packages/abuddy-ui/src/components/tiptap/TiptapBubbleMenu.vue` — `shouldShow` logic (line 45-49)
-- `packages/abuddy-ui/src/components/tiptap/extensions.ts` — extension registry
-- `packages/abuddy-ui/src/components/tiptap/tiptap-theme.css` — editor styles
+- `packages/apack-ui/src/components/tiptap/TiptapEditor.vue` — editor setup, editorProps
+- `packages/apack-ui/src/components/tiptap/TiptapBubbleMenu.vue` — `shouldShow` logic (line 45-49)
+- `packages/apack-ui/src/components/tiptap/extensions.ts` — extension registry
+- `packages/apack-ui/src/components/tiptap/tiptap-theme.css` — editor styles
 
 ## Possible Next Steps
 

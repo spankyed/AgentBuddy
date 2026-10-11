@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue'
 import { GitCommitHorizontal, Archive, GitFork } from 'lucide-vue-next'
-import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
-import { useSettingsSave } from '@abuddy/sdk/fe'
+import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu'
+import { useSettingsSave } from '@apack/sdk/fe'
 import type { CodeSettings } from '#generated/types.ts'
 import { ref } from '#generated/ref.ts'
 

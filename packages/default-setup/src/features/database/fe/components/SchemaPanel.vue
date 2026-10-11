@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed } from 'vue';
 import { 

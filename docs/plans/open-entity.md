@@ -22,7 +22,7 @@ maps an entity type to the feature that is its home.
 
 **The direction is inverted.** A feature should not publish how to open its things; it should declare that it
 *is* their home and handle one generic event, the way `TRAIL_CLICK` already works — the host sends one event
-with a discriminator and the feature maps it onto its own states (`abuddy-sdk/src/fe/route-trailer.ts`).
+with a discriminator and the feature maps it onto its own states (`apack-sdk/src/fe/route-trailer.ts`).
 
 **Outcome:** one public verb, `openEntity(id)`. No ref and no event name at any call site, so addressing the
 wrong plugin stops being a mistake that can be made rather than one that is checked.
@@ -32,7 +32,7 @@ wrong plugin stops being a mistake that can be made rather than one that is chec
 Three pieces, and nothing else.
 
 **One event, declared once for every plugin**, as `FEATURE_SETTINGS_UPDATED` already is
-(`abuddy-sdk/src/events/index.ts:287`), so no pack declares it:
+(`apack-sdk/src/events/index.ts:287`), so no pack declares it:
 
 ```ts
 export type OpenEntity = { type: 'OPEN_ENTITY'; id: EARS.EntityId };
@@ -51,7 +51,7 @@ export interface Contract {
 }
 ```
 
-**One public function**, beside `openLink` (`abuddy-sdk/src/fe/navigation.ts:33`):
+**One public function**, beside `openLink` (`apack-sdk/src/fe/navigation.ts:33`):
 
 ```ts
 export function openEntity(id: EARS.EntityId): void
@@ -67,13 +67,13 @@ OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Note' } }, target: 
 
 **1. The event carries the id and nothing else.** `{ entity, id }` is one fact in two representations that
 can disagree, which is the defect this plan exists to remove, not one to reproduce in the payload. The id *is*
-the type: `entityTypeOf` (`abuddy-ears/src/attribute-storage.ts:21`) reads it, and its own header states the
+the type: `entityTypeOf` (`apack-ears/src/attribute-storage.ts:21`) reads it, and its own header states the
 rule — *"the `entityType` attribute is a denormalised copy of it, so the two must never disagree."* It is
 module-exported and not in the public barrel; this promotes it.
 
 **2. `opens` is a contract field, not a new manifest key.** A contract is a declared type that codegen reads
-with `declaredTypeOf` (`abuddy-sdk/src/build/module-exports.ts`) without resolving the machine, and
-`abuddy.json` already names it at `features[].plugin.contract`. So the fact is readable at build time, lands
+with `declaredTypeOf` (`apack-sdk/src/build/module-exports.ts`) without resolving the machine, and
+`apack.json` already names it at `features[].plugin.contract`. So the fact is readable at build time, lands
 in the snapshot, and the host reads it with no pack code and no TypeScript — which is what manifest-driven
 has to mean here. Against a JSON array it costs nothing and buys the compiler: `EntityName` checks the name
 natively, with no `satisfies`, no Zod rule, no validate-time string comparison and **no `schema:update`**.
@@ -125,8 +125,8 @@ is reachable (does stored content round-trip through markdown, or through ProseM
 entity id, and resolving a short code to one is the reference system's job, on the side of the boundary that
 knows short codes exist.
 
-**Phase 1 — the primitive.** `entityTypeOf` promoted to `@abuddy/ears`' barrel; `OpenEntity` in
-`PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `abuddy-sdk/src/fe/navigation.ts`;
+**Phase 1 — the primitive.** `entityTypeOf` promoted to `@apack/ears`' barrel; `OpenEntity` in
+`PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
 `opens` on the plugin contract type, read by codegen into both registrations and the snapshot; the lookup on
 the two registry views. No consumer yet — the specs below are what prove it.
 
@@ -156,8 +156,8 @@ the rule "a feature declares the entities it is the home of, not the entities it
   a reference clicked in a stored message opens the right plugin on the right row. Everything else here is a
   harness test.
 - **End-to-end by eye**: `npm run drive`, open a thread holding a note reference, click it.
-- **`npm run chain`** per phase. Phase 1 touches `@abuddy/sdk/src` and codegen, so expect a cold run;
-  `api:update` for `PackFERegistration`, the plugin contract types and `@abuddy/ears`' barrel.
+- **`npm run chain`** per phase. Phase 1 touches `@apack/sdk/src` and codegen, so expect a cold run;
+  `api:update` for `PackFERegistration`, the plugin contract types and `@apack/ears`' barrel.
 - **No `schema:update`** — no manifest key moves. **`PACK_SNAPSHOT_FORMAT`** bumps, because a dependent pack
   reads `opens` from the snapshot and an older CLI would misread it.
 

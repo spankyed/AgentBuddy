@@ -63,7 +63,7 @@ describe('encodeProjectPath', () => {
   it('matches the real on-disk fixture', () => {
     // Real directory name that exists under ~/.claude/projects/ on this
     // developer machine (and in CI after a first successful claude run).
-    expect(encodeProjectPath('/Users/spankyed/Develop/Projects/AgentBuddy'))
-      .toBe('-Users-spankyed-Develop-Projects-AgentBuddy')
+    expect(encodeProjectPath('/Users/spankyed/Develop/Projects/apack'))
+      .toBe('-Users-spankyed-Develop-Projects-apack')
   })
 })

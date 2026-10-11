@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';

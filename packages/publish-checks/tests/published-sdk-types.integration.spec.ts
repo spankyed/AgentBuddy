@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { publishedManifest } from '@abuddy/host/build/published-manifest';
+import { publishedManifest } from '@apack/host/build/published-manifest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPublishedPackages, type TscVersion } from '../src/published-packages.ts';
 
 let consumer: string | undefined;
@@ -17,19 +17,19 @@ afterAll(() => {
 function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
   // Barrels that re-export from relative modules, as consumers use them
   return compileConsumer(consumer!, tsc, moduleResolution, { 'index.ts': [
-    "import { compareVersions } from '@abuddy/sdk/utils/pure';",
-    "import type { StepDefinition } from '@abuddy/sdk/steps';",
-    "import type { ActionMeta } from '@abuddy/sdk/build';",
+    "import { compareVersions } from '@apack/sdk/utils/pure';",
+    "import type { StepDefinition } from '@apack/sdk/steps';",
+    "import type { ActionMeta } from '@apack/sdk/build';",
     "export const newer: number = compareVersions('1.0.0', '0.9.0');",
     "export const step: StepDefinition | undefined = undefined;",
     "export type Meta = ActionMeta;",
-    // @abuddy/sdk/fe declares the preload bridge on window
-    "import '@abuddy/sdk/fe';",
+    // @apack/sdk/fe declares the preload bridge on window
+    "import '@apack/sdk/fe';",
     "export const popout = window.electronAPI?.plugins.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
-    "import { defineEars } from '@abuddy/ears';",
-    "import { defineEvents } from '@abuddy/sdk/events';",
-    "import type { EARS } from '@abuddy/sdk';",
+    "import { defineEars } from '@apack/ears';",
+    "import { defineEvents } from '@apack/sdk/events';",
+    "import type { EARS } from '@apack/sdk';",
     "type IsAny<T> = 0 extends 1 & T ? true : false;",
     "interface MemoEntity { entityType: 'Memo'; text: string }",
     "const { findById } = defineEars<{ Memo: MemoEntity }>();",
@@ -45,13 +45,13 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "// @ts-expect-error the memos plugin doesn't receive this event",
     "broadcastToPlugin('memos', { type: 'MEMO_REMOVED' });",
     "// @ts-expect-error untyped query helpers aren't pack-facing",
-    "export { findAll } from '@abuddy/ears';",
+    "export { findAll } from '@apack/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
-    "import { createEarsEngine, installEngine } from '@abuddy/ears';",
+    "import { createEarsEngine, installEngine } from '@apack/ears';",
     "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
     "installEngine(engine.query);",
     "engine.admin.clear();",
-    // Host-only modules live in the private @abuddy/host
+    // Host-only modules live in the private @apack/host
   ] });
 }
 
@@ -64,8 +64,8 @@ function typecheckInference(moduleResolution: 'node16' | 'bundler') {
   return compileConsumer(path.join(consumer!, `inference-${moduleResolution}`), '5.7', moduleResolution, { 'index.ts': [
     "import { isStepCount, Output, tool } from 'ai';",
     "import { z } from 'zod';",
-    "import type { HostServices, InferenceService } from '@abuddy/sdk/services';",
-    "import type { ModelId } from '@abuddy/sdk/models';",
+    "import type { HostServices, InferenceService } from '@apack/sdk/services';",
+    "import type { ModelId } from '@apack/sdk/models';",
     "declare const services: HostServices;",
     "const inference: InferenceService = services.inference;",
     "const model: ModelId = 'anthropic:claude-sonnet-4-5';",
@@ -117,7 +117,7 @@ function typecheckInference(moduleResolution: 'node16' | 'bundler') {
   ] }, { skipLibCheck: false, types: ['node'] });
 }
 
-describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
+describe.skipIf(!PACKAGES_BUILT)('published @apack/sdk', () => {
   it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
     const result = await typecheck(tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
@@ -131,31 +131,31 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
   });
 
   it('ships no host-only module', () => {
-    const sdk = path.join(consumer!, 'node_modules', '@abuddy', 'sdk');
+    const sdk = path.join(consumer!, 'node_modules', '@apack', 'sdk');
     // A plain Node process, as a pack's runtime resolves (test workers run with extra conditions)
     const resolveFromConsumer = (specifier: string) => execFileSync(
       process.execPath,
       ['--input-type=module', '-e', `process.stdout.write(import.meta.resolve(${JSON.stringify(specifier)}))`],
       { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
     ).toString();
-    expect(resolveFromConsumer('@abuddy/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
-    const ears = path.join(consumer!, 'node_modules', '@abuddy', 'ears');
-    expect(resolveFromConsumer('@abuddy/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
+    expect(resolveFromConsumer('@apack/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
+    const ears = path.join(consumer!, 'node_modules', '@apack', 'ears');
+    expect(resolveFromConsumer('@apack/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
-    expect(fs.readdirSync(sdk).sort()).toEqual(['abuddy.schema.json', 'dist', 'package.json']);
+    expect(fs.readdirSync(sdk).sort()).toEqual(['apack.schema.json', 'dist', 'package.json']);
     // Source maps would point at src, which isn't published
     expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
   });
 
-  it('loads the SDK on the installed @abuddy/ears', () => {
+  it('loads the SDK on the installed @apack/ears', () => {
     // The SDK's EARS namespace and its repositories import the engine: a plain Node process resolves it from the consumer
     const output = execFileSync(
       process.execPath,
-      ['--input-type=module', '-e', "const { EARS } = await import('@abuddy/sdk/types'); const { flowRepository } = await import('@abuddy/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom + ' ' + typeof flowRepository)"],
+      ['--input-type=module', '-e', "const { EARS } = await import('@apack/sdk/types'); const { flowRepository } = await import('@apack/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom + ' ' + typeof flowRepository)"],
       { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
     ).toString();
     expect(output).toBe('Flow function object');
-    const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@abuddy', 'ears')).sort();
+    const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@apack', 'ears')).sort();
     expect(ears).toEqual(['dist', 'package.json']);
   });
 
@@ -164,10 +164,10 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
    * `./src/**` that `files` does not ship. What a consumer installs is that manifest through
    * `publishedManifest` and nothing else: a field it does not derive is one the workspace still decides.
    */
-  it.each(['ears', 'sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s, derived', (name) => {
-    const published = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8'));
-    const workspace = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`, 'package.json'), 'utf-8'));
+  it.each(['ears', 'sdk', 'ui'])('publishes the workspace package.json of @apack/%s, derived', (name) => {
+    const published = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@apack', name, 'package.json'), 'utf-8'));
+    const workspace = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', `apack-${name}`, 'package.json'), 'utf-8'));
     expect(published).toEqual(publishedManifest(workspace));
-    expect(JSON.stringify(published)).not.toContain('@abuddy/source');
+    expect(JSON.stringify(published)).not.toContain('@apack/source');
   });
 });

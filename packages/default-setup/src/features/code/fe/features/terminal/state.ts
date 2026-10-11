@@ -1,6 +1,6 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '#generated/events.ts';
-import { newCall, recordCall, settleCall } from '@abuddy/sdk/events';
+import { newCall, recordCall, settleCall } from '@apack/sdk/events';
 import { terminalEventBus } from '../../utils/terminal-events.ts';
 import { terminalPool } from '../../utils/terminal-pool.ts';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication.ts';

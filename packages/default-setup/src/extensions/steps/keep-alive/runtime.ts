@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
 
 /**
  * The step's whole behaviour is to not finish: it never sends `COMPLETE`, so the flow stays at this node

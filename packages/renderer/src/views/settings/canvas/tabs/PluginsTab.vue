@@ -113,14 +113,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUpdated } from 'vue'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 import { useSelector } from '@xstate/vue'
-import { untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
-import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
+import { untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@apack/sdk/fe'
+import ConfirmationDialog from '@apack/ui/design/ConfirmationDialog'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink, RotateCcw } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
-import { HOST, type SettingsState } from '@abuddy/host/fe'
-import type { FeatureRef } from '@abuddy/sdk/ids'
+import { HOST, type SettingsState } from '@apack/host/fe'
+import type { FeatureRef } from '@apack/sdk/ids'
 
 const shell = useShell()
 
@@ -133,7 +133,7 @@ const settings = useSelector(actor, (state) => state.context.settings)
 const showResetDialog = ref(false)
 /**
  * Forgets what the user stored for this plugin. Sent to the view's own actor rather than through
- * `@abuddy/sdk/fe`'s `resetSettings`: that is the door for a pack's component, and this *is* the view.
+ * `@apack/sdk/fe`'s `resetSettings`: that is the door for a pack's component, and this *is* the view.
  */
 function resetSelectedPlugin() {
   if (!selectedPlugin.value) return

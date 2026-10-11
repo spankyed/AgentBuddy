@@ -8,12 +8,12 @@ is the whole question.
 
 A pack contributes two ways.
 
-**Declared**, in `abuddy.json` and compiled into each pack's built `snapshot.json` (`PACK_LAYOUT.snapshot`): features and their ids, designations,
+**Declared**, in `apack.json` and compiled into each pack's built `snapshot.json` (`PACK_LAYOUT.snapshot`): features and their ids, designations,
 system and plugin entries with their contracts, repositories, settings sections, the EARS entities and
 relation kinds, the boot apply and its policy, dependencies and `hostVersion`.
 
 **Imperative**, in the `PackRegistration` object the pack's runtime module exports
-(`abuddy-sdk/src/framework/pack-registration.ts`): `steps`, `artifacts`, `blocks`, `content.writers`,
+(`apack-sdk/src/framework/pack-registration.ts`): `steps`, `artifacts`, `blocks`, `content.writers`,
 `services`, `repositories`, `ears`, `boot`. These are only knowable by **loading and evaluating the pack's
 module**.
 
@@ -37,7 +37,7 @@ For each member of `PackRegistration`, one row: what it is, whether its *existen
 its implementation left as a path (the way `features[].system.entry` already is), and what reads it.
 
 The answer is likely to differ sharply by member. `steps` and `blocks` look declarable — a type name and an
-entry path, which is the shape `abuddy.json` already uses everywhere else. `ears` is already mirrored in the
+entry path, which is the shape `apack.json` already uses everywhere else. `ears` is already mirrored in the
 manifest. `boot.onInit` is a function by nature.
 
 **`migrations` is the one already done, and is the worked example of the shape this plan proposes.** The
@@ -59,11 +59,11 @@ repository and service entries the same way, so this is the existing pattern ext
 
 The check that keeps it honest is the one this repo uses everywhere: the declared set and the registered set
 must agree, derived from each, asserted. A pack registering a step its manifest does not declare should fail
-`abuddy validate`, not be silently accepted.
+`apack validate`, not be silently accepted.
 
 ## Verification
 
-- `abuddy validate` fails a fixture pack that registers an undeclared contribution, and the message names
+- `apack validate` fails a fixture pack that registers an undeclared contribution, and the message names
   it.
 - The snapshot carries the declared set, and a reader can list a pack's contributions **without loading its
   runtime** — asserted by a test that never imports the pack's module.
@@ -72,8 +72,8 @@ must agree, derived from each, asserted. A pack registering a step its manifest 
 ## Risks
 
 **This is a manifest migration, and the manifest is a published contract.** Every change here moves
-`abuddy.schema.json` and `PACK_SNAPSHOT_FORMAT`, which is the version a host and a pack author's CLI agree
-on (`abuddy-sdk/src/build/manifest.ts`). Doing it in one pass is better than several, which is an argument
+`apack.schema.json` and `PACK_SNAPSHOT_FORMAT`, which is the version a host and a pack author's CLI agree
+on (`apack-sdk/src/build/manifest.ts`). Doing it in one pass is better than several, which is an argument
 for finishing the inventory before starting.
 
 **Declaring something twice is worse than declaring it once imperatively.** If the manifest names a step and

@@ -15,8 +15,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
-import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
+import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@apack/host/build/packages-built';
+import { PUBLISH_TREE } from '@apack/host/build/published-manifest';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
@@ -274,7 +274,7 @@ describe('the chain reads every source file', () => {
    *
    * It used to ask whether *every* input was missing, which is a different and much weaker claim — a step
    * with five real inputs and one typo passed. Measured on the day this landed: adding
-   * `packages/abuddy-sdk/tsconfig.NOPE.json` to `api:check` passed 89 cases in this file.
+   * `packages/apack-sdk/tsconfig.NOPE.json` to `api:check` passed 89 cases in this file.
    *
    * The exemption comes from `WORKSPACE_PARTS` itself and never from the *shape* `packages/<pkg>/<part>`,
    * which the bogus path above also has — a shape test exempts exactly what this is for.
@@ -354,7 +354,7 @@ describe('a step keys on a staged publish tree only if it reads one', () => {
   /** The data is a list, so the case mutates it rather than trusting that it could fail */
   it('names a step that starts keying on one', () => {
     const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
-    const widened = { ...compile, inputs: [...compile.inputs, `packages/abuddy-ears/${PUBLISH_TREE}`] };
+    const widened = { ...compile, inputs: [...compile.inputs, `packages/apack-ears/${PUBLISH_TREE}`] };
     expect(unexplained([widened]), 'a step given a staged tree was not reported').toEqual([
       'compile keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
     ]);
@@ -437,28 +437,28 @@ describe('a step declares the modules its script imports', () => {
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
 /**
- * A step that drives the Playwright fixture reads `@abuddy/testing`'s built bundle — the code that
+ * A step that drives the Playwright fixture reads `@apack/testing`'s built bundle — the code that
  * launches Electron, finds the main window and bypasses onboarding. It reaches it by *package name*,
  * never by path, so every other check in this file is blind to the edge: they read a step's text for
  * paths, and there is no path to read.
  *
  * Measured 2026-09-30, before this existed. One change to the fixture's source, one rebuild, three
  * steps that run it: `test:packaged-authoring`, which declares the bundle, reported
- * `changed packages/abuddy-testing/dist/package/dist/index.js`; `test:smoke` and
+ * `changed packages/apack-testing/dist/package/dist/index.js`; `test:smoke` and
  * `test:external-pack:app` both reported `cached`. A gate that skips when the thing it drives has
  * changed is not a gate, and `test:smoke` exists to be the one gate on whether the app starts.
  */
 describe('a step that drives the app fixture declares the bundle it drives', () => {
   // How a script reaches the fixture: Playwright directly, the CLI's own `test`, or the CLI held in a
-  // variable (`"$ABUDDY" test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
+  // variable (`"$APACK" test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
   // optional — without it this watched two steps and not the one it was written for.
   //
   // The same three shapes `check:tiers` looks for (`APP_MARKERS`), and deliberately **not** the same
   // rule: that one asks whether a step launches an app, so it exempts `--contract`, which starts none.
-  // This asks whether a step reads the bundle, and `abuddy test --contract` does — the harness it runs
+  // This asks whether a step reads the bundle, and `apack test --contract` does — the harness it runs
   // is published from it. Keep the shapes in step; the lookahead is where the two questions differ.
-  const DRIVES_THE_APP = /playwright\s+test\b|\babuddy["']?\s+test\b|\$\{?ABUDDY\}?"?\s+test\b/;
-  const fixture = BUILD_UNITS['@abuddy/testing'].outputs.map(repoRelative);
+  const DRIVES_THE_APP = /playwright\s+test\b|\bapack["']?\s+test\b|\$\{?APACK\}?"?\s+test\b/;
+  const fixture = BUILD_UNITS['@apack/testing'].outputs.map(repoRelative);
   const all = rootScripts();
   // Only the cacheable ones: a step that never caches cannot cache over anything, so the rule has no
   // subject there. `test` is the one that drives the app and declares no bundle, and carries its reason
@@ -507,7 +507,7 @@ describe('a unit suite whose specs name build output declares it', () => {
       .filter((file) => file !== import.meta.filename)
       .map((file) => fs.readFileSync(file, 'utf-8'));
   };
-  // Naming `@abuddy/testing` means loading its built bundle — except in `@abuddy/testing`'s own suite, where
+  // Naming `@apack/testing` means loading its built bundle — except in `@apack/testing`'s own suite, where
   // its specs name it because it is what they are about, and import its `src/` rather than the bundle. A
   // detector must not read a package's own name as evidence about it; the same mistake as scanning the file
   // that declares these patterns.
@@ -515,10 +515,10 @@ describe('a unit suite whose specs name build output declares it', () => {
     const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
       { scripts?: Record<string, string> }).scripts?.pretest ?? '';
     if (pretest.includes('ensure-packages-built')) return true;
-    return dir !== 'abuddy-testing' && texts.some((text) => text.includes('@abuddy/testing'));
+    return dir !== 'apack-testing' && texts.some((text) => text.includes('@apack/testing'));
   };
   // `PACK_DIR` is the variable the pack fixture reads, so it is matched as a whole word: without the
-  // boundaries it also matched `ABUDDY_DEV_PACK_DIRS`, which names a pack's *source* and says nothing about
+  // boundaries it also matched `APACK_DEV_PACK_DIRS`, which names a pack's *source* and says nothing about
   // anyone reading a built pack. A detector over identifiers has to mean the identifier.
   const readsPack = (texts: string[]): boolean =>
     texts.some((text) => /\bPACK_DIR\b|default-setup['"`, )\]]*,?\s*['"`]dist|default-setup\/dist/.test(text));
@@ -527,7 +527,7 @@ describe('a unit suite whose specs name build output declares it', () => {
     expect(readsPack(['process.env.PACK_DIR']), 'the fixture variable').toBe(true);
     expect(readsPack(["path.join(REPO, 'default-setup', 'dist')"]), 'the pack\'s dist by segments').toBe(true);
     expect(readsPack(['packages/default-setup/dist/runtime/index.cjs']), 'the pack\'s dist by path').toBe(true);
-    expect(readsPack(["process.env.ABUDDY_DEV_PACK_DIRS = 'tests/packs/external-pack'"]),
+    expect(readsPack(["process.env.APACK_DEV_PACK_DIRS = 'tests/packs/external-pack'"]),
       'a variable whose name contains PACK_DIR but names a pack\'s source').toBe(false);
     expect(readsPack(['packages/default-setup/src/features/notes/fe/canvas.vue']),
       "the pack's source, which `compile` owns rather than this").toBe(false);

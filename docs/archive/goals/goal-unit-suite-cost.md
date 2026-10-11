@@ -22,8 +22,8 @@
 > lane machinery they assumed.
 >
 > **One lever is left unmeasured rather than unpursued**, recorded in
-> [`packages/abuddy-testing/CLAUDE.md`](../../../packages/abuddy-testing/CLAUDE.md) where the harness lives: the
-> harness imports `@abuddy/sdk/build` statically (238ms as a standalone import) for content compilation most
+> [`packages/apack-testing/CLAUDE.md`](../../../packages/apack-testing/CLAUDE.md) where the harness lives: the
+> harness imports `@apack/sdk/build` statically (238ms as a standalone import) for content compilation most
 > files never do, but reaches it on every setup through two format-check helpers — so the saving depends on a
 > marginal cost inside a worker that was not taken, and is probably well under the standalone number.
 >
@@ -33,13 +33,13 @@
 > metric it measures in cannot be taken here. Read this block before the Background; it strikes two Decisions
 > and collapses three Phases.**
 >
-> **`ABUDDY_TEST_LANES` appears nowhere in the repo.** `test:unit` runs **two pools, one after the other**,
+> **`APACK_TEST_LANES` appears nowhere in the repo.** `test:unit` runs **two pools, one after the other**,
 > handing vitest every file at once so its own longest-first sequencer packs them
 > ([`goal-one-job-pool.md`](goal-one-job-pool.md)). The lane machinery this goal is written
 > against is gone, and the pooling that replaced it already delivered the 43s this goal set as its target.
 >
 > - **The base check below failed, and told an implementer to stop.** It asked them to confirm `test:unit`
->   reports "2 lanes" and takes `ABUDDY_TEST_LANES`. Corrected in place, so the next reader is not stopped by a
+>   reports "2 lanes" and takes `APACK_TEST_LANES`. Corrected in place, so the next reader is not stopped by a
 >   condition that can never hold again.
 > - **Decision 2 is moot** — there is no lane count to leave alone — and **Decision 3 is wrong**: wall clock is
 >   a makespan over one file list now, not a sum over suites. Vitest packs files across what used to be suite
@@ -72,7 +72,7 @@
 > are the only steps that run.
 >
 > **One measurement trap, recorded because it caught a reader.** `etc/spec-cost.json` sums per-file durations,
-> which is neither metric. By that measure `@abuddy/host` looks largest — 81 specs, 20.1s cumulative — while
+> which is neither metric. By that measure `@apack/host` looks largest — 81 specs, 20.1s cumulative — while
 > its wall time run alone is third.
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-25). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
@@ -143,9 +143,9 @@ reached 43s and stopped. This goal is the part that was left.
 > | Suite | Alone (2026-09-25) | Alone (2026-09-28) | Tests |
 > |---|---|---|---|
 > | `@app/default-setup` | 15.9s | **17.6s** | 727 |
-> | `@abuddy/sdk` | 12.3s | **12.9s** | 545 |
-> | `@abuddy/host` | 8.9s | 8.6s | 747 |
-> | `@abuddy/cli` (fast half) | 5.3s | 4.6s | 396 |
+> | `@apack/sdk` | 12.3s | **12.9s** | 545 |
+> | `@apack/host` | 8.9s | 8.6s | 747 |
+> | `@apack/cli` (fast half) | 5.3s | 4.6s | 396 |
 >
 > The two targets grew and the others did not, so their share of the sum has risen rather than fallen. The item
 > Phase 2 names grew with them: `default-setup` reports **`setup 116.4s` against `tests 15.9s`** — the per-file
@@ -154,27 +154,27 @@ reached 43s and stopped. This goal is the part that was left.
 
 > **Re-measured 2026-09-25** at `07afe0bc2`, idle, same machine. The table below it is the original survey
 > at `c7517e0da`, kept because the Decisions were taken against it. Eleven suites now rather than eight:
-> `@app/repo-checks`, `@abuddy/testing` and `@abuddy/ui` were created by later goals, and `@abuddy/cli`
+> `@app/repo-checks`, `@apack/testing` and `@apack/ui` were created by later goals, and `@apack/cli`
 > gave twenty specs away to them.
 >
 > | Suite | Alone | Tests |
 > |---|---|---|
 > | `@app/default-setup` | **15.9s** | 718 |
-> | `@abuddy/sdk` | **12.3s** | 539 |
-> | `@abuddy/host` | 8.9s | 680 |
-> | `@abuddy/cli` (fast half) | 5.3s | 319 |
+> | `@apack/sdk` | **12.3s** | 539 |
+> | `@apack/host` | 8.9s | 680 |
+> | `@apack/cli` (fast half) | 5.3s | 319 |
 > | `@app/api` | 3.1s | 70 |
-> | `@abuddy/ears` | 3.0s | 116 |
+> | `@apack/ears` | 3.0s | 116 |
 > | `@app/renderer` | 2.5s | 33 |
 > | `@app/repo-checks` | 2.1s | 177 |
-> | `@abuddy/ui` | 0.9s | 2 |
+> | `@apack/ui` | 0.9s | 2 |
 > | `@app/main` | 0.8s | 23 |
-> | `@abuddy/testing` | 0.8s | 19 |
+> | `@apack/testing` | 0.8s | 19 |
 > | **Sum** | **55.5s** | **2,696** |
 >
 > **The diagnosis is unchanged: `default-setup` and `sdk` are 51% of it**, exactly as before. The sum rose
 > from 52.6s only because there are three more suites; the two targets did not move (14.7 → 15.9s,
-> 12.0 → 12.3s), and `@abuddy/cli`'s fast half fell 8.9 → 5.3s by giving specs away rather than by getting
+> 12.0 → 12.3s), and `@apack/cli`'s fast half fell 8.9 → 5.3s by giving specs away rather than by getting
 > faster. **`npm run test:unit` is 37.6–40.8s**, already under this goal's 43s target — delivered by
 > `goal-one-job-pool.md`'s pooling, not by this goal. What is left here is the work inside the two largest
 > suites — no arrangement of the scheduler removes it, and no scheduler is left to arrange.
@@ -184,11 +184,11 @@ Per suite, run alone, warm, on a 10-core machine:
 | Suite | Alone | Tests |
 |---|---|---|
 | `@app/default-setup` | **14.7s** | 720 |
-| `@abuddy/sdk` | **12.0s** | 539 |
-| `@abuddy/cli` (fast half) | 8.9s | 475 |
-| `@abuddy/host` | 8.1s | 684 |
+| `@apack/sdk` | **12.0s** | 539 |
+| `@apack/cli` (fast half) | 8.9s | 475 |
+| `@apack/host` | 8.1s | 684 |
 | `@app/api` | 3.0s | 70 |
-| `@abuddy/ears` | 2.9s | 116 |
+| `@apack/ears` | 2.9s | 116 |
 | `@app/renderer` | 2.3s | 33 |
 | `@app/main` | 0.7s | 19 |
 | **Sum** | **52.6s** | 2,656 |
@@ -214,7 +214,7 @@ tier, and `suite-timeouts.spec.ts` now refuses a config that declares no budget 
 module scope, so it runs once per test file. Measured earlier in `goal-test-tiers.md`: ~1.16s × 84 files,
 which a run reports as `setup 97.3s` — that figure is the sum across workers against a 15.4s wall, which
 is why it reads as alarming and is not. It is still the largest single identified item inside the largest
-suite. Nothing equivalent has been measured for `@abuddy/sdk`.
+suite. Nothing equivalent has been measured for `@apack/sdk`.
 
 ## Decisions
 
@@ -250,7 +250,7 @@ Final.
 Phases 1, 3 and 5 were three passes of the same activity, sized for a scheduler that is gone. They are one
 phase now: measure before, measure after, and let the measurement close what it closes.
 
-- For `@app/default-setup` and `@abuddy/sdk`: **CPU-seconds (`user` + `sys`) for the suite**, and the count
+- For `@app/default-setup` and `@apack/sdk`: **CPU-seconds (`user` + `sys`) for the suite**, and the count
   and unit cost of `setupPackTests`. Per-file totals if they help, by the recipe in `goal-cli-suite-spawns.md`
   Decision 6 — but the summed `setup` figure a run prints is across workers and is not wall clock, which is
   why it reads as alarming and is not.
@@ -274,7 +274,7 @@ and the only one that survived the scheduler changing underneath it.
 the measurement showing the cost is the isolation. **Mutation:** a test that mutates the registry still
 cannot see another file's changes.
 
-### Phase 3 — `@abuddy/sdk`'s largest item — **only if Phase 1 names one**
+### Phase 3 — `@apack/sdk`'s largest item — **only if Phase 1 names one**
 
 Nothing equivalent to `setupPackTests` has ever been measured for `sdk`; it has been assumed to have one
 because it is second-largest. If Phase 1 finds no single item worth removing, close this with that sentence
@@ -286,18 +286,18 @@ measurement naming nothing.
 ### Phase 4 — Size the thin timeouts — **done 2026-09-25 (`1b3eb9876`), by a different mechanism**
 
 This phase was right, and it was right about the specific test. It sat unactioned, and on 2026-09-25 the
-prediction below came true in a chain run: `@abuddy/sdk`'s "generated sends compile" — 1.3s alone — took
+prediction below came true in a chain run: `@apack/sdk`'s "generated sends compile" — 1.3s alone — took
 **5.8s under three lanes** and failed with *"Test timed out in 5000ms"*. A 4.5× multiplier against a 5s
 default, in a suite whose tier allows 15s.
 
 **It was fixed at the tier rather than per test**, which is the opposite of what Decision 5 below asks and
-is the better answer. Five of the thirteen configs declared no timeout at all — `abuddy-ears`,
-`abuddy-host`, `abuddy-sdk`, `main`, `renderer` — so every spec in them ran on vitest's 5s/10s defaults,
+is the better answer. Five of the thirteen configs declared no timeout at all — `apack-ears`,
+`apack-host`, `apack-sdk`, `main`, `renderer` — so every spec in them ran on vitest's 5s/10s defaults,
 *tighter* than their tier. The budget belongs to the size (`SIZE_MS`, `scripts/lib/unit-suites.ts`; a three-valued `tier` when this was written), not to each test that trips
 over a default, so all five now declare it, and `suite-timeouts.spec.ts` gained the half it was missing: it
 checked a ceiling and left silence as an unrecorded third state, which was the state that bit. It now
 requires each config to declare its tier's budget. The next test in line was a 4.1s lock test in
-`@abuddy/host`, at 82% of a budget it never chose.
+`@apack/host`, at 82% of a budget it never chose.
 
 So **Decision 5 is superseded for this case**: a per-test timeout is for a test that genuinely needs longer
 than its tier, and `TIMEOUT_EXCEPTIONS` is where those are recorded. It is not the fix for a suite running
@@ -307,7 +307,7 @@ on a default nobody chose.
 ~~- This is not a speed change. It is what makes a lane measurement mean anything.~~
 
 **Done when:** three lanes runs green five times in a row. **Mutation:** dropping one sized timeout back
-to the default fails that run — done, in the other direction: dropping `hookTimeout` from `@abuddy/sdk`'s
+to the default fails that run — done, in the other direction: dropping `hookTimeout` from `@apack/sdk`'s
 config fails `suite-timeouts.spec.ts` by name.
 
 **The five-run bar is met.** Five `chain -- --all` runs, three lanes with every step forced, on a clean and
@@ -325,7 +325,7 @@ Phase 1 owns both passes and the floor it reports. The lane half of this phase w
 
 - **Caching `test:unit` per package.** `goal-test-tiers.md` Phase 5 owns it, and it is a different
   question: this goal makes a run cheaper, that one skips it.
-- **The `@abuddy/cli` integration half (44s).** It spawns by design; `goal-cli-suite-spawns.md` has it.
+- **The `@apack/cli` integration half (44s).** It spawns by design; `goal-cli-suite-spawns.md` has it.
 - **`test:packaged-authoring`'s npm installs**, tracked in `goal-test-tiers.md`.
 
 ## Constraints

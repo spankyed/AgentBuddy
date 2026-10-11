@@ -454,16 +454,16 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
-import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
-import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
+import type { SettingUpdate } from '@apack/sdk/fe'
+import KeyboardShortcutInput from '@apack/ui/components/KeyboardShortcutInput'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
+import DirectorySelect from '@apack/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
-import { untypedOpenPlugin } from '@abuddy/sdk/fe'
-import { resolveName } from '@abuddy/sdk/ids'
+import { untypedOpenPlugin } from '@apack/sdk/fe'
+import { resolveName } from '@apack/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { useSettingsSection } from '@abuddy/sdk/fe'
+import { useSettingsSection } from '@apack/sdk/fe'
 import type { GeneralSettings } from '#app-settings/types.ts'
 import type { CodeSettings, TerminalScript } from '#generated/types.ts'
 

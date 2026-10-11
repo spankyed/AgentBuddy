@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Clean AgentBuddy data for testing
+# Clean apack data for testing
 # Usage: npm run clean-prod [--beta]
 
 set -e
@@ -9,17 +9,17 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 # Channel detection
-APP_NAME="abuddy"
-PRODUCT_NAME="AgentBuddy"
-APP_ID="com.agentbuddy.app"
+APP_NAME="apack"
+PRODUCT_NAME="apack"
+APP_ID="dev.apack.app"
 CHANNEL_LABEL="Production"
 
 for arg in "$@"; do
   case "$arg" in
     --beta)
-      APP_NAME="abuddy-beta"
-      PRODUCT_NAME="AgentBuddy Beta"
-      APP_ID="com.agentbuddy.beta"
+      APP_NAME="apack-beta"
+      PRODUCT_NAME="apack Beta"
+      APP_ID="dev.apack.beta"
       CHANNEL_LABEL="Beta"
       ;;
   esac
@@ -32,10 +32,10 @@ echo ""
 
 # Kill running instances of this channel only
 echo "Stopping any running ${PRODUCT_NAME} instances..."
-if [ "$PRODUCT_NAME" = "AgentBuddy" ]; then
-  pkill -f "AgentBuddy\.app" 2>/dev/null || true
+if [ "$PRODUCT_NAME" = "apack" ]; then
+  pkill -f "apack\.app" 2>/dev/null || true
 else
-  pkill -f "AgentBuddy Beta" 2>/dev/null || true
+  pkill -f "apack Beta" 2>/dev/null || true
 fi
 sleep 1
 echo -e "${GREEN}✓${NC} Processes stopped"

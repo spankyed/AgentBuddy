@@ -247,7 +247,7 @@
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@apack/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import { refKey } from '#features/code/fe/features/pull-request/state.ts'
 import {

@@ -97,13 +97,13 @@ export const getEnvironment = (port: number, options: { apiToken: string; startu
     NODE_ENV: app.isPackaged ? 'production' : 'development',
     API_PORT: port.toString(),
     // Clients must present it: the API refuses connections and requests without it
-    ABUDDY_API_TOKEN: options.apiToken,
-    AGENTBUDDY_STARTUP_ID: options.startupId,
-    AGENTBUDDY_LOG_DIR: options.logDir,
+    APACK_API_TOKEN: options.apiToken,
+    APACK_STARTUP_ID: options.startupId,
+    APACK_LOG_DIR: options.logDir,
     SHIPPED_PACKS_DIR: shippedPacksDir(),
     // Identity for the API process; resolveAppContext() there reads these
-    ABUDDY_ENV: getAppContext().build,
-    ABUDDY_USER_DATA_DIR: getAppContext().userDataDir,
+    APACK_ENV: getAppContext().build,
+    APACK_USER_DATA_DIR: getAppContext().userDataDir,
     ELECTRON_RUN_AS_NODE: '1',
   };
 };
@@ -118,6 +118,6 @@ export const getNodeExecutable = () => {
 export const getExecutionArgs = (apiPath: string, serverFile: string) => {
   // When using Electron's executable, we need to pass the full path
   const fullPath = path.join(apiPath, serverFile);
-  // From source, packs' requires of workspace @abuddy/* packages resolve to their source
-  return app.isPackaged ? [fullPath] : ['--conditions=@abuddy/source', serverFile];
+  // From source, packs' requires of workspace @apack/* packages resolve to their source
+  return app.isPackaged ? [fullPath] : ['--conditions=@apack/source', serverFile];
 };

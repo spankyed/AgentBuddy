@@ -1,7 +1,7 @@
 /**
  * One pool's tests, running only the projects whose inputs changed.
  *
- *     tsx scripts/test-unit-pool.ts host         # the root vitest.config.ts projects, under @abuddy/source
+ *     tsx scripts/test-unit-pool.ts host         # the root vitest.config.ts projects, under @apack/source
  *     tsx scripts/test-unit-pool.ts pack         # each pack suite, resolving the published dist
  *     tsx scripts/test-unit-pool.ts integration  # the expensive half of every suite that has one
  *
@@ -17,7 +17,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@abuddy/host/build/packages-built';
+import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@apack/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { holdPoolLock, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';

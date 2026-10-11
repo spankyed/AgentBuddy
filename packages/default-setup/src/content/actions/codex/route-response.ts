@@ -1,6 +1,6 @@
 /** CDX: Route Response — classifies interactive block responses for the flow's branch node. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 import { getCodexState } from './_helpers/thread-context.ts';
 

@@ -1,10 +1,10 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe'
-import { safeEvents } from '@abuddy/sdk/fe'
+import breadcrumb, { breadcrumbList } from '@apack/sdk/fe'
+import { safeEvents } from '@apack/sdk/fe'
 import {
   targetIs,
   type TrailClickEvent,
-} from '@abuddy/sdk/fe'
+} from '@apack/sdk/fe'
 import type {
   NoteDTO,
 } from '#generated/types.ts'
@@ -12,8 +12,8 @@ import type { NotesContext, NotesInboxEvent } from './contract.ts'
 import type { OutgoingNotesEvents } from '#features/notes/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@abuddy/sdk/fe'
-import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { contextMenuFn } from '@apack/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apack/sdk/fe'
 
 export const id = 'notes' as const;
 export type NotesState = ActorRefFrom<typeof notesState>

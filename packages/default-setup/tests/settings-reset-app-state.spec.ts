@@ -2,8 +2,8 @@
 // That state used to live in the Settings row's `internal` section, which resetSettings() erased; it's the host's
 // AppState row now, which this pack never reads but the test does, as the host stores it.
 import { describe, expect, it } from 'vitest';
-import { untypedTx, untypedQx } from '@abuddy/ears';
-import type { EARS } from '@abuddy/sdk';
+import { untypedTx, untypedQx } from '@apack/ears';
+import type { EARS } from '@apack/sdk';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 

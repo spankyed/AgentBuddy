@@ -2,9 +2,9 @@
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `abuddy.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@abuddy/sdk/fe'
-import type { TNodeEntity } from '@abuddy/sdk'
+// `apack.json` names it at `features[].plugin.contract`.
+import type { PluginInbox } from '@apack/sdk/fe'
+import type { TNodeEntity } from '@apack/sdk'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseSchemaInfo } from '../be/types.ts'
 
@@ -55,7 +55,7 @@ export interface DatabaseContext {
   backupResult: {
     operation: 'export' | 'import';
     error?: string;
-    /** The backup holds these stores, which this AgentBuddy doesn't have: importing it leaves them out */
+    /** The backup holds these stores, which this apack doesn't have: importing it leaves them out */
     unknownDatabases?: string[];
   } | null;
 }

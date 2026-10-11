@@ -1,13 +1,13 @@
-# AgentBuddy
+# apack
 
-AgentBuddy is an Electron desktop app for building and running AI agent workflows. It combines a Vue-based visual workspace with an actor-driven backend, plugin-defined tools, local persistence, and model integrations.
+apack is an Electron desktop app for building and running AI agent workflows. It combines a Vue-based visual workspace with an actor-driven backend, plugin-defined tools, local persistence, and model integrations.
 
 ## Features
 
 - **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
-- **Packs**: Features (backend systems and frontend plugins), flow steps, content, artifacts and blocks ship as packs, built with the `abuddy` CLI. The app's own features are the built-in `default-setup` pack.
+- **Packs**: Features (backend systems and frontend plugins), flow steps, content, artifacts and blocks ship as packs, built with the `apack` CLI. The app's own features are the built-in `default-setup` pack.
 - **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
-- **Local graph store**: The EARS entity-attribute-relation store (`@abuddy/ears`) is backed by LMDB for fast local access.
+- **Local graph store**: The EARS entity-attribute-relation store (`@apack/ears`) is backed by LMDB for fast local access.
 - **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
 - **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
 - **Rich text editing**: Tiptap supports prompt and documentation authoring.
@@ -33,19 +33,19 @@ packages/
 │   └── src/
 │       ├── core/         # tRPC routers, the root event emitter, log capture
 │       └── setup/        # Boot sequence and composition (opens the store, binds the app), websocket, config
-├── default-setup/        # The built-in pack: features, steps, content, migrations (abuddy.json)
+├── default-setup/        # The built-in pack: features, steps, content, migrations (apack.json)
 │   └── src/
 │       ├── features/     # One folder per feature: be/ (system) and fe/ (plugin)
 │       ├── extensions/   # Steps, artifacts, blocks, services, tiptap plugins
 │       ├── content/        # Actions, prompts, flows, library, notes, FAQs, settings
 │       ├── migrations/
 │       └── defs/         # Monaco DSL type definitions
-├── abuddy-ears/          # @abuddy/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
-├── abuddy-sdk/           # @abuddy/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
-├── abuddy-ui/            # @abuddy/ui: Vue components, editors and composables
-├── abuddy-cli/           # @abuddy/cli: the abuddy command
-├── abuddy-testing/       # @abuddy/testing: unit test harness and Playwright fixture
-├── abuddy-host/          # @abuddy/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
+├── apack-ears/          # @apack/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
+├── apack-sdk/           # @apack/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
+├── apack-ui/            # @apack/ui: Vue components, editors and composables
+├── apack-cli/           # @apack/cli: the apack command
+├── apack-testing/       # @apack/testing: unit test harness and Playwright fixture
+├── apack-host/          # @apack/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
 ├── main/                 # Electron main process
 │   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
 ├── preload/              # IPC bridge (contextBridge APIs)
@@ -53,7 +53,7 @@ packages/
 │   └── src/
 │       ├── core/         # Application actor, components, tRPC client
 │       └── packs/        # Pack frontend loading and the packs plugin
-├── typescript-floor/     # TypeScript 5.7, the oldest @abuddy/sdk and @abuddy/ui support, for type tests
+├── typescript-floor/     # TypeScript 5.7, the oldest @apack/sdk and @apack/ui support, for type tests
 └── electron-versions/    # Electron version management
 ```
 
@@ -65,8 +65,8 @@ packages/
 ## Getting Started
 
 ```sh
-git clone https://github.com/spankyed/AgentBuddy.git
-cd AgentBuddy
+git clone https://github.com/spankyed/apack.git
+cd apack
 npm install
 ```
 
@@ -102,12 +102,12 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run compile          # Build the default-setup pack (abuddy build, DSL defs, runtime)
+npm run compile          # Build the default-setup pack (apack build, DSL defs, runtime)
 ```
 
 ### Database Tools
 
-`abuddy db` on the development app's data (quit the app before changing it; see [the CLI reference](docs/public-facing/cli.md#database)):
+`apack db` on the development app's data (quit the app before changing it; see [the CLI reference](docs/public-facing/cli.md#database)):
 
 ```sh
 npm run db:query -- "return qx().count()"   # Run read-only query code

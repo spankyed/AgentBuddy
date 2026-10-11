@@ -2,9 +2,9 @@
 //
 // A sleep puts a guess about duration into every passing run, and when the guess is short the failure reads
 // exactly like the bug it was meant to catch — "no answer arrived" — which buys an investigation every time it
-// fires. `@abuddy/sdk/testing/waiting` is the alternative and its header carries the rule: a wait is driven by
+// fires. `@apack/sdk/testing/waiting` is the alternative and its header carries the rule: a wait is driven by
 // the thing it waits for and names what never happened. An event where there is one; a poll where there is none,
-// as `abuddy-host/tests/database/write-lock.spec.ts` does for a file lock. A bare duration is never the answer.
+// as `apack-host/tests/database/write-lock.spec.ts` does for a file lock. A bare duration is never the answer.
 //
 // This exists because sixteen of them grew up on one branch, not through carelessness: the only event-driven
 // waiter was private to the test harness, so at the point of need a sleep was the cheapest thing available.
@@ -19,8 +19,8 @@
 // that failed in both directions before it read the tree.
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { population } from '@abuddy/sdk/testing';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { population } from '@apack/sdk/testing';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { bareWaitKey, bareWaits, specFilesUnder, type BareWait } from '../../../scripts/lib/test-timeouts.ts';
 
@@ -33,17 +33,17 @@ import { bareWaitKey, bareWaits, specFilesUnder, type BareWait } from '../../../
  * allowed to pass; a poll of something with no event to offer; and a race whose timer *is* the answer.
  */
 const BARE_WAIT_BY_DESIGN: Record<string, string> = {
-  'packages/abuddy-host/tests/bus/reply.spec.ts > after':
+  'packages/apack-host/tests/bus/reply.spec.ts > after':
     "a delay inside the handler under test — a backend system's work is I/O, so it awaits before it answers, "
     + 'which is what makes the delivery scope load-bearing. The cases await the answer',
-  'packages/abuddy-host/tests/bus/delivery-is-synchronous.spec.ts > onATimer':
+  'packages/apack-host/tests/bus/delivery-is-synchronous.spec.ts > onATimer':
     'the timer *is* the subject: what the case asserts is that a send made from one carries no sender, '
     + 'because the delivery it was scheduled in has ended. Awaiting an event instead would remove the only '
     + 'thing being tested',
-  'packages/abuddy-testing/tests/engine/api-client.spec.ts > after':
+  'packages/apack-testing/tests/engine/api-client.spec.ts > after':
     'the keep-alive case has to let several ping/terminate windows come and go while the client sits idle: the '
     + 'elapsed time is the assertion, not a proxy for an event',
-  'packages/abuddy-host/tests/database/write-lock.spec.ts > waitFor':
+  'packages/apack-host/tests/database/write-lock.spec.ts > waitFor':
     'polls a file lock, which has no event to subscribe to, and already deadlines naming what it waited for — '
     + 'the poll half of the rule, done properly',
   'packages/repo-checks/tests/decision-mutations.spec.ts > MUTATIONS':
@@ -61,10 +61,10 @@ const BARE_WAIT_BY_DESIGN: Record<string, string> = {
  */
 const NOT_CONVERTED_YET: readonly string[] = [
   'packages/default-setup/tests/harness-app-stop.spec.ts > wait',
-  'packages/abuddy-cli/tests/commands/db.integration.spec.ts > writerDuring',
+  'packages/apack-cli/tests/commands/db.integration.spec.ts > writerDuring',
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts > kills the whole group, not the process it started',
   'packages/repo-checks/tests/chain-schedule.spec.ts > done',
-  "packages/abuddy-ears/tests/lmdb/store.spec.ts > updates a relation it didn't see written in place when its partition doesn't change",
+  "packages/apack-ears/tests/lmdb/store.spec.ts > updates a relation it didn't see written in place when its partition doesn't change",
 ];
 
 /** Every spec file the unit suites hold — the population a finding can come from */
@@ -89,7 +89,7 @@ describe('a spec waits for the thing it waits for', () => {
 
     expect(unaccounted, [
       'A spec may not sleep and then assert. Await the thing instead —',
-      '`_whenSatisfied` or `_byDeadline` from @abuddy/sdk/testing/waiting — or, if the elapsed time really is',
+      '`_whenSatisfied` or `_byDeadline` from @apack/sdk/testing/waiting — or, if the elapsed time really is',
       'the subject, add it to BARE_WAIT_BY_DESIGN with the reason.',
     ].join(' ')).toEqual([]);
   });

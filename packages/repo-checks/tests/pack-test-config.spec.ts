@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { callsHelper, declaresKey } from './_support/config-code.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -9,7 +9,7 @@ import { repoFiles } from './_support/repo-files.ts';
  * A pack's vitest config is a call to `definePackTestConfig`, not a copy of one.
  *
  * There were three of these and they had drifted: the built-in pack, the repo's fixture pack and the config
- * `abuddy init` scaffolds each restated the same settings, and one ran without `globals` while another set
+ * `apack init` scaffolds each restated the same settings, and one ran without `globals` while another set
  * it. Nobody decided that; it is what three copies do, and a fourth copy is a `cp` away — which is why this
  * is a check and not a convention.
  *
@@ -32,8 +32,8 @@ const DECLARES_ITS_OWN_TEST_BLOCK: Record<string, string> = {};
 const tracked = (pattern: string): string[] =>
   repoFiles(pattern);
 
-/** Every pack in the repo that has a vitest config: a directory holding both `abuddy.json` and one */
-const packConfigs = (): string[] => tracked('*abuddy.json')
+/** Every pack in the repo that has a vitest config: a directory holding both `apack.json` and one */
+const packConfigs = (): string[] => tracked('*apack.json')
   .map((manifest) => path.join(path.dirname(manifest), 'vitest.config.ts'))
   .filter((config) => fs.existsSync(path.join(REPO_ROOT, config)))
   .sort();
@@ -51,7 +51,7 @@ describe("a pack's vitest config calls definePackTestConfig", () => {
 
   it('leaves none of them assembling their own', () => {
     const copies = packConfigs().filter((config) => !calls(read(config)));
-    expect(copies, `these restate what ${HELPER} (@abuddy/testing/vitest) holds. Call it instead: what a pack `
+    expect(copies, `these restate what ${HELPER} (@apack/testing/vitest) holds. Call it instead: what a pack `
       + 'needs on top is an option').toEqual([]);
   });
 
@@ -73,10 +73,10 @@ describe("a pack's vitest config calls definePackTestConfig", () => {
    * And the config a pack author is *given*, which is the one that matters most: every pack outside this repo
    * starts as a copy of it, so a template that assembled its own would put the drift back at the source.
    */
-  it('is what abuddy init scaffolds', () => {
+  it('is what apack init scaffolds', () => {
     // The template is a file now, so this reads the file rather than a literal out of init.ts
     // (`docs/goals/goal-one-rule-set.md`) — the same two assertions over a stronger subject.
-    const template = read(path.join('packages', 'abuddy-cli', 'templates', 'pack', 'vitest.config.ts'));
+    const template = read(path.join('packages', 'apack-cli', 'templates', 'pack', 'vitest.config.ts'));
     expect(calls(template), "the scaffolded config is where a pack author's copy comes from — and the "
       + 'comment above the call mentions the helper too, so this reads the code and not the prose').toBe(true);
     expect(declaresTestBlock(template), 'the scaffold declares a test block of its own').toBe(false);

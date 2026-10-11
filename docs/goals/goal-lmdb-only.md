@@ -18,7 +18,7 @@ Finished when:
   no hydration step. Writes are committed synchronously (see Decision 3 and Open decision 1).
 - PersistenceSink, the sharded router, hydrate, bulkLoadAttr/addToIndex and LmdbQuery are gone;
   services.traceStore reads through ordinary engine queries.
-- Existing user data (a copy of real 0.3.14-shaped data, in a temp ABUDDY_USER_DATA_DIR) opens, is
+- Existing user data (a copy of real 0.3.14-shaped data, in a temp APACK_USER_DATA_DIR) opens, is
   migrated to the new store format once, and the app boots onboarded with its flows, notes and settings.
 - The ears contract suite passes against the disk engine; the disk benchmark and a flow-run benchmark
   are recorded in this doc and within the agreed tolerance.
@@ -26,7 +26,7 @@ Finished when:
   `facade:check -w @app/default-setup`, and the api, sdk, ears, host, cli, default-setup and renderer
   unit suites pass.
 - `npm run build`, the monorepo E2E suite, `npm run test:external-pack`,
-  `npm run test:packaged-authoring` and the example pack's `abuddy test --build <repo>` pass.
+  `npm run test:packaged-authoring` and the example pack's `apack test --build <repo>` pass.
 - A final summary: phase → done/deferred, evidence, benchmark numbers, conventional choices.
 
 Never:
@@ -34,13 +34,13 @@ Never:
   chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
   and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir; use copies in temp
-  ABUDDY_USER_DATA_DIRs.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir; use copies in temp
+  APACK_USER_DATA_DIRs.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site
   compile.
 - use an fsync per write, lmdb-js async `put`, or `noSync` + `useWritemap` for engine writes (see
   Spike results).
@@ -49,7 +49,7 @@ Never:
 
 ## Background
 
-`@abuddy/ears` (see `packages/abuddy-ears/CLAUDE.md`) keeps all data in memory and mirrors writes to LMDB:
+`@apack/ears` (see `packages/apack-ears/CLAUDE.md`) keeps all data in memory and mirrors writes to LMDB:
 
 - **Memory is the read path.**
   - `src/attribute-storage.ts` holds `store` (kind → id → value list) and `entityIndex` (type → ids).
@@ -71,13 +71,13 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 
 ### What depends on memory today (survey, 2026-09-17)
 
-- **Read APIs.** `E` = `packages/abuddy-ears/src`.
+- **Read APIs.** `E` = `packages/apack-ears/src`.
   - `query.ts` builds whole id arrays at the apply, then filters in JS: `where` (`===` only), `withRole`, `ofType`, `linksTo`. `orderBy` called `getAttr` inside the sort comparator. `limit`/`page` slice after the full set is built.
   - `qx()` with no apply lists every entity. Callers:
     - `ensure(role)` with no scope (`E/transaction.ts:89`)
     - `spawn` with `uniqueRoles`
     - `graph.leaves` with no type
-    - root-flow and threads lookups (`packages/abuddy-sdk/src/repositories/flow-repository.ts:116,205`, `default-setup/src/features/threads/be/repository/index.ts:53`)
+    - root-flow and threads lookups (`packages/apack-sdk/src/repositories/flow-repository.ts:116,205`, `default-setup/src/features/threads/be/repository/index.ts:53`)
   - `query-helpers.ts`: finders are `qx(...).pickAll()`, and `countEntities` lists the whole type.
   - `entity-utils.ts`: `createEntityWithDefaults` counts the type twice on every create (short code and label).
   - `getAll(id)` loops over every attribute kind. `findRelations()` with no match returns every relation.
@@ -106,7 +106,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - On every client connect, library runs `migrateDocumentShortCodes` and `migrateDisplayOrders`, which scan all Documents and write.
   - The database feature regenerates schema info after every transaction (`database/be/system.ts:108`).
 - **Engines without LMDB.**
-  - The SDK test runtime makes a new memory engine per test (`packages/abuddy-sdk/src/testing/index.ts:54-59,104`), about 600 resets per default-setup run.
+  - The SDK test runtime makes a new memory engine per test (`packages/apack-sdk/src/testing/index.ts:54-59,104`), about 600 resets per default-setup run.
   - `memoryTraceStore` (`testing/host.ts:105-124`) fakes the trace store.
   - SDK round-trip and applier specs, and host and api specs, build raw memory engines.
   - The ears contract `persistence.spec.ts` pins sink call order.
@@ -116,8 +116,8 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - `openAppStore` (`packages/api/src/setup/backend.ts:62-71,152`) hydrates after packs register, since the policy depends on registered types.
   - `appData.reset` does `engine.clear` → `store.reset` → `startPacks`.
   - `importBackup` reloads memory.
-  - Backup export copies live env files with `fs.copy` (`packages/abuddy-host/src/backup/index.ts:43-47`), which isn't a consistent snapshot.
-- **Multiple processes.** `abuddy db` opens the store offline: reads open it read-only, even while the app runs, and writes refuse while the app runs. With LMDB-only, each process sees the other's writes. See docs/archive/goals/goal-abuddy-db-cli.md.
+  - Backup export copies live env files with `fs.copy` (`packages/apack-host/src/backup/index.ts:43-47`), which isn't a consistent snapshot.
+- **Multiple processes.** `apack db` opens the store offline: reads open it read-only, even while the app runs, and writes refuse while the app runs. With LMDB-only, each process sees the other's writes. See docs/archive/goals/goal-apack-db-cli.md.
 
 ## Spike results (2026-09-17)
 
@@ -126,9 +126,9 @@ Two throwaway worktrees. They may have been removed by the time this goal is pic
 - **Read path:** `.claude/worktrees/ears-disk-engine`, detached at `97a566275`, uncommitted. Still there as
   of 2026-09-25, renamed from `agent-a95981166c164d641` — the files below are untracked, so they are in no
   commit, branch or stash and exist only in that directory.
-  - New files: `packages/abuddy-ears/src/lmdb/disk-storage.ts` (~465 lines), `src/lmdb/disk-engine.ts`, `tests/lmdb/disk-engine.spec.ts`, `bench/engines.bench.ts`, `spike/`.
+  - New files: `packages/apack-ears/src/lmdb/disk-storage.ts` (~465 lines), `src/lmdb/disk-engine.ts`, `tests/lmdb/disk-engine.spec.ts`, `bench/engines.bench.ts`, `spike/`.
   - Edits to `relation-index.ts`, `edge-store.ts`, `relations.ts`, `query.ts`, `engine.ts` and `tests/engine/engine-under-test.ts`.
-- **Write path:** was `.claude/worktrees/agent-aef0c2460682598b7/packages/abuddy-ears/spike/*.mts`, lmdb-js
+- **Write path:** was `.claude/worktrees/agent-aef0c2460682598b7/packages/apack-ears/spike/*.mts`, lmdb-js
   3.5.3 probes run with `npx tsx`. **That worktree is gone** as of 2026-09-25, which is what this section
   anticipated: what it found is recorded below and the probes themselves are not recoverable.
 
@@ -238,7 +238,7 @@ These are the ones settled by the spikes. The ones below them need the user.
 ## What this does to the two locks
 
 A data dir carries two markers that exist only because the app keeps a second copy of the data in memory.
-`abuddy db`'s refusal says so outright (`abuddy-cli/src/commands/db/target.ts`):
+`apack db`'s refusal says so outright (`apack-cli/src/commands/db/target.ts`):
 
 > refused while an app runs on that data dir, **which holds the database in memory and would overwrite the
 > change or lose it**
@@ -249,11 +249,11 @@ the app's second copy: a tool changes the store, the app's memory is stale, and 
 the stale version back. Decision 1 deletes that copy, and with it the reason.
 
 **It does not delete the locks, because of Decision 8.** Import closes the env, replaces the files and
-reopens; `reset` closes the envs, deletes the directories and opens again (`abuddy-ears/src/lmdb/store.ts`,
+reopens; `reset` closes the envs, deletes the directories and opens again (`apack-ears/src/lmdb/store.ts`,
 `reset()`). Those are file-level operations outside LMDB's model — the data files cannot be swapped under a
 live env, and no transaction discipline covers it. So the commands split:
 
-| `abuddy db` command | After this goal |
+| `apack db` command | After this goal |
 |---|---|
 | `exec`, `repl --write`, `clear-settings --force` | **No lock needed.** Ordinary transactions; LMDB serialises them against the app's |
 | `import --force`, `reset --force` | **Lock still needed.** They close the env and replace its files |
@@ -307,7 +307,7 @@ assumptions: settle the sequencing before either Phase 3.
    and `app.lock` are left protecting `import` and `reset` alone. Narrow them as part of this goal, or land
    the storage change first and narrow them after?
    - **Narrow here:** the reason is deleted in the same change that deletes its cause, so nothing is left
-     guarding writes it no longer needs to. It widens this goal into `abuddy db` and the Electron main
+     guarding writes it no longer needs to. It widens this goal into `apack db` and the Electron main
      process.
    - **Narrow after:** this goal stays about storage. The locks keep guarding every write for a while,
      which costs nothing but a refusal the user didn't need.
@@ -316,7 +316,7 @@ assumptions: settle the sequencing before either Phase 3.
 
 5. **Value index scope.**
    - Index every short scalar automatically: simple, about 12% more disk, 2–6 key writes per put.
-   - Or index only fields packs declare (a new `abuddy.json` entity-field option, with the facade and schema updated), plus the SDK's roles and labels.
+   - Or index only fields packs declare (a new `apack.json` entity-field option, with the facade and schema updated), plus the SDK's roles and labels.
    — *open*
 
 ## Phases
@@ -334,7 +334,7 @@ assumptions: settle the sequencing before either Phase 3.
 - `src/lmdb/disk-storage.ts`, with the key layout, per-type counts and format key (Decision 2).
 - Commit semantics (Decision 3): `transaction()` in the engine API and on the query face, `@internal` where only the host needs it, plus the background sync with its interval and close handling.
 - The value index per Open decision 4.
-- A disk-engine factory in `@abuddy/ears/lmdb`.
+- A disk-engine factory in `@apack/ears/lmdb`.
 - The contract suite runs against both engines (parametrized `engine-under-test.ts`). Rewrite the sink call-order contract as a storage contract: which keys each write touches, and that a throwing `transaction` rolls back.
 
 **Done when:**
@@ -365,7 +365,7 @@ assumptions: settle the sequencing before either Phase 3.
 - Delete hydration, the router, `PersistenceSink`, `LmdbQuery` and the store's engine reader (Decision 1).
 - Port `appData.reset`, backup export/import (Decision 8), `services.traceStore` and `restart-persistence.spec`.
 - Add the format migration (Decision 7).
-- `abuddy db` (`@abuddy/host/database`) opens the env with the app's flags, coordinated with docs/archive/goals/goal-abuddy-db-cli.md.
+- `apack db` (`@apack/host/database`) opens the env with the app's flags, coordinated with docs/archive/goals/goal-apack-db-cli.md.
 
 **Done when:**
 - The api and host suites pass.
@@ -402,14 +402,14 @@ assumptions: settle the sequencing before either Phase 3.
 
 - **Git:** commit, stage, push or tag only when the user asks. Use logical chunks, conventional messages and no attribution lines. Check `git diff --cached` first and commit with `git commit -- <paths>`.
 - **Publishing:** never publish externally or trigger workflows.
-- **User data:** never touch real data dirs; use copies in temp `ABUDDY_USER_DATA_DIR`s. E2E runs in the `abuddy-test` namespace alongside the user's apps; never pkill/killall.
+- **User data:** never touch real data dirs; use copies in temp `APACK_USER_DATA_DIR`s. E2E runs in the `apack-test` namespace alongside the user's apps; never pkill/killall.
 - **Tooling limits:** never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit version/release metadata.
-- **Typed EARS types are change-controlled** (`packages/abuddy-sdk/TYPED-EARS.md`): run its type tests, completions check and mutation checks, and review API report diffs.
-- **Published packages:** `@abuddy/ears`, `@abuddy/sdk`, `@abuddy/ui` and `@abuddy/testing` are published. No `any` in pack-facing exports, TypeScript 5.7, and run `api:update` after export changes. `lmdb` stays an optional peer of `@abuddy/ears`, loaded only by `/lmdb`.
+- **Typed EARS types are change-controlled** (`packages/apack-sdk/TYPED-EARS.md`): run its type tests, completions check and mutation checks, and review API report diffs.
+- **Published packages:** `@apack/ears`, `@apack/sdk`, `@apack/ui` and `@apack/testing` are published. No `any` in pack-facing exports, TypeScript 5.7, and run `api:update` after export changes. `lmdb` stays an optional peer of `@apack/ears`, loaded only by `/lmdb`.
 - **Build order:** the CLI suite needs `npm run packages:build` after SDK or ears source changes. Rebuild default-setup's runtime before the api suites and E2E.
-- **Migrations:** pack data migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`. The store format migration (Decision 7) is store-level, idempotent and tested on copies.
+- **Migrations:** pack data migrations follow `packages/apack-host/src/migrations/CLAUDE.md`. The store format migration (Decision 7) is store-level, idempotent and tested on copies.
 - **Tests:** investigate failing tests before changing assertions. Mutation-check every new guard, helper and test.
-- **External packs are first-class:** keep the fixture packs, the example pack (`/Users/spankyed/Develop/Projects/abuddy-external/example-pack`) and `test:packaged-authoring` passing throughout.
+- **External packs are first-class:** keep the fixture packs, the example pack (`/Users/spankyed/Develop/Projects/apack-external/example-pack`) and `test:packaged-authoring` passing throughout.
 - **LMDB writes:**
   - Every `transactionSync` callback has a block body (a callback returning a Promise makes the transaction async).
   - Envs are opened with the same flags in every process.

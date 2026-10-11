@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Verify code signing, notarization, and Gatekeeper for AgentBuddy.app
+# Verify code signing, notarization, and Gatekeeper for apack.app
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-APP="${1:-$SCRIPT_DIR/../../dist/mac-arm64/AgentBuddy.app}"
+APP="${1:-$SCRIPT_DIR/../../dist/mac-arm64/apack.app}"
 
 if [ ! -d "$APP" ]; then
   echo "App not found at: $APP"
@@ -41,7 +41,7 @@ echo ""
 
 echo "=== Native Modules ==="
 # The OS credential store binding ships as a package per architecture
-KEYRING_ARCH=$(lipo -archs "$APP/Contents/MacOS/AgentBuddy" 2>/dev/null | grep -q arm64 && echo arm64 || echo x64)
+KEYRING_ARCH=$(lipo -archs "$APP/Contents/MacOS/apack" 2>/dev/null | grep -q arm64 && echo arm64 || echo x64)
 for mod in lmdb/build/Release/lmdb.node node-pty/build/Release/pty.node "@napi-rs/keyring-darwin-$KEYRING_ARCH/keyring.darwin-$KEYRING_ARCH.node"; do
   MOD_PATH="$APP/Contents/Resources/app/packages/api/node_modules/$mod"
   if [ -f "$MOD_PATH" ]; then

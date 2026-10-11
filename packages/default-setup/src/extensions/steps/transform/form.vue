@@ -72,8 +72,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BaseForm from '@abuddy/ui/components/BaseForm'
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import BaseForm from '@apack/ui/components/BaseForm'
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor'
 import Fields from '../create/fields.vue'
 import type { NodeEntity } from '#generated/types.ts'
 import type { TransformNode, TransformOutputType } from './types.ts'

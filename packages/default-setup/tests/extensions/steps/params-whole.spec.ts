@@ -2,10 +2,10 @@
 // (nodeAttributes) is truncated to bound the trace's size; truncating the params too made a create or
 // update step persist a cut-off string, or a `{ value, _truncated }` wrapper in place of a long array.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@abuddy/testing/harness'
+import { importFlows, startApp } from '@apack/testing/harness'
 import { action, entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
-import { untypedQx } from '@abuddy/ears'
+import { untypedQx } from '@apack/ears'
 
 /** Past MAX_STRING_LENGTH (10 KB) and MAX_ARRAY_ITEMS (100) in the trace truncator */
 const LONG_TEXT_LENGTH = 20_000

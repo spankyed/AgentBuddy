@@ -139,8 +139,8 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import type { AgentMode } from '#generated/types.ts'
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
-import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
+import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
+import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu'
 
 const props = defineProps<{
   modes: AgentMode[]

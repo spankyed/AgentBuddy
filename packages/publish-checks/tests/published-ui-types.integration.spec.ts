@@ -22,10 +22,10 @@ function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'b
     ],
     'index.ts': [
       "import { h } from 'vue';",
-      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';",
-      "import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';",
-      "import { useDebounceFn } from '@abuddy/ui/composables/useDebounce';",
-      "import { tiptapPluginRegistry } from '@abuddy/sdk/fe';",
+      "import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';",
+      "import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';",
+      "import { useDebounceFn } from '@apack/ui/composables/useDebounce';",
+      "import { tiptapPluginRegistry } from '@apack/sdk/fe';",
       "export const editor = h(TiptapEditor, { mode: 'editor', modelValue: 'text' });",
       "export const code = h(SimpleMonacoEditor, { modelValue: 'const x = 1' });",
       "export const plugins = tiptapPluginRegistry.getAll();",
@@ -39,7 +39,7 @@ function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'b
   });
 }
 
-describe.skipIf(!PACKAGES_BUILT)('published @abuddy/ui declarations', () => {
+describe.skipIf(!PACKAGES_BUILT)('published @apack/ui declarations', () => {
   it.each(CONSUMER_MATRIX)('types component props and composables for TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
     const result = await typecheck(consumer!, tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);

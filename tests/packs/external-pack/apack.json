@@ -1,0 +1,132 @@
+{
+  "$schema": "../../../packages/apack-sdk/apack.schema.json",
+  "id": "e2e-fixture",
+  "name": "E2E Fixture",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "entities": {
+    "Memo": "Memo"
+  },
+  "entityShapes": {
+    "Memo": {
+      "source": "src/features/memos/be/types.ts",
+      "type": "MemoEntity"
+    }
+  },
+  "relKinds": {},
+  "features": {
+    "memos": {
+      "settings": "src/features/memos/settings.ts",
+      "system": {
+        "entry": "src/features/memos/be/system.ts",
+        "contract": "src/features/memos/be/contract.ts#Contract"
+      },
+      "plugin": {
+        "entry": "src/features/memos/fe/plugin.ts",
+        "contract": "src/features/memos/fe/contract.ts#Contract"
+      },
+      "services": {},
+      "repositories": {
+        "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
+        "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      }
+    },
+    "notes": {
+      "settings": "src/features/notes/settings.ts",
+      "plugin": {
+        "entry": "src/features/notes/fe/plugin.ts"
+      },
+      "services": {}
+    }
+  },
+  "extensions": {
+    "steps": {
+      "stamp": {
+        "node": "src/extensions/steps/stamp/build.ts#stampStepNode",
+        "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
+        "fe": "src/extensions/steps/stamp/fe.ts#stampStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/stamp/runtime.ts#handler"
+        },
+        "dsl": {
+          "primaryField": "note"
+        }
+      },
+      "pulse": {
+        "kind": "trigger",
+        "node": "src/extensions/steps/pulse/trigger.ts#pulseTriggerNode",
+        "trigger": {
+          "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
+        },
+        "fe": "src/extensions/steps/pulse/fe.ts#pulseTriggerFE"
+      }
+    },
+    "artifacts": {
+      "stamp": {
+        "icon": "Stamp",
+        "fe": "src/extensions/artifacts/viewers/stamp-artifact.vue"
+      }
+    },
+    "blocks": {
+      "stamp": {
+        "fe": "src/extensions/blocks/display/StampBlock.vue"
+      }
+    },
+    "commands": {
+      "memo-note": {
+        "placeholder": "Memo text"
+      }
+    }
+  },
+  "dependencies": {
+    "default-setup": "*"
+  },
+  "permissions": [],
+  "boot": {
+    "hooks": "src/features/hooks.ts"
+  },
+  "content": {
+    "sources": {
+      "actions": "src/content/actions",
+      "flows": "src/content/flows",
+      "memos": {
+        "path": "src/content/memos",
+        "format": "memos"
+      },
+      "quick-memos": {
+        "path": "src/content/quick-memos.txt",
+        "format": "quick-memos"
+      },
+      "library": {
+        "path": "src/content/library",
+        "format": "default-setup:library"
+      }
+    },
+    "formats": {
+      "memos": {
+        "format": "markdown-tree",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "text": {
+            "from": "body"
+          }
+        }
+      },
+      "quick-memos": {
+        "compiler": "src/content/compilers/quick-memos.ts",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ]
+      }
+    }
+  }
+}

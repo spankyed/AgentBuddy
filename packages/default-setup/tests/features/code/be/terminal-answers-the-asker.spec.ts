@@ -22,7 +22,7 @@ const service = vi.hoisted(() => ({
 }))
 vi.mock('#features/code/be/services/terminal.ts', () => service)
 
-const { startApp } = await import('@abuddy/testing/harness')
+const { startApp } = await import('@apack/testing/harness')
 
 const CODE = 'default-setup/code'
 /** The connection the ask arrived on, which is what makes it a window's */

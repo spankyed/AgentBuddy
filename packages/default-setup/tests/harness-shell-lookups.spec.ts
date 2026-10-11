@@ -3,9 +3,9 @@
 // need them to. The frontend host is bound *over* the backend one, so without `backendFirst` in the harness
 // every one of these would read an empty frontend registry.
 import { expect, it } from 'vitest';
-import { startShell } from '@abuddy/testing/harness';
-import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { stepRegistry } from '@abuddy/sdk/steps';
+import { startShell } from '@apack/testing/harness';
+import { getDesignated, hasDesignation } from '@apack/sdk/designations';
+import { stepRegistry } from '@apack/sdk/steps';
 import logsState from '#features/logs/fe/state.ts';
 
 it("keeps the backend's roles and steps while a shell is running", async () => {

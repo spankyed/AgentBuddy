@@ -1,15 +1,15 @@
 import { broadcastToPlugin } from '#generated/events.ts';
-import type { Reply } from '@abuddy/sdk/events';
+import type { Reply } from '@apack/sdk/events';
 import { answer } from '../answer.ts';
 import { EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { BlockConfig, BlockResponse, MessageEntity, OutgoingThreadsEvents, ThreadCreateData, MessageReferences } from '#features/threads/be/types.ts';
 
-import { readMediaBuffer } from '@abuddy/sdk/utils';
+import { readMediaBuffer } from '@apack/sdk/utils';
 import * as threadsService from './threads.ts';
-import { blockRegistry } from '@abuddy/sdk/blocks';
-import { createLogger } from '@abuddy/sdk/logger';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { blockRegistry } from '@apack/sdk/blocks';
+import { createLogger } from '@apack/sdk/logger';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('chat');
 

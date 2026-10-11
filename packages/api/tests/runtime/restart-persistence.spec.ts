@@ -6,12 +6,12 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-restart-persistence-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { untypedTx, getEntitiesOfType } = await import('@abuddy/ears');
-const { _getLmdbPath } = await import('@abuddy/sdk/utils');
-const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
+const { untypedTx, getEntitiesOfType } = await import('@apack/ears');
+const { _getLmdbPath } = await import('@apack/sdk/utils');
+const { unbindHost } = await import('@apack/sdk/runtime/internals');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 

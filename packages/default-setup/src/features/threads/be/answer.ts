@@ -8,7 +8,7 @@
 // told how to answer without reaching for the delivery in scope. Reply **or** broadcast, never both: a window
 // showing the result of work it did not do is the whole defect.
 import { broadcastToPlugin } from '#generated/events.ts';
-import type { Reply } from '@abuddy/sdk/events';
+import type { Reply } from '@apack/sdk/events';
 import type { OutgoingThreadsEvents } from './types.ts';
 
 /**

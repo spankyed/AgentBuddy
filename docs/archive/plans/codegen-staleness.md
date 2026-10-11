@@ -4,16 +4,16 @@
 > the blocker and the condition that would revive it at the end.
 >
 > **Every claim below was checked against the tree on 2026-10-07, and nothing re-checks it.** What is held to
-> the code is elsewhere: the command's behaviour in `packages/abuddy-cli/CLAUDE.md`'s `generate-entries` row,
+> the code is elsewhere: the command's behaviour in `packages/apack-cli/CLAUDE.md`'s `generate-entries` row,
 > what each generated file holds in `packages/default-setup/CLAUDE.md`, and the mechanism itself in
 > `commands/generate-entries.ts`, whose comments carry the measurements. Read this for the shape and the
 > decision; read those for what is true now.
 
 # Codegen staleness
 
-`src/__generated__/` is written by `abuddy generate-entries` (`@abuddy/cli`'s `commands/generate-entries.ts`,
-over `generatePackFiles` in `@abuddy/sdk/build`) from inputs that reach it through no module graph: nothing
-anyone imports connects `abuddy.json` to the barrels generated from it, so the files can describe a pack that
+`src/__generated__/` is written by `apack generate-entries` (`@apack/cli`'s `commands/generate-entries.ts`,
+over `generatePackFiles` in `@apack/sdk/build`) from inputs that reach it through no module graph: nothing
+anyone imports connects `apack.json` to the barrels generated from it, so the files can describe a pack that
 is no longer there.
 
 What follows is what keeps them current, what that mechanism cannot see, and the one thing that was planned
@@ -23,7 +23,7 @@ for it and will not be built.
 
 | Input | Moves when |
 |---|---|
-| the manifest (`abuddy.json`) | a feature, plugin path, entity, extension, repository or content format changes |
+| the manifest (`apack.json`) | a feature, plugin path, entity, extension, repository or content format changes |
 | the generator | codegen's own output pattern changes (`codegenSource()` is what hashes it) |
 | the pack's `src/` | a service export's shape, a step's `build.ts`/`types.ts`, which `*-fe.ts` files exist |
 | a resolved dependency's snapshot | generated flow helpers and `deps/<id>.d.ts` follow every dependency |
@@ -33,14 +33,14 @@ for it and will not be built.
 Every caller of `generateEntries`, which is the whole set:
 
 - **`prepare`** — so `npm install` in the pack regenerates.
-- **`abuddy generate-entries`** by hand, as `npm run generate:entries`; `--force` ignores the stamp below.
-- **`abuddy build`**, unless `--skip-generate`. This is the one every repo command arrives through:
-  `npm start` (`prebuild:be:dev` → `build:dev` → `abuddy build --skip-fe`), `npm run build:be`
+- **`apack generate-entries`** by hand, as `npm run generate:entries`; `--force` ignores the stamp below.
+- **`apack build`**, unless `--skip-generate`. This is the one every repo command arrives through:
+  `npm start` (`prebuild:be:dev` → `build:dev` → `apack build --skip-fe`), `npm run build:be`
   (`prebuild:be`, which also runs `generate:entries` outright), `npm run build` (`-ws`, through the pack's own
   `build`) and `npm run compile`.
-- **`abuddy facade-report`** — it bundles the facade from `src/__generated__/pack-types.ts`, so a report held
+- **`apack facade-report`** — it bundles the facade from `src/__generated__/pack-types.ts`, so a report held
   against a stale barrel would be held against nothing; it regenerates before it bundles.
-- **`abuddy init`**, and **`abuddy run`** on each rebuild (`--force`).
+- **`apack init`**, and **`apack run`** on each rebuild (`--force`).
 - **`scripts/repro.ts`** (`--force`), because a second build that skipped codegen would re-hash output it never
   regenerated — `npm run check:repro` compares two builds of one input and that is what makes them two.
 
@@ -56,7 +56,7 @@ there, does the hash still match. The missing-output check is first on purpose, 
 measurement: recording only the hash let `rm src/__generated__/paths.ts` leave the pack unbuildable while the
 command printed *"inputs unchanged, skipping"*. The list is recorded rather than fixed because the output set
 follows the manifest — a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it
-stale for ever. It is the shape `unitStaleReason` (`@abuddy/host/build/packages-built`) uses for the package
+stale for ever. It is the shape `unitStaleReason` (`@apack/host/build/packages-built`) uses for the package
 builds, asked in the same order.
 
 Measured on default-setup, median of 3 on an 86%-idle machine, 2026-10-07: **0.72s when it skips, 1.54s when
@@ -83,7 +83,7 @@ Loading       virtual:built-in-pack-loaders  (api, tsup plugin)      → import(
 Generation    the on-disk barrels those two import from
 ```
 
-Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
+Both plugins scan `packages/` for `apack.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
 
 **That top layer is what [`goal-one-kind-of-pack.md`](../goals/goal-one-kind-of-pack.md) takes apart, and the generation layer
@@ -94,10 +94,10 @@ config files. Its step 3 deletes `virtual:built-in-pack-loaders` outright (produ
 `pack://`. What it does not change is any of this document: the barrels stay on disk, written by the same
 command on the same triggers, under the same stamp. Its step 1 only adds a context — default-setup's build
 stops returning early, so it records the `runtime` and `fe` phases like any pack — and it reaches codegen
-through `abuddy build`, which already regenerates.
+through `apack build`, which already regenerates.
 
 **It makes the refusal below stronger rather than weaker.** After step 3 no production bundler is positioned to
-synthesise a barrel at all: the renderer's plugin is dev-only and each pack's own `abuddy build` produces its
+synthesise a barrel at all: the renderer's plugin is dev-only and each pack's own `apack build` produces its
 bundles, so the number of tools that need a file on disk goes up.
 
 ## Virtualising the barrels: won't do
@@ -127,7 +127,7 @@ includes. There is none today, because a pack's tsconfig includes its `src/` who
 ## Related: the FE barrel
 
 The investigation that produced this document also found the first instance of a separate rule, which now
-lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@abuddy/sdk/utils/pure` or a specific
-file, never the `@abuddy/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
+lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@apack/sdk/utils/pure` or a specific
+file, never the `@apack/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
 `content`). The instance was `randomId`, pulling `process.env` into the browser bundle through the barrel; it is
 `utils/random-id.ts` now, re-exported from `pure.ts`.

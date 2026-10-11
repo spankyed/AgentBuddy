@@ -2,12 +2,12 @@
 // a change here reaches all of them — including one that would move an installed app's logs.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const env = { ABUDDY_ENV: process.env.ABUDDY_ENV, ABUDDY_USER_DATA_DIR: process.env.ABUDDY_USER_DATA_DIR };
+const env = { APACK_ENV: process.env.APACK_ENV, APACK_USER_DATA_DIR: process.env.APACK_USER_DATA_DIR };
 
 beforeEach(() => {
   vi.resetModules();
-  process.env.ABUDDY_ENV = 'production';
-  delete process.env.ABUDDY_USER_DATA_DIR;
+  process.env.APACK_ENV = 'production';
+  delete process.env.APACK_USER_DATA_DIR;
 });
 
 afterEach(() => {
@@ -34,19 +34,19 @@ describe('the app context', () => {
   // app's logs under its data dir instead would tidy the layout and take them out of the tool a user
   // reaches for.
   it('leaves an ordinary run where the platform puts its logs', async () => {
-    expect((await context()).logsDir).toBe('/platform/logs/abuddy');
+    expect((await context()).logsDir).toBe('/platform/logs/apack');
   });
 
   // Every Playwright worker sharing one log directory is how one reached 23 GB
   it('keeps a run given its own data dir in its own log directory', async () => {
-    process.env.ABUDDY_USER_DATA_DIR = '/tmp/isolated-run';
+    process.env.APACK_USER_DATA_DIR = '/tmp/isolated-run';
 
-    expect((await context()).logsDir).toBe('/tmp/isolated-run/abuddy/logs');
+    expect((await context()).logsDir).toBe('/tmp/isolated-run/apack/logs');
   });
 
   // Electron has to agree, because electron-log and anything else asking it must get the same answer
   it('tells Electron the directories it decided', async () => {
-    process.env.ABUDDY_USER_DATA_DIR = '/tmp/isolated-run';
+    process.env.APACK_USER_DATA_DIR = '/tmp/isolated-run';
     const { app, getAppContext } = await load();
 
     const resolved = getAppContext();

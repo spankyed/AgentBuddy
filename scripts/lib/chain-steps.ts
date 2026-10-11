@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
+import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@apack/host/build/packages-built';
+import { PUBLISH_TREE } from '@apack/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
@@ -15,7 +15,7 @@ import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
  * that module runs the chain when imported, and `check-test-tiers.ts` needs the table without running it.
  *
  *   1 pure      its own package's source, the in-memory runtime, fakes. No build output, no app.
- *   2 contract  the built @abuddy packages and a pack's build output. Not the app.
+ *   2 contract  the built @apack packages and a pack's build output. Not the app.
  *   3 app       the built app.
  *
  * A step that launches the app without saying so is the coupling this exists to catch: it welds a fast
@@ -72,7 +72,7 @@ export interface ChainStep {
    * **Kept on every failure rather than behind a flag, which 68K is what buys**: measured 2026-10-10, one
    * failing `test:smoke` left that much — the fixture's `app-<worker>.log` beside a 39K `trace.zip` and a
    * screenshot, since the repo's own `playwright.config.ts` sets `screenshot: 'on'` and
-   * `trace: 'retain-on-failure'` (the helper in `@abuddy/testing/playwright` sets neither, so a pack's
+   * `trace: 'retain-on-failure'` (the helper in `@apack/testing/playwright` sets neither, so a pack's
    * suite leaves less). Evidence you have to ask for in advance is evidence you do not have, because you
    * learn you wanted it only after the failure.
    */
@@ -84,7 +84,7 @@ export interface ChainStep {
    *
    * Two kinds qualify. One is a pass that is not reproducible (the E2E suite). The other is a step whose
    * *effect* is recorded somewhere the chain's fingerprint cannot see: `packages:ensure` guarantees the
-   * built packages are current, and whether they are is recorded in `node_modules/.cache/abuddy-packages-build`
+   * built packages are current, and whether they are is recorded in `node_modules/.cache/apack-packages-build`
    * — not in this step's inputs, and not in its outputs either, which `fingerprintUnit` excludes from the
    * content hash on purpose. Caching such a step is a second record of one fact, and the two can disagree.
    */
@@ -479,12 +479,12 @@ export const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
-  // `bench` is in `@abuddy/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
+  // `bench` is in `@apack/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
   // re-run when it moves. Only that workspace has one; the dep-file gate is what noticed
   'bench',
   // A pack's manifest, which `default-setup`'s specs import directly. Eleven workspaces have none
   // and the walk skips what is not there, so for those this adds a path and no bytes
-  'abuddy.json',
+  'apack.json',
   'package.json', 'tsconfig.json', 'tsconfig.package.json',
   // The two vitest configs from `CONFIG_BY_HALF`, which is where that naming is declared
   ...Object.values(CONFIG_BY_HALF), 'vite.config.ts', 'vite.config.js',
@@ -509,9 +509,9 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * `typecheck` is one, since it compiles the whole thing. The others are the repo-wide *guards* — a spec
  * that asks `git ls-files` what exists and then asserts something about all of it. Those live inside one
  * package's suite while their subject is everything, and the pool runs a project only when that project's
- * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@abuddy/sdk`'s suite
+ * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@apack/sdk`'s suite
  * was an input to 241 of 1860 tracked code files and `@app/repo-checks`' to 308. `identity-guard` then
- * missed a forbidden path committed to `@abuddy/cli` and two full chain runs passed over it.
+ * missed a forbidden path committed to `@apack/cli` and two full chain runs passed over it.
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
@@ -521,8 +521,8 @@ const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSP
   // the directory would re-run a typecheck every time someone poked at the app
   'drive/playwright.config.ts',
   'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
-  'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
-  'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
+  'packages/apack-cli/bin/apack.mjs', 'packages/apack-cli/bin/source-hooks.mjs',
+  'packages/apack-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
   'packages/dev-mode.js', 'packages/entry-point.mjs'];
 
 /**
@@ -605,7 +605,7 @@ const APP_RUNNER = ['scripts/build-app.ts', 'scripts/lib/app-build-legs.ts', 'sc
  * What *runs* a unit suite, as against what the suite reads — and an input to every project all the same.
  *
  * These decide what runs and how: the runner picks which projects a pool runs, `unit-suites.ts` says which
- * pool a suite is even in, `with-source.mjs` supplies the `@abuddy/source` condition the host suites
+ * pool a suite is even in, `with-source.mjs` supplies the `@apack/source` condition the host suites
  * resolve under, the bounded runner bounds the spawn, and `spec-durations.ts` and `spec-halves.ts` decide
  * what the run then *accepts* — a `@slow:` marker that is no longer true fails the step, so they are as
  * much a part of the verdict as the runner is. A pass recorded before one of them changed is not evidence
@@ -639,7 +639,7 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
  * `src` whole rather than a frontend subset, for two independent reasons: a bundler's graph crosses `be`/`fe`
  * freely (`fe/contract.ts` imports `be/types.ts`), and `renderer/tailwind.config.ts` adds
  * `<srcDir>/**` to Tailwind's `content`, so the emitted CSS depends on class-name text in files no bundler
- * traces at all. `abuddy.json` because the discovery parses it and its `id` is the alias prefix;
+ * traces at all. `apack.json` because the discovery parses it and its `id` is the alias prefix;
  * `package.json` because Vite resolves the pack's `#generated/*` and `#features/*` specifiers through its
  * `imports` map. Not `etc` or `tests`, which no build reads, and not `workspace('default-setup')`, which would
  * make a pack test edit cost an app build.
@@ -649,13 +649,13 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
  * whose two sides come from one source cannot fail. The asymmetry is what makes a second built-in pack fail
  * that case rather than silently satisfy it.
  */
-const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/abuddy.json',
+const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/apack.json',
   'packages/default-setup/package.json'];
 
 /**
  * What a step reads to derive something from the pack's sources, which `compile` and `facade:check` both do:
  * those sources, the tsconfig the declaration bundler compiles them with, the committed facade report, and
- * the `@abuddy/cli` bundle that does the deriving.
+ * the `@apack/cli` bundle that does the deriving.
  *
  * Named once because the two lists are identical and nothing would notice them drifting apart — the failure
  * `packages:ensure`' inputs are derived to avoid, a few hundred lines up. The two steps differ in what they
@@ -669,7 +669,7 @@ const PACK_DERIVED_READS = [...ROOT, ...PACK_SOURCES, 'packages/default-setup/ts
  * `tests/packs`, which the same step declares as an input, for the same reason as above.
  */
 const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'packs'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'packs', entry.name, 'abuddy.json')))
+  .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'packs', entry.name, 'apack.json')))
   .map((entry) => entry.name)
   .sort();
 const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/dist`, `tests/packs/${name}/src/__generated__`]);
@@ -682,7 +682,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through
- * the `@abuddy/source` condition and needs nothing built, which is what lets it start beside the builds.
+ * the `@apack/source` condition and needs nothing built, which is what lets it start beside the builds.
  *
  * **This cannot be derived from the spec sources, and a scan of them is not the authority.** `@app/api`'s
  * specs never name the pack's `dist`: they boot the app runtime, and host code resolves the path. Declaring
@@ -696,9 +696,9 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  *     for w in <the UNIT_SUITES workspaces>; do npm test -w $w; done
  *     mv packages/default-setup/.dist-aside packages/default-setup/dist
  *
- * Measured 2026-09-25: default-setup, @abuddy/cli and @app/api fail without it; the other five pass.
+ * Measured 2026-09-25: default-setup, @apack/cli and @app/api fail without it; the other five pass.
  *
- * `@abuddy/host` is listed anyway, and that is the second thing a scan would get wrong. Its
+ * `@apack/host` is listed anyway, and that is the second thing a scan would get wrong. Its
  * `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is missing, so it passes
  * without the pack and would pass vacuously if it raced `compile`. A check that silently stops checking is
  * worse than one that fails, so its verdict depends on that tree and it declares it.
@@ -708,14 +708,14 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
  */
 export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
-  // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled content under `dist/`
+  // `pretest: ensure-packages-built`, `@apack/testing`'s bundle, and its own compiled content under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
   // builds a fixture pack against default-setup's `dist`
-  'abuddy-cli': { packages: true, pack: true },
-  // `@abuddy/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
+  'apack-cli': { packages: true, pack: true },
+  // `@apack/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
   // there and skips when it is not, so the tree decides whether that check checks anything
-  'abuddy-host': { packages: true, pack: true },
+  'apack-host': { packages: true, pack: true },
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.content.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
@@ -852,7 +852,7 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
  * `typecheck-legs.spec.ts` holds the scope itself to what the leg's script names, and this turns that one
  * declaration into the key.
  *
- * **Every leg still declares the built `@abuddy` packages**, which is broader than most read and is kept
+ * **Every leg still declares the built `@apack` packages**, which is broader than most read and is kept
  * that way on purpose: the single `typecheck` step this replaces declared them, the edge into
  * `packages:ensure` derives from them, and the legs with no dep file — the lint, the import rules, the
  * API stamp — are exactly the ones whose reads nothing reports.
@@ -949,7 +949,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // This step has an inner cache too — `ensurePackagesBuilt()` consults the build stamps — and one input the
   // inner layer cannot see: `ensure-packages-built.ts`. That is safe, and worth saying why rather than
   // leaving a reader to check: the file is the command over the rule, so it cannot change what "built"
-  // means, and the rule itself (`BUILD_UNITS` in `@abuddy/host`) is inside every unit's own inputs. It takes
+  // means, and the rule itself (`BUILD_UNITS` in `@apack/host`) is inside every unit's own inputs. It takes
   // no `forceArgs` for a second reason — 18 call sites reach `ensurePackagesBuilt()` in a serial chain, each
   // a stat and a return, so forcing it would turn them into 18 builds behind one lock.
   // Not cached, and the 0.3s that costs is the point. Measured 2026-09-26: with the package stamps removed
@@ -984,7 +984,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `exclusive` because it must not overlap a build. `attw --pack <dir>` packs a tarball *inside* the tree it
   // is checking, and `stagePublishTree` removes and recreates that tree, so a rebuild landing mid-check leaves
   // attw opening a tarball that is no longer there — observed once, as
-  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
+  // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
   // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
   // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `compile` ->
   // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
@@ -1012,7 +1012,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // work that rung names. `chain-graph.spec.ts` holds every step to the rung its work implies
   { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 8,
     // The three packages it reports on, and nothing else that was built. It declared every build output
-    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@abuddy/cli` and `@abuddy/testing`
+    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@apack/cli` and `@apack/testing`
     // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
     // edit re-ran it and every declaration counted twice. Measured then: 1438 declared files, 239 of them
     // read. Dropping `publish/` also dropped a mutex, `packages:check` having declared those trees as written.
@@ -1027,8 +1027,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // report at all, so each is a module whose edit moves a report while the script that imports it does not.
     // The closure check in `chain-inputs.spec.ts` is what found them and what keeps the next one from hiding
     inputs: [...ROOT,
-      'packages/abuddy-ears/dist', 'packages/abuddy-sdk/dist', 'packages/abuddy-ui/dist',
-      'packages/abuddy-ears/package.json', 'packages/abuddy-sdk/package.json', 'packages/abuddy-ui/package.json',
+      'packages/apack-ears/dist', 'packages/apack-sdk/dist', 'packages/apack-ui/dist',
+      'packages/apack-ears/package.json', 'packages/apack-sdk/package.json', 'packages/apack-ui/package.json',
       'scripts/api-check.ts', 'scripts/lib/api-report-packages.ts', 'scripts/lib/exit-on-epipe.ts',
       // `bounded-spawn` is how this runs the three extractions, and it was declared nowhere until
       // 2026-10-05. It had an excuse by accident: `chain-inputs.spec.ts` excuses everything reachable from
@@ -1036,9 +1036,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       // imports it. Repointing that import to `spec-halves.ts` shrank the closure and the real gap showed.
       'scripts/lib/bounded-spawn.ts',
       'scripts/api-reports.ts', 'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
-      'packages/abuddy-ears/etc', 'packages/abuddy-sdk/etc', 'packages/abuddy-ui/etc',
-      'packages/abuddy-ears/tsconfig.api-extractor.json', 'packages/abuddy-sdk/tsconfig.api-extractor.json',
-      'packages/abuddy-ui/tsconfig.package.json'],
+      'packages/apack-ears/etc', 'packages/apack-sdk/etc', 'packages/apack-ui/etc',
+      'packages/apack-ears/tsconfig.api-extractor.json', 'packages/apack-sdk/tsconfig.api-extractor.json',
+      'packages/apack-ui/tsconfig.package.json'],
     // A report is a function of the declarations a package built. The compiled output beside them is what
     // `declaration: true` emits past them, and no report has ever read one
     excludeSuffixes: ['.js', '.mjs', '.cjs', '.js.map', '.mjs.map', '.cjs.map', '.css', '.css.map'] },
@@ -1046,7 +1046,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // packs each tarball `attw` wants into a temp directory outside the repository, where `attw --pack` packed
   // it inside the tree it was checking. That cost the step a conflict with 29 of the 30 — 6s on its own of a
   // cold run, simulated over this table's declared seconds — and the recorded
-  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`
+  // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`
   { name: 'packages:check', timeout: 'quick', seconds: 6,
     // Its own script and what that reaches, as `api:check` declares its own: `packages-check-plan.ts` decides
     // which tool is asked of which tree, and `published-manifest.ts` is where `packTree` lives — so an edit to
@@ -1055,16 +1055,16 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // follows: over-declaring costs a cache hit, under-declaring is silent
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS,
       'scripts/packages-check.ts', 'scripts/lib/packages-check-plan.ts', 'scripts/lib/exit-on-epipe.ts',
-      'packages/abuddy-host/src/build/published-manifest.ts',
-      'packages/abuddy-host/src/build/source-resolution.ts',
-      'packages/abuddy-host/src/replace-dir.ts'] },
+      'packages/apack-host/src/build/published-manifest.ts',
+      'packages/apack-host/src/build/source-resolution.ts',
+      'packages/apack-host/src/replace-dir.ts'] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
   { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
-    // Its sources and its manifest, not its tests: `abuddy build` never reads those
+    // Its sources and its manifest, not its tests: `apack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
-    // `@abuddy/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
+    // `@apack/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
     // bundle does decides what this step writes.
     //
     // `etc` is the committed facade report, which the build reads to warn when the bundle it has just
@@ -1097,18 +1097,18 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * **No `forceArgs`, though `generateEntries` keeps a cache of its own** (`.inputs-hash`) that `--all`
    * cannot reach: a skip there cannot make this step a no-op, because the re-bundle and the comparison run
    * either way. The same reasoning `test:external-pack:contract` carries below, and it has to be written
-   * down — that cache lives in `@abuddy/cli` rather than under `scripts/`, which is where `chain-table`'s
+   * down — that cache lives in `@apack/cli` rather than under `scripts/`, which is where `chain-table`'s
    * stamp-reading derivation looks, so nothing would report its absence.
    */
   { name: 'facade:check', timeout: 'quick', seconds: 7, inputs: PACK_DERIVED_READS },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
-  // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
+  // The third place in this chain with a cache inside a cached step, and the one that is benign: `apack
   // build` skips `generate-entries` when its `.inputs-hash` matches. It takes no `forceArgs` because a skip
   // there cannot make the step a no-op — the script runs four commands per fixture (`validate`, `build`,
   // `tsc --noEmit`, `test --contract`) and only the second caches anything, so the step still validates,
   // typechecks and runs the harness specs however that hash reads. That is the whole reason, and it is the
-  // condition to re-check: were this step's work ever to become `abuddy build` alone, or were that skip to
+  // condition to re-check: were this step's work ever to become `apack build` alone, or were that skip to
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
   //
@@ -1157,7 +1157,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
-    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
+    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apack/testing` resolves to its
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
     keepsOnFailure: FIXTURE_TEST_OUTPUT,
@@ -1204,7 +1204,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
     keepsOnFailure: ['tests/results'],
-    // The published trees, because the fixture every spec imports resolves `@abuddy/testing`'s built bundle
+    // The published trees, because the fixture every spec imports resolves `@apack/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
     // the step is never cached, so it buys the ordering and costs no precision
@@ -1215,7 +1215,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    *
    * The author half hands over through `tests/authoring-handoff`, its output and the app half's input, so
    * the edge derives like any other. The work dir that names is **outside** the checkout deliberately — a
-   * pack built inside it would resolve `@abuddy/*` by walking up to the workspace `node_modules`, which is
+   * pack built inside it would resolve `@apack/*` by walking up to the workspace `node_modules`, which is
    * what the check exists to disprove — so the handoff carries a path and the archive's digest instead.
    *
    * Neither half deletes that dir: it is the author half's declared output, and a step whose output is gone

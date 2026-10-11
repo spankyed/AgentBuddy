@@ -2,7 +2,7 @@
 // libraryCommands, so written documents get shortCodes and display order, and collections nest with
 // PARENT_OF and hold documents with contains, like rows created in the app. Rows match by name
 // within their folder, as the library itself names them.
-import type { ContentWriter, ContentItem } from '@abuddy/sdk/content';
+import type { ContentWriter, ContentItem } from '@apack/sdk/content';
 import { EARS, findWhere, qx } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import type { ContentSection } from '#features/library/be/types.ts';

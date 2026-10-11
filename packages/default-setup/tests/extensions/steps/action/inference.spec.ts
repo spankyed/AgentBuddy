@@ -1,8 +1,8 @@
 // Actions run sandboxed and can't import `ai`, yet reach all of services.inference: output as data, tools as
 // plain objects (ai's tool() returns its argument) and stopWhen as a function
 import { describe, expect, it } from 'vitest';
-import { mockInference } from '@abuddy/testing/harness';
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import { mockInference } from '@apack/testing/harness';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
 import { services } from '#generated/services.ts';
 import { handler } from '#extensions/steps/action/runtime.ts';
 

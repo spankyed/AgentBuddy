@@ -2,8 +2,8 @@
 //
 // A leaf: it imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is
 // what lets codegen read the contract without resolving the machine — whose own imports cycle back through
-// `#generated/events`. `abuddy.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@abuddy/sdk/fe'
+// `#generated/events`. `apack.json` names it at `features[].plugin.contract`.
+import type { NavHistory, PluginInbox } from '@apack/sdk/fe'
 import type { NoteDTO } from '#generated/types.ts'
 
 export interface NotesContext {

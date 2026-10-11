@@ -43,9 +43,9 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - delete or loosen a test to make a number move.
 - change `moduleResolution` from `bundler`, in any pack or in the scaffold. The spikes below rest on it.
@@ -79,7 +79,7 @@ Which is why it cannot be an alias map and needs a resolver plugin everywhere.
 | `packages/renderer/vite.config.ts:49` | a Rollup `resolveId` hook that finds the importer's pack |
 | `packages/api/tsup.config.ts:79` | an esbuild plugin, `resolve-at-aliases`, doing the same thing again |
 | `packages/default-setup/vitest.config.ts` | `vite-tsconfig-paths` |
-| `abuddy-cli/src/build/tsconfig-aliases.ts` + `makeAliasPlugin` | reads the pack's tsconfig itself |
+| `apack-cli/src/build/tsconfig-aliases.ts` + `makeAliasPlugin` | reads the pack's tsconfig itself |
 
 That is the direct cause of a day's worth of defects: the fourth had two copies that disagreed, each having
 missed a fix the other received (`c9033ebd7`), and the FE/BE asymmetry and the `vite-tsconfig-paths`
@@ -127,7 +127,7 @@ Three things follow, and none of them was obvious:
    bundler all need no replacement.
 2. **esbuild needs the extension supplied**, as Node's resolver does. So the api's plugin is *replaced* by a
    smaller one rather than deleted — and that code already exists, correct and specced, as
-   `resolveWithExtensions` in `abuddy-cli/src/build/subpath-imports.ts` (`0ce94ab27`).
+   `resolveWithExtensions` in `apack-cli/src/build/subpath-imports.ts` (`0ce94ab27`).
 3. **The tsconfig `paths` mirror is not redundant.** Under `bundler` resolution `tsc` will not resolve `#`
    from `package.json` `imports` alone; the scaffold's comment at `init.ts:73` says exactly this and is
    right. Two declarations of one mapping stay, in every pack, by necessity.
@@ -145,8 +145,8 @@ Final.
 3. **The tsconfig `paths` mirror stays**, in default-setup and in the scaffold, because `tsc` under `bundler`
    requires it (spiked). A pack therefore declares each mapping twice, and the scaffold's comment explaining
    why is kept and pointed at from `default-setup/CLAUDE.md`.
-4. **`resolveWithExtensions` moves to `@abuddy/host/build/`**, because `packages/api` does not depend on
-   `@abuddy/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
+4. **`resolveWithExtensions` moves to `@apack/host/build/`**, because `packages/api` does not depend on
+   `@apack/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
    anywhere. The api's `resolve-at-aliases` plugin is replaced by a `#`-extension plugin over it, and the
    CLI's BE bundler calls the same function.
 
@@ -168,7 +168,7 @@ Final.
    have left `#generated` inconsistent unless that folded in too, re-renaming the 550 Phase 1 had just moved.
 
 2. **Drop the CLI's tsconfig-alias reader.** `#` becomes the only supported way a pack names its own modules,
-   and `abuddy-cli/src/build/tsconfig-aliases.ts`, `makeAliasPlugin` and the spec's seven cases go with it —
+   and `apack-cli/src/build/tsconfig-aliases.ts`, `makeAliasPlugin` and the spec's seven cases go with it —
    about ninety lines. Keeping them would keep a mechanism nothing in the repo exercises, which is exactly how
    its two copies drifted apart unnoticed until 2026-09-26. The cost is real and accepted: a pack that
    declares `compilerOptions.paths` of its own gets no bundler support for it.
@@ -201,7 +201,7 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 
 Delete the `@/` branch from `packages/renderer/vite.config.ts`, and `vite-tsconfig-paths` from
 `packages/default-setup/vitest.config.ts` (with its devDependency). Move `resolveWithExtensions` to
-`@abuddy/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension
+`@apack/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension
 plugin over it, and point the CLI's BE bundler at the same function. Act on Open decision 2 for the CLI's
 alias reader.
 
@@ -258,7 +258,7 @@ significant — measure `npm run build:app` before and after rather than claimin
 | 5 — the numbers | **done** | below |
 
 **832 specifiers across 416 files**, and every suite's counts unchanged throughout: default-setup 87 files /
-720 tests, `@abuddy/cli` 37 / 305 and 15 / 187, `@abuddy/host` 77 / 697, repo-checks 17 / 227, the fixture
+720 tests, `@apack/cli` 37 / 305 and 15 / 187, `@apack/host` 77 / 697, repo-checks 17 / 227, the fixture
 pack 10 / 32, E2E 21, `test:packaged-authoring` green.
 
 ### What went, and what replaced it
@@ -270,12 +270,12 @@ Four implementations of one idea became zero, because the idea itself was remove
 - `packages/api/tsup.config.ts` — `resolve-at-aliases` keeps the API's own `@/` and loses its pack branch.
 - `packages/default-setup/vitest.config.ts` — `vite-tsconfig-paths` gone; the config is one call and nothing
   else, Vite resolving `#` from the pack's own `package.json` unaided.
-- `abuddy-cli/src/build/tsconfig-aliases.ts` (55 lines), `makeAliasPlugin` and the spec's 7 cases (78 lines)
+- `apack-cli/src/build/tsconfig-aliases.ts` (55 lines), `makeAliasPlugin` and the spec's 7 cases (78 lines)
   — deleted per Open decision 2.
 
 What a pack needs instead is `#` from its own `package.json` `imports`, plus one small thing esbuild will not
-do: supply the extension. That lives in `@abuddy/host/build/subpath-imports`, shared by `abuddy build`'s
-backend bundle and the API's, because `packages/api` does not depend on `@abuddy/cli` and both depend on host.
+do: supply the extension. That lives in `@apack/host/build/subpath-imports`, shared by `apack build`'s
+backend bundle and the API's, because `packages/api` does not depend on `@apack/cli` and both depend on host.
 
 ### Corrections to the Decisions
 
@@ -283,7 +283,7 @@ backend bundle and the API's, because `packages/api` does not depend on `@abuddy
   build` said so: the API's tsup could not resolve `#generated/services`. esbuild finds the mapping and then
   refuses the path, needing the extension — which this goal's own spike table already recorded. What hid it is
   that the five `#generated` imports the pack already had were all under `src/content/flows/`, which
-  `abuddy build` compiles and the API never sees, so the claim rested on files that could not have tested it.
+  `apack build` compiles and the API never sees, so the claim rested on files that could not have tested it.
   Decision 4 moved forward from Phase 3 into Phase 1 as a result; **if a phase's premise is "no config
   change", name the evidence for it, because five files in the wrong directory looked like evidence.**
 - **Decision 4's move became a deletion in part.** It said `resolveWithExtensions` moves to host so the API
@@ -297,7 +297,7 @@ per-import `resolveId`/`onResolve` callbacks, and their cost is below the noise 
 
 **A valid "before" was not cheaply obtainable, and the attempt is worth recording.** Restoring the two
 configs while the code uses `#` gives a build that *fails* — 292 errors — so the 24.5s it took is a
-measurement of nothing; a worktree at the old commit resolves `@abuddy/*` back through the shared
+measurement of nothing; a worktree at the old commit resolves `@apack/*` back through the shared
 `node_modules` to this checkout's migrated source, so that is no better. The configs and the specifiers are
 now coupled, which is the point of the change and also what makes them hard to time apart. Reporting the
 failed run as a "before" would have been the easy error.
@@ -319,5 +319,5 @@ failed run as a "before" would have been the easy error.
 
 [`goal-pack-imports-name-the-file.md`](goal-pack-imports-name-the-file.md) is now the one thing
 between the repo and needing no resolver at all: with extensions written, esbuild needs no help and
-`@abuddy/host/build/subpath-imports` can be deleted too. Its spike table and this goal's are the same
+`@apack/host/build/subpath-imports` can be deleted too. Its spike table and this goal's are the same
 measurements.

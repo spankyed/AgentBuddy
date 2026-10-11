@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Button from '@abuddy/ui/design/button'
+import Button from '@apack/ui/design/button'
 
 interface Props {
   buttons: ('submit' | 'cancel')[]

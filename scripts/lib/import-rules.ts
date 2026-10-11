@@ -7,7 +7,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { formatPackWide, PACK_RULES, packPlaces, type PackRuleKey } from '../../packages/abuddy-cli/src/build/pack-rules.ts';
+import { formatPackWide, PACK_RULES, packPlaces, type PackRuleKey } from '../../packages/apack-cli/src/build/pack-rules.ts';
 import { packRootOf, repoRelative, repoRoot } from './import-populations.ts';
 
 /** The pack rule `key` names. One lookup, because a key naming no rule is the same mistake wherever it is made */
@@ -21,9 +21,9 @@ function packRuleFor(key: PackRuleKey) {
 const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
 
 /**
- * A pack rule from `@abuddy/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
+ * A pack rule from `@apack/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
  *
- * The rule is the same rule wherever it runs — `abuddy build`, `abuddy validate` and `abuddy test` run these
+ * The rule is the same rule wherever it runs — `apack build`, `apack validate` and `apack test` run these
  * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
  * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
  * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
@@ -32,7 +32,7 @@ const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
  * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
  * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
  * `--rule <id>` runs one; `--list` names them all, says which an external pack is held to as well (a rule with
- * a `packRule` is one `abuddy validate`, `build` and `test` run), and prints what doing without each of the
+ * a `packRule` is one `apack validate`, `build` and `test` run), and prints what doing without each of the
  * rest costs a pack — answering from the entries rather than from a table in a doc, which is what a survey of
  * this taken by hand went stale as. A rule that stood down would make a per-rule run's
  * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
@@ -96,7 +96,7 @@ interface RuleShape {
    * Data rather than a default parameter, because two checks need to read it: the sweeps that assert one rule owns
    * each offence derive who takes part from it — a rule that reads a pack's `tests` is swept there, and one that
    * reads `packages/*` minus the packs takes part in neither — and a population is otherwise unassertable, which is
-   * how `host-imports` came to read a pack's `src` alone while `abuddy test` ran it over a pack's tests.
+   * how `host-imports` came to read a pack's `src` alone while `apack test` ran it over a pack's tests.
    *
    * Absent for the six rules whose subject is not a dir list: the layer table, `LMDB_RULES`, the shared-list files,
    * the repo's configs, a package's own `scripts/` and the checkout itself.
@@ -105,7 +105,7 @@ interface RuleShape {
 }
 
 /**
- * A rule, which says who owns it: `@abuddy/cli`, or this repo.
+ * A rule, which says who owns it: `@apack/cli`, or this repo.
  *
  * A union rather than two optional fields, so a rule that says both or neither does not compile. Two pack-subject
  * rules sat in this script for months while an external pack was held to neither, and the reasons they had not
@@ -115,7 +115,7 @@ interface RuleShape {
 export type PackParity =
   /** The pack-facing half is a named pack rule, so an external pack is held to the same thing by another name */
   | { readonly kind: 'covered'; readonly by: PackRuleKey; readonly note: string }
-  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@abuddy/*` package, and so on */
+  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@apack/*` package, and so on */
   | { readonly kind: 'inapplicable'; readonly note: string }
   /**
    * A pack *can* commit it and nothing outside this repo refuses it.
@@ -134,12 +134,12 @@ export type ImportRule = RuleShape & (
 );
 
 /**
- * A rule `@abuddy/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
+ * A rule `@apack/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
  * points. `find` takes the rule's own population and `overPaths` the paths a caller named, both through the same
  * function.
  *
  * The sentence comes from `PACK_RULES` rather than being written again here, because a second copy drifts: for a
- * while `host-imports` printed one sentence from `abuddy validate` and a different one from `check:specifiers`,
+ * while `host-imports` printed one sentence from `apack validate` and a different one from `check:specifiers`,
  * for the same offence in the same file.
  */
 export const backed = <Id extends string>(

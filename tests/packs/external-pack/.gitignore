@@ -1,6 +1,6 @@
 node_modules/
 dist/
-.abuddy/
+.apack/
 src/__generated__/
 *.tgz
 
@@ -8,7 +8,7 @@ src/__generated__/
 tests/screenshots/
 tests/results/
 
-# `abuddy drive` scaffolds this on first use, which verifying the command against this fixture
+# `apack drive` scaffolds this on first use, which verifying the command against this fixture
 # does. Untracked files under a declared chain input fail `chain-inputs`' gitignored-input check,
 # so a verification run would otherwise have to be cleaned up by hand afterwards.
 drive/

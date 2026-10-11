@@ -7,14 +7,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT, repoRelative } from '@apack/host/build/packages-built';
 
 /** The options `scripts/tsconfig.json` compiles these scripts with, so the walk resolves as they do */
 const RESOLUTION: ts.CompilerOptions = {
   module: ts.ModuleKind.NodeNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
-  // How a repo script reaches `@abuddy/host/build/…` at all: the condition names each package's source
-  customConditions: ['@abuddy/source'],
+  // How a repo script reaches `@apack/host/build/…` at all: the condition names each package's source
+  customConditions: ['@apack/source'],
   allowImportingTsExtensions: true,
 };
 

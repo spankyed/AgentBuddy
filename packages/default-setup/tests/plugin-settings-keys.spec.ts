@@ -3,8 +3,8 @@
 // parsed once where it arrives, and one that isn't an installed feature's with settings throws, naming the ref it
 // likely meant, rather than writing a slice no reader looks at.
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
-import type { FeatureRef } from '@abuddy/sdk/ids';
+import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@apack/testing/harness';
+import type { FeatureRef } from '@apack/sdk/ids';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 

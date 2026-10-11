@@ -1,5 +1,5 @@
-import type { PluginDefinition } from '@abuddy/sdk/fe';
-import { createSettingsMachine } from '@abuddy/host/fe';
+import type { PluginDefinition } from '@apack/sdk/fe';
+import { createSettingsMachine } from '@apack/host/fe';
 import { Settings } from 'lucide-vue-next';
 import canvas from './canvas/index.vue';
 
@@ -20,7 +20,7 @@ export const settingsPlugin: PluginDefinition = {
       // Not `window.location.reload()`, which was here and cannot work: the app blocks renderer-initiated
       // navigation (`BlockNotAllowdOrigins`, packages/main), so that call returns having done nothing and
       // leaves the user looking at the data from before the reset, believing the app restarted.
-      else report('Restart AgentBuddy to finish: this window could not restart itself.');
+      else report('Restart apack to finish: this window could not restart itself.');
     },
     report,
   }),

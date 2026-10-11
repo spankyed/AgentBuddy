@@ -1,7 +1,7 @@
 /**
  * `claude task` — create/list/get/update scheduled or ad-hoc tasks.
  *
- * This is a CLI-owned ticketing system, not AgentBuddy's own task store.
+ * This is a CLI-owned ticketing system, not apack's own task store.
  * Use it to schedule work on the CLI side (e.g. `--later` agentic runs).
  */
 

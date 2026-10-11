@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@apack/sdk/fe'
 import type { CodeState, QuickOpenResult } from '#features/code/fe/state.ts'
 import { fuzzySearch, highlightMatches } from '#features/code/fe/utils/fuzzy-search.ts'
 import { getRecencyScore } from '#features/code/fe/utils/recent-files.ts'

@@ -1,7 +1,7 @@
 // The bus tells every system when a client connects; a system that also listened for connections itself would send
 // its plugin the startup data twice
 import { expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 
 it('sends the browser plugin its saved tabs once per connection', async () => {
   const app = await startApp({ systems: ['browser'] })

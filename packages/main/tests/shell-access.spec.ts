@@ -35,7 +35,7 @@ describe('a link the user follows', () => {
   it.each([
     ['another scheme, which reaches another program', 'mailto:someone@example.com'],
     ['a file, which the browser is not for', 'file:///etc/passwd'],
-    ['a custom scheme a handler would take', 'abuddy://install?pack=x'],
+    ['a custom scheme a handler would take', 'apack://install?pack=x'],
     ['credentials, which hide the host it opens', 'https://apple.com@evil.example/keys'],
     ['what is not a URL at all', 'javascript:alert(1)//'],
   ])('refuses %s', async (_, url) => {

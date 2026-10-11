@@ -23,8 +23,8 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
-import { useShell } from '@abuddy/sdk/fe';
-import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
+import { useShell } from '@apack/sdk/fe';
+import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';
 // The app's Settings view shows this too; a copy here rather than an import across the boundary
 const DISCORD_URL = 'https://discord.gg/JvbHRXcYp6';
 
@@ -32,11 +32,11 @@ const shell = useShell();
 
 const letterContent = `Hello Testers,
 
-Welcome to AgentBuddy! First off, thank you for being here early. Your feedback is invaluable as I work to make AgentBuddy the best AI-powered tool for developers.
+Welcome to apack! First off, thank you for being here early. Your feedback is invaluable as I work to make apack the best AI-powered tool for developers.
 
-AgentBuddy isn't a project I started last month—it's an idea I've been iterating on, in different forms, since 2017. In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
+apack isn't a project I started last month—it's an idea I've been iterating on, in different forms, since 2017. In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
 
-AgentBuddy is my attempt to flip that on its head.
+apack is my attempt to flip that on its head.
 
 It's built to be **local-first**, transparent, and adaptable—something that works *with* you, not behind a curtain. I believe you should be able to understand what your tools are doing, customize them, and trust them.
 

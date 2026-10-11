@@ -5,7 +5,7 @@
  * prompt never pollutes the active session's JSONL history.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
 
 export const meta: ActionMeta = {

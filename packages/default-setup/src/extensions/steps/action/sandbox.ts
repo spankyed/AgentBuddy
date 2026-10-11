@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createLogger } from '@abuddy/sdk/logger';
-import { createActionEmitter } from '@abuddy/sdk/services';
+import { createLogger } from '@apack/sdk/logger';
+import { createActionEmitter } from '@apack/sdk/services';
 import { packId } from '#generated/ref.ts';
 
 export interface ActionRun {

@@ -1,4 +1,4 @@
-import { promptRepository } from '@abuddy/sdk/repositories';
+import { promptRepository } from '@apack/sdk/repositories';
 
 /**
  * Prompts Repository: the SDK's prompt repository (`promptRepository`), which owns their reads and writes, as the

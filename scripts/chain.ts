@@ -14,15 +14,15 @@
 //
 // The steps are parallelisable and the hard part was never the ordering: after `packages:ensure` and
 // `build`, nothing writes what another step reads, each app launch takes its own port (`getPort` in main's
-// `ApiServer`) and its own data dir (`mkdtemp` in `@abuddy/testing`), and `ensurePackagesBuilt` returns
+// `ApiServer`) and its own data dir (`mkdtemp` in `@apack/testing`), and `ensurePackagesBuilt` returns
 // before taking the build lock when nothing is stale. One step did not admit to its shared state —
 // `test:packaged-authoring` runs `npm run packages:build` first (`tests/scripts/test-packaged-authoring.sh`)
-// and so rewrites the `dist/` every other step reads — and `ABUDDY_PACKAGES_PREBUILT=1` reports that now
+// and so rewrites the `dist/` every other step reads — and `APACK_PACKAGES_PREBUILT=1` reports that now
 // rather than racing it.
 //
 // **The constraint is cores.** Measured 2026-09-24 over seven steps, three at a time cut wall time from
 // 348s to 168s by doing 268s of work, and a variant that took the whole machine for one step did 567s of
-// it: `@abuddy/cli` went from 56s to 118s and began reporting errors it does not report alone. Spending
+// it: `@apack/cli` went from 56s to 118s and began reporting errors it does not report alone. Spending
 // the machine is the whole question, and both runs spent more of it than it had.
 //
 // **So the unit is cores, not steps**, which took two corrections to see. The first premise was "every step
@@ -38,13 +38,13 @@
 // the way to a shorter chain is a cheaper step.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@abuddy/host/build/packages-built';
+import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
-import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
+import type { ExclusiveLock } from '@apack/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { asCount, idleNow, parseFlags } from './lib/measure.ts';
@@ -349,7 +349,7 @@ async function main(): Promise<void> {
   const e2e = args.flags.has('e2e');
   // A step whose inputs moved while it ran verified nothing, which is always reported; this decides whether
   // the chain fails on it. Opt-in because the honest answer can be a long list — `api:check` rebuilding
-  // `@abuddy/testing` mid-chain once left twenty passed steps stale, every one of them correctly named
+  // `@apack/testing` mid-chain once left twenty passed steps stale, every one of them correctly named
   const strict = args.flags.has('strict');
   let cached = 0;
 

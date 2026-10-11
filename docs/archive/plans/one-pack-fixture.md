@@ -3,11 +3,11 @@
 > removed**, and **Decision 1 was reversed**. The text after this block is the plan as written, which means its
 > headline number, its home for the fixture and its insistence that Phase 4 was not optional are all wrong.
 >
-> **`packFixture` lives in `@abuddy/sdk` after all, as the source-only export
-> `@abuddy/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
-> weighed this one, because it treated *"in `@abuddy/sdk`"* as synonymous with *"in the published, reviewed
-> surface"*. In this repo that is false: an export whose only branch is `@abuddy/source` is dropped from the
-> published manifest outright (`publishedManifest`, `@abuddy/host/build/published-manifest`), so nothing outside
+> **`packFixture` lives in `@apack/sdk` after all, as the source-only export
+> `@apack/sdk/testing/pack-fixture`.** Decision 1 weighed four homes and rejected them all, but it never
+> weighed this one, because it treated *"in `@apack/sdk`"* as synonymous with *"in the published, reviewed
+> surface"*. In this repo that is false: an export whose only branch is `@apack/source` is dropped from the
+> published manifest outright (`publishedManifest`, `@apack/host/build/published-manifest`), so nothing outside
 > this repo can resolve the specifier and no `etc/*.api.md` reports it, which is what takes it out of
 > `api:check`'s review. `./runtime/internals` had been that shape for months. A pack cannot resolve it either —
 > a pack's config may not declare that condition, which `check:specifiers` enforces, where the old home rested
@@ -26,18 +26,18 @@
 > this one was seven files and six registration points for one function.
 >
 > **98 sites write a pack manifest, not 101, across 55 files — and the count was never the work.** Of the 98,
-> **54** are in `@abuddy/cli` and `@app/repo-checks`, and of those only **28** are a manifest
+> **54** are in `@apack/cli` and `@app/repo-checks`, and of those only **28** are a manifest
 > written inline for a tree of their own. **11 of them, in 8 files, became `packFixture`;** the rest are four
-> shapes left alone with a reason each, listed in `packages/abuddy-sdk/CLAUDE.md`: a `'{}'` discovery
+> shapes left alone with a reason each, listed in `packages/apack-sdk/CLAUDE.md`: a `'{}'` discovery
 > marker, a patch of a pack something else scaffolded, a manifest that *is* the subject with no tree around
-> it, and the installed shape, which is `@abuddy/host`'s artifact. The plan's **Unverified** item — *"that
+> it, and the installed shape, which is `@apack/host`'s artifact. The plan's **Unverified** item — *"that
 > every one of the sites wants the builder"* — resolves to no, and the four shapes are the answer.
 >
 > **The claim that eligibility is a layer question was wrong, and the correction is the finding worth
 > keeping.** This block first said the other 44 sites are hand-written because their packages may not import an
 > `@app/*` package — which is circular, since that followed from the home. Asked properly, with the real
-> detector over every host-layer package: **23 findings, 20 in `@abuddy/host` and 3 in `packages/api`, and every
-> one of them deserves to be hand-written.** They write a *data dir's* installed pack (`packs/<id>/abuddy.json`,
+> detector over every host-layer package: **23 findings, 20 in `@apack/host` and 3 in `packages/api`, and every
+> one of them deserves to be hand-written.** They write a *data dir's* installed pack (`packs/<id>/apack.json`,
 > whose subject is discovery, staging or an update check) or a built built-in (`dist/runtime/index.cjs` and no
 > source at all). A fixture's two-feature source tree is the wrong artifact for all 23, so the population is
 > narrow because of what those specs are, not because of where the fixture lives — and that is what keeps the
@@ -96,17 +96,17 @@
 
 ## Problem
 
-**46 files write a pack manifest as a string literal, across 101 sites** — in `@abuddy/cli`'s suite,
-`@abuddy/host`'s and `@abuddy/sdk`'s. Nothing holds one of them to the manifest schema, so a renamed key is 101
+**46 files write a pack manifest as a string literal, across 101 sites** — in `@apack/cli`'s suite,
+`@apack/host`'s and `@apack/sdk`'s. Nothing holds one of them to the manifest schema, so a renamed key is 101
 edits that no typecheck finds, and a new pack rule cannot be exercised from a fixture every spec shares.
 
 Beside that, the primitive that would fix it is in the wrong package. `packFixture`
-(`packages/abuddy-sdk/src/testing/pack-fixture.ts`, 62 lines, 23 call sites) sits in **`@abuddy/sdk`'s reviewed
+(`packages/apack-sdk/src/testing/pack-fixture.ts`, 62 lines, 23 call sites) sits in **`@apack/sdk`'s reviewed
 published surface** — `etc/testing.api.md:140`, governed by `api:check` and `api:stamp`, shipped in the
 tarball — for something no pack author has a use for: it materialises a pack directory to test *pack tooling*.
 Its own comment names the condition for moving: *"the first one that does is the signal to move this and
 `population` to an `@app/*` package, rather than to write a second fixture."* Two packages consume it now
-(`@app/repo-checks`, `@abuddy/cli`), so the condition is met twice over.
+(`@app/repo-checks`, `@apack/cli`), so the condition is met twice over.
 
 ## What the survey found, and what it could not settle
 
@@ -134,17 +134,17 @@ cache ("expect few hits").
 1. **A new private `@app/pack-fixtures` workspace**, and `packFixture` moves there. Re-checked 2026-10-02 and
    every premise holds.
 
-   **Not `@abuddy/testing`**: its three exports still point at `./dist/package/dist/*.js` with **no source
+   **Not `@apack/testing`**: its three exports still point at `./dist/package/dist/*.js` with **no source
    branch** — deliberately, so a pack's run sees what a pack author sees — so every fixture edit would need
    `packages:build` first, and a fixture library with that loop gets worked around within a month.
 
-   **Not `@app/publish-checks`**, though it is cheaper (`@abuddy/cli` already depends on it): its subject is
+   **Not `@app/publish-checks`**, though it is cheaper (`@apack/cli` already depends on it): its subject is
    what we publish, and the published rung packs `publishedTreeDirs()` from *this* checkout
    (`installPublishedPackages`, still there). A general fixture home there makes it two packages in one, which
-   is what `@app/repo-checks` was extracted from `@abuddy/cli` to undo. `@app/repo-checks` is out for the
-   mirror reason, and because `@abuddy/cli` would then depend on a checks package.
+   is what `@app/repo-checks` was extracted from `@apack/cli` to undo. `@app/repo-checks` is out for the
+   mirror reason, and because `@apack/cli` would then depend on a checks package.
 
-2. **`population` stays in `@abuddy/sdk/testing`.** `@app/default-setup`'s tests use it (verified: one file)
+2. **`population` stays in `@apack/sdk/testing`.** `@app/default-setup`'s tests use it (verified: one file)
    and a pack may not import an `@app/*` package. Only `packFixture` moves.
 
 3. **Fidelity is a parameter, not a ladder.** `built` and `modules: 'workspace' | 'published'` are what
@@ -156,7 +156,7 @@ cache ("expect few hits").
    runs a pack's code; this materialises a *directory*. Different axes, and conflating them is the actual
    mistake. One cross-reference from each side.
 
-4. **A `beforeBuild` hook, because the archetype needs one.** `facade-typing` runs `abuddy add step` and
+4. **A `beforeBuild` hook, because the archetype needs one.** `facade-typing` runs `apack add step` and
    rewrites the scaffolded types between writing files and building. A `materialise({ files })` that cannot
    express that cannot replace the call site it exists for.
 
@@ -199,7 +199,7 @@ break what it asserts and watch the converted version fail. Porting a fixture is
 stops asserting — replacing a spawned `tsc` with an in-process one hit this once already.
 
 **Done when:** `pack-builds.ts` keeps only what is not fixture materialisation (`callCli`, `typecheckPack`,
-`run`), and no spec writes `abuddy.json` by hand.
+`run`), and no spec writes `apack.json` by hand.
 
 ### Phase 4 — the guardrail, which is what makes this a floor
 
@@ -251,7 +251,7 @@ that still exists.
 - **A content-keyed build memo.** Measured: a fixture build is 1.4s warm and the fixtures are mostly unique.
   Caching was a side effect, not a reason, and the plan that proposed it predicted few hits.
 - **A content-keyed build cache as the justification.** Same measurement, stated before any of this was built.
-- **`@abuddy/testing` as the home.** Its exports resolve `dist` with no source branch, so every fixture edit
+- **`@apack/testing` as the home.** Its exports resolve `dist` with no source branch, so every fixture edit
   would need a rebuild; and the published rung needs a checkout, which an external consumer lacks.
 - **`@app/publish-checks` and `@app/repo-checks` as the home.** Cheaper by one edge each, rejected on cohesion.
 - **Folding `setupPackTests` in as a rung.** It takes a registration, not a directory. Different axis.

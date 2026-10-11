@@ -23,8 +23,8 @@
 >   exits 3 saying *"No spec covers packages/default-setup/src/content/…"*, which is **false**: `tests/content/`
 >   covers it across the build edge. Phase 1 turned a silent hole into a confident wrong answer, which is a
 >   better failure and still a wrong one. Phase 2 is unchanged and is what fixes it.
-> - **`packages/<pack>/abuddy.json` is the opposite case** and neither phase noticed: `.json` is not a source
->   extension, so it carries no claim, and the target prints *"every spec covering abuddy.json"*, runs nothing
+> - **`packages/<pack>/apack.json` is the opposite case** and neither phase noticed: `.json` is not a source
+>   extension, so it carries no claim, and the target prints *"every spec covering apack.json"*, runs nothing
 >   and exits **0**. Decision 2's extension test is right — it is what keeps a doc target honest — so Phase 2
 >   owns this one too, and says so now.
 > - **Decision 6 mislabels a tier, and did so when it was written.** It calls `test:unit:pack` tier 2; it is
@@ -54,7 +54,7 @@
 Implement docs/goals/goal-spec-earns-its-pass.md on the current branch, at or after af694db4f — the base its
 Background was re-surveyed at. Phase 1 is already done; start at Phase 2.
 Before Phase 2, confirm the base, with CONTENT=packages/default-setup/src/content/actions/claude-code/answer-question.ts:
-`npm run spec -- $CONTENT` exits 3 claiming no spec covers it; `npm run spec -- packages/default-setup/abuddy.json`
+`npm run spec -- $CONTENT` exits 3 claiming no spec covers it; `npm run spec -- packages/default-setup/apack.json`
 exits 0 having run nothing; scripts/lib/spec-plan.ts exports planTargets, verdictOf and exitCodeFor, and Run
 carries claimsCoverageOf. If any is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -73,7 +73,7 @@ Finished when:
   mutation-checked. Phase 1 is done (`249c0a8e8`) and is not to be re-implemented.
 - No target naming a file that exists can exit 0 having run no spec. A source file nothing covers says
   so, names what would cover it where that is known, and exits non-zero.
-- The two edges no module graph can see — a pack's content sources to its goldens, and abuddy.json to the
+- The two edges no module graph can see — a pack's content sources to its goldens, and apack.json to the
   generated tree — are declared routes in scripts/lib/spec-plan.ts, asserted by repo-checks'
   spec-plan.spec.ts, and named in the root CLAUDE.md beside the other spec commands.
 - A failing run stops the plan instead of paying for the runs behind it.
@@ -112,7 +112,7 @@ Never:
 
 [`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md) made `npm run spec` route a
 source file through the module graph: one root `vitest related` over every host project, so editing
-`@abuddy/sdk` runs the 104 specs that cover it rather than the one package it lives in.
+`@apack/sdk` runs the 104 specs that cover it rather than the one package it lives in.
 [`goal-pack-test-config.md`](goal-pack-test-config.md) closed the pack side, so a pack's own
 source walks the pack's graph instead of running its whole 89-spec suite. `scripts/lib/spec-plan.ts` is the
 routing as data and `packages/repo-checks/tests/spec-plan.spec.ts` asserts it in 33 cases.
@@ -157,10 +157,10 @@ It is not one file. Collected through vitest's node API against the root config 
 | `packages/api/src/server.ts` | **0** | **0** |
 | `packages/main/src/index.ts` | **0** | **0** |
 | `packages/renderer/src/views/settings/plugin.ts` | **0** | **0** |
-| `packages/abuddy-ui/src/design/button.ts` | **0** | **0** |
+| `packages/apack-ui/src/design/button.ts` | **0** | **0** |
 | `packages/main/src/app-context.ts` | 2 | 2 |
-| `packages/abuddy-host/src/services/index.ts` | 16 | 15 |
-| `packages/abuddy-sdk/src/fe/settings.ts` | 19 | 19 |
+| `packages/apack-host/src/services/index.ts` | 16 | 15 |
+| `packages/apack-sdk/src/fe/settings.ts` | 19 | 19 |
 
 Five of eight sampled files — composition roots and entry modules, which is where an uncovered edit is most
 likely and least expected — answered 0 and exited 0. **They still answer 0**, which is the point worth
@@ -196,8 +196,8 @@ Its sibling has the opposite shape and is untouched by Phase 1, because `.json` 
 (Decision 2, correctly — it is what keeps a doc target honest):
 
 ```
-$ npm run spec -- packages/default-setup/abuddy.json
-→ @app/default-setup: every spec covering abuddy.json
+$ npm run spec -- packages/default-setup/apack.json
+→ @app/default-setup: every spec covering apack.json
 $ echo $?
 0
 ```
@@ -205,9 +205,9 @@ $ echo $?
 So one edge asserts something untrue and the other still passes quietly, and Phase 2 is what closes both.
 The specs that do cover the content file are
 `packages/default-setup/tests/content/content-parity.spec.ts` and `tests/content/compiled-bodies.spec.ts`, which read
-`dist/*.content.json` — so the edge is `src` → `abuddy build` → compiled content → golden, a build edge of exactly
+`dist/*.content.json` — so the edge is `src` → `apack build` → compiled content → golden, a build edge of exactly
 the shape the archived goal closed for the `dist` seam, and nothing routes it. That goal recorded it, under
-*"What the graph still cannot see"*, along with `abuddy.json` → codegen → specs, which has the same shape: the
+*"What the graph still cannot see"*, along with `apack.json` → codegen → specs, which has the same shape: the
 generated tree is imported by specs, so a *regenerated* tree is covered, while editing the manifest alone
 reaches nothing.
 
@@ -228,15 +228,15 @@ What the record holds, re-summed from the twelve per-package files at `af694db4f
 
 | Suite | Specs | Recorded file-time | of which the integration half |
 |---|---|---|---|
-| `abuddy-cli` | 56 | 182.9s | 167.9s |
+| `apack-cli` | 56 | 182.9s | 167.9s |
 | `repo-checks` | 30 | 43.1s | 34.2s |
 | `publish-checks` | 9 | 32.6s | 30.6s |
-| `abuddy-host` | 79 | 21.7s | — |
+| `apack-host` | 79 | 21.7s | — |
 | `default-setup` | 94 | 13.4s | — |
-| `abuddy-sdk` | 59 | 13.4s | — |
+| `apack-sdk` | 59 | 13.4s | — |
 | `api` | 15 | 5.7s | — |
-| `abuddy-ears` | 9 | 2.6s | — |
-| `main`, `renderer`, `abuddy-ui`, `abuddy-testing` | 17 | 0.5s | — |
+| `apack-ears` | 9 | 2.6s | — |
+| `main`, `renderer`, `apack-ui`, `apack-testing` | 17 | 0.5s | — |
 | **total** | **368** | **315.9s** | 232.7s |
 
 369 spec files, of which 368 carry a cost and one is recorded as skipped (`default-setup`). The survey three
@@ -267,8 +267,8 @@ Collecting the answer without running it is cheap, through `createVitest({ relat
 
 | Target | Specs | Collection | re-measured `af694db4f` |
 |---|---|---|---|
-| `abuddy-sdk/src/types/sdk-entities.ts` | 104 → **108** | 5.7s cold, 1.7s warm | 2.5s first in the process |
-| `abuddy-ears/src/query.ts` | 146 → **150** | 4.6s | 1.6s |
+| `apack-sdk/src/types/sdk-entities.ts` | 104 → **108** | 5.7s cold, 1.7s warm | 2.5s first in the process |
+| `apack-ears/src/query.ts` | 146 → **150** | 4.6s | 1.6s |
 | `main/src/app-context.ts` | 2 | 1.8s | 1.6s |
 | `renderer/src/main.ts` | 0 | 2.6s | 1.6s |
 
@@ -283,14 +283,14 @@ Two items from the review that produced this doc are fixed at this commit, and a
 otherwise go looking:
 
 - **`vitest related` crashing in `@app/default-setup`** (`Failed to parse source for import analysis …
-  Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@abuddy/testing/vitest`) stubs a pack's `.vue`
+  Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@apack/testing/vitest`) stubs a pack's `.vue`
   files, so the walk no longer stops at the first SFC. That was
   [`goal-pack-test-config.md`](goal-pack-test-config.md).
 - **Two `spec` runs racing each other's package build** is gone, and this one was verified rather than read:
-  with `@abuddy/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
+  with `@apack/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
   waits on the lock, re-checks once it holds it, and returns without a duplicate build — `BuildIntent`, whose
   `freshness` arm is what `ensurePackagesBuilt` sets on the builds it spawns
-  (`packages/abuddy-host/src/build/packages-built.ts:777,856,966`). What used to fail here was a second reader
+  (`packages/apack-host/src/build/packages-built.ts:777,856,966`). What used to fail here was a second reader
   finding the same units stale and losing the lock; it now waits for the build it would have duplicated.
 
 ## Decisions
@@ -312,7 +312,7 @@ otherwise go looking:
 
 2. **Emptiness is decided from the run's own report, not by collecting first.** *(Implemented, `249c0a8e8`:
    `Run.claimsCoverageOf`, `scripts/lib/spec-count-reporter.ts`. The extension test holds — a `.md` target
-   exits 0 and the label now reads "the specs that import …, if any". Its cost is that `abuddy.json` carries
+   exits 0 and the label now reads "the specs that import …, if any". Its cost is that `apack.json` carries
    no claim either, which Background §2 records and Phase 2 owns.)* The run already knows what it
    ran; asking a second process would double the ~2s collection on every source-file target to learn
    something the first process is about to tell us. So the `related` and `--changed` runs write a JSON
@@ -340,7 +340,7 @@ otherwise go looking:
      pack's own build, which is what the root `compile` wraps; there is no `compile -w <pack>`, and the
      `packages:ensure` and `facade:check` that `compile` adds around it are already the plan's own first run
      and a separate artifact check.
-   - `packages/<pack>/abuddy.json` → that pack's whole suite, through the same build, codegen rewriting
+   - `packages/<pack>/apack.json` → that pack's whole suite, through the same build, codegen rewriting
      `src/__generated__/` being a change to what every spec in the pack imports.
 
    The routes are data in `spec-plan.ts` and derived from the pack's own layout, not a hand-written list of
@@ -395,7 +395,7 @@ otherwise go looking:
 ### Phase 1 — a zero answer is not a pass — **DONE (`249c0a8e8`, `46268f236`, `fc96b83bd`, `a4d4abca9`)**
 
 > Re-checked at `af694db4f`, every item of the Done-when below: `renderer/src/main.ts` exits 3 with the
-> message; `abuddy-sdk/src/fe/settings.ts` passes at 0; `docs/goals/README.md` exits 0 and no longer claims
+> message; `apack-sdk/src/fe/settings.ts` passes at 0; `docs/goals/README.md` exits 0 and no longer claims
 > coverage; a `-t` pattern matching no case exits 0. Kept as written, as the record of what was asked for.
 
 - Add the coverage claim to `Run` in `scripts/lib/spec-plan.ts` **on Decision 2's terms, which are the whole
@@ -414,7 +414,7 @@ otherwise go looking:
   commands.
 
 **Done when:** `npm run spec -- packages/renderer/src/main.ts` exits 3 and says no spec covers it;
-`npm run spec -- packages/abuddy-sdk/src/fe/settings.ts` still passes and exits 0; `npm run spec --
+`npm run spec -- packages/apack-sdk/src/fe/settings.ts` still passes and exits 0; `npm run spec --
 docs/goals/README.md` exits 0 and no longer claims to run every spec covering it; a change set of nothing but
 a doc exits 0; a `-t` pattern matching no case still exits 0 (it is a filter, not a claim). New cases in
 `packages/repo-checks/tests/spec-plan.spec.ts` assert which routes carry the claim and the verdict for each
@@ -424,14 +424,14 @@ the new case fails.
 ### Phase 2 — the edges no module graph can see are routes, not prose
 
 - Implement the two routes of Decision 3 in `spec-plan.ts`, derived from the pack's layout.
-- An apply-source or `abuddy.json` target prints what covers it and how (the note), and under `--full` runs it:
+- An apply-source or `apack.json` target prints what covers it and how (the note), and under `--full` runs it:
   the pack's `build` then the content specs, or the pack's suite for a manifest change.
 - Delete the corresponding sentences from `packages/default-setup/tests/content/CLAUDE.md` and the root
   `CLAUDE.md` where they describe the gap as permanent, and say what the router now does instead.
 
 **Done when:** `npm run spec -- packages/default-setup/src/content/actions/claude-code/answer-question.ts`
 names `tests/content/` and exits non-zero — it exits 3 today with a sentence that is false, so the test is the
-message, not the code; `npm run spec -- packages/default-setup/abuddy.json` names that pack's suite instead
+message, not the code; `npm run spec -- packages/default-setup/apack.json` names that pack's suite instead
 of exiting 0 having run nothing; `npm run spec:full -- <that file>`
 compiles the pack and runs the content specs, and the golden failure a deliberately edited content body produces is
 the run's failure. `spec-plan.spec.ts` partitions every pack under `packages/` into routed and unroutable.
@@ -477,7 +477,7 @@ for the flag's position, beside the `--full` one.
   prediction stale and not wrong — the fix for that is `spec-cost:update --all`, which is a separate,
   deliberate act.
 
-**Done when:** `npm run spec:dry -- packages/abuddy-sdk/src/types/sdk-entities.ts` prints that file's spec
+**Done when:** `npm run spec:dry -- packages/apack-sdk/src/types/sdk-entities.ts` prints that file's spec
 paths and their summed cost in under 8s cold, runs no test, and exits 0, **and the count equals what the
 ordinary run executes** — which is the criterion, rather than a number: it was 104 at the survey and 108 at
 the re-survey three days later, and every spec added to a covering suite moves it. `npm run spec` with no `--dry` performs no collection — asserted by the plan's shape, and the
@@ -486,10 +486,10 @@ file removed reports one unpriced spec by name rather than a smaller total.
 
 ## Deferred
 
-- **`@abuddy/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
+- **`@apack/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
   between them (132.0s of 144.1s, and the same 53%, at the survey) — the largest single cost in the repo's specs, and not a routing problem: those specs run real
   builds, and whether they can share one is the question. It belongs with
-  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@abuddy/sdk`
+  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@apack/sdk`
   (the `test:unit` halves) and say nothing about the integration half. Recorded here so the number is written
   down where it was measured; the agent implementing this goal must not start it.
 - **Tier-aware escalation**, refused with its reasoning in Decision 6 rather than deferred, so it is not
@@ -501,10 +501,10 @@ file removed reports one unpriced spec by name rather than a smaller total.
   `git status` first, and `git commit -- <paths>` naming only that phase's files — another agent commits in
   this checkout. Pushing, tagging and PRs are on request only.
 - No publishing, releases or triggered workflows; dry runs only.
-- No real data dirs (`~/Library/Application Support/abuddy*`), no broad `pkill`/`killall`; the app launches
-  only with an isolated `ABUDDY_USER_DATA_DIR`.
+- No real data dirs (`~/Library/Application Support/apack*`), no broad `pkill`/`killall`; the app launches
+  only with an isolated `APACK_USER_DATA_DIR`.
 - No bare `tsc` in `packages/preload`, no `npm install` in the example pack, no version or release metadata.
-- The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - No backward-compat shims: change the signature and migrate every in-repo caller, test, fixture and doc in
   the same change. Stored user data is the exception and moves with a migration.
 - Investigate a failing test rather than loosening it; every new route, helper and guard gets a mutation
@@ -530,7 +530,7 @@ Finished 2026-09-28 on `AS/spec-earns-pass`, four commits over the re-survey.
 | | before | after |
 |---|---|---|
 | a content source | exit 3, *"No spec covers …"* — false | exit 3, named: `@app/default-setup tests/content` |
-| `packages/default-setup/abuddy.json` | exit 0, nothing run | exit 0, 1 spec run, the suite named beside it |
+| `packages/default-setup/apack.json` | exit 0, nothing run | exit 0, 1 spec run, the suite named beside it |
 | `spec:full -- <content source>` | no route | build + 18 specs, 16s; a broken content body fails it |
 | a doc-only change set | 3.4s, `packages:ensure` + an empty vitest | **0s**, "nothing changed that a spec could cover" |
 | a failing `--full` plan | 23s, 2 runs | 22s, 1 run, the other named (the pack pool is 17s forced; it had skipped on its own stamp) |
@@ -554,7 +554,7 @@ loading rather than a graph being walked.
   imported by specs directly — `_helpers/thread-context.ts` reaches 3 — so replacing the walk threw away a
   precise answer to recommend a build. The walk still runs and carries what it could not see; what the edge
   changes is which sentence an *empty* walk gets, and the note a full one prints.
-- **A build edge overrides Decision 2's source-extension test for the coverage claim.** `abuddy.json` is not
+- **A build edge overrides Decision 2's source-extension test for the coverage claim.** `apack.json` is not
   code, so the extension test withholds the claim and the target exits 0 having run nothing. An edge is that
   claim made directly and about a named spec directory, so it carries one whatever the extension. The
   extension test still decides every other target, which is what keeps a doc honest.
@@ -575,7 +575,7 @@ loading rather than a graph being walked.
 
 ### What this leaves
 
-- **`@abuddy/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
+- **`@apack/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
   single cost in the repo's specs and is not a routing problem. It belongs with
   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), as Deferred said.
 - **Nothing automated runs `spec:dry` or `--all`**, so a correlated drift in the record is still found only by

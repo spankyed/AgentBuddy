@@ -2,11 +2,11 @@ import { services } from '#generated/services.ts';
 import { tx, findById, findAll, qx } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
-import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
-import { trash } from '@abuddy/sdk/repositories';
+import { RepositoryError, RepositoryErrorCode } from '@apack/ears';
+import { trash } from '@apack/sdk/repositories';
 import { updateEntity } from '#generated/ears.ts';
-import { wouldCreateCycle } from '@abuddy/ears';
-import { b64Encode, b64Decode } from '@abuddy/ears';
+import { wouldCreateCycle } from '@apack/ears';
+import { b64Encode, b64Decode } from '@apack/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
@@ -16,7 +16,7 @@ import type {
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
 } from '../types.ts';
 import type { ThreadsSettings, ThreadTagOption } from '#generated/types.ts';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
 import { ref } from '#generated/ref.ts';
 
 /**

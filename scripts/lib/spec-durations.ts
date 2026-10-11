@@ -31,14 +31,14 @@
  * **What it guards is fourteen annotations, in one direction, and its failure mode is a stale comment.**
  * What it is *for* is the decision underneath: whether a spec should move between halves — and **that
  * decision is live.** `f2a003bb2` moved two specs on this evidence: `fe-bundler-proxy-exports` into
- * `@abuddy/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
+ * `@apack/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
  * justifying figure had gone 2.5x stale. A marker that has quietly stopped being true is what makes the
  * next such reading untrustworthy, which is why the one direction load cannot fabricate is the one gated.
  *
  * **Eleven of the fourteen are in packages with a single vitest config**, where the move the remedy names
  * costs a new config and a root project entry rather than a rename — `hasSplit` (`spec-halves.ts`) holds
  * that fact and `markerReachLines` (`unit-pool.ts`) prints the count on a passing run. The three in
- * `@abuddy/cli` have both halves, so for those the decision is *available* and not merely nameable.
+ * `@apack/cli` have both halves, so for those the decision is *available* and not merely nameable.
  *
  * So: **a year of silence is not the condition, because the wait was answered in the other direction.**
  * What would justify deleting the gate is a settled judgement that keeping these markers true is not worth
@@ -206,7 +206,7 @@ export const slowestFiles = (rows: readonly FileDuration[], half: Half, limit = 
  *
  * The five slowest files answer "what is worst"; they never answer "is this half getting heavy", and the
  * two come apart exactly where it matters. Measured 2026-10-05, the top five hold 46% of `repo-checks`'
- * fast half and 97% of `abuddy-sdk`'s, so in one of those the ranking describes the suite and in the other
+ * fast half and 97% of `apack-sdk`'s, so in one of those the ranking describes the suite and in the other
  * it describes one file. And the shape a ranking structurally cannot see is many specs each creeping a
  * little: 349 of 388 fast-half files are under 500ms and total 24.1s.
  *
@@ -611,7 +611,7 @@ export function placementOf(
  * in for. It is not committed and has no `machine` field for the same reason — nothing can carry it off
  * this box, so nothing has to say which box it came from.
  */
-export const durationCacheDir = (root: string): string => path.join(root, 'node_modules', '.cache', 'abuddy-spec-durations');
+export const durationCacheDir = (root: string): string => path.join(root, 'node_modules', '.cache', 'apack-spec-durations');
 
 /**
  * Keyed by suite **and half**, because one suite's two halves are measured by different runs.

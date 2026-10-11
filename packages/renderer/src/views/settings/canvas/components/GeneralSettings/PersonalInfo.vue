@@ -74,11 +74,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDebounce } from '@abuddy/ui/composables/useDebounce'
+import { useDebounce } from '@apack/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
 import type { Address, PersonalSection} from '@/views/settings/types'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 
 interface Props {
   settings?: PersonalSection

@@ -2,7 +2,7 @@
 // XState tracks a parent's children by their own id, so each spawn names one: without it they share a key,
 // the parent holds only the last, and stopping the flow leaves the rest running.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@abuddy/testing/harness'
+import { importFlows, startApp } from '@apack/testing/harness'
 import { entry, keepAlive, on, transform } from '#generated/flow-helpers.ts'
 import { getFlowActor } from '#features/brain/be/flow-system.ts'
 

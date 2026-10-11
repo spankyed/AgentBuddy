@@ -8,11 +8,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 
@@ -145,7 +145,7 @@ describe('the chain graph', () => {
    *
    * Its pass is not reproducible — the E2E suite, which drives real Electron — or its *effect* is recorded
    * where `fingerprintUnit` cannot see it. `packages:ensure` is the second kind: what it guarantees is that
-   * the built packages are current, and whether they are lives in `node_modules/.cache/abuddy-packages-build`,
+   * the built packages are current, and whether they are lives in `node_modules/.cache/apack-packages-build`,
    * which is neither among its inputs nor content-hashed as an output. Measured 2026-09-26: with those stamps
    * removed and `dist` still present, the step reported `cached` while `packagesBuiltOrRefuse()` refused, so
    * every step guarding on the built packages failed at collection — nested caches that can disagree, the
@@ -382,7 +382,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',
-      'test:packaged-authoring:app': 'launches the app through `abuddy test`, and the install that would '
+      'test:packaged-authoring:app': 'launches the app through `apack test`, and the install that would '
         + 'derive its rung is in the author half — so the facts read it as a bare check where it is one '
         + 'Electron launch. A suite, as `test:smoke` is for launching one',
     };
@@ -435,7 +435,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
      */
     it('names a build left on quick', () => {
       const lint = CHAIN_STEPS.find((step) => step.name === 'lint:check')!;
-      expect(misdeclared([{ ...lint, outputs: ['packages/abuddy-sdk/dist'] }]))
+      expect(misdeclared([{ ...lint, outputs: ['packages/apack-sdk/dist'] }]))
         .toEqual(['lint:check declares quick and its work is suite']);
     });
 
@@ -771,7 +771,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
   /**
    * `facade:check` runs after `compile`, and that is what makes its one write safe rather than lucky.
    *
-   * `abuddy facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
+   * `apack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
    * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
    * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
    * it could read it mid-write. None does, because `compile` writes that tree and this one declares it as an

@@ -34,10 +34,10 @@ tests but whose audit covered one branch (`AS/package-boundaries` at `1dd69172e`
 | Package | Tests | Flagged | Density |
 |---|---|---|---|
 | default-setup | 625 | 65 | 10% |
-| abuddy-cli | 502 | 123 | **24%** |
-| abuddy-sdk | 429 | 80 | 18% |
-| abuddy-host | 401 | 70 | 17% |
-| abuddy-ears | 102 | 16 | 15% |
+| apack-cli | 502 | 123 | **24%** |
+| apack-sdk | 429 | 80 | 18% |
+| apack-host | 401 | 70 | 17% |
+| apack-ears | 102 | 16 | 15% |
 | api | 73 | 17 | 23% |
 | root E2E | 46 | 4 | 8% |
 | renderer | 33 | 16 | **48%** |
@@ -118,15 +118,15 @@ Worst files by flagged count:
 
 | Flagged / total | File | Mostly |
 |---|---|---|
-| 29 / 62 | `abuddy-cli/tests/cli/db.spec.ts` | `msg-pinned` (27) |
-| 22 / 92 | `abuddy-sdk/tests/build/generate-entries.spec.ts` | `msg-pinned` (22) |
-| 15 / 73 | `abuddy-cli/tests/build/import-specifiers.spec.ts` | `tests-fixture` (12) |
-| 15 / 49 | `abuddy-sdk/tests/build/flow-compiler.spec.ts` | `count-pinned` (15) |
-| 14 / 35 | `abuddy-sdk/tests/build/flow-round-trip.spec.ts` | `count-pinned` (14) |
-| 12 / 43 | `abuddy-host/tests/packs/runtime/loader.spec.ts` | `count-pinned` (11) |
+| 29 / 62 | `apack-cli/tests/cli/db.spec.ts` | `msg-pinned` (27) |
+| 22 / 92 | `apack-sdk/tests/build/generate-entries.spec.ts` | `msg-pinned` (22) |
+| 15 / 73 | `apack-cli/tests/build/import-specifiers.spec.ts` | `tests-fixture` (12) |
+| 15 / 49 | `apack-sdk/tests/build/flow-compiler.spec.ts` | `count-pinned` (15) |
+| 14 / 35 | `apack-sdk/tests/build/flow-round-trip.spec.ts` | `count-pinned` (14) |
+| 12 / 43 | `apack-host/tests/packs/runtime/loader.spec.ts` | `count-pinned` (11) |
 | 10 / 30 | `default-setup/.../canvas/__tests__/layout-utils.test.ts` | `count-pinned` (10) |
 | 9 / 20 | `default-setup/tests/unit/claude-code-query.spec.ts` | `count-pinned` (8) |
-| 7 / 9 | `abuddy-cli/tests/cli/scaffold.spec.ts` | `msg-pinned` (7) |
+| 7 / 9 | `apack-cli/tests/cli/scaffold.spec.ts` | `msg-pinned` (7) |
 
 `db.spec.ts` alone is 27 message pins. A CLI's output is closer to a contract than most strings, so some
 of those are real — which is the point of reading rather than bulk-editing.
@@ -140,9 +140,9 @@ nothing, which is correct. The rest are worth a verdict:
 | Tests | File | Note |
 |---|---|---|
 | 10 | `api/tests/unit/claude-code-permission-shape.spec.ts` | tests a **standalone Zod mirror** of the Claude Code CLI's response, declared in the test. It cannot fail when our code changes, only when the mirror does. |
-| 7 | `abuddy-host/tests/packs/pack-protocol.spec.ts` | a MIME map declared in the test and a re-implementation of the install logic — already Deferred in the goal (Decision 7) |
-| 5 | `abuddy-cli/tests/cli/source-hooks.spec.ts` | drives the bin through a subprocess; the indirection is deliberate |
-| 3 | `abuddy-cli/tests/cli/handoff.spec.ts` | same |
+| 7 | `apack-host/tests/packs/pack-protocol.spec.ts` | a MIME map declared in the test and a re-implementation of the install logic — already Deferred in the goal (Decision 7) |
+| 5 | `apack-cli/tests/cli/source-hooks.spec.ts` | drives the bin through a subprocess; the indirection is deliberate |
+| 3 | `apack-cli/tests/cli/handoff.spec.ts` | same |
 | 2+1+1 | `ui-import-side-effects`, `verify-node-modules`, `app-launcher` | check built artefacts, not modules |
 
 `claude-code-permission-shape` is the clearest `DELETE`/`MOVE` candidate in the repo: ten tests whose
@@ -165,10 +165,10 @@ parameterised suite, `MERGE`, −7 tests.
 
 Others are genuine near-duplicates across package boundaries, left when code moved:
 
-- "names the fix when a provider has no key or none selected" — `abuddy-host/tests/secrets/store.spec.ts`
-  and `abuddy-sdk/tests/services/secrets-rules.spec.ts`
+- "names the fix when a provider has no key or none selected" — `apack-host/tests/secrets/store.spec.ts`
+  and `apack-sdk/tests/services/secrets-rules.spec.ts`
 - "rejects a command another pack declares, registering none of them" —
-  `abuddy-host/tests/packs/backend-extensions.spec.ts` and `…/registration.spec.ts`
+  `apack-host/tests/packs/backend-extensions.spec.ts` and `…/registration.spec.ts`
 - "follows packs registering and unregistering with no manual invalidation" —
   `event-validation-map.spec.ts` and `partition-policy.spec.ts`
 
@@ -176,7 +176,7 @@ Each needs Decision 10's test: does the second one name the level it adds? If no
 
 ## Finding 5 — where the density is
 
-`renderer` is 48% flagged on 33 tests, and `abuddy-cli` is 24% on 502 — the largest absolute pool of
+`renderer` is 48% flagged on 33 tests, and `apack-cli` is 24% on 502 — the largest absolute pool of
 candidates in the repo, and the package the goal's Phase 1 already opens with. `default-setup` holds the
 most tests (625) and the lowest density (10%), so its two phases will be more reading for less return
 than their size suggests.

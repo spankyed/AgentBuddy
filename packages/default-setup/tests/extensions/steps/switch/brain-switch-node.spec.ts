@@ -1,5 +1,5 @@
 /**
- * The switch step, run in flows on the brain (@abuddy/testing's runFlow): which branch a switch takes,
+ * The switch step, run in flows on the brain (@apack/testing's runFlow): which branch a switch takes,
  * and that a chain ends when nothing matches.
  *
  * Covers the regression for Bug A: before, when no condition matched and there was no else,
@@ -7,12 +7,12 @@
  * though its predicate was false. Now the switch completes with `noMatch: true` and the chain ends.
  */
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
+import { importFlows, startApp, type FlowRun } from '@apack/testing/harness'
 import { on, transform } from '#generated/flow-helpers.ts'
 import { branch } from '#extensions/steps/switch/helpers.ts'
 import { repository } from '#generated/repository.ts'
 import { EARS, findWhere } from '#generated/ears.ts'
-import type { DSLStepNode } from '@abuddy/sdk/build'
+import type { DSLStepNode } from '@apack/sdk/build'
 import type { Condition } from '#extensions/steps/switch/types.ts'
 
 const step = (label: string) => transform('return true', { label })

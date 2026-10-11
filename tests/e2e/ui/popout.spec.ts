@@ -1,4 +1,4 @@
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 // A plugin popped out into its own window: main accepts the plugin's ref as its id, and the popout renders the
 // plugin's canvas as part of that plugin (usePlugin() in its components)

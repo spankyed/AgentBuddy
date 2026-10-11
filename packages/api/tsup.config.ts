@@ -30,8 +30,8 @@ export default defineConfig((options) => {
     // `dist/types.d.ts` is what the renderer's typecheck resolves `@app/api` to.
     clean: !isDev,
     // **What to watch is on the command line, not here, and that is not a preference.** tsup watches a
-    // *directory* rather than the module graph, so `@abuddy/host` and `@abuddy/sdk` — both inlined into
-    // this bundle by the `@abuddy/source` condition below — have to be named or an edit to either rebuilds
+    // *directory* rather than the module graph, so `@apack/host` and `@apack/sdk` — both inlined into
+    // this bundle by the `@apack/source` condition below — have to be named or an edit to either rebuilds
     // nothing: measured 2026-10-10, no rebuild in two and a half minutes. Naming them here does not work,
     // because a `--watch` flag *overrides* a `watch` in the config rather than merging with it (measured
     // the same day: the config's paths were ignored). So they live in `build:dev:watch`, which is the one
@@ -44,12 +44,12 @@ export default defineConfig((options) => {
     // Bundled CommonJS dependencies require Node builtins (yaml requires 'process'); ESM output has no
     // require, so give it one, as the CLI bundle does
     banner: ({ format }) => (format === 'esm'
-      ? { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" }
+      ? { js: "import { createRequire as __apackCreateRequire } from 'node:module'; const require = __apackCreateRequire(import.meta.url);" }
       : {}),
     esbuildOptions(esbuildOptions) {
-      // Workspace @abuddy/* packages bundle from source (see their package.json exports).
+      // Workspace @apack/* packages bundle from source (see their package.json exports).
       // Custom conditions replace esbuild's implicit 'module' condition, so keep it.
-      esbuildOptions.conditions = ['@abuddy/source', 'module'];
+      esbuildOptions.conditions = ['@apack/source', 'module'];
     },
     esbuildPlugins: [
     {
@@ -63,7 +63,7 @@ export default defineConfig((options) => {
        * The API's own `@/`, and only the API's (`packages/api/tsconfig.json` maps it to `src/*`).
        *
        * It used to try the importer's built-in pack first, because a pack named its own modules that way too
-       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `abuddy build`
+       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `apack build`
        * each implemented separately. Packs use `#` subpath imports now, and esbuild resolves those from the
        * pack's own `package.json` with no help from here, since each names the file that is there.
        */

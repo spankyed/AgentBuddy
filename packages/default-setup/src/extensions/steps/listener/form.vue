@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '#generated/types.ts'
-import BaseForm from '@abuddy/ui/components/BaseForm'
+import BaseForm from '@apack/ui/components/BaseForm'
 
 const props = defineProps<{
   node: NodeEntity

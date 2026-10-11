@@ -4,7 +4,7 @@
  * Triggered by the `db.query` brain event when mode is 'transaction'.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { formatProviderError } from '../_helpers/format-provider-error.ts';
 

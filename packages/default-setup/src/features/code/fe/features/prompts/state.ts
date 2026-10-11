@@ -3,7 +3,7 @@ export type { PromptTab } from '../../contract.ts';
 import { setup , type ActorRefFrom } from 'xstate';
 import { sendToPlugin, sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication.ts';
-import type { PromptEntity } from '@abuddy/sdk';
+import type { PromptEntity } from '@apack/sdk';
 import type { EARS } from '#generated/ears.ts';
 
 

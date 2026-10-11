@@ -39,8 +39,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import CopyButton from '@abuddy/ui/design/CopyButton';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
+import CopyButton from '@apack/ui/design/CopyButton';
 
 /** A graph artifact's content: nodes with ids, and edges naming a node id at each end */
 interface GraphNode { id: string; label?: string }

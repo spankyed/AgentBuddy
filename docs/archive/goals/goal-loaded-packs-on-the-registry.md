@@ -1,7 +1,7 @@
 > **Done** (`5485273ac`, `ce4ff5402` on `AS/external-pack-authoring`). The text below is the plan as
 > written; later work replaced the per-kind contribution record with one undo log shared by both
 > registries (`f5bf8084c`, `ef358680f`), so `registerPack` no longer reads as the table this describes.
-> For the current layout, see `packages/abuddy-host/CLAUDE.md`.
+> For the current layout, see `packages/apack-host/CLAUDE.md`.
 
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-19). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
@@ -10,7 +10,7 @@
 
 Implement docs/archive/goals/goal-loaded-packs-on-the-registry.md on AS/external-pack-authoring, at or after
 9a8202fc3 — the base its Background was surveyed at.
-Before Phase 1, confirm the base: packages/abuddy-host/src/packs/runtime/loaded-packs.ts exports
+Before Phase 1, confirm the base: packages/apack-host/src/packs/runtime/loaded-packs.ts exports
 getLoadedPacks/setLoadedPacks/updateLoadedPack/removeLoadedPack/getBuiltInPackInfos/setBuiltInPackInfos/
 getLoadedPackEntries/getPacksWithClientLoadedFrontends, and pack-registration.ts holds
 `const registrations = new Map<string, PackRegistration>()`. If they don't, stop and say so — the plan
@@ -25,16 +25,16 @@ it moves with migrations.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- packages/abuddy-host/src/packs/runtime/loaded-packs.ts does not exist, and `git grep getLoadedPacks`
+- packages/apack-host/src/packs/runtime/loaded-packs.ts does not exist, and `git grep getLoadedPacks`
   outside dist/ returns nothing.
-- No module under packages/abuddy-host/src holds the loaded packs at module scope: the registry created
+- No module under packages/apack-host/src holds the loaded packs at module scope: the registry created
   by createPackRegistry() is the only place they live, and tests/packs/registry-state.spec.ts covers
   whatever module now owns them.
 - startPacks takes only the registry; runPackMigrations and applyPackContent are reached through it.
 - tests/packs/two-registries.spec.ts asserts two registries hold their own loaded packs, and its opening
   comment no longer overstates what it checks.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack all pass.
-- npm run api:update if any @abuddy/sdk, /ears or /ui export changed, with etc/ committed.
+- npm run api:update if any @apack/sdk, /ears or /ui export changed, with etc/ committed.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
@@ -48,12 +48,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - add a field to PackRegistration (Decision 1). It is the pack contract, generated into every pack by
   generate-entries and pinned in etc/framework.api.md, and a pack cannot know where it was installed.
@@ -64,7 +64,7 @@ Never:
 
 Surveyed at `9a8202fc3` on `AS/external-pack-authoring`.
 
-`packages/abuddy-host/src/packs/runtime/loaded-packs.ts` holds two lists at module scope:
+`packages/apack-host/src/packs/runtime/loaded-packs.ts` holds two lists at module scope:
 
 - `_loadedPacks: LoadedPack[]` — the external packs the app loaded
 - `_builtInPacks: BuiltInPackInfo[]` — the built-in packs it loaded
@@ -166,7 +166,7 @@ Add `PackOrigin` and the second argument to `registerPack`. Add the reads: `pack
 together; nothing is migrated yet.
 
 **Done when:** for every registered pack the registry returns what the module holds, asserted by a new
-case in `tests/packs/registration.spec.ts`. `npm test -w @abuddy/host` passes unchanged otherwise.
+case in `tests/packs/registration.spec.ts`. `npm test -w @apack/host` passes unchanged otherwise.
 **Mutation:** registering without an origin leaves the pack out of `externalPacks()`; the new case fails.
 
 ### Phase 2 — the built-in readers move
@@ -194,7 +194,7 @@ only registered packs, and check it fails when `unregisterPack` keeps the origin
 
 Remove `loaded-packs.ts`. Extend `tests/packs/two-registries.spec.ts` to loaded packs and fix its opening
 comment. Add whatever module now owns the list to `tests/packs/registry-state.spec.ts`'s coverage if it
-is not already there. Update `packages/abuddy-host/CLAUDE.md` (the `./packs/runtime` row, the bus
+is not already there. Update `packages/apack-host/CLAUDE.md` (the `./packs/runtime` row, the bus
 composition paragraph naming `loaded-packs.ts` as the one runtime module the bus imports) and
 `src/packs/runtime/CLAUDE.md`.
 
@@ -221,9 +221,9 @@ assertion fails today and must pass after.
   including a "temporary" one during the migration.
 - The five write sites must stay paired until Phase 3 removes the second write. A phase that writes one
   list and not the other reintroduces exactly the divergence this goal removes.
-- `@abuddy/testing`'s harness creates a registry per test file; Phase 3 and 4 must be checked against
+- `@apack/testing`'s harness creates a registry per test file; Phase 3 and 4 must be checked against
   `npm run test:external-pack`, not only the unit suites.
-- No `@abuddy/sdk` export should need to change. If one does, `npm run api:update` and commit `etc/`.
+- No `@apack/sdk` export should need to change. If one does, `npm run api:update` and commit `etc/`.
 
 ## Outcome (2026-09-19)
 
@@ -298,7 +298,7 @@ Both open items were closed, and auditing them found a third bug.
 
 ### Open items
 
-None from this goal. The general lesson is in `abuddy-host/CLAUDE.md`: a contribution keyed by anything
+None from this goal. The general lesson is in `apack-host/CLAUDE.md`: a contribution keyed by anything
 other than the pack id belongs in `createOwnedStore`, and a removal path that re-reads the registration
 rather than undoing what the registration did is the shape to look for.
 

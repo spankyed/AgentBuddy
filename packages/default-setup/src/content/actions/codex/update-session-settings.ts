@@ -3,7 +3,7 @@
  * and auto-approves pending tool requests when switching to auto_review.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context.ts';
 

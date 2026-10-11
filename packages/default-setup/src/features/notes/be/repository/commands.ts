@@ -1,8 +1,8 @@
 import { tx, findById, findByIdRaw, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
+import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@apack/ears';
 import { createEntityWithDefaults, updateEntity } from '#generated/ears.ts';
-import { trash } from '@abuddy/sdk/repositories';
+import { trash } from '@apack/sdk/repositories';
 
 import { REFERENCES } from '../types.ts';
 import { syncReferences } from './link-utils.ts';

@@ -1,11 +1,11 @@
 # One storage axis: a build, and the profile it keeps its data in
 
 > **Done and closed** (branch `AS/attachable-dev-session`, `8f5a0ded5`/`5014dad03`/`eca8156c0`). The one
-> finding this text did not anticipate: **`ABUDDY_ENV` does not collapse into `ABUDDY_BUILD`, and must
-> not.** `ABUDDY_ENV` is the *handoff* — how a parent process tells a child what it is — where `--build` is
+> finding this text did not anticipate: **`APACK_ENV` does not collapse into `APACK_BUILD`, and must
+> not.** `APACK_ENV` is the *handoff* — how a parent process tells a child what it is — where `--build` is
 > a *selector* a person types, so one name for both would put the question and the answer under one word,
 > which is the fusion this plan exists to end. The selector collapsed and the handoff stayed. For the
-> vocabulary as it is now, see `docs/public-facing/cli.md` and `@abuddy/sdk/env`.
+> vocabulary as it is now, see `docs/public-facing/cli.md` and `@apack/sdk/env`.
 Compiled 2026-10-09. **Lands last of the three**, after
 [`profiles-not-instances.md`](profiles-not-instances.md) and
 [`attachable-dev-session.md`](attachable-dev-session.md) — see "Where it goes in the order" below, which
@@ -23,11 +23,11 @@ which overrides the location and leaves the identity alone. So the word means id
 location in the next, and a reader cannot tell which without checking.
 
 It is already half-split by the app itself: *"a packaged build stamps its own channel and ignores
-`ABUDDY_ENV`, where `ABUDDY_USER_DATA_DIR` reaches it"* (`abuddy-cli/src/app/profiles.ts`). Identity
+`APACK_ENV`, where `APACK_USER_DATA_DIR` reaches it"* (`apack-cli/src/app/profiles.ts`). Identity
 follows the binary; storage follows the flag.
 
 **A second-order symptom**, and the one that shows up in use: the same word selects a different axis per
-command. `abuddy db -b` names *a data dir*. `abuddy run --app beta` names *a binary*, whose data dir then
+command. `apack db -b` names *a data dir*. `apack run --app beta` names *a binary*, whose data dir then
 follows unless a profile says otherwise. Same "beta", different thing chosen.
 
 ## The shape of the fix
@@ -36,11 +36,11 @@ follows unless a profile says otherwise. Same "beta", different thing chosen.
 either.**
 
 ```
-abuddy db   --build beta                  the data dir the Beta build uses
-abuddy db   --profile probe               a profile, instead of any build's default
-abuddy dev  --build beta                  the Beta build, in its default dir
-abuddy dev  --build beta --profile probe  the Beta build, in probe
-abuddy dev  --build ./my-checkout         a checkout, by path
+apack db   --build beta                  the data dir the Beta build uses
+apack db   --profile probe               a profile, instead of any build's default
+apack dev  --build beta                  the Beta build, in its default dir
+apack dev  --build beta --profile probe  the Beta build, in probe
+apack dev  --build ./my-checkout         a checkout, by path
 ```
 
 **One flag, not two, because `--app`/`--app-root` were never two concepts.** They split on the *shape of
@@ -54,12 +54,12 @@ So the disambiguation rule is one line — a value in the known-name set is a bu
 path — and with one reserved name it cannot be ambiguous today. `./beta` says "the directory" the way it
 does in every other tool, which is the escape hatch for the day a checkout is named after a channel. The
 collapse also leaves room for `--build production` or `--build 0.3.14` without a third flag, where the
-current schema would need one. `ABUDDY_APP` and `ABUDDY_ROOT` collapse the same way and for the same
+current schema would need one. `APACK_APP` and `APACK_ROOT` collapse the same way and for the same
 reason, into one variable holding either shape.
 
 **`build`, because it is the only word that covers all four.** "Channel" does not: `development` and
 `test` are not releases. A build is what each of the four is, and the word keeps one meaning across the
-CLI — `abuddy build` *produces* one, `--build` *selects* one. The command keeps its name; `compile`, the
+CLI — `apack build` *produces* one, `--build` *selects* one. The command keeps its name; `compile`, the
 only alternative, collides with `compilePack`, the content-compile step *inside* a build.
 
 A build keeps its own default storage, which is the fusion kept where it is harmless: it is a *default*,
@@ -86,7 +86,7 @@ reading as a finding rather than a renumbering.** Three facts decide it:
   phase can land, and be used, with `--app`/`--app-root` exactly as they are.
 - **It is the one phase with an open question in it** — **what `-d`/`-b` become** on `db`, `install`,
   `list` and `uninstall`. They name a data dir today and would name a build, which reads better
-  (`abuddy db --build beta` says *whose* data, where `-b` names an environment `db` never launches) — but
+  (`apack db --build beta` says *whose* data, where `-b` names an environment `db` never launches) — but
   it changes what those commands *mean*, not how they are spelled, and that is a decision rather than a
   rename. **The axis's name is settled**: `build`, for the reasons above. The value is not.
 - So placed in the middle, a flag argument blocks the work the goal is named for. Placed last, it blocks
@@ -107,19 +107,19 @@ and the one to do with the other two already landed.
 **Two guides state a load-bearing fact differently**, because the thing has two identifications:
 
 - `packages/main/CLAUDE.md`: the single-instance lock is *"scoped by the app name `initAppContext` set"*
-- `abuddy-cli/src/commands/drive.ts`: *"Electron's single-instance lock is scoped to the data dir"*
+- `apack-cli/src/commands/drive.ts`: *"Electron's single-instance lock is scoped to the data dir"*
 
 The source commits to neither — `SingleInstanceApp.ts`: *"App name and userData are set by
 `initAppContext()`; the lock is scoped to **them**."* Those are the same claim only while the name and the
-directory are fused, and they come apart whenever `ABUDDY_USER_DATA_DIR` is set: every profile, every
+directory are fused, and they come apart whenever `APACK_USER_DATA_DIR` is set: every profile, every
 drive session, every E2E worker. **Settling which is true is part of this work**, because "can two apps
 coexist here" is the question an attach, a spawn and a profile refusal all turn on.
 
 ## What to read first
 
-`abuddy-sdk/src/env/index.ts` (`APP_NAMES`, `appDataDirFor`, `resolveAppContext`; `platformDataDir` and
+`apack-sdk/src/env/index.ts` (`APP_NAMES`, `appDataDirFor`, `resolveAppContext`; `platformDataDir` and
 `APP_NAMES` are both private to that file, so the fusion has one home);
-`abuddy-cli/src/app/profiles.ts` — `instances.ts` until
+`apack-cli/src/app/profiles.ts` — `instances.ts` until
 [`profiles-not-instances.md`](profiles-not-instances.md) lands; and `app-target.ts`'s `parseAppFlags`
 (`:215`, with the one-word `--app` check at `:233`) and `namedApp` (`:115`) — the one place
 `--app`/`--app-root` are parsed, and the precedence ladder `--build` inherits, which loses a rung when the
@@ -129,5 +129,5 @@ two flags become one.
 `commands/run.ts:48` — `commands/dev.ts` after the attach work renames the file — and maps an `AppTarget`
 to an `AppEnv`, which is precisely the build-to-environment step this plan is undoing. That it sits in a
 command rather than in the module that models app targets is part of the finding: the conversion is done
-where a launcher happened to need it, which is why `abuddy db -b` and `abuddy run --app beta` could drift
+where a launcher happened to need it, which is why `apack db -b` and `apack run --app beta` could drift
 onto different axes in the first place.

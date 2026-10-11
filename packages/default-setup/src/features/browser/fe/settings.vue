@@ -81,10 +81,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 import { Trash2 } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 interface BrowserSettings {
   openLinksInApp: boolean

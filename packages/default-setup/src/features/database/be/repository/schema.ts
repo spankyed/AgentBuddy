@@ -1,6 +1,6 @@
 import { EARS } from '#generated/ears.ts';
 import type { DatabaseSchemaInfo } from '../types.ts';
-import { getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds } from '@abuddy/ears';
+import { getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds } from '@apack/ears';
 
 /**
  * Generate schema information from actual data in the system

@@ -2,12 +2,12 @@
 // entries (a notes markdown tree and the library compiler module), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
-import type { PackContentPreview } from '@abuddy/sdk/content';
+import type { PackContentPreview } from '@apack/sdk/content';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { buildPackConfigFromManifest, compilePack, type PackManifest } from '@abuddy/sdk/build';
-import { test, expect } from '@abuddy/testing';
+import { buildPackConfigFromManifest, compilePack, type PackManifest } from '@apack/sdk/build';
+import { test, expect } from '@apack/testing';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const PACK_DIR = path.join(ROOT, 'packages/default-setup');
@@ -40,7 +40,7 @@ async function compileContent(work: string): Promise<string> {
   fs.mkdirSync(path.join(work, 'library/media'), { recursive: true });
   fs.writeFileSync(path.join(work, 'library/media', PIC), PNG);
 
-  const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8')) as PackManifest;
+  const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8')) as PackManifest;
   const sources = manifest.content!.sources!;
   const entry = (key: string, source: string) => ({ ...(sources[key] as object), path: path.relative(PACK_DIR, source) });
   const pack = { ...manifest, steps: undefined, content: { ...manifest.content, artifacts: undefined, sources: { notes: entry('notes', path.join(work, 'notes')), library: entry('library', path.join(work, 'library')) } } } as PackManifest;
@@ -64,7 +64,7 @@ function filesUnder(dir: string): string[] {
 }
 
 test('previews a compiled content directory by its content.json and imports the selected items', async ({ app, appPage, electronApp }) => {
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-content-'));
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-import-content-'));
   try {
     const directory = await compileContent(work);
     await app.navigate('host/settings');

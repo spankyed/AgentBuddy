@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { FolderOpen } from 'lucide-vue-next'
 import type { CodeState } from '#features/code/fe/state.ts'

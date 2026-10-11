@@ -3,11 +3,11 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
-import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@abuddy/sdk/utils';
-import { untypedQx as qx } from '@abuddy/ears';
-import { entityIds } from '@abuddy/sdk/testing';
-import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
+import { buildPackConfigFromManifest, compilePack } from '@apack/sdk/build';
+import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apack/sdk/utils';
+import { untypedQx as qx } from '@apack/ears';
+import { entityIds } from '@apack/sdk/testing';
+import { resetTestData, testMediaPath } from '@apack/testing/harness';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/content-parity');
@@ -30,7 +30,7 @@ export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
 export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;
 const SNAPSHOT_TYPES = ['Action', 'Prompt', 'Document', 'Collection', 'Note'];
 
-const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
+const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
 
 type ContentEntry = string | { path?: string; [key: string]: unknown };
 

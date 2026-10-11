@@ -4,8 +4,8 @@
 > Phase 3 `5176a75a2`/`1a2ce7938`, Phase 4 `fd621dddf`. The deletion went ahead on the measurement it was
 > conditional on: 0.7s for the engine's attach against 1.0s for the CDP one, end to end, median of 7 — so
 > 0.3s a question against 851 lines and a second long-lived app. Four things the work settled that this text
-> only anticipated: the session module belongs to `@abuddy/host` because two launchers publish one; `dev`
-> had to stop requiring a pack; `@abuddy/testing` is resolved at runtime by `drive` rather than imported;
+> only anticipated: the session module belongs to `@apack/host` because two launchers publish one; `dev`
+> had to stop requiring a pack; `@apack/testing` is resolved at runtime by `drive` rather than imported;
 > and a question **refuses** rather than starting an app, with `--spawn` to ask. The goal doc's Outcome has
 > the measurements. For the commands as they are now, see `docs/public-facing/cli.md`.
 Compiled 2026-10-09. The spike below is run and green, so this is work that can start, after
@@ -41,7 +41,7 @@ Two facts remove that reason.
 (`:112`) taking `page`, `api`, `takeErrors` and `readLog`. The 705 lines behind the 23 verbs have no
 Playwright in them — the verbs are built on the port, which is the separation this design needs and the
 reason it is already there.
-`AppHelper` (`abuddy-testing/src/index.ts:15`) is the same: every one of its methods is `page.evaluate`,
+`AppHelper` (`apack-testing/src/index.ts:15`) is the same: every one of its methods is `page.evaluate`,
 `page.waitForFunction` or `page.screenshot`, so it is a function of a `Page` and only *looks* fixture-bound
 because the fixture is where it is constructed.
 
@@ -100,7 +100,7 @@ dev    spawn(electron, [root, '--remote-debugging-port=0', '--enable-logging']) 
        Serves nothing. Holds no engine. No Playwright. The supervisor it already is.
 
 drive  attachable -> connectOverCDP -> page -> appHelper(page) -> the verbs
-       otherwise  -> **refuse**, naming `--spawn` and `abuddy dev`
+       otherwise  -> **refuse**, naming `--spawn` and `apack dev`
        --spawn    -> spawn `dev` detached, wait for its session file, attach -> the same verbs
        One SessionPage implementation, and one capability it cannot serve attached (setViewport).
        This is the one-shot path. `drive <script>` is the next line, and the difference is deliberate.
@@ -113,7 +113,7 @@ test   @playwright/test + _electron.launch. Unchanged, owns its app, publishes n
 
 **What `--spawn` starts is `dev`, not something shaped like it.** The same function, watcher included —
 because the Playwright fixture is also the only thing that builds and installs the pack under test
-(`abuddy-testing/src/index.ts:357`, which is why `drive.ts:477` says *"No build here"*), and `dev` is the
+(`apack-testing/src/index.ts:357`, which is why `drive.ts:477` says *"No build here"*), and `dev` is the
 only other thing that does. A spawn that merely copied dev's environment would hand a pack author an
 app without their pack. So there is one way to start an app and no third session-file writer beside `dev`
 and `npm start`, and no `dev --no-watch`.
@@ -125,12 +125,12 @@ needs a session stood up first.
 
 | Today | After |
 |---|---|
-| `abuddy run [flags]` | `abuddy dev [flags]` — same flags |
-| `abuddy drive <script>` | unchanged |
-| `abuddy drive --serve` | gone: the app itself is the long-lived thing |
-| `abuddy drive --eval 'body'` | same spelling; attaches, or **refuses** naming `--spawn` |
-| — | `abuddy drive --eval 'body' --spawn` — attach, or start an app and attach to that |
-| `abuddy drive --attach --eval 'body'` | `abuddy drive --eval 'body'` — an attachable app is the whole condition |
+| `apack run [flags]` | `apack dev [flags]` — same flags |
+| `apack drive <script>` | unchanged |
+| `apack drive --serve` | gone: the app itself is the long-lived thing |
+| `apack drive --eval 'body'` | same spelling; attaches, or **refuses** naming `--spawn` |
+| — | `apack drive --eval 'body' --spawn` — attach, or start an app and attach to that |
+| `apack drive --attach --eval 'body'` | `apack drive --eval 'body'` — an attachable app is the whole condition |
 | read-only one-shots (`eval`, `query`, `state`) | every verb, writes included |
 | `npm run drive:serve` | `npm run dev` |
 
@@ -148,9 +148,9 @@ loops, and only one of them has none:
 | Layer | Loop today |
 |---|---|
 | pack frontend | HMR, `dev`'s Vite server |
-| pack backend | `abuddy build --watch` → ~40ms rebuild → `POST /dev/reload`, the pack reloaded in place |
+| pack backend | `apack build --watch` → ~40ms rebuild → `POST /dev/reload`, the pack reloaded in place |
 | host renderer | HMR, but only under `npm start` — `dev` launches a built app |
-| **host backend** (`@abuddy/host`, SDK, API) | **none**: `npm start` builds it once and awaits it before Electron spawns |
+| **host backend** (`@apack/host`, SDK, API) | **none**: `npm start` builds it once and awaits it before Electron spawns |
 
 Attaching changes none of these. What it removes is the *second app* and the relaunch per question; a host
 backend change still needs `npm run build:be` and a restarted app, and a `/reload` verb reloads a renderer,
@@ -218,12 +218,12 @@ So the order is **read the session file first, and create the dir only on the pa
 it** — the attach path needs no dir that is not already there, and `--spawn` is the only path that does.
 
 **A checkout with no pack in hand is a first-class case**, not a fallback. `drive` run where no
-`abuddy.json` sits above it drives *this checkout's* app, which is how the repo's own `drive/` scripts run
+`apack.json` sits above it drives *this checkout's* app, which is how the repo's own `drive/` scripts run
 and how an agent asks about the host rather than a pack. Scoping attachability to a pack's `dev` would
 leave exactly that caller relaunching, so the session file is a property of an app, never of a pack.
 
 **Which means `dev` has to run with no pack, and today it refuses to.** `session()` opens with
-`findPackRoot(process.cwd())`, which throws *"No abuddy.json found. Run this command from inside a pack
+`findPackRoot(process.cwd())`, which throws *"No apack.json found. Run this command from inside a pack
 directory"* (`utils.ts:42`), and then requires `src/` to watch (`run.ts:156`, `:159`). So `--spawn` being
 `dev` (the goal doc's Decision 10) would leave this repo's own `npm run drive:eval` — the primary caller,
 run from the root — able to attach and unable to start one. **The fix is to drop the precondition, not to add
@@ -237,7 +237,7 @@ publish the session file, hold it.
 already is"* affirms the supervisor `dev` is today, pack loop included; it is describing the delta from the
 engine — no HTTP server, no engine, no Playwright — rather than a core with the pack work taken out. Six
 things becoming conditional is a restructure of the command, which the Files table states and this
-paragraph should not undersell. A side benefit: `abuddy dev` at the checkout root becomes a lighter
+paragraph should not undersell. A side benefit: `apack dev` at the checkout root becomes a lighter
 `npm start` that does not rebuild the renderer.
 
 ### Starting one when there is none
@@ -249,9 +249,9 @@ mention it in a line nobody reads. A question that silently acquires a process i
 forgotten daemons, and refusing by default means **nothing is ever left behind that was not asked for.**
 
 ```
-$ abuddy drive --eval 'app.getState()'
+$ apack drive --eval 'app.getState()'
 No app is running on the development data dir.
-  Start one with `abuddy dev`, or add --spawn to have this start one and keep it.
+  Start one with `apack dev`, or add --spawn to have this start one and keep it.
 $ echo $?
 3
 ```
@@ -269,25 +269,25 @@ foreground process, and nothing to tear down afterwards but the app itself.
 load-bearing twice over.**
 
 First, the environment. `appLaunchEnv` sets `PLAYWRIGHT_TEST = 'true'` unconditionally
-(`abuddy-testing/src/launch-env.ts:16`) and `_inferElectronAppEnv` answers `test` to that before
+(`apack-testing/src/launch-env.ts:16`) and `_inferElectronAppEnv` answers `test` to that before
 considering anything else — so an app launched through the fixture can never be `development`, and the
 environment gate below would refuse it the debug port. An app spawned through the fixture would
 publish a session file with no port and be unattachable, which is the one thing `--spawn` exists to
 prevent. **There is no axis to gate on instead**: a one-shot sets no `PLAYWRIGHT_VISIBLE` either, so
-nothing the app can see tells a `drive` app from an `abuddy test` app. That is a reason to keep `--spawn`
+nothing the app can see tells a `drive` app from an `apack test` app. That is a reason to keep `--spawn`
 off the fixture, not a problem to work around.
 
 Second, the pack — and this is the half that "spawns it as `dev` does" would get wrong while passing every
 check the paragraph above suggests. **The fixture is the only thing that installs the pack under test.**
 With `PACK_DIR` set it builds the pack and installs it into the data dir through the same stage-verify-place
-path a user gets (`abuddy-testing/src/index.ts:357`), waits for its plugins and fails on its `lastError`;
+path a user gets (`apack-testing/src/index.ts:357`), waits for its plugins and fails on its `lastError`;
 `drive` deliberately does none of it (`drive.ts:477`: *"No build here: the fixture builds the pack itself
-when PACK_DIR is set"*). In this repo that is free — a root with no `abuddy.json` leaves `packDir`
+when PACK_DIR is set"*). In this repo that is free — a root with no `apack.json` leaves `packDir`
 undefined and the built-in pack is compiled into the API — but in a pack repo it is the whole subject, and
 a spawn that reproduced dev's *environment* would attach a pack author to an app without their pack,
 or with the copy from before their last edit. `dev` already does it: `installToApp` (`run.ts:61`, called
 at `:259`) is the pack install, and `ensureCheckoutPackages` beside it is a different job — building the
-`@abuddy` packages' `dist` that a pack compiles against (`checkout-packages.ts`' header) — so spawning
+`@apack` packages' `dist` that a pack compiles against (`checkout-packages.ts`' header) — so spawning
 `dev` gets both for nothing. Naming the second where the first does the work is the mistake this sentence
 used to make.
 
@@ -304,7 +304,7 @@ and the one-shot then **waits for the session file to appear** rather than for a
 things follow, and each is a way to get this wrong:
 
 - **The deadline is a pack build, not a window.** A cold spawn runs `ensureCheckoutPackages` and
-  `abuddy build` before Electron starts, which is tens of seconds, not the 45s a fixture allows for a
+  `apack build` before Electron starts, which is tens of seconds, not the 45s a fixture allows for a
   window to show up. A deadline sized for the launch reports a timeout on a build that was working.
 - **The child's output cannot go to `/dev/null`.** `dev` spawns Electron with `stdio: 'ignore'` today,
   which is right for a window a person is watching and wrong here: a pack build that fails would reach the
@@ -378,15 +378,15 @@ can reach a developer's data should be legible from inside the run rather than d
 **A run that started one also says it is still running, and how to end it.** `--spawn` leaves a detached
 process behind that a question began: in a pack repo that is Electron, a recursive file watcher and a Vite
 dev server, and in a checkout with no pack it is Electron alone. Nothing reaps it on `development` by
-design, so the two ways out are `abuddy dev`, which reclaims it, and the `supervisorPid` the session file
+design, so the two ways out are `apack dev`, which reclaims it, and the `supervisorPid` the session file
 carries. The reclaim answers correctness — the developer's `npm start` cannot be blocked by it — and the
 line answers the other question, which is who closes it.
 
-Under contention it takes `holdExclusiveLock` (`@abuddy/host/exclusive-lock`) and **re-reads the session
+Under contention it takes `holdExclusiveLock` (`@apack/host/exclusive-lock`) and **re-reads the session
 file after acquiring**, because two agents asking at once is the ordinary case here and both would
 otherwise launch — the same rule, and the same mechanism, as the chain's one writer per stamp directory.
 
-**Liveness is already solved.** `recordIsStale(file, pid)` (`@abuddy/host/process-liveness`) exists for
+**Liveness is already solved.** `recordIsStale(file, pid)` (`@apack/host/process-liveness`) exists for
 exactly "is the process that wrote this record still there", errs toward stale, and is what the
 `pack-dev-servers` marker and the API port file already use. A session file whose app has gone is a miss,
 not an error.
@@ -396,7 +396,7 @@ not an error.
 **Two Playwright packages, two jobs, and the runner is not one of the things that goes.**
 `playwright-core` carries `chromium.connectOverCDP` and `_electron.launch` — the attach path, and so
 every one of the 23 verbs, since each is a call on the `Page` it hands back. `@playwright/test` carries the runner, which is what *runs a script in `drive/`*: `drive`
-is `_default.test` (`abuddy-testing/src/index.ts:673`), so every script there is a Playwright test, and the
+is `_default.test` (`apack-testing/src/index.ts:673`), so every script there is a Playwright test, and the
 runner is supplying script selection and `--grep`, the worker/test fixture split, `reporter: 'list'`, the
 deliberate `timeout: 0`, and the `trace.zip` a failing drive run prints the `show-trace` line for.
 Dropping it would mean reimplementing collection, reporting and traces, or losing them — a replacement
@@ -404,19 +404,19 @@ cost booked as a saving. **Per-script isolation is not on that list**, deliberat
 of the script path launching its own app rather than a reason to keep the runner, and it would survive a
 runner that did nothing else. "What stays" is where it is argued. `_electron.launch` is what attach replaces, not `@playwright/test`.
 
-**Neither is a dependency of `@abuddy/cli`; both are optional peers, imported lazily.** The runner is
+**Neither is a dependency of `@apack/cli`; both are optional peers, imported lazily.** The runner is
 nearly free beside the attach path it sits next to: measured 2026-10-09 on this checkout, `playwright-core`
 is 11M and `@playwright/test`'s own files are ~24K, the 12M beside it being a *duplicated*
 `playwright-core` 1.54.1 under its `node_modules` (version skew here — root pins 1.54.1, the hoisted core
 is 1.59.1). None of the three has an install script; browsers come from `npx playwright install`. What
 decides where they are declared is that a published CLI should not drag either into an install of someone
-who only runs `abuddy build` — and `dev` and `drive` are one binary, so a module-level rule that `dev`
+who only runs `apack build` — and `dev` and `drive` are one binary, so a module-level rule that `dev`
 never imports the session decides runtime and not install weight.
 
-So both sit on `@abuddy/testing`, where `@playwright/test` already is (`peerDependencies`,
+So both sit on `@apack/testing`, where `@playwright/test` already is (`peerDependencies`,
 `peerDependenciesMeta.optional`) and where `SessionPage` and the new `cdp-page.ts` live, and the attach
 path imports `playwright-core` lazily and throws with an install hint when it is absent — the pattern
-`@abuddy/sdk` already uses for `typescript` and `esbuild`. `abuddy build`, `validate`, `pack` and `dev`
+`@apack/sdk` already uses for `typescript` and `esbuild`. `apack build`, `validate`, `pack` and `dev`
 gain nothing to install; `drive` needs what it needs and says so. A pack that ran `init-tests` has both
 already, and `resolvePlaywrightCli` continues to resolve the pack's copy rather than a bundled one.
 
@@ -437,10 +437,10 @@ is real — and it should not be made to find a second word for a concept this p
 
 | File | Lines | Why |
 |---|---|---|
-| `abuddy-testing/src/engine/server.ts` | 455 | HTTP routing, the token header; `verb()` becomes argv dispatch |
-| `abuddy-testing/src/engine/marker.ts` | 101 | and the `outputDir`-Playwright-wipes coupling with it |
-| `abuddy-cli/src/app/drive-engine.ts` | 152 | the HTTP client, `ENGINE_TOKEN_HEADER`, `oneShotOutcome` |
-| `abuddy-cli/src/app/drive-one-shot.ts` | 143 | ready-line accumulation, three settle paths, `/close` in a `finally` |
+| `apack-testing/src/engine/server.ts` | 455 | HTTP routing, the token header; `verb()` becomes argv dispatch |
+| `apack-testing/src/engine/marker.ts` | 101 | and the `outputDir`-Playwright-wipes coupling with it |
+| `apack-cli/src/app/drive-engine.ts` | 152 | the HTTP client, `ENGINE_TOKEN_HEADER`, `oneShotOutcome` |
+| `apack-cli/src/app/drive-one-shot.ts` | 143 | ready-line accumulation, three settle paths, `/close` in a `finally` |
 
 Plus `--serve`, `--attach` and the **machinery behind** the one-shots in `drive.ts` (544) — the spawn,
 the ready-line wait and the `/close` in a `finally`. The one-shot *interface* stays and gains verbs; what
@@ -453,7 +453,7 @@ goes is that each had to stand a server up to be answered. And:
   so reading the status exits 0 on every real failure. With no status there is no trap.
 - **The engine's two generated files** — `drive/engine.config.mts` and `drive/engine-session.mts`, with
   `defineDriveConfig` no longer having a session to ignore, the `.mts`-versus-`**/*.ts` glob accident that
-  was the only thing keeping a plain `abuddy drive` from collecting the engine and hanging, and
+  was the only thing keeping a plain `apack drive` from collecting the engine and hanging, and
   `playwright-config.spec.ts`'s string comparison — a gate that exists only because the client and the
   server live in different packages.
 
@@ -474,7 +474,7 @@ it happen in the window already open.
 
 **What it would cost to change, if that is ever wanted.** The fixture *is* the launch, so a script would
 need `electronApp`/`appPage` to yield a connected page instead — a change to the one file every spec in
-this repo, both fixture packs and every external pack's suite imports — plus a gate proving `abuddy test`
+this repo, both fixture packs and every external pack's suite imports — plus a gate proving `apack test`
 can never take that path, since a hermetic suite that attached to a developer's app would be worse than
 useless. That is a plan of its own, and the thing to start it from is a run that was annoying rather than
 a table that looks asymmetric.
@@ -483,7 +483,7 @@ Two defect *classes* go rather than move: an engine marker that outlives its ses
 wrong field.
 
 **The port's authentication is a trade taken, not a defect removed.** The engine's port is token-guarded
-today (`ENGINE_TOKEN_HEADER`; a wrong header answers `missing or wrong x-abuddy-drive-token`). CDP is not
+today (`ENGINE_TOKEN_HEADER`; a wrong header answers `missing or wrong x-apack-drive-token`). CDP is not
 guarded at all, and the renderer it exposes holds the app's API token — so this swaps an authenticated
 local port for an unauthenticated one, and `--spawn` means an app can carry it without a developer having
 started one by hand — on request, which is the whole of what Decision 16 bought here. What makes that acceptable
@@ -493,22 +493,22 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 
 | File | Change |
 |---|---|
-| `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its `supervisorPid`, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. **Drop the pack precondition**: `findPackRoot` (`:156`) becomes `findPackRootOrNone`, and the build, `installToApp`, the watcher and the Vite server all hang off there being a pack — with none, it launches, publishes and holds. `src/` is only required when there is something to watch (`:159`) |
-| `abuddy-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
-| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, supervisorPid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and `--spawn` under `holdExclusiveLock` with the re-read after acquiring. It **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none. **`startedBy` is passed in, since `dev` writes the file and cannot know who asked**: `ABUDDY_SESSION_STARTED_BY` on the spawn, defaulting to `dev`. Getting this wrong is silent — `dev` records `dev`, nothing is ever reclaimable, and the developer's `npm start` refuses with a message blaming them — which is why Phase 5's reclaim case must spawn and then reclaim rather than hand-write a session file |
+| `apack-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its `supervisorPid`, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. **Drop the pack precondition**: `findPackRoot` (`:156`) becomes `findPackRootOrNone`, and the build, `installToApp`, the watcher and the Vite server all hang off there being a pack — with none, it launches, publishes and holds. `src/` is only required when there is something to watch (`:159`) |
+| `apack-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
+| `apack-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, supervisorPid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and `--spawn` under `holdExclusiveLock` with the re-read after acquiring. It **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none. **`startedBy` is passed in, since `dev` writes the file and cannot know who asked**: `APACK_SESSION_STARTED_BY` on the spawn, defaulting to `dev`. Getting this wrong is silent — `dev` records `dev`, nothing is ever reclaimable, and the developer's `npm start` refuses with a message blaming them — which is why Phase 5's reclaim case must spawn and then reclaim rather than hand-write a session file |
 | `packages/dev-mode.js` | `npm start` publishes one too, so the app with renderer HMR is attachable |
-| `abuddy-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
-| `abuddy-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
-| `abuddy-testing/src/engine/cdp-page.ts` | new: `SessionPage` over a connected `Page` — the same body the fixture's uses |
-| `abuddy-testing/src/engine/{server,marker}.ts` | delete |
-| `abuddy-cli/src/app/drive-{engine,one-shot}.ts` | delete |
-| `abuddy-testing/package.json` | `playwright-core` as an optional peer beside `@playwright/test`; `@abuddy/cli`'s dependencies are unchanged |
+| `apack-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
+| `apack-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
+| `apack-testing/src/engine/cdp-page.ts` | new: `SessionPage` over a connected `Page` — the same body the fixture's uses |
+| `apack-testing/src/engine/{server,marker}.ts` | delete |
+| `apack-cli/src/app/drive-{engine,one-shot}.ts` | delete |
+| `apack-testing/package.json` | `playwright-core` as an optional peer beside `@playwright/test`; `@apack/cli`'s dependencies are unchanged |
 | root `package.json` | `drive:serve` → `dev`; `drive:eval`/`:query`/`:state` keep their names. **The new `dev` script carries `tsx scripts/drive-preflight.ts &&` like the five `drive*` scripts already do** — see "The stale-build nudge" |
 | `drive/` scaffold | drop the two generated `.mts` files; the Playwright config stays, since scripts still run on the runner |
-| `abuddy-cli/src/commands/profiles.ts` | a **running** column: `supervisorPid`, `startedBy`, uptime and debug port per data dir, read from the session files, with the four environments' dirs listed beside the profiles. See "Telling the user" |
+| `apack-cli/src/commands/profiles.ts` | a **running** column: `supervisorPid`, `startedBy`, uptime and debug port per data dir, read from the session files, with the four environments' dirs listed beside the profiles. See "Telling the user" |
 | `docs/public-facing/cli.md` | the **"Which app, and how long it lives"** table — a named deliverable, not a wording pass. Its content is in "Telling the user" |
 | `drive/README.md` | "One session, many questions" is about to be false; it becomes "The app stays between questions", pointing at that table |
-| prose | `abuddy-cli/CLAUDE.md` (the `run`/`drive` rows, `src/app/`, and `:14`'s stale *"used by `build` and `dev`"*), root `CLAUDE.md`'s "E2E visual testing" (which currently sends a reader to `drive:serve` for a question needing several verbs — after this, nothing does), `tests/e2e/CLAUDE.md` |
+| prose | `apack-cli/CLAUDE.md` (the `run`/`drive` rows, `src/app/`, and `:14`'s stale *"used by `build` and `dev`"*), root `CLAUDE.md`'s "E2E visual testing" (which currently sends a reader to `drive:serve` for a question needing several verbs — after this, nothing does), `tests/e2e/CLAUDE.md` |
 
 ## Telling the user
 
@@ -546,8 +546,8 @@ already deleting:
   nothing gets none, because the fields already said it.
 
 ```
-$ abuddy drive --eval 'app.getState()' --spawn
-Started the development app (pid 48651) and left it running — `abuddy dev` takes the directory back.
+$ apack drive --eval 'app.getState()' --spawn
+Started the development app (pid 48651) and left it running — `apack dev` takes the directory back.
 {"value":{"running":"connected"},"state":"spawned","startedBy":"drive","supervisorPid":48651}
 ```
 
@@ -559,14 +559,14 @@ Reclaimed the app a question started (pid 48213) and started yours.
 
 That one exists for the rule every tool that leaves state behind follows: **name the state and the
 inverse** (`docker compose up -d` has `down`; `git stash` says what it saved and `pop` undoes it). Here
-the state is a running app and the inverse is `abuddy dev`, which is why the reclaim says what it took.
+the state is a running app and the inverse is `apack dev`, which is why the reclaim says what it took.
 
 **And a line printed once is not documentation.** Forty minutes later it has scrolled away, and on this
-caller it is often read by nothing at all, since the one-shot's stdout goes to an agent. So `abuddy
+caller it is often read by nothing at all, since the one-shot's stdout goes to an agent. So `apack
 profiles` gains a **running** column — `supervisorPid`, `startedBy`, uptime, debug port — read from the session files,
 with the four environments' data dirs listed beside the profiles, because a profile and a build's default
 dir are both data dirs ([`profiles-not-instances.md`](profiles-not-instances.md)'s three-term table). It
-needs no new mechanism: `profileInUse` and `recordIsStale` (`@abuddy/host/process-liveness`) already
+needs no new mechanism: `profileInUse` and `recordIsStale` (`@apack/host/process-liveness`) already
 answer liveness, and this is the `docker ps` to the start line's `docker run`.
 
 That pair is the whole answer to "who closes this": the run says it, and the listing finds it later. An
@@ -582,13 +582,13 @@ over `chain-steps.ts`' declared inputs, a warning, exit 0, a nudge and never a g
 
 **The gap is narrower than it looks, and the fix is an npm script rather than CLI work.** A one-shot run
 the normal way (`npm run drive:eval`) has already had the preflight for this tree, and the `dev` it spawns
-needs no second reading of the same files. What is uncovered is `abuddy dev` or `abuddy drive` invoked
+needs no second reading of the same files. What is uncovered is `apack dev` or `apack drive` invoked
 directly in this checkout, and the new `npm run dev` — which replaces `drive:serve`, the one script in the
 set that had the prefix and whose replacement would lose it. So **`dev` gets the same prefix** and the hole
 closes.
 
 **It cannot move into the CLI, and that is the reason it is a script.** `drive-preflight.ts` imports
-`chain-steps.ts`; `@abuddy/cli` ships to pack authors, who have no chain and no such declaration, so a
+`chain-steps.ts`; `@apack/cli` ships to pack authors, who have no chain and no such declaration, so a
 check over it has nothing to read there. A developer in this checkout who calls the bin directly is
 choosing to, which is the same bargain every other repo script makes.
 
@@ -599,11 +599,11 @@ the lifetime model is the thing a user gets wrong, and nothing states it today:
 
 | What you run | The app it uses | When it closes |
 |---|---|---|
-| `abuddy dev`, `npm start` | starts its own | when you stop the command |
-| `abuddy drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| `apack dev`, `npm start` | starts its own | when you stop the command |
+| `apack drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
 | the same, with `--spawn` | a live one, else it starts one | **it doesn't** — it stays for the next question |
-| `abuddy drive <script>` | always its own | when the script finishes |
-| `abuddy test` | always its own, isolated | when the run finishes |
+| `apack drive <script>` | always its own | when the script finishes |
+| `apack test` | always its own, isolated | when the run finishes |
 
 with the one sentence that explains the halves — **a question keeps the app so the next question is cheap;
 a script closes it so its result does not depend on what the last one left behind; and a question never
@@ -661,7 +661,7 @@ below exists.
   every other case in this list.
 - **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
 - **`dev` at a checkout root publishes one**, which is the firing case for dropping the pack precondition:
-  today that path throws *"No abuddy.json found"* before anything is published. Both halves, since the
+  today that path throws *"No apack.json found"* before anything is published. Both halves, since the
   pack repo must keep building and installing — assert a pack-less run does neither and a pack run does both.
 - **the engine is unreachable from `dev`** — `dev` must not import the session, or the coupling this plan
   removes comes back. `check:specifiers` is the home for that rule.
@@ -674,7 +674,7 @@ below exists.
   what makes `--spawn` safe: with `startedBy: drive` it takes the dir and says so, and with
   `startedBy: dev` it exits as today. Mutation: reclaiming unconditionally takes an app somebody opened.
   **The case has to `--spawn` and then reclaim**, rather than hand-write a session file: a fabricated file
-  passes while `ABUDDY_SESSION_STARTED_BY` is never set, which is the way this silently never fires.
+  passes while `APACK_SESSION_STARTED_BY` is never set, which is the way this silently never fires.
 - **a spawned app is attachable.** The case that fails if `--spawn` ever routes through the fixture:
   assert the app it started carries a `debugPort` and answers a verb. `PLAYWRIGHT_TEST` would make it
   `test`, and the environment gate would refuse the port, so this is the firing case for that whole
@@ -711,8 +711,8 @@ start, `packages:ensure`, the `playwright-core` import, connect, readiness — n
 one step of it. The spike's numbers size the attach; nothing yet sizes what a question costs, and that is
 the number that says whether `--spawn` plus attach carries `--serve`'s load.
 
-Then: `npm run spec packages/abuddy-cli`, `npm run spec packages/abuddy-testing`, `npm run chain`. A real
-`abuddy dev` with `drive --eval` against it, `npm start` with the same, and `npm test -- smoke` to prove
+Then: `npm run spec packages/apack-cli`, `npm run spec packages/apack-testing`, `npm run chain`. A real
+`apack dev` with `drive --eval` against it, `npm start` with the same, and `npm test -- smoke` to prove
 `test` is untouched.
 
 ## Security
@@ -725,7 +725,7 @@ risk to note but a condition to meet:
   never from a session file's contents. `development` only: not `test`, and not a packaged app a user installed.
   One call site, one gate, and the firing case above is what holds it.
 - **`127.0.0.1` only.** Chromium binds the debug port locally by default and nothing may widen it.
-- **The session file is mode-0600**, through `writePrivateFile` (`@abuddy/host/private-file`, moved there
+- **The session file is mode-0600**, through `writePrivateFile` (`@apack/host/private-file`, moved there
   from `secrets/`, where it was never exported and never belonged) — the posture the app's
   own `api-token` file already has. The port is discoverable by the user and by nothing else, which is the
   same answer Chrome gives with `DevToolsActivePort` and the honest limit of it: any process running as the

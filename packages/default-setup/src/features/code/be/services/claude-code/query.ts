@@ -27,7 +27,7 @@
  * between "internal logic" and "caller" without races.
  */
 
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import { argsFromOptions } from './args.ts'
 import { createControlRouter } from './control.ts'
 import {

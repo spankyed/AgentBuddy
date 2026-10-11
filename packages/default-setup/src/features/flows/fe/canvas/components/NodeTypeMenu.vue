@@ -52,7 +52,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { getConnectableNodeTypes } from '@abuddy/ui/components/node-styles'
+import { getConnectableNodeTypes } from '@apack/ui/components/node-styles'
 import type { Component } from 'vue'
 
 export interface ExtraMenuItem {

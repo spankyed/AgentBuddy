@@ -2,12 +2,12 @@
 // read it, so the system sends it when a client connects and whenever one asks for it again
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { startApp, type TestApp } from '@abuddy/testing/harness'
-import { importCompiledContent } from '@abuddy/sdk/utils'
+import { startApp, type TestApp } from '@apack/testing/harness'
+import { importCompiledContent } from '@apack/sdk/utils'
 import { repository } from '#generated/repository.ts'
 import type { LibraryIndex } from '#features/library/be/types.ts'
 
-/** Where `abuddy build` writes this pack's compiled content */
+/** Where `apack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } }).data.index

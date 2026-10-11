@@ -2,7 +2,7 @@
 // test, not for Electron, so the parts that talk to a running browser process stand in as recorded calls.
 export const app = {
   isPackaged: false,
-  name: 'abuddy',
+  name: 'apack',
   paths: new Map<string, string>(),
   setNameCalls: [] as string[],
   setName(name: string) {
@@ -23,7 +23,7 @@ export const app = {
 export function resetElectronStub(): void {
   shell.opened.length = 0;
   app.isPackaged = false;
-  app.name = 'abuddy';
+  app.name = 'apack';
   app.paths.clear();
   app.setNameCalls.length = 0;
 }

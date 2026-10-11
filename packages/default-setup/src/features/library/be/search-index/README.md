@@ -9,7 +9,7 @@ Semantic search over library documents: documents are split into chunks (whole d
 | Embedding models: local FastEmbed models, and API models `services.inference` runs by `provider:model` id | `../../embedding-models.ts` (shared with the index editor) |
 | Embedding, chunking, index files | `service.ts` (FastEmbed for local models, `services.inference.embed`/`embedMany` for the rest; `usearch` indices) |
 | Filling an author's `{{segment N}}` template | `../../segment-template.ts` (shared with the index editor, and outside the exclusion below, so it is typechecked and has a spec) |
-| Index and chunk rows, indexing, search | `repository.ts` (`SearchIndex` and `IndexedDoc` entities, declared in `abuddy.json`) |
+| Index and chunk rows, indexing, search | `repository.ts` (`SearchIndex` and `IndexedDoc` entities, declared in `apack.json`) |
 | FastEmbed model names | `config/fastembed-mapping.ts` |
 | Where indices and FastEmbed weights live | `paths.ts` (`search-indices/`, `models-cache/` in the app's data directory) |
 | Types | `types/search-index.ts` (backend), `../../fe/types/search-index.ts` (index editor form) |
@@ -33,11 +33,11 @@ Semantic search over library documents: documents are split into chunks (whole d
 2. Remove the three files from default-setup's `tsconfig.json` `exclude`, and fix what the typecheck reports.
 3. Restore the `[SEARCH_INDEX_FF]` call sites.
 4. Bring it onto the current pack structure before shipping it:
-   - register the index's queries and commands as repositories in `abuddy.json` (`searchIndexQueries`/`searchIndexCommands`), used through `repository`, instead of the module functions `be/repository/commands.ts` and `be/system.ts` import directly;
+   - register the index's queries and commands as repositories in `apack.json` (`searchIndexQueries`/`searchIndexCommands`), used through `repository`, instead of the module functions `be/repository/commands.ts` and `be/system.ts` import directly;
    - decide whether local FastEmbed models stay, or every embedding goes through `services.inference`;
-   - unit-test indexing and search on the harness (`@abuddy/testing/harness`), with `mockInference` for the API models.
+   - unit-test indexing and search on the harness (`@apack/testing/harness`), with `mockInference` for the API models.
 5. Ship the native modules in the packaged app. `usearch` and FastEmbed's ONNX runtime load native binaries:
-   - a pack's backend runtime bundle inlines its npm dependencies, so a package carrying a native binary has to be named in `RESOLVED_AT_RUNTIME` (`abuddy-cli/src/build/be-bundler.ts`) to stay external and resolve from `node_modules`. The app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`); check that they're installed where the packaged runtime resolves them.
+   - a pack's backend runtime bundle inlines its npm dependencies, so a package carrying a native binary has to be named in `RESOLVED_AT_RUNTIME` (`apack-cli/src/build/be-bundler.ts`) to stay external and resolve from `node_modules`. The app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`); check that they're installed where the packaged runtime resolves them.
    - Check that their binaries load under Electron's Node. `build/build.sh` rebuilds only `node-pty` against Electron (`electron-rebuild --only node-pty`); add them there if their prebuilds don't load.
    - Trim their other platforms' prebuilds in `electron-builder.mjs` (`excludePrebuilds`, as for `node-pty`), and add their binaries to the macOS signing check in `build/prod/verify-signing.sh`.
    - Decide how FastEmbed's weights arrive: downloaded to `models-cache/` on first use (`paths.ts`), or shipped with the app (the commented `extraResources` entry in `electron-builder.mjs` names the API's old `local_cache`, which no longer exists).

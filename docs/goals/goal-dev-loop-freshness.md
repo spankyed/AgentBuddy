@@ -1,7 +1,7 @@
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-18). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
 ```
-# Goal: a running dev app keeps the @abuddy packages' dist current
+# Goal: a running dev app keeps the @apack packages' dist current
 
 Implement docs/goals/goal-dev-loop-freshness.md, it may be outdated so first verify all claims. Read Background, Decisions, Phases and Constraints first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
@@ -12,23 +12,23 @@ template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- Editing a source of @abuddy/ears, @abuddy/sdk or @abuddy/ui while `npm start` runs rebuilds that
+- Editing a source of @apack/ears, @apack/sdk or @apack/ui while `npm start` runs rebuilds that
   package's dist on its own, within a few seconds of the edit, without rebuilding the built-in pack.
 - The watcher's watch set is derived from BUILD_UNITS rather than listed again, so adding an input to
   a unit extends the watcher with no second edit.
 - A build that fails mid-edit, and a build the lock is already held for, both leave the dev session
   running.
-- The freshness doors table in packages/abuddy-testing/CLAUDE.md lists the new door, and the "What a
+- The freshness doors table in packages/apack-testing/CLAUDE.md lists the new door, and the "What a
   running dev app does and doesn't pick up" section says what changed.
-- npm run typecheck; npm test -w @abuddy/cli; npm test -w @abuddy/host; npm run build; npm test.
+- npm run typecheck; npm test -w @apack/cli; npm test -w @apack/host; npm run build; npm test.
 ```
 
 ## Background
 
-`npm start` leaves the built-in pack on two clocks, documented in `packages/abuddy-testing/CLAUDE.md`
+`npm start` leaves the built-in pack on two clocks, documented in `packages/apack-testing/CLAUDE.md`
 under "What a running dev app does and doesn't pick up". The renderer's Vite config and the API's tsup
-build both declare the `@abuddy/source` condition, so editing `@abuddy/sdk`, `@abuddy/ears` or
-`@abuddy/ui` hot-reloads the browser and the pack's running code follows source. What does not follow is
+build both declare the `@apack/source` condition, so editing `@apack/sdk`, `@apack/ears` or
+`@apack/ui` hot-reloads the browser and the pack's running code follows source. What does not follow is
 anything read from those packages' **`dist`**, which is built on demand in a checkout and refreshed only
 when a command with a freshness door runs (the six doors are listed in that same file).
 
@@ -42,8 +42,8 @@ re-derived:
 
 | Proposal | Why not | Where |
 |---|---|---|
-| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. Re-measured 2026-09-28 at chain-sweep scale (12 units, 39.1MB), where the arithmetic is worse: the stats *are* the walk, and a unit whose stats moved pays both, 861ms against 661ms — which is the ordinary case, since a chain run is a run you made because something changed. | comment on `fingerprintInputs`, `@abuddy/host/build/packages-built` |
-| Rebuild the built-in pack whenever the SDK changes | `abuddy build` for default-setup is ~14s, and what it refreshes (compiled content, the facade dependents consume, the step build, the content runtime) is not what bites the person editing SDK and default-setup together. | Decision 2 below |
+| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. Re-measured 2026-09-28 at chain-sweep scale (12 units, 39.1MB), where the arithmetic is worse: the stats *are* the walk, and a unit whose stats moved pays both, 861ms against 661ms — which is the ordinary case, since a chain run is a run you made because something changed. | comment on `fingerprintInputs`, `@apack/host/build/packages-built` |
+| Rebuild the built-in pack whenever the SDK changes | `apack build` for default-setup is ~14s, and what it refreshes (compiled content, the facade dependents consume, the step build, the content runtime) is not what bites the person editing SDK and default-setup together. | Decision 2 below |
 
 ### Measurements (this machine, warm)
 
@@ -51,11 +51,11 @@ re-derived:
 |---|---|
 | `stalePackageUnits()` in-process | **24ms** (417 files, 2.5MB) |
 | `npm run packages:ensure`, everything fresh | **345ms** (24ms of work, ~320ms process startup) |
-| `build:package -w @abuddy/ears` | 1.10s |
-| `build:package -w @abuddy/sdk` | 2.47s |
-| `build:package -w @abuddy/ui` | 4.99s |
-| `build:package -w @abuddy/testing` | 2.58s |
-| `abuddy build` for default-setup | ~14s |
+| `build:package -w @apack/ears` | 1.10s |
+| `build:package -w @apack/sdk` | 2.47s |
+| `build:package -w @apack/ui` | 4.99s |
+| `build:package -w @apack/testing` | 2.58s |
+| `apack build` for default-setup | ~14s |
 
 `ensurePackagesBuilt` builds only the stale units, so an SDK edit costs 2.5s, not the 12s a full
 `packages:build` takes.
@@ -63,12 +63,12 @@ re-derived:
 ## Decisions
 
 - **Solve the packages' `dist` going stale; leave the pack's build output alone.** These are two
-  different problems with different consumers. The editor, and any later `abuddy build`, read the
+  different problems with different consumers. The editor, and any later `apack build`, read the
   packages' `dist` — that is the everyday pain and it costs 1.1–5.0s to fix. The pack's own build output
   (compiled content, `dist/types/pack-types.d.ts`, `dist/build/*`) is consumed by dependent packs and by
   applying, not by someone editing SDK and default-setup together, and costs ~14s.
-- **Nothing rebuilds the built-in pack on an `@abuddy` source change.** The existing trigger stays as it
-  is: default-setup's own sources, through `abuddy build --watch` (`dev-build.mjs` when this was written; `goal-one-kind-of-pack` replaced it with the CLI's own watch, which rebuilds only the runtime). Keeping `dist` current means the pack
+- **Nothing rebuilds the built-in pack on an `@apack` source change.** The existing trigger stays as it
+  is: default-setup's own sources, through `apack build --watch` (`dev-build.mjs` when this was written; `goal-one-kind-of-pack` replaced it with the CLI's own watch, which rebuilds only the runtime). Keeping `dist` current means the pack
   rebuild that does fire consumes a fresh SDK, which is the ordering win without the cost.
 - **Pull-based, not push-based.** No `tsc --watch` or `tsdown --watch` per package: that is three
   long-running toolchains rebuilding on every save whether or not anything consumes the output. The
@@ -84,14 +84,14 @@ re-derived:
   building" and re-checks on the next change.
 - **A failed build never ends the dev session.** Half-typed source is normal while editing. Report it
   where the dev output goes and keep watching.
-- **`abuddy dev` gets the same treatment as `npm start`.** It has the same shape — a long-running session
+- **`apack dev` gets the same treatment as `npm start`.** It has the same shape — a long-running session
   over a pack linked to a checkout — and today it ensures once at startup (`commands/run.ts`).
 
 ## Phases
 
 ### Phase 1 — the watcher
 
-- A module in `@abuddy/host` beside the freshness rule (`src/build/`), exporting something like
+- A module in `@apack/host` beside the freshness rule (`src/build/`), exporting something like
   `watchPackageFreshness({ onBuilt?, onError? }): () => void`.
 - Its watch set is every existing directory and file in `BUILD_UNITS[*].inputs`, deduplicated. Watch with
   `fs.watch` and `{ recursive: true }` on directories.
@@ -109,24 +109,24 @@ re-derived:
 
 - `packages/dev-mode.js` starts the watcher for the life of the session and stops it on shutdown,
   printing what it rebuilt in the same style as the rest of the dev output.
-- It does not touch the pack's own watcher, which keeps its own trigger (Decision 2) — `abuddy build --watch`, forked by `packages/dev-mode.js`.
-- **Done when:** with `npm start` running, editing a `@abuddy/sdk` source rebuilds `packages/abuddy-sdk/dist`
-  within a few seconds and prints one line; editing a `@abuddy/ui` source rebuilds only `@abuddy/ui`; the
+- It does not touch the pack's own watcher, which keeps its own trigger (Decision 2) — `apack build --watch`, forked by `packages/dev-mode.js`.
+- **Done when:** with `npm start` running, editing a `@apack/sdk` source rebuilds `packages/apack-sdk/dist`
+  within a few seconds and prints one line; editing a `@apack/ui` source rebuilds only `@apack/ui`; the
   built-in pack is not rebuilt by either. Verified by hand and recorded in the Outcome with the observed
   timings.
 
-### Phase 3 — `abuddy dev`
+### Phase 3 — `apack dev`
 
 - `commands/run.ts` keeps its startup `ensureCheckoutPackages(root)` and adds the watcher for the session,
   for a pack whose packages come from a checkout (`checkoutFor`) and not otherwise.
 - The rebuild loop still calls `build()`, which does not ensure — the reason is in `buildCommand`'s
   comment and does not change.
-- **Done when:** `abuddy dev` in a pack linked to a checkout rebuilds that checkout's stale package on an
-  SDK edit; `abuddy dev` in a pack with installed packages starts no watcher. A spec covers the second.
+- **Done when:** `apack dev` in a pack linked to a checkout rebuilds that checkout's stale package on an
+  SDK edit; `apack dev` in a pack with installed packages starts no watcher. A spec covers the second.
 
 ### Phase 4 — the record
 
-- Add the watcher to the doors table in `packages/abuddy-testing/CLAUDE.md` as a third kind, or as a
+- Add the watcher to the doors table in `packages/apack-testing/CLAUDE.md` as a third kind, or as a
   fixer with its trigger named — it is the first door that is neither a command nor a check inside a
   test process.
 - Rewrite "What a running dev app does and doesn't pick up": the packages' `dist` now follows source, and
@@ -137,7 +137,7 @@ re-derived:
 ## Constraints
 
 **Never**: commit, stage or push without being asked; publish anything or trigger a workflow; open, copy
-or modify a real user data dir (`~/Library/Application Support/abuddy*`); `pkill`/`killall` Electron or
+or modify a real user data dir (`~/Library/Application Support/apack*`); `pkill`/`killall` Electron or
 node; run bare `tsc` in `packages/preload`; edit version or release metadata; add a backward-compatibility
 shim or re-export; loosen a failing assertion instead of investigating it; leave a new guard or helper
 without a mutation check.

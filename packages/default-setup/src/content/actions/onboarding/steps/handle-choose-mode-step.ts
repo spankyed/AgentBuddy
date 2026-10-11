@@ -1,4 +1,4 @@
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { EntityId, Services } from '#generated/services.ts';
 import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState } from '../onboarding-helpers.ts';
 

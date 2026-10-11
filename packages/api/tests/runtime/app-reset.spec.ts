@@ -1,28 +1,28 @@
 // Resetting the app (services.appData.reset()) leaves it as a fresh boot does: an onboarded app whose settings and
 // flows were changed comes back with default settings, the built-in packs' written flows and the migrations applied
-// (its data at the app version, nothing pending; tests/services/host-runtime.spec.ts in @abuddy/host shows the reset's
+// (its data at the app version, nothing pending; tests/services/host-runtime.spec.ts in @apack/host shows the reset's
 // order). Runs the built-in packs' built runtimes (npm run compile), as the db scripts do.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { EARS } from '@abuddy/ears';
+import type { EARS } from '@apack/ears';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-app-reset-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
-const { loadAppPacks, startPacks } = await import('@abuddy/host/packs/runtime');
-const { installShippedPacks } = await import('@abuddy/host/packs');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
-const { appState } = await import('@abuddy/host/app-state');
-const { getAppVersion } = await import('@abuddy/sdk/env');
-const { services } = await import('@abuddy/sdk/services');
-const { flowRepository } = await import('@abuddy/sdk/repositories');
-const { untypedQx } = await import('@abuddy/ears');
-const { onIncoming } = await import('@abuddy/sdk/events');
-const { HOST } = await import('@abuddy/host/bus');
+const { loadAppPacks, startPacks } = await import('@apack/host/packs/runtime');
+const { installShippedPacks } = await import('@apack/host/packs');
+const { resolveAppContext } = await import('@apack/sdk/env');
+const { appState } = await import('@apack/host/app-state');
+const { getAppVersion } = await import('@apack/sdk/env');
+const { services } = await import('@apack/sdk/services');
+const { flowRepository } = await import('@apack/sdk/repositories');
+const { untypedQx } = await import('@apack/ears');
+const { onIncoming } = await import('@apack/sdk/events');
+const { HOST } = await import('@apack/host/bus');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 

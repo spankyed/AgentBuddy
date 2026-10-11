@@ -4,7 +4,7 @@
 # Goal: console transaction code runs as one transaction
 
 Implement docs/goals/goal-console-transactions.md on a branch cut from master after
-goal-abuddy-db-cli.md lands. Read Background, Decisions, Phases and Constraints first. Decisions are
+goal-apack-db-cli.md lands. Read Background, Decisions, Phases and Constraints first. Decisions are
 final: implement them, don't reopen them or stop to ask. The Open decisions must be settled with the
 user before Phase 1; if any is still marked open, stop and ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -30,12 +30,12 @@ Never:
   chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
   and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - give pack code a way to open or hold a transaction: the boundary is host-side (Decision 3).
 ```
@@ -47,17 +47,17 @@ all through one runner:
 
 - the Database plugin's console (`packages/default-setup/src/features/database/be/execute/transaction.ts`);
 - the `query` flow step in write mode (`packages/default-setup/src/extensions/steps/query/runtime.ts`);
-- `abuddy db exec` and `abuddy db repl --write` (`packages/abuddy-cli/src/commands/db/code.ts`, `repl.ts`).
+- `apack db exec` and `apack db repl --write` (`packages/apack-cli/src/commands/db/code.ts`, `repl.ts`).
 
-`runTransactionCode` (`packages/abuddy-sdk/src/database-console/index.ts:123`) builds a function from the
+`runTransactionCode` (`packages/apack-sdk/src/database-console/index.ts:123`) builds a function from the
 user's code and calls it with the read and write helpers. Each helper writes as the code runs:
 
-- **In memory:** a helper reaches the installed engine (`@abuddy/ears`), which updates the attribute
-  store, entity index and relation index immediately. `EarsAdmin` (`packages/abuddy-ears/src/engine.ts:83`)
+- **In memory:** a helper reaches the installed engine (`@apack/ears`), which updates the attribute
+  store, entity index and relation index immediately. `EarsAdmin` (`packages/apack-ears/src/engine.ts:83`)
   has no commit boundary and no undo: `putAttr`, `addAttr`, `mergeAttr`, `dropAttr`, `dropIf`,
   `updateAttr`, `addRelation`, `updateRelation` and the removals take effect as they are called.
 - **In the files:** the engine tells its persistence sink, which reaches the LMDB adapter
-  (`packages/abuddy-ears/src/lmdb/adapter.ts`). Most writes are buffered and flushed in a microtask inside
+  (`packages/apack-ears/src/lmdb/adapter.ts`). Most writes are buffered and flushed in a microtask inside
   one `entities.transactionSync` (`scheduleFlush`, :134), so a batch already lands atomically. Two paths
   don't go through it: `onDestroyEntity` (:250) opens its own `transactionSync` as it is called, and
   `close()` (:196) flushes whatever is buffered, whether the code succeeded or failed.
@@ -65,26 +65,26 @@ user's code and calls it with the read and write helpers. Each helper writes as 
 So code that throws part way leaves everything it wrote before the throw, in memory and on disk. That is
 the documented behaviour today — `docs/public-facing/cli.md` (the `exec` section) describes it, the
 failure message says "The writes it made before failing stand: nothing is rolled back", and
-`packages/abuddy-cli/tests/commands/db.integration.spec.ts` pins it ("keeps what the code wrote before it threw: there is
+`packages/apack-cli/tests/commands/db.integration.spec.ts` pins it ("keeps what the code wrote before it threw: there is
 no rollback"). This goal replaces that behaviour with the one the name promises, and those three say the
 opposite afterwards.
 
 **Why it matters.** Console code is where a user repairs data by hand, on a database they usually can't
-reconstruct: `abuddy db` exists for the case where the app won't start. A half-applied repair is worse
+reconstruct: `apack db` exists for the case where the app won't start. A half-applied repair is worse
 than a refused one, because nothing records which statements ran.
 
 **What exists to build on:**
 
 - The adapter already writes a whole flush inside one LMDB transaction, counts a failed write
   (`errorCount`, `lastError`) and reports it through `PersistenceErrorStats`, which
-  `AppDatabase.close()` (`packages/abuddy-host/src/database/open.ts`) turns into a thrown error.
+  `AppDatabase.close()` (`packages/apack-host/src/database/open.ts`) turns into a thrown error.
 - The engine is an instance (`createEarsEngine`) with a `query` face packs use and an `admin` face the
-  host composition keeps (`packages/abuddy-host/src/services/index.ts`), so a boundary can live on
+  host composition keeps (`packages/apack-host/src/services/index.ts`), so a boundary can live on
   `admin` without widening what packs reach.
 - The store holds writes already, for one case: `LmdbStore.reset()` keeps them while the files are
-  replaced (`packages/abuddy-ears/src/lmdb/store.ts`, `heldForReset`). A commit boundary is the same
+  replaced (`packages/apack-ears/src/lmdb/store.ts`, `heldForReset`). A commit boundary is the same
   shape with a different trigger.
-- `withDatabase` (`packages/abuddy-cli/src/commands/db/target.ts`) separates what the command hit from
+- `withDatabase` (`packages/apack-cli/src/commands/db/target.ts`) separates what the command hit from
   what closing hit, so a rollback's own failure has somewhere to be reported.
 
 ## Decisions
@@ -95,7 +95,7 @@ than a refused one, because nothing records which statements ran.
    all, which means `onDestroyEntity` is buffered like the rest (Phase 2).
 3. **The boundary is host-side.** It's an `EarsAdmin` member, not part of the pack-facing `qx`/`tx`
    surface: packs can't open, hold or nest one, and the published SDK reports don't gain a way to.
-   `@abuddy/sdk/database-console` reaches it through the engine the host binds.
+   `@apack/sdk/database-console` reaches it through the engine the host binds.
 4. **A rollback that fails is fatal.** Memory and files out of step is a state nothing can repair
    silently: it throws, naming both the original failure and the rollback's, and the app reports it as a
    fatal error rather than carrying on.
@@ -120,7 +120,7 @@ than a refused one, because nothing records which statements ran.
    - **B. Interleave.** Other writers pass through to the engine and the sink as they do now. Nothing
      fails, but a rollback then undoes only the console's entries, and the commit's single transaction
      carries another writer's rows.
-   The CLI is single-writer either way (`abuddy db` holds the data dir's write lock and refuses to run
+   The CLI is single-writer either way (`apack db` holds the data dir's write lock and refuses to run
    while the app does), so this decides the app's console only.
 
 ## Phases
@@ -136,7 +136,7 @@ than a refused one, because nothing records which statements ran.
 - The boundary spans `await`s, since console code may await and the runner awaits a returned promise.
   Apply Open decision 2 to writes from elsewhere while it's open.
 
-**Done when:** `packages/abuddy-ears/tests/` shows a function that throws leaves the engine as it was
+**Done when:** `packages/apack-ears/tests/` shows a function that throws leaves the engine as it was
 (attributes, entity index, relation index, roles) and one that returns leaves every change; the sink
 receives nothing until the boundary commits. Mutation: dropping the undo replay, or committing the held
 calls on a throw, fails those specs.
@@ -149,7 +149,7 @@ calls on a throw, fails those specs.
 - A failed flush undoes the memory changes too (Decision 4), so the process never holds data the files
   don't, and the error names both failures.
 
-**Done when:** `packages/abuddy-ears/tests/lmdb/` shows a commit whose flush fails leaves neither memory
+**Done when:** `packages/apack-ears/tests/lmdb/` shows a commit whose flush fails leaves neither memory
 nor files changed, and that a commit opens one transaction. Mutation: flushing per write, or keeping the
 memory changes after a failed flush, fails those specs.
 
@@ -157,22 +157,22 @@ memory changes after a failed flush, fails those specs.
 
 - `runTransactionCode` wraps the code in the boundary and its failure says the writes were rolled back
   (Decision 5); `runQueryCode` is unchanged.
-- `abuddy db exec` and `repl --write` report a rollback as part of the failure; `withDatabase` keeps
+- `apack db exec` and `repl --write` report a rollback as part of the failure; `withDatabase` keeps
   reporting a close failure without hiding what the command hit first.
 - The Database plugin's console and the `query` step's write mode inherit it through the runner.
 
-**Done when:** `packages/abuddy-cli/tests/commands/db.integration.spec.ts` asserts the database is untouched after failing
+**Done when:** `packages/apack-cli/tests/commands/db.integration.spec.ts` asserts the database is untouched after failing
 console code (replacing "keeps what the code wrote before it threw"), a default-setup spec covers the
-plugin's console, and `packages/abuddy-sdk/tests/database-console/` covers the runner. Mutation: running
+plugin's console, and `packages/apack-sdk/tests/database-console/` covers the runner. Mutation: running
 the code outside the boundary fails all three.
 
 ### Phase 4 — Docs and reports
 
 - `docs/public-facing/cli.md`: `exec` and `repl --write` are one transaction; a failure changes nothing.
-- `packages/abuddy-sdk/CLAUDE.md` (`database-console/`), `packages/abuddy-ears/CLAUDE.md` (the boundary,
-  the undo log and the single-transaction commit), `packages/abuddy-cli/CLAUDE.md` (`db`) and
+- `packages/apack-sdk/CLAUDE.md` (`database-console/`), `packages/apack-ears/CLAUDE.md` (the boundary,
+  the undo log and the single-transaction commit), `packages/apack-cli/CLAUDE.md` (`db`) and
   `packages/default-setup/CLAUDE.md` if it describes the console's behaviour.
-- `npm run api:update` for `@abuddy/sdk` and `@abuddy/ears`.
+- `npm run api:update` for `@apack/sdk` and `@apack/ears`.
 
 **Done when:** no doc or message says a failure keeps earlier writes, and every item in "Finished when"
 passes.
@@ -186,14 +186,14 @@ passes.
 
 ## Constraints
 
-- Tests and manual runs only use temp `ABUDDY_USER_DATA_DIR`s with `ABUDDY_ENV=test`; never real data
+- Tests and manual runs only use temp `APACK_USER_DATA_DIR`s with `APACK_ENV=test`; never real data
   dirs. Don't launch the app outside the test environment without an isolated data dir, and keep E2E in
-  the `abuddy-test` namespace.
+  the `apack-test` namespace.
 - Commits only on request, in logical chunks, conventional messages, no attribution lines, `git commit --
   <paths>` after checking `git diff --cached`.
 - No publishing, releases or triggered workflows. No broad pkill/killall on Electron or node. No bare
   `tsc` on `packages/preload`. No edits to version or release metadata.
-- The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`): the boundary is an
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`): the boundary is an
   `EarsAdmin` member, and `qx`/`tx` behave as they do today.
 - Published packages expose no `any`, keep the TypeScript floor, and need `api:update` after an export
   change.

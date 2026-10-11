@@ -197,9 +197,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { usePlugin } from '@abuddy/sdk/fe';
+import { usePlugin } from '@apack/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
-import type { PacksState } from '@abuddy/host/fe';
+import type { PacksState } from '@apack/host/fe';
 import PackDetail from './PackDetail.vue';
 import ContentOfferNotice from './ContentOfferNotice.vue';
 

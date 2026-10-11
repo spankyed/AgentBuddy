@@ -1,12 +1,12 @@
 import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } from 'xstate';
 
-import breadcrumb from '@abuddy/sdk/fe';
-import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
+import breadcrumb from '@apack/sdk/fe';
+import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@apack/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs.ts';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files.ts';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management.ts';
-import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
-import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
+import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@apack/sdk/fe';
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apack/sdk/fe';
 import type { CodeSettings } from '#generated/types.ts';
 import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract.ts';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract.ts';
@@ -22,7 +22,7 @@ import { pullRequestState } from './features/pull-request/state.ts';
 import { terminalState, type TerminalInfo } from './features/terminal/state.ts';
 import { actionsState } from './features/actions/state.ts';
 import { promptsState } from './features/prompts/state.ts';
-import type { KeyboardShortcut } from '@abuddy/sdk/types';
+import type { KeyboardShortcut } from '@apack/sdk/types';
 import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children.ts';
 
 export const id = 'code' as const;

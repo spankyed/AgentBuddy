@@ -1,14 +1,14 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
-import { safeEvents } from '@abuddy/sdk/fe';
-import { breadcrumbList } from '@abuddy/sdk/fe';
-import { contextMenuFn } from '@abuddy/sdk/fe';
+import { safeEvents } from '@apack/sdk/fe';
+import { breadcrumbList } from '@apack/sdk/fe';
+import { contextMenuFn } from '@apack/sdk/fe';
 import { Activity, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
-import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
+import { targetIs, type TrailClickEvent } from '@apack/sdk/fe';
 import type { BrainContext } from './contract.ts';
 import type { OutgoingBrainEvents } from '#features/brain/be/types.ts'
 import type { FlowTNodeData } from '#generated/types.ts';
 import { sendToSystem } from '#generated/events.ts';
-import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
+import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apack/sdk/steps';
 import {
   applyTNodeSpawn,
   denormalizeTNodeTree,

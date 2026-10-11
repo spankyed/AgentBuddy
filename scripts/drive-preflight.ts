@@ -26,7 +26,7 @@
  * tell, because an output it cannot read is not evidence of staleness.
  */
 import * as fs from 'node:fs';
-import { inputFiles, repoRelative, skipsFingerprint } from '@abuddy/host/build/packages-built';
+import { inputFiles, repoRelative, skipsFingerprint } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS } from './lib/chain-steps.ts';
 import { unitFor } from './lib/chain-stamps.ts';
 
@@ -44,7 +44,7 @@ interface Edge { readonly file: string; readonly at: number }
  * **Newest on both sides, which is the only pair that works.** For the inputs it is the obvious reading:
  * the latest edit. For the outputs it is *when the build last produced anything*, and the tempting
  * alternative — the oldest output, "has every product been refreshed" — is wrong because a build need not
- * rewrite all of them: `abuddy build` overwrites `dist/defs/` without clearing it, by design, so some of
+ * rewrite all of them: `apack build` overwrites `dist/defs/` without clearing it, by design, so some of
  * `compile`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
  * after a successful build.
  *

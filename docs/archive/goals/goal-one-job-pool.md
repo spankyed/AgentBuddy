@@ -57,7 +57,7 @@ Commit as you go:
 
 Never:
 - Constraints' standing rules are hard stops, not advice: no publish or release, no real data dir, no
-  broad pkill, no app outside the test env without an isolated ABUDDY_USER_DATA_DIR, no bare tsc on
+  broad pkill, no app outside the test env without an isolated APACK_USER_DATA_DIR, no bare tsc on
   preload, no version metadata, and no change to the typed EARS types to make a call site compile.
 - delete or loosen a test to make a number move. Coverage is not the lever here; cost is.
 - take a measurement while another checkout is building.
@@ -90,12 +90,12 @@ Re-measured 2026-09-25 at `1c272123c`, each suite run alone and serially, nothin
 
 | suite | work | **floor** | files | floor file |
 |---|---|---|---|---|
-| `@abuddy/cli` fast | **41.1s** | 7.4s | 46 | `tests/build/facade-gate.spec.ts` |
-| `@abuddy/host` | 19.1s | 4.8s | 77 | `tests/database/write-lock.spec.ts` |
-| `@abuddy/sdk` | 16.1s | **11.4s** | 56 | `tests/build/generate-entries.spec.ts` |
+| `@apack/cli` fast | **41.1s** | 7.4s | 46 | `tests/build/facade-gate.spec.ts` |
+| `@apack/host` | 19.1s | 4.8s | 77 | `tests/database/write-lock.spec.ts` |
+| `@apack/sdk` | 16.1s | **11.4s** | 56 | `tests/build/generate-entries.spec.ts` |
 | `@app/default-setup` | 14.5s | 4.3s | 86 | `tests/unit/harness-app-stop.spec.ts` |
 | `@app/api` | 5.0s | 1.1s | 15 | `tests/unit/secrets.spec.ts` |
-| `@abuddy/ears` | 2.6s | 2.0s | 9 | `tests/lmdb/store.spec.ts` |
+| `@apack/ears` | 2.6s | 2.0s | 9 | `tests/lmdb/store.spec.ts` |
 | `@app/main` | 0.1s | 0.1s | 2 | `tests/app-context.spec.ts` |
 | `@app/renderer` | 0.1s | 0.1s | 8 | `tests/transport/client.spec.ts` |
 
@@ -103,9 +103,9 @@ Re-measured 2026-09-25 at `1c272123c`, each suite run alone and serially, nothin
 `max(11.4, 9.9)` = **11.4s** and the gap is 3.6×, which is the same shape the plan found and not the same
 numbers. Three corrections to what it inherited:
 
-- **`@abuddy/cli`'s fast half is 41.1s over 46 files, not 30.8s over 38.** That plan said its figures were
+- **`@apack/cli`'s fast half is 41.1s over 46 files, not 30.8s over 38.** That plan said its figures were
   "derived by mapping file timings onto the tip's naming rather than measured on the tip", and they were
-  low. It is 42% of all the work, so its claim that `@abuddy/cli` "is no longer the giant" does not hold —
+  low. It is 42% of all the work, so its claim that `@apack/cli` "is no longer the giant" does not hold —
   by work it still is. Its *floor* is 7.4s, which is the part that was right.
 - **The floor is 11.4s, not 13.0s**, still `generate-entries.spec.ts`. The ideal moves with it.
 - **`@app/main` was missing from the table** and is 0.1s, which changes nothing but completes it.
@@ -113,9 +113,9 @@ numbers. Three corrections to what it inherited:
 The recorded lane table is 1: 69.8s, 2: 44.3s, 3: 47.7s, 8: 63.1s. A suite uses 2.0-3.8 of the 10 cores,
 which is why two lanes help and eight only add contention.
 
-The floor is one file, `abuddy-sdk/tests/build/generate-entries.spec.ts`, 94 tests — of which **the cost is
-3 tests**. Three `typecheck()` call sites each run a full `ts.createProgram` resolving `@abuddy/sdk` under
-`customConditions: ['@abuddy/source']`, so each type-checks ~165 files of SDK and ears *source*
+The floor is one file, `apack-sdk/tests/build/generate-entries.spec.ts`, 94 tests — of which **the cost is
+3 tests**. Three `typecheck()` call sites each run a full `ts.createProgram` resolving `@apack/sdk` under
+`customConditions: ['@apack/source']`, so each type-checks ~165 files of SDK and ears *source*
 (`skipLibCheck` skips `.d.ts`, and the SDK is `.ts`). The other 91 are string and AST assertions, about 1s
 together. Splitting by topic buys nothing; the three programs re-parse an identical graph.
 
@@ -134,7 +134,7 @@ hooks do not fire under a root run, so `packages:ensure` must run once up front.
 
 `suite-split.spec.ts` classifies a spec by whether its imports reach `node:child_process`.
 
-- `AS/cli-suite-spawns` converts 14 sites from `node bin/abuddy.mjs` to an in-process `callCli()`. `callCli`
+- `AS/cli-suite-spawns` converts 14 sites from `node bin/apack.mjs` to an in-process `callCli()`. `callCli`
   loads esbuild, whose Node API starts a child process — measured, exactly one. The guard reads it clean.
 - `facade-typing.integration.spec.ts` is the largest file in the suite, **48.4s**, with **zero** spawn call
   sites. It stays in the integration half only because line 1 still imports `execFileSync`.
@@ -155,7 +155,7 @@ hooks do not fire under a root run, so `packages:ensure` must run once up front.
 - **`test:integration` is tier 2 and cached per step**, so moving spawns in-process makes a **cache miss**
   cheaper, not a cached run faster. Measure it there, not against `test:unit`.
 - **Process-group reaping exists for `tests/scripts/`** (`scripts/bounded.ts`). It would not have caught the
-  34-hour orphaned `abuddy generate-entries` that skewed a day of measurements.
+  34-hour orphaned `apack generate-entries` that skewed a day of measurements.
 
 ## Decisions
 
@@ -173,15 +173,15 @@ stamps under one step is an extension. Do not buy the pool by giving up the cach
 **4. Timeouts are configured per tier, not per test.** The two configs are where a tier budget lives. Delete
 per-test timeouts the tier budget covers; keep the ones genuinely about one test.
 
-**5. Reaping widens past `tests/scripts/`** — any long-running `abuddy` invocation, or an `abuddy doctor`
-that reaps what `@abuddy/host/process-liveness` already identifies (`lockIsHeld`, `recordIsStale`).
+**5. Reaping widens past `tests/scripts/`** — any long-running `apack` invocation, or an `apack doctor`
+that reaps what `@apack/host/process-liveness` already identifies (`lockIsHeld`, `recordIsStale`).
 
 ## Phases
 
 ### Phase 1 — Land `AS/cli-suite-spawns`
 
 7 commits based on `4ed04f144`, which is no longer an ancestor of anything live. All changes are inside
-`packages/abuddy-cli/tests/**`; no production source. `git merge-tree` gives **one** conflict, add/add on
+`packages/apack-cli/tests/**`; no production source. `git merge-tree` gives **one** conflict, add/add on
 `docs/goals/goal-cli-suite-spawns.md` — self-inflicted by that session restoring the doc. Take this tip's
 copy and re-append its outcome. All code merges clean, and rename detection lands the edits on the renamed
 files.
@@ -281,7 +281,7 @@ outcome, as it was for lanes.
 | `npm run chain --all` | — | **163.4s, exit 0** |
 
 Two of those want reading rather than skimming. The suites' total work fell 31%, but most of
-`@abuddy/cli`'s share of that — 41.1s to 14.6s — is Phase 2 **moving** 25 expensive specs into the
+`@apack/cli`'s share of that — 41.1s to 14.6s — is Phase 2 **moving** 25 expensive specs into the
 integration half, not work disappearing. And `test:integration` looks barely changed at 39.6s against 42.0s
 until you notice it is carrying 408 tests where it carried 328: the same wall for 24% more work.
 
@@ -289,7 +289,7 @@ until you notice it is carrying 408 tests where it carried 328: the same wall fo
 
 - **One root vitest over all eight is not possible.** Host suites resolve workspace source, the pack suite
   must resolve the published `dist`, Node conditions are per process, and vitest ignores per-project
-  `poolOptions.execArgv`. Probed: under one pooled process a `default-setup` spec resolves `@abuddy/sdk` to
+  `poolOptions.execArgv`. Probed: under one pooled process a `default-setup` spec resolves `@apack/sdk` to
   `src` where it resolves `dist` today. It would not have failed; it would have tested something else.
 - **`max(floor, work/cores)` was never the model.** It predicted 44.3s -> ~13s. The host pool does ~136s of
   worker time in 21.1s of wall, so the suites were never serialised the way that arithmetic assumes.
@@ -304,7 +304,7 @@ until you notice it is carrying 408 tests where it carried 328: the same wall fo
 - **Two pools, not one**, split on host/pack resolution — forced, not chosen.
 - **A dead band (1.5s / 2.5s) rather than one threshold**, because a file's recorded time is its wall time
   under whatever else its half is running, so a single line oscillates.
-- **The cost record is `packages/abuddy-cli/etc/spec-cost.json`** with a `spec-cost:check` / `:update` pair,
+- **The cost record is `packages/apack-cli/etc/spec-cost.json`** with a `spec-cost:check` / `:update` pair,
   matching the repo's other five recorded artifacts.
 - **The root config lists its projects literally and is guarded**, because `check:specifiers` reads configs
   as text and the alternative — declaring the condition at the root — is safe only by luck.
@@ -314,9 +314,9 @@ until you notice it is carrying 408 tests where it carried 328: the same wall fo
 ### Deferred, each with the measurement
 
 - **The 3 compiling tests are not split out.** The floor is not binding (21.1s pool wall against a 9.4s
-  floor) and there is no tier for them to move into, since that split exists only in `@abuddy/cli`. Against
+  floor) and there is no tier for them to move into, since that split exists only in `@apack/cli`. Against
   ~0 gain it means extracting ~125 lines of helpers from a 1329-line file. Attempted, then reverted.
-- **Decision 5's `abuddy doctor` half is not built.** `process-liveness` identifies records left behind, not
+- **Decision 5's `apack doctor` half is not built.** `process-liveness` identifies records left behind, not
   live processes, and `withBuildLock` already self-heals a stale lock; such a check would report something
   already fixing itself and would not have found the orphan that motivated it. The first half of that
   decision was already done by `59dec5165`.
@@ -358,7 +358,7 @@ with the spawn it labelled. What remains is 13 `produces`, 3 `typecheck`, and th
 "764 before and after" was its own base's count and is stale here; the invariant is the number, not that
 number.
 
-**Measured, at the same 328 tests**, by reverting `packages/abuddy-cli/tests` to the pre-rebase commit and
+**Measured, at the same 328 tests**, by reverting `packages/apack-cli/tests` to the pre-rebase commit and
 timing it, so the comparison is the conversions and not a changed test set:
 
 | `test:integration` | wall | test time |
@@ -373,12 +373,12 @@ step, so a warm chain that skips it is unaffected either way.
 fixture fails all four typecheck cases with `src/consumer.ts(161): error TS2322`, naming file, line and code
 where the spawn reported only a non-zero exit. With `generateEntries` skipped in `build()`, two of the three
 converted spec files fail at `beforeAll`. The second check needs `npm run packages:ensure` after the
-mutation: editing `abuddy-cli/src` makes its bundle stale, and without the rebuild all four files fail at
+mutation: editing `apack-cli/src` makes its bundle stale, and without the rebuild all four files fail at
 the freshness guard before running a test — a failure that looks like the mutation being caught and is not.
 
 ### Phase 2 — the predicate is the measured cost
 
-`packages/abuddy-cli/etc/spec-cost.json` records what each of the 80 specs costs;
+`packages/apack-cli/etc/spec-cost.json` records what each of the 80 specs costs;
 `tests/build/suite-split.spec.ts` reads it and fails when a spec is in the wrong half, has no recorded cost,
 or is recorded and gone. `spec-cost:update` re-measures and rewrites it, `spec-cost:check` reads it and runs
 nothing — re-measuring to decide placement would make the cheap half expensive, which is what the split
@@ -440,17 +440,17 @@ carried.
 
 #### One pool over all eight is not achievable, and the reason is load-bearing
 
-Host suites resolve the workspace `@abuddy` packages to source under the `@abuddy/source` condition; the
+Host suites resolve the workspace `@apack` packages to source under the `@apack/source` condition; the
 pack suite must resolve the published `dist`, the only layout a pack author ever has — which is why
 `check:specifiers` fails a pack config that declares that condition. **Node conditions are per process**,
 and vitest shares its worker pool across projects: per-project `poolOptions.execArgv` is ignored, measured
 on `@app/api`.
 
 Probed rather than argued. A `default-setup` spec asking `createRequire(import.meta.url).resolve` for
-`@abuddy/sdk`:
+`@apack/sdk`:
 
-    without the condition   dist     ../abuddy-sdk/dist/index.js      <- how the pack suite runs today
-    with the condition      SOURCE   packages/abuddy-sdk/src/index.ts <- what one pool would do
+    without the condition   dist     ../apack-sdk/dist/index.js      <- how the pack suite runs today
+    with the condition      SOURCE   packages/apack-sdk/src/index.ts <- what one pool would do
 
 One pool would not have failed. It would have quietly tested something else, which is worse. So there are
 two pools split on the boundary the repo already enforces: the host projects in the root `vitest.config.ts`
@@ -504,7 +504,7 @@ guard on. What that looked like was not an error: the pool reported **1752 tests
 because twelve files failed at the guard before collecting anything, and a run that "only" has twelve failing
 files is easy to read as flaky rather than as 162 tests never having run. The trigger was editing this
 repo's own `package.json` — removing the eight scripts this phase replaced — which is enough to make
-`@abuddy/cli`'s bundle stale. Both pool commands now run `packages:ensure` first, which is a stat and a
+`@apack/cli`'s bundle stale. Both pool commands now run `packages:ensure` first, which is a stat and a
 return when nothing is stale.
 
 #### Two guards, one of which caught this phase's own mistake
@@ -521,7 +521,7 @@ six fewer steps. The file count is 224 either way, so no spec was lost.
 
 #### The root config lists its projects literally, and that is the safe answer
 
-`check:specifiers` reads configs as text to decide whether one that compiles `@abuddy` imports declares the
+`check:specifiers` reads configs as text to decide whether one that compiles `@apack` imports declares the
 source condition, and it cannot read a computed list — deriving `projects` from `UNIT_SUITES` failed it.
 Of the three ways out it offers, **declaring the condition at the root is the one that would have been
 wrong by accident and right by luck**: a root setting reaches the projects under it, and it is safe here
@@ -566,14 +566,14 @@ what a test writes.
 The phase asks for the 3 compiling tests in their own file as "a real tier boundary". Two things measured
 against it. The floor is not binding: the host pool is 21.1s of wall against a 9.4s floor, so splitting the
 floor file changes the pool's time by about nothing. And there is no tier for those tests to move into —
-Phase 2 established that a spec's half is its measured cost, and that split exists only in `@abuddy/cli`,
-while this file is in `@abuddy/sdk`, which runs one suite. Against that, the split means extracting ~125
+Phase 2 established that a spec's half is its measured cost, and that split exists only in `@apack/cli`,
+while this file is in `@apack/sdk`, which runs one suite. Against that, the split means extracting ~125
 lines of helpers that close over a per-test `root` out of a 1329-line file used by 94 tests. Attempted,
 then reverted when the measurement said it bought nothing: a number that did not move is a result.
 
 #### 97 per-test timeouts existed because the configs sat at 5s
 
-Both `@abuddy/cli` configs ran at vitest's 5s default, which is why 97 per-test and per-hook timeouts of 30s
+Both `@apack/cli` configs ran at vitest's 5s default, which is why 97 per-test and per-hook timeouts of 30s
 to 240s had been written — in fast-half files that run in about a second, and integration files whose
 slowest single test is about 5s. The budget belongs to the tier: `testTimeout` and `hookTimeout` are now
 15s in the fast config and 60s in the integration one, which is `TIER_TIMEOUT_MS` for tiers 1 and 2, and all
@@ -618,18 +618,18 @@ parent dies — landed in `59dec5165` with its own spec (`orchestrator-exit.spec
 `scripts/` spawns asynchronously without a bound. The synchronous `execFileSync` callers cannot orphan,
 because the parent blocks.
 
-The other half — "an `abuddy doctor` that reaps what `@abuddy/host/process-liveness` can already identify" —
+The other half — "an `apack doctor` that reaps what `@apack/host/process-liveness` can already identify" —
 was not built, because that is not what `process-liveness` does. `lockIsHeld`, `recordIsStale` and
 `readApiEndpoint` identify **records left behind**, not live processes, and `withBuildLock` already takes
 over a stale lock on its own. A `doctor` check there would report something that is already self-healing and
 would not have found the 34-hour orphan that motivated the decision. What remains genuinely uncovered is an
-`abuddy` a person or an agent starts in a shell that later dies, which is not reachable from inside this
+`apack` a person or an agent starts in a shell that later dies, which is not reachable from inside this
 repo.
 
 ## Constraints
 
 `goal-test-tiers.md`'s standing rules carry over unchanged: no push, tag or PR; no publish or release; no
-real data dir; no broad `pkill`; no app outside the test env without an isolated `ABUDDY_USER_DATA_DIR`; no
+real data dir; no broad `pkill`; no app outside the test env without an isolated `APACK_USER_DATA_DIR`; no
 bare `tsc` on `preload`; no version metadata; no change to the typed EARS types to make a call site compile.
 
 And three earned by the work that produced this goal:

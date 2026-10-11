@@ -1,7 +1,7 @@
 import type { NodeEntity } from '#generated/types.ts';
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { stepRegistry } from '@abuddy/sdk/steps';
-import { createLogger, reportError } from '@abuddy/sdk/logger';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import { stepRegistry } from '@apack/sdk/steps';
+import { createLogger, reportError } from '@apack/sdk/logger';
 
 const logger = createLogger('node-executor');
 

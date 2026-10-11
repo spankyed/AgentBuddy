@@ -28,12 +28,12 @@ longer distinguishes anything. The base was wrong; the work is not lost — see 
 
 ## 2. What the branch changes
 
-All inside `packages/abuddy-cli/tests/**`. No production source.
+All inside `packages/apack-cli/tests/**`. No production source.
 
 | Commit | Change |
 |---|---|
 | `322a387f6` | Labels all **32** spawn sites with a reason: 14 `produces`, 8 `process`, 3 `typecheck`, 7 `inherent` |
-| `53b89e1a8` | The 14 `produces` sites call a new `callCli()` in-process instead of `node bin/abuddy.mjs` |
+| `53b89e1a8` | The 14 `produces` sites call a new `callCli()` in-process instead of `node bin/apack.mjs` |
 | `78eb73233` | The 3 `run(TSC, …)` sites call a new `typecheckPack()` (TypeScript API); both `TSC` constants deleted |
 | `41f6073c6`, `70a1e4cea`, `2f3e7613e` | The goal doc's outcome |
 
@@ -100,22 +100,22 @@ gives tier 2 per-check caching. So this work does not make a cached run faster �
 
 **3.4 — The 5s default is a 374-test problem, and it is what caps `test:unit` at two lanes.**
 
-`test-unit.ts` already names the symptom: lanes 3 fails on `@abuddy/sdk`'s *"generated sends compile"*,
-which takes 5.2s against vitest's 5s default. I hit that same test, and `abuddy-cli`'s
+`test-unit.ts` already names the symptom: lanes 3 fails on `@apack/sdk`'s *"generated sends compile"*,
+which takes 5.2s against vitest's 5s default. I hit that same test, and `apack-cli`'s
 `import-specifiers > findInternalPackageImports > holds for the repo`, which takes **2445ms on an idle
 machine** — half its budget spent, so any 2× slowdown fails it.
 
-What I can add is the **scope**. Across `abuddy-cli` and `abuddy-sdk`, **374 tests in 29 spec files do heavy
+What I can add is the **scope**. Across `apack-cli` and `apack-sdk`, **374 tests in 29 spec files do heavy
 work (spawn or compile) with no explicit timeout**:
 
 ```
-  94 unguarded   abuddy-sdk/tests/build/generate-entries.spec.ts      <- the one that caps lanes at 2
-  73 unguarded   abuddy-cli/tests/build/import-specifiers.spec.ts     <- 2445ms of a 5000ms budget
-  62 unguarded   abuddy-cli/tests/cli/db.spec.ts
-  40 unguarded   abuddy-cli/tests/build/package-freshness.spec.ts
+  94 unguarded   apack-sdk/tests/build/generate-entries.spec.ts      <- the one that caps lanes at 2
+  73 unguarded   apack-cli/tests/build/import-specifiers.spec.ts     <- 2445ms of a 5000ms budget
+  62 unguarded   apack-cli/tests/cli/db.spec.ts
+  40 unguarded   apack-cli/tests/build/package-freshness.spec.ts
 ```
 
-`abuddy-cli` currently compensates with **97 hand-written per-test timeouts** — the ones nobody remembered
+`apack-cli` currently compensates with **97 hand-written per-test timeouts** — the ones nobody remembered
 are the flakes. That is a pit of failure in the precise sense: the default is wrong for what these tests do,
 and the correction must be remembered at every one of 471 call sites.
 
@@ -138,15 +138,15 @@ failure *more* likely, not less.
 
 **3.6 — An orphaned process was skewing every measurement, and it was outside Phase 8's scope.**
 
-`abuddy generate-entries`, PID 83105, parented to init, 98.5% of a core, running **34 hours**. Killed. It
+`apack generate-entries`, PID 83105, parented to init, 98.5% of a core, running **34 hours**. Killed. It
 was also running when this goal's original baseline (182.6s) was taken, which is part of why that number
 never reproduced — and it means any measurement taken on this machine in the last day and a half is a core
 light.
 
 Phase 8 already has *"Reap the process group on exit"*, scoped to `tests/scripts/`. **This orphan was not a
-shell test script** — it was `npm exec abuddy generate-entries`, a CLI invocation whose parent shell died.
+shell test script** — it was `npm exec apack generate-entries`, a CLI invocation whose parent shell died.
 So the bound Phase 8 describes would not have caught it, and the scope wants widening to any long-running
-`abuddy` invocation, or an `abuddy doctor` that reaps what `@abuddy/host/process-liveness` can already
+`apack` invocation, or an `apack doctor` that reaps what `@apack/host/process-liveness` can already
 identify (`lockIsHeld`, `recordIsStale`).
 
 ## 4. Merge state

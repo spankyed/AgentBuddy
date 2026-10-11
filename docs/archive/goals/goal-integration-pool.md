@@ -56,8 +56,8 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
-- pkill/killall Electron or node; launch the app without an isolated ABUDDY_USER_DATA_DIR.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
+- pkill/killall Electron or node; launch the app without an isolated APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
 - change the typed EARS types to make a call site compile.
@@ -70,7 +70,7 @@ Never:
 
 ## Background (2026-09-29, at `8c90bd614` on `master`)
 
-`@abuddy/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
+`@apack/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
 largest single number in the records. It was deferred out of
 [`goal-spec-earns-its-pass.md`](goal-spec-earns-its-pass.md) and
 [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) as "a separate look, not a blocker".
@@ -79,12 +79,12 @@ largest single number in the records. It was deferred out of
 
 | | specs | file-time | **wall** |
 |---|---|---|---|
-| `@abuddy/cli` integration | 15 | 167.9s | **31s** |
+| `@apack/cli` integration | 15 | 167.9s | **31s** |
 | `@app/repo-checks` integration | 3 | 34.2s | **32s** |
 | `@app/publish-checks` integration | 5 | 30.6s | **8s** |
 | all three, as the chain runs them | 23 | 232.7s | **71s**, and 90-105s as the step measures |
 
-So the question is not why `@abuddy/cli` is slow. It is **why 71s of work takes 90-105s, and why the step
+So the question is not why `@apack/cli` is slow. It is **why 71s of work takes 90-105s, and why the step
 uses half the machine to do it.**
 
 ### 1. Three specs of twenty-three spawn a compiler; all twenty-three pay for it
@@ -92,21 +92,21 @@ uses half the machine to do it.**
 Two of the three `vitest.integration.config.ts` files set `poolOptions: { threads: { maxThreads: '50%' },
 forks: { maxForks: '50%' } }`, justified as:
 
-> These specs shell out to `tsc` and `abuddy build`, so every worker spawns compilers of its own. With a
+> These specs shell out to `tsc` and `apack build`, so every worker spawns compilers of its own. With a
 > worker per core the box is oversubscribed and the main thread can miss birpc's 60s window to answer a
 > worker's `onTaskUpdate`, which fails the run with "[vitest-worker]: Timeout calling" though every test
 > passed.
 
 **Half of that is no longer true.** `callCli` runs the CLI **in-process** — it `chdir`s, captures `console`,
 swaps `process.exit` for a throw, and awaits the command
-(`packages/abuddy-cli/tests/_support/pack-builds.ts:65`). `typecheckPack` builds a `ts.createProgram`
+(`packages/apack-cli/tests/_support/pack-builds.ts:65`). `typecheckPack` builds a `ts.createProgram`
 **in-process** (same file, line 103). Neither spawns anything.
 
 What does spawn a compiler is three files, and only three — **wrong, and corrected below**: it is twelve files holding eighteen call sites, and the survey's error is one paragraph above this one:
 
 | spec | spawns |
 |---|---|
-| `abuddy-cli/tests/commands/add-extensions.integration.spec.ts` | `tsc --noEmit` ×2, `vue-tsc --noEmit` |
+| `apack-cli/tests/commands/add-extensions.integration.spec.ts` | `tsc --noEmit` ×2, `vue-tsc --noEmit` |
 | `repo-checks/tests/component-contracts.integration.spec.ts` | `vue-tsc -p` |
 | `publish-checks/tests/published-exports.integration.spec.ts` | `node <tsc> -p` per consumer, per TypeScript version |
 
@@ -123,10 +123,10 @@ and running the floor in-process would mean two `typescript` instances in one pr
 
 ### 2. The step is three `npm -w` invocations in series
 
-`package.json`'s `test:integration` is `npm run test:integration -w @abuddy/cli -w @app/repo-checks -w
+`package.json`'s `test:integration` is `npm run test:integration -w @apack/cli -w @app/repo-checks -w
 @app/publish-checks`: three vitest startups, three worker pools, three `packages:ensure` pretests, none
 overlapping. All three configs declare **identical** resolution —
-`['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
+`['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
 where `host` and `pack` cannot share a process because Node conditions are per process (`UnitSuite.kind`),
 these three can. The repo already pooled the unit suites for exactly this reason
 ([`goal-one-job-pool.md`](goal-one-job-pool.md)); the integration halves were left as `-w`
@@ -160,7 +160,7 @@ Recorded so nobody re-chases them. Four of the five were mine, and each looked b
 
 - **Per-project staleness buys almost nothing.** The obvious second phase — stamp each project and run only
   the stale ones, as `test-unit-pool.ts` does — founders on shared inputs. All three suites set
-  `packages: true` in `SUITE_READS` and all three declare `abuddy-host`, `abuddy-ears` and `abuddy-sdk` as
+  `packages: true` in `SUITE_READS` and all three declare `apack-host`, `apack-ears` and `apack-sdk` as
   dependencies, so **any source edit rebuilds a package and makes all three stale**. It separates exactly one
   case, an edit confined to one workspace's *tests*, worth ~16s there and costing an extension to
   `suiteInputs` plus an inversion of `unit-pool.ts`'s deliberate by-directory stamp key.
@@ -193,7 +193,7 @@ Neither is about speed, and both are in files this work touches.
   `*.integration.spec.ts`, so vitest matches no file. 23 of the repo's 369 specs cannot be named. It exits 1
   rather than passing, which is why nothing caught it — and `scripts/lib/spec-cost.ts` already holds the
   mapping that fixes it (`halfOfPath`, `CONFIG_BY_HALF`).
-- **`suite-timeouts.spec.ts:34` hardcodes the suite.** `stepForSpec` reads `dir === 'abuddy-cli' &&
+- **`suite-timeouts.spec.ts:34` hardcodes the suite.** `stepForSpec` reads `dir === 'apack-cli' &&
   file.endsWith('.integration.spec.ts')` while `INTEGRATION_SUITES` derives the same set, so the 8
   integration specs in `repo-checks` and `publish-checks` are checked against `test:unit:host`'s tier budget
   instead of `test:integration`'s. A restated population where a derived one exists.
@@ -225,7 +225,7 @@ Final.
    bounded-concurrency gate for a load that halves by deleting two lines is the wrong way round. So Phase 3
    deletes `add-extensions`' two `tsc --noEmit` spawns in favour of the in-process `typecheckPack` *first*,
    which takes the concurrent-compiler count from five to three across 23 files, and only then asks whether
-   any cap is needed. A semaphore is the fallback, not the plan; `@abuddy/host/exclusive-lock` is the
+   any cap is needed. A semaphore is the fallback, not the plan; `@apack/host/exclusive-lock` is the
    one-token version of it already in the tree if it comes to that.
 
 6. **Twenty clean runs, because five would prove almost nothing.** The birpc failure is a flake, so the
@@ -277,7 +277,7 @@ definition, and one of these defects is a second definition of it.
   `test:integration` script for an integration spec. Reuse `halfOfPath` and `CONFIG_BY_HALF`
   (`scripts/lib/spec-cost.ts`) rather than adding a third copy of the mapping.
 - `packages/repo-checks/tests/suite-timeouts.spec.ts`: `stepForSpec` derives the integration set from
-  `INTEGRATION_SUITES` instead of naming `abuddy-cli`.
+  `INTEGRATION_SUITES` instead of naming `apack-cli`.
 
 **Done when:** `npm run spec -- packages/repo-checks/tests/import-specifiers.integration.spec.ts` runs it and
 exits 0; a fast spec in the same package is unchanged; cases in `spec-plan.spec.ts` for both halves.
@@ -314,7 +314,7 @@ Three steps, in this order, because each one makes the next cheaper to judge (De
 **Done when:** the two spawns are gone and `add-extensions` still fails on a type error it used to catch —
 watch it fail, since replacing an assertion's mechanism is exactly where one quietly stops asserting. The cap
 is lifted or kept with its run count recorded in the phase and in the config's comment, whose current text
-("these specs shell out to `tsc` and `abuddy build`") is wrong either way and is replaced by what is true.
+("these specs shell out to `tsc` and `apack build`") is wrong either way and is replaced by what is true.
 Expect ~34s, now bounded by the longest file. Mutation: a spawn added to an integration spec fails the new
 check, and removing an exception's path from the tree fails it too.
 
@@ -353,10 +353,10 @@ files; never edit the record by hand.
   `git commit -- <paths>` naming only that phase's files — another agent commits in this checkout. Pushing,
   tagging and PRs are on request only.
 - No publishing, releases or triggered workflows; dry runs only.
-- No real data dirs (`~/Library/Application Support/abuddy*`), no broad `pkill`/`killall`; the app launches
-  only with an isolated `ABUDDY_USER_DATA_DIR`.
+- No real data dirs (`~/Library/Application Support/apack*`), no broad `pkill`/`killall`; the app launches
+  only with an isolated `APACK_USER_DATA_DIR`.
 - No bare `tsc` in `packages/preload`, no `npm install` in the example pack, no version or release metadata.
-- The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - No backward-compat shims: change the signature and migrate every in-repo caller, test, fixture and doc in
   the same change.
 - Investigate a failing test rather than loosening it; every new guard and helper gets a mutation check.
@@ -414,7 +414,7 @@ Five. Four were made during the work; the fifth came from a review of it afterwa
    allowed. Deleting two spawns first is what made the pool deliver, which inverted the plan's phase order.
 2. **Decision 6's twenty-clean-runs bar never applied.** It framed lifting the cap as a stability question.
    The answer came from throughput instead: full width is *slower* — 52.4s over nine clean runs against
-   48.2s over five — because nine workers each running `ts.createProgram` and an in-process `abuddy build`
+   48.2s over five — because nine workers each running `ts.createProgram` and an in-process `apack build`
    put the box at a load of 25-32. No stability evidence was needed to decline it.
 3. **The flake was contention, not width.** The cap's original justification was
    "[vitest-worker]: Timeout calling". It did not occur once in nineteen quiet runs, capped or uncapped.
@@ -431,7 +431,7 @@ Five. Four were made during the work; the fifth came from a review of it afterwa
    three files spawn, and reasons from it that the cap "throttles twenty innocent specs to protect against
    three". Measured afterwards by binding the spawner names from each file's `child_process` import: **twelve
    files, eighteen call sites** — roughly half the pool, not a seventh of it. Missed were
-   `types-bundler-determinism` running `abuddy build` as a subprocess twice, `harness-setup` and
+   `types-bundler-determinism` running `apack build` as a subprocess twice, `harness-setup` and
    `dependency-runtime` launching whole nested `vitest run`s, `db`'s five, `release`'s `git`, and
    `scaffold`'s — six files worth 80s of the suite's 168s, against 5.2s for the one the gate did catch.
 

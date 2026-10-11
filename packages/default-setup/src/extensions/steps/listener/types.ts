@@ -1,4 +1,4 @@
-import type { NodeBase } from '@abuddy/sdk';
+import type { NodeBase } from '@apack/sdk';
 
 export interface ListenerNode extends NodeBase {
   nodeType: 'listener';

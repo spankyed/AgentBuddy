@@ -208,13 +208,13 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@abuddy/ui/components/BaseForm'
-import TipSection from '@abuddy/ui/components/TipSection'
+import BaseForm from '@apack/ui/components/BaseForm'
+import TipSection from '@apack/ui/components/TipSection'
 import { withDefault, writtenDefault } from '../create/field-default.ts'
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
-import type { ActionEntity } from '@abuddy/sdk'
+import type { ActionEntity } from '@apack/sdk'
 
 const props = defineProps<{
   node: NodeEntity

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ChevronRight, Palette, FolderOpen, Trash2, Pin } from 'lucide-vue-next'
-import type { TabGroupColor } from '@abuddy/sdk/fe'
+import type { TabGroupColor } from '@apack/sdk/fe'
 
 const props = defineProps<{
   name: string

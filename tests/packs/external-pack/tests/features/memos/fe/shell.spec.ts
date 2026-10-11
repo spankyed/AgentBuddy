@@ -2,8 +2,8 @@
 // reads it, and the plugin reaching its system and hearing back over the harness's bus, with no app launched.
 import { effectScope } from 'vue';
 import { expect, it } from 'vitest';
-import { startApp, startShell } from '@abuddy/testing/harness';
-import { useShell } from '@abuddy/sdk/fe';
+import { startApp, startShell } from '@apack/testing/harness';
+import { useShell } from '@apack/sdk/fe';
 import { openPlugin } from '#generated/fe.ts';
 import { sendToPlugin } from '#generated/events.ts';
 import memosState from '../../../../src/features/memos/fe/state.ts';

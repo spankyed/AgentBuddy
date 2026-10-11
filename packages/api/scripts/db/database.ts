@@ -1,11 +1,11 @@
 // Opens this data dir's database for a one-off script, the way the API boots it: built-in packs
 // registered (from their dev entries: the script runs unbundled) and LMDB hydrated, so it can run
-// their content code. Needs ABUDDY_ENV and ABUDDY_USER_DATA_DIR, like any process that touches app data.
-// Database work that runs no pack code goes through `abuddy db` instead.
+// their content code. Needs APACK_ENV and APACK_USER_DATA_DIR, like any process that touches app data.
+// Database work that runs no pack code goes through `apack db` instead.
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openAppStore } from '@/runtime';
-import { loadAppPacks } from '@abuddy/host/packs/runtime';
+import { loadAppPacks } from '@apack/host/packs/runtime';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 

@@ -3,7 +3,7 @@
 **Date:** 2026-09-30 (written up 2026-10-01)
 **Severity:** High — user data lost from the production app, six notes reconstructed from logs, three of which
 existed nowhere else
-**Affected:** AgentBuddy 0.3.14, production (`~/Library/Application Support/abuddy`)
+**Affected:** apack 0.3.14, production (`~/Library/Application Support/apack`)
 
 There are **two independent defects** here. One killed a running app; the other had been discarding the user's
 writes for some time and was merely *revealed* by the kill. Conflating them was the first wrong turn in the
@@ -18,7 +18,7 @@ for p in $(ps -Ao pid,command | grep -E "38659-muom69tzku|dist/server.js" | awk 
 ```
 
 `dist/server.js` carries no path anchor. It matched the intended dev-server process **and**
-`/Applications/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js` — the production app's API
+`/Applications/apack.app/Contents/Resources/app/packages/api/dist/server.js` — the production app's API
 process. SIGKILL at 2026-09-30 21:26:12Z.
 
 The mistake is not the regex. It is that a pattern match over `ps` output is **unbounded**: it describes a
@@ -31,7 +31,7 @@ The kill was survivable on its own; LMDB is crash-safe and the database was inta
 then 256,633 attributes across the two boots). What did not survive was everything the app had taken into
 memory but never committed.
 
-`makeLmdbAdapter` (`packages/abuddy-ears/src/lmdb/adapter.ts`) buffers writes and commits them from a
+`makeLmdbAdapter` (`packages/apack-ears/src/lmdb/adapter.ts`) buffers writes and commits them from a
 `queueMicrotask` in `scheduleFlush()`. Its failure path is:
 
 ```ts
@@ -84,9 +84,9 @@ be composing the key. Ruled out already: value length (a different message) and 
 
 ## What was recovered
 
-Six notes, reconstructed from 23,273 logged `UPDATE_NOTE` events in `~/Library/Logs/abuddy/main.jsonl`, which
+Six notes, reconstructed from 23,273 logged `UPDATE_NOTE` events in `~/Library/Logs/apack/main.jsonl`, which
 carry the full body. Three had **no row on disk at all**; three had a stale row. Output and per-note provenance:
-`/Users/spankyed/Develop/backups/abuddy-backups/notes/notes-recover-fuckup/_recovered-2026-09-30/`.
+`/Users/spankyed/Develop/backups/apack-backups/notes/notes-recover-fuckup/_recovered-2026-09-30/`.
 
 A further 47 older notes appear in the log with no row on disk. Those are most likely deliberate deletions, so
 they were left alone.
@@ -123,6 +123,6 @@ Nothing in the repo watches for it, and that is the lesson worth keeping. The ap
 if (errorCount > 0) throw new Error(`${errorCount} write(s) didn't reach the database in ${userDataDir}: …`);
 ```
 
-So `abuddy db` would have reported it on the first command. The running app has the same information available
+So `apack db` would have reported it on the first command. The running app has the same information available
 and acts on none of it — the one path that checks is the offline tool, which is the path a user never takes.
 A counter nothing reads is the same as no counter, and this cost six notes to learn.

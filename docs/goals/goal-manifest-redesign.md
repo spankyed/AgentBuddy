@@ -1,7 +1,7 @@
 > **Written in session** `23ab84ee-4c28-4dde-8ea9-641d6aa004cd` (Claude Code, 2026-09-19). Resume it with `claude -r 23ab84ee-4c28-4dde-8ea9-641d6aa004cd`.
 
 ```
-# Goal: abuddy.json has a shape, not a pile of keys
+# Goal: apack.json has a shape, not a pile of keys
 
 Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
 the base its Background was surveyed at. Two decisions have landed since that survey — Decision 6
@@ -24,7 +24,7 @@ Finished when:
   *What the manifest already is* for what that leaves.
 - `settingsSections` and `help` are placed deliberately — Decision 9 names neither, and they are the
   one question this goal does not answer. Settle it before Phase 6.
-- packages/default-setup/abuddy.json has exactly these top-level keys, in this order and no others:
+- packages/default-setup/apack.json has exactly these top-level keys, in this order and no others:
   $schema, id, name, version, description, license, builtIn, hostVersion, data, features, extensions,
   content, lifecycle, migrations, build. No key holds a map whose keys equal its values. (`checks` is the
   schema's sixteenth root key and this pack has none: it switches off no rule, so the section is absent
@@ -36,12 +36,12 @@ Finished when:
   bare path means the module's default export.
 - `features.<id>.designation` is a string that need not equal the feature id (already true at the base
   commit — Decision 6 landed ahead of the phases), and no manifest or schema spells `designated`.
-- `abuddy.checks.json` exists nowhere — in no pack, scaffold, fixture, doc or reader — and the rules a
+- `apack.checks.json` exists nowhere — in no pack, scaffold, fixture, doc or reader — and the rules a
   pack switches off are `checks.allow` in its manifest.
 - `$manifestVersion` exists in no manifest and no schema, and neither `verifyPack` nor the loader uses
   `Math.floor` on the format stamp.
 - `FEATURE_LAYOUT` is the one definition of the feature layout; `validateFeatures`, `generate-entries`,
-  `doctor` and `abuddy add feature` all resolve through it, and a spec fails when the documented table
+  `doctor` and `apack add feature` all resolve through it, and a spec fails when the documented table
   and the constant disagree.
 - An entity is volatile by carrying `"volatile": true` beside the entity's shape, and any pack may mark
   one it declares — Decision 5's addition, which is all that is left of it, and which that decision
@@ -49,7 +49,7 @@ Finished when:
 - Every feature lists what it contributes in one `provides` line, no feature key holds the value
   `true`, every path inside a feature is relative to that feature's directory, and a feature on the
   conventional layout spells out no path at all.
-- npm run schema:check passes with the regenerated abuddy.schema.json committed.
+- npm run schema:check passes with the regenerated apack.schema.json committed.
 - npm run api:update has been run and etc/*.api.md committed in every phase that changed the schema:
   PackManifest is published API, and npm run typecheck fails on a stale report until you do.
 - npm run typecheck, npm run test:unit, npm run build, npm run test:external-pack and
@@ -68,17 +68,17 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - accept both an old and a new spelling of any manifest key, even briefly.
 ```
 
-# Goal: abuddy.json has a shape, not a pile of keys
+# Goal: apack.json has a shape, not a pile of keys
 
 The manifest works, and it grew one key at a time. It was 23 top-level keys over 552 lines for the
 built-in pack, with four concerns interleaved at the same level, three different ways to name a module,
@@ -136,21 +136,21 @@ before acting; several no longer exist.
 
 ## Background (surveyed 2026-09-19 at 4f24d04f7; measurements re-taken 2026-10-10)
 
-`packages/default-setup/abuddy.json` is 711 lines and 19 top-level keys. The schema is
-`packages/abuddy-sdk/src/build/manifest-schema.ts` (455 lines), which generates
-`packages/abuddy-sdk/abuddy.schema.json` (`npm run schema:update`, checked by `npm run schema:check`)
+`packages/default-setup/apack.json` is 711 lines and 19 top-level keys. The schema is
+`packages/apack-sdk/src/build/manifest-schema.ts` (455 lines), which generates
+`packages/apack-sdk/apack.schema.json` (`npm run schema:update`, checked by `npm run schema:check`)
 and allows 22 root keys.
 
-Manifest consumers: `abuddy-sdk/src/build/generate-entries.ts` (most of it), `manifest.ts`
+Manifest consumers: `apack-sdk/src/build/generate-entries.ts` (most of it), `manifest.ts`
 (`PROVENANCE_KINDS`, over the hand-written `ProvenanceManifest`), `manifest-schema.ts`'s own
 `superRefine` (20 issues it can raise), `validate.ts` (`parseManifest` and `_MOVED_ROOT_KEYS`'s hint),
-`manifest-bridge.ts`, `abuddy-cli/src/commands/build.ts`,
+`manifest-bridge.ts`, `apack-cli/src/commands/build.ts`,
 `add/{manifest,step,artifact,block,feature,service}.ts`, `info.ts`, `doctor.ts`, `init.ts`,
 `init-tests.ts`, `build/dsl-defs.ts`, `build/fe-bundler.ts` (`build.bundleUi`, read from the JSON),
-`build/pack-features.ts`, `abuddy-host/src/packs/runtime/loader.ts`,
+`build/pack-features.ts`, `apack-host/src/packs/runtime/loader.ts`,
 `features/packs/be/system.ts` (two `PackInfo` builders, over an untyped `readManifest`),
-`abuddy-host/src/database/schema.ts`, `migrations/app/0.3.15.ts` (`declaredFeatureRefs`) and
-`@abuddy/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
+`apack-host/src/database/schema.ts`, `migrations/app/0.3.15.ts` (`declaredFeatureRefs`) and
+`@apack/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
 
 Two of those read a manifest through a type that is **not** `PackManifest` — `ProvenanceManifest`'s own
 optional fields and the packs system's `Record<string, any>` — so they do not fail to compile when a
@@ -160,15 +160,15 @@ Every other manifest a phase has to change — **four hand-maintained, two gener
 
 | Manifest | Size | Notes |
 |---|---|---|
-| `tests/packs/external-pack/abuddy.json` | 101 lines | two features, `memos` and `notes` |
-| `tests/packs/bundled-ui-pack/abuddy.json` | 23 lines | one feature, `scribbles`, no system; the one manifest that sets `build.bundleUi` |
-| `packages/default-setup/tests/_support/fixtures/dependent-pack/abuddy.json` | 22 lines | no features; root keys are `$schema, id, name, version, hostVersion, dependencies, content` |
-| the `abuddy init` scaffold | — | a template literal, `abuddy-cli/src/commands/init.ts`'s `MANIFEST_TEMPLATE` |
-| the packaged-authoring pack | — | built by `abuddy init` then edited by `tests/scripts/test-packaged-authoring-author.sh` |
-| `tests/packs/external-pack/.abuddy/bundle/e2e-fixture/abuddy.json` | — | a build artifact; regenerated, never edited |
+| `tests/packs/external-pack/apack.json` | 101 lines | two features, `memos` and `notes` |
+| `tests/packs/bundled-ui-pack/apack.json` | 23 lines | one feature, `scribbles`, no system; the one manifest that sets `build.bundleUi` |
+| `packages/default-setup/tests/_support/fixtures/dependent-pack/apack.json` | 22 lines | no features; root keys are `$schema, id, name, version, hostVersion, dependencies, content` |
+| the `apack init` scaffold | — | a template literal, `apack-cli/src/commands/init.ts`'s `MANIFEST_TEMPLATE` |
+| the packaged-authoring pack | — | built by `apack init` then edited by `tests/scripts/test-packaged-authoring-author.sh` |
+| `tests/packs/external-pack/.apack/bundle/e2e-fixture/apack.json` | — | a build artifact; regenerated, never edited |
 
 Besides those, two in-process fixtures stand in for a manifest and move with the shape:
-`@abuddy/sdk/testing`'s `packFixture` (`DEFAULT_MANIFEST`) and the `manifest()` helper in
+`@apack/sdk/testing`'s `packFixture` (`DEFAULT_MANIFEST`) and the `manifest()` helper in
 `generate-entries`' own spec support, which keys `features` and groups the contribution keys so a case
 can write either flat.
 
@@ -179,7 +179,7 @@ Fixtures also use `dependencies` and `permissions`, which default-setup does not
 
 **Two maps carry no information.**
 
-- `entities` is an identity map: all 12 keys equal their values. `abuddy init` scaffolds it that way
+- `entities` is an identity map: all 12 keys equal their values. `apack init` scaffolds it that way
   (`init.ts:18`, `entities: { [pascalName]: pascalName }`).
 - `relKinds` maps SCREAMING_SNAKE to snake_case (`PARENT_OF: "parent_of"`), which is mechanical. The keys
   are load-bearing — they become `EARS.RelKind.PARENT_OF` in `__generated__/ears.ts:47-67`, used in pack
@@ -193,7 +193,7 @@ declare one and all five match — `validate.ts:55-57` rejects anything else.~~ 
 (Decision 6): that check is gone**, replaced by one that rejects a role claimed twice in a pack. The
 measurement is kept because it is why the field looked redundant enough to delete, and the deletion
 would have been wrong. Nothing below the check ever required the equality: `designationsOf`
-(`abuddy-host`'s `packs/registry.ts`) maps `[designation, systemId(id)]` as two values, and codegen carries
+(`apack-host`'s `packs/registry.ts`) maps `[designation, systemId(id)]` as two values, and codegen carries
 them apart (`generate-entries.ts:630`, `:642`). The redundancy was the validator's, not the field's.
 All five designations still equal their ids, so no manifest changed.
 
@@ -227,12 +227,12 @@ concatenated every registration's entries into one global list with no check tha
 it owns. A pack writing `"excludedEntityTypes": ["Note"]` would have routed another pack's Notes to
 `volatileBackup`, which `makePolicy` does not hydrate (`policy.ts:28`) and `exportDatabase` does not
 back up (`backup/index.ts`, `databases = ['lmdb']`). Entity-type ownership *is* enforced at registration
-(`abuddy-host/tests/packs/registration.spec.ts`), so the scoping exists; the policy list simply did not
+(`apack-host/tests/packs/registration.spec.ts`), so the scoping exists; the policy list simply did not
 use it, and whatever replaces it has to.
 
 **And the word is "unread", not "lost".** The old field's description said "excluded from persistence
 (in-memory only)", and `volatileBackup` is an on-disk LMDB store (`envs.ts`) the sink writes like any
-other: it is not hydrated at boot (`policy.ts:28`) and not in backups, and `abuddy db --volatile` reads
+other: it is not hydrated at boot (`policy.ts:28`) and not in backups, and `apack db --volatile` reads
 it. Anything written from that description — including the first draft of this goal — treats volatile
 data as lost when it is only unread.
 
@@ -307,7 +307,7 @@ and reaching for nesting to solve navigation is what produces containers like `l
 reads fine when its order tells the pack's story — this repo's own `package.json` has 12 root keys and
 no sections, and nobody finds it unnavigable, because the ecosystem settled on a conventional order
 (the one `sort-package-json` encodes) rather than on nesting. Every
-`abuddy add` subcommand that edits a manifest writes it through one line (`writeManifest`,
+`apack add` subcommand that edits a manifest writes it through one line (`writeManifest`,
 `add/manifest.ts:7`), so the order is enforced in one place, which also makes manifest diffs stable.
 
 An earlier draft of this decision said "identity at the root, everything else in sections" and then
@@ -361,31 +361,31 @@ repeats `src/features/<id>/` for every typed entity, which is the redundancy Dec
 everywhere else. On the feature, the same line is `"Note": "be/types.ts#NoteEntity"`.
 
 **`data.entities` stays, and it is where every pack starts.** This is not a hedge against an imagined
-pack: `abuddy init` scaffolds `features: []` with one entity, content rows of it through `content.formats`,
-and only then tells the author to run `abuddy add feature` (`init.ts:18-20`, `init.ts:386`). So the
+pack: `apack init` scaffolds `features: []` with one entity, content rows of it through `content.formats`,
+and only then tells the author to run `apack add feature` (`init.ts:18-20`, `init.ts:386`). So the
 scaffolded shape is exactly an entity with no feature to own it, and the pack-level map is the one a
 new pack is born with. Entities move onto features as the pack grows a structure to hold them;
 default-setup is the far end of that path, with all twelve placed, which is why it has no
 `data.entities` at all. A pack that never grows features — one contributing only a data model and an apply — simply stays
 where it started.
 
-`abuddy add feature` does not relocate an entity: that would edit a declaration the author did not
-name. `abuddy doctor` reporting a pack-level entity whose shape lives inside a feature's directory is
+`apack add feature` does not relocate an entity: that would edit a declaration the author did not
+name. `apack doctor` reporting a pack-level entity whose shape lives inside a feature's directory is
 the right nudge, and it is a suggestion, not an error.
 
 **Exactly one home per entity.** An entity declared both on a feature and in `data.entities` fails
 `validate`, naming both. Entity types stay pack-global and collision-checked pack-wide (`checkEARS`,
-`abuddy-host`'s `packs/registry.ts`, checks entities and relation kinds in one loop), so the split home
+`apack-host`'s `packs/registry.ts`, checks entities and relation kinds in one loop), so the split home
 changes where a name is written, never what it is scoped to.
 
 **The merge exists once, and two readers will not tell you when they miss it.** Twelve call sites
 across three packages read `manifest.entities` today — `generate-entries.ts` (four), `manifest.ts`'s
 provenance builder, `manifest-schema.ts`'s `content.writers` refinement, `build.ts`'s snapshot,
-`abuddy-host`'s `database/schema.ts` (two), `packs/runtime/loader.ts` and `features/packs/be/system.ts` (two, which
+`apack-host`'s `database/schema.ts` (two), `packs/runtime/loader.ts` and `features/packs/be/system.ts` (two, which
 feed the Packs view's `entityCount` and entity list). Every one must see the same set, or the build and
 the running app disagree about what a pack declared. So the phase adds one exported helper —
-`packEntities(manifest)`, returning the merged map — and every reader calls it; `@abuddy/host` already
-imports `@abuddy/sdk/build` at runtime in three modules, so nothing new is dragged in.
+`packEntities(manifest)`, returning the merged map — and every reader calls it; `@apack/host` already
+imports `@apack/sdk/build` at runtime in three modules, so nothing new is dragged in.
 
 Deleting the root `entities` key makes ten of the twelve a compile error, which finds them for you.
 **The other two keep compiling and return nothing, and they are the two that matter most:**
@@ -441,7 +441,7 @@ The phase proves the generated `ears.ts` is unchanged.
 > **This decision's subject no longer exists.**
 > [`goal-one-kind-of-pack`](../archive/goals/goal-one-kind-of-pack.md)'s Decision 5 deleted `partitionPolicy` outright —
 > the manifest field, `PackEARS.partitionPolicy`, `getRegisteredEARSPolicy` and the registry's policy
-> member. `appPartitionPolicy()` survives as a constant in `abuddy-host/src/database/open.ts` over
+> member. `appPartitionPolicy()` survives as a constant in `apack-host/src/database/open.ts` over
 > `SDK_EXCLUDED_ENTITY_TYPES`, and no pack contributes to it. So this is no longer *moving* a capability
 > onto a better declaration; it is **adding** one that nothing has asked for — which is the test the other
 > goal applied in deleting it. The plumbing this paragraph calls "unchanged" is the plumbing that went.
@@ -485,7 +485,7 @@ correctly — the deleted field's did not. It said "excluded from persistence (i
 is wrong: `volatileBackup` is a real on-disk LMDB store (`envs.ts:97`) written like any
 other. What `volatile` means is **persisted to a store that is not hydrated at boot** (`policy.ts:28`,
 `hydrate` defaults to `['primary']`) **and not included in backups** (`exportDatabase` defaults to
-`['lmdb']`). `abuddy db --volatile` reads that store today, so the data is there to be read.
+`['lmdb']`). `apack db --volatile` reads that store today, so the data is there to be read.
 
 The second effect: a relation touching a volatile entity is itself routed volatile (`routeRelation` →
 volatile if either side is), so a link from a persisted entity to a volatile one is on disk but not
@@ -493,7 +493,7 @@ loaded at boot. That is deliberate, not a gap, and `sharded-router.ts:173-188` g
 run record's link to the node it ran belongs to the run, so deleting the node must not erase it. Keep
 the routing as it is, and cite that comment in the schema description so the next reader does not take
 it for an oversight. Making such a link primary instead would leave a dangling relation after a boot
-that does not hydrate volatile: nothing in `@abuddy/ears` validates relation endpoints, and nothing
+that does not hydrate volatile: nothing in `@apack/ears` validates relation endpoints, and nothing
 would ever remove it, because the entity it points at never returns to trigger a removal.
 
 **6. `features.<id>.designation` stays a string, and stops being required to equal the feature id.**
@@ -507,14 +507,14 @@ An earlier draft of this decision therefore replaced it with `"designated": true
 deleted the ability to name a role, not a redundancy.
 
 **Nothing but that one check enforces the equality.** `designationsOf`
-(`abuddy-host`'s `packs/registry.ts`) already maps `[f.designation, systemId(f.id)]` — role and system id as
+(`apack-host`'s `packs/registry.ts`) already maps `[f.designation, systemId(f.id)]` — role and system id as
 two separate values — and codegen already carries them apart, building a `Map([[featureId,
 designation]])` (`generate-entries.ts:630`) and emitting `designation: '<value>'` onto the system and
 plugin definitions (`:642`, `:729`). The machinery has always supported a role that differs from the
 feature that plays it; only the validator did not. Delete the check.
 
 Role uniqueness is unaffected and still enforced where it matters: `registerPack` throws when another
-pack already holds a role (`abuddy-host`'s `packs/registry.ts`). The equality check was also the only thing
+pack already holds a role (`apack-host`'s `packs/registry.ts`). The equality check was also the only thing
 stopping **two features of one pack** claiming one role — ids are unique, so equal-to-id designations
 were unique too — and `designationsOf` builds an object from entries, so a duplicate would silently
 take the last one. So the removal shipped with its replacement: `validateFeatures` now reports
@@ -568,13 +568,13 @@ warning. That is the same bargain `package.json`'s `files` and `exports` make, a
 
 **The convention is a declared table, not folklore — and today it is folklore.** Because every path is
 spelled out in the manifest right now, the layout exists nowhere as a definition: three hardcoded
-strings in `abuddy add feature`'s scaffold (`add/feature.ts:203-205`, which does not even scaffold
+strings in `apack add feature`'s scaffold (`add/feature.ts:203-205`, which does not even scaffold
 `references` or `types`) and prose examples in `cli.md:57`, `features.md` and `manifest.md`. A
 `provides` list resolved against an undocumented layout would be exactly the magic this goal is
 supposed to remove. So the table ships with it:
 
 ```ts
-// @abuddy/sdk/build — the one definition of what a feature may provide and where it lives
+// @apack/sdk/build — the one definition of what a feature may provide and where it lives
 export const FEATURE_LAYOUT = {
   system:     'be/system.ts',
   plugin:     'fe/plugin.ts',
@@ -589,7 +589,7 @@ Four things follow from its being one object, and each is what keeps the convent
 - **`provides`' vocabulary is `Object.keys(FEATURE_LAYOUT)`**, so the Zod enum and the resolver cannot
   drift, and a name that is not a capability cannot be listed.
 - **Every consumer derives from it** — `validateFeatures`, the import paths `generate-entries` writes,
-  `doctor`, and `abuddy add feature`'s scaffold, which today keeps its own copy of three of the five.
+  `doctor`, and `apack add feature`'s scaffold, which today keeps its own copy of three of the five.
 - **Errors name the resolved path**: `Feature "notes": provides "system", but
   src/features/notes/be/system.ts is missing`, and the inverse in `doctor` for a conventional file that
   is present and unlisted. A convention whose failure message names the path it looked for is
@@ -634,7 +634,7 @@ file is not at the conventional path.
 > doc was written, and no pack in the repo carries one. `sendsTo` is deleted by
 > [`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) (its Decision 2), which has **landed**:
 > a plugin declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
-> manifest, from `SystemSchema` and from `abuddy.schema.json`. Nothing here has to remove it.
+> manifest, from `SystemSchema` and from `apack.schema.json`. Nothing here has to remove it.
 
 This is a list with annotations, not two homes for one fact: `validate` requires every capability key
 to be named in `provides`, so a `system` block on a feature that does not provide one is an error
@@ -642,10 +642,10 @@ rather than a second way of declaring it.
 
 **One reader breaks silently here, the same way two do in Decision 3.** `init-tests.ts:46` picks the
 feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => f.plugin)` — an
-`any`-typed predicate, so after this change it compiles, finds nothing, and `abuddy init-tests`
+`any`-typed predicate, so after this change it compiles, finds nothing, and `apack init-tests`
 scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Together with
 `ProvenanceManifest` and `features/packs/be/system.ts`, that is **every loosely-typed manifest read in the repo**:
-`abuddy-cli/src/utils.ts:34` returns a real `PackManifest`, and `@abuddy/testing`'s
+`apack-cli/src/utils.ts:34` returns a real `PackManifest`, and `@apack/testing`'s
 `harness.ts:228` casts to one, so both fail to compile like everything else. Three, and the compiler
 names none of them. Measured again on 2026-09-22, the annotations are rarer still — of default-setup's
 24 `system` and `plugin` declarations, **three carry anything beyond the entry**: `threads.plugin`
@@ -722,7 +722,7 @@ container. `content` remains a section because it genuinely is one: sources, art
 writers are keys that change together whenever a written format changes.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
-`.describe()` on every field, `npm run schema:update` regenerates `abuddy.schema.json`, and
+`.describe()` on every field, `npm run schema:update` regenerates `apack.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
 **12. `defaultPlugin` moves onto the plugin it names.** — **Landed** in `b8d66af4e`, ahead of this goal
@@ -739,13 +739,13 @@ changes; `validate` additionally rejects two features of one pack claiming it.
 **13. Every feature carries an `about` line.** The manifest is the one place that says what a pack
 contributes, and today it cannot say what any feature is *for* — only where its files are. A one-line
 `about` is the highest-value thing the manifest can gain, and the only part of this goal that adds
-content rather than moving it. `abuddy add feature` prompts for it and `validate` requires it.
+content rather than moving it. `apack add feature` prompts for it and `validate` requires it.
 
 **14. `$manifestVersion` is deleted, and the pack's existing format stamp is what covers its shape.**
 
 > **Scope: the deletion only.** `PACK_LAYOUT_VERSION` and `PACK_SNAPSHOT_FORMAT` are not to be renamed
 > or bumped — the owner's decision — so nothing below that asks for a rename or a new number applies.
-> What this decision asks for is that `abuddy.json` carries no version of its own, and the reasoning for
+> What this decision asks for is that `apack.json` carries no version of its own, and the reasoning for
 > *why a manifest gets none* is the half to read.
 
 The schema declares `$manifestVersion` (`manifest-schema.ts:211`, `z.literal(1).optional()`, "Enables
@@ -755,13 +755,13 @@ enforced:
 
 | stamp | written to | covers | checked by |
 |---|---|---|---|
-| `PACK_LAYOUT_VERSION = 1` (`packs/layout.ts`) | `integrity.json`'s `formatVersion` | an installed pack's files and where they sit | `verifyPack` throws "Update AgentBuddy or rebuild the pack"; `loader.ts:171` skips the pack with a warning |
+| `PACK_LAYOUT_VERSION = 1` (`packs/layout.ts`) | `integrity.json`'s `formatVersion` | an installed pack's files and where they sit | `verifyPack` throws "Update apack or rebuild the pack"; `loader.ts:171` skips the pack with a warning |
 | `LMDB_FORMAT_VERSION = 1` (`lmdb/envs.ts:20`) | the database's meta | the storage format | `openEnvAt`, which refuses to open |
 | *(none)* — the build stamp (`build/packages-built.ts`) carries **no** version | `node_modules/.cache` | tooling freshness | its fingerprint, recomputed on every read. It had a `STAMP_VERSION` until 2026-10-02; a stamp nothing but this checkout reads needs no format field, because the comparison recomputes its own side |
 
-`$manifestVersion` is not a fourth kind of thing. `abuddy.json` is a file *in* the layout: both stamps
+`$manifestVersion` is not a fourth kind of thing. `apack.json` is a file *in* the layout: both stamps
 would be written at build time, read by the same host code at install and load, and mean the same thing
-to a user — this pack was built for a different AgentBuddy. Two stamps for one event is worse than one,
+to a user — this pack was built for a different apack. Two stamps for one event is worse than one,
 because they can disagree. A restructuring like this one would, once packs exist in the wild, have to
 move both: the manifest's keys changed, and a pack built before it cannot be loaded. Move one and not
 the other and a pack reads "layout 1, manifest 2" — the files are where I expect and I cannot read one
@@ -779,13 +779,13 @@ was deprecated and is now reported as obsolete.
 `package.json` gets away with it for a reason worth naming, because it is not "a stamp is never
 needed": **npm has never made a breaking change to it.** Fifteen years of purely additive evolution,
 new fields that old readers ignore. That is a discipline, and it is one this goal is explicitly not
-following. A pack, meanwhile, is a built artifact — `abuddy build` produces it and `stagePack` writes
-the built `abuddy.json` into the archive beside `integrity.json` — so it is in `package.json`'s
+following. A pack, meanwhile, is a built artifact — `apack build` produces it and `stagePack` writes
+the built `apack.json` into the archive beside `integrity.json` — so it is in `package.json`'s
 category, and the manifest needs no version inside it.
 
 **`hostVersion` cannot take over the job, which is why the artifact keeps one stamp.** It is already
 the `engines.vscode` answer, checked at install (`packs/installer.ts`), at load (`loader.ts:159`)
-and by update checks. But it is author-declared and open at the top: `abuddy init` scaffolds
+and by update checks. But it is author-declared and open at the top: `apack init` scaffolds
 `">=0.3.0"`, and a 0.4.0 host satisfies that. `hostVersion` says "the oldest host I work with", never
 "the newest", so a pack built against the old manifest shape would claim compatibility with a host
 that cannot read it. Expressing a format break needs something the host controls and the author
@@ -830,7 +830,7 @@ to the first structural change made after a release exists.
 
 **The gap, why it does not bite, and why it needs writing down.** A published built-in pack
 (`host-packs/<id>/`) is a *partial* pack layout: `publishHostPackOutput` writes `types/snapshot.json`,
-`build/`, `runtime/index.cjs` with `runtime/content/`, and a `.fingerprint` — **no `abuddy.json` and no
+`build/`, `runtime/index.cjs` with `runtime/content/`, and a `.fingerprint` — **no `apack.json` and no
 `integrity.json`** (its manifest is read from inside `snapshot.json`). An unbuilt source pack has
 neither either. So neither carries the stamp, and skew is impossible for both: a built-in pack ships
 inside the host that reads it, and an unbuilt source pack is built by a CLI its author chose. The one
@@ -882,11 +882,11 @@ schema's own doc comment says so:
   format bump and a rebuild of every pack in the wild. The bar for one is a problem that cannot be
   solved additively, not a name someone would spell differently.
 - **Deprecate by leaving it alone.** A key that stops mattering stops being written by
-  `abuddy add` and stops being documented; it does not need removing, and removing it is the
+  `apack add` and stops being documented; it does not need removing, and removing it is the
   expensive half.
 
 **16. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
-the repo — default-setup, all three fixtures, the `abuddy init` scaffold and the packaged-authoring
+the repo — default-setup, all three fixtures, the `apack init` scaffold and the packaged-authoring
 script's generated pack (the Background's table) — changes in the same phase as the schema section it
 depends on.
 
@@ -896,8 +896,8 @@ translation, only a larger set of valid manifests. Decision 6 is the example. Wh
 a renamed or removed key that keeps working through code written to accept it.
 
 **17. Two sections for what the app never loads: `build` and `checks`, and no sidecar files.**
-`build` holds settings that change what `abuddy build` produces or how long it takes; `checks` holds the
-pack rules the pack switches off. `abuddy.checks.json` is **deleted** and its contents become
+`build` holds settings that change what `apack build` produces or how long it takes; `checks` holds the
+pack rules the pack switches off. `apack.checks.json` is **deleted** and its contents become
 `checks: { allow: [...] }`, keeping that shape and vocabulary so the move is mechanical and its error
 messages stay true.
 
@@ -915,28 +915,28 @@ By that test `build` has exactly two residents and will stay small:
 | key | why |
 |---|---|
 | `opaqueDeps` | dependencies the frontend bundle includes whole instead of walking. Landed 2026-10-08 |
-| `bundleUi` | out of `fe`. A packaging choice: it declares no contribution, it decides which copy of `@abuddy/ui` the bundle carries. The borderline case, since that choice has a runtime consequence — but nothing reads it as a declaration. **Landed** in `a6aad1e4a` |
+| `bundleUi` | out of `fe`. A packaging choice: it declares no contribution, it decides which copy of `@apack/ui` the bundle carries. The borderline case, since that choice has a runtime consequence — but nothing reads it as a declaration. **Landed** in `a6aad1e4a` |
 
-> **Half landed**: `build` holds both residents. `checks` is open, and `abuddy.checks.json` is still a
-> sidecar — `abuddy-cli/src/build/pack-rules.ts` reads it and `docs/public-facing/cli.md` documents it.
+> **Half landed**: `build` holds both residents. `checks` is open, and `apack.checks.json` is still a
+> sidecar — `apack-cli/src/build/pack-rules.ts` reads it and `docs/public-facing/cli.md` documents it.
 
 **The measurement above was taken before Decision 9**, so its key counts describe a flat root: the
 nineteen it says the app never reads are now mostly inside `extensions`, which is the same set under one
 key. The test it states is unchanged, and it is the reason `extensions` and `build` are two sections
 rather than one.
 
-`checks` is its own section rather than `build.checks`, because `abuddy validate` runs the rules without
+`checks` is its own section rather than `build.checks`, because `apack validate` runs the rules without
 building anything, so "build" is the wrong word for authoring policy, and `build.checks.allow` is three
 levels deep for one list.
 
-**Why these belong in `abuddy.json` at all**, against `goal-one-rule-set`'s reasoning for the sidecar — it
-put the rules in a file of their own as *"read at build time and never by the app, so `abuddy.json` stays
+**Why these belong in `apack.json` at all**, against `goal-one-rule-set`'s reasoning for the sidecar — it
+put the rules in a file of their own as *"read at build time and never by the app, so `apack.json` stays
 what the app loads"*, with *"`ManifestSchema` is untouched"* beside it. The first was already false when it
 was written, by the measurement above. The second is the cost of that change, not a principle. What a
-sidecar costs is paid in validation: `abuddy.build.json` was built on 2026-10-08 and deleted the same day,
+sidecar costs is paid in validation: `apack.build.json` was built on 2026-10-08 and deleted the same day,
 because a bare JSON file has no schema, so it needed a 60-line hand-written reader and a seven-case spec
 for parse errors, unknown keys and wrong types. In the manifest, `.strict()` Zod does all of that — a
-typo'd `opaqueDeeps` fails `abuddy validate` with *"abuddy.json \"build\": Unrecognized key(s) in object"*,
+typo'd `opaqueDeeps` fails `apack validate` with *"apack.json \"build\": Unrecognized key(s) in object"*,
 a better message than the hand-rolled one — and pack authors get completion from `$schema`. Folding in
 deletes code; splitting out writes it.
 
@@ -948,13 +948,13 @@ to be decided now rather than later: after this goal a rename costs a format bum
 name not fixed here is a name kept for good.
 
 1. **`extensions.fe` → `extensions.frontend`?** `fe` is the repo's internal shorthand and it is
-   everywhere in the source, but `abuddy.json` is the pack author's surface and an unexplained
+   everywhere in the source, but `apack.json` is the pack author's surface and an unexplained
    two-letter abbreviation is the one kind of name a newcomer cannot guess. Against: `fe`/`be` is
    consistent with the directory layout an author already sees (`src/features/<id>/fe/`), so the
    abbreviation is one they meet on their first day either way.
-2. **`hostVersion` → `engines: { abuddy: ">=0.3.0" }`?** For: it is exactly npm's and VS Code's
+2. **`hostVersion` → `engines: { apack: ">=0.3.0" }`?** For: it is exactly npm's and VS Code's
    spelling for this field (`engines.node`, `engines.vscode`), so it is recognised on sight, and
-   Decision 14 already cites that precedent as the one AgentBuddy follows. Against: `engines` is a map
+   Decision 14 already cites that precedent as the one apack follows. Against: `engines` is a map
    because npm packages have several; a pack has one host, so the map is a wrapper around a single
    key, and `hostVersion` says the same thing in one line with no nesting.
 
@@ -975,25 +975,25 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
   route from the manifest to the partition policy, which no longer exists: `appPartitionPolicy()` is a
   constant and nothing contributes to it. There is no loader strip left to delete.
 - Update `manifest-schema.ts`, `generate-entries.ts` (entity names, shapes, relation constants),
-  `abuddy-host/src/database/schema.ts` (`readInstalledSchema`), `packs/runtime/loader.ts`,
+  `apack-host/src/database/schema.ts` (`readInstalledSchema`), `packs/runtime/loader.ts`,
   `features/packs/be/system.ts` (both `PackInfo` builders, and give its `readManifest` a real return
-  type in place of `Record<string, any>`), `abuddy-sdk/src/build/manifest.ts` (`ProvenanceManifest`'s
+  type in place of `Record<string, any>`), `apack-sdk/src/build/manifest.ts` (`ProvenanceManifest`'s
   own `entities` field, which does not fail to compile on its own),
-  `abuddy-cli/src/commands/build.ts` (the snapshot, whose `PackTypeManifest` stays flat),
-  `abuddy-cli/src/commands/add/manifest.ts` and `init.ts`'s scaffold.
+  `apack-cli/src/commands/build.ts` (the snapshot, whose `PackTypeManifest` stays flat),
+  `apack-cli/src/commands/add/manifest.ts` and `init.ts`'s scaffold.
 - Delete `$manifestVersion`; widen the format stamp's doc
   comment to the manifest's structure. It stays at `1` (Decision 14).
 - Update default-setup and every other manifest in the Background's table: all three fixtures
-  (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `abuddy init` scaffold, the pack
+  (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `apack init` scaffold, the pack
   `tests/scripts/test-packaged-authoring-author.sh` writes, and the two in-process fixtures Background
   names (`packFixture`'s `DEFAULT_MANIFEST` and `generate-entries`' spec-support `manifest()`).
 
-**Done when:** `npm run schema:update` is clean and `abuddy.schema.json` is committed; `abuddy build`
+**Done when:** `npm run schema:update` is clean and `apack.schema.json` is committed; `apack build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
 (diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
 `loader.ts` no longer mentions it; every reader of a manifest's entities calls `packEntities` and a
 spec fails when one open-codes the merge; `$manifestVersion` appears in no schema and no manifest, and
-the pack's existing format stamp is the only one, still `1`; `packages/abuddy-host/tests/database/partition-policy.spec.ts` passes,
+the pack's existing format stamp is the only one, still `1`; `packages/apack-host/tests/database/partition-policy.spec.ts` passes,
 with a case added for an external pack marking its own entity volatile and that entity routing to
 `volatileBackup`; the schema's description of `volatile` says persisted-but-not-hydrated and not
 backed up, and the phrase "in-memory only" appears nowhere; `npm run typecheck`, `npm run test:unit`,
@@ -1032,7 +1032,7 @@ what is left of Decision 10 is the key `boot` has been reduced to.
 - Three sites read it, all in `generate-entries.ts`: the hooks import, the registration's `boot` member,
   and the manifest field itself. `PackRegistration.boot` is the registration's own name for the pair of
   hooks and is not a manifest key — leave it alone.
-- Update default-setup's and `external-pack`'s manifests and the `abuddy init` scaffold; the other two fixtures declare no `boot`.
+- Update default-setup's and `external-pack`'s manifests and the `apack init` scaffold; the other two fixtures declare no `boot`.
 
 **Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
 and `migrations` is still a root key; no pack re-applies on the next boot — `contentRevision`
@@ -1046,9 +1046,9 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 
 - Nothing to do for designations: Decision 6 already landed (`validate.ts`, its spec, the CLI spec,
   and the three docs that stated the old rule). Keep a feature's `designation` as the string it is.
-- Add `FEATURE_LAYOUT` to `@abuddy/sdk/build` as the one definition of the feature layout, derive
+- Add `FEATURE_LAYOUT` to `@apack/sdk/build` as the one definition of the feature layout, derive
   `provides`' schema enum from its keys, and route `validateFeatures`, `generate-entries`' import
-  paths, `doctor` and `abuddy add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
+  paths, `doctor` and `apack add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
   own copy of three of the five today (Decision 7).
 - Replace the per-capability keys with one `provides` list, each name resolving through
   `FEATURE_LAYOUT`, and make every path a feature does spell out relative to `src/features/<id>/`
@@ -1064,7 +1064,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
   whose file is missing must fail here, not much later. Resolve each name to its conventional path, or
   to the feature-relative `entry` when one is given, and reject a path that escapes the feature's
   directory.
-- Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
+- Add `about` to every feature and require it in `validate.ts`; `apack add feature` prompts for it
   (Decision 13).
 - Rename `features.<id>.typesEntry` to `types`, relative to the feature's directory like every other
   feature path (Decision 7). Phase 1 already put `entities` on the feature; this phase makes its shape
@@ -1099,7 +1099,7 @@ fail validation with the message naming the expected form.
 
 ### Phase 6 — the schema is the documentation
 
-- Every field in `manifest-schema.ts` carries a `.describe()`; regenerate `abuddy.schema.json`. The
+- Every field in `manifest-schema.ts` carries a `.describe()`; regenerate `apack.schema.json`. The
   entity value's description says what `null` means — the type exists and has no registered shape, so
   its rows read untyped — since that is the one value in the manifest a reader is most likely to take
   for "not set yet".
@@ -1117,8 +1117,8 @@ fail validation with the message naming the expected form.
 - Rewrite `docs/public-facing/manifest.md` from the new shape, and update every other doc that names a
   retired key. That surface is larger than it looks: eight public-facing docs (`manifest`,
   `architecture`, `cli`, `getting-started`, `extensions`, `features`, `content`, `services-and-data`) and
-  ten `CLAUDE.md` files (root, `abuddy-sdk`, `abuddy-cli`, `abuddy-host`,
-  `abuddy-host/src/packs/runtime`, `abuddy-ears`, `default-setup`, `default-setup/src/content`,
+  ten `CLAUDE.md` files (root, `apack-sdk`, `apack-cli`, `apack-host`,
+  `apack-host/src/packs/runtime`, `apack-ears`, `default-setup`, `default-setup/src/content`,
   `renderer`, `api`). Sweep by key name — `designation` alone appears in 23 files — rather than by
   memory of which docs discuss manifests. Leave `docs/archive/` alone: archived goals record what was
   true when they were written, and rewriting them destroys that.
@@ -1127,8 +1127,8 @@ fail validation with the message naming the expected form.
   regrow. Naming them beats counting them: a count passes when one key is swapped for another, and the
   order is half of what makes a flat root readable (Decision 1). This spec, not Decision 1's prose, is
   what stops the root regrowing to 24 keys.
-- Make `abuddy add`'s manifest writer emit the canonical order (`writeManifest`,
-  `abuddy-cli/src/commands/add/manifest.ts:7`, the one line `add feature`, `add service`,
+- Make `apack add`'s manifest writer emit the canonical order (`writeManifest`,
+  `apack-cli/src/commands/add/manifest.ts:7`, the one line `add feature`, `add service`,
   `add migration` and `add step` all write through), so no `add` command can produce a file the spec
   then rejects. **Preserving insertion order is not enough and the current code does no more than
   that**: `writeManifest` is a plain `JSON.stringify` of whatever object it is handed, which is
@@ -1155,8 +1155,8 @@ moving keys within the manifest. **Its first bullet is done**; what is left is `
 
 - ~~`BuildConfigSchema` gains `bundleUi`, and `FEConfigSchema` loses it.~~ **Landed** in `a6aad1e4a`
   with Phase 2: `fe-bundler.ts`'s `bundlesUi` reads `build.bundleUi`, and
-  `tests/packs/bundled-ui-pack/abuddy.json` is the one manifest that sets it.
-- A `checks` section — `{ allow: [string] }`, `.strict()` — and `abuddy.checks.json` is deleted with
+  `tests/packs/bundled-ui-pack/apack.json` is the one manifest that sets it.
+- A `checks` section — `{ allow: [string] }`, `.strict()` — and `apack.checks.json` is deleted with
   `loadPackChecks`' file handling: it reads `manifest.checks?.allow` instead. **Keep its two refusals**,
   which the schema does not cover: a name that is not a rule, and a rule that is not switchable, each
   erroring with the switchable set. Zod rejects a non-string and an unknown key; it does not know what a
@@ -1164,20 +1164,20 @@ moving keys within the manifest. **Its first bullet is done**; what is left is `
   reader has one input and no filesystem of its own.
 - **No pack has a checks file** (measured 2026-10-08: zero on disk), so nothing migrates — the escape
   hatch has never been used, which is also why this costs nothing to move.
-- `docs/public-facing/cli.md`'s `abuddy validate` section documents `checks` in the manifest instead of
+- `docs/public-facing/cli.md`'s `apack validate` section documents `checks` in the manifest instead of
   the file, and `manifest.md` gains `build` and `checks` beside the other sections.
 
-**Done when:** `abuddy.checks.json` appears in no source, doc, scaffold or fixture, and
+**Done when:** `apack.checks.json` appears in no source, doc, scaffold or fixture, and
 `loadPackChecks` touches no filesystem; `tests/packs/bundled-ui-pack` still bundles its own
-`@abuddy/ui` and its Playwright suite passes; a pack
+`@apack/ui` and its Playwright suite passes; a pack
 allowing a non-switchable rule still fails naming the switchable set; `npm run schema:check` passes with
 the regenerated schema committed, `npm run api:update` has been run, and the chain is green.
 
 ## Deferred
 
-- **Splitting the manifest into several files** (a `content.json` beside `abuddy.json`, say). One file that
+- **Splitting the manifest into several files** (a `content.json` beside `apack.json`, say). One file that
   fits on a screen is the goal; more files is a different trade and not this one.
-- **Replacing JSON with a typed authoring format** (a `abuddy.config.ts` the build imports). It would
+- **Replacing JSON with a typed authoring format** (a `apack.config.ts` the build imports). It would
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
@@ -1218,12 +1218,12 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
 - Every phase leaves `npm run typecheck` and `npm run test:unit` green before the next one starts.
 - **Every phase that touches `manifest-schema.ts` ends with `npm run api:update` and commits
   `etc/*.api.md` with the rest of the phase.** `PackManifest` is `z.infer<typeof ManifestSchema>`, a
-  published export of `@abuddy/sdk/build`, so the report inlines the whole manifest type —
-  `packages/abuddy-sdk/etc/build.api.md` names the keys this goal retires 35 times. `npm run typecheck`
+  published export of `@apack/sdk/build`, so the report inlines the whole manifest type —
+  `packages/apack-sdk/etc/build.api.md` names the keys this goal retires 35 times. `npm run typecheck`
   runs `api:check` and fails on a stale report, so a phase that skips this cannot meet its own
   "Done when". Budget ~46s for the three reports.
 - Generated output is the proof for Phases 1–4: compare `src/__generated__/` and `dist/` before and
   after, and treat any diff as a regression unless the phase says otherwise.
 - Don't change the typed EARS types to make a call site compile
-  (`packages/abuddy-sdk/TYPED-EARS.md`).
+  (`packages/apack-sdk/TYPED-EARS.md`).
 - Don't push, tag, open a PR, publish, or touch a real data dir.

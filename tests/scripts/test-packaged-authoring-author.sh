@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The half of the packaged-authoring check that needs no app: in a temp dir outside the monorepo, using only
-# the packed @abuddy/* tarballs, author a pack, build it, test it on the harness, and release it to a
+# the packed @apack/* tarballs, author a pack, build it, test it on the harness, and release it to a
 # verified archive. The app half runs that archive against a built app.
 #
 # Its own file rather than a mode, for `test-external-pack-contract.sh`'s reason: `check:tiers` reads a
@@ -8,14 +8,14 @@
 #
 # Phases, and the end state they establish for outside pack authors
 # (docs/archive/goals/goal-external-pack-authoring.md):
-#   1. install @abuddy/cli + @abuddy/sdk (with @abuddy/ears) from tarballs
-#   2. abuddy init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
+#   1. install @apack/cli + @apack/sdk (with @apack/ears) from tarballs
+#   2. apack init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
 #      .ts compiler module, default-setup's notes format, and its library format -> an llm flow and a
 #      service calling services.inference
-#   3. abuddy build
+#   3. apack build
 #   4. unit tests on the harness, with inference mocked by mockInference
-#   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
-#   6. abuddy release --local --dry-run produces a verified archive (--skip-e2e: the app half runs that)
+#   5. @apack/testing's published declarations type-check on their own (skipLibCheck off)
+#   6. apack release --local --dry-run produces a verified archive (--skip-e2e: the app half runs that)
 #   7. install that archive into an isolated test data dir
 # Requires a built checkout's packages (npm run packages:build), not a built app.
 # KEEP_WORK=1 is the app half's flag; this half always leaves its work dir, which is its declared output.
@@ -31,48 +31,48 @@ WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
 useWorkDir "$WORK"
 
-step "Pack @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
+step "Pack @apack/ears, @apack/sdk, @apack/ui, @apack/cli and @apack/testing"
 # ensure, not build: it needs the tarballs to match the sources, which is what ensure guarantees, and it
 # rewrites nothing when they already do. packages:build rebuilt all five unconditionally, which deleted and
 # rewrote the dist/ that anything running beside this reads.
 (cd "$ROOT" && npm run packages:ensure >/dev/null)
-for dir in abuddy-ears/publish abuddy-sdk/publish abuddy-ui/publish abuddy-cli/dist/package abuddy-testing/dist/package; do
+for dir in apack-ears/publish apack-sdk/publish apack-ui/publish apack-cli/dist/package apack-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
-EARS_TGZ="$(ls "$WORK"/abuddy-ears-*.tgz)"
-SDK_TGZ="$(ls "$WORK"/abuddy-sdk-*.tgz)"
-UI_TGZ="$(ls "$WORK"/abuddy-ui-*.tgz)"
-CLI_TGZ="$(ls "$WORK"/abuddy-cli-*.tgz)"
-TESTING_TGZ="$(ls "$WORK"/abuddy-testing-*.tgz)"
+EARS_TGZ="$(ls "$WORK"/apack-ears-*.tgz)"
+SDK_TGZ="$(ls "$WORK"/apack-sdk-*.tgz)"
+UI_TGZ="$(ls "$WORK"/apack-ui-*.tgz)"
+CLI_TGZ="$(ls "$WORK"/apack-cli-*.tgz)"
+TESTING_TGZ="$(ls "$WORK"/apack-testing-*.tgz)"
 
-step "1. Install @abuddy/cli + @abuddy/sdk from the tarballs"
+step "1. Install @apack/cli + @apack/sdk from the tarballs"
 mkdir "$WORK/tools"
-# The SDK's @abuddy/ears comes from its tarball too
+# The SDK's @apack/ears comes from its tarball too
 (cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent --prefer-offline --no-audit --no-fund "$EARS_TGZ" "$SDK_TGZ" "$CLI_TGZ")
-ABUDDY="$WORK/tools/node_modules/.bin/abuddy"
-"$ABUDDY" --version
+APACK="$WORK/tools/node_modules/.bin/apack"
+"$APACK" --version
 
-step "2. abuddy init → add feature"
+step "2. apack init → add feature"
 cd "$WORK"
-"$ABUDDY" init demo-pack >/dev/null
+"$APACK" init demo-pack >/dev/null
 PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
-npm pkg set "dependencies.@abuddy/ears=file:$EARS_TGZ" "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ" "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
+npm pkg set "dependencies.@apack/ears=file:$EARS_TGZ" "dependencies.@apack/sdk=file:$SDK_TGZ" "devDependencies.@apack/cli=file:$CLI_TGZ" "devDependencies.@apack/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
-# @abuddy/sdk carries the platform API only; the component library and its editors come with @abuddy/ui
+# @apack/sdk carries the platform API only; the component library and its editors come with @apack/ui
 for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
   [ ! -e "node_modules/$lib" ] || fail "a backend-only pack installed $lib"
 done
-# From here on, `abuddy` is the pack's own pinned CLI
-ABUDDY="$PACK/node_modules/.bin/abuddy"
-"$ABUDDY" add feature notes --label Notes >/dev/null
-# @abuddy/ui's heavier components must build in a pack, not only in the monorepo
-npm pkg set "dependencies.@abuddy/ui=file:$UI_TGZ"
+# From here on, `apack` is the pack's own pinned CLI
+APACK="$PACK/node_modules/.bin/apack"
+"$APACK" add feature notes --label Notes >/dev/null
+# @apack/ui's heavier components must build in a pack, not only in the monorepo
+npm pkg set "dependencies.@apack/ui=file:$UI_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 cat > src/features/notes/fe/editors.ts <<'TS'
-import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
+import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
 
 export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS
@@ -81,32 +81,32 @@ node -e '
   const file = "src/features/notes/fe/plugin.ts";
   fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
-"$ABUDDY" init-tests
-npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
+"$APACK" init-tests
+npm pkg set "devDependencies.@apack/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Name the checkout the build resolves a shipped pack through"
-# `abuddy build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
+# `apack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
 # `configuredAppPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
-# **ABUDDY_BUILD, and only for the commands that build.** That function derives the AgentBuddy checkout
+# **APACK_BUILD, and only for the commands that build.** That function derives the apack checkout
 # *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
 # installing the packages from packed tarballs, which is the population this script exists to represent.
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
 # writing the first-run prompt's config file by hand; there is no prompt and no config file now.
 #
-# Per-command rather than exported, so step 8 still means something: `abuddy test` reads ABUDDY_BUILD like
+# Per-command rather than exported, so step 8 still means something: `apack test` reads APACK_BUILD like
 # any other caller, and exporting it would hand that step a build without its asking. Left unset, step 8 has
 # no build at all but the one it names on the command line — which is what makes it a check of hermeticity
 # rather than a restatement of it.
-BUILD_ENV=(env "ABUDDY_BUILD=$ROOT")
+BUILD_ENV=(env "APACK_BUILD=$ROOT")
 
 step "2. A flow using keepAlive from default-setup"
 node -e '
   const fs = require("fs");
-  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
   m.dependencies = { "default-setup": "*" };
-  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+  fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
 cat > src/content/flows/notes-heartbeat.ts <<'EOF'
 import { entry, keepAlive } from '#generated/flow-helpers.ts';
@@ -118,12 +118,12 @@ export default {
 };
 EOF
 
-step "2. Content from abuddy.json: a format with a .ts compiler module, and default-setup's notes and library formats"
+step "2. Content from apack.json: a format with a .ts compiler module, and default-setup's notes and library formats"
 mkdir -p src/content/glossary src/content/notes
 printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/content/glossary/pack.md
 mkdir -p src/content/compilers
 cat > src/content/compilers/glossary.ts <<'TS'
-import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@abuddy/sdk/build';
+import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apack/sdk/build';
 
 export default function compileGlossary({ path }: ContentCompileContext): ContentItem[] {
   return compileMarkdownTree(path).map((item) => ({ entity: 'DemoPack', term: String(item.frontmatter.term), definition: item.body.trim() }));
@@ -137,18 +137,18 @@ printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\
 # dependency; the library format's compiler module comes from default-setup's dist/build/content-compilers.mjs
 node -e '
   const fs = require("fs");
-  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
   m.content.formats = { ...m.content.formats, glossary: { compiler: "src/content/compilers/glossary.ts", entity: "DemoPack", identity: ["term"] } };
   m.content.sources.glossary = { path: "src/content/glossary", format: "glossary" };
   m.content.sources["demo-notes"] = { path: "src/content/notes", format: "default-setup:notes" };
   m.content.sources["demo-library"] = { path: "src/content/library", format: "default-setup:library" };
-  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+  fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
 
 step "2. An llm flow on default-setup's brain, and a service calling services.inference"
-"$ABUDDY" add prompt summarize-note >/dev/null
+"$APACK" add prompt summarize-note >/dev/null
 cat > src/content/prompts/summarize-note.ts <<'TS'
-import type { PromptMeta } from '@abuddy/sdk/build';
+import type { PromptMeta } from '@apack/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Summarize Note',
@@ -173,7 +173,7 @@ export default {
   ],
 };
 TS
-"$ABUDDY" add service digest --feature notes >/dev/null
+"$APACK" add service digest --feature notes >/dev/null
 cat > src/features/notes/be/services/digest.ts <<'TS'
 import { Output } from 'ai';
 import { z } from 'zod';
@@ -194,15 +194,15 @@ export const digestService = {
 TS
 node -e '
   const fs = require("fs");
-  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
   m.content.sources = { prompts: "src/content/prompts", ...m.content.sources };
-  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+  fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
 # The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
 npm install --silent --prefer-offline --no-audit --no-fund --save ai@^7.0.100
 
-step "3. abuddy build"
-"${BUILD_ENV[@]}" "$ABUDDY" build | tee "$WORK/build.log"
+step "3. apack build"
+"${BUILD_ENV[@]}" "$APACK" build | tee "$WORK/build.log"
 node -e '
   const fs = require("fs");
   const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/content/${key}.content.json`, "utf8")).records;
@@ -219,15 +219,15 @@ node -e '
 ' || fail "the compiler modules and markdown content were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
-# A spec's path mirrors the source it covers, which is the layout `abuddy init` scaffolds and the one a
+# A spec's path mirrors the source it covers, which is the layout `apack init` scaffolds and the one a
 # pack author reads about (docs/public-facing/testing.md). These three cover the content, a feature's service
 # and a written flow, so they go where those live.
 mkdir -p tests/content/flows tests/features/notes/be/services
 cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importContent } from '@abuddy/testing/harness';
+import { importContent } from '@apack/testing/harness';
 import { findAll } from '#generated/ears.ts';
-import { findRelations } from '@abuddy/ears';
+import { findRelations } from '@apack/ears';
 
 describe('demo notes', () => {
   it("content notes with default-setup's format and hooks", async () => {
@@ -249,7 +249,7 @@ describe('demo notes', () => {
 TS
 cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { mockInference } from '@abuddy/testing/harness';
+import { mockInference } from '@apack/testing/harness';
 import { services } from '#generated/services.ts';
 
 describe('digest service', () => {
@@ -262,7 +262,7 @@ describe('digest service', () => {
 TS
 cat > tests/content/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importFlows, mockInference, importContent, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importContent, startApp } from '@apack/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 describe('notes summary flow', () => {
@@ -293,13 +293,13 @@ node -e '
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
-step "5. @abuddy/testing's published types stand alone"
-# Its declarations may import only what a pack installs: an unpublished import (@abuddy/host) fails with lib checking
+step "5. @apack/testing's published types stand alone"
+# Its declarations may import only what a pack installs: an unpublished import (@apack/host) fails with lib checking
 # on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
 cat > tests/types-probe.ts <<'TS'
-import type { PluginEvent, TestApp, FlowRun } from '@abuddy/testing/harness';
-import type { IsolatedDataDir } from '@abuddy/testing/vitest';
-import type { AppHelper } from '@abuddy/testing';
+import type { PluginEvent, TestApp, FlowRun } from '@apack/testing/harness';
+import type { IsolatedDataDir } from '@apack/testing/vitest';
+import type { AppHelper } from '@apack/testing';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
@@ -311,30 +311,30 @@ rm tests/types-probe.ts
 grep -v "^/" "$WORK/types-probe.log" || true
 # tsc checked the probe: a config error (no inputs, a bad option) or a crash lists no files. tsc lists real paths.
 grep -qxF "$(pwd -P)/tests/types-probe.ts" "$WORK/types-probe.log" || fail "tsc didn't type-check the types probe"
-# Every error is in other packages' declarations (installed, or dependencies' in .abuddy/deps); errors without a
+# Every error is in other packages' declarations (installed, or dependencies' in .apack/deps); errors without a
 # file (config) or anywhere else fail.
 # Don't widen these two prefixes to cover src/: a dependency's facade is inlined at
 # src/__generated__/deps/<packId>.d.ts, and that path being outside the tolerance is what makes this step the proof
 # that a peer its facade imports — zod today, through default-setup — resolves for a pack installed outside this
-# monorepo. Forgiving src/ would swallow exactly that (abuddy-cli's facade-gate.ts says what rests on it).
-if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.abuddy/deps)/" | grep .; then
+# monorepo. Forgiving src/ would swallow exactly that (apack-cli's facade-gate.ts says what rests on it).
+if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.apack/deps)/" | grep .; then
   fail "the types probe didn't type-check"
 fi
-if grep -E "^node_modules/@abuddy/testing/" "$WORK/types-probe.log"; then
-  fail "@abuddy/testing's published declarations don't type-check on their own"
+if grep -E "^node_modules/@apack/testing/" "$WORK/types-probe.log"; then
+  fail "@apack/testing's published declarations don't type-check on their own"
 fi
 # A non-zero exit with no error in other packages' declarations is tsc failing some other way
-if [ "$TYPES_STATUS" -ne 0 ] && ! grep -qE "^(node_modules|\.abuddy/deps)/[^(]+\([0-9]+,[0-9]+\): error TS" "$WORK/types-probe.log"; then
+if [ "$TYPES_STATUS" -ne 0 ] && ! grep -qE "^(node_modules|\.apack/deps)/[^(]+\([0-9]+,[0-9]+\): error TS" "$WORK/types-probe.log"; then
   fail "tsc exited $TYPES_STATUS without type errors while checking the types probe"
 fi
 
-step "6. abuddy release --local --dry-run"
+step "6. apack release --local --dry-run"
 git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
 git remote add origin https://github.com/example/demo-pack.git
 # The release runs a build of its own, so it needs the same naming
-"${BUILD_ENV[@]}" "$ABUDDY" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
+"${BUILD_ENV[@]}" "$APACK" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
 ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 [ -f "$ARCHIVE" ] && [ -f "$ARCHIVE.sha256" ] || fail "release did not produce an archive and checksum"
 (cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$ARCHIVE").sha256")
@@ -342,7 +342,7 @@ ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 
 step "7. Install the packed archive into an isolated test data dir"
 DATA="$WORK/test-data"
-ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$ARCHIVE"
+APACK_USER_DATA_DIR="$DATA" "$APACK" install "$ARCHIVE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '

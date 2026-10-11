@@ -2,9 +2,9 @@
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `abuddy.json` names it at `features[].plugin.contract`.
-import type { Simplify } from '@abuddy/sdk/helpers'
-import type { HotkeysMap, NavHistory, PluginInbox } from '@abuddy/sdk/fe'
+// `apack.json` names it at `features[].plugin.contract`.
+import type { Simplify } from '@apack/sdk/helpers'
+import type { HotkeysMap, NavHistory, PluginInbox } from '@apack/sdk/fe'
 import type {
   AgentMode as AgentModeConfig, AgentSettings, AgentThreadData, CommandItem, Tab, ThreadCreateData,
   ThreadEntity, ThreadTagOption, ThreadViewData, ThreadsSettings,

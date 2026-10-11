@@ -8,10 +8,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, scheduleMismatch, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 describe('coresFor', () => {
   // Ten, so the arithmetic below reads as the box this was measured on rather than the one it runs on

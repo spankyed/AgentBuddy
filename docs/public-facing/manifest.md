@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `abuddy.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
+The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
 ## Field reference
 
@@ -37,12 +37,12 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `steps` | `Record<string, StepEntry>` | Flow step types, keyed by type. Each names its facets: `build` (or `trigger`), `fe`, `runtime` and `dsl`. The build facets are shipped as `build/steps.build.mjs`, so packs depending on yours validate flows with your step code; see [Steps](extensions.md#steps) |
 | `artifacts` | `Record<string, { icon, fe? }>` | Artifact types, keyed by type; see [Artifacts](extensions.md#artifacts) |
 | `blocks` | `Record<string, { kind?, fe?, be? }>` | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
-| `commands` | `{ <name>: { placeholder } }` | Slash commands the pack adds to the chat, keyed by the name typed after the `/` (`^[a-z][a-z0-9-]*$`). A pack cannot declare one twice, the name being the key; across packs it must still be unique, and `abuddy build` fails when a dependency, or anything it depends on, declares it. `placeholder` is what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
+| `commands` | `{ <name>: { placeholder } }` | Slash commands the pack adds to the chat, keyed by the name typed after the `/` (`^[a-z][a-z0-9-]*$`). A pack cannot declare one twice, the name being the key; across packs it must still be unique, and `apack build` fails when a dependency, or anything it depends on, declares it. `placeholder` is what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
 | `fe` | `object` | Frontend contributions; see [Frontend configuration](#frontend-configuration) |
 
-**A setting that only changes what `abuddy build` produces is not one of these**: it goes in `build`, which
+**A setting that only changes what `apack build` produces is not one of these**: it goes in `build`, which
 holds `opaqueDeps` and `bundleUi`. `extensions` is what the pack gives the app, and a packaging choice gives
 it nothing.
 
@@ -79,10 +79,10 @@ The entry's **key** is the feature id: a lowercase letter, then letters and digi
 JavaScript reserved words (`default`, `export`, …) aren't allowed. Being a key is what makes a duplicate id
 unrepresentable.
 
-| `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`abuddy validate` checks it) |
+| `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`apack validate` checks it) |
 | `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
-| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@abuddy/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
-| `plugin` | `{ entry, contract?, default? }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned`. `contract` is `"path#exportName"` of the plugin's contract — a declared type holding the state it publishes and the inbox others may send to (`PluginInbox`, `@abuddy/sdk/fe`). Put it in a leaf module your plugin's machine doesn't import, so codegen can read it without resolving the machine; omit it for a plugin that publishes nothing, which still receives its own feature's system events. `default: true` opens this plugin when the app starts — at most one of your features may claim it, and across the app the first pack to register one wins. Without a claim, your pack's first plugin feature is its default |
+| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apack/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
+| `plugin` | `{ entry, contract?, default? }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned`. `contract` is `"path#exportName"` of the plugin's contract — a declared type holding the state it publishes and the inbox others may send to (`PluginInbox`, `@apack/sdk/fe`). Put it in a leaf module your plugin's machine doesn't import, so codegen can read it without resolving the machine; omit it for a plugin that publishes nothing, which still receives its own feature's system events. `default: true` opens this plugin when the app starts — at most one of your features may claim it, and across the app the first pack to register one wins. Without a claim, your pack's first plugin feature is its default |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
@@ -104,7 +104,7 @@ export default {
 };
 ```
 
-Any other key (a top-level key other than `plugins` and `visible`, another plugin's `plugins.<id>`, or a `visible` that isn't a boolean) fails `abuddy build`.
+Any other key (a top-level key other than `plugins` and `visible`, another plugin's `plugins.<id>`, or a `visible` that isn't a boolean) fails `apack build`.
 
 ## Steps
 
@@ -135,7 +135,7 @@ Flow step types are declared under `extensions.steps`, keyed by type.
 
 Codegen sends each facet where it is used, so no barrel keeps them in step with each other: `build` and
 `runtime` go to the pack's backend registration, `fe` to its frontend one, and `build` (or `trigger`) alone
-to `src/__generated__/steps-build.ts`, which `abuddy build` bundles to `dist/build/steps.build.mjs` — the
+to `src/__generated__/steps-build.ts`, which `apack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code.
 
 A step's directory is the dirname of the first facet it names: its `types.ts` and, for `dsl.custom`, its
@@ -247,18 +247,18 @@ under the **version line** its target is on, keyed by the version it targets:
 | Line | The target is | Runs when |
 |---|---|---|
 | `pack` | a version of **this pack**, compared against `version` in this manifest | the pack updates past it |
-| `app` | a release of **AgentBuddy** | the app updates past it |
+| `app` | a release of **apack** | the app updates past it |
 
 Most migrations belong on `pack`: the pack's data moves when the pack does. Use `app` for data whose shape
-follows AgentBuddy's rather than yours. A target is always three numbers — the app reads a prerelease as its
+follows apack's rather than yours. A target is always three numbers — the app reads a prerelease as its
 release, so `0.3.16-beta.2` would match nothing.
 
-`abuddy add migration 1.2.0` writes the entry and the file; `--app` puts it on the app's line.
+`apack add migration 1.2.0` writes the entry and the file; `--app` puts it on the app's line.
 
 The version is the key, so the module states only what it does:
 
 ```ts
-import type { DeclaredMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@apack/sdk/framework';
 
 export const migration: DeclaredMigration = {
   description: 'Give every memo a colour',
@@ -291,10 +291,10 @@ order you probably did not intend — keep one change on one line.
 | `tiptapPlugins` | `string` | Tiptap plugin registration module |
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
 
-Carrying your own copy of `@abuddy/ui` is `build.bundleUi`, not one of these: it changes what the build
+Carrying your own copy of `@apack/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.
 
-The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
+The frontend entry itself isn't declared here: `apack build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
 
 ## Build configuration
 
@@ -310,15 +310,15 @@ The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-
 | Field | Type | Description |
 |---|---|---|
 | `opaqueDeps` | `string[]` | Dependencies the frontend bundle includes whole instead of tree-shaking, by package name |
-| `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two |
+| `bundleUi` | `boolean` | Bundle a copy of `@apack/ui` into the pack instead of using the app's (default `false`). All of `@apack/ui` is bundled, so the pack never mixes the two |
 
-Everything under `build` changes what `abuddy build` produces, or how long it takes, and nothing the app
+Everything under `build` changes what `apack build` produces, or how long it takes, and nothing the app
 loads — which is what separates it from the sections above.
 
 **`opaqueDeps` is for a dependency that is already a bundle** — shipped as one already-minified file, or
 compiled from another language — where tree-shaking removes almost nothing and walking it is most of what
 the frontend build spends its time on. It trades a little output size for build time: on the pack
-AgentBuddy ships, naming its one such dependency took `abuddy build` from 23.3s to 20.6s for 38 KB on an
+apack ships, naming its one such dependency took `apack build` from 23.3s to 20.6s for 38 KB on an
 8.5 MB bundle (median of 3 interleaved runs, 2026-10-08). Every other module is shaken as before, so a
 dependency you wrote yourself does not belong here — it would keep its dead code for nothing.
 
@@ -338,13 +338,13 @@ Three dependency formats are supported:
 
 | Format | Example | Description |
 |---|---|---|
-| Semver range | `">=0.1.0"`, `"*"` | Resolves from this machine (the workspace, the app configured for `abuddy test`, installed apps), then the `.abuddy/deps/` cache |
+| Semver range | `">=0.1.0"`, `"*"` | Resolves from this machine (the workspace, the app configured for `apack test`, installed apps), then the `.apack/deps/` cache |
 | `github:` | `"github:user/repo >=0.2.0"` | Resolves from GitHub releases (optional semver filter) |
 | `file:` | `"file:../other-pack"` | Resolves from a local filesystem path (relative to pack root or absolute). Always reads fresh — skips cache. Ideal for local development. |
 
-Resolution order for semver and `github:` deps: the workspace (`../<id>`, `../../packages/<id>`, `../../<id>`) -> the app configured for `abuddy test` -> installed AgentBuddy apps -> `.abuddy/deps/` cache -> GitHub releases (`github:` only). Each must satisfy the range. `file:` deps resolve directly from the given path and do not fall through to other resolvers. See [`abuddy fetch-deps`](cli.md#abuddy-fetch-deps).
+Resolution order for semver and `github:` deps: the workspace (`../<id>`, `../../packages/<id>`, `../../<id>`) -> the app configured for `apack test` -> installed apack apps -> `.apack/deps/` cache -> GitHub releases (`github:` only). Each must satisfy the range. `file:` deps resolve directly from the given path and do not fall through to other resolvers. See [`apack fetch-deps`](cli.md#apack-fetch-deps).
 
-Run `abuddy fetch-deps` to pull dependency snapshots for cross-pack type interop.
+Run `apack fetch-deps` to pull dependency snapshots for cross-pack type interop.
 
 ## Entities and relations
 
@@ -362,9 +362,9 @@ Run `abuddy fetch-deps` to pull dependency snapshots for cross-pack type interop
 
 Keys become TypeScript constants in the generated `ears.ts`, values are the runtime strings stored in the database. An entity's key must be its type name, the same as its value (`"Bookmark": "Bookmark"`); a relation kind's key and value may differ.
 
-No two packs may use the same name: a key or a value another installed pack declares fails `abuddy build` (for a dependency) and the app's registration of the pack.
+No two packs may use the same name: a key or a value another installed pack declares fails `apack build` (for a dependency) and the app's registration of the pack.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` and `Prompt`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`) and `TRACKED` (`tracked`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `abuddy.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` and `Prompt`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`) and `TRACKED` (`tracked`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `apack.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 
@@ -389,10 +389,10 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
 | `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
-| `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@abuddy/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
+| `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apack/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
 | `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
 
-For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
+For each entry with a `monaco` target, `apack build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 
 ## Example manifest
 

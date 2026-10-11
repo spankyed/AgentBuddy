@@ -10,10 +10,10 @@
 
 Implement docs/goals/goal-plugin-inbox.md, at or after bec339ea7 — the base its Background was
 re-surveyed at, which is the merge of goal-settings-to-host.md.
-Before Phase 1, confirm the base: packages/abuddy-sdk/src/build/generate-entries.ts,
-packages/abuddy-sdk/src/build/manifest-schema.ts, packages/abuddy-sdk/src/events/index.ts,
-packages/abuddy-sdk/src/framework/define-system.ts, packages/abuddy-host/src/packs/registry.ts,
-packages/abuddy-host/src/bus/machine.ts, packages/abuddy-host/src/features/registration.ts and
+Before Phase 1, confirm the base: packages/apack-sdk/src/build/generate-entries.ts,
+packages/apack-sdk/src/build/manifest-schema.ts, packages/apack-sdk/src/events/index.ts,
+packages/apack-sdk/src/framework/define-system.ts, packages/apack-host/src/packs/registry.ts,
+packages/apack-host/src/bus/machine.ts, packages/apack-host/src/features/registration.ts and
 packages/default-setup/src/features/plugin-handle.ts exist at HEAD, and that
 packages/default-setup/src/features/settings/ does NOT (goal-settings-to-host moved it). If any of that
 is wrong, stop and say so — the plan was surveyed somewhere else.
@@ -30,8 +30,8 @@ it moves with migrations.
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- `sendsTo` no longer appears in packages/abuddy-sdk/src/build/manifest-schema.ts, in
-  abuddy.schema.json, in any abuddy.json in the repo, or in generate-entries.ts.
+- `sendsTo` no longer appears in packages/apack-sdk/src/build/manifest-schema.ts, in
+  apack.schema.json, in any apack.json in the repo, or in generate-entries.ts.
 - `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a plugin's
   `receives` comes from its own declaration.
 - A plugin declares the inbox other plugins may send it (`pluginAccepts()`), and only that declared half
@@ -40,7 +40,7 @@ Finished when:
 - A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
 - `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
-  meanings under one name; the delivery-scope difference is documented in @abuddy/sdk and pinned by a spec.
+  meanings under one name; the delivery-scope difference is documented in @apack/sdk and pinned by a spec.
 - The renderer send is typed from the target's declared inbox, and so is `navigateToPlugin`, which hands its
   events to the same actor. It is not runtime-checked: the trimmed scope dropped the FE validation map, and
   `Message` carries no sender, so a map could not tell one audience from the other anyway.
@@ -48,7 +48,7 @@ Finished when:
 - packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
 - `npm start` boots the dev app clean — the acceptance test for the manifest change (Decision 15).
-- npm run typecheck, npm run schema:check, npm run generate:schema -w @abuddy/sdk (clean), api:check
+- npm run typecheck, npm run schema:check, npm run generate:schema -w @apack/sdk (clean), api:check
   (sdk), facade:check -w @app/default-setup, packages:build + packages:check.
 - npm run test:unit, npm run compile, npm run build, npm test (E2E), npm run test:external-pack,
   npm run test:packaged-authoring.
@@ -65,12 +65,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - keep `sendsTo` alive "for the audit trail", or add a `plugin.sendsTo` to replace it (Decision 2).
 - give the renderer send a second name in a second module (the rejected `#generated/fe` split).
@@ -109,7 +109,7 @@ A backend system says what it accepts and what it sends:
 defineSystem<Incoming | Internal, Outgoing>()
 ```
 
-A frontend plugin says neither. `PluginDefinition` (`packages/abuddy-sdk/src/fe/plugin.ts`) carries `id`,
+A frontend plugin says neither. `PluginDefinition` (`packages/apack-sdk/src/fe/plugin.ts`) carries `id`,
 `label`, `icon`, `state`, `canvas`, `panel` — no event contract. So codegen answers "what may plugin P
 receive?" by inverting the question: find every system that sends to P, union their outgoing types.
 
@@ -120,18 +120,18 @@ receiver never declared itself.
 
 ### The chain `sendsTo` drives
 
-1. `packages/default-setup/abuddy.json` — `features[].system.sendsTo: ["flows"]`.
-2. `packages/abuddy-sdk/src/build/manifest-schema.ts` — `SystemSchema.sendsTo`, an array of strings.
-3. `packages/abuddy-sdk/src/build/generate-entries.ts`:
+1. `packages/default-setup/apack.json` — `features[].system.sendsTo: ["flows"]`.
+2. `packages/apack-sdk/src/build/manifest-schema.ts` — `SystemSchema.sendsTo`, an array of strings.
+3. `packages/apack-sdk/src/build/generate-entries.ts`:
    - `sentEventTypes(feature)` reads a system's outgoing union off its spec through the TypeScript API
      (`module-exports.ts`, `outgoingEventTypesOf`);
    - `receivedEventTypes(pluginId)` unions every sender — the plugin's own feature's system, plus every
      system whose `sendsTo` names it;
    - line ~540 writes `plugin: { receives: [...] }` into `src/__generated__/pack-entry.ts` (runtime strings);
    - lines ~830–890 write the types into `src/__generated__/events.ts`.
-4. `packages/abuddy-host/src/packs/registry.ts` — `getPluginEventValidationMap()` turns each registration's
+4. `packages/apack-host/src/packs/registry.ts` — `getPluginEventValidationMap()` turns each registration's
    `plugin.receives` into `Map<pluginRef, PluginEventTypes>`.
-5. `packages/abuddy-host/src/bus/machine.ts:144` — the `notify` action checks every `OUTGOING` against that
+5. `packages/apack-host/src/bus/machine.ts:144` — the `notify` action checks every `OUTGOING` against that
    map, drops a miss and reports `reportError({ severity: 'diagnostic' })`.
 
 ### `sendsTo` does two unrelated jobs
@@ -173,7 +173,7 @@ QualifiedPluginEvents = Qualified<'e2e-fixture', OwnPluginEvents>
 
 ### The renderer half is missing
 
-`packages/abuddy-sdk/src/events/index.ts`:
+`packages/apack-sdk/src/events/index.ts`:
 
 ```ts
 function sendIncoming(message) {                                     // sendToSystem
@@ -193,9 +193,9 @@ same actor, while a plugin exists once per window.
 A backend `broadcastToPlugin` reaches **every** window. The app already pays for this:
 
 ```ts
-// packages/abuddy-host/src/features/application/fe/connection.ts:17
+// packages/apack-host/src/features/application/fe/connection.ts:17
 sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event))
-// packages/abuddy-host/src/features/application/fe/machine.ts:525
+// packages/apack-host/src/features/application/fe/machine.ts:525
 OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
 ```
 
@@ -250,7 +250,7 @@ export const logsSpec = defineSystem<IncomingLogEvents | LogsInternalEvents, Out
 ```
 
 `defineSystem` then uses that first type parameter in three places
-(`packages/abuddy-sdk/src/framework/define-system.ts`):
+(`packages/apack-sdk/src/framework/define-system.ts`):
 
 ```ts
 types:     { context: TContext; events: TEvents | SystemEvents },   // the machine
@@ -272,7 +272,7 @@ tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts:3629
 so the facade advertises surface area with no use.
 
 The host is the one place that keeps the two apart, by hand
-(`packages/abuddy-host/src/features/registration.ts:55`):
+(`packages/apack-host/src/features/registration.ts:55`):
 
 ```ts
 [featureIdOf(HOST.settings)]: { …, plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
@@ -297,7 +297,7 @@ anything `usePlugin()` returns. `useShell().plugins` enumerates every registered
 old `sendsTo` nor the new declaration changes that; see Decision 2.
 
 **And a runtime check can never tell one audience from the other**, because the envelope has no sender
-(`packages/abuddy-sdk/src/events/index.ts:18`):
+(`packages/apack-sdk/src/events/index.ts:18`):
 
 ```ts
 export interface Message { to: string; event: { type: string; [key: string]: unknown } }
@@ -346,13 +346,13 @@ send it" — Decision 18 says so where it specifies the check.
 
 ### Other facts the plan relies on
 
-- A pack's FE bundle is self-contained plus `window.__abuddy` globals, loaded from `pack://`; the FE
+- A pack's FE bundle is self-contained plus `window.__apack` globals, loaded from `pack://`; the FE
   bundler has no notion of dependency packs. Cross-pack frontend access can only be host-mediated at
   runtime and typed through the facade.
 - The facade (`generatePackTypes()` in `generate-entries.ts`) is a five-line barrel exporting exactly six
   things — `PackEntityShapes`, `PackStepNodes`, `PackSystemEvents`, `SendablePluginEvents`, `Repositories`,
-  `Services`. All backend. `facadeProblems` (`packages/abuddy-cli/src/build/facade-gate.ts`) requires the
-  bundled facade to type-check standalone importing only `@abuddy/*`, SDK peers and Node builtins.
+  `Services`. All backend. `facadeProblems` (`packages/apack-cli/src/build/facade-gate.ts`) requires the
+  bundled facade to type-check standalone importing only `@apack/*`, SDK peers and Node builtins.
   default-setup's is already 5273 lines.
 - `tests/fixtures/external-pack` does no cross-pack frontend access today; its plugins use `usePlugin()`
   for their own actor only. The cross-pack half is greenfield.
@@ -360,7 +360,7 @@ send it" — Decision 18 says so where it specifies the check.
   frontend away from `window.electronAPI`, the host API client and the app DOM. It does not overlap this
   goal's typed-messaging work, but both touch what a pack frontend may reach, so read it before Phase 4.
 - **This goal runs before [`goal-manifest-redesign.md`](../../goals/goal-manifest-redesign.md)**, which reshapes
-  `abuddy.json` into `provides` plus sibling annotations. Its Decision 8 named `sendsTo` as one of those
+  `apack.json` into `provides` plus sibling annotations. Its Decision 8 named `sendsTo` as one of those
   annotations; it was updated on 2026-09-22 to drop it and to point here. Deleting `sendsTo` first means
   that goal's schema work is written once. Nothing else in the two overlaps.
 - `sendsTo` is used by exactly two features today — `actions.system` (`["flows"]`) and `settings.system`
@@ -403,7 +403,7 @@ Final.
    (`UnifiedArg`, which `ActionArgs` extends), so any pack has always been able to write
 
    ```ts
-   const mine = usePlugin()                        // @abuddy/sdk/fe
+   const mine = usePlugin()                        // @apack/sdk/fe
    const ref  = useShell().plugins[0].id           // every registered plugin, by ref
    mine.system.get(ref)?.send({ type: 'ANYTHING' })
    ```
@@ -413,7 +413,7 @@ Final.
    give. Real isolation is `docs/goals/deferred/goal-pack-frontend-isolation.md`'s problem, the same class
    as keeping a pack frontend away from `window.electronAPI`; don't attempt it here.
 
-   What this does give up is the coarse audit trail in `abuddy.json` ("this feature talks to that one").
+   What this does give up is the coarse audit trail in `apack.json` ("this feature talks to that one").
    That list was never complete — every plugin→plugin edge was already invisible to it — and both buses
    still validate every send they carry, against a tighter map than before (Decision 18).
 
@@ -450,7 +450,7 @@ Final.
    settled with no such plugin (`features/application/fe/machine.ts`, `openPlugin`).
 
 7. **The delivery-scope difference is contract, not folklore.** It is written into the SDK doc comments for
-   both functions and into `packages/abuddy-sdk`'s docs, and pinned by a spec that fails if a backend send
+   both functions and into `packages/apack-sdk`'s docs, and pinned by a spec that fails if a backend send
    stops reaching every window or a renderer send starts crossing windows.
 
 8. **A feature's machine reads its own settings from its own context. Done by `goal-settings-to-host.md`.**
@@ -469,12 +469,12 @@ Final.
    `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
    `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
 
-   A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@abuddy/sdk/fe`'s
+   A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@apack/sdk/fe`'s
    settings composables, documented there. Neither is this goal's to build or change.
 
    **One residue, which Phase 2 verifies rather than fixes.** That goal's Decision 7 — typing
    `FeatureSettingsUpdated.settings` per feature — did **not** land. It is still
-   `{ type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown }` (`abuddy-sdk/src/events/index.ts:30`), so every
+   `{ type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown }` (`apack-sdk/src/events/index.ts:30`), so every
    feature that handles it casts:
 
    ```ts
@@ -498,10 +498,10 @@ Final.
     27, and 12 of those 16 are extensions.
 
 12. **The plugin entry is declared with `satisfies`, never annotated.** `outgoingEventTypesOf`
-    (`packages/abuddy-sdk/src/build/module-exports.ts`) already throws a specific error when a system entry
+    (`packages/apack-sdk/src/build/module-exports.ts`) already throws a specific error when a system entry
     is written `const entry: SystemEntry = {…}`, because the annotation erases the spec's event types and
     the map would silently come up short. `definePlugin<Incoming>()` inherits that trap exactly. Mirror the
-    error text, and mirror `packages/abuddy-cli/tests/build/facade-gate-system-entry.spec.ts` for plugins.
+    error text, and mirror `packages/apack-cli/tests/build/facade-gate-system-entry.spec.ts` for plugins.
 
     **Every plugin entry in the repo is in the annotation form today** — 15 of 15, in `default-setup` and
     both fixture packs:
@@ -511,7 +511,7 @@ Final.
     ```
     So Phase 3 rewrites all 15, not only the ones that gain an inbox. The two that gain one (the plugins
     `actions` and `settings` reach today through `sendsTo`, plus whichever Phase 5 migrates) differ from
-    the rest only by a type argument. `abuddy add feature`'s scaffold and `docs/public-facing/features.md`
+    the rest only by a type argument. `apack add feature`'s scaffold and `docs/public-facing/features.md`
     emit the annotation form and change with them.
 
 13. **A declaration composes with the SDK-wide plugin events, it doesn't repeat them.**
@@ -519,12 +519,12 @@ Final.
     through to it (`bus/machine.ts`, the `accepted === undefined` branch). A feature's declaration names
     only what is its own; codegen unions the SDK-wide set in. No feature lists `FEATURE_SETTINGS_UPDATED`.
 
-14. **Host plugins keep their hand-written declaration.** `packages/abuddy-host/src/features/registration.ts:50`
+14. **Host plugins keep their hand-written declaration.** `packages/apack-host/src/features/registration.ts:50`
     already does what Decision 1 asks of packs:
     ```ts
     plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] }
     ```
-    The host has no `abuddy.json` and no codegen, so there is nothing for `definePlugin` to be read by. It
+    The host has no `apack.json` and no codegen, so there is nothing for `definePlugin` to be read by. It
     is the precedent this goal generalises, not a call site to migrate — leave it, and say so in the code
     so it isn't "fixed" later. `PACKS_PLUGIN_EVENT_TYPES` beside it stays as it is.
 
@@ -538,7 +538,7 @@ Final.
     `code`'s `sendsTo: ["host/settings"]` sends it. Phase 3 must keep that send working without `sendsTo`.
 
 15. **No pack format bump, and no compatibility work.** Removing `sendsTo` from a `.strict()` schema makes
-    an older pack's `abuddy.json` fail `parseManifest` on install (`packages/abuddy-host/src/packs/installer.ts:104`;
+    an older pack's `apack.json` fail `parseManifest` on install (`packages/apack-host/src/packs/installer.ts:104`;
     the loader never re-validates, so an installed pack would keep running). There are no external packs,
     no users and one developer, so nothing is owed a migration: don't bump `PACK_SNAPSHOT_FORMAT`, don't
     add a friendlier error for the old key. The acceptance test is that the dev environment boots clean and
@@ -547,7 +547,7 @@ Final.
 16. **The rename is mechanical, not risky.** `broadcastToPlugin` has ~534 occurrences (409 in
     `packages/default-setup`, 49 SDK, 31 CLI, 30 host, 5 api, ~7 fixtures and E2E). It is a find-and-replace
     plus a compile. The one non-mechanical consequence is that `broadcastToPlugin` is a member of `HostServices`
-    (`packages/abuddy-sdk/src/services/index.ts:38`) and `Services` is a facade export, so the rename moves
+    (`packages/apack-sdk/src/services/index.ts:38`) and `Services` is a facade export, so the rename moves
     `etc/build.api.md` and every `deps/<id>.d.ts`: run `api:update` and `facade:update` and commit the
     reports as part of the phase.
 
@@ -557,14 +557,14 @@ Final.
     same types. Today its payload is the SDK's open `PluginEvent` (`{ type: string; [key: string]: unknown }`),
     which leaves a typed channel beside an untyped one doing the same thing.
 
-    `openPlugin(ref, event?)` (`@abuddy/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
+    `openPlugin(ref, event?)` (`@apack/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
     block's, a registered plugin's `id` — so there is no name to type against. It is the escape hatch, the
     way `untypedQx` is for a query whose entity isn't known at compile time.
 
 18. **The renderer send is checked at runtime too, against the same declaration.** The backend path
     already is: `bus/machine.ts:150` looks the target up in `getPluginEventValidationMap()` and drops a
     miss with a `diagnostic` report. The frontend cannot do that today — `PackFEFeature`
-    (`packages/abuddy-sdk/src/fe/pack-fe-registration.ts`) carries `plugin?: PluginDefinition`,
+    (`packages/apack-sdk/src/fe/pack-fe-registration.ts`) carries `plugin?: PluginDefinition`,
     `designation` and `default`, and nothing about what a plugin accepts — so the FE registry doesn't know.
 
     So: `PackFEFeature` gains the plugin's `receives`, codegen emits it into `pack-entry-fe.ts` beside the
@@ -639,7 +639,7 @@ Two questions decide the shape of Phases 3–6. Neither writes production code; 
 `## Spike results (YYYY-MM-DD)` section added to this doc.
 
 - **Facade probe.** Hand-write a representative `PackPluginEvents` (and, for Open decision 1, a narrow view
-  type) into `packages/default-setup/src/__generated__/pack-types.ts`, run `abuddy build` and
+  type) into `packages/default-setup/src/__generated__/pack-types.ts`, run `apack build` and
   `facadeProblems`. Record: does it pass the gate, and by how many lines does
   `dist/types/pack-types.d.ts` grow from its current 5273.
 - **Renderer delivery probe.** Confirm a renderer-side send resolves the target through
@@ -660,10 +660,10 @@ Verify, in one pass:
 - `git grep usePluginSettings` and `currentPluginSettings` find no pack API — the only hit is an unrelated
   local `computed` in `packages/renderer/src/views/settings/canvas/tabs/PluginsTab.vue`.
 - `features/browser/fe/state.ts` handles `FEATURE_SETTINGS_UPDATED` and reads `context.settings` (`:323`).
-- `packages/default-setup/src/features/settings/` does not exist; `packages/abuddy-host/src/features/settings/` does.
+- `packages/default-setup/src/features/settings/` does not exist; `packages/apack-host/src/features/settings/` does.
 
 Then record, without fixing: `FeatureSettingsUpdated.settings` is still `unknown`
-(`abuddy-sdk/src/events/index.ts:30`), so each feature casts the event
+(`apack-sdk/src/events/index.ts:30`), so each feature casts the event
 (`browser/fe/state.ts:314`). That is `goal-settings-to-host`'s Decision 7, unlanded, and belongs to that
 goal — note it in the Outcome's "Open items" and move on.
 
@@ -674,7 +674,7 @@ this phase; if one seems necessary, the base is not what this doc was surveyed a
 
 The root change. After Phase 1.
 
-- `definePlugin()` and `pluginAccepts<Accepts>()` in `packages/abuddy-sdk/src/fe/plugin.ts`. As built, the
+- `definePlugin()` and `pluginAccepts<Accepts>()` in `packages/apack-sdk/src/fe/plugin.ts`. As built, the
   declaration is a named `accepts` export beside the plugin rather than a type parameter on `definePlugin`,
   so codegen reads it with a **type-only** import and the plugin's machine and `.vue` graph never enter the
   event types. The two audiences fall out of declared-vs-derived instead of `Public`/`Internal`: what the
@@ -683,15 +683,15 @@ The root change. After Phase 1.
 - Rewrite **all 14 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
   `definePlugin(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
   `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take type
-  arguments; the rest change shape alone. Update `abuddy add feature`'s scaffold
-  (`packages/abuddy-cli/src/commands/add/feature.ts`) and `docs/public-facing/features.md`, which emit the
+  arguments; the rest change shape alone. Update `apack add feature`'s scaffold
+  (`packages/apack-cli/src/commands/add/feature.ts`) and `docs/public-facing/features.md`, which emit the
   annotation form today.
 - `generate-entries.ts`: read the declaration the way `sentEventTypes` reads a system spec; delete
   `receivedEventTypes` and the `sendsTo` target loop; emit `PackPluginEvents`; drop the `Pick<>` from
   `QualifiedPluginEvents` (Decision 3); swap `SendablePluginEvents` for `PackPluginEvents` in
   `generatePackTypes()` (Decision 4).
 - `manifest-schema.ts`: delete `sendsTo` from `SystemSchema` and its `superRefine` checks; regenerate
-  `abuddy.schema.json` (`npm run generate:schema -w @abuddy/sdk`). No format bump (Decision 15).
+  `apack.schema.json` (`npm run generate:schema -w @apack/sdk`). No format bump (Decision 15).
 - Remove `sendsTo` from its **four** users and declare the inbox on the plugins that needed one. Two of the
   four target host plugins, so the `hostTargets` branch is live code:
   ```
@@ -705,22 +705,22 @@ The root change. After Phase 1.
   - SDK source: `src/events/index.ts`, `src/framework/define-system.ts`, `src/framework/pack-registration.ts`,
     `src/build/generate-entries.ts`, `src/build/manifest-schema.ts`
   - host: `src/features/registration.ts`
-  - specs: `abuddy-sdk/tests/build/manifest-schema.spec.ts`, `abuddy-sdk/tests/build/generate-entries.spec.ts`,
+  - specs: `apack-sdk/tests/build/manifest-schema.spec.ts`, `apack-sdk/tests/build/generate-entries.spec.ts`,
     `default-setup/tests/unit/typed-event-channels.spec.ts`, `default-setup/tests/unit/code-cli-test.spec.ts`,
-    `abuddy-cli/tests/build/facade-typing.spec.ts`, `abuddy-cli/tests/build/dependency-graph.spec.ts`
+    `apack-cli/tests/build/facade-typing.spec.ts`, `apack-cli/tests/build/dependency-graph.spec.ts`
   - pack sources: `default-setup/src/features/actions/be/system.ts`,
     `default-setup/src/features/code/be/system.ts`,
     `tests/fixtures/external-pack/src/features/memos/be/system.ts`
-  - manifests: `default-setup/abuddy.json`, `tests/fixtures/external-pack/abuddy.json`,
-    `abuddy-sdk/abuddy.schema.json`
-  - reports: `abuddy-sdk/etc/build.api.md`, `default-setup/etc/pack-types.api.md`
+  - manifests: `default-setup/apack.json`, `tests/fixtures/external-pack/apack.json`,
+    `apack-sdk/apack.schema.json`
+  - reports: `apack-sdk/etc/build.api.md`, `default-setup/etc/pack-types.api.md`
   - docs: `docs/public-facing/manifest.md`, `docs/public-facing/features.md`,
-    `packages/abuddy-sdk/CLAUDE.md`, `packages/default-setup/CLAUDE.md`
-- `packages/abuddy-host/src/packs/registry.ts` and `bus/machine.ts` are unchanged — they read
+    `packages/apack-sdk/CLAUDE.md`, `packages/default-setup/CLAUDE.md`
+- `packages/apack-host/src/packs/registry.ts` and `bus/machine.ts` are unchanged — they read
   `plugin.receives`, which is now precise. Confirm with a spec rather than by inspection.
 
-**Done when:** `npm run typecheck`, `npm run schema:check`, `npm test -w @abuddy/sdk`,
-`npm test -w @abuddy/host`, `npm run compile`, `npm run test:external-pack` pass; a generated `events.ts`
+**Done when:** `npm run typecheck`, `npm run schema:check`, `npm test -w @apack/sdk`,
+`npm test -w @apack/host`, `npm run compile`, `npm run test:external-pack` pass; a generated `events.ts`
 for the fixture pack spells its dependency plugins with no `Pick<>`; `facade:check -w @app/default-setup`
 and `api:check` updated and committed; `git grep sendsTo` returns nothing outside `docs/archive/` and
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's
@@ -739,31 +739,31 @@ After Phase 3.
 A find-and-replace plus a compile (Decision 16) — ~534 occurrences, mechanical. The only part that needs
 thought is the facade consequence and the new renderer branch.
 
-- Rename the backend send to `broadcastToPlugin` (Decision 5): `packages/abuddy-sdk/src/events/index.ts`,
+- Rename the backend send to `broadcastToPlugin` (Decision 5): `packages/apack-sdk/src/events/index.ts`,
   `defineEvents`, `HostServices` (`src/services/index.ts:38`, and the `emitter` implementation at :59),
   the generated `events.ts`, and every backend caller — 409 in `packages/default-setup`, 30 in
-  `packages/abuddy-host`, 31 in `packages/abuddy-cli`, 5 in `packages/api`, plus the fixtures and
+  `packages/apack-host`, 31 in `packages/apack-cli`, 5 in `packages/api`, plus the fixtures and
   `tests/e2e/plugin-sends.spec.ts`.
 - Add the renderer `broadcastToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
   shell's not-yet-loaded policy (Decision 6).
 - Carry the inbox to the frontend so that send can be checked (Decision 18): add `receives` to
-  `PackFEFeature` (`packages/abuddy-sdk/src/fe/pack-fe-registration.ts`), emit it from
+  `PackFEFeature` (`packages/apack-sdk/src/fe/pack-fe-registration.ts`), emit it from
   `generateFrontendEntry()` into `pack-entry-fe.ts`, build the map in `createFePackRegistry()`
-  (`packages/abuddy-host/src/fe/pack-store.ts`), and have the renderer send report and drop a miss the way
+  (`packages/apack-host/src/fe/pack-store.ts`), and have the renderer send report and drop a miss the way
   `bus/machine.ts` does — same `diagnostic` severity, never a throw. The host's own two plugins already
   have their `receives` (`features/registration.ts`), so they fill it without new work.
 - Type `navigateToPlugin`'s event parameter from the same inbox in `#generated/fe` (Decision 17), and
   leave `openPlugin`'s as `PluginEvent`. Check the ~22 `@/__generated__/fe` call sites still compile:
   a payload that was accepted as an open `PluginEvent` and isn't in the target's inbox now fails, which
   is the point.
-- Document the delivery scopes on both functions and in `packages/abuddy-sdk`'s docs (Decision 7).
+- Document the delivery scopes on both functions and in `packages/apack-sdk`'s docs (Decision 7).
 
-**Done when:** `npm run typecheck`; `npm run api:update` in `packages/abuddy-sdk` and
+**Done when:** `npm run typecheck`; `npm run api:update` in `packages/apack-sdk` and
 `npm run facade:update -w @app/default-setup`, both with their `etc/` committed — `Services` is a facade
 export, so the rename moves `etc/build.api.md` and every `deps/<id>.d.ts` (Decision 16);
 `npm run test:unit` and `npm test` (E2E) pass; a spec pins that a backend send reaches every window and a
 renderer send reaches only its own (two windows in one E2E, or the shell fakes in
-`packages/abuddy-host/tests/fe/shell/`); a spec pins that a renderer send of an event outside the target's
+`packages/apack-host/tests/fe/shell/`); a spec pins that a renderer send of an event outside the target's
 `receives` is dropped and reported at `diagnostic`, as the bus does (Decision 18), and that
 `getRegisteredPlugins()` carries `receives` for a pack's plugins and the host's. Mutations: routing the
 renderer send through the bus fails the scope spec; dropping `receives` from `pack-entry-fe.ts` fails the
@@ -886,10 +886,10 @@ the published one, **all 17 now reach every dependent pack's facade**
 - Commit each phase as it finishes, in logical chunks, no attribution lines; check `git diff --cached`
   first and use `git commit -- <paths>`. Pushing, tagging and PRs are on request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad pkill, E2E in the `abuddy-test` namespace with an isolated
-  `ABUDDY_USER_DATA_DIR`.
+- No real data dirs, no broad pkill, E2E in the `apack-test` namespace with an isolated
+  `APACK_USER_DATA_DIR`.
 - No bare `tsc` in `packages/preload`; no `npm install` in the example pack; no version or release metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any` in the pack-facing SDK, the TypeScript 5.7 floor, `npm run api:update` after
   export changes with `etc/` committed.
 - Build order: `packages:build` before the CLI suite; `npm run compile` before the api suites and E2E.

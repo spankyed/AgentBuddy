@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'

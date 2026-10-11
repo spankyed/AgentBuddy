@@ -1,6 +1,6 @@
 // How notes are written, for any pack whose content declares Note: through noteCommands, so written notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
-import type { ContentWriter, ContentItem } from '@abuddy/sdk/content';
+import type { ContentWriter, ContentItem } from '@apack/sdk/content';
 import { EARS, findWhere, qx } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 

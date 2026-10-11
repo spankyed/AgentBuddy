@@ -1,0 +1,67 @@
+// services.appData: reset, back up and restore the app's stored data, and the user's onboarding (AppState)
+import type { AppDataService, BackupDatabase } from '@apack/sdk/services';
+import type { EarsAdmin } from '@apack/ears';
+import type { LmdbStore } from '@apack/ears/lmdb';
+import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
+import { secretsStore } from '../secrets/index.ts';
+import { _getMediaPath } from '@apack/sdk/utils';
+import { getAppVersion } from '@apack/sdk/env';
+import type { PackRegistry } from '../packs/registry.ts';
+import { startPacks } from '../packs/runtime/start.ts';
+import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
+import { appState } from '../app-state/index.ts';
+
+/**
+ * `onReplaced` runs after either operation has rebuilt the world, and after a failed one too: a failed import
+ * has already cleared the engine and reloaded what it put back. What it does with that is the caller's —
+ * replacing the data is this service's job, and telling the app is not.
+ */
+export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: PackRegistry, onReplaced: () => void): AppDataService {
+  async function reloadMemory(includeVolatile = false): Promise<void> {
+    engine.clear();
+    await store.hydrate({ includeVolatile });
+  }
+
+  return {
+    // The app as a fresh boot leaves it: the packs stop as when the app exits, the stores empty, then the packs
+    // start as a boot starts them (onInit, migrations, content). Their systems keep running.
+    async reset() {
+      try {
+        registry.runShutdownHooks();
+        engine.clear();
+        await store.reset();
+        // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
+        secretsStore.clearAll();
+        startPacks(registry);
+      } finally {
+        onReplaced();
+      }
+    },
+    hasOnboarded: () => appState.get().hasOnboarded,
+    completeOnboarding: () => appState.update({ hasOnboarded: true }),
+    exportBackup: (targetPath, name, databases) =>
+      exportDatabase(store, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
+    async importBackup(backupPath, options) {
+      try {
+        // The installed packs' types, so a backup holding rows of a type none of them declares is reported
+        const result = await importDatabase(store, backupPath, _getMediaPath(), { ...options, entityTypes: registry.getRegisteredEntityTypes() });
+        const databases = result.databases as BackupDatabase[];
+        await reloadMemory(databases.includes('volatileLmdb'));
+        // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
+        // the app's state in its settings)
+        if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
+        return { databases, missingDatabases: result.missingDatabases as BackupDatabase[], unknownEntityTypes: result.unknownEntityTypes };
+      } catch (error) {
+        // importDatabase has put the previous files back; reload them
+        await reloadMemory();
+        throw error;
+      } finally {
+        onReplaced();
+      }
+    },
+    async backupInfo(backupPath) {
+      const info = await getBackupInfo(backupPath);
+      return info && { ...info, databases: info.databases as BackupDatabase[] };
+    },
+  };
+}

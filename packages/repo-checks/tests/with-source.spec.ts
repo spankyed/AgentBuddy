@@ -1,10 +1,10 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { _whenSatisfied } from '@abuddy/sdk/testing/waiting';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { _whenSatisfied } from '@apack/sdk/testing/waiting';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 
-/** scripts/with-source.mjs gives a command's Node processes the @abuddy/source condition */
+/** scripts/with-source.mjs gives a command's Node processes the @apack/source condition */
 const WITH_SOURCE = path.join(REPO_ROOT, 'scripts', 'with-source.mjs');
 const PRINT_NODE_OPTIONS = ['node', '-p', 'process.env.NODE_OPTIONS'];
 
@@ -17,8 +17,8 @@ function run(args: string[], nodeOptions?: string, extraEnv: NodeJS.ProcessEnv =
 describe('with-source', () => {
   it("appends the condition to the caller's NODE_OPTIONS", () => {
     expect(run(PRINT_NODE_OPTIONS, '--max-old-space-size=4096').stdout.trim())
-      .toBe('--max-old-space-size=4096 --conditions=@abuddy/source');
-    expect(run(PRINT_NODE_OPTIONS).stdout.trim()).toBe('--conditions=@abuddy/source');
+      .toBe('--max-old-space-size=4096 --conditions=@apack/source');
+    expect(run(PRINT_NODE_OPTIONS).stdout.trim()).toBe('--conditions=@apack/source');
   });
 
   /**
@@ -34,7 +34,7 @@ describe('with-source', () => {
   });
 
   it('adds the condition once when nested', () => {
-    expect(run(['node', WITH_SOURCE, ...PRINT_NODE_OPTIONS]).stdout.trim()).toBe('--conditions=@abuddy/source');
+    expect(run(['node', WITH_SOURCE, ...PRINT_NODE_OPTIONS]).stdout.trim()).toBe('--conditions=@apack/source');
   });
 
   it("exits with the command's code", () => {

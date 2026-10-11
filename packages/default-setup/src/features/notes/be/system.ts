@@ -3,9 +3,9 @@ import { services } from '#generated/services.ts';
 import { qx } from '#generated/ears.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
-import type { Reply } from '@abuddy/sdk/events';
+import type { Reply } from '@apack/sdk/events';
 import type { OutgoingNotesEvents } from './types.ts';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem } from '@apack/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract.ts';
@@ -15,7 +15,7 @@ import { repository } from '#generated/repository.ts';
 import { syncReferences } from './repository/link-utils.ts';
 import { exportNotes } from './export-notes.ts';
 import { importNotes } from './import-notes.ts';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 import { ref } from '#generated/ref.ts';
 
@@ -25,11 +25,11 @@ import { ref } from '#generated/ref.ts';
  * An import's or an export's *outcome* belongs to the window that started it — another window showing
  * "imported 12" for work it did not do, and flipping its own status to success, is what broadcasting it
  * did. The data the import changed is separate news and stays a broadcast. `answerSettings`
- * (`@abuddy/host`) is the same shape for the same reason.
+ * (`@apack/host`) is the same shape for the same reason.
  */
 const answer = (reply: Reply<OutgoingNotesEvents> | undefined, event: OutgoingNotesEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('notes', event));
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('notes');
 

@@ -33,12 +33,12 @@ Never:
   chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
   and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - rename a tiptap/ProseMirror or Vite/rollup/PostCSS plugin (Decision 2), or rename `pack` — a pack is
   the extension unit and is not what this goal touches.
@@ -95,7 +95,7 @@ including `PackRegistryView` and `FePackRegistryView`, which are core SDK types.
 practice — its 26 hits are the English verb ("we still want to surface the merge error") plus
 `surfaceControlRequests` in one Claude Code service. No type, no identifier, nothing structural.
 
-**What is stored, and therefore not a code rename.** `AppState` (`packages/abuddy-host/src/app-state/index.ts`)
+**What is stored, and therefore not a code rename.** `AppState` (`packages/apack-host/src/app-state/index.ts`)
 holds two fields naming the concept, in the user's database:
 
 ```ts
@@ -106,8 +106,8 @@ lastActivePlugin?: string;
 ```
 
 There is a working precedent for the frontend half of this:
-`packages/abuddy-host/src/fe/migrations/0.3.15.ts` already removed a `localStorage` key
-(`agentbuddy-last-active-plugin`) when that state moved host-side. `runFrontendMigrations()` runs
+`packages/apack-host/src/fe/migrations/0.3.15.ts` already removed a `localStorage` key
+(`apack-last-active-plugin`) when that state moved host-side. `runFrontendMigrations()` runs
 localStorage migrations before the actor reads its keys.
 
 **What crosses the wire.** `sendToPlugin` stamps `pluginId` onto every backend→frontend event, the
@@ -124,7 +124,7 @@ compile-time check, and `PACKS_PLUGIN_EVENT_TYPES` to `OutgoingPacksEvents`.
 `untypedBroadcastToPlugin`, `_sendToLocalPlugin` — and, not to be touched, `TiptapPlugin` and
 `tiptapPluginRegistry`. `definePlugin` and `usePlugin` are pack-facing, so this breaks every pack's
 frontend code; in the repo that is default-setup, `tests/packs/*` and the CLI's `add feature`
-scaffold. `abuddy.schema.json` names `plugin` 8 times and is generated from `manifest-schema.ts`. Six
+scaffold. `apack.schema.json` names `plugin` 8 times and is generated from `manifest-schema.ts`. Six
 files under `docs/public-facing/` mention it.
 
 ## Decisions
@@ -138,13 +138,13 @@ Final.
 
 2. **What keeps the name `plugin`, because it really is one.** Rename nothing in these groups:
    - tiptap/ProseMirror: `TiptapPlugin`, `tiptapPluginRegistry`, `tiptapPlugins` in a pack's frontend
-     registration, and anything under `abuddy-ui/src/components/tiptap/`;
+     registration, and anything under `apack-ui/src/components/tiptap/`;
    - Vite, rollup and PostCSS: `VitePlugin`, `plugins: [...]` in any config, `packExternalsPlugin`,
      `builtInPacksPlugin`, `hostSharedModulesPlugin`, `tailwindInjectPlugin`, `rejectHostImportsPlugin`,
      `stubFrontendAssetsPlugin`, `collect-bare-imports`;
    - `pack`, which is the extension unit and is not this concept;
    - **already-shipped migrations and their specs**, which describe a state of the world that was.
-     `packages/abuddy-host/src/migrations/app/0.3.15.ts` holds `addressPluginKeys`, `pluginRefOf`,
+     `packages/apack-host/src/migrations/app/0.3.15.ts` holds `addressPluginKeys`, `pluginRefOf`,
      `movePluginSettings`, `PluginOwners` and reads a stored `lastActivePlugin`; its specs are
      `tests/migrations/plugin-keys-0.3.15.spec.ts` and `plugin-settings-0.3.15.spec.ts`. Renaming them
      would make them describe a move that never happened under those names. They stay, and the guard
@@ -161,9 +161,9 @@ Final.
 
 4. **The `AppState` fields move with a host migration, not a rename.** `pluginVisibility` and
    `lastActivePlugin` are in the user's database. Add a migration under
-   `packages/abuddy-host/src/migrations/app/` targeting the next unreleased version — append to the
+   `packages/apack-host/src/migrations/app/` targeting the next unreleased version — append to the
    latest target file rather than creating a new one, and guard it so it is idempotent across a
-   development boot, each beta and a reset (`packages/abuddy-host/src/migrations/CLAUDE.md`).
+   development boot, each beta and a reset (`packages/apack-host/src/migrations/CLAUDE.md`).
 
 5. **Event type names move with the concept.** `PLUGIN_ACTIVATED`, `PLUGIN_DEACTIVATED`,
    `PLUGIN_VISIBILITY_UPDATED`, `SET_LAST_ACTIVE_PLUGIN` and the `*_PLUGIN_EVENT_TYPES` constants
@@ -171,7 +171,7 @@ Final.
    `OutgoingPacksEvents`) are what prove the rename is complete rather than half-applied.
 
 6. **The manifest key becomes `features[].surface`.** It drives codegen, so it moves with the type
-   rename in Phase 2, together with `manifest-schema.ts`, the regenerated `abuddy.schema.json`, the CLI
+   rename in Phase 2, together with `manifest-schema.ts`, the regenerated `apack.schema.json`, the CLI
    scaffold and every in-repo pack.
 
 ## Phases
@@ -183,7 +183,7 @@ Final.
 - Add the guard: a spec that fails when the frontend-actor vocabulary reappears as `plugin`
   (`pluginId`, `definePlugin`, `usePlugin`, `features[].plugin`, `sendToPlugin`, `getRegisteredPlugins`)
   anywhere outside the Decision 2 allowlist and `docs/archive`. Model it on
-  `abuddy-host/tests/removed-names-in-docs.spec.ts`, which already does this shape of check with a
+  `apack-host/tests/removed-names-in-docs.spec.ts`, which already does this shape of check with a
   per-file allowance and a reason.
 
 **Done when:** the guard passes on the tree as it will be after Phase 5, and fails when a kept name is
@@ -199,7 +199,7 @@ Mutation: renaming `TiptapPlugin` must fail the guard's allowlist assertion, not
   `useUntypedPluginState`, `readUntypedPluginState`, `untypedOpenPlugin`, `untypedBroadcastToPlugin`,
   `_sendToLocalPlugin` and their neighbours. Run `npm run api:update`.
 - Manifest: `features[].plugin` → `features[].surface` in `manifest-schema.ts`; regenerate
-  `abuddy.schema.json` (`npm run generate:schema`); update the CLI's `add feature` scaffold and
+  `apack.schema.json` (`npm run generate:schema`); update the CLI's `add feature` scaffold and
   `init` templates.
 - Codegen: `generate-entries` emits `pack-entry-fe.ts` from the new key; `getRegisteredPlugins` →
   `getRegisteredSurfaces`, `registerPackFE`'s registration field, `FePackRegistryView`.
@@ -220,7 +220,7 @@ finds nothing outside `docs/archive`.
 - Keep the standing warning in `CLAUDE.md` about the transport stamping this field, under its new name:
   never use `surfaceId` as a field inside an event payload sent via `sendToSurface`.
 
-**Done when:** `npm test -w @abuddy/host` passes, including `tests/bus/outgoing-events.spec.ts` and
+**Done when:** `npm test -w @apack/host` passes, including `tests/bus/outgoing-events.spec.ts` and
 `tests/packs/event-validation-map.spec.ts`; `npm run test:unit` and `npm test` pass. Mutation: leaving
 one `pluginId` behind in the renderer's routing fails an event-validation or E2E spec rather than
 passing silently — if it doesn't, add the spec that catches it.
@@ -231,21 +231,21 @@ passing silently — if it doesn't, add the spec that catches it.
   with a host app migration (Decision 4) that moves an existing row's values.
 - Those two fields are the whole of it, checked at `8b9d62114`: per-feature settings are keyed by
   feature and read through `forFeature` (54 call sites), not by plugin, and the frontend's own
-  `agentbuddy-last-active-plugin` key was already removed by
-  `packages/abuddy-host/src/fe/migrations/0.3.15.ts`. Don't re-hunt for more stored plugin data; if the
+  `apack-last-active-plugin` key was already removed by
+  `packages/apack-host/src/fe/migrations/0.3.15.ts`. Don't re-hunt for more stored plugin data; if the
   0.3.15 migration's own reads of `lastActivePlugin` need touching, that is Decision 2's allowance,
   not a rename.
 - Spec it the way `tests/migrations/app-state-0.3.15.spec.ts` specs the earlier move: a row in the old
   shape, migrated, then migrated again to prove idempotence.
 
-**Done when:** the migration spec passes, including the second run; `npm test -w @abuddy/host` and
+**Done when:** the migration spec passes, including the second run; `npm test -w @apack/host` and
 `npm test -w @app/api` pass. Mutation: dropping the guard that skips an already-migrated row fails the
 idempotence case.
 
 ### Phase 5 — docs, and turn the guard on
 
-- `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/abuddy-sdk/CLAUDE.md`,
-  `packages/abuddy-host/CLAUDE.md`, `tests/e2e/CLAUDE.md` and the six files under `docs/public-facing/`.
+- `CLAUDE.md`, `packages/renderer/CLAUDE.md`, `packages/apack-sdk/CLAUDE.md`,
+  `packages/apack-host/CLAUDE.md`, `tests/e2e/CLAUDE.md` and the six files under `docs/public-facing/`.
 - Flip Phase 1's guard from `it.fails` to live, if it was parked.
 
 **Done when:** the full chain passes: `npm run typecheck`, `npm run api:check`, `npm run schema:check`,
@@ -264,17 +264,17 @@ idempotence case.
 
 - Commits only on request, in logical chunks, no attribution lines, `git diff --cached` first.
 - No publishing, releases or triggered workflows.
-- No real data dirs; no broad `pkill`; E2E in the `abuddy-test` namespace.
+- No real data dirs; no broad `pkill`; E2E in the `apack-test` namespace.
 - No bare `tsc` on `packages/preload`; no `npm install` in the example pack; no version or release
   metadata edits — Phase 4's migration targets the next unreleased version by *appending to the latest
   target file*, which is not a version bump.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`). This goal renames a
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). This goal renames a
   frontend concept and must not change them; `AppState` is the host's entity and Phase 4 touches its
   fields, not the typed-EARS contract.
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes — Phase 2
   renames roughly eighteen public entries and must update `etc/*.api.md` and the declaration stamps.
 - `packages:build` before the CLI suite; `npm run compile` before the api suites and E2E.
-- Migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`: append to the latest unreleased
+- Migrations follow `packages/apack-host/src/migrations/CLAUDE.md`: append to the latest unreleased
   target, never create a new version file, and guard for idempotence.
 - Investigate a failing test rather than loosening it; mutation-check every new guard.
 - **Never run a blind find-and-replace over `plugin`.** Decision 2 lists three vocabularies that keep

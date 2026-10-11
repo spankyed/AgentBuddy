@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { APP_ONLY_EXPORTS } from '@abuddy/host/build/shared-deps';
+import { APP_ONLY_EXPORTS } from '@apack/host/build/shared-deps';
 import { PACKAGES_BUILT, installPublishedPackages } from '../src/published-packages.ts';
 
 let consumer: string | undefined;
@@ -17,12 +17,12 @@ afterAll(() => {
 /**
  * The published packages a pack installs and imports directly. Their declarations are ours, so `any`
  * in any of them is a leak and is walked wherever it's reached — including from another one's types,
- * since @abuddy/sdk's surface is largely @abuddy/ears' types. Everything else under node_modules
+ * since @apack/sdk's surface is largely @apack/ears' types. Everything else under node_modules
  * (vue, zod, ai, xstate) is a library's own business and is not walked.
  */
-const PACK_FACING_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'];
-/** Of those, the ones whose own exports are scanned: @abuddy/ui's surface is its component reports' */
-const SCANNED_PACKAGES = ['@abuddy/sdk', '@abuddy/ears'];
+const PACK_FACING_PACKAGES = ['@apack/ears', '@apack/sdk', '@apack/ui'];
+/** Of those, the ones whose own exports are scanned: @apack/ui's surface is its component reports' */
+const SCANNED_PACKAGES = ['@apack/sdk', '@apack/ears'];
 
 /** Where those packages are installed, as real paths, for the first-party check */
 function packFacingRoots(consumerDir: string): string[] {
@@ -135,10 +135,10 @@ function exportsWithAny(packageName: string, packageDir: string, firstPartyRoots
  * signature, `this` parameter, public members, type arguments, namespace members, conditional
  * branches, type parameter constraints or defaults, a few levels deep) contains `any` fails.
  *
- * `@abuddy/ears` and `@abuddy/sdk` are both ours and both installed by packs, so both are checked
+ * `@apack/ears` and `@apack/sdk` are both ours and both installed by packs, so both are checked
  * and both are walked into; a third-party library's own types (xstate AnyActorRef, vue Component,
  * zod schemas) are the library's business and aren't walked. Standard library types (Array, Promise,
- * Record) are, through the type arguments we pass them. `@abuddy/ears/lmdb` is skipped with the rest
+ * Record) are, through the type arguments we pass them. `@apack/ears/lmdb` is skipped with the rest
  * of `APP_ONLY_EXPORTS`: only the app's composition root loads it, never a pack.
  */
 /**

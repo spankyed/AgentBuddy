@@ -1,7 +1,7 @@
 // The Database console reads the whole database, so `EARS.Entity` names every registered pack's entity types, not
-// only default-setup's; `abuddy db query`/`exec` name the installed packs' the same way
+// only default-setup's; `apack db query`/`exec` name the installed packs' the same way
 import { afterEach, describe, expect, it } from 'vitest'
-import { registerPack, unregisterPack } from '@abuddy/testing/harness'
+import { registerPack, unregisterPack } from '@apack/testing/harness'
 import { executeQuery } from '#features/database/be/execute/query.ts'
 import { executeTransaction } from '#features/database/be/execute/transaction.ts'
 

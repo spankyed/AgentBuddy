@@ -34,7 +34,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import * as realMeasure from '../../../scripts/lib/measure.ts';
 import * as realStepTimeouts from '../../../scripts/lib/step-timeouts.ts';
 import * as realChainSchedule from '../../../scripts/lib/chain-schedule.ts';
@@ -46,7 +46,7 @@ import * as realStepTiming from '../../../scripts/lib/step-timing.ts';
  *
  * **What a module needs to be here is that a mutant of it resolves from a temp directory**, since that is
  * where `absolute` writes one: no imports, or only node builtins, or only relative specifiers it can
- * rewrite. `chain-output.ts` is the near miss — a bare `@abuddy/host/build/packages-built` has no
+ * rewrite. `chain-output.ts` is the near miss — a bare `@apack/host/build/packages-built` has no
  * `node_modules` on the walk-up from `os.tmpdir()`, so it stays out until someone has a reason to write
  * mutants inside the tree.
  *

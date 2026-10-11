@@ -17,7 +17,7 @@ and the report's line shapes (the `staleLines` cases in the same file).
 ## `npm run chain --dry`
 
 The plan, running nothing: which steps would run, and why each would or would not. Captured with one real
-edit outstanding — a line added to `packages/abuddy-sdk/src/index.ts` and reverted — so the causes below are
+edit outstanding — a line added to `packages/apack-sdk/src/index.ts` and reverted — so the causes below are
 the ones the chain actually derived, not an illustration.
 
 ```
@@ -28,9 +28,9 @@ the ones the chain actually derived, not an illustration.
  cached t2 packages:check
  cached t2 compile
  cached t2 test:external-pack:contract
-    run t1 typecheck                   changed packages/abuddy-sdk/src/index.ts
-    run t1 test:unit:host              changed packages/abuddy-sdk/src/index.ts
-    run t1 test:unit:pack              changed packages/abuddy-sdk/src/index.ts
+    run t1 typecheck                   changed packages/apack-sdk/src/index.ts
+    run t1 test:unit:host              changed packages/apack-sdk/src/index.ts
+    run t1 test:unit:pack              changed packages/apack-sdk/src/index.ts
  cached t2 test:integration
  cached t3 build:app
  cached t3 test:external-pack:app
@@ -71,10 +71,10 @@ being asked. A run points at the comment instead; see below.
      ok t3 test                         32.7s  never cached — scripts/lib/chain-steps.ts:520
      ok t2 test:integration             62.0s  its inputs changed since the last successful run
                                         11.0s  facade bundle determinism (needs dist: npm run packa…
-                                         9.2s  abuddy init → add feature → build → tsc → pack > add…
+                                         9.2s  apack init → add feature → build → tsc → pack > add…
                                          5.0s  a pack's unit tests on the harness > find the pack f…
-                                         4.8s  abuddy init → add feature → build → tsc → pack > add…
-                                         4.0s  abuddy add feature in a pack without the unit test s…
+                                         4.8s  apack init → add feature → build → tsc → pack > add…
+                                         4.0s  apack add feature in a pack without the unit test s…
 
 1 step passed, then its inputs changed — it will not be cached next run
   typecheck  tests/fixtures/probe-tmp.txt  added while it ran

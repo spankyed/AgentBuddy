@@ -10,7 +10,7 @@
  * update at. `virtual:dev-pack-frontends` is the mechanism — it statically names each local pack's generated
  * frontend entry, and the entry imports the pack's components. A pack fetched over `pack://` is outside that
  * graph entirely, which is why a component edit there reloads the window instead (measured 2026-10-07, and
- * recorded where `abuddy dev` prints it).
+ * recorded where `apack dev` prints it).
  *
  * The graph is walked from the real entry rather than by requesting the pack's file directly, because what
  * is being checked is that *the page reaches it*: a module transformed on its own is in the graph with no
@@ -18,14 +18,14 @@
  *
  * What is **not** here: which payload Vite then sends. That is Vite's and plugin-vue's behaviour over a
  * self-accepting module, identical for every module in the graph, and asserting it would be testing Vite.
- * The map's own contents — which packs are in it, and why a directory is not — are `@abuddy/host`'s
+ * The map's own contents — which packs are in it, and why a directory is not — are `@apack/host`'s
  * `tests/build/dev-pack-frontends.spec.ts`, where they cost nothing.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type ViteDevServer } from 'vite';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 
 /** One pack the app ships, and one that is not in `packages/` at all, reached the same way */
 const PACKS = [
@@ -42,7 +42,7 @@ beforeAll(async () => {
   // the pooled config from the repo root, and `npm run spec`, which runs it with the package as cwd. A
   // relative path is the repo's from one and names nothing from the other, so the pack went undiscovered
   // and the case read as "its pack is fetched over pack://" — a true sentence about the wrong cause.
-  process.env.ABUDDY_DEV_PACK_DIRS = path.join(REPO_ROOT, 'tests', 'packs', 'external-pack');
+  process.env.APACK_DEV_PACK_DIRS = path.join(REPO_ROOT, 'tests', 'packs', 'external-pack');
   server = await createServer({ mode: 'development', root: path.join(REPO_ROOT, 'packages', 'renderer'), logLevel: 'error' });
   await server.listen();
 
@@ -80,7 +80,7 @@ describe('a pack whose source this machine has', () => {
     const mods = server.moduleGraph.getModulesByFile(file);
     const mod = mods && [...mods][0];
     expect(mod, `${component} is not in the graph: its pack is fetched over pack://, so editing it reloads `
-      + 'the window. ABUDDY_DEV_PACK_DIRS or the workspace scan is what puts it here').toBeDefined();
+      + 'the window. APACK_DEV_PACK_DIRS or the workspace scan is what puts it here').toBeDefined();
     // Vite's condition for patching a module instead of reloading the page
     expect(mod!.isSelfAccepting, `${component} is in the graph but does not accept its own updates`).toBe(true);
     expect(mod!.importers.size, `nothing imports ${component}, so an update has no boundary to stop at`).toBeGreaterThan(0);

@@ -4,7 +4,7 @@ export const SPLASH_CONFIG = {
   HEIGHT: 400,
   
   // Window properties
-  TITLE: 'AgentBuddy-Splash',
+  TITLE: 'apack-Splash',
   
   // Fade animation
   FADE_STEP: 0.1,

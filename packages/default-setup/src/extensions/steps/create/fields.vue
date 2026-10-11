@@ -57,8 +57,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
-import TipSection from '@abuddy/ui/components/TipSection'
-import type { FieldMapping } from '@abuddy/sdk/steps'
+import TipSection from '@apack/ui/components/TipSection'
+import type { FieldMapping } from '@apack/sdk/steps'
 import { withDefault, writtenDefault } from './field-default.ts'
 
 // One editor for every step that maps fields. The transform step had a second copy of it, which is how the two

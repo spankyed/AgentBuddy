@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Undo a release for AgentBuddy
+# Undo a release for apack
 # Usage: npm run unrelease [version] [--dry-run]
 #
 # Reverses what release.sh does:
@@ -44,7 +44,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 echo "=========================================="
-echo "⏪ AgentBuddy Undo Release: $VERSION"
+echo "⏪ apack Undo Release: $VERSION"
 echo "=========================================="
 echo ""
 

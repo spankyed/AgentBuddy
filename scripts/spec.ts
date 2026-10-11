@@ -18,17 +18,17 @@
 //   npm run spec:full [...]                 and the pack suites a rebuilt `dist` would reach
 //
 // A **source file** is the case worth knowing about. It used to run the file's own package, which for
-// `@abuddy/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
+// `@apack/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
 // change. It now runs one vitest over every host project, which is what the root `vitest.config.ts` is for.
 // That costs what the blast radius costs — a component nothing imports is still 1-3s, a type every pack's
 // data flows through is 28s and 104 files. To go back to one spec while iterating, name it.
 //
-// Where it can, it delegates to the package's own `test` script, so @abuddy/cli's and @app/default-setup's
+// Where it can, it delegates to the package's own `test` script, so @apack/cli's and @app/default-setup's
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //
 // **Two more edges run through a build, inside a pack.** `src/content/**` compiles to `dist/*.content.json`, which
-// `tests/content/` reads against its goldens, and `abuddy.json` drives codegen into `src/__generated__/`, which
+// `tests/content/` reads against its goldens, and `apack.json` drives codegen into `src/__generated__/`, which
 // every spec in the pack imports. The walk still runs — an apply helper the specs import directly is answered by
 // it — and carries what it could not see (`Run.beyond`); `npm run spec:full` builds the pack and runs them.
 //

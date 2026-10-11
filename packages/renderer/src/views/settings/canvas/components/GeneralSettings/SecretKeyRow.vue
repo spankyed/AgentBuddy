@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Check, Edit2, Eye, EyeOff, Trash2, X } from 'lucide-vue-next'
-import type { SecretInfo } from '@abuddy/sdk/services'
+import type { SecretInfo } from '@apack/sdk/services'
 
 // `select`, `rename` and `replace` resolve whether the change was stored: the row stays open with what was typed until
 // it was, and the radio goes back to the stored selection when selecting fails

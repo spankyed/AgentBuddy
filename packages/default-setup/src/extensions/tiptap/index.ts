@@ -1,4 +1,4 @@
-import type { TiptapPlugin } from '@abuddy/sdk/fe'
+import type { TiptapPlugin } from '@apack/sdk/fe'
 import { commandSuggestionPluginKey } from './command-suggestion-plugin.ts'
 import { referenceSuggestionPluginKey } from './reference-plugin-key.ts'
 import { CommandViewerDecoration } from './command-viewer-decoration.ts'

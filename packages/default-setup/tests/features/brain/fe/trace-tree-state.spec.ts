@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from '#features/brain/fe/trace-tree.ts';
-import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
+import type { TNodeEntity, TrackTree } from '@apack/sdk/steps';
 
 function tNode(id: string, label = id): TNodeEntity {
   return {

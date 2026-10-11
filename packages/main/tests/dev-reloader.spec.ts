@@ -7,7 +7,7 @@ import { coalescing, devReloadArmed, DEV_RELOAD_ENV } from '../src/modules/api-s
 /**
  * **A debug port and a restarting backend belong to a development build and to nothing else.**
  *
- * `development` alone is not the condition: `abuddy dev` resolves to it too, and so does a bare
+ * `development` alone is not the condition: `apack dev` resolves to it too, and so does a bare
  * `electron .`, and neither should grow a watcher because someone once ran `npm start`. The launcher's
  * say-so alone is not it either — a stray variable in a shell must not arm a watcher in a packaged app,
  * or a test run, whose API restarting underneath it would be a strange thing to debug.
@@ -25,7 +25,7 @@ describe('whether the API-reload watcher is armed', () => {
     }
   });
 
-  /** The case that keeps this to `npm start`: `abuddy dev` is a development build and arms nothing. */
+  /** The case that keeps this to `npm start`: `apack dev` is a development build and arms nothing. */
   it('is not armed for a development build nobody asked', () => {
     expect(devReloadArmed('development', {})).toBe(false);
     expect(devReloadArmed('development', { [DEV_RELOAD_ENV]: '' })).toBe(false);

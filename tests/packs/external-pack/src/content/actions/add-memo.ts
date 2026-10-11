@@ -1,6 +1,6 @@
 /** Memo: Add — stores a memo, for the memo flow. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 
 export const meta: ActionMeta = {

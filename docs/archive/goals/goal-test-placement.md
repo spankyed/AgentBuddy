@@ -11,7 +11,7 @@
 
 Implement docs/goals/goal-test-placement.md on AS/chain-inputs, at or after e82b960af — the base its
 Background was surveyed at.
-Before Phase 1, confirm the base: packages/abuddy-testing and packages/abuddy-ui have no `test` script,
+Before Phase 1, confirm the base: packages/apack-testing and packages/apack-ui have no `test` script,
 packages/default-setup has six specs under src/, and packages/api/tests has only a `unit/` directory. If
 any of those is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -46,11 +46,11 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - delete or loosen a test to make a number move.
 ```
 
@@ -75,52 +75,52 @@ historical: these specs once imported the API's EARS and repository modules too.
 | Package | `tests/` | `src/` | Suite? |
 |---|---|---|---|
 | default-setup | 81 | **6** | ✓ |
-| abuddy-host | 77 | 0 | ✓ |
-| abuddy-cli | 65 | 0 | ✓ |
-| abuddy-sdk | 56 | 0 | ✓ |
+| apack-host | 77 | 0 | ✓ |
+| apack-cli | 65 | 0 | ✓ |
+| apack-sdk | 56 | 0 | ✓ |
 | repo-checks | 16 | 0 | ✓ |
 | api | 15 | 0 | ✓ |
-| abuddy-ears | 9 | 0 | ✓ |
+| apack-ears | 9 | 0 | ✓ |
 | renderer | 8 | 0 | ✓ |
 | main | 2 | 0 | ✓ |
-| **abuddy-testing** | 0 | 0 | **none** |
-| **abuddy-ui** | 0 | 0 | **none** |
+| **apack-testing** | 0 | 0 | **none** |
+| **apack-ui** | 0 | 0 | **none** |
 | preload | 0 | 0 | none |
 
 ### Finding 1 — two packages have no suite, and `npm run spec` cannot reach them
 
-`@abuddy/testing` and `@abuddy/ui` have no `test` script and no `vitest.config.ts`. Six specs about them
-live in `@abuddy/cli`, reaching across the boundary by relative path:
+`@apack/testing` and `@apack/ui` have no `test` script and no `vitest.config.ts`. Six specs about them
+live in `@apack/cli`, reaching across the boundary by relative path:
 
-| Spec (in `@abuddy/cli`) | Subject | Verdict |
+| Spec (in `@apack/cli`) | Subject | Verdict |
 |---|---|---|
-| `tests/app/app-version.spec.ts` | `abuddy-testing/src/app-version` | moves |
-| `tests/build/checkout-freshness.spec.ts` | `abuddy-testing/src/checkout-freshness` | moves |
-| `tests/harness/shared-ears.spec.ts` | `abuddy-testing/src/shared-ears` | moves |
-| `tests/build/ui-exports.spec.ts` | `abuddy-ui/scripts/exports` | moves |
-| `tests/app/app-target.spec.ts` | four describes on the CLI's own `src/app/app-target`, one on `abuddy-testing`'s `appLaunchEnv` | **splits** |
-| `tests/build/fe-bundler-ui-theme.spec.ts` | `abuddy-ui`'s preset, the renderer's tailwind config, and a fixture pack's built CSS | **stays** |
+| `tests/app/app-version.spec.ts` | `apack-testing/src/app-version` | moves |
+| `tests/build/checkout-freshness.spec.ts` | `apack-testing/src/checkout-freshness` | moves |
+| `tests/harness/shared-ears.spec.ts` | `apack-testing/src/shared-ears` | moves |
+| `tests/build/ui-exports.spec.ts` | `apack-ui/scripts/exports` | moves |
+| `tests/app/app-target.spec.ts` | four describes on the CLI's own `src/app/app-target`, one on `apack-testing`'s `appLaunchEnv` | **splits** |
+| `tests/build/fe-bundler-ui-theme.spec.ts` | `apack-ui`'s preset, the renderer's tailwind config, and a fixture pack's built CSS | **stays** |
 
 **Corrected 2026-09-25 during Phase 2.** The six were found by scanning *imports*, and two of them are not
 what that scan implied. `app-target.spec.ts` is four fifths a CLI spec — its `appLaunchEnv` describe is the
 only part that belongs elsewhere, so it splits rather than moves. `fe-bundler-ui-theme.spec.ts` reads three
 packages and a fixture pack's build output, and its four tests are a chain — the preset defines what the
 components name, the renderer applies it rather than copying it, a built pack ships the CSS. Moving it to
-`@abuddy/ui` would push a tier-2 dependency on the app's tree into a leaf package's suite, and splitting it
+`@apack/ui` would push a tier-2 dependency on the app's tree into a leaf package's suite, and splitting it
 would lose the chain, so it stays and becomes the first recorded exception to Phase 3's guard.
 
 This is the same class as the `scripts/` hole that
 [`goal-one-job-pool.md`](goal-one-job-pool.md) closed by creating `@app/repo-checks`, and it fails louder:
 
 ```
-$ npm run spec -- packages/abuddy-testing/src/launch-env.ts
-→ packages/abuddy-testing: specs importing src/launch-env.ts
+$ npm run spec -- packages/apack-testing/src/launch-env.ts
+→ packages/apack-testing: specs importing src/launch-env.ts
 Error: Projects definition references a non-existing file or a directory:
-  .../packages/abuddy-testing/packages/abuddy-sdk
+  .../packages/apack-testing/packages/apack-sdk
 ```
 
 With no config of its own, vitest walks up to the root one and resolves its `projects` list against the
-wrong directory. So editing `@abuddy/testing` — whose fixture every pack's E2E depends on, this repo's
+wrong directory. So editing `@apack/testing` — whose fixture every pack's E2E depends on, this repo's
 included — is checked by nothing you can invoke from the change.
 
 ### Finding 2 — `@app/api`'s suite is named `unit` and is mostly app-runtime integration
@@ -135,16 +135,16 @@ of those specs have host subjects rather than api ones.
 
 ### Finding 3 — one spec mocks another package's internal file by relative path
 
-`api/tests/unit/secrets.spec.ts` does `vi.mock('../../../abuddy-host/src/secrets/vault.ts')`. Its stated
+`api/tests/unit/secrets.spec.ts` does `vi.mock('../../../apack-host/src/secrets/vault.ts')`. Its stated
 subject — the secrets procedures and log redaction — is genuinely the api's. The mechanism is not: it
 couples api's suite to host's internal file layout, so renaming `vault.ts` breaks a spec in another
 package and host's own suite says nothing.
 
-### Finding 4 — `@abuddy/ui` has 33 recorded component contracts and no behavioural test
+### Finding 4 — `@apack/ui` has 33 recorded component contracts and no behavioural test
 
-`packages/abuddy-ui/etc/*.component.md` pins 33 components' props, emits, slots and exposed members, and
+`packages/apack-ui/etc/*.component.md` pins 33 components' props, emits, slots and exposed members, and
 `api:update` keeps them current. Exactly one spec in the repo mounts a Vue component
-(`renderer/tests/views/packs/pack-detail.spec.ts`). The two `@abuddy/ui` specs that exist are about its
+(`renderer/tests/views/packs/pack-detail.spec.ts`). The two `@apack/ui` specs that exist are about its
 exports map and its tailwind preset, not its components.
 
 This is a coverage gap rather than a misplacement, and Finding 1 is why it is easy to miss: there is no UI
@@ -171,16 +171,16 @@ that needs a config line to avoid silence is one where the next file will be sil
 
 ### Finding 6 — twelve specs about the published packages, split into its own goal
 
-`@abuddy/cli` holds twelve specs whose subject is the published `@abuddy` packages rather than the CLI —
+`@apack/cli` holds twelve specs whose subject is the published `@apack` packages rather than the CLI —
 30.2s of that suite's 190.8s. They are the same defect as Finding 1 at four times the size, and unlike the
 other five findings they have **no obvious right answer**: their subject belongs to no single package, the
 family is already split (two of them live in `@app/repo-checks`), and the packing fixture they share is also
 used by three specs that legitimately belong in the CLI. That needs a decision rather than a move, so it is
 [`goal-published-package-checks.md`](goal-published-package-checks.md), to be done after this one — its
-Phase 2 depends on the `@abuddy/testing` suite this goal's Phase 2 creates, and its Phase 4 extends this
+Phase 2 depends on the `@apack/testing` suite this goal's Phase 2 creates, and its Phase 4 extends this
 goal's Phase 3 guard.
 
-It matters here for one reason: until it lands, `@abuddy/cli`'s cost record includes 30.2s that is not about
+It matters here for one reason: until it lands, `@apack/cli`'s cost record includes 30.2s that is not about
 the CLI, so the record cannot be read as a CLI number.
 
 ### What the earlier inventory still has open
@@ -218,8 +218,8 @@ Final.
    `etc/spec-cost.json` and the dead band (`goal-measured-placement.md`). This goal moves specs between
    *packages*, which changes which record they are in — so every phase that moves a spec re-records with
    `npm run spec-cost:update -- --suite <dir>` and never edits a cost by hand.
-4. **A new suite is a `host` suite unless it must resolve the published `dist`.** `@abuddy/testing` and
-   `@abuddy/ui` are host packages, so they join the root pool as `host` kinds in `UNIT_SUITES`, with
+4. **A new suite is a `host` suite unless it must resolve the published `dist`.** `@apack/testing` and
+   `@apack/ui` are host packages, so they join the root pool as `host` kinds in `UNIT_SUITES`, with
    `SUITE_READS` entries for what they actually read. `UnitSuite.kind` carries why that matters.
 5. **Don't reorder or re-tier anything to make this tidy.** Findings 2's tier is measured and correct;
    only the folder name and the two host-subject specs are in scope.
@@ -260,16 +260,16 @@ split decisions it got wrong.
 **Done when:** the reference doc exists, describes HEAD, and no doc outside `docs/archive/` points at the
 old one.
 
-### Phase 2 — a suite for `@abuddy/testing` and `@abuddy/ui`
+### Phase 2 — a suite for `@apack/testing` and `@apack/ui`
 
-`vitest.config.ts` and a `test` script for each, declaring the `@abuddy/source` condition as every host
+`vitest.config.ts` and a `test` script for each, declaring the `@apack/source` condition as every host
 config does. Move the six specs from Finding 1, rewriting their imports to the package's own source. Add
 both to `UNIT_SUITES` as `host`, to the root `vitest.config.ts` `projects` list in the same order
 (`chain-inputs.spec.ts` asserts they match), and to `SUITE_READS` for what they read. Re-record both
-suites' costs and `abuddy-cli`'s.
+suites' costs and `apack-cli`'s.
 
-**Done when:** `npm run spec -- packages/abuddy-testing/src/launch-env.ts` runs those specs instead of
-crashing; both new suites appear in `test:unit:host`; `spec-cost:check` passes; `abuddy-cli` is six specs
+**Done when:** `npm run spec -- packages/apack-testing/src/launch-env.ts` runs those specs instead of
+crashing; both new suites appear in `test:unit:host`; `spec-cost:check` passes; `apack-cli` is six specs
 lighter.
 
 ### Phase 3 — the guards that keep placement true
@@ -279,7 +279,7 @@ In `@app/repo-checks`, beside `repo-check-boundary.spec.ts` which is the precede
 - a package with a `src/` has a suite, or an entry in a recorded list with a reason, with the usual
   stale-entry check;
 - no spec imports another package's `src/` by relative path, resolving specifiers rather than matching
-  text (the boundary spec shows why: `@abuddy/ui` has a `scripts/` of its own).
+  text (the boundary spec shows why: `@apack/ui` has a `scripts/` of its own).
 
 Both mutation-checked: delete a suite's `test` script and watch the first fail by name; add a
 cross-package relative import to a spec and watch the second.
@@ -294,7 +294,7 @@ five genuine unit specs from the ten runtime ones. Resolve `host-data-services` 
 decision.
 
 **Done when:** no directory under `packages/api/tests` is named for a level it does not hold; the api's
-suite imports no other package's `src/` by relative path; `@app/api` and `@abuddy/host` both green.
+suite imports no other package's `src/` by relative path; `@app/api` and `@apack/host` both green.
 
 ### Phase 5 — `default-setup`: one convention
 
@@ -323,7 +323,7 @@ covers behaviour nothing else covers.
 
 ## Deferred
 
-- **Component tests for `@abuddy/ui`** (Finding 4). Its 33 recorded contracts have no behavioural test,
+- **Component tests for `@apack/ui`** (Finding 4). Its 33 recorded contracts have no behavioural test,
   and that is probably the largest coverage gap in the repo — but it is new test-writing, not relocation,
   and sizing it deserves its own look. Phase 2 creates the suite it would go in.
 - **Re-recording the content-parity goldens** with notes included, still deferred from
@@ -351,23 +351,23 @@ covers behaviour nothing else covers.
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — record the suite as it is | **done** | `8932ece71`. `docs/reference/test-inventory.md`; the 2026-09-19 survey archived with what superseded it |
-| 2 — a suite for `@abuddy/testing` and `@abuddy/ui` | **done** | `c58c086eb`. 19 and 2 tests; the host pool runs 10 projects |
+| 2 — a suite for `@apack/testing` and `@apack/ui` | **done** | `c58c086eb`. 19 and 2 tests; the host pool runs 10 projects |
 | 3 — the guards | **done** | `993e8f8c2`. `spec-placement.spec.ts`, both halves mutation-checked |
-| 4 — `@app/api` | **done** | `d7de9f5fb`. `unit/` 5 specs, `runtime/` 10; `@abuddy/host` publishes `./secrets/vault` |
+| 4 — `@app/api` | **done** | `d7de9f5fb`. `unit/` 5 specs, `runtime/` 10; `@apack/host` publishes `./secrets/vault` |
 | 5 — `default-setup`: one convention | **done** | `b87c22fd2`. Zero colocated specs repo-wide |
 | 6 — the scan, bounded | **done, and mostly a null result** | `9b72862e3`. One move with a real fix; three flagged duplicates needed nothing |
 
 ### What moved
 
-337 recorded specs across eleven suites, 271.7s of file time. Four specs and one `describe` left `@abuddy/cli`
-for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host` for `@app/main`; six left
+337 recorded specs across eleven suites, 271.7s of file time. Four specs and one `describe` left `@apack/cli`
+for the two packages they were about; `pack-protocol.spec.ts` left `@apack/host` for `@app/main`; six left
 `default-setup/src/`; ten moved within `@app/api`. No spec was deleted.
 
 ### The unlocks, measured
 
-- **`npm run spec` reaches two packages it could not.** Before: `npm run spec -- packages/abuddy-testing/src/launch-env.ts`
+- **`npm run spec` reaches two packages it could not.** Before: `npm run spec -- packages/apack-testing/src/launch-env.ts`
   failed with *"Projects definition references a non-existing file or a directory:
-  .../packages/abuddy-testing/packages/abuddy-sdk"* — with no config of its own, vitest walked up to the root
+  .../packages/apack-testing/packages/apack-sdk"* — with no config of its own, vitest walked up to the root
   one and resolved its `projects` list against the wrong directory. After: it runs the two specs covering it.
 - **A fast api loop exists.** `npx vitest run tests/unit` in `@app/api` is 21 tests in **2.1s**, where "the
   api's tests" previously meant booting ten runtimes. The split is on measured cost — 4–22ms against
@@ -381,7 +381,7 @@ for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host
 
 - **Finding 1 listed six specs; two were not what an import scan implied.** `app-target.spec.ts` is four
   fifths a CLI spec, so only its `appLaunchEnv` describe moved. `fe-bundler-ui-theme.spec.ts` reads
-  `@abuddy/ui`'s preset, the renderer's tailwind config *and* a fixture pack's built CSS, and its four tests
+  `@apack/ui`'s preset, the renderer's tailwind config *and* a fixture pack's built CSS, and its four tests
   are a chain; it stays, as the guard's one recorded exception. **A scan by import is a candidate list, not a
   verdict** — the doc's table now carries the verdict column it should have had.
 - **The `dupe-title` signal over-reports.** All three pairs it flagged in 2026-09-19 already satisfied
@@ -391,7 +391,7 @@ for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host
   export-map entry keeps the coverage and removes only the boundary violation. Raised by the user, and the
   right call.
 - **Two detectors were reading their own subject as evidence.** `chain-inputs`' build-output check read the
-  string `@abuddy/testing` as proof a suite loads that bundle — true everywhere but in that package's own
+  string `@apack/testing` as proof a suite loads that bundle — true everywhere but in that package's own
   suite. And `repo-check-boundary`'s new stale-entry check immediately rejected the self-exemption it had
   been given, because that file names a repo script itself.
 
@@ -409,7 +409,7 @@ for the two packages they were about; `pack-protocol.spec.ts` left `@abuddy/host
 
 ### Still open
 
-- **`@abuddy/ui`'s 33 component contracts have no behavioural test** (Finding 4), and exactly one spec in the
+- **`@apack/ui`'s 33 component contracts have no behavioural test** (Finding 4), and exactly one spec in the
   repo mounts a Vue component. Phase 2 created the suite they belong in; writing them is new coverage and
   needs its own sizing.
 - **Finding 6, the twelve published-package specs**, is [`goal-published-package-checks.md`](goal-published-package-checks.md).

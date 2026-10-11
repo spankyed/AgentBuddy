@@ -4,16 +4,16 @@ import pkg from './package.json' with {type: 'json'};
  * Electron Builder Configuration
  * Native module rebuilding is handled by build.sh script
  *
- * Set ABUDDY_ENV=beta to build the beta channel app (separate appId + productName
+ * Set APACK_ENV=beta to build the beta channel app (separate appId + productName
  * so it installs alongside the production app).
  */
 
-const isBeta = process.env.ABUDDY_ENV === 'beta';
-const appId = isBeta ? 'com.agentbuddy.beta' : 'com.agentbuddy.app';
-const productName = isBeta ? 'AgentBuddy Beta' : 'AgentBuddy';
-const urlScheme = isBeta ? 'abuddy-beta' : 'abuddy';
+const isBeta = process.env.APACK_ENV === 'beta';
+const appId = isBeta ? 'dev.apack.beta' : 'dev.apack.app';
+const productName = isBeta ? 'apack Beta' : 'apack';
+const urlScheme = isBeta ? 'apack-beta' : 'apack';
 // File names without spaces: GitHub rewrites spaces in release asset names, and
-// `abuddy test --build beta` looks for AgentBuddy-Beta-<version>-mac-arm64.zip
+// `apack test --build beta` looks for apack-Beta-<version>-mac-arm64.zip
 export const artifactPrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting
@@ -51,10 +51,10 @@ export default /** @type import('electron-builder').Configuration */
     entitlements: 'build/resources/entitlements.mac.plist',
     entitlementsInherit: 'build/resources/entitlements.mac.plist',
     extendInfo: {
-      NSMicrophoneUsageDescription: 'AgentBuddy needs microphone access for voice input.',
-      NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
-      NSDesktopFolderUsageDescription: 'AgentBuddy may need access to your Desktop when selecting files.',
-      NSNetworkVolumesUsageDescription: 'AgentBuddy may need to access network volumes to locate development tools.',
+      NSMicrophoneUsageDescription: 'apack needs microphone access for voice input.',
+      NSSpeechRecognitionUsageDescription: 'apack uses speech recognition to convert voice to text.',
+      NSDesktopFolderUsageDescription: 'apack may need access to your Desktop when selecting files.',
+      NSNetworkVolumesUsageDescription: 'apack may need to access network volumes to locate development tools.',
       CFBundleURLTypes: [{
         CFBundleURLName: `${productName} Protocol`,
         CFBundleURLSchemes: [urlScheme],
@@ -146,18 +146,18 @@ export default /** @type import('electron-builder').Configuration */
     // Include compiled output
     'packages/*/dist/**',
     // ...but not the tree each publishable package stages for npm (stagePublishTree): a second copy of the same
-    // dist, which the app never loads — it resolves @abuddy/sdk through node_modules to packages/abuddy-sdk/dist.
+    // dist, which the app never loads — it resolves @apack/sdk through node_modules to packages/apack-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
     '!packages/*/publish/**',
-    // ...nor a pack's working directory. `abuddy build` keeps its dependency cache, its staging, its release
-    // output and its record of what each bundling phase read in `.abuddy/` (PACK_READS_FILE,
-    // @abuddy/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
+    // ...nor a pack's working directory. `apack build` keeps its dependency cache, its staging, its release
+    // output and its record of what each bundling phase read in `.apack/` (PACK_READS_FILE,
+    // @apack/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
     // it, dotted directories and all, because electron-builder reads no .gitignore either.
-    '!packages/*/.abuddy/**',
+    '!packages/*/.apack/**',
     // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the
-    // app loads — so the exclusions above would strip every one of them and `abuddy init` from the CLI this
+    // app loads — so the exclusions above would strip every one of them and `apack init` from the CLI this
     // app installs (bin/app-launcher.sh) would scaffold nothing. Last match wins, so this comes after them.
-    'packages/abuddy-cli/dist/package/templates/**',
+    'packages/apack-cli/dist/package/templates/**',
     // Include API's local node_modules
     'packages/api/node_modules/**/*',
     // Exclude platform-specific prebuilds not needed for current target
@@ -185,9 +185,9 @@ export default /** @type import('electron-builder').Configuration */
     //   filter: ['**/*']
     // }
     ...speechResources,
-    // `abuddy` launcher for "Install 'abuddy' command in PATH"; runs packages/abuddy-cli/dist/package
+    // `apack` launcher for "Install 'apack' command in PATH"; runs packages/apack-cli/dist/package
     ...(process.platform === 'darwin'
-      ? [{ from: 'packages/abuddy-cli/bin/app-launcher.sh', to: 'cli/abuddy' }]
+      ? [{ from: 'packages/apack-cli/bin/app-launcher.sh', to: 'cli/apack' }]
       : []),
   ],
   
@@ -195,7 +195,7 @@ export default /** @type import('electron-builder').Configuration */
   publish: process.env.PUBLISH_TO_GITHUB === 'true' ? {
     provider: 'github',
     owner: 'spankyed',
-    repo: 'AgentBuddy',
+    repo: 'apack',
     releaseType: isBeta ? 'prerelease' : 'draft',
     ...(isBeta && { channel: 'beta' }),
   } : null

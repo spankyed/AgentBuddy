@@ -3,13 +3,13 @@
 import { services } from '#generated/services.ts';
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { compileFlowDSL } from '@abuddy/sdk/build'
-import { flowRepository } from '@abuddy/sdk/repositories'
-import { startApp } from '@abuddy/testing/harness'
+import { compileFlowDSL } from '@apack/sdk/build'
+import { flowRepository } from '@apack/sdk/repositories'
+import { startApp } from '@apack/testing/harness'
 import { repository } from '#generated/repository.ts'
 import { ref } from '#generated/ref.ts'
 
-/** Where `abuddy build` writes this pack's compiled content */
+/** Where `apack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 const importRoot = (label: string) =>
   repository.flowsCommands.importFromDSL(compileFlowDSL({ [label]: { root: true, tracks: [{ event: 'flow.entry', exits: [[]] }] } })).flowIds[0]

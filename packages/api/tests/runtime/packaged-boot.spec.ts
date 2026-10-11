@@ -12,28 +12,28 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, expect, it } from 'vitest';
-import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
-import { PACK_LAYOUT } from '@abuddy/host/packs';
+import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_LAYOUT } from '@apack/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-packaged-boot-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadAppPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal, installShippedPacks } = await import('@abuddy/host/packs');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
-const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
-const { getDesignated } = await import('@abuddy/sdk/designations');
+const { loadAppPacks } = await import('@apack/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@apack/host/packs');
+const { resolveAppContext } = await import('@apack/sdk/env');
+const { unbindHost } = await import('@apack/sdk/runtime/internals');
+const { getDesignated } = await import('@apack/sdk/designations');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 beforeEach(() => fs.rmSync(resolveAppContext().packsDir, { recursive: true, force: true }));
 
-/** An installed pack that plays `role`, as `abuddy install` leaves one */
+/** An installed pack that plays `role`, as `apack install` leaves one */
 async function installPackPlaying(id: string, role: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
-  fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));
+  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));

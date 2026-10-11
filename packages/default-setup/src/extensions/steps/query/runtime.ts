@@ -1,13 +1,13 @@
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { reportError, createLogger } from '@abuddy/sdk/logger';
-import { isModelId } from '@abuddy/sdk/models';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import { reportError, createLogger } from '@apack/sdk/logger';
+import { isModelId } from '@apack/sdk/models';
 import { services } from '#generated/services.ts';
 import { executeQuery } from '#features/database/be/execute/query.ts';
-import { WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
+import { WRITE_HELPER_NAMES } from '@apack/sdk/database-console';
 import { DEFAULT_MODEL } from '../llm/model.ts';
 import { DEFAULT_RESULT_KEY } from './result-key.ts';
 import type { QueryNode } from './types.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });
 

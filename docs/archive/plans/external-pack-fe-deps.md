@@ -2,7 +2,7 @@
 
 ## Problem
 
-External pack FE entries load via `import(/* @vite-ignore */ 'pack://{packId}/dist/fe.js')`. When the pack's code does `import { ref } from 'vue'`, the browser can't resolve `vue` -- there's no module map, and the pack doesn't ship its own copy. `window.__abuddy` has the modules, but nothing wires them to the pack's import statements.
+External pack FE entries load via `import(/* @vite-ignore */ 'pack://{packId}/dist/fe.js')`. When the pack's code does `import { ref } from 'vue'`, the browser can't resolve `vue` -- there's no module map, and the pack doesn't ship its own copy. `window.__apack` has the modules, but nothing wires them to the pack's import statements.
 
 ---
 
@@ -10,17 +10,17 @@ External pack FE entries load via `import(/* @vite-ignore */ 'pack://{packId}/di
 
 ### Option A: CJS + require shim (simple, ~20 lines)
 
-Pack FE entries output CJS format (which Vite/rollup support natively). Instead of `import()`, the host fetches the pack's JS as text and executes it via `new Function`, providing a `require` shim that maps shared dep names to `window.__abuddy`:
+Pack FE entries output CJS format (which Vite/rollup support natively). Instead of `import()`, the host fetches the pack's JS as text and executes it via `new Function`, providing a `require` shim that maps shared dep names to `window.__apack`:
 
 - Pack's CJS output: `const { ref } = require('vue');`
-- Host's require shim: `require('vue')` -> `window.__abuddy.vue`
+- Host's require shim: `require('vue')` -> `window.__apack.vue`
 
 This is exactly how the BE's `withHostResolution()` works -- patching require resolution. Same pattern, FE side.
 
 **Changes:**
 
 - `pack-loader.ts` -- rewrite `loadPackFEEntry()` to fetch-as-text + CJS execution with require shim
-- `host-deps.ts` -- add `@abuddy/sdk/fe` to shared deps list
+- `host-deps.ts` -- add `@apack/sdk/fe` to shared deps list
 - SDK -- provide a pack build preset (Vite config) that outputs CJS with shared deps externalized
 
 **Pros:** Minimal code change, proven pattern (mirrors BE), no protocol changes, no IPC.
@@ -34,7 +34,7 @@ This is exactly how the BE's `withHostResolution()` works -- patching require re
 Packs output ESM with shared deps externalized and import paths rewritten to `pack://__host__/{dep}`. The `pack://` protocol handler generates shim modules:
 
 - Pack's ESM output: `import { ref } from 'pack://__host__/vue';`
-- Protocol handler: serves ESM shim that re-exports from `window.__abuddy.vue`
+- Protocol handler: serves ESM shim that re-exports from `window.__apack.vue`
 
 **Changes:**
 

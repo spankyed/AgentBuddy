@@ -1,5 +1,5 @@
 import { services } from '#generated/services.ts';
-import type { DeclaredMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@apack/sdk/framework';
 import { ref } from '#generated/ref.ts';
 
 export const migration: DeclaredMigration = {

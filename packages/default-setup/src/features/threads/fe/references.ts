@@ -2,7 +2,7 @@ import { History } from 'lucide-vue-next'
 
 import { openPlugin, usePluginState } from '#generated/fe.ts'
 import { id as threads, threadsFromStore } from './state.ts'
-import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@apack/sdk/fe/references'
 
 export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   thread: {

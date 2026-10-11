@@ -6,13 +6,13 @@ import {viteStaticCopy} from 'vite-plugin-static-copy';
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   define: {
-    __ABUDDY_CHANNEL__: JSON.stringify(process.env.ABUDDY_ENV || ''),
+    __APACK_CHANNEL__: JSON.stringify(process.env.APACK_ENV || ''),
   },
   // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {
-    noExternal: [/^@abuddy\/(sdk|host)/],
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
-    resolve: {conditions: ['@abuddy/source', ...defaultServerConditions]},
+    noExternal: [/^@apack\/(sdk|host)/],
+    // Workspace @apack/* packages resolve to source (see their package.json exports)
+    resolve: {conditions: ['@apack/source', ...defaultServerConditions]},
   },
   build: {
     ssr: true,
@@ -112,20 +112,20 @@ function handleHotReload() {
        * **Which build the app it spawns will resolve, asked the app's own way.**
        *
        * The `NODE_ENV` check above is the *bundle's* mode and says nothing about this: a source run takes its
-       * environment from `ABUDDY_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
-       * `ABUDDY_ENV=beta npm start` is a beta app. Reading this hook as "development by definition" is what
+       * environment from `APACK_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
+       * `APACK_ENV=beta npm start` is a beta app. Reading this hook as "development by definition" is what
        * let it push an unauthenticated debug port onto one.
        */
-      const { _inferElectronAppEnv, resolveAppContext } = await import('@abuddy/sdk/env');
-      const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@abuddy/host/dev-session');
+      const { _inferElectronAppEnv, resolveAppContext } = await import('@apack/sdk/env');
+      const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@apack/host/dev-session');
       const build = _inferElectronAppEnv({
         playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
         isPackaged: false,
-        channel: process.env.ABUDDY_ENV ?? '',
-        envVar: process.env.ABUDDY_ENV,
+        channel: process.env.APACK_ENV ?? '',
+        envVar: process.env.APACK_ENV,
       });
 
-      // The same gate `abuddy dev` passes, through the same function: development only, and nothing else
+      // The same gate `apack dev` passes, through the same function: development only, and nothing else
       electronArgs.push(...debugPortArgsFor(build));
 
       // Before the spawn, so the port file below is this app's rather than one a previous run left in the
@@ -136,11 +136,11 @@ function handleHotReload() {
       });
 
       /**
-       * The session file, so `abuddy drive` can reach the app this loop is holding — which is the half
-       * worth having: `abuddy dev` serves a *pack's* frontend, where this one serves the renderer itself,
+       * The session file, so `apack drive` can reach the app this loop is holding — which is the half
+       * worth having: `apack dev` serves a *pack's* frontend, where this one serves the renderer itself,
        * so it is the app you are most often looking at.
        *
-       * **The pid is Electron's here, where `abuddy dev` records its own.** The field means "the process to
+       * **The pid is Electron's here, where `apack dev` records its own.** The field means "the process to
        * signal to end this", and the direction differs between the two: `dev` is a supervisor whose
        * teardown closes the app, while this watcher exits *with* Electron (the listener below). So in both
        * cases one signal ends the app and the tooling holding it.

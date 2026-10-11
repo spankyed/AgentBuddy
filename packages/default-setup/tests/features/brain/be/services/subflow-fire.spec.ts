@@ -1,7 +1,7 @@
 // What a subflow starts with (inherit, map) and what a fire step sends (payload mappings, scope), on the brain
-// through @abuddy/testing, as the app runs flows.
+// through @apack/testing, as the app runs flows.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@abuddy/testing/harness'
+import { importFlows, startApp } from '@apack/testing/harness'
 import { action, entry, fire, keepAlive, on, subflow, transform } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
 import { listen, type BrainEventPayload } from '#features/brain/be/services/brain.ts'

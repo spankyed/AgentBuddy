@@ -1,7 +1,7 @@
 // Whatever changes the settings, the settings plugin and the app shell both follow: the shell reads its hotkeys
 // from them, so a reset that left it with the old ones would keep keys the user no longer has
 import { expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 
 it('sends the app shell its hotkeys when the settings are reset, as it does on every change', async () => {
   const app = await startApp({ systems: ['host/settings'] })

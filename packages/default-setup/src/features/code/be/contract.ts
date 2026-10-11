@@ -1,7 +1,7 @@
 // The code system's contract: what it receives, what its own children send it, what it sends its plugin,
 // and its context. Its own module, not the feature's types barrel: `#generated/types` star-exports that,
 // and one `Contract` per feature would collide there. Codegen reads this without running anything.
-import type { ActionEntity, PromptEntity } from '@abuddy/sdk';
+import type { ActionEntity, PromptEntity } from '@apack/sdk';
 import type {
   CodeConnectedData, CodeSystemError, CommitLogEntry, Context, DirectoryContent, FileContent, FileInfo,
   GhPRComment, GhPullRequest, GhReviewThread, GitDiff, GitStatusFile, QuickOpenResult, SearchProgress,

@@ -10,11 +10,11 @@
 // "no" is a check that passes for the wrong reason.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 
 /**
  * Comments are prose, and prose about a command is not the command — a script explaining why it does *not* run
- * `abuddy test` would otherwise read as running it, which is how that was found. Stripping `#` can take a `#`
+ * `apack test` would otherwise read as running it, which is how that was found. Stripping `#` can take a `#`
  * inside a string with it; that direction is safe for these callers, because what is left is still scanned and
  * what they look for are commands, which do not live inside string literals in these scripts.
  */
@@ -35,7 +35,7 @@ export const rootScripts = (): Record<string, string> =>
  * nothing at all without this:
  * the name is not a root script, so there was no text to scan and the step passed vacuously. What is followed
  * is the workspace's *scripts*, which are commands, and not its spec files, which are prose: two of this
- * repo's own specs say "the app configured for abuddy test" in a title, and scanning those would report them.
+ * repo's own specs say "the app configured for apack test" in a title, and scanning those would report them.
  */
 export const workspaceScripts = (name: string): Record<string, string> | undefined => {
   const packages = path.join(REPO_ROOT, 'packages');
@@ -61,7 +61,7 @@ export const workspaceScripts = (name: string): Record<string, string> | undefin
  * work the step does not do and omitted work it does.
  *
  * Every flag in the tail is read, not the first: `typecheck:cli` names two workspaces and only
- * `@abuddy/cli` was seen.
+ * `@apack/cli` was seen.
  */
 const NPM_CALL = /npm\s+(?:run\s+)?([\w:-]+)([^\n&|;]*)/g;
 const WORKSPACE_FLAG = /(?:--workspace[= ]|-w\s+)(\S+)/g;

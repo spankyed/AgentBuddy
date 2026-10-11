@@ -4,7 +4,7 @@
  * original chat query that was blocked by the missing CWD.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context.ts';
 

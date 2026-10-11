@@ -63,10 +63,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BaseForm from '@abuddy/ui/components/BaseForm'
+import BaseForm from '@apack/ui/components/BaseForm'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
-import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@apack/sdk/models'
 import { DEFAULT_MODEL } from '../llm/model.ts'
 import { DEFAULT_RESULT_KEY } from './result-key.ts'
 import type { QueryNode } from './types.ts'

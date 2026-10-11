@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { X } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';

@@ -7,16 +7,16 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@abuddy/sdk/build';
-import { createFormatApplier } from '@abuddy/sdk/content';
-import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@abuddy/sdk/utils';
-import { untypedQx as qx, untypedTx as tx } from '@abuddy/ears';
-import { trash } from '@abuddy/sdk/repositories';
-import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
+import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apack/sdk/build';
+import { createFormatApplier } from '@apack/sdk/content';
+import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apack/sdk/utils';
+import { untypedQx as qx, untypedTx as tx } from '@apack/ears';
+import { trash } from '@apack/sdk/repositories';
+import { dropAttribute, entityIds } from '@apack/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
 import { FIXTURES, PACK_DIR, applyAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 
-const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
+const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8'));
 /** default-setup's notes format; the test setup registers its Note content writers with the pack */
 const NOTES_FORMAT = manifest.content!.formats.notes as ContentFormatConfig;
 
@@ -304,7 +304,7 @@ describe('notes applying (generic pipeline)', () => {
 
     expect(notesTitled('Welcome'), 'the apply created the note the user deleted outright').toEqual([]);
     // The run did work on the other notes, so the empty result above is this rule rather than an apply that
-    // imported nothing. The exemptions — no record, and wipe-and-replace — are in abuddy-sdk's applier spec
+    // imported nothing. The exemptions — no record, and wipe-and-replace — are in apack-sdk's applier spec
     expect(counts.updated, 'nothing was written at all, so the case above proves nothing').toBeGreaterThan(0);
   });
 

@@ -1,5 +1,5 @@
 import type { CodexTurnHandle } from './types.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import { registerThreadTeardown } from '#features/threads/be/thread-teardown.ts'
 
 const logger = createLogger('codex-handle-store')

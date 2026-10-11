@@ -1,7 +1,7 @@
 > **Done** (`214a720a7`, `5bb3aafdb`, `11adaa32c`, `89133cf71` on `AS/external-pack-authoring`). The text
 > below is the plan as written; the apply and migration targets were afterwards derived from
 > `PackManifest` with `Pick` rather than restating its fields (`48ead0c3e`). For the current layout, see
-> `packages/abuddy-host/src/packs/runtime/CLAUDE.md`.
+> `packages/apack-host/src/packs/runtime/CLAUDE.md`.
 
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
@@ -10,9 +10,9 @@
 
 Implement docs/archive/goals/goal-pack-apply-order-and-retry.md on AS/external-pack-authoring, at or after
 ce4ff5402 — the base its Background was surveyed at.
-Before Phase 1, confirm the base: `applyPackContent` in packages/abuddy-host/src/packs/runtime/apply.ts
+Before Phase 1, confirm the base: `applyPackContent` in packages/apack-host/src/packs/runtime/apply.ts
 records `packContentRevisions` for a failed content as well as a successful one, and
-`externalPackTargets` in packages/abuddy-host/src/packs/pack-registration.ts returns packs in
+`externalPackTargets` in packages/apack-host/src/packs/pack-registration.ts returns packs in
 registration order. If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -43,12 +43,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - make a failed content retry on every boot. `loader.spec.ts`'s "doesn't re-import unchanged failing content
   data on every boot" is a deliberate contract, not an oversight (Decision 3).
@@ -127,7 +127,7 @@ installed packs it depends on, with a cycle reported and its packs still returne
 its result.
 
 **Done when:** a spec covers a chain, a diamond, an edge to a pack that isn't installed, a cycle (every
-pack still returned, once, and the cycle logged), and a stable order for packs with no edges between them. `npm test -w @abuddy/host` passes.
+pack still returned, once, and the cycle logged), and a stable order for packs with no edges between them. `npm test -w @apack/host` passes.
 **Mutation:** returning the input unsorted fails the chain case.
 
 ### Phase 2 — the record of what a failed attempt faced
@@ -150,7 +150,7 @@ dependency content, and a pack that failed with settled dependencies is not.
 
 ### Phase 4 — the docs
 
-`abuddy-host/CLAUDE.md` (the applying paragraph and the `AppState` field list),
+`apack-host/CLAUDE.md` (the applying paragraph and the `AppState` field list),
 `src/packs/runtime/CLAUDE.md` (the boot sequence's content step), `src/app-state/index.ts`'s field comment,
 and `docs/public-facing/content.md` if it describes when a pack re-applies.
 
@@ -191,7 +191,7 @@ All four phases done, on `AS/external-pack-authoring`.
   reading both `packContentRevisions` and `contentRevisions` so a dependency on a built-in pack counts. State is read
   per pack inside the loop, not once outside it, so a pack sees what its dependencies written in the same
   run.
-- **Phase 4 — the docs.** `abuddy-host/CLAUDE.md`, `packs/runtime/CLAUDE.md` (the module table, the boot
+- **Phase 4 — the docs.** `apack-host/CLAUDE.md`, `packs/runtime/CLAUDE.md` (the module table, the boot
   sequence and the `contentManifest` note), the `AppState` field comment, and `docs/public-facing/content.md`.
 
 ### Conventional choices

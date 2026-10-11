@@ -13,9 +13,9 @@ fixture and template in the same change, and fix forward.
 Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard
   or test is mutation-checked.
-- Applying a new entity type from markdown or JSON needs only `abuddy.json`
+- Applying a new entity type from markdown or JSON needs only `apack.json`
   (a format in `content.formats`, an entry naming it, and optional content hooks from
-  the pack that owns the type), with no change under packages/abuddy-sdk. The
+  the pack that owns the type), with no change under packages/apack-sdk. The
   fixture pack proves it.
 - A pack that depends on default-setup content Notes and library documents with
   entries naming default-setup's formats (`{ "path", "format":
@@ -33,7 +33,7 @@ Finished when:
   host, default-setup and renderer unit suites pass.
 - `npm run test:external-pack`, the monorepo smoke E2E, the import-pack-content
   E2E, `npm run test:packaged-authoring`, and the example pack's
-  `abuddy test --app-root <repo>` pass.
+  `apack test --app-root <repo>` pass.
 - You give a final summary: phase → done/deferred, evidence, and the
   conventional choices you made.
 
@@ -43,10 +43,10 @@ Never:
   check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
 - pkill/killall Electron or node; launch the app outside the test env without
-  an isolated ABUDDY_USER_DATA_DIR.
+  an isolated APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or
   edit version/release metadata.
-- change the typed EARS types (packages/abuddy-sdk/TYPED-EARS.md) to make a
+- change the typed EARS types (packages/apack-sdk/TYPED-EARS.md) to make a
   call site compile.
 - loosen a failing assertion instead of investigating.
 ```
@@ -57,10 +57,10 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Status (2026-09-14, at `15553c837`).** Phases 1–5 are done (`7ea8bb8cf`…`15553c837`). Content entries carry their format settings inline (`format`, `fields`, `identity`, `tree`, `media`, `compiler` on each `content.sources` entry), so a pack that depends on default-setup repeats default-setup's whole notes field map to apply a Note, and can't content library documents without copying its compiler module. Default-setup's compiler modules live in `src/content/compilers/`; its content hooks are still in the features (`features/notes/be/content-hooks.ts`, `features/library/be/content-hooks.ts`). Phase 6 replaces inline settings with named formats (Decisions 1, 6, 11 and 12 describe the result).
 
-**The problem.** Every written entity type is hardcoded in the SDK. Adding one (a pack's own markdown-written type, or a new built-in) means a new compiler, a new applier, a generator entry and usually entity names or shapes in `@abuddy/sdk`. `706dc987e` went further in the same direction: it moved Document, Collection and Note into `SDK_ENTITIES` so the SDK's appliers could type them, and added `libraryCommands`/`noteCommands` to `BuiltinRepositories`. This goal takes the other direction: the SDK owns a generic mechanism, and packs describe their content in `abuddy.json`.
+**The problem.** Every written entity type is hardcoded in the SDK. Adding one (a pack's own markdown-written type, or a new built-in) means a new compiler, a new applier, a generator entry and usually entity names or shapes in `@apack/sdk`. `706dc987e` went further in the same direction: it moved Document, Collection and Note into `SDK_ENTITIES` so the SDK's appliers could type them, and added `libraryCommands`/`noteCommands` to `BuiltinRepositories`. This goal takes the other direction: the SDK owns a generic mechanism, and packs describe their content in `apack.json`.
 
 **Compile stage.**
-- `compilePack` (`abuddy-sdk/src/build/content-compiler.ts`) iterates the `STANDARD_COMPILERS` map (`compilers/standard.ts`: actions, prompts, flows, library, notes, faqs, settings), not the manifest's keys. A manifest key with no compiler, or whose value isn't a string, is skipped silently.
+- `compilePack` (`apack-sdk/src/build/content-compiler.ts`) iterates the `STANDARD_COMPILERS` map (`compilers/standard.ts`: actions, prompts, flows, library, notes, faqs, settings), not the manifest's keys. A manifest key with no compiler, or whose value isn't a string, is skipped silently.
 - `buildPackConfigFromManifest` (`manifest-bridge.ts`) spreads `content.sources` onto `PackConfig`'s top level as `Record<string, string>`, so a content key named `name`, `setup`, `features` or `compilers` clobbers config. The schema accepts object entries (`ContentSourceSchema`: `path`, `applier`, `entityType`, `lookupField`), but an object entry never compiles.
 - Each compiler's `write` names its own output file (`<key>.content.json` via `contentFile`/`contentPath` in `build/manifest.ts`), with one quirk: `faqs` writes `faq.content.json`, which `default-setup/src/features/settings/be/faqs.ts` reads.
 - Library and notes both copy their `media/` into the same compiled `media/`.
@@ -93,7 +93,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Preview.** `content/preview.ts` special-cases library and notes items to build the import dialog's tree.
 
-**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings register as defaults with the pack (`@abuddy/sdk/framework` `packSettingsRegistry`); only built-in packs have a settings content.
+**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings register as defaults with the pack (`@apack/sdk/framework` `packSettingsRegistry`); only built-in packs have a settings content.
 
 ## Decisions
 
@@ -128,7 +128,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
      }
    }
    ```
-   - The schema is the source of truth (`manifest-schema.ts` → `abuddy.schema.json`). `entityType` and `lookupField` are removed: flat JSON content use a format with `format: "json"`, `entity` and `identity`.
+   - The schema is the source of truth (`manifest-schema.ts` → `apack.schema.json`). `entityType` and `lookupField` are removed: flat JSON content use a format with `format: "json"`, `entity` and `identity`.
    - **A content entry is `{ path, format }` or `{ applier }`.** Any other key on an entry (`fields`, `identity`, `tree`, `entity`, `media`, `compiler`) is a validation error. Specialty keys (`actions`, `prompts`, `flows`, `settings`) accept a path string or `{ "path": … }`, nothing else.
    - **Format references.** An entry's `format` is a name in the pack's own `content.formats` (`"notes"`), or `"<dependency id>:<name>"` for a format a dependency defines. The built-in formats (`markdown-tree`, `json`) are used only inside a `content.formats` definition, never named by an entry.
    - **No overrides.** An entry can't change any part of the format it names. A pack that needs different settings (other frontmatter keys, another branch file, other defaults) defines its own format. Overrides may be added later as an additive key; see Deferred.
@@ -147,7 +147,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
    - Default-setup registers hooks for Note, Document and Collection that call their repository commands, so shortCodes, display order, `PARENT_OF`/`contains`, title validation, and `REFERENCES` sync on create and update keep working. Content code lives with the content sources: hook modules in `src/content/hooks/` (`notes.ts`, `library.ts`, importing the features' repositories through `#generated/repository`), compiler modules in `src/content/_compilers/`. Neither directory is scanned as content source.
 5. **Specialty compilers stay** for flows (the flow DSL and steps), actions and prompts (DSL defs), and settings. They keep their current keys, as a path string or `{ "path": … }`.
 6. **Unknown content keys fail the build.** A string entry whose key isn't a specialty key, and an object entry for a non-specialty key that isn't `{ path, format }` or `{ applier }`, is an error naming the key, not a silent skip. Migrate default-setup, the fixture pack, the example pack's manifest and the scaffold templates in the same change.
-7. **Library and notes leave the SDK.** Delete `compile-library.ts`, `library-utils.ts`, `compile-notes.ts`, `compile-faq.ts`, `library-applier.ts`, `notes-applier.ts`, `import-notes.ts` and any built-in names. `parseMarkdownSections` and the section content types move to default-setup's library compiler module. Move `ExportedItem`/`ExportedNote`/`CompiledFAQ` and the Document/Collection/Note shapes to default-setup, declared in its `abuddy.json` like its other entities. This reverses those parts of `706dc987e`; its Settings/Secret moves stay (see the Settings/Secrets internal-category plan).
+7. **Library and notes leave the SDK.** Delete `compile-library.ts`, `library-utils.ts`, `compile-notes.ts`, `compile-faq.ts`, `library-applier.ts`, `notes-applier.ts`, `import-notes.ts` and any built-in names. `parseMarkdownSections` and the section content types move to default-setup's library compiler module. Move `ExportedItem`/`ExportedNote`/`CompiledFAQ` and the Document/Collection/Note shapes to default-setup, declared in its `apack.json` like its other entities. This reverses those parts of `706dc987e`; its Settings/Secret moves stay (see the Settings/Secrets internal-category plan).
 8. **`BuiltinRepositories` loses its library and notes commands.** The SDK reaches them only through default-setup's registered content hooks.
 9. **FAQs use a default-setup format with a compiler module** (`src/content/_compilers/faqs.ts`, wrapping `compileMarkdownTree`: the question is the first `# heading`, which no field source expresses), with no `entity`: compiled, not written. The output is `faqs.content.json`; `settings/be/faqs.ts` reads it, typed by `FAQItem` in `settings/be/types.ts`.
 10. **Notes get proper change tracking.** Compiled notes carry `sourceHash` like library items, and the generic applier applies the same rules to every entry:
@@ -160,7 +160,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
     - Notes written before this change have no stored hash, so they count as user-owned and are never updated by content again (the welcome note included).
     - Library hashes aren't required to match the old ones. If they differ, written documents and collections are overwritten once, on the first boot after the upgrade, including user edits to them.
     Don't add code to avoid either.
-12. **A pack's compiler modules ship with its bundle.** A dependency's source tree isn't installed, so `abuddy build` bundles every compiler module named in the pack's `content.formats` into `dist/build/content-compilers.mjs` (exports keyed by format name), next to `steps.build.mjs`, with the same bundler and no FE or runtime imports.
+12. **A pack's compiler modules ship with its bundle.** A dependency's source tree isn't installed, so `apack build` bundles every compiler module named in the pack's `content.formats` into `dist/build/content-compilers.mjs` (exports keyed by format name), next to `steps.build.mjs`, with the same bundler and no FE or runtime imports.
     - A dependent's build resolves `"<dep>:<name>"` formats from the dependency's snapshot manifest, and loads a compiler module from the dependency's `build/content-compilers.mjs` (the build dir `resolveDepArtifacts` already returns for step modules). Its own formats' compiler modules still load from source with `tsx/esm/api`.
     - Built-in packs build the same file into `dist/build/`, so default-setup's formats work for dependents in the monorepo and in the packaged app alike.
     - Because every pack compiles a named format with the same settings and module, records and `sourceHash` for the same sources match across packs.
@@ -181,14 +181,14 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 ### Phase 2 — Object entries end to end
 
-- Schema (`ContentSourceSchema`) with the fields in Decision 1 (without `entityType`/`lookupField`), plus `abuddy.schema.json` (`schema:check`).
+- Schema (`ContentSourceSchema`) with the fields in Decision 1 (without `entityType`/`lookupField`), plus `apack.schema.json` (`schema:check`).
 - `manifest-bridge.ts` puts entries under `packConfig.content`; `compilePack` follows Decision 11 and routes `format` entries to the generic compiler, `compiler` entries to the pack module (loaded with `tsx/esm/api`), and specialty keys to their compilers. Delete `compile.config.ts` support in the SDK and CLI.
 - `generateAppliers` emits a generic applier registration for object entries. `contentManifest.artifacts` comes from the entries that have a applier, not from a list of excluded names.
 - The content-writer registry (Decision 4): the manifest's `contentWriters`, schema and validation (an entity type the pack itself declares), pack-entry registration, and lookup by entity type in the generic applier.
-- `abuddy validate` (and the build) reports the Decision 1, 4 and 6 errors.
+- `apack validate` (and the build) reports the Decision 1, 4 and 6 errors.
 - The fixture pack (`tests/fixtures/external-pack`) content a pack-owned entity type from markdown with no hooks, and uses a `.ts` compiler module for a second entry. The external-pack test asserts the rows, and `test:packaged-authoring` builds a pack with a `.ts` compiler module through the packaged app's CLI.
 
-**Done when:** a pack content its own entity type from `abuddy.json` alone, a `.ts` compiler module builds in both the monorepo and the packaged app, each validation error has a test, and a content key named like a `PackConfig` field compiles correctly.
+**Done when:** a pack content its own entity type from `apack.json` alone, a `.ts` compiler module builds in both the monorepo and the packaged app, each validation error has a test, and a content key named like a `PackConfig` field compiles correctly.
 
 ### Phase 3 — Migrate notes, then library
 
@@ -207,7 +207,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 - `api:update` and review the `etc/*.api.md` diffs; update anything importing the moved types (renderer import dialog, host, CLI).
 - Run the import-pack-content E2E and `test:packaged-authoring`.
 
-- Add a test that fails when a module under `packages/abuddy-sdk/src/build` or `src/content` imports or names a library or notes entity type (Document, Collection, Note, their shapes or exported content types), with an explicit allowlist for anything legitimate.
+- Add a test that fails when a module under `packages/apack-sdk/src/build` or `src/content` imports or names a library or notes entity type (Document, Collection, Note, their shapes or exported content types), with an explicit allowlist for anything legitimate.
 
 **Done when:** that test passes and is mutation-checked, and the E2E and packaged-authoring runs pass.
 
@@ -220,9 +220,9 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 ### Phase 6 — Named formats
 
-- Schema: top-level `content.formats` (name → format definition, name `^[a-z][a-z0-9-]*$`) and the Decision 1 entry shape (`{ path, format }` or `{ applier }`); the old inline entry keys are removed. Every Decision 1 validation error has a test. `abuddy.schema.json`, `api:update`.
+- Schema: top-level `content.formats` (name → format definition, name `^[a-z][a-z0-9-]*$`) and the Decision 1 entry shape (`{ path, format }` or `{ applier }`); the old inline entry keys are removed. Every Decision 1 validation error has a test. `apack.schema.json`, `api:update`.
 - Resolution: one SDK function resolves a pack's `content.sources` against its own `content.formats` and its dependencies' snapshot manifests, used by `buildPackConfigFromManifest`, `compilePack` and `generate-entries` (applier registration options, written keys, entity validation). A dependency format carries where its compiler module loads from (Decision 12).
-- Build (Decision 12): `abuddy build` writes `dist/build/content-compilers.mjs` for packs whose formats name compiler modules; a dependent's build loads dependency compiler modules from it. The CLI passes dependency manifests and build dirs to the bridge.
+- Build (Decision 12): `apack build` writes `dist/build/content-compilers.mjs` for packs whose formats name compiler modules; a dependent's build loads dependency compiler modules from it. The CLI passes dependency manifests and build dirs to the bridge.
 - Move default-setup's content hooks to `src/content/hooks/` (`features/notes/be/content-hooks.ts` → `notes.ts`, `features/library/be/content-hooks.ts` → `library.ts`) and update `contentWriters` paths, specs and docs.
 - Migrate default-setup (`notes`, `library`, `faqs` formats; entries `{ path, format }`), the external fixture pack (a `memos` markdown format and a `quick-memos` compiler format), the dependent-pack fixture (`default-setup:notes` and `default-setup:library`, no field maps or compiler modules), `test:packaged-authoring` (its own compiler format, and `default-setup:notes` through the built dependency), the scaffold template, the parity harness and specs, and the import-pack-content E2E.
 - The dependent-pack spec asserts identical rows (including `sourceHash`) to default-setup's own `notes` and `library` entries over the same sources, and that library media and sections come through default-setup's bundled compiler module.
@@ -239,7 +239,7 @@ Recorded after the PR #175 review (the stack collapse onto `AS/generic-content-c
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — Spike and parity gate | Done | `default-setup/tests/unit/content-parity/` (goldens first recorded in `7ea8bb8cf`). After the review the v1/v2 fixtures gained an unquoted `title: 2024`, a change two folder levels deep (notes and library) and a `REFERENCES` change, which `notes-change-tracking.spec.ts` checks. The v1/v2 scenarios now content pinned action and prompt fixtures (`tests/fixtures/content-parity/{v1,v2}/{actions,prompts}`), so the goldens move only when applying changes; `default-setup.json` still follows the pack's own sources. |
-| 2 — Object entries end to end | Done | `de7a41228`, `477f34ca3`. After the review `abuddy validate` runs codegen in memory, so it reports a format entity no pack declares, a missing dependency format and a missing `contentWriters` export (`add-feature-validate.spec.ts`; one error at a time, as `build`). Content keys are validated with the `content.formats` name pattern, `format.media` must be a relative path inside the pack, and `markdown-tree` with an entity list is rejected. |
+| 2 — Object entries end to end | Done | `de7a41228`, `477f34ca3`. After the review `apack validate` runs codegen in memory, so it reports a format entity no pack declares, a missing dependency format and a missing `contentWriters` export (`add-feature-validate.spec.ts`; one error at a time, as `build`). Content keys are validated with the `content.formats` name pattern, `format.media` must be a relative path inside the pack, and `markdown-tree` with an entity list is rejected. |
 | 3 — Migrate notes, then library | Done | Parity gate and `dependent-pack.spec.ts` pass. |
 | 4 — Delete the SDK specifics | Done | `no-pack-content-specifics.spec.ts` passes (and flagged a stray library module name in a comment during the review fixes). A deliberate mutation check of it isn't recorded. |
 | 5 — FAQs and docs | Done | `docs/public-facing/content.md`; the FAQ compiler is covered by `faqs-compiler.spec.ts` (added after the review, which also fixed one FAQ's broken frontmatter). |
@@ -253,13 +253,13 @@ Conventional choices visible in the code:
 - The markdown walker skips only the format's configured `media` folder, and nothing when none is set. Frontmatter may use CRLF line endings and a UTF-8 BOM.
 - `wipe-and-replace` removes every row of the entry's configured entity types (`createFormatApplier`'s `entities`), including other packs' and users' rows, as the import dialog states. Media links are rewritten in every text field.
 - The import dialog lists only keys the pack registered appliers for, and refuses a pack that isn't installed.
-- `abuddy build` fails before writing the snapshot when the apply-compiler bundle fails.
+- `apack build` fails before writing the snapshot when the apply-compiler bundle fails.
 - Appliers are registered per pack (`registerAppliers(packId, …)`); `contentData` runs only the appliers of the pack the directory's `content.json` names, and `teardownPack` unregisters them.
 - Content-writer imports in generated code are named by position.
 - The boot apply hash covers every written key's compiled file, `settings` included; `contentPolicy.skipAtBoot` keeps boot applying from resetting settings.
 - Applying errors are collected per record in `counts.errors`; boot applying reports them, and Settings → Import pack content shows them.
 
-Checks run at the collapsed branch head (after the review fixes): `npm run typecheck`, `api:check`, `schema:check`, the sdk, default-setup, api, host and cli unit suites, and `npm run test:external-pack` and `npm run test:packaged-authoring` pass. Not run then: the renderer unit suite, the smoke and import-pack-content E2E, and the example pack's `abuddy test --app-root`.
+Checks run at the collapsed branch head (after the review fixes): `npm run typecheck`, `api:check`, `schema:check`, the sdk, default-setup, api, host and cli unit suites, and `npm run test:external-pack` and `npm run test:packaged-authoring` pass. Not run then: the renderer unit suite, the smoke and import-pack-content E2E, and the example pack's `apack test --app-root`.
 
 ### Mutation checks
 
@@ -275,17 +275,17 @@ Run during the review fixes; each check failed the named test and was restored:
 | Empty frontmatter defaults | Apply defaults only to `undefined` | `content-compiler.spec.ts` "gives empty frontmatter values the default" |
 | Per-pack appliers | Run every pack's appliers; append instead of replace; drop `unregisterAppliers` from teardown | `content-registry.spec.ts` (2, then 1), `pack-lifecycle.spec.ts` |
 | Import errors reach the dialog | Stub the reported errors to `[]` | `library-commands.spec.ts` import-errors test |
-| Stale `isolatedDataDir` cleanup | Skip the cleanup | `abuddy-cli/tests/harness/isolated-data-dir.spec.ts` |
+| Stale `isolatedDataDir` cleanup | Skip the cleanup | `apack-cli/tests/harness/isolated-data-dir.spec.ts` |
 | Import preview lists only importable keys | Drop the registered-key filter; drop the not-installed error | `preview.spec.ts` |
 | Configured media folder, CRLF/BOM, entity-list rule, media path rule, empty icon | Revert each | `content-compiler.spec.ts`, `manifest-schema.spec.ts`, `notes-format.spec.ts` |
-| `abuddy validate` Phase 2 errors | Remove the in-memory codegen check | `add-feature-validate.spec.ts` |
+| `apack validate` Phase 2 errors | Remove the in-memory codegen check | `add-feature-validate.spec.ts` |
 | Missing dependency compiler module, bad compiler output | Remove each check | `content-compiler.spec.ts` |
 | Build stops on a failed compiler bundle | Restore the old order | `clear-build-output.spec.ts` |
 | Wipe types from configuration | Derive them from the records again | `applier.spec.ts` wipe tests |
 | Stale references removed on re-apply | Stop `syncReferences` removing links | `notes-change-tracking.spec.ts` |
-| Content-writer ownership and rollback | Remove the ownership check, the hook rollback, the artifact rollback | `abuddy-host/tests/packs/registration.spec.ts` |
+| Content-writer ownership and rollback | Remove the ownership check, the hook rollback, the artifact rollback | `apack-host/tests/packs/registration.spec.ts` |
 | FAQ ordering, heading skip, category string | Remove each | `faqs-compiler.spec.ts` |
-| Phase 4 guard | Add `Collection` to a file under `abuddy-sdk/src/content/` | `no-pack-content-specifics.spec.ts` |
+| Phase 4 guard | Add `Collection` to a file under `apack-sdk/src/content/` | `no-pack-content-specifics.spec.ts` |
 | Parity gate: field mapping | Map the notes format's `title` from `frontmatter.heading` | 6 of 7 `content-parity.spec.ts` scenarios (all but `default-setup`) |
 | Content-writer lookup | Skip the entity's `find` hook | `library-commands.spec.ts` (2 tests). The parity gate doesn't catch it: written rows are found by `contentKey` first, so the hook matters only for rows another pack or the user owns |
 | Bundled compiler loading (Phase 6) | Move `content-compilers.mjs` aside | `test:packaged-authoring` build fails with "build default-setup first" |
@@ -301,12 +301,12 @@ Not recorded: the Constraints' parity-gate mutation for manifest-key routing, an
 
 - Commit as you go in logical chunks, with conventional messages and no Co-Authored-By or Claude-Session lines. Check `git diff --cached` before each commit and commit with `git commit -- <paths>`. Never push or tag.
 - Never publish externally: no `npm publish` (use `npm pack` and `--dry-run`), no real GitHub releases. CI workflows may be written, not triggered.
-- Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `abuddy-test` namespace.
-- Don't launch the app outside the test environment without isolating `ABUDDY_USER_DATA_DIR`.
+- Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `apack-test` namespace.
+- Don't launch the app outside the test environment without isolating `APACK_USER_DATA_DIR`.
 - Never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit monorepo version/release metadata.
-- The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`). Applier code that needs runtime field names uses the untyped host `qx` or a hook, not a type change.
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). Applier code that needs runtime field names uses the untyped host `qx` or a hook, not a type change.
 - Investigate failing tests before changing assertions; mutation-check every new guard or test, the parity gate included (break a field mapping, the notes hash skip, the manifest-key routing and the content-writer lookup, and confirm each fails).
 - No backward compatibility: no shims, deprecated fields or fallbacks for the old content format, and no data migrations, adoption rules or hash compatibility for existing rows (Decision 10's accepted upgrade effects). Migrate every in-repo manifest, fixture and template and fix forward.
 - Prefer libraries over hand-rolled code (an established YAML/frontmatter parser, since the repo has none; zod for the schema). No polling or hacky workarounds.
-- External packs are first-class. Keep the in-repo fixture pack, the example pack (`/Users/spankyed/Develop/Projects/abuddy-external/example-pack`) and `test:packaged-authoring` passing throughout.
-- Manual API boots: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js`.
+- External packs are first-class. Keep the in-repo fixture pack, the example pack (`/Users/spankyed/Develop/Projects/apack-external/example-pack`) and `test:packaged-authoring` passing throughout.
+- Manual API boots: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js`.

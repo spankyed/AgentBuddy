@@ -7,13 +7,13 @@
 //
 // What this file cannot check is the *delivery narrowing*: the harness has one client, so `emitted` sees
 // whatever the bus put out whether or not it was addressed. The addressing itself is covered where it lives
-// (`@abuddy/host`'s `tests/bus/reply.spec.ts` and `@app/api`'s `tests/transport/sub-scope.spec.ts`). What is
+// (`@apack/host`'s `tests/bus/reply.spec.ts` and `@app/api`'s `tests/transport/sub-scope.spec.ts`). What is
 // covered here is the pack's half: that the handler answers its sender at all.
 //
 // Every case connects first: the bus holds sends to plugins until a client does, so an answer would otherwise
 // have nowhere to go. The one case that deliberately does not is the last.
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 
 const DATABASE = 'default-setup/database'
 /**

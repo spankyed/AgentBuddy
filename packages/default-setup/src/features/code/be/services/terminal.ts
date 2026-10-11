@@ -8,7 +8,7 @@ import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types.ts'
 import { EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 import { ref } from '#generated/ref.ts';
 
 const logger = createLogger('terminal');
@@ -324,7 +324,7 @@ class TerminalService {
     }
 
     // Set terminal identification so shells know they're in a capable terminal
-    sanitized.TERM_PROGRAM = 'AgentBuddy'
+    sanitized.TERM_PROGRAM = 'apack'
     sanitized.COLORTERM = 'truecolor'
 
     return sanitized
@@ -333,7 +333,7 @@ class TerminalService {
   private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
     const shellName = path.basename(shell).replace(/\.exe$/i, '').toLowerCase()
 
-    const comment = '# AgentBuddy listener'
+    const comment = '# apack listener'
 
     if (shellName.includes('bash')) {
       ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ${comment}\n`)

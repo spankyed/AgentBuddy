@@ -13,7 +13,7 @@ import { WebSocketServer } from 'ws';
 import { initTRPC } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
-import { _byDeadline, _whenSatisfied } from '@abuddy/sdk/testing/waiting';
+import { _byDeadline, _whenSatisfied } from '@apack/sdk/testing/waiting';
 import { createContext, type Context } from '@/transport/context';
 
 /** A connection as the adapter describes one, which is the only shape `createContext` accepts */

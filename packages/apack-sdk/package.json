@@ -1,0 +1,228 @@
+{
+  "name": "@apack/sdk",
+  "version": "0.1.0",
+  "description": "Pack-facing API and types for apack packs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spankyed/apack.git",
+    "directory": "packages/apack-sdk"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "apack.schema.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:package": "tsx ../../scripts/build-package.ts .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "api:build": "node -e \"require('fs').rmSync('.temp', { recursive: true, force: true })\" && tsc -p tsconfig.api-extractor.json",
+    "schema:check": "tsx scripts/generate-schema.ts --check",
+    "api:check": "npm run api:build && tsx ../../scripts/api-reports.ts .",
+    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local",
+    "schema:update": "tsx scripts/generate-schema.ts"
+  },
+  "exports": {
+    ".": {
+      "@apack/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./designations": {
+      "@apack/source": "./src/designations/index.ts",
+      "types": "./dist/designations/index.d.ts",
+      "default": "./dist/designations/index.js"
+    },
+    "./events": {
+      "@apack/source": "./src/events/index.ts",
+      "types": "./dist/events/index.d.ts",
+      "default": "./dist/events/index.js"
+    },
+    "./env": {
+      "@apack/source": "./src/env/index.ts",
+      "types": "./dist/env/index.d.ts",
+      "default": "./dist/env/index.js"
+    },
+    "./framework": {
+      "@apack/source": "./src/framework/index.ts",
+      "types": "./dist/framework/index.d.ts",
+      "default": "./dist/framework/index.js"
+    },
+    "./helpers": {
+      "@apack/source": "./src/helpers/index.ts",
+      "types": "./dist/helpers/index.d.ts",
+      "default": "./dist/helpers/index.js"
+    },
+    "./types": {
+      "@apack/source": "./src/types/index.ts",
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./ids": {
+      "@apack/source": "./src/ids/index.ts",
+      "types": "./dist/ids/index.d.ts",
+      "default": "./dist/ids/index.js"
+    },
+    "./database-console": {
+      "@apack/source": "./src/database-console/index.ts",
+      "types": "./dist/database-console/index.d.ts",
+      "default": "./dist/database-console/index.js"
+    },
+    "./repositories": {
+      "@apack/source": "./src/repositories/index.ts",
+      "types": "./dist/repositories/index.d.ts",
+      "default": "./dist/repositories/index.js"
+    },
+    "./fe": {
+      "@apack/source": "./src/fe/index.ts",
+      "types": "./dist/fe/index.d.ts",
+      "default": "./dist/fe/index.js"
+    },
+    "./fe/references": {
+      "@apack/source": "./src/fe/reference-types.ts",
+      "types": "./dist/fe/reference-types.d.ts",
+      "default": "./dist/fe/reference-types.js"
+    },
+    "./actions": {
+      "@apack/source": "./src/actions/index.ts",
+      "types": "./dist/actions/index.d.ts",
+      "default": "./dist/actions/index.js"
+    },
+    "./artifacts": {
+      "@apack/source": "./src/artifacts/index.ts",
+      "types": "./dist/artifacts/index.d.ts",
+      "default": "./dist/artifacts/index.js"
+    },
+    "./blocks": {
+      "@apack/source": "./src/blocks/index.ts",
+      "types": "./dist/blocks/index.d.ts",
+      "default": "./dist/blocks/index.js"
+    },
+    "./steps": {
+      "@apack/source": "./src/steps/index.ts",
+      "types": "./dist/steps/index.d.ts",
+      "default": "./dist/steps/index.js"
+    },
+    "./build": {
+      "@apack/source": "./src/build/index.ts",
+      "types": "./dist/build/index.d.ts",
+      "default": "./dist/build/index.js"
+    },
+    "./runtime": {
+      "@apack/source": "./src/runtime/index.ts",
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
+    },
+    "./logger": {
+      "@apack/source": "./src/logger/index.ts",
+      "types": "./dist/logger/index.d.ts",
+      "default": "./dist/logger/index.js"
+    },
+    "./templates": {
+      "@apack/source": "./src/templates/index.ts",
+      "types": "./dist/templates/index.d.ts",
+      "default": "./dist/templates/index.js"
+    },
+    "./utils": {
+      "@apack/source": "./src/utils/index.ts",
+      "types": "./dist/utils/index.d.ts",
+      "default": "./dist/utils/index.js"
+    },
+    "./utils/pure": {
+      "@apack/source": "./src/utils/pure.ts",
+      "types": "./dist/utils/pure.d.ts",
+      "default": "./dist/utils/pure.js"
+    },
+    "./utils/compare-versions": {
+      "@apack/source": "./src/utils/compare-versions.ts",
+      "types": "./dist/utils/compare-versions.d.ts",
+      "default": "./dist/utils/compare-versions.js"
+    },
+    "./services": {
+      "@apack/source": "./src/services/index.ts",
+      "types": "./dist/services/index.d.ts",
+      "default": "./dist/services/index.js"
+    },
+    "./models": {
+      "@apack/source": "./src/services/models.ts",
+      "types": "./dist/services/models.d.ts",
+      "default": "./dist/services/models.js"
+    },
+    "./cron": {
+      "@apack/source": "./src/utils/cron.ts",
+      "types": "./dist/utils/cron.d.ts",
+      "default": "./dist/utils/cron.js"
+    },
+    "./content": {
+      "@apack/source": "./src/content/index.ts",
+      "types": "./dist/content/index.d.ts",
+      "default": "./dist/content/index.js"
+    },
+    "./testing": {
+      "@apack/source": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./apack.schema.json": "./apack.schema.json",
+    "./runtime/internals": {
+      "@apack/source": "./src/runtime/internals.ts"
+    },
+    "./testing/pack-fixture": {
+      "@apack/source": "./src/testing/pack-fixture.ts"
+    },
+    "./testing/serialisation-matrix": {
+      "@apack/source": "./src/testing/serialisation-matrix.ts"
+    },
+    "./testing/waiting": {
+      "@apack/source": "./src/testing/waiting.ts"
+    }
+  },
+  "peerDependencies": {
+    "@tiptap/pm": "^3.22.3",
+    "@tiptap/vue-3": "^3.22.2",
+    "ai": "^7.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": ">=5.7",
+    "vue": "^3.5.18",
+    "xstate": "^5.19.2",
+    "zod": "^3.25.76"
+  },
+  "peerDependenciesMeta": {
+    "@tiptap/pm": {
+      "optional": true
+    },
+    "@tiptap/vue-3": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.59.1",
+    "ai": "^7.0.100",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4",
+    "xstate": "^5.19.2",
+    "zod-to-json-schema": "^3.25.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "@apack/ears": "^0.1.0",
+    "yaml": "^2.9.1"
+  }
+}

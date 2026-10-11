@@ -11,9 +11,9 @@
 Implement docs/goals/goal-actions-and-seams.md on AS/plugin-contract, at or after e806a36c3 — the base
 its Background was surveyed at. It finishes docs/archive/plans/host-seams.md, whose steps 1, 2 and 5 have landed
 (a07b5c095, e5580d6b4, 4d649fc0b); this goal is its steps 3 and 4 plus the docs they falsify.
-Before Phase 1, confirm the base: `Message` in packages/abuddy-sdk/src/events/index.ts has `from?: string`
-and no `via`; `packages/abuddy-sdk/src/services/index.ts` declares `emitter.broadcastToPlugin` as
-`typeof untypedBroadcastToPlugin`; `packages/abuddy-host/src/features/packs/fe/frontends.ts` imports
+Before Phase 1, confirm the base: `Message` in packages/apack-sdk/src/events/index.ts has `from?: string`
+and no `via`; `packages/apack-sdk/src/services/index.ts` declares `emitter.broadcastToPlugin` as
+`typeof untypedBroadcastToPlugin`; `packages/apack-host/src/features/packs/fe/frontends.ts` imports
 `ShellPackFrontends` from `../../application/fe/public.ts`; and `HOST_SRC_ROOT` is in
 scripts/check-import-specifiers.ts. If they don't, stop and say so — the plan was surveyed somewhere else.
 That last file was being edited by hand when this was written, in `findContractLeafImports`, which this
@@ -31,7 +31,7 @@ Finished when:
 - A message an action sends carries `from` (its pack) and `via` (`action:<label>`); the four sites that
   render a sender show both.
 - `git grep HOST_SRC_ROOT` returns nothing, no host feature imports another feature's `fe/`, and
-  `packages/abuddy-host/src/features/*/fe/public.ts` is gone.
+  `packages/apack-host/src/features/*/fe/public.ts` is gone.
 - No doc or comment still says a send an action makes carries no sender.
 - `npm run typecheck`, `npm run test:unit`, `npm run api:check`, `npm run facade:check -w @app/default-setup`,
   `npm run build`, `npm run test:external-pack`, `npm test` and `npm run test:packaged-authoring` pass.
@@ -48,16 +48,16 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - let a bare feature id compile from an action (Decision 2). The `@ts-expect-error` cases in
-  abuddy-cli/tests/build/facade-typing.spec.ts are the guard; if they go unused, you broke the rule.
-- give the host an `abuddy.json`, or add a table of blessed exceptions to a gate. Both were investigated
+  apack-cli/tests/build/facade-typing.spec.ts are the guard; if they go unused, you broke the rule.
+- give the host an `apack.json`, or add a table of blessed exceptions to a gate. Both were investigated
   and rejected; docs/archive/plans/host-seams.md records why.
 ```
 
@@ -71,7 +71,7 @@ names features by bare id like a pack (step 5). What is left is steps 3 and 4.
 ### Actions are the last sender that cannot say who it is
 
 `services.emitter.broadcastToPlugin` is declared `typeof untypedBroadcastToPlugin`
-(`packages/abuddy-sdk/src/services/index.ts:40`) — the unbound function — and an action runs outside any
+(`packages/apack-sdk/src/services/index.ts:40`) — the unbound function — and an action runs outside any
 pack scope, reached through `runActionCode` (`packages/default-setup/src/extensions/steps/action/sandbox.ts:18`),
 which already takes a `label` and builds `createLogger('action:${label}')`.
 
@@ -79,8 +79,8 @@ After steps 2 and 5, the unbound sends have exactly two users left in the repo:
 
 | Module | Sends | Why unbound |
 |---|---|---|
-| `abuddy-sdk/src/services/index.ts` | 5 | the action emitter — this goal binds it |
-| `abuddy-sdk/src/logger/report-error.ts` | 2 | SDK code sending on behalf of whoever called `reportError`; the caller is a logger source (`'bus'`, `'action:x'`), not a pack |
+| `apack-sdk/src/services/index.ts` | 5 | the action emitter — this goal binds it |
+| `apack-sdk/src/logger/report-error.ts` | 2 | SDK code sending on behalf of whoever called `reportError`; the caller is a logger source (`'bus'`, `'action:x'`), not a pack |
 
 So after Phase 1 the set of senders that stamp nothing is one module, for a reason that will not change.
 
@@ -88,7 +88,7 @@ So after Phase 1 the set of senders that stamp nothing is one module, for a reas
 
 It is gone from default-setup, replaced by two mechanisms rather than renamed: the contract
 (`fe/contract.ts`, types only) and the readers `#generated/fe` generates. The host's three `fe/public.ts`
-export runtime values and have two consumers: `abuddy-host/src/fe/index.ts:8-10` re-exports all three — the
+export runtime values and have two consumers: `apack-host/src/fe/index.ts:8-10` re-exports all three — the
 package's own export surface, not a crossing — and `features/packs/fe/frontends.ts:7` imports the type
 `ShellPackFrontends` from `../../application/fe/public.ts`, **the only cross-feature host frontend import
 there is**. `ShellPackFrontends` (`features/application/fe/types.ts:12`) is a port: the shell takes it, the
@@ -98,7 +98,7 @@ packs feature implements it (`createPackFrontends(io, packs): ShellPackFrontends
 
 ### Docs this work falsifies
 
-- `Message.from`'s comment (`abuddy-sdk/src/events/index.ts`) says a sender is "absent … on one an action
+- `Message.from`'s comment (`apack-sdk/src/events/index.ts`) says a sender is "absent … on one an action
   makes through `services.emitter`". Phase 1 makes that false.
 - The root `CLAUDE.md` envelope bullet describes a message as `{ to, event, from? }`.
 - `docs/goals/wont-do/goal-sender-enforced-audiences.md` records "an action's sends can't stamp" as
@@ -121,10 +121,10 @@ Final.
    edits, exports and copies into another pack, where a bare name would rebind silently. The reason is
    recorded in three places as of 8749be528; keep it true.
 3. **A port lives at the seam.** `ShellPackFrontends`, and any sibling on `application/fe/public.ts:6` the
-   packs feature implements, moves into `abuddy-host/src/fe/`, which both features already import from.
+   packs feature implements, moves into `apack-host/src/fe/`, which both features already import from.
 4. **The exception is deleted, not registered.** `HOST_SRC_ROOT` and the `public` branch go; nothing
    replaces them.
-5. **The `fe/public.ts` barrels fold into `abuddy-host/src/fe/index.ts`.** They are the package's export
+5. **The `fe/public.ts` barrels fold into `apack-host/src/fe/index.ts`.** They are the package's export
    surface, not the retired cross-feature door. Do not rename them `contract.ts`: a contract is type-only
    and these hold runtime exports.
 
@@ -136,7 +136,7 @@ Final.
 - `services.emitter` carries a pack identity and the running action's label, threaded through
   `runActionCode` (`default-setup/src/extensions/steps/action/sandbox.ts`), which already has both.
 - The four sites that render a sender append `via` when present, exactly as they append `from`:
-  `abuddy-host/src/bus/machine.ts` (two drops), `abuddy-host/src/bus/client-events.ts`, and the shell's
+  `apack-host/src/bus/machine.ts` (two drops), `apack-host/src/bus/client-events.ts`, and the shell's
   `features/application/fe/machine.ts` and `fe/connection.ts`. The lines read:
   `Dropped "MEMO_ADDED" sent by "default-setup" (action:summarise-thread) to the "memo-pack/memos" plugin, …`
 - **Add `via` to the `bus.send` input schema** beside `from`
@@ -156,16 +156,16 @@ from the sandbox's binding fails a named spec; dropping `via` from a rendering s
 
 ### Phase 2 — Move the port, delete the exception
 
-- Move `ShellPackFrontends` (Decision 3) into `abuddy-host/src/fe/`; point `features/packs/fe/frontends.ts`
+- Move `ShellPackFrontends` (Decision 3) into `apack-host/src/fe/`; point `features/packs/fe/frontends.ts`
   at it. Only that one moves: of the four names on `application/fe/public.ts:6`, `ShellNotify` and
   `ShellStorage` are used by the renderer and `ShellOptions` by neither feature, so they are the shell's own
   contract reaching its composer through the package barrel — which is not a crossing.
 - Delete `HOST_SRC_ROOT` and the `public` branch in `findCrossFeatureImports`, and the spec case that pins
   the exception (Decision 4). Read that file fresh: it was being edited by hand in a different function.
-- Fold the three `fe/public.ts` barrels into `abuddy-host/src/fe/index.ts` (Decision 5).
+- Fold the three `fe/public.ts` barrels into `apack-host/src/fe/index.ts` (Decision 5).
 
 **Done when:** `npm run check:specifiers` passes with no exception in `findCrossFeatureImports`;
-`git grep HOST_SRC_ROOT` and `git grep "fe/public"` under `packages/abuddy-host/src/features` return
+`git grep HOST_SRC_ROOT` and `git grep "fe/public"` under `packages/apack-host/src/features` return
 nothing; `npm run typecheck`, `npm run test:unit`, `npm test` pass. Mutation: adding a cross-feature `fe/`
 import in the host is reported, with no exception left to excuse it.
 
@@ -175,7 +175,7 @@ import in the host is reported, with no exception left to excuse it.
   Say so and say what still stands; do not reopen the goal (the user's decision).
 - Update `docs/archive/plans/host-seams.md`: steps 3 and 4 landed, with the commits.
 - **A spec pinning which modules send unbound.** After Phase 1 that set is one —
-  `abuddy-sdk/src/logger/report-error.ts`, which sends on behalf of a caller it can't name. A spec asserting
+  `apack-sdk/src/logger/report-error.ts`, which sends on behalf of a caller it can't name. A spec asserting
   the set hasn't grown makes "a new sender should bind one" a failing test rather than something to
   remember, the way `import-specifiers.spec.ts` now asserts a case per `CHECKS` entry.
 
@@ -209,9 +209,9 @@ fixed. `via` ended up wider than Decision 1 settled, which Phase 3 had invited a
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — Actions send as their pack | done | `576873cbe`. `default-setup/tests/unit/action-sandbox.spec.ts`, `abuddy-sdk/tests/services/emitter.spec.ts`, `api/tests/unit/bus-send-sender.spec.ts`. Four mutations: the sandbox's label, `senderSuffix`'s `via`, the shell's notify, the tRPC schema |
-| 2 — Move the port, delete the exception | done | `9d80d94ff`. `abuddy-cli/tests/build/import-specifiers.spec.ts`. Two mutations: re-pointing `frontends.ts` at the shell's types, and dropping the published-entry exception |
-| 3 — The invariant, and the docs | done; its optional spec deliberately not built | `2e51651da`. `abuddy-sdk/tests/logger/report-error.spec.ts`. Two mutations, one per `reportError` send |
+| 1 — Actions send as their pack | done | `576873cbe`. `default-setup/tests/unit/action-sandbox.spec.ts`, `apack-sdk/tests/services/emitter.spec.ts`, `api/tests/unit/bus-send-sender.spec.ts`. Four mutations: the sandbox's label, `senderSuffix`'s `via`, the shell's notify, the tRPC schema |
+| 2 — Move the port, delete the exception | done | `9d80d94ff`. `apack-cli/tests/build/import-specifiers.spec.ts`. Two mutations: re-pointing `frontends.ts` at the shell's types, and dropping the published-entry exception |
+| 3 — The invariant, and the docs | done; its optional spec deliberately not built | `2e51651da`. `apack-sdk/tests/logger/report-error.spec.ts`. Two mutations, one per `reportError` send |
 
 ### Conventional choices
 
@@ -254,7 +254,7 @@ Details the doc left open, decided while implementing:
   excepted a published module *inside* a feature, which handed `host/settings` a licence no other feature had
   (`a8074ef93`); and the shell's deferred refusal named no sender (`931a4ce7c`).
 - **`_sendToLocalPlugin` has no caller.** Nothing in any package's source calls it — only its own definition and
-  `check:specifiers`' name list — while `packages/abuddy-host/CLAUDE.md` still describes it as the path the
+  `check:specifiers`' name list — while `packages/apack-host/CLAUDE.md` still describes it as the path the
   renderer's `sendToPlugin` takes. The behaviour that doc describes is right; the function it credits is not
   involved. Removing an `@internal` export was left as a separate decision.
 
@@ -263,17 +263,17 @@ Details the doc left open, decided while implementing:
 | Invariant | Guard |
 |---|---|
 | A message an action sends carries its pack in `from` and `action:<label>` in `via` | `default-setup/tests/unit/action-sandbox.spec.ts` |
-| A send made with no action carries no `via` | `abuddy-sdk/tests/services/emitter.spec.ts` |
-| An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `abuddy-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `abuddy-sdk/tests/services/emitter.spec.ts` |
-| Every diagnostic naming a sender words it the same, and shows both fields | `abuddy-sdk/tests/events/envelope.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`, and one in `open-plugin` asserting the shell's two refusal branches say exactly the same thing |
-| `reportError` stamps the source it was given and never a pack | `abuddy-sdk/tests/logger/report-error.spec.ts` |
+| A send made with no action carries no `via` | `apack-sdk/tests/services/emitter.spec.ts` |
+| An action names every feature `<packId>/<featureId>`; a bare name does not compile and does not resolve | `apack-cli/tests/build/facade-typing.spec.ts` (`@ts-expect-error`), `apack-sdk/tests/services/emitter.spec.ts` |
+| Every diagnostic naming a sender words it the same, and shows both fields | `apack-sdk/tests/events/envelope.spec.ts`, plus a case each in `outgoing-events`, `client-events` and `send-scope`, and one in `open-plugin` asserting the shell's two refusal branches say exactly the same thing |
+| `reportError` stamps the source it was given and never a pack | `apack-sdk/tests/logger/report-error.spec.ts` |
 | No host feature imports another feature's `fe/` | `findCrossFeatureImports` (`check:specifiers`) — with no exception for the host |
-| Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `abuddy-cli/tests/build/import-specifiers.spec.ts` |
-| A drop is reported once per plugin, event type **and sender** | `abuddy-host/tests/bus/outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes |
+| Only a module a package publishes from outside every feature may name its features' frontends | `findCrossFeatureImports`, and three cases in `apack-cli/tests/build/import-specifiers.spec.ts` |
+| A drop is reported once per plugin, event type **and sender** | `apack-host/tests/bus/outgoing-events.spec.ts` — the key is `senderSuffix`'s output, so it distinguishes whatever the report distinguishes |
 | A field added to `Message` cannot be silently dropped at the tRPC boundary | the `Required<Message>` sample in `api/tests/unit/bus-send-sender.spec.ts`, which stops compiling until the new field is named. It sat in the SDK's tests until `ca8e7897d` made `npm run typecheck:be` cover this package's specs |
 
 Milestones, true when the work landed and not properties to hold: `git grep HOST_SRC_ROOT` returning nothing
-outside the docs that record the change, and `packages/abuddy-host/src/features/*/fe/public.ts` being gone. Both
+outside the docs that record the change, and `packages/apack-host/src/features/*/fe/public.ts` being gone. Both
 are the deleted-identifier kind the README says not to guard — the property that made the old shape wrong is the
 cross-feature rule above, and that is guarded.
 
@@ -290,7 +290,7 @@ the build lock and build stamps are shared, as the root `CLAUDE.md` warns.
 - **Typing an action's sends by bare name.** Decision 2 forbids it deliberately; the identity Phase 1 adds
   would make it technically possible, which is exactly why the reason is written down in three places.
 - **The 80 pre-existing `--noUnusedLocals` reports in default-setup.** Real but unrelated; sweeping them
-  would bury this work's diff. `packages/abuddy-host/src/secrets/index.ts` has an unused
+  would bury this work's diff. `packages/apack-host/src/secrets/index.ts` has an unused
   `getDesignated, hasDesignation` import in the same category.
 - **Giving the host codegen.** `docs/archive/plans/host-seams.md` records why the host gets no manifest. Phase 2
   removes the reason that question kept being asked.
@@ -301,5 +301,5 @@ the build lock and build stamps are shared, as the root `CLAUDE.md` warns.
   export changes, `facade:update` when the bundled facade moves, typed EARS types are change-controlled,
   mutation-check every new guard, `tests/fixtures/*` is where a cross-pack rule is proved.
 - Suites don't run concurrently — they share the package build lock and the build stamps.
-- Phase 1 reaches outside the host (`abuddy-sdk`, `default-setup`), so it takes `api:update` and the pack
+- Phase 1 reaches outside the host (`apack-sdk`, `default-setup`), so it takes `api:update` and the pack
   suites. Phase 2 is host plus `scripts/` and its spec. They are independent and may land in either order.

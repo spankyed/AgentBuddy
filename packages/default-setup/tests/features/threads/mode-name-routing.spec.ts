@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
+import { mockService, startApp, type TestApp } from '@apack/testing/harness'
 import type { Services } from '#generated/services.ts'
 import threadSettings from '#features/threads/settings.ts'
 import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'

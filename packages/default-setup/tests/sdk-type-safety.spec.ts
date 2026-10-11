@@ -10,29 +10,29 @@
  * correctly on the harness's in-memory engine.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@abuddy/ears';
+import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@apack/ears';
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape,
 } from '#generated/ears.ts';
 import { repository, type Repositories } from '#generated/repository.ts';
-import { filterSystemFields } from '@abuddy/ears';
-import { resetTestData } from '@abuddy/sdk/testing';
-import { createLogger, type Logger } from '@abuddy/sdk/logger';
+import { filterSystemFields } from '@apack/ears';
+import { resetTestData } from '@apack/sdk/testing';
+import { createLogger, type Logger } from '@apack/sdk/logger';
 import {
   loadJSON,
   detectChanges,
   toIdentifierSet,
   type ApplyResult, type DiffResult,
   type ChangeBlock,
-} from '@abuddy/sdk/utils';
+} from '@apack/sdk/utils';
 import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
   contextMenuFn, type ContextMenuItem,
-} from '@abuddy/sdk/fe';
+} from '@apack/sdk/fe';
 import { services, type Services } from '#generated/services.ts';
-import type { HostServices } from '@abuddy/sdk/services';
-import type { flowRepository } from '@abuddy/sdk/repositories';
+import type { HostServices } from '@apack/sdk/services';
+import type { flowRepository } from '@apack/sdk/repositories';
 import type { promptService } from '#features/prompts/be/services/prompt.ts';
 import { EARS } from '#generated/ears.ts';
 

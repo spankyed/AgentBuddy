@@ -4,7 +4,7 @@
  * Its own module because the chain's own file runs the chain on import: a spec that wants to check the columns
  * cannot load `chain.ts` without starting a six-minute build.
  */
-import { covers } from '@abuddy/host/build/packages-built';
+import { covers } from '@apack/host/build/packages-built';
 import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
 import { criticalPath, overBand } from './step-timing.ts';
 import { IDLE_FLOOR } from './measure.ts';
@@ -357,7 +357,7 @@ export const cores = (budget: number): string => (budget === 1 ? '1 core' : `a $
  * not been killed — every number needed was already here.
  *
  * Past double the declared cost it names the run that tells the two diagnoses apart, because this repo has
- * measured that they differ: sharing the machine, `@abuddy/cli` "began reporting errors it does not report
+ * measured that they differ: sharing the machine, `@apack/cli` "began reporting errors it does not report
  * alone" (the note at the top of this file). The band is `overBand` in step-timing.ts, shared with
  * `driftedSteps` rather than restated — it was restated here once, which is two copies of one rule and how
  * they come apart.

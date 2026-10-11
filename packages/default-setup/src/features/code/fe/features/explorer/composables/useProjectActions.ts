@@ -1,9 +1,9 @@
 import { computed } from 'vue'
-import { untypedOpenPlugin } from '@abuddy/sdk/fe'
-import { resolveName } from '@abuddy/sdk/ids'
+import { untypedOpenPlugin } from '@apack/sdk/fe'
+import { resolveName } from '@apack/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { updateSettings, useSettingsSection } from '@abuddy/sdk/fe'
+import { updateSettings, useSettingsSection } from '@apack/sdk/fe'
 import type { GeneralSettings } from '#app-settings/types.ts'
 export interface Project {
   name: string

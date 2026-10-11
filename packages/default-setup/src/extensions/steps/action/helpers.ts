@@ -1,4 +1,4 @@
-import type { DSLStepNode } from '@abuddy/sdk/build';
+import type { DSLStepNode } from '@apack/sdk/build';
 import type { DSLActionCodeOpts, DSLActionOpts } from './types.ts';
 
 /** An action step that runs a named Action */

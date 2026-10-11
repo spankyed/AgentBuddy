@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from 'vue';
-import type { PackInfo } from '@abuddy/host/fe';
+import type { PackInfo } from '@apack/host/fe';
 import PackDetail from '@/views/packs/PackDetail.vue';
 
 /** An installed external pack with nothing declared, and `overrides` */
@@ -24,10 +24,10 @@ afterEach(() => app?.unmount());
 // runs nothing: its status says so, with the loader's reason, rather than "Enabled"
 describe('an installed pack in the Packs view', () => {
   it("shows why it didn't load, in place of its status", () => {
-    const el = render({ pack: pack({ loadProblem: 'its snapshot is format 2, written by a newer abuddy CLI; update AgentBuddy to use it' }) });
+    const el = render({ pack: pack({ loadProblem: 'its snapshot is format 2, written by a newer apack CLI; update apack to use it' }) });
 
     expect(el.querySelector('[data-testid="pack-load-problem"]')?.textContent?.trim())
-      .toBe('Failed to load: its snapshot is format 2, written by a newer abuddy CLI; update AgentBuddy to use it');
+      .toBe('Failed to load: its snapshot is format 2, written by a newer apack CLI; update apack to use it');
     expect(el.textContent).not.toContain('Enabled');
   });
 

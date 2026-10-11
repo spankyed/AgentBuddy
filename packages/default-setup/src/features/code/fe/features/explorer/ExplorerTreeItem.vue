@@ -258,7 +258,7 @@ import {
 import { useProjectActions } from './composables/useProjectActions.ts'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants.ts'
 import { getFileIcon, videoExtensions } from '../../utils/file-icons.ts'
-import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
+import TrackedContextMenuRoot from '@apack/ui/design/TrackedContextMenuRoot'
 import type { FileInfo } from './state.ts'
 
 const props = defineProps<{

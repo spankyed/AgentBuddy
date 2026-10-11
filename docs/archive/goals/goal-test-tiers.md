@@ -51,13 +51,13 @@ Commit as you go:
 
 Never:
 - Constraints' standing rules are hard stops, not advice: no push/tag/PR, no publish or release, no real
-  data dir, no broad pkill, no app outside the test env without an isolated ABUDDY_USER_DATA_DIR, no bare
+  data dir, no broad pkill, no app outside the test env without an isolated APACK_USER_DATA_DIR, no bare
   tsc on preload, no version metadata, and no change to the typed EARS types to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - delete a test to make a tier boundary hold. A test that needs the app is tier 3; that is an answer,
   not a failure.
 - give the chain's steps unbounded parallel lanes. Measured twice: total work 348s to 567s and
-  @abuddy/cli failing, because every step already uses the cores. Phase 6 is a *limited* lane count.
+  @apack/cli failing, because every step already uses the cores. Phase 6 is a *limited* lane count.
   `test:unit`'s own two lanes are a different thing and already landed.
 ```
 
@@ -112,17 +112,17 @@ it from 6m53s to 5m50s (`0f0e57a15`, `7eb5aa1e5`). After it, `.tsbuildinfo` per 
 
 | | Step | What it needs |
 |---|---|---|
-| 1 | `abuddy validate` | `@abuddy/cli`, `@abuddy/sdk` |
-| 2 | `abuddy build` | those, plus default-setup's snapshot (the fixture depends on it) |
-| 3 | `tsc --noEmit -p` | the CLI's generated output, `@abuddy/sdk`'s `dist` |
-| 4 | `vitest run --root` | `@abuddy/sdk`, `@abuddy/host`, `@abuddy/testing` |
-| 5 | `abuddy test --app-root "$ROOT"` | **the whole built app** — renderer, main, preload, api, default-setup |
+| 1 | `apack validate` | `@apack/cli`, `@apack/sdk` |
+| 2 | `apack build` | those, plus default-setup's snapshot (the fixture depends on it) |
+| 3 | `tsc --noEmit -p` | the CLI's generated output, `@apack/sdk`'s `dist` |
+| 4 | `vitest run --root` | `@apack/sdk`, `@apack/host`, `@apack/testing` |
+| 5 | `apack test --app-root "$ROOT"` | **the whole built app** — renderer, main, preload, api, default-setup |
 
 Steps 1–4 need no app. Step 5 does, and because they share a script the whole step depends on the app.
 `tests/scripts/test-packaged-authoring.sh` has the same shape: packing, installing, authoring, building
-and typechecking a pack outside the monorepo, then `abuddy test` against this checkout.
+and typechecking a pack outside the monorepo, then `apack test` against this checkout.
 
-`abuddy test` is Playwright only (`abuddy-cli/src/commands/test.ts:63` requires `playwright.config.ts`),
+`apack test` is Playwright only (`apack-cli/src/commands/test.ts:63` requires `playwright.config.ts`),
 so a pack author asking "did my content compile correctly" has no way to find out without Electron.
 
 ### The tiering already half-exists
@@ -144,9 +144,9 @@ Four attempts at a cheaper chain, each defeated by the same coupling:
 | Attempt | Result |
 |---|---|
 | Run the steps in three lanes | Failed. `test:packaged-authoring` ran `packages:build`, rewriting `dist/` under the other lanes |
-| Run them in lanes with that step alone | Failed. Work 348s → 567s, `@abuddy/cli` 56s → 118s: every step already uses all the cores |
+| Run them in lanes with that step alone | Failed. Work 348s → 567s, `@apack/cli` 56s → 118s: every step already uses all the cores |
 | Drop `compile` as redundant with `build` | Wrong. No workspace declares a dependency on `@app/default-setup`, so `build -ws` gives no ordering guarantee, and the renderer's build reads the pack entry `compile` writes |
-| One `vitest run` over eight projects | 105s against 100.9s, no gain — the suites report 99.6s of 104s wall, so startup was never the cost — and it broke `@app/api`'s `boot-recovery.spec.ts`, which spawns the API server and needs the `@abuddy/source` condition the package's own run supplies. The root `vitest.config.ts`'s four projects stay, for `npm run spec`'s cross-package selection |
+| One `vitest run` over eight projects | 105s against 100.9s, no gain — the suites report 99.6s of 104s wall, so startup was never the cost — and it broke `@app/api`'s `boot-recovery.spec.ts`, which spawns the API server and needs the `@apack/source` condition the package's own run supplies. The root `vitest.config.ts`'s four projects stay, for `npm run spec`'s cross-package selection |
 | Per-step input caching | Not viable. Every expensive step reads the built app, so its honest input set is the whole repo |
 
 Only the coarse gate survived: the chain skips itself when no tracked file under `packages/`, `scripts/`
@@ -155,10 +155,10 @@ or `tests/` has changed (of the 20 commits before this, three touched none).
 ### What is cheap, and already built
 
 - `fingerprintInputs(paths)`, `unitStaleReason`, `stampFile`, `STAMP_VERSION`, `withBuildLock` —
-  `@abuddy/host/build/packages-built`. A content-addressed task cache, used today for five package builds
+  `@apack/host/build/packages-built`. A content-addressed task cache, used today for five package builds
   and nothing else. 1972 tracked files fingerprint in 160ms.
 - `ensurePackagesBuilt()` returns before taking the build lock when nothing is stale, and
-  `ABUDDY_PACKAGES_PREBUILT=1` makes staleness an error rather than a racing rebuild (`b76190721`).
+  `APACK_PACKAGES_PREBUILT=1` makes staleness an error rather than a racing rebuild (`b76190721`).
 - **A `.tsbuildinfo` per typecheck project** (`047c4e813`): `typecheck` is 30s warm against 55s before, at no
   cold cost. Not project references — `composite` may not be combined with `noEmit`, and all twelve projects
   typecheck without emitting, while `incremental` needs neither. One trap worth keeping: `api`'s
@@ -179,7 +179,7 @@ came out of `goal-test-cleanup.md` and the review after it.
   beside it on the same row.
 - **`check:tiers` follows `-w` / `--workspace`** into a workspace's own scripts. Before, a step that
   delegated to one was inspected as nothing at all and passed vacuously.
-- **There is a tenth step, `test:integration`** (tier 2, needs `packages:ensure`): the `@abuddy/cli` specs
+- **There is a tenth step, `test:integration`** (tier 2, needs `packages:ensure`): the `@apack/cli` specs
   that run a real build, install or process, split out so the fast half stays seconds. It needs `inputs`
   like every other step.
 - **`BuildUnit` is exported.** Phase 5 said it was not and that this blocked `fingerprintUnit`/`stampedBuild`
@@ -202,7 +202,7 @@ loop, not for every step up front, which `scripts/chain.ts` says at the point wh
 `test:unit` is eight steps, one per package. Each declares its own workspace plus its dependencies' source,
 read from that package's `package.json`, so a dependency added later is covered the moment it is declared.
 Five of the eight declare no build output and so need no step at all: they resolve workspace source through
-the `@abuddy/source` condition. That is what lets them start beside the builds in Phase 6.
+the `@apack/source` condition. That is what lets them start beside the builds in Phase 6.
 
 Staleness is a pure function of the tree, so `npm run chain --dry` answers most of the "Done when" without
 running anything — which is how they were checked, on a machine another checkout was loading:
@@ -212,11 +212,11 @@ running anything — which is how they were checked, on a machine another checko
 | a doc, a CLAUDE.md | **none** |
 | `packages/renderer/src` | `typecheck`, `test:unit:renderer`, `test:unit:main` (main depends on renderer) |
 | `packages/default-setup/src` | `compile`, `typecheck`, `test:unit:default-setup` |
-| `packages/abuddy-ears/src` | `packages:ensure`, `typecheck`, and all eight suites |
-| `packages/abuddy-cli/tests` | `typecheck`, `test:unit:abuddy-cli` |
+| `packages/apack-ears/src` | `packages:ensure`, `typecheck`, and all eight suites |
+| `packages/apack-cli/tests` | `typecheck`, `test:unit:apack-cli` |
 | `tests/e2e` | `typecheck` alone; the E2E step is never cached |
 
-`@abuddy/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
+`@apack/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
 
 #### The split makes a *serial* cold chain slower, and Phase 6 is what pays it back
 
@@ -253,7 +253,7 @@ script is the exact command `compile` runs. So `build` rebuilt the pack on every
 `packages/default-setup/dist` — a tree it declares as an input. It invalidated **itself**, and the five
 steps that read that tree: `test:external-pack:contract`, three unit suites and `test:integration`.
 
-Two consecutive `abuddy build` runs differ in exactly two lines, both the order of union members in an
+Two consecutive `apack build` runs differ in exactly two lines, both the order of union members in an
 emitted `Omit<…, "a" | "b">`, so chasing byte-determinism in TypeScript's declaration emit was the fragile
 path. The duplication was the real defect — about 12s of wasted work per build, invisible until something
 depended on the output not changing.
@@ -283,7 +283,7 @@ reproduce. The critical path is 109s (`packages:ensure -> compile -> build:app -
 and is reported in the summary, so a disappointing run is legible rather than a tuning mystery.
 
 **Why this paid where the earlier attempt did not.** That attempt measured work going 348s to 567s with
-`@abuddy/cli` reporting errors it does not report alone. The limit is not the only difference:
+`@apack/cli` reporting errors it does not report alone. The limit is not the only difference:
 `test:packaged-authoring` no longer rebuilds the published packages underneath the other steps, `build:app`
 no longer rebuilds the pack, and `test:unit` is eight small steps rather than one large one, so a lane can
 be filled with a 1s suite instead of a 43s block. Three lanes reproduces the old result almost exactly, at
@@ -316,27 +316,27 @@ simply never return, and a green timing run shows none of it.
 
 ### What Phase 7 landed
 
-`abuddy test --contract` runs the pack's vitest and starts no app, so a pack author can check compiled
-output, generated types and the harness specs without an AgentBuddy to run them in. It is the tier split
+`apack test --contract` runs the pack's vitest and starts no app, so a pack author can check compiled
+output, generated types and the harness specs without an apack to run them in. It is the tier split
 this repo makes for itself, offered to packs rather than kept here.
 `tests/scripts/test-external-pack-contract.sh` calls it instead of invoking `vitest` by path, so the fixtures
 exercise the command a pack author actually runs; a pack with no vitest config is a no-op with a message
 rather than an error, which is why the bundled-UI fixture needs no special case in that script.
-`abuddy init-tests` scaffolds both halves, having previously scaffolded only Playwright — which left an
-author with a `vitest.config.ts` only if they had run `abuddy init` or `abuddy add feature`.
+`apack init-tests` scaffolds both halves, having previously scaffolded only Playwright — which left an
+author with a `vitest.config.ts` only if they had run `apack init` or `apack add feature`.
 
-**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @abuddy/cli` —
+**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @apack/cli` —
 the fast half — to cover the flag. No spec of this flag can live there: `suite-split.spec.ts` asks whether an
 export's implementation reaches a child process, and `contractTest`'s default runner is `spawnSync`. That is
 true of the export and false of all nine tests, which inject a recorder and run in ~20ms. The coverage is in
-`@abuddy/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
+`@apack/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
 `docs/plans/test-unit-scheduling.md` records this as a third instance of that predicate being mechanism-based
 rather than cost-based.
 
 Wiring the two scaffolders together surfaced a pre-existing inconsistency worth knowing about: `init-tests`
-derives `@abuddy/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
-pack's `@abuddy/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
-`@abuddy/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
+derives `@apack/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
+pack's `@apack/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
+`@apack/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
 
 ### What Phase 8 landed
 
@@ -354,11 +354,11 @@ process group (`detached: true`, `kill(-pid)`, then SIGKILL after a grace period
 one" and "nothing uses `kill 0`, `setsid` or `set -m`" no longer describe the repo.
 
 **`test-packaged-authoring.sh` no longer drives a prompt.** The `expect` block, the tty and `env -u CI` are
-gone; the script writes the saved app choice directly, and the prompt is covered in `@abuddy/cli`'s fast
+gone; the script writes the saved app choice directly, and the prompt is covered in `@apack/cli`'s fast
 suite (`app-target.spec.ts`), which already injected a `prompt` and a temp config dir. The shape the script
 writes is pinned by a spec there, so a hand-written literal in a shell script cannot drift from what
 `saveAppChoice` produces. This is the item that hung a machine: `expect`'s `set timeout` covers a pattern
-match, not `wait`, so `lassign [wait]` blocked forever when `abuddy test --list` started a Playwright server
+match, not `wait`, so `lassign [wait]` blocked forever when `apack test --list` started a Playwright server
 that never returned.
 
 **The slowest five tests per suite come from output the chain already buffers.** Vitest's default reporter
@@ -372,8 +372,8 @@ imported by a spec, the same reason the step table and the scheduler are already
 corrupt entry fails here and nowhere else, and `npm cache verify` is the first thing to try).
 
 **Phase 7 broke Phase 1's guard, and the guard caught it.** `check:tiers` reads a step's scripts as text, so
-`test-external-pack-contract.sh` calling `"$ABUDDY" test --contract` read as launching the app. The marker
-now carries a negative lookahead for that one spelling — narrow deliberately, so `abuddy test` anywhere else
+`test-external-pack-contract.sh` calling `"$APACK" test --contract` read as launching the app. The marker
+now carries a negative lookahead for that one spelling — narrow deliberately, so `apack test` anywhere else
 still reads as a launch — and dropping `--contract` from that script fails the check again by name.
 
 **One thing was investigated and left alone.** The `[vitest-worker]: Timeout calling "onTaskUpdate"` failures
@@ -388,14 +388,14 @@ Each of these was found in this survey, not taken from a list.
 
 - **Nothing owns concurrency.** Eight suites each start their own scheduler and each claims every core, so
   the chain has eight independent opinions about parallelism and no budget. That is why running the steps
-  in lanes made total work rise from 348s to 567s and `@abuddy/cli` fail. A build system has one job pool;
+  in lanes made total work rise from 348s to 567s and `@apack/cli` fail. A build system has one job pool;
   this has N.
 - **No test target declares its inputs**, so nothing can compute what a change affects. Bazel, Nx and
   Turborepo all start here, and this goal's Decision 1 is the same idea at the granularity the repo can
   reach today.
 - **Timeouts are not sized to the tier.** `packages/api` and `packages/default-setup` both set
   `testTimeout: 120_000`. A unit test allowed two minutes means a hang is indistinguishable from slowness —
-  and under load that is exactly how `@abuddy/cli` presented, as errors rather than a fast, clear failure.
+  and under load that is exactly how `@apack/cli` presented, as errors rather than a fast, clear failure.
 - **There is no flake policy.** `playwright.config.ts` sets `retries: 0` and vitest sets none, while the CLI
   suite demonstrably fails under CPU pressure. The answer is not blanket retries: retrying a unit test hides
   a bug, and retrying an app E2E is ordinary. The distinction needs the tiers to exist first.
@@ -403,7 +403,7 @@ Each of these was found in this survey, not taken from a list.
   `env -u CI ... expect` to *unset* `CI` so the CLI will prompt, then answers "Choose 1 or 2: " with
   `send "1\r"`. The app choice should be injectable, with the prompt itself covered by a unit test of the
   prompt.
-- **Per-test cost is invisible.** `@abuddy/cli` reports `tests 249s` inside a 56s wall; which tests those
+- **Per-test cost is invisible.** `@apack/cli` reports `tests 249s` inside a 56s wall; which tests those
   are is unknown. Every mainstream runner reports slowest-N, and it is how the 20% that costs 80% gets found.
 - **One external input is not hermetic.** The same script reuses the developer's real npm cache
   (`npm_config_cache="$(npm config get cache)"`) so installs do not re-download. Pragmatic, and worth
@@ -419,8 +419,8 @@ Final.
 | Tier | May read | May not | Examples |
 |---|---|---|---|
 | **1 pure** | its own package's source, the in-memory runtime, fakes | any build output, any app | most of the 3036 unit tests |
-| **2 contract** | the built `@abuddy` packages, a pack's build output | the built app; Electron | `abuddy validate/build`, a pack's `tsc`, fixture unit specs, the CLI suite |
-| **3 app** | the built app | — | the repo's E2E, `abuddy test` |
+| **2 contract** | the built `@apack` packages, a pack's build output | the built app; Electron | `apack validate/build`, a pack's `tsc`, fixture unit specs, the CLI suite |
+| **3 app** | the built app | — | the repo's E2E, `apack test` |
 
 The tier is a property of the check, not of the package: one package may own checks in two tiers.
 
@@ -452,7 +452,7 @@ stall reached the summary as two unexplained errors.
 the flake is the finding. A quarantine list is written down, with the date and the reason, or it is not
 quarantined.
 
-**9. `abuddy test` gains a way to run a pack's tier-2 checks without Electron.** A pack author testing
+**9. `apack test` gains a way to run a pack's tier-2 checks without Electron.** A pack author testing
 compiled content should not need a browser. The CLI already runs `vitest` for the fixtures from a shell
 script; that belongs in the command.
 
@@ -464,7 +464,7 @@ including a `normalise` hook they have no equivalent for — and bring a config 
 for a nine-step pipeline on one machine with one contributor. The gap is one field, not a tool.
 
 **11. Cache before parallelism.** Parallelism was measured twice in this repo and made things worse: total
-work rose from 348s to 567s and `@abuddy/cli` began failing, because every step already uses all the cores.
+work rose from 348s to 567s and `@apack/cli` began failing, because every step already uses all the cores.
 Caching makes the *second* run cost only what changed. So the order is split → graph → coverage guard →
 cache → parallelism, and parallelism lands last because by then it matters least.
 
@@ -530,11 +530,11 @@ timings this plan's own measurements had to recover from log mtimes are the argu
   reverted.** It stays tier 3 whole. Two things were learned by running it with `packages/renderer/dist` moved
   aside, neither of which is visible from reading it:
 
-  1. The first-run prompt is not just there to point step 8 at an app. Step 3's `abuddy build` resolves the
+  1. The first-run prompt is not just there to point step 8 at an app. Step 3's `apack build` resolves the
      authored pack's dependency on default-setup *from the app the prompt configures* — the script runs outside
-     the monorepo with no `ABUDDY_ROOT`, so there is nothing else to resolve it from. Gating the prompt failed
+     the monorepo with no `APACK_ROOT`, so there is nothing else to resolve it from. Gating the prompt failed
      with `default-setup: not found in the installed app`.
-  2. The prompt itself needs a built app. It drives `abuddy test --list`, which starts a Playwright
+  2. The prompt itself needs a built app. It drives `apack test --list`, which starts a Playwright
      test-server; with no app that server never returns and the `expect` script hangs rather than failing.
 
   So every step from 3 onwards transitively needs the app, and a mode that skipped only 8 and 9 would still
@@ -610,7 +610,7 @@ step and its descendants run again.
 - Run ready steps concurrently up to a concurrency limit; `exclusive: true` takes the build lock.
 
 **Read the measurements before writing this.** Unlimited three-lane parallelism was tried twice and made
-things worse: total work 348s → 567s, `@abuddy/cli` 56s → 118s and reporting errors it does not report alone,
+things worse: total work 348s → 567s, `@apack/cli` 56s → 118s and reporting errors it does not report alone,
 because every step already saturates the cores. A limit is the difference between this phase and that
 attempt, and if a limited run is not measurably faster than Phase 5's warm time, the honest outcome is to
 leave it serial and record that.
@@ -619,15 +619,15 @@ leave it serial and record that.
 **or** the phase is closed with the measurement showing it is not. Two consecutive cold runs agree on which
 steps passed.
 
-### Phase 7 — `abuddy test` runs a pack's contract checks
+### Phase 7 — `apack test` runs a pack's contract checks
 
-- `abuddy test --contract` runs the pack's `vitest` where it has one and skips Playwright, so a pack author
+- `apack test --contract` runs the pack's `vitest` where it has one and skips Playwright, so a pack author
   can check compiled output without Electron. `test-external-pack-contract.sh` uses it instead of calling
   `vitest` directly — still line 25 there, `"$ROOT/node_modules/.bin/vitest" run --root "$PACK"`, checked
   2026-09-25.
-- `abuddy init-tests` scaffolds both halves.
+- `apack init-tests` scaffolds both halves.
 
-**Done when:** `abuddy test --contract` passes in both fixtures with no app built; `npm test -w @abuddy/cli`
+**Done when:** `apack test --contract` passes in both fixtures with no app built; `npm test -w @apack/cli`
 covers the flag.
 
 ### Phase 8 — The practices that are work, not policy
@@ -635,8 +635,8 @@ covers the flag.
 - Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000` — still
   `packages/default-setup/vitest.config.ts:27` and `packages/api/vitest.config.ts:28`, checked 2026-09-25.
 - Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
-  `expect`; cover the prompt itself in `@abuddy/cli`'s suite. **This one hung a machine**, which is worth more
-  than the tidiness argument: with the app missing, `abuddy test --list` started a Playwright test-server that
+  `expect`; cover the prompt itself in `@apack/cli`'s suite. **This one hung a machine**, which is worth more
+  than the tidiness argument: with the app missing, `apack test --list` started a Playwright test-server that
   never returned, and the script's `lassign [wait] …` blocks with no timeout — `expect`'s `set timeout` covers a
   pattern match, not `wait`. It took three PIDs killed by hand. No `spawn`, no `wait`, no hang.
 - **Give every shell test script a total-runtime bound.** Nothing has one: the only timeouts under
@@ -646,7 +646,7 @@ covers the flag.
   `perl -e 'alarm'` or a watchdog.
 - **Reap the process group on exit.** Nothing in `tests/scripts/` uses `kill 0`, `setsid` or `set -m`, so an
   orphaned server outlives its parent and a bound on the script alone would not have cleaned it up.
-- Report slowest-N per suite, so the next person profiling `@abuddy/cli` has it without instrumenting.
+- Report slowest-N per suite, so the next person profiling `@apack/cli` has it without instrumenting.
 - Record the npm-cache exception where the script uses it, as a declared non-hermetic input.
 
 **Done when:** no suite sets a timeout above its tier's budget; `test-packaged-authoring.sh` contains no
@@ -667,14 +667,14 @@ hang fails at its tier budget rather than at two minutes.
 
 ## Deferred
 
-- **The `@abuddy/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
+- **The `@apack/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
   slowest 25 tests are all 1–1.6s, spread across `facade-gate`, `scaffold`, `add-extensions`,
-  `component-contracts`, `release` and `db`, and every one spawns a real `tsc`, `abuddy build` or node
+  `component-contracts`, `release` and `db`, and every one spawns a real `tsc`, `apack build` or node
   subprocess. So the lever is fewer subprocesses, which is a project rather than a fix:
   [`goal-cli-suite-spawns.md`](goal-cli-suite-spawns.md) has it, with the per-file totals and the finding that
   both levers — the TypeScript API in-process, and one shared fixture per `beforeAll` — already exist in that
   suite and are applied unevenly. Its 249s figure here was measured under contention; idle it is 182.6s. **It
-  can run in a worktree alongside this goal** — the two share only `abuddy-cli/tests/build/`, and different
+  can run in a worktree alongside this goal** — the two share only `apack-cli/tests/build/`, and different
   files there. A symlinked `node_modules` is fine while neither checkout changes a build input, which
   `packages/*/tests` is not; that goal's "Doing this in a worktree" says when it stops being fine.
 - **`test:packaged-authoring` at 65s**, mostly npm installs from packed tarballs. A warm `node_modules` cache
@@ -696,11 +696,11 @@ The repo's standing rules (root `CLAUDE.md`) apply:
 - commit each phase as it finishes, no attribution lines, `git diff --cached` first; pushing, tagging and
   PRs are on request;
 - no publishing, releases or triggered workflows;
-- no real data dirs, no broad pkill, E2E in the `abuddy-test` namespace;
+- no real data dirs, no broad pkill, E2E in the `apack-test` namespace;
 - preload, example pack and release metadata rules;
-- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
 - published packages: no `any`, the TypeScript floor, `api:update` after export changes with `etc/` committed;
-- migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`;
+- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`;
 - investigate failing tests, mutation-check new guards;
 - external packs are first-class: the fixture packs, the example pack and `test:packaged-authoring` keep
   passing, and a pack author's path stays the one this repo tests;
@@ -711,7 +711,7 @@ The repo's standing rules (root `CLAUDE.md`) apply:
   Phase 5 or 6 is likely to save. On 2026-09-25 a second session was editing six files here mid-change, which
   is normal in this repo and invisible unless you run `git status` before taking a number. **Phases 4 to 6 can
   run in a worktree**, which suits them better than the CLI-spawns goal: nothing in them touches
-  `abuddy-cli/src`, and their subject — `scripts/`, the chain table and the guard spec — is touched by little
+  `apack-cli/src`, and their subject — `scripts/`, the chain table and the guard spec — is touched by little
   else. Take the before and after from the same tree, whichever tree it is.
 
 ## Outcome
@@ -723,7 +723,7 @@ Phases 1-3 landed earlier (`06f55ea72`, `b1c0b3cc4`, `8095daf14`). Phases 4-9:
 | 4 — finish the table, then guard it | done | `13ccc21a6`. Every step declares `inputs`; `chain-inputs.integration.spec.ts` fails on tracked code no step reads |
 | 5 — caching | done | `b438608fb`, `822c8fbdc`. Warm chain 15 of 17 cached; the `build:app` fix was needed before its last clause held |
 | 6 — parallelism, with a limit | done | `e0c22075f`. Serial 306.9s, two lanes 194.0/198.7/196.5s all 17 of 17, three lanes 202.7s with one of two runs failing |
-| 7 — `abuddy test --contract` | done | `e2a2cf9a5`. Both fixtures pass with no app; the contract script calls the CLI rather than vitest by path |
+| 7 — `apack test --contract` | done | `e2a2cf9a5`. Both fixtures pass with no app; the contract script calls the CLI rather than vitest by path |
 | 8 — timeouts and process hygiene | done | `16ffd3b2e`. Tier budgets guarded; a hanging test dies at 15008ms; no `expect`, tty or `env -u CI` |
 | 9 — retire the table's arithmetic | done | this commit. The per-change table is the chain's cost model, not a lookup |
 
@@ -754,7 +754,7 @@ every package, which resetting `STAMP_VERSION` forces once). `npm run typecheck`
 
 ### Deviations, both forced and both recorded where they bite
 
-- **Phase 7's "`npm test -w @abuddy/cli` covers the flag"** could not hold: `suite-split.spec.ts` asks what
+- **Phase 7's "`npm test -w @apack/cli` covers the flag"** could not hold: `suite-split.spec.ts` asks what
   an export's implementation reaches, and `contractTest`'s default runner is `spawnSync`. The spec is in
   that package's integration half instead of weakening the guard for it.
 - **Phase 5's "a cold run matches Phase 3's time"** is true only with lanes. Splitting `test:unit` into

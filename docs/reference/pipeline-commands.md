@@ -135,7 +135,7 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
 npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long each process it started went
                          # without turning its event loop, against the 60s window birpc gives a call and
                          # vitest hardcodes. Per process, worst block first:
-                         #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  6.0x slower  100%
+                         #   worker  apack-cli/tests/…/types-bundler-determinism…  10.0s  6.0x slower  100%
                          # Headroom rather than the block alone, which reads as fine until it is not: 38s
                          # against 60s is one busy afternoon from failing. `elu` says *why* a process was
                          # quiet — 4% was waiting, 99% was working, and only the second can be shortened.
@@ -161,7 +161,7 @@ npm run spec:dry [...]   # What the plan would run, and what the last run on thi
                          # the two was 1.55:1 and 2.18:1 on one target three days apart — and when that run
                          # was, since that is how stale the answer is.
                          # **There is no record behind this and nothing to re-record.** It reads a cache the
-                         # unit pools write (`node_modules/.cache/abuddy-spec-durations`, keyed by suite and
+                         # unit pools write (`node_modules/.cache/apack-spec-durations`, keyed by suite and
                          # half), so nothing is committed, nothing can describe another machine, and a spec
                          # no run here has measured is named rather than counted free. A fresh clone prices
                          # nothing and says so. It replaced `spec-cost.json`, which held a millisecond per
@@ -186,12 +186,12 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
-                         #   a pack's src/content/** or one of its build inputs (abuddy.json, package.json,
+                         #   a pack's src/content/** or one of its build inputs (apack.json, package.json,
                          #                     tsconfig.json) -> the walk, plus the specs that read what
                          #                     building it produces. Named by default, run by spec:full
                          # A source file runs one vitest over every host project, because that is the
                          # honest answer to "what could this break". The cost is the blast radius: a
-                         # renderer module 1 spec, the api's runtime 13, abuddy-sdk's entity types 104.
+                         # renderer module 1 spec, the api's runtime 13, apack-sdk's entity types 104.
                          # **A pack suite is not in that answer.** It resolves the published dist while
                          # the host projects resolve source, so no import edge runs from your edit to the
                          # spec that covers it — that edge runs through a build. The command says so when
@@ -202,7 +202,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # imports a pack's backend or frontend: 1-3 files in 2-6s against the whole
                          # suite's 87 and 18s.
                          # **Nor is an integration half**, for a duller reason: it is a second config and
-                         # the root projects exclude its specs. 22 modules in @abuddy/cli are imported
+                         # the root projects exclude its specs. 22 modules in @apack/cli are imported
                          # directly by one. Named the same way, run by spec:full.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. The routing is data

@@ -7,7 +7,7 @@
 // Everywhere else a fictional feature takes a name no pack has (`memos`, `calendar`), because
 // `features/notes` otherwise names an invention and a real feature at once. Here the collision is the
 // subject: rename it and the suite still passes, over two addresses that were never going to clash.
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 test('this pack and default-setup each get their own notes plugin', async ({ app, appPage }) => {
   await app.waitForPlugin('notes');

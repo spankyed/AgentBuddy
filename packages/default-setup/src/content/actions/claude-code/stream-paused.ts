@@ -8,7 +8,7 @@
  * setRunning) synchronously before emitting the event.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { updateChatState } from './_helpers/thread-context.ts';
 

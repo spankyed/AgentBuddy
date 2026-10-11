@@ -10,8 +10,8 @@
 // Which half a spec is in stays a decision, declared by this filename and re-derived by nothing.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, publishedTreeDirs } from '@abuddy/host/build/packages-built';
-import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@abuddy/host/build/published-manifest';
+import { BUILD_UNITS, publishedTreeDirs } from '@apack/host/build/packages-built';
+import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@apack/host/build/published-manifest';
 import { describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, PACKED_PACKAGES, workspacePackList } from '../src/published-packages.ts';
 
@@ -63,8 +63,8 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
 
   /**
    * The inverse of the failure a staged tree can introduce, and the reason the source condition has nothing to
-   * resolve to here. Not "no `.ts` file", which is red on a correct artifact twice over: `@abuddy/cli` ships its
-   * pack templates as source on purpose, and `@abuddy/ui`'s declarations are named `*.d.vue.ts`, which no
+   * resolve to here. Not "no `.ts` file", which is red on a correct artifact twice over: `@apack/cli` ships its
+   * pack templates as source on purpose, and `@apack/ui`'s declarations are named `*.d.vue.ts`, which no
    * `.d.ts` test matches.
    */
   it('ships no source directory', () => {
@@ -75,7 +75,7 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
   });
 
   /**
-   * What stops the cases above passing by finding nothing. `@abuddy/cli`'s `bin` is `"bin/abuddy.mjs"` with no
+   * What stops the cases above passing by finding nothing. `@apack/cli`'s `bin` is `"bin/apack.mjs"` with no
    * `./` prefix, so an extractor keyed on that prefix reports green over zero paths — and `bin` is the only path
    * that manifest names at all.
    */
@@ -98,11 +98,11 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
  * Here rather than beside `BUILD_UNITS`, which is where it used to be: the constant it guards against widening
  * is this package's, and a spec that only wanted to read it was paying for the built-packages precondition
  * `PACKAGES_BUILT` enforces at import — which is what stopped a mutation of `BUILD_UNITS` being runnable at all
- * (`abuddy-cli/tests/build/package-freshness.spec.ts`). It needs no built packages itself; it compares two lists.
+ * (`apack-cli/tests/build/package-freshness.spec.ts`). It needs no built packages itself; it compares two lists.
  */
 describe('the packages a consumer fixture installs', () => {
   it('are all packages the build builds', () => {
     expect(Object.keys(PACKED_PACKAGES).sort()).toEqual(['ears', 'sdk', 'ui']);
-    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@abuddy/${name}`]).toBeDefined();
+    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@apack/${name}`]).toBeDefined();
   });
 });

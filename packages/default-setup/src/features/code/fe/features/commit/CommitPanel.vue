@@ -631,7 +631,7 @@
 
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { usePlugin, useShell } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@apack/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -643,9 +643,9 @@ import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
 import RevertDialog from '#features/code/fe/features/commit/RevertDialog.vue'
 import CommitLogSection from '#features/code/fe/features/commit/CommitLogSection.vue'
-import ToastNotification from '@abuddy/ui/design/ToastNotification'
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
-import PanelResizer from '@abuddy/ui/layout/panel-resizer'
+import ToastNotification from '@apack/ui/design/ToastNotification'
+import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
+import PanelResizer from '@apack/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu.ts'
 import { codeChild } from '../children.ts';
 

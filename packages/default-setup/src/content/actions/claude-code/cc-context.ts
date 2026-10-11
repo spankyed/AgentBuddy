@@ -2,7 +2,7 @@
  * CC: Context — shows context window usage breakdown for the current session.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { getClaudeState } from './_helpers/thread-context.ts';
 import { parseContextMarkdown } from './_helpers/context-parser.ts';

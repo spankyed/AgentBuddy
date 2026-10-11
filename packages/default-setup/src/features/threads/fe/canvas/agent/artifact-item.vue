@@ -18,8 +18,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
-import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+import { artifactRegistry } from '@apack/sdk/artifacts';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
 
 const props = defineProps<{
   artifact: ArtifactItem;

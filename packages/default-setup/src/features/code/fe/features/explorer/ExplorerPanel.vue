@@ -87,15 +87,15 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import type { CodeSettings } from '#generated/types.ts'
-import { useFeatureSettings } from '@abuddy/sdk/fe'
+import { useFeatureSettings } from '@apack/sdk/fe'
 import { ref as featureRef } from '#generated/ref.ts'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '#features/code/fe/state.ts'
-import Dialog from '@abuddy/ui/design/dialog'
+import Dialog from '@apack/ui/design/dialog'
 import ExplorerTreeItem from '#features/code/fe/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '#features/code/fe/features/NoDirectoryState.vue'

@@ -26,7 +26,7 @@
     }
   },
   // .vue files are checked by vue-tsc (npm run typecheck). src/defs/ (the Monaco DSL surfaces) is
-  // checked here too; abuddy build bundles their declarations for the Monaco editors.
+  // checked here too; apack build bundles their declarations for the Monaco editors.
   "include": [
     "src/**/*.ts", "src/**/*.vue", "tests/**/*.ts"
   ],

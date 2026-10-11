@@ -33,10 +33,10 @@ describe('the renderer\'s global error handling', () => {
     expect(uncaught('startLineNumber 5 cannot be after endLineNumberExclusive 3')).toEqual([]);
   });
 
-  it('takes the filter from @abuddy/ui rather than repeating what it suppresses', () => {
+  it('takes the filter from @apack/ui rather than repeating what it suppresses', () => {
     const source = fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', 'boot', 'errors.ts'), 'utf-8');
 
-    expect(source).toContain("from '@abuddy/ui/components/monaco-error-filters'");
+    expect(source).toContain("from '@apack/ui/components/monaco-error-filters'");
     expect(source).not.toContain('endLineNumberExclusive');
   });
 });

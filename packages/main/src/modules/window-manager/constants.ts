@@ -8,8 +8,8 @@ export const WINDOW_CONFIG = {
   MIN_HEIGHT: 600,
   
   // Window identification
-  MAIN_TITLE: 'AgentBuddy-Main',
-  POPOUT_TITLE_PREFIX: 'AgentBuddy-Popout',
+  MAIN_TITLE: 'apack-Main',
+  POPOUT_TITLE_PREFIX: 'apack-Popout',
   
   // Timing
   SPLASH_CLOSE_DELAY: 200, // ms

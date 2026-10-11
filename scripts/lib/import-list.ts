@@ -15,7 +15,7 @@ export interface RuleRow {
   readonly id: string;
   /** Whether it can be pointed at paths, which is what decides if a per-file run covers it */
   readonly paths: string;
-  /** Whether an external pack is held to it too: `abuddy validate`, `build` and `test` run the pack rules */
+  /** Whether an external pack is held to it too: `apack validate`, `build` and `test` run the pack rules */
   readonly parity: string;
   /** The first clause of what it reports, which is the part that fits a row */
   readonly reports: string;

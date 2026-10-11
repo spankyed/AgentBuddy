@@ -4,11 +4,11 @@
 // emits, slots and exposed members TypeScript resolves for it. Without --local, fails when a
 // report is out of date or API Extractor reports a problem.
 //
-//   tsx scripts/api-reports.ts packages/abuddy-sdk [--local]
+//   tsx scripts/api-reports.ts packages/apack-sdk [--local]
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CompilerState, Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
-import { packagesBuiltOrRefuse } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse } from '@apack/host/build/packages-built';
 import { componentContracts, type ComponentEntry } from './component-contracts.ts';
 import { reportEntries, reportName } from './lib/api-entries.ts';
 
@@ -23,12 +23,12 @@ const reportFolder = path.join(pkgDir, 'etc');
  *
  * A report generated against a stale `dist` is a report about the wrong tree, so the freshness has to be
  * established — but **establishing it by building makes this a step that writes what it declares as its
- * inputs.** Measured 2026-10-05, when it did: `api:check` rebuilt `@abuddy/testing` mid-chain and the
+ * inputs.** Measured 2026-10-05, when it did: `api:check` rebuilt `@apack/testing` mid-chain and the
  * freshness sweep then named twenty steps that had passed and would not be cached, with
  * `packages:ensure`'s own output as the file that moved under them.
  *
  * **This module is both halves, so the fixer sits in front of the command rather than here.** That is the
- * rule `@abuddy/testing`'s guide states for the same pair: a fixer belongs to the command a user runs, and a
+ * rule `@apack/testing`'s guide states for the same pair: a fixer belongs to the command a user runs, and a
  * checker must not try to repair. So the root `api:update` carries `packages:ensure &&` (door 1 there) and
  * the root `api:check` does not — the chain step runs that script, and a rebuild inside it is the failure
  * above.
@@ -38,7 +38,7 @@ packagesBuiltOrRefuse('npm run packages:build');
 /** Exports with declarations: [subpath, declaration file in .temp/api-types] */
 function entries(): [string, string][] {
   return reportEntries(pkg as { exports?: Record<string, unknown> }).map((key) => {
-    const source = ((pkg.exports as Record<string, Record<string, unknown>>)[key])['@abuddy/source'] as string;
+    const source = ((pkg.exports as Record<string, Record<string, unknown>>)[key])['@apack/source'] as string;
     const rel = source.replace(/^\.\/src\//, '');
     const declaration = rel.endsWith('.vue') ? `${rel}.d.ts` : rel.replace(/\.ts$/, '.d.ts');
     return [key, path.join(typesDir, declaration)];
@@ -108,10 +108,10 @@ const prepared = all.map(([key, declaration]) => {
  *
  * `Extractor.invoke` builds its own program when it is given no state, and a package's entries are
  * compiled against the same declarations — so the work was being repeated once per entry: 28 programs for
- * `@abuddy/sdk`, 68 for `@abuddy/ui`. `additionalEntryPoints` is what makes one program cover them all, and
+ * `@apack/sdk`, 68 for `@apack/ui`. `additionalEntryPoints` is what makes one program cover them all, and
  * sharing it is the documented purpose of `IExtractorInvokeOptions.compilerState`.
  *
- * Measured 2026-10-04: `@abuddy/sdk`'s 28 entries 12.3s -> 1.1s, `@abuddy/ui`'s 68 30s -> 0.9s, with every
+ * Measured 2026-10-04: `@apack/sdk`'s 28 entries 12.3s -> 1.1s, `@apack/ui`'s 68 30s -> 0.9s, with every
  * report reproduced byte for byte. The reports are what prove it stays true — a divergence moves one, and
  * `api:check` fails on a moved report. What covers the case this most depends on — an API Extractor upgrade
  * changing what sharing a compiler state means — is that the step declares `package-lock.json`, so a bumped
@@ -133,7 +133,7 @@ for (const { key, config } of prepared) {
 /** Component entries (a .ts module re-exporting an SFC's default) */
 function componentEntries(): ComponentEntry[] {
   return entries().flatMap(([key, declaration]) => {
-    const source = (pkg.exports[key] as Record<string, string>)['@abuddy/source'];
+    const source = (pkg.exports[key] as Record<string, string>)['@apack/source'];
     const sfc = /export\s*\{\s*default\s*\}\s*from\s*['"]([^'"]+\.vue)['"]/.exec(fs.readFileSync(path.join(pkgDir, source), 'utf-8'));
     if (!sfc) return [];
     // The entry only re-exports; the SFC's own declaration is where the component is declared
@@ -142,7 +142,7 @@ function componentEntries(): ComponentEntry[] {
 }
 
 // componentContracts builds a TypeScript program, which is the slow part of this script. A package
-// with no component entries (@abuddy/ears, @abuddy/sdk) has nothing for it to report, so don't.
+// with no component entries (@apack/ears, @apack/sdk) has nothing for it to report, so don't.
 const components = componentEntries();
 const contracts = components.length === 0 ? [] : componentContracts({
   packageName: pkg.name,

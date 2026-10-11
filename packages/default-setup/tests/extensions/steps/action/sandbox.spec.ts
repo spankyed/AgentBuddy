@@ -1,12 +1,12 @@
 // Action code runs in one sandbox (runActionCode) whether a flow's action step or services.action runs it:
 // `params`, `services` with a logger and an emitter named after the action, `z`, and `flowId` from a flow step
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import type { LogEvent } from '@abuddy/sdk/logger';
-import type { ActionEntity } from '@abuddy/sdk';
-import { services } from '@abuddy/sdk/services';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import type { LogEvent } from '@apack/sdk/logger';
+import type { ActionEntity } from '@apack/sdk';
+import { services } from '@apack/sdk/services';
 import { repository } from '#generated/repository.ts';
-import { testRootEvents } from '@abuddy/sdk/testing';
+import { testRootEvents } from '@apack/sdk/testing';
 import { packId } from '#generated/ref.ts';
 import { handler } from '#extensions/steps/action/runtime.ts';
 import { actionService } from '#features/actions/be/services/action.ts';

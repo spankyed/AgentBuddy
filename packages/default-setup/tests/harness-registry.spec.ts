@@ -1,7 +1,7 @@
 // The harness registers the pack in a registry of its own, one per test file, which the SDK's lookups read
 import { describe, expect, it } from 'vitest';
-import { registerPack, startApp, unregisterPack } from '@abuddy/testing/harness';
-import { getDesignated } from '@abuddy/sdk/designations';
+import { registerPack, startApp, unregisterPack } from '@apack/testing/harness';
+import { getDesignated } from '@apack/sdk/designations';
 
 describe("the test file's registry", () => {
   it('takes other packs, which the lookups then see', () => {

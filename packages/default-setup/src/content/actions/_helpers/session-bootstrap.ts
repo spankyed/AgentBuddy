@@ -1,5 +1,5 @@
 import type { EntityId, Services } from '#generated/services.ts';
-import { buildTranscript, type TranscriptMessage } from '@abuddy/sdk/actions';
+import { buildTranscript, type TranscriptMessage } from '@apack/sdk/actions';
 
 type ThreadMessage = {
   id?: string;
@@ -56,7 +56,7 @@ export function buildSessionBootstrapPrompt(
     : '';
 
   return [
-    `You are continuing an existing AgentBuddy thread in ${options.providerName}.`,
+    `You are continuing an existing apack thread in ${options.providerName}.`,
     'The provider session is new, so use the prior thread transcript below as context. Continue from where the thread left off, then answer the latest user message.',
     `${omittedLine}\n\nPrior thread transcript:\n${transcript}`,
     `Latest user message:\n${options.currentText.trim()}`,

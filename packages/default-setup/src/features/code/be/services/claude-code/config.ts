@@ -1,7 +1,7 @@
 /**
  * `claude config` — read/write the CLI's settings.json / .claude.json.
  *
- * We do not touch AgentBuddy's own settings from here — this is strictly
+ * We do not touch apack's own settings from here — this is strictly
  * about what the installed Claude Code binary considers its config.
  */
 

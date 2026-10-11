@@ -1,12 +1,12 @@
-// Shared by the package builds of @abuddy/sdk and @abuddy/ui: the guard that every package a
+// Shared by the package builds of @apack/sdk and @apack/ui: the guard that every package a
 // shipped module imports is declared in the manifest, and that the exports map was built.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import { build } from 'esbuild';
 import ts from 'typescript';
-import { packageName } from '@abuddy/host/build/specifiers';
-import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
+import { packageName } from '@apack/host/build/specifiers';
+import { SOURCE_CONDITION } from '@apack/host/build/source-resolution';
 
 
 /** Package name → files importing it, across a package's shipped modules. */
@@ -112,7 +112,7 @@ export const isDeclaration = (file: string): boolean => file.endsWith('.d.ts') |
  * — a bundler, an editor plugin, a doc generator — is entitled to fail. `.js` resolves through the
  * ordinary JavaScript-to-declaration mapping instead, which needs no special case.
  *
- * Only relative specifiers ending in `.ts` change. `.vue` is left alone: @abuddy/ui's declarations
+ * Only relative specifiers ending in `.ts` change. `.vue` is left alone: @apack/ui's declarations
  * import `./button.vue`, which resolves to the `button.d.vue.ts` beside it.
  *
  * The specifiers come from `ts.preProcessFile`, the scanner `fromDeclaration` uses, rather than a

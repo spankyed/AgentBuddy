@@ -14,7 +14,7 @@ inside `testDir`, so the runner picked it up anyway.
 
 ```ts
 // drive/notes.ts
-import { drive } from '@abuddy/testing';
+import { drive } from '@apack/testing';
 
 drive('open notes and look at it', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -31,13 +31,13 @@ npm run drive -- drive/notes.ts  # just one
 **It drives the *built* app**, loaded from `file://` — `npm run build:app` and `npm run compile` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm start`'s renderer and `abuddy dev`'s pack server are not in the picture.
+here stands one up, and `npm start`'s renderer and `apack dev`'s pack server are not in the picture.
 
-**Every script here is `abuddy drive`**, which is also what a pack author runs — the npm scripts are thin
+**Every script here is `apack drive`**, which is also what a pack author runs — the npm scripts are thin
 calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With
-no `abuddy.json` above it the command drives *this checkout's* app rather than a pack's, which is what
+no `apack.json` above it the command drives *this checkout's* app rather than a pack's, which is what
 makes that possible — the checkout behind "no pack here" is the one you are standing in, which is the
-same rule `abuddy drive` applies inside a pack.
+same rule `apack drive` applies inside a pack.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
 development or production data, and every session starts clean. `--profile <name>` keeps a data dir
@@ -81,8 +81,8 @@ npm run drive:state -- --spawn                    # 3.3s: starts the app, answer
 npm run drive:state                               # 0.9s from then on
 ```
 
-`abuddy profiles` says which data dirs have a live app and who started it, which is where a forgotten one
-is found. `abuddy dev` takes the directory back from an app a question started.
+`apack profiles` says which data dirs have a live app and who started it, which is where a forgotten one
+is found. `apack dev` takes the directory back from an app a question started.
 
 ## The verbs
 
@@ -92,7 +92,7 @@ is found. `abuddy dev` takes the directory back from an app a question started.
 The three the npm scripts expose are the three an agent reaches for most.
 
 `/query` and `/transact` reach the **live** database, so a write shows up in the next read —
-`abuddy db exec` cannot, because it refuses while the app holds the write lock.
+`apack db exec` cannot, because it refuses while the app holds the write lock.
 
 A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes
 round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
@@ -102,9 +102,9 @@ An attached session has no window of its own, so a viewport it sets is Playwrigh
 run, which shows the window, resizes the window itself — asking for a viewport there the other way would
 letterbox the app against the desktop.
 
-A pack author gets the same thing from `abuddy drive`, which also takes `--profile <name>` to keep the
+A pack author gets the same thing from `apack drive`, which also takes `--profile <name>` to keep the
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
 gitignored.
 
-`playwright.config.ts` is a call to `@abuddy/testing/playwright`'s `defineDriveConfig`, so a setting lives
+`playwright.config.ts` is a call to `@apack/testing/playwright`'s `defineDriveConfig`, so a setting lives
 in the package rather than going stale in a copy here.

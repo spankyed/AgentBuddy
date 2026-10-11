@@ -22,31 +22,31 @@ What tests this repo has, where they live, and how to tell where a test *belongs
 | Suite | Specs | Fast half | Expensive half | Total |
 |---|---|---|---|---|
 | `@app/default-setup` | 87 | 16.0s | — | 16.0s |
-| `@abuddy/host` | 76 | 18.7s | — | 18.7s |
-| `@abuddy/sdk` | 56 | 15.1s | — | 15.1s |
-| `@abuddy/cli` | 53 | 13.5s | 157.2s | **170.8s** |
+| `@apack/host` | 76 | 18.7s | — | 18.7s |
+| `@apack/sdk` | 56 | 15.1s | — | 15.1s |
+| `@apack/cli` | 53 | 13.5s | 157.2s | **170.8s** |
 | `@app/repo-checks` | 18 | 2.9s | 9.8s | 12.7s |
 | `@app/api` | 15 | 5.6s | — | 5.6s |
-| `@abuddy/ears` | 9 | 2.4s | — | 2.4s |
+| `@apack/ears` | 9 | 2.4s | — | 2.4s |
 | `@app/renderer` | 8 | 0.1s | — | 0.1s |
 | `@app/publish-checks` | 8 | 0.0s | 28.0s | 28.1s |
-| `@abuddy/testing` | 4 | 0.1s | — | 0.1s |
+| `@apack/testing` | 4 | 0.1s | — | 0.1s |
 | `@app/main` | 3 | 0.2s | — | 0.2s |
-| `@abuddy/ui` | 2 | 0.1s | — | 0.1s |
+| `@apack/ui` | 2 | 0.1s | — | 0.1s |
 | | **339** | | | **269.8s** |
 
 One of default-setup's is recorded as skipped rather than costed (every test in it skips — it needs a real
 `claude` binary — so it has no cost to place), which is why the recorded counts are one ahead of the
 measured ones.
 
-`@abuddy/cli` is still 63% of the file time, and now legitimately: the eight specs whose subject was the
+`@apack/cli` is still 63% of the file time, and now legitimately: the eight specs whose subject was the
 published packages are `@app/publish-checks`, so its record can be read as a CLI number. It has moved
 190.8s → 200.8s → 170.8s across recordings that removed twelve specs; the middle figure was a contended
 measurement, which is the kind of noise the deleted cost record needed a band to absorb.
 
 `packages/preload` has source but neither specs nor a `test` script; `@app/electron-versions` and
 `@app/typescript-floor` hold no source. Every other package has a suite —
-`@abuddy/testing` and `@abuddy/ui` gained theirs in `goal-test-placement.md` Phase 2, having had none.
+`@apack/testing` and `@apack/ui` gained theirs in `goal-test-placement.md` Phase 2, having had none.
 
 ## Where a spec lives
 
@@ -71,7 +71,7 @@ No package colocates. `@app/default-setup` had six specs under `src/` with an in
 colocated spec would never run, and the walk is what makes it show up in `spec:dry`'s listing rather than
 vanishing twice over.
 
-Three suites have an expensive half: `@abuddy/cli`, `@app/repo-checks` and `@app/publish-checks`, each with
+Three suites have an expensive half: `@apack/cli`, `@app/repo-checks` and `@app/publish-checks`, each with
 a `vitest.integration.config.ts` over `tests/**/*.integration.spec.ts`. What a spec gets there is a 60s
 per-test budget instead of 15s, a worker pool capped at half the cores, and separation from the per-change
 loop.
@@ -97,8 +97,8 @@ Seven kinds are actually distinguishable in the tree. The tier is what a check m
 | Category | Where | Tier | Reads |
 |---|---|---|---|
 | **Package unit** | most of every `tests/` | 1 | its own package's source, the in-memory runtime, fakes |
-| **Contract over build output** | `abuddy-cli/tests/build/`, `default-setup/tests/content/` | 2 | the built `@abuddy` packages, a pack's `dist` |
-| **Command / process** | `abuddy-cli/tests/commands/`, `tests/harness/` | 2 | runs real builds, installs and child processes |
+| **Contract over build output** | `apack-cli/tests/build/`, `default-setup/tests/content/` | 2 | the built `@apack` packages, a pack's `dist` |
+| **Command / process** | `apack-cli/tests/commands/`, `tests/harness/` | 2 | runs real builds, installs and child processes |
 | **Repo tooling** | `@app/repo-checks` | 1–2 | the chain table, the cost records, `scripts/` |
 | **App runtime** | `api/tests/runtime/` | 1 | boots the composed runtime over a temp data dir |
 | **Fixture pack** | `tests/packs/*` | 2 and 3 | a pack built and tested as a third party would |
@@ -164,14 +164,14 @@ because its subject belongs to no single package.
 
 | # | What | Size |
 |---|---|---|
-| 1 | ~~`@abuddy/testing` and `@abuddy/ui` have no suite~~ — **resolved** in Phase 2: both have one, four specs and one describe moved to them, and `npm run spec` reaches their source instead of crashing | done |
+| 1 | ~~`@apack/testing` and `@apack/ui` have no suite~~ — **resolved** in Phase 2: both have one, four specs and one describe moved to them, and `npm run spec` reaches their source instead of crashing | done |
 | 2 | ~~`@app/api`'s only test directory is `unit/`~~ — **resolved** in Phase 4: split on measured cost into `unit/` (5 specs, 4–22ms) and `runtime/` (10, 100–1120ms); the cheap five run alone in 2.1s | done |
-| 3 | ~~`secrets.spec.ts` mocks host's vault by relative path~~ — **resolved** in Phase 4: `@abuddy/host` publishes `./secrets/vault`, so it is a specifier. The mock stays: host's own suite covers the vault, this covers what a renderer learns, and Decision 10's sentence now says so | done |
-| 4 | `@abuddy/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
+| 3 | ~~`secrets.spec.ts` mocks host's vault by relative path~~ — **resolved** in Phase 4: `@apack/host` publishes `./secrets/vault`, so it is a specifier. The mock stays: host's own suite covers the vault, this covers what a renderer learns, and Decision 10's sentence now says so | done |
+| 4 | `@apack/ui` has 33 recorded component contracts and no behavioural test; exactly one spec in the repo mounts a Vue component | coverage gap |
 | 5 | ~~`@app/default-setup` is the only package with colocated specs~~ — **resolved** in Phase 5: the six moved under `tests/`, the `src/**` include and the `__tests__/` variant are gone | done |
-| 6 | ~~twelve specs in `@abuddy/cli` are about the published `@abuddy` packages~~ — **resolved**: eight moved to `@app/publish-checks` with the packing fixture, one to `@abuddy/ui`; `package-freshness`, `checkout-packages` and `verify-node-modules` stay, their subjects being host's stamp rule, a CLI command and the packaging script | done |
+| 6 | ~~twelve specs in `@apack/cli` are about the published `@apack` packages~~ — **resolved**: eight moved to `@app/publish-checks` with the packing fixture, one to `@apack/ui`; `package-freshness`, `checkout-packages` and `verify-node-modules` stay, their subjects being host's stamp rule, a CLI command and the packaging script | done |
 
-`pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@abuddy/host` while `PackProtocol.ts`
+`pack-protocol.spec.ts` was a seventh, resolved in Phase 6: it sat in `@apack/host` while `PackProtocol.ts`
 lives in `@app/main`, and both its describes asserted against copies declared in the test. It moved, and its
 MIME map now reads the product's export rather than its own copy — removing `.woff2` from `PackProtocol.ts`
 fails it, where before nothing in the product could. Its path-traversal describe still rebuilds

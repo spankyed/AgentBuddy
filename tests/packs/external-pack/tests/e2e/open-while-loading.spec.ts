@@ -3,7 +3,7 @@
 // provides. Disabling the pack and enabling it again is how a test catches its frontend mid-load: a dev reload
 // replaces only the pack's backend.
 import type { Page } from '@playwright/test';
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 const PACK_ID = 'e2e-fixture';
 const MEMOS = `${PACK_ID}/memos`;

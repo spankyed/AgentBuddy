@@ -178,7 +178,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
-import type { PackContentPreview } from '@abuddy/sdk/build'
+import type { PackContentPreview } from '@apack/sdk/build'
 
 type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
 

@@ -1,4 +1,4 @@
-// The API is a shell around @abuddy/host, and its folders are the jobs it does: `boot/` starts the process,
+// The API is a shell around @apack/host, and its folders are the jobs it does: `boot/` starts the process,
 // `runtime/` opens this process's resources and binds the app, `transport/` is the wire to the renderer, and
 // `adapters/` implements what the host's code is given. The renderer's tree says the same of itself
 // (`packages/renderer/tests/source-layout.spec.ts`), with `views/` added, so the two read alike and a concept found
@@ -6,7 +6,7 @@
 //
 // A folder named for a layer rather than a job — core, shared, lib, utils, common, helpers — takes whatever nobody
 // placed: `core/shared/debug/` held the log output, three words deep, for one importer. This says a new file belongs
-// to one of the jobs, and that app runtime belongs in @abuddy/host rather than here at all.
+// to one of the jobs, and that app runtime belongs in @apack/host rather than here at all.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -25,7 +25,7 @@ describe('packages/api/src', () => {
   it('holds one folder per job, and no folder named for a layer', () => {
     const folders = entries().filter((e) => e.isDirectory()).map((e) => e.name).sort();
 
-    expect(folders, 'app runtime belongs in @abuddy/host; a new folder here is a new job').toEqual(JOBS);
+    expect(folders, 'app runtime belongs in @apack/host; a new folder here is a new job').toEqual(JOBS);
   });
 
   it('keeps at its root only the entry and the types entry', () => {

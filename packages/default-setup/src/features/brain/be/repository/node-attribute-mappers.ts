@@ -1,8 +1,8 @@
 import type { NodeEntity } from '#generated/types.ts';
 import type { FieldMapping, SourceResolver } from '../types.ts';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import { truncateResult, isTruncated } from '@abuddy/sdk/steps';
-import type { ExecutionContext } from '@abuddy/sdk/steps';
+import { truncateResult, isTruncated } from '@apack/sdk/steps';
+import type { ExecutionContext } from '@apack/sdk/steps';
 
 /*─────────────────────────────────────────────────────────────
  * Field Mapping Utilities

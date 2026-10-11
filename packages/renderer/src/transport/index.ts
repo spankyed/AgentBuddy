@@ -1,7 +1,7 @@
 import { createWSClient, wsLink, createTRPCClient, type TRPCClient } from '@trpc/client';
-import { API_HOST } from '@abuddy/sdk/utils/pure';
+import { API_HOST } from '@apack/sdk/utils/pure';
 import type { AppRouter } from '@app/api';   // ← BE import Type‑only!
-import type { _HostBridge } from '@abuddy/sdk/fe';
+import type { _HostBridge } from '@apack/sdk/fe';
 
 type ApiClient = TRPCClient<AppRouter>;
 
@@ -23,7 +23,7 @@ const apiToken = (typeof window !== 'undefined' && (window.electronAPI as _HostB
  */
 class ApiSocket extends WebSocket {
   constructor(url: string | URL) {
-    super(url, ['abuddy', `abuddy-token.${apiToken}`]);
+    super(url, ['apack', `apack-token.${apiToken}`]);
   }
 }
 

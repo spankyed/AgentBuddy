@@ -24,7 +24,7 @@ import {
 import type { Readable, Writable } from 'stream'
 
 import { resolveForService } from '../../utils/resolve-cli.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 
 import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson.ts'
 import {
@@ -135,7 +135,7 @@ export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   // implementation?" — and bypasses our plan-approval flow in chat.ts's
   // onPermissionRequest closure entirely.
   //
-  // AgentBuddy doesn't have the monster MCP tool counts tool search was
+  // apack doesn't have the monster MCP tool counts tool search was
   // designed to optimise, so the feature is pure downside for us.
   // Setting `ENABLE_TOOL_SEARCH=0` hits the `isEnvDefinedFalsy` branch
   // at `toolSearch.ts:196` → forces mode to `'standard'` → makes

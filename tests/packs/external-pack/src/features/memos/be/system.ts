@@ -1,7 +1,7 @@
 import type { Contract } from './contract.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem } from '@apack/sdk/framework';
 
 import { repository } from '#generated/repository.ts';
 import { addMemoNote } from './memo-notes.ts';

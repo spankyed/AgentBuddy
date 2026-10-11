@@ -1,11 +1,11 @@
-// `abuddy dev` and the built-in pack's watcher rebuild a pack and then POST /dev/reload. The reload has to
+// `apack dev` and the built-in pack's watcher rebuild a pack and then POST /dev/reload. The reload has to
 // leave the pack as a boot would: its runtime pointed at the compiled content, and content a rebuild changed
 // imported. This drives the real endpoint against the running app, and the library's index is what shows it.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
-import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { test, expect } from '@abuddy/testing';
+import { API_TOKEN_HEADER } from '@apack/sdk/utils/pure';
+import { test, expect } from '@apack/testing';
 
 const CONTENT_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/content/library.content.json');
 const WRITTEN_DOCUMENT = 'Codex commands';

@@ -1,6 +1,6 @@
 // What frontend code reads and changes of the app's settings, over the running Settings view. The port is the one
 // place a target the SDK names (a section, a feature) becomes an event the view takes, so this is where the two
-// contracts are checked against each other: `SettingsTarget` in @abuddy/sdk/fe and the one in @abuddy/host/fe are
+// contracts are checked against each other: `SettingsTarget` in @apack/sdk/fe and the one in @apack/host/fe are
 // different shapes, and a section addressed as a sub-key would write one level too deep, silently.
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -8,8 +8,8 @@ vi.mock('@/transport/secrets', () => ({ secretsClient: {} }));
 vi.mock('@/transport/client', () => ({ feClient: { send: () => {}, subscribe: () => () => {} } }));
 
 const { settingsPort } = await import('@/runtime/settings');
-const { startFeTestRuntime, stopFeTestRuntime } = await import('@abuddy/sdk/testing');
-const { HOST } = await import('@abuddy/host/fe');
+const { startFeTestRuntime, stopFeTestRuntime } = await import('@apack/sdk/testing');
+const { HOST } = await import('@apack/host/fe');
 
 const SETTINGS_DOC = {
   general: { projects: [{ name: 'one' }], application: { hotkeys: {} } },

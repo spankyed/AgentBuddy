@@ -67,9 +67,9 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup';
-import { HOST } from '@abuddy/host/fe';
-import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
+import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup';
+import { HOST } from '@apack/host/fe';
+import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();

@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
-import type { TemplateInput } from '@abuddy/sdk';
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
+import type { TemplateInput } from '@apack/sdk';
 
 defineProps<{
   value: string;

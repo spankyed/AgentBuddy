@@ -10,7 +10,7 @@
     "./exposed.mjs": "./dist/exposed.mjs"
   },
   "devDependencies": {
-    "@abuddy/sdk": "*",
+    "@apack/sdk": "*",
     "@app/electron-versions": "*",
     "typescript": "5.8.3",
     "vite": "7.0.6",

@@ -9,12 +9,12 @@ const BIN_DIR = '/usr/local/bin';
 
 /** Beta installs alongside production, so its command gets its own name. */
 export function cliCommandName(): string {
-  return getAppContext().build === 'beta' ? 'abuddy-beta' : 'abuddy';
+  return getAppContext().build === 'beta' ? 'apack-beta' : 'apack';
 }
 
-/** Packaged from packages/abuddy-cli/bin/app-launcher.sh (see electron-builder.mjs). */
+/** Packaged from packages/apack-cli/bin/app-launcher.sh (see electron-builder.mjs). */
 function launcherPath(): string {
-  return path.join(process.resourcesPath, 'cli', 'abuddy');
+  return path.join(process.resourcesPath, 'cli', 'apack');
 }
 
 function readLink(file: string): string | null | undefined {
@@ -34,7 +34,7 @@ async function linkWithAdminPrivileges(source: string, target: string): Promise<
   await promisify(execFile)('osascript', ['-e', `do shell script ${appleScriptString(command)} with administrator privileges`]);
 }
 
-/** "Install 'abuddy' command in PATH": symlink the app-bundled CLI launcher into /usr/local/bin. */
+/** "Install 'apack' command in PATH": symlink the app-bundled CLI launcher into /usr/local/bin. */
 export async function installCliCommand(): Promise<void> {
   const name = cliCommandName();
   const source = launcherPath();

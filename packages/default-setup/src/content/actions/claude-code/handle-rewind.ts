@@ -15,7 +15,7 @@
  * backfill from Claude's own session JSONL transcript before bailing.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { getClaudeState } from './_helpers/thread-context.ts';
 import { backfillUserCliUuids } from './_helpers/jsonl-backfill.ts';

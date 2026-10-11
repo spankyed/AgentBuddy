@@ -63,11 +63,11 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 import { reactive } from 'vue'
-import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import KeyboardShortcutInput from '@apack/ui/components/KeyboardShortcutInput'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '#generated/types.ts'
 import { openPlugin } from '#generated/fe.ts'

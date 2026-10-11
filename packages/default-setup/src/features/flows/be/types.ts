@@ -1,13 +1,13 @@
 import { type NodeEntity } from '#generated/types.ts';
 import { EARS } from '#generated/ears.ts';
-import type { ModelCatalogEntry } from '@abuddy/sdk/models';
-import type { FlowEdge } from '@abuddy/sdk/repositories';
+import type { ModelCatalogEntry } from '@apack/sdk/models';
+import type { FlowEdge } from '@apack/sdk/repositories';
 
 /*─────────────────────────────────────────────────────────────────
  * Flow & Edge entities
  *─────────────────────────────────────────────────────────────────*/
 
-import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
+import type { FlowEntity, ActionEntity, PromptEntity } from '@apack/sdk';
 
 /** A transition between two nodes, as the SDK's flow repository returns it */
 export type EdgeEntity = FlowEdge;

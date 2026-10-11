@@ -1,19 +1,19 @@
-// The chat's slash commands are the ones registered packs declare (abuddy.json `commands`) and the
+// The chat's slash commands are the ones registered packs declare (apack.json `commands`) and the
 // fields of every document in the library's internal/commands folder: the threads system sends them when a
 // client connects, and again whenever a library change or a pack changing (the bus's PACK_CHANGED) alters them
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
-import { registerPack, startApp, unregisterPack, type TestApp } from '@abuddy/testing/harness'
-import { importCompiledContent } from '@abuddy/sdk/utils'
-import { createFormatApplier } from '@abuddy/sdk/content'
-import type { PackCommand } from '@abuddy/sdk/framework'
+import { registerPack, startApp, unregisterPack, type TestApp } from '@apack/testing/harness'
+import { importCompiledContent } from '@apack/sdk/utils'
+import { createFormatApplier } from '@apack/sdk/content'
+import type { PackCommand } from '@apack/sdk/framework'
 import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
-import manifest from '../../../../abuddy.json'
+import manifest from '../../../../apack.json'
 
-/** Where `abuddy build` writes this pack's compiled content */
+/** Where `apack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)

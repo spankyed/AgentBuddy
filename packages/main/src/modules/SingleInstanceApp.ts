@@ -1,6 +1,6 @@
 import {AppModule} from '../AppModule.ts';
 import * as Electron from 'electron';
-import {publishRunningApp} from '@abuddy/host/database';
+import {publishRunningApp} from '@apack/host/database';
 import {getAppContext} from '../app-context.ts';
 
 class SingleInstanceApp implements AppModule {
@@ -18,7 +18,7 @@ class SingleInstanceApp implements AppModule {
       process.exit(0);
     }
 
-    // This process is using the data dir from here on, and `abuddy db` refuses to write to one an app is
+    // This process is using the data dir from here on, and `apack db` refuses to write to one an app is
     // using. Its API publishes a port only once it has booted, and publishes none while a crashed one is
     // being restarted, so between those moments this is the only thing that says the app is here.
     const stopPublishing = publishRunningApp(getAppContext().userDataDir);

@@ -4,9 +4,9 @@ import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.ts';
 import type { ModuleContext } from '../../ModuleContext.ts';
 import { getAppContext, shippedPacksDir } from '../../app-context.ts';
-import { devServerUrl } from '@abuddy/host/packs/dev-server';
+import { devServerUrl } from '@apack/host/packs/dev-server';
 
-/** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
+/** A pack id, as the manifest schema defines it (`apack-sdk/src/build/manifest-schema.ts`) */
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
 
 /**
@@ -39,7 +39,7 @@ export function packRequestTarget(requestUrl: string): { packId: string; filePat
  *
  * **Two roots, because a pack is either installed in the user's data dir or shipped with the app**, and a
  * pack's frontend is fetched the same way whichever it is. A shipped pack is served out of its `dist/`,
- * which is where its own `abuddy build` wrote the bundle an installed pack carries at its root. The
+ * which is where its own `apack build` wrote the bundle an installed pack carries at its root. The
  * installed copy comes first, so a pack the user replaced serves its own files.
  *
  * Each candidate is checked against *its own* prefix, so neither root widens what the other serves, and

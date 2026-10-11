@@ -207,13 +207,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { type LibraryEvents } from '../../state.ts'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
-import Button from '@abuddy/ui/design/button'
+import Button from '@apack/ui/design/button'
 import type { IndexSearchResult, SearchIndex } from '#generated/types.ts'
 import type { LibraryActor } from '../../state.ts'
 

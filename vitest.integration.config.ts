@@ -2,11 +2,11 @@ import { defineConfig } from 'vitest/config';
 import { defaultServerConditions } from 'vite';
 
 // Vitest's own defaults: Vite's server conditions without 'module'
-const conditions = ['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')];
+const conditions = ['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 
 export default defineConfig({
   // Every project here is a host package, as in `vitest.config.ts`: the expensive halves all resolve the
-  // workspace @abuddy packages to source. No pack suite has a second config, so the split that forces two
+  // workspace @apack packages to source. No pack suite has a second config, so the split that forces two
   // unit pools does not arise here.
   resolve: { conditions },
   ssr: { resolve: { conditions } },
@@ -28,7 +28,7 @@ export default defineConfig({
      * asserts it is exactly the suites with a second config, so it cannot drift.
      */
     projects: [
-      'packages/abuddy-cli/vitest.integration.config.ts',
+      'packages/apack-cli/vitest.integration.config.ts',
       'packages/repo-checks/vitest.integration.config.ts',
       'packages/publish-checks/vitest.integration.config.ts',
     ],
@@ -40,7 +40,7 @@ export default defineConfig({
      *     maxThreads 50%   44.97 48.05 48.22 48.62 49.29   median 48.2s, 5 clean
      *     no cap           50.80 51.72 51.81 52.30 52.63 52.77 53.43 54.17   median 52.4s, 9 clean
      *
-     * Nine workers each running `ts.createProgram` and `abuddy build` put the box at a load of 25-32, and
+     * Nine workers each running `ts.createProgram` and `apack build` put the box at a load of 25-32, and
      * everything gets slower together. A worker count is not free parallelism once the work is CPU-bound,
      * which every spec here is.
      *

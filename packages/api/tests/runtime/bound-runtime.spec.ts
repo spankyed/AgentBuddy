@@ -6,15 +6,15 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-bound-runtime-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { boundHost } = await import('@abuddy/sdk/runtime/internals');
-const { getAppVersion } = await import('@abuddy/sdk/env');
-const { services } = await import('@abuddy/sdk/services');
-const { untypedSendToSystem } = await import('@abuddy/sdk/events');
-const { installedEngine, repository } = await import('@abuddy/ears');
+const { boundHost } = await import('@apack/sdk/runtime/internals');
+const { getAppVersion } = await import('@apack/sdk/env');
+const { services } = await import('@apack/sdk/services');
+const { untypedSendToSystem } = await import('@apack/sdk/events');
+const { installedEngine, repository } = await import('@apack/ears');
 const { registerPack, unregisterPack } = packs;
 const { rootEvents } = await import('@/transport/emitter');
 /** The app version the composition binds: the root package.json's */

@@ -2,7 +2,7 @@
 // written to stderr as one JSON line that Electron main parses to show the user what happened
 // (`packages/main/src/modules/api-server/process-manager.ts` matches `{"__fatal":`, so the shape is a contract).
 // The renderer's counterpart is `boot/errors.ts` there, over the window's log.
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 /** Writes one `__fatal` line for `error`, naming where it came from */
 export function writeFatalError(error: unknown, source: string): void {

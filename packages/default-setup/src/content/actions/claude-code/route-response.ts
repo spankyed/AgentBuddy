@@ -7,7 +7,7 @@
  * or CC: Approve Tool based on this action's result.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 import { getClaudeState } from './_helpers/thread-context.ts';
 

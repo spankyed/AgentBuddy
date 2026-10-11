@@ -1,14 +1,14 @@
 import type { LogsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
-import { untypedTx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@apack/ears';
 import { EARS } from '#generated/ears.ts';
-import type { DeclaredMigration } from '@abuddy/sdk/framework';
-import { createLogger } from '@abuddy/sdk/logger';
+import type { DeclaredMigration } from '@apack/sdk/framework';
+import { createLogger } from '@apack/sdk/logger';
 import { ref, type FeatureName } from '#generated/ref.ts';
 import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids.ts';
 import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14.ts';
 import { isDeepStrictEqual } from 'node:util';
-import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
+import { hasOwn, isPlainObject } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('migrations');
 

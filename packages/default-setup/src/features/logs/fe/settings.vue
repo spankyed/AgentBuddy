@@ -104,8 +104,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import type { SettingUpdate } from '@apack/sdk/fe'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
 import { X } from 'lucide-vue-next'
 import type { LogsSettings } from '#generated/types.ts'
 

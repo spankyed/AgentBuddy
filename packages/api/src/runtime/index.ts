@@ -1,22 +1,22 @@
 import { createActor } from 'xstate';
-import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { bindHost } from '@abuddy/sdk/runtime';
-import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
-import type { EarsEngine } from '@abuddy/ears';
-import type { LmdbStore, WriteFailure } from '@abuddy/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
-import { resolveAppContext } from '@abuddy/sdk/env';
-import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
-import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
+import { createLogger, reportError } from '@apack/sdk/logger';
+import { bindHost } from '@apack/sdk/runtime';
+import { _getLmdbPath, _getVolatileLmdbPath } from '@apack/sdk/utils';
+import type { EarsEngine } from '@apack/ears';
+import type { LmdbStore, WriteFailure } from '@apack/ears/lmdb';
+import { assertNoDatabaseWriter, openDatabaseStore } from '@apack/host/database';
+import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apack/host/packs';
+import { resolveAppContext } from '@apack/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { loadAppPacks, startPacks } from '@apack/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
   APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
-} from '@abuddy/host/features';
-import { createAppBus, createParticipantClaims, HOST } from '@abuddy/host/bus';
-import { createHostRuntime } from '@abuddy/host/services';
-import { forwardSecretsChanges } from '@abuddy/host/secrets';
-import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
+} from '@apack/host/features';
+import { createAppBus, createParticipantClaims, HOST } from '@apack/host/bus';
+import { createHostRuntime } from '@apack/host/services';
+import { forwardSecretsChanges } from '@apack/host/secrets';
+import { assertSourceResolution } from '@apack/host/build/source-resolution';
 import { rootEvents } from '@/transport/emitter';
 import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
 import { createRequire } from 'module';
@@ -61,8 +61,8 @@ export let appStore: LmdbStore | undefined;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
- * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@abuddy/host/database`,
- * which `abuddy db` opens a data dir with too) with their partition policy and entity types, and
+ * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apack/host/database`,
+ * which `apack db` opens a data dir with too) with their partition policy and entity types, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
@@ -115,7 +115,7 @@ export let backendActor: ReturnType<typeof createActor<ReturnType<typeof createA
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
-  // Before anything opens the database: a tool changing it (`abuddy db`) holds a lock until it's done, and opening
+  // Before anything opens the database: a tool changing it (`apack db`) holds a lock until it's done, and opening
   // now would overwrite its change from this process's memory
   const appContext = resolveAppContext();
   assertNoDatabaseWriter(appContext.userDataDir);
@@ -123,7 +123,7 @@ export async function setupBackend(): Promise<void> {
   // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered
   const { store, packs } = openAppStore();
 
-  // Packs require workspace @abuddy/* packages at runtime: from a checkout they must get source,
+  // Packs require workspace @apack/* packages at runtime: from a checkout they must get source,
   // not a stale dist (main starts the API with the condition; manual boots must pass it). The
   // packaged app runs the API on Electron's runtime and ships no workspace source.
   if (!process.versions.electron) {
@@ -140,7 +140,7 @@ export async function setupBackend(): Promise<void> {
   }));
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
-  // and abuddy install learns which AgentBuddy uses this data dir
+  // and apack install learns which apack uses this data dir
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them
@@ -170,7 +170,7 @@ export async function setupBackend(): Promise<void> {
   // ── Load packs ────────────
   const { loaded: loadedPacks } = loadAppPacks(packs, shippedIds);
 
-  console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
+  console.log(`[app] apack v${APP_VERSION} startupId=${process.env.APACK_STARTUP_ID ?? 'unknown'}`);
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const pack of loadedPacks) {

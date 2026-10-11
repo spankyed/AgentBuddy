@@ -6,8 +6,8 @@
 # digest, because the work dir is outside the checkout on purpose and the chain can only derive an edge from
 # a repo-relative path.
 #
-#   8. abuddy test passes against the app it is told to use (--build; it reads no machine state)
-#   9. the packed CLI's abuddy db reads and exports the data that app written
+#   8. apack test passes against the app it is told to use (--build; it reads no machine state)
+#   9. the packed CLI's apack db reads and exports the data that app written
 # Requires a built app (npm run build) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
 set -euo pipefail
@@ -24,14 +24,14 @@ eval "$(node -e '
 ' "$HANDOFF/work.json")"
 [ -d "$WORK" ] || fail "the author half's work dir $WORK is gone — run npm run test:packaged-authoring:author again"
 [ -f "$ARCHIVE" ] || fail "the author half's archive $ARCHIVE is gone — run npm run test:packaged-authoring:author again"
-ABUDDY="$PACK/node_modules/.bin/abuddy"
+APACK="$PACK/node_modules/.bin/apack"
 useWorkDir "$WORK"
-# `abuddy test` finds the pack from the working directory, and from the checkout it would find the repo —
-# whose own `vitest.config.ts` declares `@abuddy/source`, which the pack rules then fail the pack for.
+# `apack test` finds the pack from the working directory, and from the checkout it would find the repo —
+# whose own `vitest.config.ts` declares `@apack/source`, which the pack rules then fail the pack for.
 cd "$PACK"
 
-step "8. abuddy test on the packed archive (the app named on the command line)"
-# --build, and nothing in the environment: `abuddy test` is pinned to what it is given, so that a run
+step "8. apack test on the packed archive (the app named on the command line)"
+# --build, and nothing in the environment: `apack test` is pinned to what it is given, so that a run
 # means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
@@ -44,30 +44,30 @@ step "8. abuddy test on the packed archive (the app named on the command line)"
 # this file is for is the next line; the durable copy of the same output is the chain's
 # (`scripts/lib/chain-evidence.ts`), which is what it was being read as before that existed.
 E2E_LOG="$WORK/e2e-$$.log"
-if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --build "$ROOT" 2>&1 | tee "$E2E_LOG"; then fail "abuddy test failed"; fi
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$APACK" test --build "$ROOT" 2>&1 | tee "$E2E_LOG"; then fail "apack test failed"; fi
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$E2E_LOG" | head -n 1)"
-[ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
+[ -d "$APP_DATA" ] || fail "apack test didn't report the data dir it kept"
 
 # What shipped is what ran: the integrity.json inside the archive against the one the app installed. A log
 # line saying it used the archive would only be the fixture agreeing with itself.
 tar -xzOf "$ARCHIVE" demo-pack/integrity.json > "$WORK/archive-integrity.json"
-# The app keeps everything it owns under <data dir>/abuddy — see AppContext.appDir
-diff "$WORK/archive-integrity.json" "$APP_DATA/abuddy/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
+# The app keeps everything it owns under <data dir>/apack — see AppContext.appDir
+diff "$WORK/archive-integrity.json" "$APP_DATA/apack/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
 # Only the data dir this half made: the work dir and the handoff are the author half's declared output, and
 # a step whose output is gone reads as never-built.
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$APP_DATA"' EXIT; fi
 
-step "9. abuddy db on the data the app written (the packed CLI, offline)"
+step "9. apack db on the data the app written (the packed CLI, offline)"
 # The demo pack's entity type comes from its installed manifest
-"$ABUDDY" db query "return qx(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
-  || { cat "$WORK/db-query.err"; fail "abuddy db query failed"; }
-grep -q "Database: $APP_DATA (offline)" "$WORK/db-query.err" || fail "abuddy db query didn't print its data dir"
+"$APACK" db query "return qx(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
+  || { cat "$WORK/db-query.err"; fail "apack db query failed"; }
+grep -q "Database: $APP_DATA (offline)" "$WORK/db-query.err" || fail "apack db query didn't print its data dir"
 node -e '
   const terms = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
   // The glossary term, beside the example row the scaffold content (which has none)
   if (!terms.includes("Pack")) throw new Error("the written glossary: " + JSON.stringify(terms));
-' "$WORK/db-query.json" || fail "abuddy db query didn't read the written demo pack"
-"$ABUDDY" db export --data-dir "$APP_DATA" --out "$WORK/db-export" --type DemoPack --type Note
+' "$WORK/db-query.json" || fail "apack db query didn't read the written demo pack"
+"$APACK" db export --data-dir "$APP_DATA" --out "$WORK/db-export" --type DemoPack --type Note
 node -e '
   const fs = require("fs");
   const dir = process.argv[1];
@@ -78,7 +78,7 @@ node -e '
   if (!notes.some((note) => note.title === "Demo notes")) throw new Error("Note.json has no demo note");
   const summary = JSON.parse(fs.readFileSync(`${dir}/export.json`, "utf8"));
   if (summary.counts.DemoPack !== rows.length) throw new Error("export.json: " + JSON.stringify(summary));
-' "$WORK/db-export" || fail "abuddy db export didn't write the written data"
+' "$WORK/db-export" || fail "apack db export didn't write the written data"
 
 
 step "No symlinks into the monorepo"

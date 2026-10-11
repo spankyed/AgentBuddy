@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { repoFiles } from './_support/repo-files.ts';
 
 describe('repoFiles', () => {

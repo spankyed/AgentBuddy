@@ -24,10 +24,10 @@ Validates, bumps version, generates changelog, tags, and pushes — triggering C
 
 ## Installing (Unsigned Builds)
 
-Until code signing is configured, downloaded builds will be blocked by macOS Gatekeeper. After opening the DMG and dragging AgentBuddy to Applications, run:
+Until code signing is configured, downloaded builds will be blocked by macOS Gatekeeper. After opening the DMG and dragging apack to Applications, run:
 
 ```bash
-xattr -cr /Applications/AgentBuddy.app
+xattr -cr /Applications/apack.app
 ```
 
 Then open the app normally. This only needs to be done once per download.
@@ -66,9 +66,9 @@ The release script (`build/release/release.sh`) runs these steps:
 | 7. Verify signing | Validates code signature + notarization (skipped if unsigned) |
 
 **Output:**
-- `dist/mac-arm64/AgentBuddy.app` — app bundle
-- `dist/AgentBuddy-*.dmg` — installer
-- `dist/AgentBuddy-*.zip` — archive
+- `dist/mac-arm64/apack.app` — app bundle
+- `dist/apack-*.dmg` — installer
+- `dist/apack-*.zip` — archive
 
 **Notes:**
 - ASAR is disabled — API server needs direct filesystem access to `node_modules`
@@ -83,7 +83,7 @@ The packaged app writes its main-process and API-child logs through `electron-lo
 **Current production log:**
 
 ```bash
-tail -f ~/Library/Logs/abuddy/main.log
+tail -f ~/Library/Logs/apack/main.log
 ```
 
 This log includes:
@@ -98,7 +98,7 @@ This log includes:
 **Renderer crash/error log:**
 
 ```bash
-tail -f ~/Library/Logs/abuddy/renderer.log
+tail -f ~/Library/Logs/apack/renderer.log
 ```
 
 This log includes:
@@ -112,14 +112,14 @@ This log includes:
 Machine-readable sidecars are also written for timeline tooling:
 
 ```bash
-~/Library/Logs/abuddy/main.jsonl
-~/Library/Logs/abuddy/renderer.jsonl
+~/Library/Logs/apack/main.jsonl
+~/Library/Logs/apack/renderer.jsonl
 ```
 
 **App events log:**
 
 ```bash
-tail -f ~/Library/Logs/abuddy/app-events.log
+tail -f ~/Library/Logs/apack/app-events.log
 ```
 
 This is a JSONL sidecar for backend/in-app log events emitted through the app event bus. It survives renderer crashes and is useful when the in-app Logs plugin is unavailable.
@@ -130,7 +130,7 @@ For a terminal-captured production run, use:
 npm run prod-app
 ```
 
-That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/abuddy/main.log`.
+That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/apack/main.log`.
 
 To collect a production diagnostics bundle:
 
@@ -138,15 +138,15 @@ To collect a production diagnostics bundle:
 npm run diagnostics:prod
 ```
 
-The command creates `diagnostics/agentbuddy-prod-<timestamp>/` with production logs, recent crash reports, process state, installed app metadata, bundle hashes, and git status.
+The command creates `diagnostics/apack-prod-<timestamp>/` with production logs, recent crash reports, process state, installed app metadata, bundle hashes, and git status.
 
 If the UI disappears or Force Quit does not show the app, check for orphaned API child processes:
 
 ```bash
-ps -axo pid,ppid,stat,lstart,command | rg 'AgentBuddy|packages/api/dist/server.js'
+ps -axo pid,ppid,stat,lstart,command | rg 'apack|packages/api/dist/server.js'
 ```
 
-An orphaned API child looks like `AgentBuddy .../packages/api/dist/server.js` with parent PID `1`. Kill it before relaunching:
+An orphaned API child looks like `apack .../packages/api/dist/server.js` with parent PID `1`. Kill it before relaunching:
 
 ```bash
 kill -9 <pid>

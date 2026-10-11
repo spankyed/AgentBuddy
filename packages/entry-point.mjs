@@ -11,7 +11,7 @@ if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 't
   process.on('uncaughtException', showAndExit);
   process.on('unhandledRejection', showAndExit);
 } else {
-  // In production, use electron-log to capture crashes to ~/Library/Logs/AgentBuddy/
+  // In production, use electron-log to capture crashes to ~/Library/Logs/apack/
   const log = await import('electron-log/main');
   log.default.errorHandler.startCatching({
     onError({ error }) {

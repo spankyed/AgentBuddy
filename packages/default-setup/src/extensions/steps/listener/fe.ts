@@ -1,4 +1,4 @@
-import type { StepFEFacet } from '@abuddy/sdk/steps';
+import type { StepFEFacet } from '@apack/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Radio } from 'lucide-vue-next';
 

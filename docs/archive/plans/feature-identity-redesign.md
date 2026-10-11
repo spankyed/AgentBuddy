@@ -83,7 +83,7 @@ system with `actorOf(system, 'brain').send(ev)`, 24 times in default-setup.
 ### T1. `<pack>/<feature>` is the only spelling
 
 ```ts
-// @abuddy/sdk/ids — the whole module
+// @apack/sdk/ids — the whole module
 export type FeatureRef = `${string}/${string}` & { readonly [ref]: true };
 
 /** A name pack code writes → its feature. A bare name is the writing pack's own feature. */
@@ -150,7 +150,7 @@ interface PackRegistration {
 - `systems[]`, `features[]`, `receivedEventTypes` and `boot.earlySystem` go away, so an early system is
   just a system with `early: true` and can't be missed.
 - The frontend's `PackFERegistration.plugins` is already keyed by feature, so the two sides now match.
-- The manifest redesign (`goal-manifest-redesign.md`, on `AS/external-pack-authoring`) makes `abuddy.json`
+- The manifest redesign (`goal-manifest-redesign.md`, on `AS/external-pack-authoring`) makes `apack.json`
   feature-keyed too. The generated registration would then mirror the manifest one-to-one.
 
 ### T5. Settings keyed by the feature, and UI state owned by the host

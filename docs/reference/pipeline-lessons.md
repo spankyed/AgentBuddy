@@ -25,7 +25,7 @@ Things that waste the most time, in order:
   `test:unit:pack` is the worked example and the warning: it is **89% setup overhead** — 115s of module
   evaluation against 13s of tests, the most alarming ratio in the repo — and it is off the path, so halving
   it buys zero chain wall and about a second of `npm run spec`. The diagnosis and the three dead ends are in
-  `packages/abuddy-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
+  `packages/apack-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
   ratio getting worse. **Read the path before measuring a ratio**, which is the mistake this bullet is made
   of: two sessions went into that pool's overhead before anyone asked whether it was on the path.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
@@ -43,7 +43,7 @@ Things that waste the most time, in order:
   including what to rebuild first and how to put the instrumentation back.
 - **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
   declared inputs have not moved. `packages:ensure` used to be cached that way, and what it guarantees —
-  that the built packages are current — is recorded in `node_modules/.cache/abuddy-packages-build`, which
+  that the built packages are current — is recorded in `node_modules/.cache/apack-packages-build`, which
   its fingerprint cannot see and `fingerprintUnit` excludes from the content hash by design. Measured
   2026-09-26: with those stamps cleared and `dist` still present, the step reported `cached` while
   `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
@@ -65,7 +65,7 @@ Things that waste the most time, in order:
   established alone.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
-  (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
+  (`apack-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
   find a stale package race each other's build and fail about the race rather than the code — which is
   what a background `test:unit` against a foreground `test:external-pack` used to do. Run
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
@@ -84,7 +84,7 @@ Rules that pay for themselves:
   `includePath` and the two path trackers), 1.6s GC, 0.7s tailwind and **0.3s compiling every SFC** — so
   the stage the first table blamed held a twentieth of the cost, and both intuitive optimisations ("make
   Vue faster", "cache the SFC transforms") were aimed at it. Subtract two profiles to isolate one phase
-  (`abuddy build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
+  (`apack build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
   it charged the frontend phase 0.75s of `spawnSync` that was `packages:ensure` running in both arms.
 
   **What the profile bought was a rejection, which is the usual return on one.** `treeshake: false` for the
@@ -130,7 +130,7 @@ Rules that pay for themselves:
   half — the byte count tells the two regimes apart (8,511,670 shaken against 8,549,845 opaque), it had
   already caught one dead plugin in this same spike, and it was not run on this arm.
 
-  **Skipping the phase is not the other lever.** `abuddy build` records what each phase read, and that
+  **Skipping the phase is not the other lever.** `apack build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
   nobody has made yet. The chain already caches `compile` on declared inputs, so an unchanged tree never
   pays the 11.3s in the first place, and the gate would only serve a hand-run build. What is left is making
@@ -156,7 +156,7 @@ Rules that pay for themselves:
   fifth.** The rule above is about a check that looked at nothing; this is about one that looked at *some* of
   it and has to report the gap. Picking the right shape is picking what the caller can do about it:
   **refuse**, where the evidence is missing and running on anyway is worthless (`packagesBuiltOrRefuse`,
-  `@abuddy/host/build/packages-built`, with an `ABUDDY_ALLOW_UNBUILT` hatch — it exists because thirteen spec
+  `@apack/host/build/packages-built`, with an `APACK_ALLOW_UNBUILT` hatch — it exists because thirteen spec
   files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
   "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
   (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
@@ -188,7 +188,7 @@ Rules that pay for themselves:
 
 - **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
   Three adjacent modules answer this differently and the reasons are worth knowing.
-  `publishedEntryPoints` (`abuddy-cli/src/build/pack-features.ts`) keys on its manifest's path, mtime **and**
+  `publishedEntryPoints` (`apack-cli/src/build/pack-features.ts`) keys on its manifest's path, mtime **and**
   size, "so there is no cache to remember to clear" — the size because a filesystem with 1-second granularity
   reads a rewrite inside one tick as unchanged. `readSource` (`pack-sources.ts`) is keyed by path alone behind
   a `resetSourceCache()`, and a hatch is a thing to forget: two specs call it, the repo's largest spec did not
@@ -230,10 +230,10 @@ There are four such directories under `node_modules/.cache`, and as of 2026-10-0
 
 | directory | written by | guarded by |
 |---|---|---|
-| `abuddy-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@abuddy/host/build/packages-built`) |
-| `abuddy-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
-| `abuddy-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | `holdPoolLock` (`scripts/lib/unit-pool.ts`), **per pool** |
-| `abuddy-spec-durations` | `npm run spec`, the pools' reporter | nothing, deliberately — see below |
+| `apack-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@apack/host/build/packages-built`) |
+| `apack-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
+| `apack-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | `holdPoolLock` (`scripts/lib/unit-pool.ts`), **per pool** |
+| `apack-spec-durations` | `npm run spec`, the pools' reporter | nothing, deliberately — see below |
 
 **The unit is the entries, and the directory is only usually the right proxy for them.** The pool stamps are
 locked per *pool*, not per directory, because a stamp's name carries its pool's half and provenance — so two
@@ -241,14 +241,14 @@ pools write disjoint files, and `prunePoolStamps` derives what is live from *eve
 prune cannot take another's. Two runs of the **same** pool is the case that collides. `unit-pool.spec.ts`
 asserts that partition rather than assuming it, since it is what licenses the narrower lock.
 
-**`abuddy-spec-durations` is not locked, and should not be.** It holds a ten-run window of measured file
+**`apack-spec-durations` is not locked, and should not be.** It holds a ten-run window of measured file
 durations, which informs one column of a report and gates nothing. A lost write loses a data point. Locking
 it would be apparatus around a sample, and `spec-cost.json` — 1,884 lines of band, window, tie rule, machine
 field and two idle floors, to place a spec in one of two config files — is what that costs. If something ever
 *decides* on those numbers, that is the moment to revisit, and the decision is the thing to question first.
 
 **The fix for an unguarded one is three lines**, and it is the same three: `holdExclusiveLock` from
-`@abuddy/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
+`@apack/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
 the mechanism already does for you on `exit` and on four interrupts. `scripts/lib/chain-lock.ts` is the
 worked example and is 90 lines including its prose. **Do not write a fourth lock**: that module's header is
 explicit that the mechanism is shared and only the policy — the file's name, the refusal's words — belongs to

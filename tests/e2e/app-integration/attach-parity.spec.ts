@@ -8,7 +8,7 @@
 //
 // **Which window the attach path picks is not asserted here**, and cannot usefully be: `pages()[0]` is the
 // right one in this app today, so this spec passes with the predicate replaced by "take the first" —
-// measured, by doing that. The choice among targets is held by `abuddy-testing`'s `cdp-page.spec.ts`
+// measured, by doing that. The choice among targets is held by `apack-testing`'s `cdp-page.spec.ts`
 // against a fake that presents several on purpose.
 //
 // **It launches its own app rather than using the fixture, and must.** `appLaunchEnv` sets
@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@abuddy/testing';
+import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@apack/testing';
 
 const APP_ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -63,14 +63,14 @@ test.describe('a connected page and a launched one', () => {
   let dataDir: string;
 
   test.beforeAll(async () => {
-    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-attach-'));
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-attach-'));
     app = await _electron.launch({
       executablePath: path.join(APP_ROOT, 'node_modules', 'electron', 'dist', 'Electron.app', 'Contents', 'MacOS', 'Electron'),
       args: [APP_ROOT, '--remote-debugging-port=0'],
       cwd: APP_ROOT,
       // `development`, which is what the debug port is for, and a data dir of this spec's own. Playwright's
       // own `PLAYWRIGHT_TEST` is deliberately not set: it would make the app resolve `test` instead.
-      env: { ...process.env, ABUDDY_ENV: 'development', ABUDDY_USER_DATA_DIR: dataDir, PLAYWRIGHT_VISIBLE: '' },
+      env: { ...process.env, APACK_ENV: 'development', APACK_USER_DATA_DIR: dataDir, PLAYWRIGHT_VISIBLE: '' },
     });
     launched = await mainWindow(app);
     await waitForAppReady(launched);

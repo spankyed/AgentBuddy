@@ -8,7 +8,7 @@
  * CLI, creating an isolated JSONL transcript truncated to the fork point.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { getClaudeState, persistClaudeState, dequeueMessage } from './_helpers/thread-context.ts';
 import { replayQueuedMessage } from './_helpers/stream-consumer.ts';

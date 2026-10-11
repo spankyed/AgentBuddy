@@ -24,5 +24,5 @@ export type IncomingMemosEvents =
 export type OutgoingMemosEvents =
   | { type: 'MEMOS_CONNECTED'; memos: MemoDTO[] }
   | { type: 'MEMO_ADDED'; memo: MemoDTO }
-  /** `note` is null when the note written through @abuddy/ears isn't found through the SDK */
+  /** `note` is null when the note written through @apack/ears isn't found through the SDK */
   | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null };

@@ -3,7 +3,7 @@ import { tx, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types.ts';
 import { normalizeSavedTabs } from './normalize-tabs.ts';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 
 const logger = createLogger('browser');
 

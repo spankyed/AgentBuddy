@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
-import { usePlugin } from '@abuddy/sdk/fe';
+import { usePlugin } from '@apack/sdk/fe';
 import type { NotesState } from '../state.ts';
 
 const actor: NotesState = usePlugin();

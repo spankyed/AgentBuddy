@@ -64,14 +64,14 @@
 
 <script setup lang="ts">
 import { Layers } from 'lucide-vue-next'
-import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { truncatePath } from '@abuddy/ui/utils/path-truncation'
+import type { ArtifactItem } from '@apack/sdk/artifacts'
+import { truncatePath } from '@apack/ui/utils/path-truncation'
 import { computed } from 'vue'
-import { untypedOpenPlugin } from '@abuddy/sdk/fe'
-import { resolveName } from '@abuddy/sdk/ids'
+import { untypedOpenPlugin } from '@apack/sdk/fe'
+import { resolveName } from '@apack/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { useSettingsSection } from '@abuddy/sdk/fe'
+import { useSettingsSection } from '@apack/sdk/fe'
 import type { GeneralSettings } from '#app-settings/types.ts'
 
 

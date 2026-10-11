@@ -4,7 +4,7 @@
  * Shared helpers: parseDirPath, shortenPath
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { getClaudeState, persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context.ts';
 

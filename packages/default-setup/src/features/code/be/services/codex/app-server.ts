@@ -10,7 +10,7 @@
 
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import { resolveForService } from '../../utils/resolve-cli.ts'
 import type {
   ServerStatus,
@@ -360,7 +360,7 @@ export class CodexAppServer {
         method: 'initialize',
         id,
         params: {
-          clientInfo: { name: 'agentbuddy', version: '0.3.0' },
+          clientInfo: { name: 'apack', version: '0.3.0' },
           capabilities: { experimentalApi: true },
         },
       })

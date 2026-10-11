@@ -1,25 +1,25 @@
 // Builds a workspace package's dist/ with tsc: ESM and declarations, no source maps (src doesn't ship).
-// @abuddy/ears and @abuddy/sdk are built exactly alike, so they share this script the way the bundled
+// @apack/ears and @apack/sdk are built exactly alike, so they share this script the way the bundled
 // packages share bundle-package.ts:
 //
 //   tsx ../../scripts/build-package.ts .        (from the package directory)
 //
 // Its package.json is what the published manifest is derived from: its exports resolve source under the
-// @abuddy/source condition (the repo's own configs) and dist otherwise, and `stagePublishTree` writes the
+// @apack/source condition (the repo's own configs) and dist otherwise, and `stagePublishTree` writes the
 // tree npm publishes into publish/, without the branches a tarball cannot satisfy. Relative imports name the .ts
 // source and tsc rewrites them to .js (rewriteRelativeImportExtensions), so the emitted JS resolves in
 // Node and in bundlers as is.
 //
 // It lives here rather than in each package because it reads the repo's build rule
-// (@abuddy/host/build/packages-built), and a package's own scripts import no package above their layer.
+// (@apack/host/build/packages-built), and a package's own scripts import no package above their layer.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
-import { runPackageBuild } from '@abuddy/host/build/packages-built';
-import { replaceDir } from '@abuddy/host/replace-dir';
-import { stagePublishTree } from '@abuddy/host/build/published-manifest';
+import { runPackageBuild } from '@apack/host/build/packages-built';
+import { replaceDir } from '@apack/host/replace-dir';
+import { stagePublishTree } from '@apack/host/build/published-manifest';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');

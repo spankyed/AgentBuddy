@@ -8,7 +8,7 @@ import type { EARS } from '#generated/ears.ts'
 import { getModelConfig, getModelDimensions } from '../../embedding-models.ts'
 import { fillSegments } from '../../segment-template.ts'
 import { getFastEmbedModel } from './config/fastembed-mapping.ts'
-import { ensureDirectoryExists } from '@abuddy/sdk/utils'
+import { ensureDirectoryExists } from '@apack/sdk/utils'
 import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths.ts'
 import { services } from '#generated/services.ts'
 

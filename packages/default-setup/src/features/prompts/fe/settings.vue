@@ -164,14 +164,14 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
-import ColorPicker from '@abuddy/ui/design/ColorPicker'
-import { useDebounce } from '@abuddy/ui/composables/useDebounce'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
+import ColorPicker from '@apack/ui/design/ColorPicker'
+import { useDebounce } from '@apack/ui/composables/useDebounce'
 import type { PromptsSettings, Category } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'
 import type { PromptsState } from './state.ts'

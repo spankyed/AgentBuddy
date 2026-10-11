@@ -1,7 +1,7 @@
-// Publishes each package's built tree, never a workspace directory: @abuddy/ears, @abuddy/sdk and @abuddy/ui
-// from publish/ (a manifest derived from theirs, without the checkout-only @abuddy/source branches) and
-// @abuddy/cli and @abuddy/testing from dist/package (a generated manifest). Which tree is which is
-// `PUBLISHED_TREES` in @abuddy/host/build/packages-built, where @app/publish-checks reads it too. Run
+// Publishes each package's built tree, never a workspace directory: @apack/ears, @apack/sdk and @apack/ui
+// from publish/ (a manifest derived from theirs, without the checkout-only @apack/source branches) and
+// @apack/cli and @apack/testing from dist/package (a generated manifest). Which tree is which is
+// `PUBLISHED_TREES` in @apack/host/build/packages-built, where @app/publish-checks reads it too. Run
 // `npm run packages:build` first. Versions already on the
 // registry are skipped, so re-running after a partial failure is safe. Prints "New tag:" lines,
 // which changesets/action turns into git tags and GitHub releases.
@@ -10,7 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
+import { publishedTreeDirs } from '@apack/host/build/packages-built';
 
 const dryRun = process.argv.includes('--dry-run');
 const repoRoot = path.resolve(import.meta.dirname, '..');

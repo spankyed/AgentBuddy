@@ -15,10 +15,10 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { repoFiles } from './_support/repo-files.ts';
 
-const TEMPLATES = 'packages/abuddy-cli/templates/';
+const TEMPLATES = 'packages/apack-cli/templates/';
 
 /** Arguments that take the next token as a value, so it is never read as a target */
 const VALUED = new Set(['-D', '--deny', '-A', '--allow', '-W', '--warn', '-c', '--config', '--ignore-path', '--ignore-pattern']);

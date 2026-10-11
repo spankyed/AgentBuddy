@@ -10,7 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/** Where `abuddy build` writes this pack's compiled content */
+/** Where `apack build` writes this pack's compiled content */
 const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist', 'runtime', 'content');
 
 /** Parses a body without running it; `AsyncFunction` so `await` inside one is allowed */
@@ -36,7 +36,7 @@ describe.each([
 
   // The other half of what the content-parity golden used to cover by digesting the row: that every record carries a
   // hash for change tracking to run on. notes-change-tracking.spec.ts asserts the same of every written note; the
-  // rule a missing hash triggers is the applier's, covered once in @abuddy/sdk's applier.spec.ts.
+  // rule a missing hash triggers is the applier's, covered once in @apack/sdk's applier.spec.ts.
   it('each carry a contentHash of the compiler\'s shape', () => {
     const wrong = all.filter((r) => typeof r.contentHash !== 'string' || !/^[0-9a-f]{16}$/.test(r.contentHash as string));
     expect(wrong.map((r) => `${r.label as string}: ${String(r.contentHash)}`)).toEqual([]);

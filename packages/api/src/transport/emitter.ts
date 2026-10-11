@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import { appendCappedLine } from '@abuddy/host/logs';
+import { appendCappedLine } from '@apack/host/logs';
 import { encodeJsonSafely } from '@/transport/encoder';
-import type { Message } from '@abuddy/sdk/events';
-import type { LogEvent } from '@abuddy/sdk/logger';
-import type { RootEvents } from '@abuddy/sdk/runtime';
+import type { Message } from '@apack/sdk/events';
+import type { LogEvent } from '@apack/sdk/logger';
+import type { RootEvents } from '@apack/sdk/runtime';
 
 /**
  * Writes one log event to `app-events.log`, and cannot fail the call that logged it.
@@ -22,10 +22,10 @@ import type { RootEvents } from '@abuddy/sdk/runtime';
  * that report's meta is an id and a reason, which the fast path takes.
  */
 function appendAppEventLog(event: LogEvent) {
-  const logDir = process.env.AGENTBUDDY_LOG_DIR;
+  const logDir = process.env.APACK_LOG_DIR;
   if (!logDir) return;
   const timestamp = new Date().toISOString();
-  const startupId = process.env.AGENTBUDDY_STARTUP_ID;
+  const startupId = process.env.APACK_STARTUP_ID;
   const line = encodeJsonSafely(
     { timestamp, startupId, ...event },
     (reason) => ({ timestamp, startupId, level: event.level, source: event.source, message: event.message, unserialisable: reason }),

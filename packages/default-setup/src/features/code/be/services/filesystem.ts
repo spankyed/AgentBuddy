@@ -3,7 +3,7 @@ import * as path from 'path'
 import { spawn, execFile } from 'child_process'
 import { rgPath } from '@vscode/ripgrep'
 import type { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, QuickOpenResult } from '../types.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 
 const logger = createLogger('filesystem')
 

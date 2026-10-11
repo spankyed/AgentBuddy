@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
 import { PACK_OUTPUTS } from '../../../scripts/lib/chain-steps.ts';
 import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from '../../../scripts/lib/repro.ts';
 
@@ -124,17 +124,17 @@ describe('the recorded irreproducible outputs', () => {
 
   /** The split itself: a recorded path is reported, anything else fails the run */
   it('are reported while an unrecorded difference fails', () => {
-    const { failing, known } = partition([{ path: 'packages/abuddy-sdk/dist/index.js', kind: 'changed' }]);
+    const { failing, known } = partition([{ path: 'packages/apack-sdk/dist/index.js', kind: 'changed' }]);
     expect(known).toEqual([]);
-    expect(failing.map((d) => d.path)).toEqual(['packages/abuddy-sdk/dist/index.js']);
+    expect(failing.map((d) => d.path)).toEqual(['packages/apack-sdk/dist/index.js']);
   });
 });
 
 /**
  * The trap this check would otherwise walk into, and the reason `scripts/repro.ts` runs codegen itself.
  *
- * `abuddy build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early when
- * `.inputs-hash` matches. So a round that leaves codegen to `abuddy build` re-hashes `src/__generated__`
+ * `apack build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early when
+ * `.inputs-hash` matches. So a round that leaves codegen to `apack build` re-hashes `src/__generated__`
  * without having regenerated it, and reports it identical — half of `PACK_OUTPUTS` passing for having been
  * looked at rather than checked.
  *
@@ -143,7 +143,7 @@ describe('the recorded irreproducible outputs', () => {
  * dropped.
  */
 describe('the codegen the second build would otherwise skip', () => {
-  it('is forced by the script, not left to abuddy build', () => {
+  it('is forced by the script, not left to apack build', () => {
     const script = fs.readFileSync(path.join(REPO_ROOT, 'scripts/repro.ts'), 'utf-8');
     const call = /'generate:entries'[^\n]*\n?[^\n]*/.exec(script)?.[0];
     expect(call, 'scripts/repro.ts no longer runs generate:entries at all').toBeDefined();

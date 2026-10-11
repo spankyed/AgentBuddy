@@ -4,7 +4,7 @@ Goal: investigate the pack infrastructure to understand what needs to be documen
 
 ## 1. Walk the author lifecycle end-to-end
 
-Trace what a pack author actually does from zero to running pack. Follow the CLI commands (`abuddy init`, `build`, `pack`, `install`, `dev`) and note every file, config, and convention they touch. Identify the happy path and where it can break.
+Trace what a pack author actually does from zero to running pack. Follow the CLI commands (`apack init`, `build`, `pack`, `install`, `dev`) and note every file, config, and convention they touch. Identify the happy path and where it can break.
 
 ## 2. Audit the SDK surface
 
@@ -16,11 +16,11 @@ List every capability a pack can register (systems, services, steps, EARS entiti
 
 ## 4. Review the manifest contract
 
-Read the `abuddy.json` schema — required fields, optional fields, what each controls. Check if there's validation logic (in the CLI or loader) that enforces constraints not obvious from the types alone.
+Read the `apack.json` schema — required fields, optional fields, what each controls. Check if there's validation logic (in the CLI or loader) that enforces constraints not obvious from the types alone.
 
 ## 5. Trace the build and packaging pipeline
 
-Follow what `abuddy build` and `abuddy pack` do — bundler config, output structure, what ends up in the .tgz. Understand constraints on the built output (CJS vs ESM, host resolution, external dependencies).
+Follow what `apack build` and `apack pack` do — bundler config, output structure, what ends up in the .tgz. Understand constraints on the built output (CJS vs ESM, host resolution, external dependencies).
 
 ## 6. Map the runtime constraints
 
@@ -32,7 +32,7 @@ Understand what a pack's FE entry (`dist/fe.js`) must export, how it gets loaded
 
 ## 8. Review dev workflow
 
-Look at `abuddy dev` (watch mode), how authors test locally, and whether there's a hot-reload or restart cycle. Note any dev-only setup steps.
+Look at `apack dev` (watch mode), how authors test locally, and whether there's a hot-reload or restart cycle. Note any dev-only setup steps.
 
 ## 9. Compile open questions
 

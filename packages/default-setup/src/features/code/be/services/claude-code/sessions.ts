@@ -20,7 +20,7 @@ import * as path from 'path'
 import * as os from 'os'
 import * as readline from 'readline'
 
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 
 const logger = createLogger('claude-code-sessions')
 

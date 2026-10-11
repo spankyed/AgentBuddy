@@ -25,7 +25,7 @@
 // of them share `runs/`; a field here for one that does not exist yet would be dead rather than ready.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { STAMP_DIR, flatStepName } from './chain-stamps.ts';
 
 /**

@@ -25,7 +25,7 @@ const apiBuildDone = new Promise((resolve) => {
 
 // The built-in pack's backend watcher: it keeps dist/runtime/index.cjs current and asks the API to
 // reload the pack in place. The CLI's own bundler, so there is one esbuild config for a pack's runtime
-const devBuild = fork(path.resolve('packages/abuddy-cli/bin/abuddy.mjs'), ['build', '--watch'], {
+const devBuild = fork(path.resolve('packages/apack-cli/bin/apack.mjs'), ['build', '--watch'], {
   cwd: path.resolve('packages/default-setup'),
   stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
 });
@@ -70,7 +70,7 @@ await apiBuildDone;
 // ── 3b. Then keep it current: a host, SDK or API edit rebuilds, and the app reloads its API ──
 //
 // Two builds because only the first is a precondition: Electron must not spawn against a missing bundle,
-// so that one is awaited and this one runs for as long as the session does. `ABUDDY_DEV_RELOAD` is what
+// so that one is awaited and this one runs for as long as the session does. `APACK_DEV_RELOAD` is what
 // tells Electron to watch for its writes, since a watcher here could not restart the API — main owns that
 // child. The watched paths are in `build:dev:watch`, and `packages/api/tsup.config.ts` says why there.
 const apiWatch = spawn('npm', ['run', 'build:dev:watch', '--workspace', '@app/api'], {
@@ -82,7 +82,7 @@ apiWatch.on('exit', (code) => {
   // A dead watcher leaves the loop silently broken: edits stop landing and nothing says so
   if (code) console.error(`[dev-mode] the API watcher exited with code ${code} — backend edits will not reload`);
 });
-process.env.ABUDDY_DEV_RELOAD = '1';
+process.env.APACK_DEV_RELOAD = '1';
 
 // ── 4. Build preload and main in parallel ──
 /** @type {string[]} */

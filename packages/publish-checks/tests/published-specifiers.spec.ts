@@ -2,17 +2,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /**
  * Sources import `./x.ts`; the published JS must name the emitted `./x.js` (tsc's
- * rewriteRelativeImportExtensions for @abuddy/sdk, tsdown for @abuddy/ui, esbuild for the CLI
- * and testing bundles that inline @abuddy/host).
+ * rewriteRelativeImportExtensions for @apack/sdk, tsdown for @apack/ui, esbuild for the CLI
+ * and testing bundles that inline @apack/host).
  */
-const OUTPUTS = ['packages/abuddy-sdk/dist', 'packages/abuddy-ui/dist', 'packages/abuddy-cli/dist/package/dist', 'packages/abuddy-testing/dist/package/dist'];
+const OUTPUTS = ['packages/apack-sdk/dist', 'packages/apack-ui/dist', 'packages/apack-cli/dist/package/dist', 'packages/apack-testing/dist/package/dist'];
 
 /**
  * A module's own specifiers, from the parser rather than from the text.

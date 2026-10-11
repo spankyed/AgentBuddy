@@ -1,4 +1,4 @@
-import { stepRegistry } from '@abuddy/sdk/steps';
+import { stepRegistry } from '@apack/sdk/steps';
 
 export type TriggerDescriptor = {
   triggerType: string;

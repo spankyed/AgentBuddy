@@ -3,7 +3,7 @@ type TerminalOutputHandler = (terminalId: string, data: string) => void
 class TerminalEventBus {
   private handlers = new Map<string, Set<TerminalOutputHandler>>()
   private outputs = new Map<string, string>()
-  private readonly STORAGE_KEY_PREFIX = 'agentbuddy_terminal_output_'
+  private readonly STORAGE_KEY_PREFIX = 'apack_terminal_output_'
   private readonly USE_LOCAL_STORAGE = true // Can be made configurable
   private readonly MAX_OUTPUT_LENGTH = 1000000 // 1MB limit per terminal
   private saveTimers = new Map<string, NodeJS.Timeout>()

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Release script for AgentBuddy
+# Release script for apack
 # Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]
 #
 # Version flow:
@@ -52,7 +52,7 @@ if [ "$IS_BETA" = true ]; then
 fi
 
 echo "=========================================="
-echo "🚀 AgentBuddy Release${CHANNEL_LABEL}"
+echo "🚀 apack Release${CHANNEL_LABEL}"
 echo "=========================================="
 echo ""
 
@@ -248,7 +248,7 @@ echo "✅ Release ${TAG_NAME} Complete!"
 echo "=========================================="
 echo ""
 echo "📦 CI will build, sign, and publish the release automatically."
-echo "   Check: https://github.com/spankyed/AgentBuddy/actions"
+echo "   Check: https://github.com/spankyed/apack/actions"
 echo ""
-echo "📋 View at: https://github.com/spankyed/AgentBuddy/releases"
+echo "📋 View at: https://github.com/spankyed/apack/releases"
 echo ""

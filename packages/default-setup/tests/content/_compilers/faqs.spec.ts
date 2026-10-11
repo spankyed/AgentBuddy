@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ContentCompileContext } from '@abuddy/sdk/build';
+import type { ContentCompileContext } from '@apack/sdk/build';
 import compileFaqs from '../../../src/content/_compilers/faqs.ts';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../../..');

@@ -1,16 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
-/** @abuddy/ui's build: compiled modules only, and each module's state defined once. */
-const UI_DIST = path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'dist');
+/** @apack/ui's build: compiled modules only, and each module's state defined once. */
+const UI_DIST = path.join(REPO_ROOT, 'packages', 'apack-ui', 'dist');
 const walk = (dir: string) => fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' }).map((file) => path.join(dir, file));
 
-describe.skipIf(!PACKAGES_BUILT)('@abuddy/ui dist', () => {
+describe.skipIf(!PACKAGES_BUILT)('@apack/ui dist', () => {
   it('ships compiled modules, not SFC source', () => {
     const files = walk(UI_DIST).map((file) => path.relative(UI_DIST, file));
     expect(files.filter((file) => file.endsWith('.vue'))).toEqual([]);

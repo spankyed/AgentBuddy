@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { WORTH_NAMING_MS,
   asDuration, asLocalTime, durationCacheDir, durationsOf, markedSpecs, placementOf, pruneDurationCache,
   cachedDurations, halfBound, halfTotal, KEPT_RUNS, outlierIn, quantileOf, readDurationRuns, readDurations,
@@ -20,8 +20,8 @@ import { CONFIG_BY_HALF, type Half } from '../../../scripts/lib/spec-halves.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 
 /** Two suites that really exist and really hold these files, since attribution is by path on disk */
-const HOST = UNIT_SUITES.filter((suite) => ['abuddy-host', 'abuddy-sdk'].includes(suite.dir));
-const ONE = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-host');
+const HOST = UNIT_SUITES.filter((suite) => ['apack-host', 'apack-sdk'].includes(suite.dir));
+const ONE = UNIT_SUITES.filter((suite) => suite.dir === 'apack-host');
 
 /** A row as a run reports one. `collectMs` defaults to a figure no case asserts unless it says so. */
 const row = (dir: string, file: string, ms: number, overheadMs = 0): FileDuration =>
@@ -57,12 +57,12 @@ const reported = (...modules: ReturnType<typeof mod>[]): ReportedRun =>
 describe('durationsOf', () => {
   it('attributes a module to the suite whose project reported it', () => {
     const run = reported(
-      mod('@abuddy/host', 'tests/database/write-lock.spec.ts', 4890),
-      mod('@abuddy/sdk', 'tests/build/generate-entries.spec.ts', 17745),
+      mod('@apack/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@apack/sdk', 'tests/build/generate-entries.spec.ts', 17745),
     );
     expect(durationsOf(run, HOST)).toEqual([
-      row('abuddy-host', 'tests/database/write-lock.spec.ts', 4890),
-      row('abuddy-sdk', 'tests/build/generate-entries.spec.ts', 17745),
+      row('apack-host', 'tests/database/write-lock.spec.ts', 4890),
+      row('apack-sdk', 'tests/build/generate-entries.spec.ts', 17745),
     ]);
   });
 
@@ -95,30 +95,30 @@ describe('durationsOf', () => {
    */
   it('drops a module that did not run, which reports 0 rather than nothing', () => {
     const run = reported(
-      mod('@abuddy/host', 'tests/database/write-lock.spec.ts', 4890),
-      mod('@abuddy/host', 'tests/skipped-entirely.spec.ts', 0, true),
+      mod('@apack/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@apack/host', 'tests/skipped-entirely.spec.ts', 0, true),
     );
-    expect(durationsOf(run, ONE)).toEqual([row('abuddy-host', 'tests/database/write-lock.spec.ts', 4890)]);
+    expect(durationsOf(run, ONE)).toEqual([row('apack-host', 'tests/database/write-lock.spec.ts', 4890)]);
   });
 
   it('takes a half from the filename, as every other consumer of a spec path does', () => {
-    const covered = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-cli');
+    const covered = UNIT_SUITES.filter((suite) => suite.dir === 'apack-cli');
     const run = reported(
-      mod('@abuddy/cli', 'tests/build/facade-typing.integration.spec.ts', 39800),
-      mod('@abuddy/cli', 'tests/commands/run-install.spec.ts', 3234),
+      mod('@apack/cli', 'tests/build/facade-typing.integration.spec.ts', 39800),
+      mod('@apack/cli', 'tests/commands/run-install.spec.ts', 3234),
     );
     expect(durationsOf(run, covered).map((found) => found.half)).toEqual(['integration', 'fast']);
   });
 
   it('says nothing about a run that reported no modules', () => {
-    expect(durationsOf({ projects: ['@abuddy/host'], modules: [] }, ONE)).toEqual([]);
+    expect(durationsOf({ projects: ['@apack/host'], modules: [] }, ONE)).toEqual([]);
   });
 
   // Named rather than dropped: a silent drop takes the file out of the ranking, the gate and the cache at
   // once. The cause is narrower than it was — a workspace name and its vitest project name having
   // diverged — and it is the same divergence `projectsThatDidNotRun` refuses on
   it('refuses a module whose project is none of the covered suites', () => {
-    const run = reported(mod('@abuddy/no-such-project', 'tests/a.spec.ts', 10));
+    const run = reported(mod('@apack/no-such-project', 'tests/a.spec.ts', 10));
     expect(() => durationsOf(run, ONE)).toThrow(/is none of the 1 suite/);
   });
 });
@@ -140,8 +140,8 @@ describe('tailBar', () => {
   // rather than a live gate, and the case is what holds the construction
   it('is each half\'s own, not one bar over both', () => {
     const rows = [
-      ...Array.from({ length: 20 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, (index + 1) * 10)),
-      ...Array.from({ length: 10 }, (_, index) => row('abuddy-cli', `tests/g${index}.integration.spec.ts`, (index + 1) * 4000)),
+      ...Array.from({ length: 20 }, (_, index) => row('apack-host', `tests/f${index}.spec.ts`, (index + 1) * 10)),
+      ...Array.from({ length: 10 }, (_, index) => row('apack-cli', `tests/g${index}.integration.spec.ts`, (index + 1) * 4000)),
     ];
     expect(tailBar(rows, 'fast')).toBe(180);
     expect(tailBar(rows, 'integration')).toBe(36_000);
@@ -150,7 +150,7 @@ describe('tailBar', () => {
   });
 
   it('has no bar for a half this run did not measure', () => {
-    expect(tailBar([row('abuddy-host', 'tests/a.spec.ts', 10)], 'integration')).toBeUndefined();
+    expect(tailBar([row('apack-host', 'tests/a.spec.ts', 10)], 'integration')).toBeUndefined();
   });
 });
 
@@ -232,9 +232,9 @@ describe('markedSpecs', () => {
 });
 
 describe('placementOf', () => {
-  const nine = [5, 10, 15, 20, 25, 30, 35, 40, 45].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
+  const nine = [5, 10, 15, 20, 25, 30, 35, 40, 45].map((ms, index) => row('apack-host', `tests/f${index}.spec.ts`, ms));
   const marked = (file: string, reason = 'a reason'): Map<string, Map<string, string>> =>
-    new Map([['abuddy-host', new Map([[file, reason]])]]);
+    new Map([['apack-host', new Map([[file, reason]])]]);
   /** Every case below had the whole half to judge from, which is what lets the gate speak at all */
   const WHOLE = { whole: true } as const;
 
@@ -254,10 +254,10 @@ describe('placementOf', () => {
   const ANY_SIZE = { ...WHOLE, worthNamingMs: 0 } as const;
 
   it('fails a marked spec that is no longer in its half\'s tail, quoting its reason', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     const { stale } = placementOf(rows, marked('tests/f0.spec.ts', 'it spawns seven processes'), BAR_ONLY);
     expect(stale).toEqual([
-      { dir: 'abuddy-host', file: 'tests/f0.spec.ts', ms: 5, bar: 45, reason: 'it spawns seven processes' },
+      { dir: 'apack-host', file: 'tests/f0.spec.ts', ms: 5, bar: 45, reason: 'it spawns seven processes' },
     ]);
   });
 
@@ -270,7 +270,7 @@ describe('placementOf', () => {
    * lands on it — and the remedy it printed was to drop a true marker from a 23.5s spec.
    */
   it('leaves alone the marked spec whose own reading is the bar', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 46), row('abuddy-host', 'tests/mid.spec.ts', 45)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 46), row('apack-host', 'tests/mid.spec.ts', 45)];
     const bar = tailBar(rows, 'fast')!;
     expect(bar, 'the fixture puts a marked file exactly on the bar').toBe(45);
     expect(placementOf(rows, marked('tests/mid.spec.ts'), BAR_ONLY).stale).toEqual([]);
@@ -285,28 +285,28 @@ describe('placementOf', () => {
    */
   it('leaves a marked spec alone while it is still slow in absolute terms', () => {
     const big = Array.from({ length: 9 }, (_, index) =>
-      row('abuddy-host', `tests/big${index}.spec.ts`, WORTH_NAMING_MS * (index + 3)));
-    const rows = [...big, row('abuddy-host', 'tests/marked.spec.ts', WORTH_NAMING_MS * 2)];
+      row('apack-host', `tests/big${index}.spec.ts`, WORTH_NAMING_MS * (index + 3)));
+    const rows = [...big, row('apack-host', 'tests/marked.spec.ts', WORTH_NAMING_MS * 2)];
     expect(placementOf(rows, marked('tests/marked.spec.ts'), { whole: true }).stale,
       'under its half\'s bar, and still 20s').toEqual([]);
   });
 
   it('leaves a marked spec that is still in the tail alone', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     expect(placementOf(rows, marked('tests/slow.spec.ts'), BAR_ONLY).stale).toEqual([]);
   });
 
   // The other direction, and the reason it is not a failure: load inflates a duration by a measured 1.27x
   // median and 3.29x at worst, so a busy machine can put a file here on its own
   it('reports an unmarked spec in the slowest few without failing', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     const { stale, unmarked } = placementOf(rows, new Map(), ANY_SIZE);
     expect(stale).toEqual([]);
     expect(unmarked.map((found) => found.file)).toEqual(['tests/slow.spec.ts']);
   });
 
   it('bounds that report by the ranking, not by the bar, since a tenth of a half is over it by construction', () => {
-    const many = Array.from({ length: 100 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, index * 10));
+    const many = Array.from({ length: 100 }, (_, index) => row('apack-host', `tests/f${index}.spec.ts`, index * 10));
     expect(placementOf(many, new Map(), ANY_SIZE).unmarked).toHaveLength(5);
     expect(placementOf(many, new Map(), { ...ANY_SIZE, limit: 2 }).unmarked).toHaveLength(2);
   });
@@ -321,10 +321,10 @@ describe('placementOf', () => {
    * file to satisfy an instrument rather than because it is true.
    */
   it('names none of a half whose slowest files are small in absolute terms', () => {
-    const many = Array.from({ length: 100 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, index * 10));
+    const many = Array.from({ length: 100 }, (_, index) => row('apack-host', `tests/f${index}.spec.ts`, index * 10));
     expect(placementOf(many, new Map(), { whole: true }).unmarked, 'the real floor mutes a 990ms tail')
       .toEqual([]);
-    const big = [...many, row('abuddy-host', 'tests/huge.spec.ts', WORTH_NAMING_MS + 1)];
+    const big = [...many, row('apack-host', 'tests/huge.spec.ts', WORTH_NAMING_MS + 1)];
     expect(placementOf(big, new Map(), { whole: true }).unmarked.map((found) => found.file))
       .toEqual(['tests/huge.spec.ts']);
   });
@@ -333,7 +333,7 @@ describe('placementOf', () => {
   // including the slowest file. A pool runs the projects whose inputs moved, so a run of one small
   // project is ordinary: measured 2026-10-05, `publish-checks` alone is four files and `renderer` eight
   it('checks no marker in a half too small to have a tail, and says which half', () => {
-    const four = [1000, 2000, 3000, 3035].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
+    const four = [1000, 2000, 3000, 3035].map((ms, index) => row('apack-host', `tests/f${index}.spec.ts`, ms));
     const { stale, unplaceable } = placementOf(four, marked('tests/f0.spec.ts'), BAR_ONLY);
     expect(stale, 'a bar that is its own population\'s maximum places nothing, so it may fail nothing')
       .toEqual([]);
@@ -341,7 +341,7 @@ describe('placementOf', () => {
   });
 
   it('says nothing about a half the run never measured', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     expect(placementOf(rows, new Map(), WHOLE).unplaceable).toEqual([]);
   });
 
@@ -356,9 +356,9 @@ describe('placementOf', () => {
    * against a whole half and unjudged against part of one.
    */
   it('judges no marker from part of a half, however far under that part\'s bar a marked spec sits', () => {
-    const slower = [8000, 7000, 6000, 5000, 4000, 3500].map((ms, index) => row('abuddy-host', `tests/s${index}.spec.ts`, ms));
-    const faster = [100, 90, 80, 70].map((ms, index) => row('abuddy-host', `tests/q${index}.spec.ts`, ms));
-    const rows = [row('abuddy-host', 'tests/marked.spec.ts', 2900), ...slower, ...faster];
+    const slower = [8000, 7000, 6000, 5000, 4000, 3500].map((ms, index) => row('apack-host', `tests/s${index}.spec.ts`, ms));
+    const faster = [100, 90, 80, 70].map((ms, index) => row('apack-host', `tests/q${index}.spec.ts`, ms));
+    const rows = [row('apack-host', 'tests/marked.spec.ts', 2900), ...slower, ...faster];
 
     const partial = placementOf(rows, marked('tests/marked.spec.ts'), { whole: false });
     expect(partial.stale, 'it has not moved; only its neighbours have').toEqual([]);
@@ -370,7 +370,7 @@ describe('placementOf', () => {
   });
 
   it('still ranks a partial run, since the ranking is a report and not a gate', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     expect(placementOf(rows, new Map(), { ...ANY_SIZE, whole: false }).unmarked.map((found) => found.file))
       .toEqual(['tests/slow.spec.ts']);
   });
@@ -378,14 +378,14 @@ describe('placementOf', () => {
   // A marked spec in a project the pool did not run is not evidence either way. The alternative is a gate
   // whose answer depends on which projects happened to be stale
   it('ignores a marked spec that this run did not measure', () => {
-    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    const rows = [...nine, row('apack-host', 'tests/slow.spec.ts', 5000)];
     expect(placementOf(rows, marked('tests/never-ran.spec.ts'), BAR_ONLY).stale).toEqual([]);
   });
 });
 
 describe('slowestFiles', () => {
   it('ranks a half by duration, which is the one thing vitest does not print', () => {
-    const rows = [1328, 1255, 2443, 2838, 2478, 3163].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
+    const rows = [1328, 1255, 2443, 2838, 2478, 3163].map((ms, index) => row('apack-host', `tests/f${index}.spec.ts`, ms));
     expect(slowestFiles(rows, 'fast', 3).map((found) => found.ms)).toEqual([3163, 2838, 2478]);
   });
 });
@@ -393,32 +393,32 @@ describe('slowestFiles', () => {
 describe('the duration cache', () => {
   it('keeps a suite\'s two halves apart, so one run does not clobber the other\'s', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 10)]);
-    writeDurations(root, [row('abuddy-cli', 'tests/b.integration.spec.ts', 9000)]);
-    writeDurations(root, [row('abuddy-cli', 'tests/c.spec.ts', 20)]);
-    expect(readDurations(root, 'abuddy-cli', 'integration')?.ms).toEqual({ 'tests/b.integration.spec.ts': 9000 });
-    expect(readDurations(root, 'abuddy-cli', 'fast')?.ms).toEqual({ 'tests/c.spec.ts': 20 });
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 10)]);
+    writeDurations(root, [row('apack-cli', 'tests/b.integration.spec.ts', 9000)]);
+    writeDurations(root, [row('apack-cli', 'tests/c.spec.ts', 20)]);
+    expect(readDurations(root, 'apack-cli', 'integration')?.ms).toEqual({ 'tests/b.integration.spec.ts': 9000 });
+    expect(readDurations(root, 'apack-cli', 'fast')?.ms).toEqual({ 'tests/c.spec.ts': 20 });
     expect(fs.readdirSync(durationCacheDir(root)).sort())
-      .toEqual(['abuddy-cli.fast.json', 'abuddy-cli.integration.json', 'abuddy-host.fast.json']);
+      .toEqual(['apack-cli.fast.json', 'apack-cli.integration.json', 'apack-host.fast.json']);
   });
 
   // The answer a fresh clone gives, and the one `spec:dry` has to be able to print around
   it('has no answer where no run has measured, rather than a zero', () => {
-    expect(readDurations(tmpdir(), 'abuddy-host', 'fast')).toBeUndefined();
+    expect(readDurations(tmpdir(), 'apack-host', 'fast')).toBeUndefined();
   });
 
   it('has no answer for a half-written file, which means the same thing', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 10)]);
-    const file = path.join(durationCacheDir(root), 'abuddy-host.fast.json');
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 10)]);
+    const file = path.join(durationCacheDir(root), 'apack-host.fast.json');
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').slice(0, 12));
-    expect(readDurations(root, 'abuddy-host', 'fast')).toBeUndefined();
+    expect(readDurations(root, 'apack-host', 'fast')).toBeUndefined();
   });
 
   it('records when it measured, so a reader can say how old the answer is', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 10)], '2026-10-05T12:00:00.000Z');
-    expect(readDurations(root, 'abuddy-host', 'fast')?.measuredAt).toBe('2026-10-05T12:00:00.000Z');
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 10)], '2026-10-05T12:00:00.000Z');
+    expect(readDurations(root, 'apack-host', 'fast')?.measuredAt).toBe('2026-10-05T12:00:00.000Z');
   });
 });
 
@@ -431,10 +431,10 @@ describe('the duration cache', () => {
  * that step. `since` is what makes the report a claim about one run.
  */
 describe('cachedDurations', () => {
-  const ONE_SUITE = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-host');
+  const ONE_SUITE = UNIT_SUITES.filter((suite) => suite.dir === 'apack-host');
   const withRun = (measuredAt: string): string => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], measuredAt);
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 1200)], measuredAt);
     return root;
   };
 
@@ -458,15 +458,15 @@ describe('cachedDurations', () => {
  * A half's whole weight, which is the number a ranking cannot give.
  *
  * The two come apart exactly where it matters: measured 2026-10-05, the five slowest files hold 46% of
- * `repo-checks`' fast half and 97% of `abuddy-sdk`'s. And the shape no top-five can show at all is many
+ * `repo-checks`' fast half and 97% of `apack-sdk`'s. And the shape no top-five can show at all is many
  * files each creeping a little — 349 of 388 fast-half files are under 500ms and total 24.1s between them,
  * so every one of them could double without entering any ranking.
  */
 describe('halfTotal', () => {
   const rows = [
-    row('abuddy-host', 'tests/a.spec.ts', 1200),
-    row('abuddy-host', 'tests/b.spec.ts', 300),
-    row('abuddy-cli', 'tests/c.integration.spec.ts', 40_000),
+    row('apack-host', 'tests/a.spec.ts', 1200),
+    row('apack-host', 'tests/b.spec.ts', 300),
+    row('apack-cli', 'tests/c.integration.spec.ts', 40_000),
   ];
 
   it('sums one half and counts its files, leaving the other half out', () => {
@@ -496,8 +496,8 @@ describe('halfTotal', () => {
  */
 describe('halfBound', () => {
   // The host pool's own figures, 2026-10-06: 141.4s of tests, 139.6s of overhead, a 10.0s floor, 10 cores
-  const host = [row('abuddy-sdk', 'tests/compiles.spec.ts', 10_000, 1000),
-    row('abuddy-sdk', 'tests/shapes.spec.ts', 9400, 1000),
+  const host = [row('apack-sdk', 'tests/compiles.spec.ts', 10_000, 1000),
+    row('apack-sdk', 'tests/shapes.spec.ts', 9400, 1000),
     // the rest of the half, spread as 280 files are rather than heaped into one that would be the floor
     ...Array.from({ length: 280 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 436, 491))];
 
@@ -526,7 +526,7 @@ describe('halfBound', () => {
    * calling the floor binding.
    */
   it('refuses a verdict where overhead was never recorded, and says how many files', () => {
-    const floor = row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300, 0);
+    const floor = row('apack-sdk', 'tests/generate-entries.spec.ts', 18_300, 0);
     const rest = Array.from({ length: 287 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 238, 0));
     const bound = halfBound([floor, ...rest], 'fast', 10);
     expect(bound.perCoreMs / 1000, 'tests alone, which is half the truth').toBeCloseTo(8.7, 0);
@@ -537,7 +537,7 @@ describe('halfBound', () => {
 
   // The same half once overhead is recorded: work-bound, as it really was
   it('judges it work-bound once the overhead is there', () => {
-    const floor = row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300, 1000);
+    const floor = row('apack-sdk', 'tests/generate-entries.spec.ts', 18_300, 1000);
     const rest = Array.from({ length: 287 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 238, 483));
     const bound = halfBound([floor, ...rest], 'fast', 10);
     expect(bound.perCoreMs / 1000).toBeCloseTo(22.6, 0);
@@ -571,13 +571,13 @@ describe('halfBound', () => {
  */
 describe('outlierIn', () => {
   // Overhead left at zero so each peer's cost is its `ms`, which keeps the ratios in these cases readable
-  const peers = [row('abuddy-host', 'tests/write-lock.spec.ts', 4900),
-    row('abuddy-cli', 'tests/run-install.spec.ts', 4000),
-    row('abuddy-host', 'tests/published-manifest.spec.ts', 3400),
-    row('abuddy-ears', 'tests/store.spec.ts', 3300)];
+  const peers = [row('apack-host', 'tests/write-lock.spec.ts', 4900),
+    row('apack-cli', 'tests/run-install.spec.ts', 4000),
+    row('apack-host', 'tests/published-manifest.spec.ts', 3400),
+    row('apack-ears', 'tests/store.spec.ts', 3300)];
 
   it('reports one file standing above its half, with the ratio the caller prints', () => {
-    const found = outlierIn([row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300), ...peers], 'fast')!;
+    const found = outlierIn([row('apack-sdk', 'tests/generate-entries.spec.ts', 18_300), ...peers], 'fast')!;
     expect(found.above.map((r) => r.file)).toEqual(['tests/generate-entries.spec.ts']);
     expect(found.belowMs).toBe(4900);
     expect(found.ratio).toBeCloseTo(3.73, 1);
@@ -652,11 +652,11 @@ describe('outlierIn', () => {
 describe('the duration window', () => {
   it('keeps the newest run first and the older ones behind it', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 2900)], '2026-10-02T00:00:00.000Z');
-    const runs = readDurationRuns(root, 'abuddy-host', 'fast')!;
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 2900)], '2026-10-02T00:00:00.000Z');
+    const runs = readDurationRuns(root, 'apack-host', 'fast')!;
     expect(runs.map((run) => run.measuredAt)).toEqual(['2026-10-02T00:00:00.000Z', '2026-10-01T00:00:00.000Z']);
-    expect(readDurations(root, 'abuddy-host', 'fast')!.ms['tests/a.spec.ts'], 'the newest is what prices a plan').toBe(2900);
+    expect(readDurations(root, 'apack-host', 'fast')!.ms['tests/a.spec.ts'], 'the newest is what prices a plan').toBe(2900);
   });
 
   // Bounded is the whole claim: the file count never moves, so `pruneDurationCache` still answers for
@@ -664,9 +664,9 @@ describe('the duration window', () => {
   it(`keeps at most ${KEPT_RUNS} runs`, () => {
     const root = tmpdir();
     for (let n = 0; n < KEPT_RUNS + 4; n += 1) {
-      writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', n)], `2026-10-01T00:00:${String(n).padStart(2, '0')}.000Z`);
+      writeDurations(root, [row('apack-host', 'tests/a.spec.ts', n)], `2026-10-01T00:00:${String(n).padStart(2, '0')}.000Z`);
     }
-    const runs = readDurationRuns(root, 'abuddy-host', 'fast')!;
+    const runs = readDurationRuns(root, 'apack-host', 'fast')!;
     expect(runs).toHaveLength(KEPT_RUNS);
     expect(runs[0]!.ms['tests/a.spec.ts'], 'the newest survives').toBe(KEPT_RUNS + 3);
   });
@@ -676,10 +676,10 @@ describe('the duration window', () => {
   it('reads a record from before the window as a window of one', () => {
     const root = tmpdir();
     fs.mkdirSync(durationCacheDir(root), { recursive: true });
-    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'),
+    fs.writeFileSync(path.join(durationCacheDir(root), 'apack-host.fast.json'),
       JSON.stringify({ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }));
-    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toHaveLength(1);
-    expect(readDurations(root, 'abuddy-host', 'fast')!.ms['tests/a.spec.ts']).toBe(500);
+    expect(readDurationRuns(root, 'apack-host', 'fast')).toHaveLength(1);
+    expect(readDurations(root, 'apack-host', 'fast')!.ms['tests/a.spec.ts']).toBe(500);
   });
 
   /**
@@ -693,13 +693,13 @@ describe('the duration window', () => {
   it('reads a record from before overhead was recorded, with ms intact', () => {
     const root = tmpdir();
     fs.mkdirSync(durationCacheDir(root), { recursive: true });
-    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'), JSON.stringify({
+    fs.writeFileSync(path.join(durationCacheDir(root), 'apack-host.fast.json'), JSON.stringify({
       runs: [{ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }],
     }));
-    const record = readDurations(root, 'abuddy-host', 'fast')!;
+    const record = readDurations(root, 'apack-host', 'fast')!;
     expect(record.ms['tests/a.spec.ts'], 'the measurement it does have').toBe(500);
     expect(record.overheadMs, 'the one it does not, as an absence rather than a refusal').toEqual({});
-    expect(cachedDurations(root, UNIT_SUITES.filter((s) => s.dir === 'abuddy-host'), 'fast')[0]!.overheadMs)
+    expect(cachedDurations(root, UNIT_SUITES.filter((s) => s.dir === 'apack-host'), 'fast')[0]!.overheadMs)
       .toBe(0);
   });
 
@@ -707,45 +707,45 @@ describe('the duration window', () => {
   // collection
   it('round-trips overhead beside tests, under the same keys', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200, 900),
-      row('abuddy-host', 'tests/b.spec.ts', 300, 2400)], '2026-10-02T00:00:00.000Z');
-    const record = readDurations(root, 'abuddy-host', 'fast')!;
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 1200, 900),
+      row('apack-host', 'tests/b.spec.ts', 300, 2400)], '2026-10-02T00:00:00.000Z');
+    const record = readDurations(root, 'apack-host', 'fast')!;
     expect(record.ms).toEqual({ 'tests/a.spec.ts': 1200, 'tests/b.spec.ts': 300 });
     expect(record.overheadMs).toEqual({ 'tests/a.spec.ts': 900, 'tests/b.spec.ts': 2400 });
   });
 
   it('has no window where no run has measured, and none for a half-written file', () => {
     const root = tmpdir();
-    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toBeUndefined();
+    expect(readDurationRuns(root, 'apack-host', 'fast')).toBeUndefined();
     fs.mkdirSync(durationCacheDir(root), { recursive: true });
-    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'), '{"runs": [{"measu');
-    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toBeUndefined();
+    fs.writeFileSync(path.join(durationCacheDir(root), 'apack-host.fast.json'), '{"runs": [{"measu');
+    expect(readDurationRuns(root, 'apack-host', 'fast')).toBeUndefined();
   });
 });
 
 describe('trendOf', () => {
   const twoRuns = (first: number, second: number): string => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', first)], '2026-10-01T00:00:00.000Z');
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', second)], '2026-10-02T00:00:00.000Z');
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', first)], '2026-10-01T00:00:00.000Z');
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', second)], '2026-10-02T00:00:00.000Z');
     return root;
   };
 
   it('reports the oldest reading the window holds, and how many it rests on', () => {
-    expect(trendOf(twoRuns(1200, 2900), 'abuddy-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
+    expect(trendOf(twoRuns(1200, 2900), 'apack-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
   });
 
   // No verdict and no threshold: a drop is reported exactly as a rise is, because nothing acts on either
   it('reports a spec that got faster the same way', () => {
-    expect(trendOf(twoRuns(2900, 1200), 'abuddy-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 2900, runs: 2 });
+    expect(trendOf(twoRuns(2900, 1200), 'apack-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 2900, runs: 2 });
   });
 
   it('has nothing to say about a window of one, or a spec the window has not seen twice', () => {
     const root = tmpdir();
-    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
-    expect(trendOf(root, 'abuddy-host', 'fast', 'tests/a.spec.ts'), 'one reading is not a trend').toBeUndefined();
-    writeDurations(root, [row('abuddy-host', 'tests/b.spec.ts', 90)], '2026-10-02T00:00:00.000Z');
-    expect(trendOf(root, 'abuddy-host', 'fast', 'tests/b.spec.ts'), 'seen in one run of two').toBeUndefined();
+    writeDurations(root, [row('apack-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
+    expect(trendOf(root, 'apack-host', 'fast', 'tests/a.spec.ts'), 'one reading is not a trend').toBeUndefined();
+    writeDurations(root, [row('apack-host', 'tests/b.spec.ts', 90)], '2026-10-02T00:00:00.000Z');
+    expect(trendOf(root, 'apack-host', 'fast', 'tests/b.spec.ts'), 'seen in one run of two').toBeUndefined();
   });
 });
 

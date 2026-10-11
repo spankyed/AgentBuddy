@@ -1,7 +1,7 @@
-import type { StepBuildFacet, StepNodeFacet } from '@abuddy/sdk/steps';
-import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@abuddy/sdk/steps';
-import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
-import { EARS } from '@abuddy/sdk';
+import type { StepBuildFacet, StepNodeFacet } from '@apack/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@apack/sdk/steps';
+import { BinaryOperator, BinaryOperator as Op } from '@apack/sdk/utils';
+import { EARS } from '@apack/sdk';
 
 function parseExpressionToPredicate(expr: string): { key: string; operator: BinaryOperator; value?: any } | undefined {
   if (!expr || expr.trim() === '') return undefined;
@@ -178,7 +178,7 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
   return result;
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
 export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };
 
 /** What a node of this type starts with; the backend writes it and the canvas draws it */

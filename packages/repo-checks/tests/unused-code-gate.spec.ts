@@ -2,15 +2,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { population } from '@abuddy/sdk/testing';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { population } from '@apack/sdk/testing';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
  * The compiler reports unused code, in every package, and nothing has to opt in.
  *
  * `noUnusedLocals` catches a class the linter structurally cannot. Measured the day this landed: `oxlint`
- * reads 114 files in `@abuddy/ui` and reports zero, where `vue-tsc --noUnusedLocals` reports ten — it does
+ * reads 114 files in `@apack/ui` and reports zero, where `vue-tsc --noUnusedLocals` reports ten — it does
  * not analyse bindings inside an SFC's script block. Twenty-seven findings survived a fully green lint run,
  * in `.vue` scripts and in generated code, which is why this gate is the compiler's rather than the linter's.
  *
@@ -38,9 +38,9 @@ const packageDirs = (): string[] =>
  * run over, and `api:update` is not where dead code is meant to surface.
  */
 const NOT_GATED: Record<string, string> = {
-  'packages/abuddy-ears/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
-  'packages/abuddy-sdk/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
-  'packages/abuddy-ui/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
+  'packages/apack-ears/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
+  'packages/apack-sdk/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
+  'packages/apack-ui/tsconfig.api-extractor.json': 'API Extractor\'s input, not a check',
 };
 
 interface Config { readonly rel: string; readonly file: string; readonly compiles: number; readonly gated: boolean }
@@ -108,7 +108,7 @@ describe('every workspace is checked for unused code', () => {
    */
   describe('reads the flag rather than something that resembles it', () => {
     it('reports a config that drops the flag', () => {
-      const real = path.join(REPO_ROOT, 'packages', 'abuddy-host', 'tsconfig.json');
+      const real = path.join(REPO_ROOT, 'packages', 'apack-host', 'tsconfig.json');
       const read = ts.readConfigFile(real, ts.sys.readFile);
       const options = (read.config as { compilerOptions: Record<string, unknown> }).compilerOptions;
       expect(options.noUnusedLocals, 'the file this mutates has stopped setting the flag literally').toBe(true);

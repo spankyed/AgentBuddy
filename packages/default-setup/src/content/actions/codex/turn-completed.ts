@@ -1,6 +1,6 @@
 /** CDX: Turn Completed — finalizes session stats and creates diff artifact. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { getCodexState, persistCodexState, updateCodexState, updateChatState } from './_helpers/thread-context.ts';
 import { parseUnifiedDiff } from '../claude-code/_helpers/parse-diff.ts';

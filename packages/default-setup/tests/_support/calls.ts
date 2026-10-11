@@ -2,8 +2,8 @@
 //
 // A machine mints its own call and hands it to `sendToSystem` as the third argument, so this is the only
 // place a spec can learn what the real backend's `reply` would echo — there is no field on the event to read
-// it from, which is the design. Pair it with `answerTo` (`@abuddy/sdk/testing`) to build the answer.
-import type { CallOptions } from '@abuddy/sdk/events';
+// it from, which is the design. Pair it with `answerTo` (`@apack/sdk/testing`) to build the answer.
+import type { CallOptions } from '@apack/sdk/events';
 
 /** A mocked `sendToSystem`, read structurally so this needs no vitest types */
 interface SendMock {

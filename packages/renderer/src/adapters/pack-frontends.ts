@@ -1,7 +1,7 @@
 // This window's half of loading a pack's frontend: importing a module from `pack://` and putting a stylesheet in the
 // document. The rules around both — which URL, what counts as a registration, what unloading undoes — are the host's
-// (`@abuddy/host/fe`, `fe/packs/frontends.ts`), which takes this as its I/O.
-import type { PackFrontendIO } from '@abuddy/host/fe';
+// (`@apack/host/fe`, `fe/packs/frontends.ts`), which takes this as its I/O.
+import type { PackFrontendIO } from '@apack/host/fe';
 import devFrontends from 'virtual:dev-pack-frontends';
 
 export const packFrontendIO: PackFrontendIO = {

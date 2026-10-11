@@ -109,12 +109,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, watch } from 'vue'
 import { Archive, MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import Button from '@abuddy/ui/design/button'
+import Button from '@apack/ui/design/button'
 import ThreadRow from './list/thread-row.vue'
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts'

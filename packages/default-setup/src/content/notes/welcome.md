@@ -3,9 +3,9 @@ type: document
 icon: "👋"
 ---
 
-# Welcome to AgentBuddy
+# Welcome to apack
 
-AgentBuddy is an AI-development environment and work platform. It features persistent conversations — with rich artifacts, interactive permissions, and automation you can see and customize.
+apack is an AI-development environment and work platform. It features persistent conversations — with rich artifacts, interactive permissions, and automation you can see and customize.
 
 ---
 

@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe';
+import { isAnyMenuOpen, usePlugin } from '@apack/sdk/fe';
 import { useSelector } from '@xstate/vue';
 import { type BrowserState } from './state.ts';
 import BrowserTabBar from './components/BrowserTabBar.vue';
