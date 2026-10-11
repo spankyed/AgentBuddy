@@ -22,7 +22,7 @@
 
     "dev": "node packages/dev-mode.js",
     "dev:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
-    "dev:built": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs dev",
+    "open": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs dev",
     "drive": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive",
     "drive:eval": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive --eval",
     "drive:query": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive --query",

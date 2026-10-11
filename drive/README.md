@@ -61,7 +61,7 @@ the debug port that app published.
 
 ```bash
 npm run dev                                       # one terminal: source watchers and a drive session
-# Or: npm run dev:built                           # use already-built artifacts
+# Or: npm run open                                # hold the built app; no builds or watchers
 npm run drive:state                               # another: 0.9s
 npm run drive:eval -- 'return document.title'     # {"value":"Agent X","state":"attached",…}
 npm run drive:query -- 'return qx(EARS.Entity.Note).count()'

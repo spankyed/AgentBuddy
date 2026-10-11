@@ -77,7 +77,7 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 ```sh
 npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
-npm run dev:built        # Launch/attach to the built app without source watchers
+npm run open             # Open/reuse the built app and hold it; no builds or watchers
 ```
 
 ### Build

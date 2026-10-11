@@ -414,11 +414,10 @@ an artifact with only an update is one nothing will notice has gone stale.
 
 ```bash
 npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
+                         # The pack's backend watcher rebuilds its runtime on source changes;
+                         # Vite serves frontend source. Use build:default-setup for all pack artifacts.
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
-npm run dev:built        # Launch/attach to the built app without source watchers
-                         # (`apack build --watch`, forked by dev-mode.js): an edit under its src/ rebuilds
-                         # that one bundle in ~40ms and asks the running app to reload the pack. Nothing
-                         # else of the pack is rebuilt, which is what `npm run build:default-setup` is for
+npm run open             # Open/reuse the built app and hold it; no builds or watchers
 npm run build:api         # Build backend only
 npm run build:default-setup          # Build the built-in pack and ensure package bundles
 npm run build:runtime    # Build the app runtime after build:default-setup
