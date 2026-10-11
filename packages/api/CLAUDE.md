@@ -92,7 +92,7 @@ Importing `runtime/index.ts` opens and binds nothing. `openAppStore()` creates t
 - Env (`getEnvironment`): `NODE_ENV` (`development` / `production`), `API_PORT` (from `get-port`, preferring the previous port), `APACK_STARTUP_ID`, `APACK_LOG_DIR` (main's log dir), `SHIPPED_PACKS_DIR` (`packages/`, or `resources/app/packages` packaged: the packs the app installs at first boot), `APACK_ENV`, `APACK_USER_DATA_DIR`.
 - `process-manager.ts` parses stderr lines starting with `{"__fatal":` to report the crash.
 
-Builds: `npm start` (root) runs `build:be:dev` → this package's `build:dev` (tsup, ESM `server.js` only, no tsc/dts/minify; its `prebuild:be:dev` builds default-setup first). `npm run build` runs `tsc --noEmit`, then tsup with ESM + CJS, `types.ts` declarations and minification. tsup bundles workspace packages from source (`@apack/source` + `module` conditions), stubs `.vue` imports and resolves this package's `@/`. **It carries no pack's backend**: every pack's runtime is loaded from its own `dist/runtime/index.cjs` at boot.
+Builds: `npm start` (root) runs `build:api:dev` → this package's `build:dev` (tsup, ESM `server.js` only, no tsc/dts/minify; the dev launcher builds default-setup first). `npm run build` runs `tsc --noEmit`, then tsup with ESM + CJS, `types.ts` declarations and minification. tsup bundles workspace packages from source (`@apack/source` + `module` conditions), stubs `.vue` imports and resolves this package's `@/`. **It carries no pack's backend**: every pack's runtime is loaded from its own `dist/runtime/index.cjs` at boot.
 
 ## Logging and redaction (`src/adapters/logging.ts`)
 

@@ -404,7 +404,7 @@ a causal claim is an argument and no check holds an argument.
   carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
-- `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:be`. The
+- `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:api`. The
   second word is a place, and nothing here writes a tracked file.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
@@ -413,12 +413,11 @@ Put a new recorded artifact in the first shape and give it both halves, even whe
 an artifact with only an update is one nothing will notice has gone stale.
 
 ```bash
-npm start                # Dev mode. The built-in pack's backend runtime alone is built, then watched
+npm start                # Prepare pack content, codegen and backend, then run dev mode
                          # (`apack build --watch`, forked by dev-mode.js): an edit under its src/ rebuilds
                          # that one bundle in ~40ms and asks the running app to reload the pack. Nothing
                          # else of the pack is rebuilt, which is what `npm run build:default-setup` is for
-npm run start:gen        # Full built-in pack build (npm run build:default-setup), then dev mode
-npm run build:be         # Build backend only
+npm run build:api         # Build backend only
 npm run build:default-setup          # Build the built-in pack and ensure package bundles
 npm run build:runtime    # Build the app runtime after build:default-setup
 npm run build:production       # Full production build (build/build.sh)

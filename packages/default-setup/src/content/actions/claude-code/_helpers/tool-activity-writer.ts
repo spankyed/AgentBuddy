@@ -104,7 +104,7 @@ export function createToolActivityWriter(
     }
     // Cast through `any` at the service boundary because the default-setup
     // generated defs haven't been rebuilt yet to include the new
-    // 'tool-activity' BlockType variant. Once `npm run build:be` runs, this
+    // 'tool-activity' BlockType variant. Once `npm run build:api` runs, this
     // cast is purely cosmetic — the runtime shape is already correct.
     const block = {
       type: 'tool-activity',

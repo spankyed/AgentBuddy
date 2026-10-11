@@ -71,7 +71,7 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 - **E2E runs alongside dev and prod apps.** Tests use the `apack-test` app name and a fresh temp data dir per worker (`$TMPDIR/apack-e2e-*`, via `APACK_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
 - **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/archive/issues/postmortem-external-pack-calendar-extraction.md, item 1).
 - **The app under test is built, not source.** `npm test` does not rebuild it, so a backend edit is not in
-  the run until `npm run build:be`. See [Debugging the running app](#debugging-the-running-app), which also
+  the run until `npm run build:api`. See [Debugging the running app](#debugging-the-running-app), which also
   covers instrumenting a path and getting the output back.
 - **Each worker starts from an empty data dir, but tests in a worker share it.** Anything a test creates is visible to later tests in the same run; assert on unique values and clean up what you create. `E2E_KEEP_DATA=1` keeps the dir for inspection.
 
@@ -196,7 +196,7 @@ unless you rebuild first:
 
 | You edited | Rebuild with |
 |---|---|
-| `packages/apack-host/src/**`, `packages/apack-sdk/src/**`, `packages/api/src/**` | `npm run build:be` (bundles them into the API) |
+| `packages/apack-host/src/**`, `packages/apack-sdk/src/**`, `packages/api/src/**` | `npm run build:api` (bundles them into the API) |
 | `packages/renderer/src/**` | `npm run build -w @app/renderer` |
 | `packages/main/src/**`, `packages/preload/src/**` | `npm run build -w @app/main`, `-w @app/preload` |
 | a built-in pack (`packages/default-setup/**`) | `npm run build:default-setup` |
@@ -216,7 +216,7 @@ console.error(`[DROPDBG] t=${Date.now()} plugin=${pluginId} keys=[${[...map.keys
 ```
 
 ```bash
-npm run build:be && DEBUG_E2E=1 npm test -- tests/e2e/app-integration/plugin-sends.spec.ts --grep "restarted pack" \
+npm run build:api && DEBUG_E2E=1 npm test -- tests/e2e/app-integration/plugin-sends.spec.ts --grep "restarted pack" \
   2>&1 | grep -oE "\[DROPDBG\] t=[0-9]+ .*" | head -20
 ```
 

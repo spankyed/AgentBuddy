@@ -75,8 +75,7 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 ### Development
 
 ```sh
-npm start                # Dev mode (skips DSL generation)
-npm run start:gen        # Dev mode with DSL generation
+npm start                # Prepare the pack, then run dev mode with hot reload
 npm run start:inspect    # Dev mode with Electron inspection enabled
 ```
 
@@ -85,7 +84,7 @@ npm run start:inspect    # Dev mode with Electron inspection enabled
 ```sh
 npm run build:default-setup          # Build the built-in pack and ensure package bundles
 npm run build:runtime    # Build the app runtime
-npm run build:be         # Build backend only
+npm run build:api         # Build backend only
 npm run build:production       # Full production build
 npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data
 npm run package:all      # Package for macOS, Windows, and Linux
@@ -126,7 +125,7 @@ npm run db:clear-settings -- --force         # Back to the default settings
 ## Development Notes
 
 - `npm start` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
-- `npm run start:gen` also regenerates DSL type definitions (Monaco intellisense) before launching.
+- Startup builds pack content, backend and DSL definitions; Vite serves the frontend from source.
 - Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
 - Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.
 

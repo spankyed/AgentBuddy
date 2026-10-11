@@ -78,9 +78,9 @@ describe('the commands that refresh a checkout before loading its packages', () 
     const script = (pkg: string, name: string): string =>
       JSON.parse(fs.readFileSync(path.join(REPO_ROOT, pkg, 'package.json'), 'utf-8')).scripts[name] ?? '';
 
-    const prebuild = script('.', 'prebuild:be:dev');
-    expect(prebuild).toContain('build:dev -w @app/default-setup');
-    expect(prebuild, 'npm start needs exactly one door: apack build ensures, so this must not also')
+    const launcher = fs.readFileSync(path.join(REPO_ROOT, 'packages/dev-mode.js'), 'utf-8');
+    expect(launcher).toContain("['run', 'build:dev', '-w', '@app/default-setup']");
+    expect(launcher, 'npm start reaches packages:ensure through apack build')
       .not.toContain('packages:ensure');
     expect(script('packages/default-setup', 'build:dev')).toMatch(/^apack build\b/);
   });

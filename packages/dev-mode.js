@@ -6,10 +6,23 @@ const mode = 'development';
 process.env.NODE_ENV = mode;
 process.env.MODE = mode;
 
+// Prepare pack content, codegen and backend before any app process reads them.
+await new Promise((resolve, reject) => {
+  const packBuild = spawn('npm', ['run', 'build:dev', '-w', '@app/default-setup'], {
+    stdio: 'inherit',
+    shell: true,
+  });
+  packBuild.once('error', reject);
+  packBuild.once('exit', (code) => {
+    if (code === 0) resolve();
+    else reject(new Error(`Default-setup build failed with code ${code}`));
+  });
+});
+
 // ── 1. Start the API build, the pack's backend watcher and the renderer server concurrently ──
 
 // API backend build (skips tsc, single ESM format, no DTS/minify)
-const apiBuild = spawn('npm', ['run', 'build:be:dev'], {
+const apiBuild = spawn('npm', ['run', 'build:api:dev'], {
   stdio: 'inherit',
   shell: true,
 });

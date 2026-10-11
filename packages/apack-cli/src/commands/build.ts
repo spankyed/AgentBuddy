@@ -80,9 +80,9 @@ export function buildStagingDir(root: string): string {
  * It sits here rather than in `build()` because `apack dev` calls that on every file change, and the
  * check reads every source of all five packages: once per command is right, once per keystroke is not.
  *
- * `npm start` depends on this one. The root `prebuild:be:dev` builds the pack the app ships with `apack
+ * `npm start` depends on this one. The dev launcher builds the pack the app ships with `apack
  * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
- * on that script is the fix if this ever stops ensuring.
+ * in the dev launcher is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {
   const root = findPackRoot(process.cwd());

@@ -119,7 +119,7 @@ Three things follow.
   What is still named is a holder that outlasted the bound, which is a wedge rather than a queue.
 
 One path is deliberately not in the table twice. `npm start` reaches door 3, because its
-`prebuild:be:dev` builds the built-in pack with `apack build --skip-fe`, and that command ensures —
+dev launcher builds the built-in pack with `apack build --skip-fe`, and that command ensures —
 so the script carries no prefix of its own. For a full app build, run `npm run build:default-setup` before
 `npm run build:runtime`; `build:default-setup` ensures the package bundles before building the built-in pack.
 
