@@ -33,7 +33,6 @@
     "release:major": "sh build/release/release.sh major",
     "release:no-migrate": "sh build/release/release.sh --skip-migration-check",
     "build:production:signed": "bash -c 'set -a; . ./.env.signing; set +a; bash build/build.sh'",
-    "rebuild": "cd packages/api && npm rebuild",
     "package:all": "electron-builder --mac --win --linux",
     "test": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
     "drive": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive",
