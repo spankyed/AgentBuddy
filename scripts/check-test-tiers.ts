@@ -5,7 +5,7 @@
  *   tsx scripts/check-test-tiers.ts        (npm run check:tiers, part of npm run typecheck)
  *
  * A step that does not need the built app must not reach one: the moment it does, it has to run after
- * `build:app`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
+ * `build:runtime`, its real inputs become the whole repo, and it can no longer be cached or reordered. Four
  * attempts at a cheaper chain each died on exactly that, because nothing recorded it
  * (`docs/archive/goals/goal-test-tiers.md`, where the declaration was a three-valued `tier`).
  *
@@ -16,7 +16,7 @@
  * Playwright, Electron, and `apack test`, which is Playwright with a different name. A step can launch
  * the app while declaring none of its outputs, and that is the case nothing else sees.
  *
- * The text scan goes when the action graph can answer "does this transitively depend on `build:app`"
+ * The text scan goes when the action graph can answer "does this transitively depend on `build:runtime`"
  * (`docs/archive/plans/one-action-cache.md`, item 17). Until then it is the half that catches a launch, and the
  * cost of it being a scan is that **a marker inside a string literal reads as an invocation**: one rule's
  * `why` text said `apack test` in prose and this refused the step until the sentence was reworded.
@@ -64,7 +64,7 @@ function problems(): string[] {
     const { text } = reachableText(script, all, { skip: SELF });
     const hit = APP_MARKERS.find((m) => m.test(text));
     if (hit) found.push(`${name} reaches the app (${String(hit)}) and declares none of ${APP_OUTPUTS.join(', ')} among its inputs. `
-      + 'Either it does not need the app, or it does and must declare what it reads — which is what orders it after build:app.');
+      + 'Either it does not need the app, or it does and must declare what it reads — which is what orders it after build:runtime.');
   }
   return found;
 }

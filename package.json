@@ -20,7 +20,7 @@
     "preinstall": "[ \"$NODE_ENV\" = 'production' ] && echo '\u26a0\ufe0f  NODE_ENV=production \u2014 devDependencies will be skipped. Run: unset NODE_ENV' >&2 || true",
     "postinstall": "node scripts/postinstall.mjs",
     "build": "npm run build -ws --if-present",
-    "build:app": "tsx scripts/build-app.ts",
+    "build:runtime": "tsx scripts/build-runtime.ts",
     "build:preview": "tsx scripts/build-preview.ts",
     "build:production": "bash build/build.sh",
     "build:speech-macos": "cd native/speech/macos && bash build.sh",

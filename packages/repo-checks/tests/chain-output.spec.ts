@@ -573,7 +573,7 @@ describe('driftReport', () => {
   /**
    * The direction is the whole of it: load inflates a duration and cannot deflate one, so rows that all came
    * in slower may be the box, and rows that all came in faster cannot be — that is the table being stale,
-   * which is what `build:app` declared at 39s against a real 13s was.
+   * which is what `build:runtime` declared at 39s against a real 13s was.
    */
   it('reads rows that all came in slower as the box', () => {
     const report = driftReport([...slowerBy(40), { name: 'typecheck', declared: 27, measured: 61, peers: 0 }],
@@ -698,13 +698,13 @@ describe('outgrownReport', () => {
     const said = outgrownReport([
       ...found,
       {
-        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: true, peers: 0,
+        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:runtime', wholeTable: true, peers: 0,
       },
     ]);
 
     expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said).toContain('npm run measure -- "npm run build:app"');
+    expect(said).toContain('npm run measure -- "npm run build:runtime"');
   });
 
   it('still names the serial run, for the question measure cannot answer', () => {
@@ -745,8 +745,8 @@ describe('outgrownReport', () => {
     const said = outgrownReport([
       ...found.map((row) => ({ ...row, wholeTable: false })),
       {
-        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: false, peers: 0,
+        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:runtime', wholeTable: false, peers: 0,
       },
     ]);
 

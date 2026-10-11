@@ -188,9 +188,9 @@ describe('the chain graph', () => {
      * does and why it takes one.
      */
     it('refuses a graph where something depends on one', () => {
-      const steps = CHAIN_STEPS.map((s) => (s.name === 'build:app' ? { ...s, optInBecause: 'for the case' } : s));
+      const steps = CHAIN_STEPS.map((s) => (s.name === 'build:runtime' ? { ...s, optInBecause: 'for the case' } : s));
       expect(() => chainSteps([], steps))
-        .toThrow(/depends on build:app, which is opt-in/);
+        .toThrow(/depends on build:runtime, which is opt-in/);
     });
   });
 

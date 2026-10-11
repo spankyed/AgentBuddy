@@ -63,7 +63,7 @@ export interface ChainStep {
    * does — overwrites what the attempt being diagnosed wrote. A teardown that hung for 60s was
    * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
    *
-   * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:app` and
+   * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:runtime` and
    * `compile` write hundreds of megabytes of it — which explains no failure and would be copied on every
    * one. Deriving it as "outputs nothing else reads" is the clever repair and gives a wrong answer in
    * silence. `chain-table.spec.ts` holds each entry to being a path the step declares it writes, so one
@@ -567,7 +567,7 @@ export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'pack
  * It was a field until 2026-10-02, on the recorded grounds that deriving it would let a step that gains an
  * app dependency be "silently reclassified instead of refused". That argument does not hold, and the reason
  * is worth keeping: **the expensive consequence is already derived from the same inputs.** A step declaring
- * `APP_OUTPUTS` runs after `build:app` because `dependsOn` reads outputs against inputs, whatever any field
+ * `APP_OUTPUTS` runs after `build:runtime` because `dependsOn` reads outputs against inputs, whatever any field
  * says — so the field could not be the thing that made an app dependency deliberate. What it did was carry a
  * second copy of that fact, which `check:tiers` then spent two of its three clauses keeping equal.
  *
@@ -585,7 +585,7 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
 /**
  * What *runs* the app's builds, as against what those builds read.
  *
- * `build:app` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
+ * `build:runtime` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
  * four commands now, and these decide which workspaces are built and how. A pass recorded before the leg
  * table changed is not evidence about the pass after it — drop a leg and the step would otherwise stay
  * fresh while producing one `dist` fewer.
@@ -598,7 +598,7 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
  * `scripts/bounded.ts` wrapper a shell-script step runs under, and declaring the wrapper would re-run four
  * builds for an edit that cannot reach them.
  */
-const APP_RUNNER = ['scripts/build-app.ts', 'scripts/lib/app-build-legs.ts', 'scripts/lib/bounded-spawn.ts',
+const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.ts', 'scripts/lib/bounded-spawn.ts',
   'scripts/lib/chain-schedule.ts', 'scripts/lib/exit-on-epipe.ts', 'scripts/lib/measure.ts'];
 
 /**
@@ -631,7 +631,7 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
 
 /**
  * The built-in pack's own sources, which **two steps compile**: `compile`, which is the pack's build, and
- * `build:app`, because the app is built from them too. That second reader is the surprising one and the reason
+ * `build:runtime`, because the app is built from them too. That second reader is the surprising one and the reason
  * this is named rather than spelled twice — the renderer's `builtInPacksPlugin` generates a module of static
  * imports of the pack's generated FE entry, so Vite follows them into each feature's `fe` directory and the pack's
  * components land in the renderer bundle, while the api's tsup traces its generated BE entry the same way.
@@ -987,7 +987,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
   // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
   // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `compile` ->
-  // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
+  // `build:runtime` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
   /**
@@ -1138,7 +1138,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
-  // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
+  // `build:runtime`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
   // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
@@ -1150,7 +1150,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
-  { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
+  { name: 'build:runtime', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },

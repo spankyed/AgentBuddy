@@ -29,7 +29,7 @@ import { repoFiles } from './_support/repo-files.ts';
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
-  // The production packaging and release path. The chain builds the app (`build:app`) and never packages,
+  // The production packaging and release path. The chain builds the app (`build:runtime`) and never packages,
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
   // prefix so that something chain-relevant landing there has to be noticed.
   'build/build.sh': 'npm run build:production; packaging, which no chain step does',
@@ -482,15 +482,15 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
 
 /**
  * **Nothing here compiles a pack into the app any more**, so the check that lived here has no subject. It
- * held `build:app` to declaring every compiled file of every built-in pack, because the renderer's plugin
+ * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's plugin
  * and the api's tsup each traced a generated entry into the pack's `src` and the renderer's Tailwind globbed
- * it for class names — and with none of that declared, one `.vue` edit left `build:app` cached over an app
+ * it for class names — and with none of that declared, one `.vue` edit left `build:runtime` cached over an app
  * that never held the change (measured 2026-10-07).
  *
  * A pack's backend is loaded at run time from its own `dist/runtime/index.cjs` and its frontend is fetched
  * over `pack://`, so the app's build reads a pack's `dist` and never its source. What would reopen the hole
- * is a bundler config here reaching into a pack's `src` again: `build:app`'s own declaration comment and
- * `scripts/build-app.ts`'s header both say so, and `coverageOf` above still holds every path a step's script
+ * is a bundler config here reaching into a pack's `src` again: `build:runtime`'s own declaration comment and
+ * `scripts/build-runtime.ts`'s header both say so, and `coverageOf` above still holds every path a step's script
  * names.
  */
 
@@ -775,7 +775,7 @@ describe('a step keys on the command it runs', () => {
       'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
       + 'with the dep-file evidence that it reads the manifest').toEqual([
         'typecheck:fe', 'typecheck:be', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
-        'lint:check', 'test:unit:host', 'test:integration', 'build:app',
+        'lint:check', 'test:unit:host', 'test:integration', 'build:runtime',
       ]);
   });
 });

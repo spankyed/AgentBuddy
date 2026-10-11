@@ -20,7 +20,7 @@ Things that waste the most time, in order:
   full `typecheck` is 11s against a doc edit's 0s.
 - **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so the only
   durations that add up are the ones along its longest chain of dependencies — `npm run chain -- --dry --all`
-  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `compile` -> `build:app` ->
+  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `compile` -> `build:runtime` ->
   `test:packaged-authoring`**, which matches the 158.3s cold run above. Nothing else is a saving.
   `test:unit:pack` is the worked example and the warning: it is **89% setup overhead** — 115s of module
   evaluation against 13s of tests, the most alarming ratio in the repo — and it is off the path, so halving

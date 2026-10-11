@@ -1,19 +1,19 @@
 // The app's builds, as a table a runner and a spec can both read.
 //
-// Its own module rather than part of `scripts/build-app.ts` for the reason `typecheck-legs.ts` and
+// Its own module rather than part of `scripts/build-runtime.ts` for the reason `typecheck-legs.ts` and
 // `unit-pool.ts` are separate from their runners: a runner does its work on import, so nothing can import
 // it to ask a question. Here that has a second and sharper cause — `chain-table.spec.ts` asks whether the
 // chain builds every workspace that has a `build` script, and it answered by matching `-w` against
-// `build:app`'s npm script text. Once the scheduling moved into a script that text is gone, so this list
+// `build:runtime`'s npm script text. Once the scheduling moved into a script that text is gone, so this list
 // has to be importable or that case loses the independently-derived answer which is its whole point.
 //
 // **Each command is a literal string.** `chain-inputs.spec.ts` walks the real module closure of the `.ts`
-// entries a step's script names, so this module is a declared input of `build:app`; and an interpolated
+// entries a step's script names, so this module is a declared input of `build:runtime`; and an interpolated
 // command would hide which workspace a leg builds from every reader except the runtime.
 import type { TimeoutClass } from './step-timeouts.ts';
 
 /** One workspace's build */
-export interface AppBuildLeg {
+export interface RuntimeBuildLeg {
   /** The workspace: what a failure is reported as, and what `chain-table.spec.ts` compares to the manifests */
   readonly name: string;
   /** Spelled out rather than built from `name` — see the header */
@@ -27,7 +27,7 @@ export interface AppBuildLeg {
 
 /**
  * Declared once rather than on each leg, where four entries would hold the same value —
- * `typecheck-legs.ts`'s `LEG_TIMEOUT` is the precedent. It is the `build:app` step's own class, so the
+ * `typecheck-legs.ts`'s `LEG_TIMEOUT` is the precedent. It is the `build:runtime` step's own class, so the
  * chain's kill deadline and this runner's cannot disagree.
  */
 export const BUILD_TIMEOUT: TimeoutClass = 'suite';
@@ -51,7 +51,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  *
  * **`@apack/sdk` is absent, and that is four facts rather than a speed choice.** Its `build` is
  * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no artifact to
- * a step whose product is `APP_OUTPUTS`; `typecheck:sdk` runs that identical compile; the `build:app`
+ * a step whose product is `APP_OUTPUTS`; `typecheck:sdk` runs that identical compile; the `build:runtime`
  * step's `inputs` name `renderer, api, main, preload` and never `apack-sdk`, so dropping the leg makes
  * the declaration honest rather than narrower; and the step's key would not cover it — the four
  * workspaces' `package.json` files are declared inputs and the sdk's is not, so a leg building it would
@@ -60,7 +60,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * **`@app/default-setup` is absent** because `compile` runs that exact command, and a second run of it
  * rewrites the `dist` five steps read.
  */
-export const APP_BUILD_LEGS: readonly AppBuildLeg[] = [
+export const RUNTIME_BUILD_LEGS: readonly RuntimeBuildLeg[] = [
   { name: '@app/renderer', command: 'npm run build-only -w @app/renderer', seconds: 16 },
   { name: '@app/api', command: 'npm run build -w @app/api', seconds: 7 },
   { name: '@app/main', command: 'npm run build -w @app/main', seconds: 1 },

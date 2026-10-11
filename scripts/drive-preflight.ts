@@ -10,7 +10,7 @@
  * **It reads mtimes, and not the chain's stamps, which is the opposite of what it looks like it should do.**
  * The stamps answer a different question: only `npm run chain` writes one, so `unitStaleReason` against a
  * step's stamp reports every tree that has moved since the last *chain* run — which during ordinary
- * development is all of them, however recently `npm run build:app` ran. That version of this check fired
+ * development is all of them, however recently `npm run build:runtime` ran. That version of this check fired
  * immediately after a successful build, which is the failure mode a nudge can least afford.
  *
  * Mtimes are the right instrument *here* for the reason they are the wrong one for a cache key: a rebuild
@@ -33,7 +33,7 @@ import { unitFor } from './lib/chain-stamps.ts';
 /** The steps that produce the app a driving session opens, in the order the chain runs them */
 const BUILDS = [
   { step: 'compile', what: "the pack the app ships" },
-  { step: 'build:app', what: 'the renderer, main, preload and the API' },
+  { step: 'build:runtime', what: 'the renderer, main, preload and the API' },
 ] as const;
 
 interface Edge { readonly file: string; readonly at: number }

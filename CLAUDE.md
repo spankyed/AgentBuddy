@@ -69,13 +69,13 @@ parts — so each figure carries its conditions and the table can be re-derived 
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
+| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:runtime` | **38.6s** |
 | nothing is cached (a cold tree) | every gated step — 30 of the 31, `test` being opt-in — on a ten-core budget (`--all`, 2026-10-07) | **185.8s** |
 
 **The one-package row is the one worth reading twice**, because the obvious reasoning about it is wrong.
-`build:app` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
+`build:runtime` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
 on that reasoning editing a package the app is built from would cost four times editing one it is not. It
-does not. `build:app` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
+does not. `build:runtime` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
 **cached** through it: their keys are over the built app's *content*, and a rebuild from unchanged input
 produces the same bytes, so nothing they read has moved. That rests entirely on the build being
 reproducible, which is the largest single saving in this table and the one nothing else would notice losing —
@@ -332,14 +332,14 @@ learn — the measurements, what was tried first, and the commit that closed it.
 ### What a test may read
 
 **A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
-(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:app`'s
+(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:runtime`'s
 outputs among its inputs. So there is no second record to disagree with the graph, and the ordering comes
 from those same two fields whatever anyone writes. Declaring it instead would need two `check:tiers` clauses
 to keep it equal to the inputs, and clauses like that cannot fail — which is what redundancy looks like
 rather than what protection looks like.
 
 The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
-to run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or
+to run after `build:runtime`, its real inputs become the whole repo, and it can no longer be cached or
 reordered. Four attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A
 check that genuinely needs the app declares it — that is an answer, not a failure, and the fix is never to
 delete the check.
@@ -348,16 +348,16 @@ delete the check.
 script as text and looks for the ways this repo launches the app, because a step can launch it while
 declaring none of its outputs. Being a scan is the safe direction for that half: a wrong scan reports a
 false finding, where a wrong cache key is silent. It goes when the action graph can answer "does this
-transitively depend on `build:app`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
+transitively depend on `build:runtime`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
 `docs/archive/plans/observed-inputs.md`, now closed).
 
-**`build:app` does not satisfy it.** It writes the app rather than reading one, and the rule is about
+**`build:runtime` does not satisfy it.** It writes the app rather than reading one, and the rule is about
 reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
 with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, before `build:app`, and `:app` runs its Playwright suite after
+pack and runs its harness specs with no app, before `build:runtime`, and `:app` runs its Playwright suite after
 it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
 never takes still reads as a reach.
 
@@ -419,7 +419,7 @@ npm start                # Dev mode. The built-in pack's backend runtime alone i
                          # else of the pack is rebuilt, which is what `npm run compile` is for
 npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
 npm run build:be         # Build backend only
-npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
+npm run build            # Build all workspaces. The chain runs build:runtime instead, which leaves the
                          # built-in pack to compile — building it twice rewrote the dist five steps read
 npm run build:production       # Full production build (build/build.sh)
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { sealBuildSession } from '../build/build-metadata.ts';
 /**
- * `npm run build:app`: the four builds that produce the app, run at once.
+ * `npm run build:runtime`: the four builds that produce the app, run at once.
  *
- *   npm run build:app                # all of them
- *   npm run build:app -- --cores 1   # one at a time, for a measurement or a confusing failure
+ *   npm run build:runtime                # all of them
+ *   npm run build:runtime -- --cores 1   # one at a time, for a measurement or a confusing failure
  *
  * WHY THIS IS NOT `npm run build -w a -w b -w c` ANY MORE
  *
@@ -12,8 +12,8 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  * bundler at a time. Measured 2026-10-06 on a ten-core box: **26.9s serially (median of 3, 26.8-27.8s)**
  * against a floor of 16.0s, which is `@app/renderer`'s vite build and what the run is now bounded by.
  *
- * It is worth doing because of *where* the step sits rather than what it costs: `build:app` is on the
- * chain's critical path (`packages:ensure -> compile -> build:app -> test:packaged-authoring`) and is the
+ * It is worth doing because of *where* the step sits rather than what it costs: `build:runtime` is on the
+ * chain's critical path (`packages:ensure -> compile -> build:runtime -> test:packaged-authoring`) and is the
  * whole cost of a one-package edit. `api-check.ts` made the same change for the same reason and records
  * the same shape of measurement.
  *
@@ -36,12 +36,12 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  *
  * `check:tiers` scans this file's text for the ways the repo launches the app, and comments are stripped
  * while **string literals are not** — so a log line or an error message naming `playwright test`,
- * `apack test` or `_electron.launch` would fail that check for `build:app`. `chain-graph.spec.ts` derives
+ * `apack test` or `_electron.launch` would fail that check for `build:runtime`. `chain-graph.spec.ts` derives
  * a step's timeout rung from the same text, so an `npm install` in it would imply `scenario` against the
- * declared `suite`. The commands themselves live in `lib/app-build-legs.ts`, which says why.
+ * declared `suite`. The commands themselves live in `lib/runtime-build-legs.ts`, which says why.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { APP_BUILD_LEGS, BUILD_TIMEOUT } from './lib/app-build-legs.ts';
+import { RUNTIME_BUILD_LEGS, BUILD_TIMEOUT } from './lib/runtime-build-legs.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { box, MEASURED_ON } from './lib/core-budget.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -69,8 +69,8 @@ const done = new Map<string, Outcome>();
 
 const result = await schedule({
   // No edges: the four are independent, and the one ordering constraint they share is the chain's, which
-  // put `compile` ahead of this whole step. `lib/app-build-legs.ts` has the evidence for both halves.
-  steps: APP_BUILD_LEGS.map((leg) => ({ ...leg, dependsOn: [] })),
+  // put `compile` ahead of this whole step. `lib/runtime-build-legs.ts` has the evidence for both halves.
+  steps: RUNTIME_BUILD_LEGS.map((leg) => ({ ...leg, dependsOn: [] })),
   budget: budgetFrom(parseFlags(process.argv.slice(2), { values: ['cores'], booleans: [] }).values.cores),
   skip: () => false,
   async run(leg) {
@@ -86,7 +86,7 @@ const result = await schedule({
   },
 });
 
-const failed = APP_BUILD_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
+const failed = RUNTIME_BUILD_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
 for (const leg of failed) {
   const outcome = done.get(leg.name)!;
   const why = outcome.timedOut === true
@@ -109,11 +109,11 @@ for (const { step, error } of result.threw) {
 // whatever stdout has still to flush — which is exactly the failing build's output worth reading.
 if (failed.length > 0 || result.threw.length > 0) {
   const names = failed.map((leg) => leg.name).join(', ');
-  process.stderr.write(`\n❌ ${failed.length} of ${APP_BUILD_LEGS.length} failed: ${names}\n`);
+  process.stderr.write(`\n❌ ${failed.length} of ${RUNTIME_BUILD_LEGS.length} failed: ${names}\n`);
   process.exitCode = 1;
-} else if (result.skipped.length + result.started.length < APP_BUILD_LEGS.length) {
+} else if (result.skipped.length + result.started.length < RUNTIME_BUILD_LEGS.length) {
   // Dispatch stops after a failure, so this only reads as a scheduler bug
-  process.stderr.write(`\n❌ only ${result.started.length} of ${APP_BUILD_LEGS.length} ran, and none failed\n`);
+  process.stderr.write(`\n❌ only ${result.started.length} of ${RUNTIME_BUILD_LEGS.length} ran, and none failed\n`);
   process.exitCode = 1;
 } else {
   if (process.env.APACK_BUILD_ROOT) sealBuildSession(process.env.APACK_BUILD_ROOT);

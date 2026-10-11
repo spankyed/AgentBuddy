@@ -102,8 +102,8 @@ describe('where a chain run keeps its evidence', () => {
   it('heads each file with how that step ended', () => {
     expect(evidenceHeader('compile', ended({ code: 0, ms: 23_700 }))).toBe('# compile — exit 0 after 23.7s');
     expect(evidenceHeader('test:smoke', ended({ code: 1, ms: 6_000 }))).toBe('# test:smoke — exit 1 after 6.0s');
-    expect(evidenceHeader('build:app', { ...ended({ ms: 300_000 }), timedOut: true }))
-      .toBe('# build:app — timed out after 300.0s');
+    expect(evidenceHeader('build:runtime', { ...ended({ ms: 300_000 }), timedOut: true }))
+      .toBe('# build:runtime — timed out after 300.0s');
   });
 
   describe('what it writes, and when', () => {
