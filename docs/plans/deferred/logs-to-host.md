@@ -174,7 +174,7 @@ npm run chain
 remaining `ref('logs')` or bare-`'logs'` send inside default-setup becomes a compile error, and the
 fixture's send fails until wiring 4 lands.
 
-**Then the app, because this is a plugin.** `npm start`: the Logs tab appears, shows lines, its settings
+**Then the app, because this is a plugin.** `npm run dev`: the Logs tab appears, shows lines, its settings
 panel writes (max logs, excluded sources), and the toolbar link still opens Settings on the Logs plugin.
 
 **The migration, against real data.** Boot an app whose data dir predates the change and confirm the logs

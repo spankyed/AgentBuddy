@@ -87,7 +87,7 @@ describe('reading a session', () => {
 
 /**
  * `dev` writes the file and cannot know who asked for it. Getting this wrong is the silent kind: `dev`
- * records `dev`, so nothing is ever reclaimable, and the developer's own `npm start` refuses with a message
+ * records `dev`, so nothing is ever reclaimable, and the developer's own `npm run dev` refuses with a message
  * blaming them — which is why the value is passed in rather than inferred.
  */
 describe('who a launcher says started it', () => {
@@ -151,7 +151,7 @@ describe('saying a driver was here', () => {
 /**
  * **The debug port has to be *this* launch's, and the file does not say so by itself.**
  *
- * Found by running `npm start`: Chromium's `DevToolsActivePort` outlived the browser that wrote it, so a
+ * Found by running `npm run dev`: Chromium's `DevToolsActivePort` outlived the browser that wrote it, so a
  * data dir that has ever held a development app has a port on disk for one that is gone. Reading whatever
  * was there published a session naming a port nothing answered, and `drive` then refused an app that was
  * running perfectly well — a failure that reads as a bug in the attach rather than in the publish.
@@ -198,10 +198,10 @@ describe('the debug port for a launch', () => {
  * its subject is input and it needs cases that fire: `development` is the only answer that gets a port.
  *
  * It lives here because **two** launchers need it, which is the whole reason it is a function. `apack dev`
- * had this decision with six cases guarding it; the `npm start` watcher pushed the flag unconditionally,
+ * had this decision with six cases guarding it; the `npm run dev` watcher pushed the flag unconditionally,
  * behind a `NODE_ENV !== 'development'` check — the *bundle's* mode, which says nothing about the
  * environment the spawned app resolves. A source run takes that from `APACK_ENV`, so
- * `APACK_ENV=beta npm start` opened a port on a beta app. Both callers go through this now.
+ * `APACK_ENV=beta npm run dev` opened a port on a beta app. Both callers go through this now.
  */
 describe('the debug port a launcher passes', () => {
   it('is given to a development app', () => {

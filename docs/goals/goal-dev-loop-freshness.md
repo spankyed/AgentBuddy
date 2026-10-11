@@ -12,7 +12,7 @@ template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- Editing a source of @apack/ears, @apack/sdk or @apack/ui while `npm start` runs rebuilds that
+- Editing a source of @apack/ears, @apack/sdk or @apack/ui while `npm run dev` runs rebuilds that
   package's dist on its own, within a few seconds of the edit, without rebuilding the built-in pack.
 - The watcher's watch set is derived from BUILD_UNITS rather than listed again, so adding an input to
   a unit extends the watcher with no second edit.
@@ -25,7 +25,7 @@ Finished when:
 
 ## Background
 
-`npm start` leaves the built-in pack on two clocks, documented in `packages/apack-testing/CLAUDE.md`
+`npm run dev` leaves the built-in pack on two clocks, documented in `packages/apack-testing/CLAUDE.md`
 under "What a running dev app does and doesn't pick up". The renderer's Vite config and the API's tsup
 build both declare the `@apack/source` condition, so editing `@apack/sdk`, `@apack/ears` or
 `@apack/ui` hot-reloads the browser and the pack's running code follows source. What does not follow is
@@ -34,7 +34,7 @@ when a command with a freshness door runs (the six doors are listed in that same
 
 The symptom people hit: **the editor type-checks `packages/default-setup` against the packages' `dist`**,
 because default-setup's `tsconfig.json` correctly declares no condition — it is a pack config. Change an
-SDK type and the editor keeps showing the old one until something rebuilds. `npm start` builds it once at
+SDK type and the editor keeps showing the old one until something rebuilds. `npm run dev` builds it once at
 startup and then never again for the life of the session.
 
 Two earlier proposals for this were rejected on measurement, and the numbers are recorded so they are not
@@ -84,7 +84,7 @@ re-derived:
   building" and re-checks on the next change.
 - **A failed build never ends the dev session.** Half-typed source is normal while editing. Report it
   where the dev output goes and keep watching.
-- **`apack dev` gets the same treatment as `npm start`.** It has the same shape — a long-running session
+- **`apack dev` gets the same treatment as `npm run dev`.** It has the same shape — a long-running session
   over a pack linked to a checkout — and today it ensures once at startup (`commands/run.ts`).
 
 ## Phases
@@ -105,12 +105,12 @@ re-derived:
   build leaves the watcher live; a held lock is skipped rather than raised. Mutation: removing the
   coalescing makes the concurrent-edit spec fail; removing the lock skip makes the held-lock spec fail.
 
-### Phase 2 — `npm start`
+### Phase 2 — `npm run dev`
 
 - `packages/dev-mode.js` starts the watcher for the life of the session and stops it on shutdown,
   printing what it rebuilt in the same style as the rest of the dev output.
 - It does not touch the pack's own watcher, which keeps its own trigger (Decision 2) — `apack build --watch`, forked by `packages/dev-mode.js`.
-- **Done when:** with `npm start` running, editing a `@apack/sdk` source rebuilds `packages/apack-sdk/dist`
+- **Done when:** with `npm run dev` running, editing a `@apack/sdk` source rebuilds `packages/apack-sdk/dist`
   within a few seconds and prints one line; editing a `@apack/ui` source rebuilds only `@apack/ui`; the
   built-in pack is not rebuilt by either. Verified by hand and recorded in the Outcome with the observed
   timings.

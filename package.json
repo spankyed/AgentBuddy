@@ -20,9 +20,9 @@
     "preinstall": "[ \"$NODE_ENV\" = 'production' ] && echo '\u26a0\ufe0f  NODE_ENV=production \u2014 devDependencies will be skipped. Run: unset NODE_ENV' >&2 || true",
     "postinstall": "node scripts/postinstall.mjs",
 
-    "start": "node packages/dev-mode.js",
-    "start:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
-    "dev": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs dev",
+    "dev": "node packages/dev-mode.js",
+    "dev:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
+    "dev:built": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs dev",
     "drive": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive",
     "drive:eval": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive --eval",
     "drive:query": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/apack-cli/bin/apack.mjs drive --query",

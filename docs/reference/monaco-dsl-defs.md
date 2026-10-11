@@ -34,7 +34,7 @@ Anything that builds the pack rebuilds them, because they are part of `apack bui
 
 | Trigger | Rebuilds `dist/defs/` |
 |---|---|
-| `npm start` (dev launcher → `apack build --skip-fe`) | Yes |
+| `npm run dev` (dev launcher → `apack build --skip-fe`) | Yes |
 | `npm run build:default-setup` | Yes |
 | `npm run build:api` | No — builds only the API |
 | `npm run build:production` (`build/build.sh`) | Yes |

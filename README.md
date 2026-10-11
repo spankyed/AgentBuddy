@@ -75,8 +75,9 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 ### Development
 
 ```sh
-npm start                # Prepare the pack, then run dev mode with hot reload
-npm run start:inspect    # Dev mode with Electron inspection enabled
+npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
+npm run dev:inspect      # Same workflow with Electron’s Node debugger
+npm run dev:built        # Launch/attach to the built app without source watchers
 ```
 
 ### Build
@@ -124,7 +125,7 @@ npm run db:clear-settings -- --force         # Back to the default settings
 
 ## Development Notes
 
-- `npm start` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
+- `npm run dev` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
 - Startup builds pack content, backend and DSL definitions; Vite serves the frontend from source.
 - Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
 - Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.

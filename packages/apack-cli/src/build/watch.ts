@@ -21,7 +21,7 @@ export interface WatchOptions {
   /** Which app to ask for a reload; the shared development data dir by default */
   readonly place?: AppPlace;
   /**
-   * Called after the first bundle lands, before any watching. `npm start` boots the API against the file
+   * Called after the first bundle lands, before any watching. `npm run dev` boots the API against the file
    * this writes, so something has to say when it is there.
    */
   readonly onFirstBuild?: () => void;
@@ -115,7 +115,7 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   });
 
   fs.watch(srcDir, { recursive: true }, (_event, filename) => {
-    // A `.vue` or `.css` edit is the frontend's, which the renderer serves from source under `npm start`
+    // A `.vue` or `.css` edit is the frontend's, which the renderer serves from source under `npm run dev`
     if (!filename || !/\.tsx?$/.test(filename) || filename.endsWith('.d.ts')) return;
     lastChange = filename;
     runs.request();

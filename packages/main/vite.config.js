@@ -111,7 +111,7 @@ function handleHotReload() {
        *
        * The `NODE_ENV` check above is the *bundle's* mode and says nothing about this: a source run takes its
        * environment from `APACK_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
-       * `APACK_ENV=beta npm start` is a beta app. Reading this hook as "development by definition" is what
+       * `APACK_ENV=beta npm run dev` is a beta app. Reading this hook as "development by definition" is what
        * let it push an unauthenticated debug port onto one.
        */
       const { _inferElectronAppEnv, resolveAppContext } = await import('@apack/sdk/env');

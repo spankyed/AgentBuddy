@@ -18,7 +18,7 @@ describe('which app closes itself when nothing attaches', () => {
 
   /**
    * The development dir is `mayReclaim`'s, not this timer's: the developer's own `apack dev` or
-   * `npm start` takes it back and says so. Mutation — drop the `profile` clause — and this is the case
+   * `npm run dev` takes it back and says so. Mutation — drop the `profile` clause — and this is the case
    * that fails, where a `--spawn` with no flags lands exactly here.
    */
   it('is not a drive app in the development dir', () => {

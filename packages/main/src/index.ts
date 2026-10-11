@@ -40,7 +40,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(createPackProtocol())   // pack:// protocol for external pack assets
     .init(splashScreen)  // Show splash screen early
     .init(apiServer)
-    // After the API it reloads, and a no-op unless `npm start` armed it in a development build
+    // After the API it reloads, and a no-op unless `npm run dev` armed it in a development build
     .init(createDevApiReloader(apiServer))
     .init(createSpeechRecognition())
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))

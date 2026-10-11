@@ -71,16 +71,16 @@ describe('the commands that refresh a checkout before loading its packages', () 
     expect(source('index.ts')).toContain("'build':      async () => (await import('./commands/build')).buildCommand,");
   });
 
-  // npm start declares no packages:ensure of its own: it reaches the check by building the built-in pack
+  // npm run dev declares no packages:ensure of its own: it reaches the check by building the built-in pack
   // with `apack build`. Nothing else holds that link, so a build:dev that stopped being an apack build
-  // would drop npm start's only door without failing anything.
-  it('leaves npm start reaching the check through apack build, its only door on that path', () => {
+  // would drop npm run dev's only door without failing anything.
+  it('leaves npm run dev reaching the check through apack build, its only door on that path', () => {
     const script = (pkg: string, name: string): string =>
       JSON.parse(fs.readFileSync(path.join(REPO_ROOT, pkg, 'package.json'), 'utf-8')).scripts[name] ?? '';
 
     const launcher = fs.readFileSync(path.join(REPO_ROOT, 'packages/dev-mode.js'), 'utf-8');
     expect(launcher).toContain("['run', 'build:dev', '-w', '@app/default-setup']");
-    expect(launcher, 'npm start reaches packages:ensure through apack build')
+    expect(launcher, 'npm run dev reaches packages:ensure through apack build')
       .not.toContain('packages:ensure');
     expect(script('packages/default-setup', 'build:dev')).toMatch(/^apack build\b/);
   });

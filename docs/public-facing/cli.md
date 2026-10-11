@@ -305,7 +305,7 @@ implementation of it.
 
 It takes the same app and profile flags as `apack dev`, and **the two halves meet an app differently**, which the table below sets out in full:
 
-- **A question** joins the app `apack dev` or `npm start` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A question** joins the app `apack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
 - **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
 
 Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
@@ -314,7 +314,7 @@ Electron allows one app per data dir, which is what makes a question *join* rath
 
 | What you run | The app it uses | When it closes |
 |---|---|---|
-| `apack dev`, `npm start` | starts its own | when you stop the command |
+| `apack dev`, `npm run dev` | starts its own | when you stop the command |
 | `apack drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
 | the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
 | `apack drive <script>` | always its own | when the script finishes |
@@ -347,7 +347,7 @@ fields already said it.
 two cases have different answers:
 
 - **On your development data dir** — a `--spawn` with no profile flags — the app stays until you take the
-  directory back, which `apack dev` and `npm start` do for you: they close the one a question started,
+  directory back, which `apack dev` and `npm run dev` do for you: they close the one a question started,
   say so, and start yours. So there is nothing to remember, and no timer closes an app you may be watching.
 - **On a profile** — `--profile <name>` — nothing reclaims it that way, so the app closes itself after **10
   minutes** with no question attached. Each question resets that, so a session you are working in keeps
