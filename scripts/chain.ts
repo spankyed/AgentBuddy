@@ -204,8 +204,7 @@ function whatMoved(
  * would reject an argument they do not know.
  */
 async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env, label = step): Promise<Result> {
-  // `npm test` is the E2E suite and takes no `run`
-  const args = step === 'test' ? ['test'] : ['run', step];
+  const args = ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
@@ -355,7 +354,7 @@ async function main(): Promise<void> {
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
   // than halfway through a six-minute run
-  const steps = orderedSteps(chainSteps(e2e ? ['test'] : []));
+  const steps = orderedSteps(chainSteps(e2e ? ['test:e2e'] : []));
   const budget = budgetFrom(args.values.cores);
 
   /** Its verdict, asked at dispatch — see `dispatch` for why that timing is load-bearing */

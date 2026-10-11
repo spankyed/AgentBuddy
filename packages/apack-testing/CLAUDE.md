@@ -479,8 +479,8 @@ apack test -g "renders"             # Playwright args are forwarded
 From the apack monorepo, run Playwright directly (the app is auto-detected):
 
 ```bash
-npm test                                              # monorepo E2E
-PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
+npm run test:e2e                                     # monorepo E2E
+PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 ```
 
 ## Key implementation details

@@ -93,7 +93,8 @@ npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app
 ### Test
 
 ```sh
-npm test                 # Playwright E2E tests
+npm test                 # Build and run every test suite
+npm run test:e2e         # Playwright E2E against existing builds
 npm run test:unit        # Unit tests (api, default-setup, host, ears)
 npm run typecheck        # Type checks for every workspace, plus import specifier and UI entry checks
 ```

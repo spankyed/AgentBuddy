@@ -67,7 +67,8 @@
     "facade:check": "npm run facade:check -w @app/default-setup",
     "schema:check": "npm run schema:check -w @apack/sdk",
 
-    "test": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
+    "test": "node scripts/test.mjs",
+    "test:e2e": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
     "test:unit": "tsx scripts/test-unit.ts",
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",

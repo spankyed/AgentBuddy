@@ -472,12 +472,12 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
 
-/** Playwright's, for a `tests/e2e` path — the root's `test` script rather than a package's */
+/** Playwright's, for a `tests/e2e` path — the root's `test:e2e` script rather than a package's */
 const e2eRun = (root: string, specs: readonly string[], flags: readonly string[]): Run => ({
   label: 'tests/e2e (playwright)',
   cwd: root,
   command: 'npm',
-  args: ['run', 'test', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
+  args: ['run', 'test:e2e', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
   specs: specs.map((spec) => path.relative(root, spec)),
 });
 

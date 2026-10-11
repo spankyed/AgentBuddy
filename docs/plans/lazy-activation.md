@@ -26,7 +26,7 @@ a pack author has to learn.
 
 Instrument a boot and attribute it: how much of the API process's start is `startPacks`, and inside it, how
 much is `onInit` against migrations against content against the bus spawning systems. `npm run measure` for
-the whole, `DEBUG_E2E=1 npm test -- smoke` for the app's own path, and a per-phase timer for the split.
+the whole, `DEBUG_E2E=1 npm run test:e2e -- smoke` for the app's own path, and a per-phase timer for the split.
 
 **The outcome decides the shape of the work, and one outcome is "stop":**
 

@@ -27,7 +27,7 @@ import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
 
 
 export interface ChainStep {
-  /** The npm script, as `npm run <name>` (or `npm test` for the E2E suite) */
+  /** The npm script, as `npm run <name>` */
   readonly name: string;
   /**
    * What the step reads, repo-relative; a directory is walked. This is its cache key, the same shape
@@ -1192,7 +1192,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', timeout: 'suite', seconds: 26,
+  { name: 'test:e2e', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],

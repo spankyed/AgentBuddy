@@ -607,7 +607,7 @@ describe('what has looked at a step at all', () => {
       'build:runtime',
       'facade:check',
       'packages:check',
-      'test',
+      'test:e2e',
       'test:external-pack:app',
       'test:external-pack:contract',
       'test:packaged-authoring:app',

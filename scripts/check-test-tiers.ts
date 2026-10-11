@@ -59,7 +59,7 @@ function problems(): string[] {
     // clauses that used to compare it against those inputs were comparing a derivation with its own source
     // and could not fail. What is left is the half no reading of the inputs can answer.
     if (needsApp(step)) continue;
-    const script = name === 'test' ? 'test' : name;
+    const script = name;
     if (!(script in all)) { found.push(`${name}: no such npm script`); continue; }
     const { text } = reachableText(script, all, { skip: SELF });
     const hit = APP_MARKERS.find((m) => m.test(text));

@@ -82,12 +82,12 @@ describe('the chain graph', () => {
    * steps is not a property of either.
    */
   it('runs the smoke gate before the harness they are mutexed by', () => {
-    const order = orderedSteps(chainSteps(['test'])).map((step) => step.name);
-    expect(order, 'the opt-in harness is not in this plan, so there is nothing to order').toContain('test');
+    const order = orderedSteps(chainSteps(['test:e2e'])).map((step) => step.name);
+    expect(order, 'the opt-in harness is not in this plan, so there is nothing to order').toContain('test:e2e');
     const smoke = CHAIN_STEPS.find((step) => step.name === 'test:smoke')!;
     expect(conflictsOf(smoke), 'the two no longer share a path, so this preference has lost its subject')
-      .toContain('test');
-    expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test'));
+      .toContain('test:e2e');
+    expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test:e2e'));
   });
 
 
@@ -169,8 +169,8 @@ describe('the chain graph', () => {
   describe('a step the chain knows about but does not gate on', () => {
     it('is left out by default and put back when asked for', () => {
       const byDefault = chainSteps().map((s) => s.name);
-      expect(byDefault, 'the E2E suite drives the app; it is not a regression gate').not.toContain('test');
-      expect(chainSteps(['test']).map((s) => s.name), '`--e2e` runs it').toContain('test');
+      expect(byDefault, 'the E2E suite drives the app; it is not a regression gate').not.toContain('test:e2e');
+      expect(chainSteps(['test:e2e']).map((s) => s.name), '`--e2e` runs it').toContain('test:e2e');
     });
 
     it('says why, as an uncached step has to', () => {
