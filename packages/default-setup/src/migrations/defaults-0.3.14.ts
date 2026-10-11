@@ -1,6 +1,6 @@
 // The settings defaults 0.3.14 shipped (`packages/default-setup/src/default-settings.ts` at the v0.3.14 tag, as its build
 // compiled them to JSON, so a default that was `undefined` is absent), without `internal` and `plugins._meta`, which the
-// 0.3.15 migrations move out of the settings. 0.3.14 stored the whole default settings with the user's changes merged
+// 0.4.0 migrations move out of the settings. 0.3.14 stored the whole default settings with the user's changes merged
 // in, so this is what an upgraded row holds wherever the user changed nothing. Historical data: it must not follow
 // today's defaults. Plugin slices are keyed by the bare feature id they ran under then.
 export const DEFAULT_SETTINGS_0314: Readonly<Record<'general' | 'plugins' | 'assistant', Record<string, unknown>>> =

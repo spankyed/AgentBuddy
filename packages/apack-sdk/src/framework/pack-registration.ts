@@ -9,7 +9,7 @@ import type { AnyStateMachine } from 'xstate';
 
 /**
  * A migration a pack's module exports. **It does not name the version it targets** — the manifest key does
- * (`"migrations": { "0.3.15": "src/migrations/0.3.15.ts#migration" }`), and codegen supplies it from there.
+ * (`"migrations": { "0.4.0": "src/migrations/0.4.0.ts#migration" }`), and codegen supplies it from there.
  *
  * Two sources for one fact is what that avoids: a `target` in the file and a version in the filename could
  * disagree, and nothing read the filename, so the one that counted was invisible. The key is now the only
@@ -30,7 +30,7 @@ export interface PackMigration extends DeclaredMigration {
  *
  * **A bare version does not say what it is a version of**, which is the fact this shape supplies. The
  * alternative is a runner deciding from the pack's provenance — a pack the app ships compared against
- * apack's version, everyone else's against their own — under which the same `0.3.15` means two things
+ * apack's version, everyone else's against their own — under which the same `0.4.0` means two things
  * and a pack replacing a shipped one inherits the wrong line.
  */
 export interface PackMigrations {

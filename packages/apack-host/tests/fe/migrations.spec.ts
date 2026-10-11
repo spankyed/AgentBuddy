@@ -17,16 +17,16 @@ function fakeStorage(initial: Record<string, string> = {}) {
 
 describe('a window\'s migrations', () => {
   // The host keeps the last active plugin now; the window's own copy would linger forever
-  it('drops the last active plugin a window stored before 0.3.15, and leaves the panel sizes', () => {
+  it('drops the last active plugin a window stored before 0.4.0, and leaves the panel sizes', () => {
     const { storage, items } = fakeStorage({
       'apack-fe-version': '0.3.14',
       'apack-last-active-plugin': 'threads',
       'apack-panel-sizes': '{"panel":30}',
     });
 
-    runFrontendMigrations(storage, '0.3.15');
+    runFrontendMigrations(storage, '0.4.0');
     // Again, as the next window's boot does
-    runFrontendMigrations(storage, '0.3.15');
+    runFrontendMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBeUndefined();
     expect(items.get('apack-panel-sizes')).toBe('{"panel":30}');
@@ -44,15 +44,15 @@ describe('a window\'s migrations', () => {
   it('runs a migration for storage that names no version', () => {
     const { storage, items } = fakeStorage({ 'apack-last-active-plugin': 'threads' });
 
-    runFrontendMigrations(storage, '0.3.15');
+    runFrontendMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBeUndefined();
   });
 
   it("leaves storage alone once it is at the app's version", () => {
-    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.3.15', 'apack-last-active-plugin': 'kept' });
+    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.4.0', 'apack-last-active-plugin': 'kept' });
 
-    runFrontendMigrations(storage, '0.3.15');
+    runFrontendMigrations(storage, '0.4.0');
 
     expect(items.get('apack-last-active-plugin')).toBe('kept');
   });

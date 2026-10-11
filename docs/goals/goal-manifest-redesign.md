@@ -149,7 +149,7 @@ Manifest consumers: `apack-sdk/src/build/generate-entries.ts` (most of it), `man
 `init-tests.ts`, `build/dsl-defs.ts`, `build/fe-bundler.ts` (`build.bundleUi`, read from the JSON),
 `build/pack-features.ts`, `apack-host/src/packs/runtime/loader.ts`,
 `features/packs/be/system.ts` (two `PackInfo` builders, over an untyped `readManifest`),
-`apack-host/src/database/schema.ts`, `migrations/app/0.3.15.ts` (`declaredFeatureRefs`) and
+`apack-host/src/database/schema.ts`, `migrations/app/0.4.0.ts` (`declaredFeatureRefs`) and
 `@apack/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
 
 Two of those read a manifest through a type that is **not** `PackManifest` — `ProvenanceManifest`'s own

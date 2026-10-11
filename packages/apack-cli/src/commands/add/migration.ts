@@ -20,7 +20,7 @@ prerelease is normalised to the release it belongs to.
 Example:
   apack add migration 0.2.0
   apack add migration --version 0.2.0
-  apack add migration 0.3.16 --app
+  apack add migration 0.4.1 --app
 `.trim();
 
 export async function addMigration(args: string[], root: string) {
@@ -40,7 +40,7 @@ export async function addMigration(args: string[], root: string) {
   const positional = args.find((arg) => !arg.startsWith('-'));
   const asked = parseFlag(args, '--version') || positional || manifest.version || '0.0.0';
   // A migration targets a *release*, on either line: the manifest key is three numbers and nothing else, and
-  // the app's runner reads a prerelease as its release (`0.3.15-beta.2` runs the `0.3.15` migrations), so a
+  // the app's runner reads a prerelease as its release (`0.4.0-beta.2` runs the `0.4.0` migrations), so a
   // prerelease target is one nothing would ever match. The default is the manifest's version, which during
   // a beta is a prerelease, so it is normalised rather than refused
   const version = asked.replace(/[-+].*$/, '');

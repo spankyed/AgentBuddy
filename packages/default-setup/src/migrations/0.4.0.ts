@@ -19,11 +19,11 @@ export const migration: DeclaredMigration = {
   description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
     // ── The app's state (onboarding, versions, content revisions) is the host's AppState now ──
-    // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
+    // The host's own 0.4.0 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
     services.settings.removeStored(['internal']);
 
     // ── A plugin's ref is `<packId>/<featureId>` ──
-    // The host's own 0.3.15 migration, which runs before any pack's, moved every stored key onto its plugin's ref.
+    // The host's own 0.4.0 migration, which runs before any pack's, moved every stored key onto its plugin's ref.
     dropKeysMovedBy0314();
 
     // Entities written before anything recorded which *part* of one we wrote need no migration: an apply
@@ -49,11 +49,11 @@ export const migration: DeclaredMigration = {
 
     // ── Short codes and display orders the library backfilled on every client connection ──
     const backfilled = backfillLibraryOrdering();
-    if (backfilled > 0) logger.info(`[migration 0.3.15] backfilled ${backfilled} library row(s)`);
+    if (backfilled > 0) logger.info(`[migration 0.4.0] backfilled ${backfilled} library row(s)`);
 
     // ── Link blocks name a plugin by its ref ──
     const relinked = addressStoredLinkBlocks();
-    if (relinked > 0) logger.info(`[migration 0.3.15] pointed ${relinked} message(s)' link blocks at plugins' refs`);
+    if (relinked > 0) logger.info(`[migration 0.4.0] pointed ${relinked} message(s)' link blocks at plugins' refs`);
 
     // ── 0.3.14 stored every default as if the user had chosen it ──
     // Last, once the steps above moved and dropped keys: pruning first would drop a value the user set under a moved
@@ -72,7 +72,7 @@ function unwrapStoredProjects(): void {
   const projects = general.projects;
   if (Array.isArray(projects) || !isPlainObject(projects) || !Array.isArray(projects.projects)) return;
   services.settings.setInSection('general', ['projects'], projects.projects);
-  logger.info(`[migration 0.3.15] unwrapped general.projects (${projects.projects.length} project(s))`);
+  logger.info(`[migration 0.4.0] unwrapped general.projects (${projects.projects.length} project(s))`);
 }
 
 /**
@@ -85,7 +85,7 @@ function unwrapStoredProjects(): void {
  */
 function dropDefaultsOf0314(): void {
   const stored = services.settings.getStored() as Record<string, unknown>;
-  // 0.3.14's slices are keyed by bare feature id; the host's 0.3.15 migration moved the stored ones onto refs
+  // 0.3.14's slices are keyed by bare feature id; the host's 0.4.0 migration moved the stored ones onto refs
   const plugins: Record<string, unknown> = {};
   for (const [id, slice] of Object.entries(DEFAULT_SETTINGS_0314.plugins)) {
     const at = refOf0314Feature(id);
@@ -108,7 +108,7 @@ function dropDefaultsOf0314(): void {
   } catch (err) {
     // The row as it is still reads correctly, only with 0.3.14's defaults pinned; a thrown migration would instead
     // stop every later migration and the content, on every boot, until the settings were fixed by hand
-    logger.warn(`[migration 0.3.15] kept 0.3.14's stored defaults: the settings refused the pruned copy (${(err as Error).message})`);
+    logger.warn(`[migration 0.4.0] kept 0.3.14's stored defaults: the settings refused the pruned copy (${(err as Error).message})`);
   }
 }
 
@@ -172,7 +172,7 @@ function addressStoredLinkBlocks(): number {
  * 0.3.14 copied the code plugin's `lastDirectoryOpened` to `baseDirectory` and the app's `openLinksInApp` to the
  * browser plugin, but left the old keys stored, where nothing reads them. Each is dropped, copied first when the
  * user has nothing stored under the new key and the old one holds something other than 0.3.14's default. The host's
- * 0.3.15 migration ran first, so only the refs hold plugin settings.
+ * 0.4.0 migration ran first, so only the refs hold plugin settings.
  */
 function dropKeysMovedBy0314(): void {
   const stored = services.settings.getStored();

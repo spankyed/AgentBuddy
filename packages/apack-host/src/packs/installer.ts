@@ -113,11 +113,11 @@ function readValidManifest(dir: string): PackManifest {
 /**
  * Whether an app at `appVersion` satisfies a pack's `hostVersion` range.
  *
- * A prerelease counts as its release, the same rule the migrations runner states: `0.3.15-beta.2` runs
- * the `0.3.15` migrations, and here it installs the packs that ask for `>=0.3.15`. Semver orders a
+ * A prerelease counts as its release, the same rule the migrations runner states: `0.4.0-beta.2` runs
+ * the `0.4.0` migrations, and here it installs the packs that ask for `>=0.4.0`. Semver orders a
  * prerelease *before* its release, so without this a beta refuses every pack that requires the release
  * it is a beta of — which is the release those packs are being tested against. The trade is the same
- * one migrations already take: a pack asking for `>=0.3.15` installs on an early beta that may not have
+ * one migrations already take: a pack asking for `>=0.4.0` installs on an early beta that may not have
  * everything it needs yet.
  */
 export function isHostCompatible(hostRange: string | undefined, appVersion: string): boolean {

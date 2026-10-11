@@ -106,7 +106,7 @@ lastActivePlugin?: string;
 ```
 
 There is a working precedent for the frontend half of this:
-`packages/apack-host/src/fe/migrations/0.3.15.ts` already removed a `localStorage` key
+`packages/apack-host/src/fe/migrations/0.4.0.ts` already removed a `localStorage` key
 (`apack-last-active-plugin`) when that state moved host-side. `runFrontendMigrations()` runs
 localStorage migrations before the actor reads its keys.
 
@@ -144,9 +144,9 @@ Final.
      `stubFrontendAssetsPlugin`, `collect-bare-imports`;
    - `pack`, which is the extension unit and is not this concept;
    - **already-shipped migrations and their specs**, which describe a state of the world that was.
-     `packages/apack-host/src/migrations/app/0.3.15.ts` holds `addressPluginKeys`, `pluginRefOf`,
+     `packages/apack-host/src/migrations/app/0.4.0.ts` holds `addressPluginKeys`, `pluginRefOf`,
      `movePluginSettings`, `PluginOwners` and reads a stored `lastActivePlugin`; its specs are
-     `tests/migrations/plugin-keys-0.3.15.spec.ts` and `plugin-settings-0.3.15.spec.ts`. Renaming them
+     `tests/migrations/plugin-keys-0.4.0.spec.ts` and `plugin-settings-0.4.0.spec.ts`. Renaming them
      would make them describe a move that never happened under those names. They stay, and the guard
      allows them the way `removed-names-in-docs.spec.ts` allows `docs/archive`.
 
@@ -232,10 +232,10 @@ passing silently — if it doesn't, add the spec that catches it.
 - Those two fields are the whole of it, checked at `8b9d62114`: per-feature settings are keyed by
   feature and read through `forFeature` (54 call sites), not by plugin, and the frontend's own
   `apack-last-active-plugin` key was already removed by
-  `packages/apack-host/src/fe/migrations/0.3.15.ts`. Don't re-hunt for more stored plugin data; if the
-  0.3.15 migration's own reads of `lastActivePlugin` need touching, that is Decision 2's allowance,
+  `packages/apack-host/src/fe/migrations/0.4.0.ts`. Don't re-hunt for more stored plugin data; if the
+  0.4.0 migration's own reads of `lastActivePlugin` need touching, that is Decision 2's allowance,
   not a rename.
-- Spec it the way `tests/migrations/app-state-0.3.15.spec.ts` specs the earlier move: a row in the old
+- Spec it the way `tests/migrations/app-state-0.4.0.spec.ts` specs the earlier move: a row in the old
   shape, migrated, then migrated again to prove idempotence.
 
 **Done when:** the migration spec passes, including the second run; `npm test -w @apack/host` and

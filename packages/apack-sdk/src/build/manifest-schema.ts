@@ -416,11 +416,11 @@ const MIGRATION_TARGET_SCHEMA = z.string()
 /**
  * Migrations, keyed by the version each targets, under the **version line** that version belongs to.
  *
- * **Two maps rather than one, because a bare version does not say what it is a version of.** `0.3.15` is
+ * **Two maps rather than one, because a bare version does not say what it is a version of.** `0.4.0` is
  * either apack's release or the pack's own, and letting the *runner* decide — from the pack's
  * provenance, which is the one thing about a pack that correlates with neither — makes the same key mean
  * both. `default-setup` is the pack that shows why: its own `version` is `0.1.0` while its migrations are
- * keyed `0.3.0`-`0.3.15`, because they are apack's releases, and a user's own build installed at that
+ * keyed `0.3.0`-`0.4.0`, because they are apack's releases, and a user's own build installed at that
  * id would have its versions compared against the app's.
  *
  * - `app` — the data moves when apack moves. A prerelease counts as its release, and a development

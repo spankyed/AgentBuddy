@@ -122,7 +122,7 @@ describe('services.appData', () => {
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
     const { appState } = await import('@apack/host/app-state');
     // The release that moves it
-    version.current = '0.3.15';
+    version.current = '0.4.0';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
     dirs.push(dir);
     // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
@@ -136,7 +136,7 @@ describe('services.appData', () => {
       await services.appData.importBackup(backup);
 
       expect(services.appData.hasOnboarded()).toBe(true);
-      expect(appState.get().version).toBe('0.3.15');
+      expect(appState.get().version).toBe('0.4.0');
     } finally {
       version.current = undefined;
     }

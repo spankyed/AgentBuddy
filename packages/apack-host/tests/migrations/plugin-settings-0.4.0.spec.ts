@@ -1,6 +1,6 @@
-// Before 0.3.15 every plugin ran under its bare feature id, and the built-in pack's settings row stored, under it,
+// Before 0.4.0 every plugin ran under its bare feature id, and the built-in pack's settings row stored, under it,
 // each plugin's settings and, in `plugins._meta`, the app shell's state: which plugins' tabs show and the plugin last
-// open. The host's 0.3.15 app migration moves the shell's state into AppState, each id onto its plugin's ref, and
+// open. The host's 0.4.0 app migration moves the shell's state into AppState, each id onto its plugin's ref, and
 // every pack's plugin settings onto their refs.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -14,7 +14,7 @@ import { resetTestData } from '@apack/sdk/testing';
 import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
-import type { InstalledManifests } from '../../src/migrations/app/0.3.15.ts';
+import type { InstalledManifests } from '../../src/migrations/app/0.4.0.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
 import { _appDirOf } from '@apack/sdk/env';
@@ -38,14 +38,14 @@ const settings = () => untypedQx(SETTINGS_ID).pickOne(['data'])?.data;
 
 /** Runs the migration; `installed` stands for the packs installed on disk, none unless a test says */
 const move = (installed: InstalledManifests = () => []) => {
-  const migration = appMigrations(registry, installed).find((m) => m.target === '0.3.15');
-  if (!migration) throw new Error('no 0.3.15 app migration');
+  const migration = appMigrations(registry, installed).find((m) => m.target === '0.4.0');
+  if (!migration) throw new Error('no 0.4.0 app migration');
   migration.up();
 };
 
 beforeAll(() => {
   const origin = (id: string, shipped: boolean) => ({ id, name: id, version: '1.0.0', dir: `packs/${id}`, shipped });
-  // `notes` is the built-in pack's feature too: before 0.3.15 the built-in plugin ran under it
+  // `notes` is the built-in pack's feature too: before 0.4.0 the built-in plugin ran under it
   registry.registerPack({ id: 'memo-pack', features: withPlugins('memos', 'board', 'notes') }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', features: withPlugins('notes', 'threads', 'code') }, origin('built-in', true));
   // A feature with settings and a system but no plugin
@@ -59,7 +59,7 @@ beforeEach(() => {
   untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(OLD_SETTINGS));
 });
 
-describe('the 0.3.15 app migration, for plugins', () => {
+describe('the 0.4.0 app migration, for plugins', () => {
   it("moves the shell's state into AppState, each id onto its plugin's ref", () => {
     move();
 
@@ -136,7 +136,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'memo-pack/memos': { sort: 'oldest' } } });
   });
 
-  // Before 0.3.15 the host's plugins ran under bare ids too, so a bare id it shares with an external feature was its;
+  // Before 0.4.0 the host's plugins ran under bare ids too, so a bare id it shares with an external feature was its;
   // the bus is no feature and owns no key
   it("gives a bare id the host shares to the host, and none to the bus", () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { packs: { sort: 'name' }, bus: { mode: 'x' } } });
@@ -205,7 +205,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
 });
 
 // With no manifests given, the migration reads the packs installed in the app's data dir, as the app runs it
-describe('the 0.3.15 app migration, over the packs installed on disk', () => {
+describe('the 0.4.0 app migration, over the packs installed on disk', () => {
   let userDataDir: string;
   const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR };
 
@@ -216,7 +216,7 @@ describe('the 0.3.15 app migration, over the packs installed on disk', () => {
   };
 
   beforeEach(() => {
-    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-settings-0315-'));
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-settings-040-'));
     process.env.APACK_ENV = 'test';
     process.env.APACK_USER_DATA_DIR = userDataDir;
   });
@@ -239,7 +239,7 @@ describe('the 0.3.15 app migration, over the packs installed on disk', () => {
       plugins: { drafts: { wrap: true }, idle: { quiet: true }, broken: { on: true }, _meta: { visibility: { drafts: false, idle: true, broken: true } } },
     });
 
-    const migration = appMigrations(registry).find((m) => m.target === '0.3.15')!;
+    const migration = appMigrations(registry).find((m) => m.target === '0.4.0')!;
     migration.up();
 
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'idle-pack/idle': { quiet: true } } });

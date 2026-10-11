@@ -1,4 +1,4 @@
-// The app's own state moves out of the built-in pack's settings: before 0.3.15 it was stored in the
+// The app's own state moves out of the built-in pack's settings: before 0.4.0 it was stored in the
 // Settings row's `internal` section, which resetting settings erased. And every pack's stored plugin settings move
 // onto their plugins' refs, before any pack's own migration reads them.
 import { untypedTx, untypedQx } from '@apack/ears';
@@ -13,20 +13,20 @@ import type { PackRegistry } from '../../packs/registry.ts';
 import { discoverPacks } from '../../packs/discovery.ts';
 import { deepMerge } from '@apack/sdk/utils/pure';
 
-/** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */
+/** The settings row: where the app's state was stored before 0.4.0, and where the plugin settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
 /** The app's state row, addressed here because the rename below reads fields `appState` no longer knows */
 const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
 
-/** The settings' `internal` section, as versions before 0.3.15 stored it */
+/** The settings' `internal` section, as versions before 0.4.0 stored it */
 interface LegacyInternal {
   hasOnboarded?: boolean;
   version?: string;
   packVersions?: Record<string, string>;
 }
 
-/** The settings row's data as stored, read untyped: it's in the shape from before 0.3.15 */
+/** The settings row's data as stored, read untyped: it's in the shape from before 0.4.0 */
 function storedSettings(): { internal?: LegacyInternal; plugins?: Record<string, unknown> } | undefined {
   return (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: ReturnType<typeof storedSettings> } | undefined)?.data;
 }
@@ -51,7 +51,7 @@ const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContex
  * keys bare for good, where nothing reads them.
  */
 export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
-  target: '0.3.15',
+  target: '0.4.0',
   description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the records each pack's applied content replaced",
   up: () => {
     renameStateRecords();
@@ -70,7 +70,7 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
  * would make it match nothing and the record it moves would be lost. Nothing else here keeps the word —
  * the constants, the function and the prose are named for what they do.
  *
- * **It goes when this migration goes** (`../CLAUDE.md`: delete it with the others once 0.3.15 is below the
+ * **It goes when this migration goes** (`../CLAUDE.md`: delete it with the others once 0.4.0 is below the
  * oldest version upgrades are supported from), and the last `seed` in the repo goes with it.
  *
  * Every name a per-pack record of an apply has been stored under, onto the one that carries one now.
@@ -154,7 +154,7 @@ function renameContentAttributes(): void {
       moved++;
     }
   }
-  if (moved > 0) console.log(`[migration 0.3.15] renamed ${moved} content attribute(s)`);
+  if (moved > 0) console.log(`[migration 0.4.0] renamed ${moved} content attribute(s)`);
 }
 
 /** Moves each old-named record onto its new field, keeping what the new one already holds, and drops the ones this
@@ -203,7 +203,7 @@ function moveAppState(): void {
   if (Object.keys(changed).length > 0) appState.update(changed);
 }
 
-/** What the settings row held before 0.3.15 under `plugins._meta`: the app shell's state, by bare plugin id */
+/** What the settings row held before 0.4.0 under `plugins._meta`: the app shell's state, by bare plugin id */
 interface LegacyShellState {
   visibility?: Record<string, unknown>;
   lastActivePlugin?: unknown;
@@ -318,7 +318,7 @@ function moveShellState(owners: PluginOwners): void {
 }
 
 /**
- * Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs. A bare key no
+ * Every pack's plugin settings, stored under their features' bare ids before 0.4.0, onto their refs. A bare key no
  * installed pack owns, or that two external packs share, is dropped: the app reads plugin settings only by ref, so it
  * would sit where nothing reads it and fail every save of the settings that carried it back.
  */

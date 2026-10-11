@@ -170,7 +170,7 @@ plus its refinement.
 eleven are named by no step below, because most are axis 1 and stay: `BUILT_IN_PACKS_DIR` in
 `main/src/modules/api-server/config.ts`, `pack.ts` refusing to pack a built-in, `installer.ts` skipping
 built-in ids while resolving dependencies, `discovery.ts` filtering manifests. One must not be touched at all —
-`apack-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `apack-cli/tests/packs/host-output.spec.ts` (357 lines) is mostly about the
+`apack-host/src/migrations/app/0.4.0.ts`, which is history and describes the tree as it was. On the test side `apack-cli/tests/packs/host-output.spec.ts` (357 lines) is mostly about the
 built-in-only publish, `loader.spec.ts` (858) and `reload.spec.ts` (382) each carry a near-duplicate half,
 `discovery.spec.ts` (128) shrinks, and `api/tests/runtime/packaged-boot.spec.ts` (103) changes shape.
 
@@ -302,7 +302,7 @@ changed.
 | "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
 | "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
 | **the criterion itself**: "collapse a duplication where it needs no stored-data migration" | It split the work in two and deferred half on the premise that a migration is a one-way door. There is one user and he wrote the app, so both migrations are conveniences — `CLAUDE.md`'s carve-out for stored data is written for users this repo does not have. The order the steps actually have is the code's: one gate, one strip |
-| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the apply record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
+| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.4.0 renamed away from" was an observation, not an objection; and the apply record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
 
 ## Decisions
 
@@ -610,7 +610,7 @@ Mutation: put `earlySystem: true` in a fixture manifest and watch the schema ref
 
 Keep the external path's per-pack hashing and dependency tracking, port
 `contentPolicy` onto it, and fold `builtInContentRevisions` into `externalContentRevisions` — renamed, since "external" stops
-meaning anything. `0.3.15.ts` renamed *away from* `packContentRevisions` and `packContentDeps`, so that migration is the
+meaning anything. `0.4.0.ts` renamed *away from* `packContentRevisions` and `packContentDeps`, so that migration is the
 map for renaming back.
 
 **Cheaper than it was, because the semantics are settled.** This used to carry a decision as well as a rename:

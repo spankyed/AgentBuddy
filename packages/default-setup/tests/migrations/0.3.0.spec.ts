@@ -27,7 +27,7 @@ describe('the 0.3.0 migration', () => {
   })
 
   it("adds Codex to the modes a user stored, after Hermes, and drops Hermes", () => {
-    // As a pre-0.3.0 user stored them, once the host's 0.3.15 migration, which runs before any pack's, moved them onto
+    // As a pre-0.3.0 user stored them, once the host's 0.4.0 migration, which runs before any pack's, moved them onto
     // the plugins' refs and dropped `hermes`, which no pack has
     storeAsBefore({
       plugins: {

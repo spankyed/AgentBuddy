@@ -56,7 +56,7 @@ Never:
   metadata.
 - change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- create a new migration file: 0.3.15 is the latest unreleased target and takes the new entry.
+- create a new migration file: 0.4.0 is the latest unreleased target and takes the new entry.
 - add a guard whose only job is to name a deleted identifier (docs/goals/README.md, "Invariants and
   milestones"). Guard the property, not the old name.
 ```
@@ -279,7 +279,7 @@ a new `writeFoo(): ImportCounts` fails it.
 
 - Rename the four fields per Decision 5 in `packages/apack-host/src/app-state/`, its `APP_STATE_FIELDS`
   list, and every reader (the host's applying, the pack installer, the migrations runner, specs).
-- Add the field moves to `packages/apack-host/src/migrations/app/0.3.15.ts` — the latest unreleased
+- Add the field moves to `packages/apack-host/src/migrations/app/0.4.0.ts` — the latest unreleased
   target, which already has entries. Do **not** create a new version file. Guard each move so it is
   idempotent: the migration runs again on every development boot, on each beta of its release, and after
   a reset.
@@ -335,7 +335,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 |---|---|---|
 | 1 — give the act its own word | done `9ce986ad0` | 68 files; `importCompiledContent`/`importPackContent`/`importContent`, `ImportCounts`, `ImportContext`, `ImportOptions`, `PackImportFailure`, `Applier.apply`; `schema:update`, `compile`, `api:update` |
 | 2 — make the split checkable | done `27573c9e9` | `apack-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
-| 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.3.15.ts`; 39 migration specs; idempotence mutation-checked |
+| 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.4.0.ts`; 39 migration specs; idempotence mutation-checked |
 | 4 — write the stages down | done `847fa0799` | "The four stages" in `content.md`; the split in `apack-sdk/CLAUDE.md` and the root table; `content-parity:check`/`:update` |
 | 5 — the query content in `@apack/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
 
@@ -416,6 +416,6 @@ The repo's standing rules (root `CLAUDE.md`) apply:
 - published packages: no `any`, the TypeScript floor, `api:update` after export changes with `etc/`
   committed;
 - build order: `packages:build` before the CLI suite, `npm run compile` before the api suites and E2E;
-- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`, and 0.3.15 is the target;
+- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`, and 0.4.0 is the target;
 - investigate failing tests, mutation-check new guards;
 - run the narrowest check that could fail during the work, and the full chain once per phase at its end.

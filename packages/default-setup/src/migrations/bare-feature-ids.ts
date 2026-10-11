@@ -1,5 +1,5 @@
-// Before 0.3.15 every plugin and system ran under its bare feature id, and data written then names them that way, as
-// the link blocks in messages do. These rewrite such a name onto this pack's ref, which the 0.3.15 migration applies
+// Before 0.4.0 every plugin and system ran under its bare feature id, and data written then names them that way, as
+// the link blocks in messages do. These rewrite such a name onto this pack's ref, which the 0.4.0 migration applies
 // to stored data. Code users wrote is left as they wrote it: a bare name there fails when the code runs, and the
 // services' error names the ref it meant.
 import { ref, type FeatureName } from '#generated/ref.ts';
@@ -15,7 +15,7 @@ const FEATURES_0314 = [
 
 /**
  * The plugins 0.3.14 had that no pack has any more. A link opening one would only throw when clicked, so it is
- * dropped; `calendar` was the built-in calendar, removed in 0.3.15.
+ * dropped; `calendar` was the built-in calendar, removed in 0.4.0.
  */
 const REMOVED_SINCE_0314: readonly string[] = ['calendar'];
 

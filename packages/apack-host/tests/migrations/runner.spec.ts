@@ -160,7 +160,7 @@ describe('which migrations run', () => {
     // the app did not ship. Its own manifest version is TEST_APP_VERSION and is never compared to anything
     const registration = {
       id: 'migrations-gate',
-      migrations: { app: ['0.3.14', '0.3.15', '0.3.16'].map((target) => ({
+      migrations: { app: ['0.3.14', '0.4.0', '0.4.1'].map((target) => ({
         target,
         description: target,
         up: () => {
@@ -188,28 +188,28 @@ describe('which migrations run', () => {
   });
 
   it("runs a beta's release migrations, not later ones, and again only when the beta's version changes", () => {
-    version.current = '0.3.15-beta.0';
+    version.current = '0.4.0-beta.0';
     expect(runAppMigrations(registry)).toBe(true);
-    expect(ran).toEqual(['0.3.15']);
-    expect(appState.get().version).toBe('0.3.15-beta.0');
+    expect(ran).toEqual(['0.4.0']);
+    expect(appState.get().version).toBe('0.4.0-beta.0');
 
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15']);
+    expect(ran).toEqual(['0.4.0']);
 
-    version.current = '0.3.15-beta.1';
+    version.current = '0.4.0-beta.1';
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15', '0.3.15']);
+    expect(ran).toEqual(['0.4.0', '0.4.0']);
 
-    version.current = '0.3.15';
+    version.current = '0.4.0';
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15', '0.3.15', '0.3.15']);
-    expect(appState.get().version).toBe('0.3.15');
+    expect(ran).toEqual(['0.4.0', '0.4.0', '0.4.0']);
+    expect(appState.get().version).toBe('0.4.0');
   });
 
   it("runs nothing past a release's version", () => {
-    version.current = '0.3.15';
+    version.current = '0.4.0';
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15']);
+    expect(ran).toEqual(['0.4.0']);
   });
 
   it('runs every pending migration on a development build, on each boot', () => {
@@ -217,16 +217,16 @@ describe('which migrations run', () => {
     version.current = '0.3.14';
 
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15', '0.3.16']);
+    expect(ran).toEqual(['0.4.0', '0.4.1']);
     expect(appState.get().version).toBe('0.3.14');
 
     runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.15', '0.3.16', '0.3.15', '0.3.16']);
+    expect(ran).toEqual(['0.4.0', '0.4.1', '0.4.0', '0.4.1']);
   });
 
   it('stops at a failed migration and records no version, so the next boot runs from it', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    failing = '0.3.15';
+    failing = '0.4.0';
 
     expect(runAppMigrations(registry)).toBe(false);
     expect(ran).toEqual([]);
@@ -234,7 +234,7 @@ describe('which migrations run', () => {
 
     failing = undefined;
     expect(runAppMigrations(registry)).toBe(true);
-    expect(ran).toEqual(['0.3.15', '0.3.16']);
+    expect(ran).toEqual(['0.4.0', '0.4.1']);
     expect(appState.get().version).toBe(TEST_APP_VERSION);
   });
 });

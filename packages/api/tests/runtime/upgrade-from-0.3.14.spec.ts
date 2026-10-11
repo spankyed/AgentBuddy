@@ -1,4 +1,4 @@
-// Data from 0.3.14, migrated by the 0.3.15 release as the app runs it: the host's app migrations, then the built-in
+// Data from 0.3.14, migrated by the 0.4.0 release as the app runs it: the host's app migrations, then the built-in
 // pack's. 0.3.14 stored its whole default settings with the user's changes merged in, every plugin's slice under its
 // bare feature id, the app shell's state in `plugins._meta` and the app's own in `internal`. Runs the built-in packs'
 // built runtimes (npm run compile), as app-reset.spec.ts does.
@@ -7,10 +7,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-// The release that migrates 0.3.14's data; the test environment runs release rules
+// The upcoming release; the test environment runs release rules, including intervening migrations
 vi.mock('@apack/sdk/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@apack/sdk/env')>();
-  return { ...actual, getAppVersion: () => '0.3.15' };
+  return { ...actual, getAppVersion: () => '0.4.0' };
 });
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-upgrade-0314-'));
@@ -25,6 +25,7 @@ const { resolveAppContext } = await import('@apack/sdk/env');
 const { runAppMigrations } = await import('@apack/host/migrations');
 const { appliedContent, appState } = await import('@apack/host/app-state');
 const { untypedTx, untypedQx } = await import('@apack/ears');
+const { services } = await import('@apack/sdk/services');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const SETTINGS_ID = 'Settings-app';
@@ -82,7 +83,7 @@ afterAll(() => {
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-describe("0.3.15's migrations over 0.3.14's data", () => {
+describe("0.4.0's migrations over 0.3.14's data", () => {
   it("leaves the settings holding only the user's changes, each plugin's under its ref, and the app's state in AppState", () => {
     expect(appState.exists()).toBe(false);
 
@@ -99,7 +100,7 @@ describe("0.3.15's migrations over 0.3.14's data", () => {
     });
     expect(appState.get()).toMatchObject({
       hasOnboarded: true,
-      version: '0.3.15',
+      version: '0.4.0',
       lastActivePlugin: 'default-setup/code',
     });
     // Only the tab the user changed from 0.3.14's defaults
@@ -107,5 +108,9 @@ describe("0.3.15's migrations over 0.3.14's data", () => {
     // 0.3.14's record of what it written is dropped rather than carried: what says a pack's content has been
     // applied is the per-item record only an apply can write, so the first boot after this applies once
     expect(appliedContent.get('default-setup').revision).toBe('');
+
+    // Selecting a project writes this setting. It must remain writable after migrating the old document.
+    services.settings.setForFeature('default-setup/code', ['baseDirectory'], '/work/another-project');
+    expect(services.settings.forFeature<{ baseDirectory: string }>('default-setup/code').baseDirectory).toBe('/work/another-project');
   });
 });

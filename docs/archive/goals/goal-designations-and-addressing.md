@@ -57,7 +57,7 @@ Never:
 - change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - create a new migration version file: the settings move goes in the latest unreleased target
-  (packages/default-setup/src/migrations/0.3.15.ts), per migrations/CLAUDE.md.
+  (packages/default-setup/src/migrations/0.4.0.ts), per migrations/CLAUDE.md.
 - keep `designation` on PackSystemDef or Plugin "for compatibility". Both are deleted.
 ```
 
@@ -240,7 +240,7 @@ Final.
 10. **Built-in system ids are namespaced too** (`default-setup.threads`), so `<packId>.<featureId>` is the
    one identity rule and the name layer is the only thing anyone types. Otherwise Phase 5 moves the
    inconsistency rather than removing it: plugins namespaced for all packs, systems only for external ones.
-11. **The settings migration targets 0.3.15**, the latest unreleased version, per `migrations/CLAUDE.md`.
+11. **The settings migration targets 0.4.0**, the latest unreleased version, per `migrations/CLAUDE.md`.
     No new version file.
 
 12. **A role resolves to one feature, and the signature stays singular.** `designation(role)` keeps
@@ -331,7 +331,7 @@ the first pack whole (`registered-lookups.spec.ts`).
 Plugin identity becomes `<packId>.<featureId>` for every pack. Codegen emits a plugin name map beside
 `systemIds` so `broadcastToPlugin`/`emit`/`sendsTo` take the short name for a pack's own plugins and
 `<pack>/<feature>` for a dependency's. `HOST_PLUGIN_IDS` stays bare and reserved. The renderer's 4
-literal sends take the qualified name or a role. A `0.3.15` migration moves `settings.plugins.<id>`,
+literal sends take the qualified name or a role. A `0.4.0` migration moves `settings.plugins.<id>`,
 `_meta.visibility.<id>` and `_meta.lastActivePlugin`, idempotently.
 
 **Done when:** two fixture packs declaring the same feature id both register with working plugins and
@@ -383,7 +383,7 @@ Two things ended up different from the plan:
 - Phase 2 changes `PackFERegistration` twice over (a new `designations`, a new `id`) and `Plugin` once.
   All three are one `api:update`, in that phase's commit.
 - Phases 1–4 must not change any persisted key. Only Phase 5 migrates user data, and only through
-  `0.3.15`.
+  `0.4.0`.
 - `@apack/sdk` contract changes in Phases 1, 2 and 5 each need `npm run api:update` with `etc/` committed
   in the same commit; `npm run typecheck` fails until they are.
 - Every phase regenerating pack entries runs `npm run compile` for default-setup and rebuilds the fixtures,

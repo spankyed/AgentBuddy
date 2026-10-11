@@ -1,4 +1,4 @@
-// 0.3.15 drops the app's state from the settings (the host moved it to AppState first), and marks rows written before
+// 0.4.0 drops the app's state from the settings (the host moved it to AppState first), and marks rows written before
 // the applier recorded what it wrote as unedited — without that every row an older version written stays frozen. Action
 // logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too. The
 // settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them. Link
@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { untypedTx, untypedQx } from '@apack/ears'
 import type { EARS as SdkEARS } from '@apack/sdk'
 import { dropAttribute } from '@apack/sdk/testing'
-import { migration } from '../../src/migrations/0.3.15.ts'
+import { migration } from '../../src/migrations/0.4.0.ts'
 import { EARS, createEntityWithDefaults } from '#generated/ears.ts'
 import { ref } from '#generated/ref.ts'
 import { addressLinkBlocks } from '../../src/migrations/bare-feature-ids.ts'
@@ -22,7 +22,7 @@ const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['dat
 
 const attrs = (id: string) => (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0]
 
-describe('the 0.3.15 migration', () => {
+describe('the 0.4.0 migration', () => {
   it("drops the app's state from the stored settings, and keeps the user's", () => {
     // As 0.3.14 stored it
     untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
@@ -62,7 +62,7 @@ describe('the 0.3.15 migration', () => {
   })
 
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
-    // As 0.3.14 stored them, once the host's 0.3.15 migration moved them onto the plugins' refs
+    // As 0.3.14 stored them, once the host's 0.4.0 migration moved them onto the plugins' refs
     untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
       plugins: {
         'default-setup/flows': { rootFlowId: 'Flow-1', enableFlowPreview: false },
@@ -102,7 +102,7 @@ describe('the 0.3.15 migration', () => {
     afterEach(() => vi.restoreAllMocks())
 
     /**
-     * A row as 0.3.14 left it, once the host's 0.3.15 migration moved the plugin slices onto their refs: every default,
+     * A row as 0.3.14 left it, once the host's 0.4.0 migration moved the plugin slices onto their refs: every default,
      * the user's changes merged in
      */
     function rowOf0314(changes: (row: any) => void) {

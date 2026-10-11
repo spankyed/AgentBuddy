@@ -6,7 +6,7 @@ export const migration: DeclaredMigration = {
   description: 'Add codex agent mode if missing; remove the Hermes mode',
   up: () => {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would
-    // write every default mode into the user's stored settings. The host's 0.3.15 migration, which runs before every
+    // write every default mode into the user's stored settings. The host's 0.4.0 migration, which runs before every
     // pack migration, has moved them onto the threads plugin's ref, and dropped Hermes's settings, which no plugin owns.
     const stored = (services.settings.getStored().plugins ?? {}) as Record<string, any>;
     const storedModes = stored[ref('threads')]?.chat?.modes;

@@ -1,7 +1,7 @@
 > **Done and closed.** A migration is declared under a version line in its pack's `apack.json` —
 > `migrations.app` or `migrations.pack`, keyed by the version it targets — and the runners read one map
 > each (`packMigrationTargets(line)`), so neither asks where a pack came from. `shippedPacks()` keeps the
-> one consumer that is genuinely about shipping (`migrations/app/0.3.15.ts`'s `PluginOwners.shipped`).
+> one consumer that is genuinely about shipping (`migrations/app/0.4.0.ts`'s `PluginOwners.shipped`).
 >
 > **Five of the plan below were falsified before implementing, and it is kept for the design rather than
 > the mechanism.** What was wrong: a pack never writes `target` (it was already the manifest key, so the
@@ -37,7 +37,7 @@ So the same field means two different things depending on who shipped the pack, 
 declaration says which. That is the whole of the fusion.
 
 **What it looks like in the tree today.** `packages/default-setup` declares `version: 0.1.0` in both its
-manifest and its `package.json`, and its migrations are `0.3.0.ts`, `0.3.1.ts`, `0.3.14.ts`, `0.3.15.ts`
+manifest and its `package.json`, and its migrations are `0.3.0.ts`, `0.3.1.ts`, `0.3.14.ts`, `0.4.0.ts`
 against an app at `0.3.14`. They are app migrations living in a pack's folder, and they work — because
 shipped-ness routes them to the app's line, which is the line they were named for. The pack's own version is
 decorative: nothing compares anything to `0.1.0`.

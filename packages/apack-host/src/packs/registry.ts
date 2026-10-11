@@ -248,7 +248,7 @@ export interface PackRegistry extends PackRegistryView {
    * Which line a migration is on is what its pack declared (`apack.json`'s `migrations.app` /
    * `migrations.pack`), so this asks nothing about where a pack came from: `app` for the migrations run
    * against `AppState.version`, `pack` for those run against the pack's own. Filtering on `shipped` here is
-   * the trap — it routes by provenance, which makes one `0.3.15` mean the app's release in a pack the app
+   * the trap — it routes by provenance, which makes one `0.4.0` mean the app's release in a pack the app
    * ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has
    * its migrations compared against the wrong thing.
    *
@@ -301,7 +301,7 @@ export interface PackRegistryOptions {
  *
  * Read as data, not trusted as a manifest: `features` is a map keyed by feature id, and `splitRef` is what
  * refuses a key that isn't one. An array is the malformed shape here — nothing writes one — and reading it
- * as none rather than throwing is the same rule `declaredFeatureRefs` follows in the 0.3.15 migration.
+ * as none rather than throwing is the same rule `declaredFeatureRefs` follows in the 0.4.0 migration.
  */
 function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
   if (typeof id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];

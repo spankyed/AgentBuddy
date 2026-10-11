@@ -9,7 +9,7 @@ import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 
-/** A version without its prerelease part: a beta (`0.3.15-beta.2`) runs its release's (`0.3.15`) migrations */
+/** A version without its prerelease part: a beta (`0.4.0-beta.2`) runs its release's (`0.4.0`) migrations */
 const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
 
 /**

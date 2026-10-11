@@ -274,7 +274,7 @@ describe('installPackFromLocal (pack layout path)', () => {
   });
 
   it('accepts prerelease hosts within range', async () => {
-    const result = await installPackFromLocal(builtPack({ hostVersion: '>=0.3.0' }), path.join(tmp, 'packs'), { hostVersion: '0.3.15-beta.1' });
+    const result = await installPackFromLocal(builtPack({ hostVersion: '>=0.3.0' }), path.join(tmp, 'packs'), { hostVersion: '0.4.0-beta.1' });
     expect(result.id).toBe('demo-pack');
   });
 });

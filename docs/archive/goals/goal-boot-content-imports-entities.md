@@ -15,7 +15,7 @@ Background was surveyed at.
 Before Phase 1, confirm the base: PackContentManifest and skipAfterOnboarding in
 packages/apack-sdk/src/framework/pack-registration.ts, skipAtBoot in packages/default-setup/apack.json,
 the findWhere(CONTENT_KEY) lookup in packages/apack-sdk/src/content/applier.ts, bootApplyPacks in
-packages/apack-host/src/migrations/app/0.3.15.ts, and getBaseSettings in
+packages/apack-host/src/migrations/app/0.4.0.ts, and getBaseSettings in
 packages/default-setup/src/app-settings/index.ts all exist at HEAD. If they don't, stop and say so —
 the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -109,7 +109,7 @@ The `settings` entry in `content.sources` is three unrelated things in one manif
    `services.settings.reset()`. Nothing ever writes the compiled settings into the database.
 3. **A policy to stop (2) firing at boot** — `skipAtBoot`.
 
-It is pre-0.3.15 shape. Settings are now the host's (`packages/apack-host/src/features/settings/`,
+It is pre-0.4.0 shape. Settings are now the host's (`packages/apack-host/src/features/settings/`,
 `@apack/host/settings`): **the row holds only what the user changed**, and the store composes the
 registration's defaults underneath it, keyed by feature ref (`plugins['default-setup/threads']`). So there
 is nothing to write at boot, and `services.settings.reset()` is all-or-nothing where the document's shape
@@ -124,7 +124,7 @@ would support per-feature.
 |---|---|
 | `packs/registry.ts:612` | `contentManifest.contentPolicy`, passed to `applyPacks` as `PackContentTarget.contentPolicy` |
 | `packs/registry.ts:623` | its **presence**, as a `bootHooks` string in `getPackExtensions` (the Packs view) |
-| `migrations/app/0.3.15.ts:46` (`bootApplyPacks`) | its **presence**, to list the shipped packs a pre-0.3.15 single `contentRevision` stood for. That migration's own comment says to *"delete it with the other migrations once 0.3.15 is below the oldest version upgrades are supported from"* |
+| `migrations/app/0.4.0.ts:46` (`bootApplyPacks`) | its **presence**, to list the shipped packs a pre-0.4.0 single `contentRevision` stood for. That migration's own comment says to *"delete it with the other migrations once 0.4.0 is below the oldest version upgrades are supported from"* |
 
 `PackContentManifest` is exported from `@apack/sdk/framework` and reported in
 `packages/apack-sdk/etc/framework.api.md`.
@@ -239,12 +239,12 @@ After Phases 1 and 2.
   drop the now-unused `contentPolicy` lines.
 - `packages/apack-host/src/packs/registry.ts`: drop the `contentPolicy` read (`:612`) and the
   `bootHooks.push('contentManifest')` (`:623`).
-- `packages/apack-host/src/migrations/app/0.3.15.ts`: `bootApplyPacks` reads each shipped pack's manifest
+- `packages/apack-host/src/migrations/app/0.4.0.ts`: `bootApplyPacks` reads each shipped pack's manifest
   `content.sources` (Decision 7). The migration's behaviour must not change — the same pack ids for the same
   data.
 - Migrate the fixtures that construct a `contentManifest` (host's `tests/packs/registration.spec.ts`,
   `tests/packs/runtime/{loader,reload}.spec.ts`, `tests/services/host-runtime.spec.ts`,
-  `tests/migrations/app-state-0.3.15.spec.ts`) and the codegen specs that assert the emitted block.
+  `tests/migrations/app-state-0.4.0.spec.ts`) and the codegen specs that assert the emitted block.
 - `npm run api:update -w @apack/sdk`; commit `etc/framework.api.md`.
 - Regenerate default-setup (`npm run compile`) so `src/__generated__/pack-entry.ts` loses the block.
 - Docs: `packages/default-setup/CLAUDE.md`'s boot-hooks list, `packages/apack-host/src/packs/runtime/CLAUDE.md`'s
@@ -253,7 +253,7 @@ After Phases 1 and 2.
 **Done when:**
 - `grep -rn "contentManifest\|PackContentManifest\|contentPolicy" packages scripts --include='*.ts' --include='*.json'`
   returns nothing outside `docs/archive/`.
-- `packages/apack-host/tests/migrations/app-state-0.3.15.spec.ts` passes unchanged in what it asserts
+- `packages/apack-host/tests/migrations/app-state-0.4.0.spec.ts` passes unchanged in what it asserts
   about which packs are migrated — the fixture moves to a manifest, the expectations do not.
 - `etc/framework.api.md` records only the removal.
 - `npm run typecheck`, `npm run spec` over the touched packages, `npm run compile`,
@@ -316,7 +316,7 @@ should read each shipped pack's manifest `content.sources`, on the grounds that 
 fact the registration was a proxy for. It is not: **codegen emitted `boot.contentManifest` for every pack**,
 whether or not it declared a `content.sources` at all — `tests/packs/bundled-ui-pack` has no `boot` key in its
 manifest and had one in its generated registration. So the filter never removed a pack, and reading the
-manifest would have *narrowed* which data the 0.3.15 migration touches. The filter is dropped rather than
+manifest would have *narrowed* which data the 0.4.0 migration touches. The filter is dropped rather than
 reinterpreted, and the comment there now warns off the improvement that looks obvious.
 
 **One entry still fails the rule, and it is not the one this goal removed.** `faqs` is a `content.sources` entry

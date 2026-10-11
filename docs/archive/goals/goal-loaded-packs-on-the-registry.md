@@ -98,7 +98,7 @@ Production reads, all of which want provenance or an id — none wants anything 
 | Reader | Takes |
 |---|---|
 | `migrations/index.ts:65` | built-in ids |
-| `migrations/app/0.3.15.ts:33` | built-in ids, already joined with `registry.getPackRegistration(id)` |
+| `migrations/app/0.4.0.ts:33` | built-in ids, already joined with `registry.getPackRegistration(id)` |
 | `loader.ts:67`, `reload.ts:133` | one built-in by id |
 | `backend.ts:148`, `packs-system.ts:124` | built-in infos |
 | `app-data.ts:30` | `startPacks(registry, getLoadedPacks())` — module state into a registry-scoped call |
@@ -171,7 +171,7 @@ case in `tests/packs/registration.spec.ts`. `npm test -w @apack/host` passes unc
 
 ### Phase 2 — the built-in readers move
 
-Six production sites (`migrations/index.ts`, `migrations/app/0.3.15.ts`, `loader.ts:67`,
+Six production sites (`migrations/index.ts`, `migrations/app/0.4.0.ts`, `loader.ts:67`,
 `reload.ts:133`, `backend.ts:148`, `packs-system.ts:124`) and their tests read the registry.
 `setBuiltInPackInfos`/`getBuiltInPackInfos` go.
 

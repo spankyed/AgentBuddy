@@ -1,4 +1,4 @@
-// The host's 0.3.15 app migration moves the app's state out of the built-in pack's settings (`internal`) into
+// The host's 0.4.0 app migration moves the app's state out of the built-in pack's settings (`internal`) into
 // AppState: data from 0.3.14 comes back onboarded and at its version, so the migrations after it still run, on the
 // release, its betas and development builds. A second run changes nothing, and a failed move runs no pack
 // migration and records no version. The records it used to carry are dropped, since what says a pack's
@@ -28,8 +28,8 @@ import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.
 import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 
 const move = () => {
-  const migration = appMigrations(registry).find((m) => m.target === '0.3.15');
-  if (!migration) throw new Error('no 0.3.15 app migration');
+  const migration = appMigrations(registry).find((m) => m.target === '0.4.0');
+  if (!migration) throw new Error('no 0.4.0 app migration');
   migration.up();
 };
 
@@ -51,7 +51,7 @@ const OLD_SETTINGS = {
     lastInteractionTimestamp: null,
     version: '0.3.14',
     packVersions: { 'memo-pack': '1.2.0' },
-    // The stored pre-0.3.15 names: this is data in the old shape, and nothing reads them now
+    // The stored pre-0.4.0 names: this is data in the old shape, and nothing reads them now
     packSeedHashes: { 'memo-pack': 'memo-hash' },
     seedHash: 'boot-hash',
     seedStatFingerprint: 'actions.content.json:1:2',
@@ -87,7 +87,7 @@ beforeAll(async () => {
   const registration = {
     id: BUILT_IN_ID,
     // A boot apply: the single content revision 0.3.14 stored was this pack's
-    migrations: { app: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })) },
+    migrations: { app: ['0.3.14', '0.4.1'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })) },
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing
   // it through the loader would mean building a pack whose migrations close over this file's `ran`.
@@ -114,7 +114,7 @@ afterEach(() => {
   process.env.APACK_ENV = 'test';
 });
 
-describe('the 0.3.15 app migration', () => {
+describe('the 0.4.0 app migration', () => {
   // The row kept a seed record per *kind* of pack — `packSeedHashes` for the installed ones against
   // `seedHashes` for the shipped one — and the names changed twice as those paths merged. None of them is
   // read any more: what says a pack's content has been applied is its `AppliedContent`, which holds a
@@ -129,7 +129,7 @@ describe('the 0.3.15 app migration', () => {
    * not types as far as the engine is concerned and a walk over the registered ones cannot see its
    * entities at all — and the migration records its version and never runs again. Its items would carry
    * the old names for good, which a later apply reads as entities carrying no hash of ours: left alone as
-   * the user's, never updated again, which is the freeze 0.3.15 exists to end.
+   * the user's, never updated again, which is the freeze 0.4.0 exists to end.
    */
   describe('the content key and hash an apply stamps', () => {
     const ofType = (type: string, id: string) => `${type}-${id}` as EARS.EntityId;
@@ -260,13 +260,13 @@ describe('the 0.3.15 app migration', () => {
     writeOldSettings({
       internal: { hasOnboarded: false, version: '0.3.14', packVersions: { 'memo-pack': '1.0.0', 'old-pack': '0.1.0' } },
     });
-    appState.update({ hasOnboarded: true, version: '0.3.15', packVersions: { 'memo-pack': '1.2.0' } });
+    appState.update({ hasOnboarded: true, version: '0.4.0', packVersions: { 'memo-pack': '1.2.0' } });
 
     move();
 
     expect(appState.get()).toMatchObject({
       hasOnboarded: true,
-      version: '0.3.15',
+      version: '0.4.0',
       packVersions: { 'memo-pack': '1.2.0', 'old-pack': '0.1.0' },
     });
   });
@@ -287,12 +287,12 @@ describe('migrating data from before AppState', () => {
 
     migrate();
 
-    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+    expect(ran).toEqual(['0.4.1', 'memo 2.0.0']);
     expect(appState.get()).toEqual({ ...MOVED, version: TEST_APP_VERSION, packVersions: { 'memo-pack': '2.0.0' } });
 
     // Recorded: nothing runs again
     migrate();
-    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+    expect(ran).toEqual(['0.4.1', 'memo 2.0.0']);
   });
 
   it('runs no pack migration on new data, which is at the app version', () => {
@@ -303,12 +303,12 @@ describe('migrating data from before AppState', () => {
   });
 
   it("moves it on a beta of the release, without the later release's migrations or rerunning external ones", () => {
-    version.current = '0.3.15-beta.0';
+    version.current = '0.4.0-beta.0';
     writeOldSettings();
 
     migrate();
 
-    expect(appState.get()).toEqual({ ...MOVED, version: '0.3.15-beta.0', packVersions: { 'memo-pack': '2.0.0' } });
+    expect(appState.get()).toEqual({ ...MOVED, version: '0.4.0-beta.0', packVersions: { 'memo-pack': '2.0.0' } });
     expect(ran).toEqual(['memo 2.0.0']);
   });
 
@@ -321,7 +321,7 @@ describe('migrating data from before AppState', () => {
 
     expect(appState.get()).toEqual({ ...MOVED, version: '0.3.14', packVersions: { 'memo-pack': '2.0.0' } });
     // A development build runs the migrations written for later releases too
-    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+    expect(ran).toEqual(['0.4.1', 'memo 2.0.0']);
   });
 
   it('runs no pack migration and records no version when the move fails, so the next boot moves it', () => {
@@ -337,7 +337,7 @@ describe('migrating data from before AppState', () => {
 
     migrate();
 
-    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+    expect(ran).toEqual(['0.4.1', 'memo 2.0.0']);
     expect(appState.get()).toMatchObject({ hasOnboarded: true, version: TEST_APP_VERSION, packVersions: { 'memo-pack': '2.0.0' } });
   });
 });

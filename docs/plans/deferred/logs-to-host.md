@@ -97,20 +97,20 @@ goal's phase said:
 - `AppState.lastActivePlugin`;
 - **stored message link blocks**, which carry a plugin ref as `event.target`.
 
-The first three go in the unreleased `0.3.15` app migration
-(`apack-host/src/migrations/app/0.3.15.ts`), which already moves plugin settings onto refs and has
+The first three go in the unreleased `0.4.0` app migration
+(`apack-host/src/migrations/app/0.4.0.ts`), which already moves plugin settings onto refs and has
 `addressPluginKeys` and the `RENAMED_STATE_RECORDS` idiom to copy. A `RENAMED_PLUGIN_REFS` constant and a
 `renamePluginRefs()` step **after `moveShellState` and `movePluginSettings`** — those two produce
-`default-setup/logs` from pre-0.3.15 data, so the rename runs on their output. Idempotent by the file's own
+`default-setup/logs` from pre-0.4.0 data, so the rename runs on their output. Idempotent by the file's own
 rule: remove the old key as you handle it, write only on a real change.
 
 The fourth is default-setup's, not the host's: move `logs` out of `FEATURES_0314`
 (`bare-feature-ids.ts:13`) into `MOVED_SINCE_0314` beside `settings: 'host/settings'`, which is the
 precedent for exactly this and is what makes `addressStoredLinkBlocks` repoint a link written as the bare id.
 
-**One step changes owner.** `default-setup/src/migrations/0.3.15.ts:48-52` writes the logs settings slice
+**One step changes owner.** `default-setup/src/migrations/0.4.0.ts:48-52` writes the logs settings slice
 through `ref('logs')` — the `log-service` → `action:*` carry-over. After the move default-setup cannot name
-the feature, so that step moves into the host's `0.3.15.ts`, where the data now lives.
+the feature, so that step moves into the host's `0.4.0.ts`, where the data now lives.
 
 ## The sharpest edge: the fixture's typed send
 
@@ -144,7 +144,7 @@ the three fixture specs.
 
 **Two default-setup specs are repointed**: `tests/registries.spec.ts:7-10` (the logs entry is no longer the
 pack's) and `tests/harness-shell-lookups.spec.ts:7,10` (swap for another plugin's state).
-`tests/migrations/0.3.15.spec.ts` keeps writing `default-setup/logs`, which is right — it tests migration
+`tests/migrations/0.4.0.spec.ts` keeps writing `default-setup/logs`, which is right — it tests migration
 behaviour over historical data — but the rename's end state wants asserting, there or on the host side.
 
 ## Docs

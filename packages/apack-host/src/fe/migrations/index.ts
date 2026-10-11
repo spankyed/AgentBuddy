@@ -8,7 +8,7 @@
  * window supplies where it is kept.
  */
 import { compareVersions } from '@apack/sdk/utils/compare-versions';
-import { migration as m0315 } from './0.3.15.ts';
+import { migration as m040 } from './0.4.0.ts';
 
 /** What a window keeps its own data in: `localStorage`'s shape, so a window passes it as it is */
 export interface WindowStorage {
@@ -28,7 +28,7 @@ export interface FrontendMigration {
 const VERSION_KEY = 'apack-fe-version';
 
 /** In version order */
-const migrations: FrontendMigration[] = [m0315];
+const migrations: FrontendMigration[] = [m040];
 
 /** Runs every migration newer than what `storage` was last migrated to, then records `appVersion` */
 export function runFrontendMigrations(storage: WindowStorage, appVersion: string): void {

@@ -4,12 +4,12 @@
 # Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]
 #
 # Version flow:
-#   0.3.14         + --beta  → 0.3.15-beta.0   (start beta cycle for next patch)
-#   0.3.15-beta.0  + --beta  → 0.3.15-beta.1   (iterate beta)
-#   0.3.15-beta.1  (no flag) → 0.3.15           (promote to release)
-#   0.3.15         (no flag) → 0.3.16           (normal release)
+#   0.3.14  + minor --beta  → 0.4.0-beta.0   (start beta cycle for next minor)
+#   0.4.0-beta.0  + --beta  → 0.4.0-beta.1   (iterate beta)
+#   0.4.0-beta.1  (no flag) → 0.4.0           (promote to release)
+#   0.4.0         (no flag) → 0.4.1           (normal release)
 #
-# Tags are always v${VERSION}: v0.3.15-beta.0, v0.3.15, etc.
+# Tags are always v${VERSION}: v0.4.0-beta.0, v0.4.0, etc.
 
 set -e
 
@@ -79,18 +79,18 @@ echo -e "${BLUE}[3/6]${NC} Bumping version..."
 
 if [ "$IS_BETA" = true ]; then
   if [ "$CURRENT_IS_PRERELEASE" = true ]; then
-    # Already in a beta cycle — iterate: 0.3.15-beta.0 → 0.3.15-beta.1
+    # Already in a beta cycle — iterate: 0.4.0-beta.0 → 0.4.0-beta.1
     npm version prerelease --preid=beta --no-git-tag-version > /dev/null 2>&1
   else
-    # Start a new beta cycle: 0.3.14 → 0.3.15-beta.0 (for patch)
+    # Start a new beta cycle: 0.3.14 → 0.4.0-beta.0 (for minor)
     npm version "pre${BUMP_TYPE}" --preid=beta --no-git-tag-version > /dev/null 2>&1
   fi
 else
   if [ "$CURRENT_IS_PRERELEASE" = true ]; then
-    # Promote prerelease to release: 0.3.15-beta.1 → 0.3.15
+    # Promote prerelease to release: 0.4.0-beta.1 → 0.4.0
     npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
   else
-    # Normal release: 0.3.15 → 0.3.16
+    # Normal release: 0.4.0 → 0.4.1
     npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
   fi
 fi

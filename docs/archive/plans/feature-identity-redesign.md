@@ -34,7 +34,7 @@ code never holds an address. The shape of each decision is still in the code, th
 Two bugs fixed this week are these decisions leaking out:
 - The logs `earlySystem` was never addressed (`f6f8aa08b`). A fifth place held identity, and nothing
   addressed it.
-- Upgrade data loss in the 0.3.15 settings move (`bbf2d91b9`). Stored data was keyed by a routing format,
+- Upgrade data loss in the 0.4.0 settings move (`bbf2d91b9`). Stored data was keyed by a routing format,
   so changing the format meant rewriting user data.
 
 ## Measured gaps
@@ -224,11 +224,11 @@ These parts of the current design are right and carry over unchanged:
 
 Nothing on this branch has shipped:
 - `package.json` is `0.3.14`, and the newest tag is `v0.3.14`.
-- No 0.3.15 beta has been tagged.
+- No 0.4.0 beta has been tagged.
 - The branch is 680 commits ahead of `master`.
 
-So the `.` spelling exists in no user's stored data yet. Only the unreleased 0.3.15 migrations write it,
-and they can write `/` instead in the same change. Once 0.3.15 ships, changing the spelling means another
+So the `.` spelling exists in no user's stored data yet. Only the unreleased 0.4.0 migrations write it,
+and they can write `/` instead in the same change. Once 0.4.0 ships, changing the spelling means another
 migration of every settings key, visibility entry and last-active id, the kind of move that just lost data
 once.
 
@@ -240,10 +240,10 @@ whenever they're done.
 
 Each option also delays a branch that is already 680 commits ahead of `master`; that risk grows with scope.
 
-| Option | Before 0.3.15 ships | After the merge | Trade-off |
+| Option | Before 0.4.0 ships | After the merge | Trade-off |
 |---|---|---|---|
 | A | T1 and T2 | T3, T4, T6, T7, and T5 or not | The smallest change to what's stored. Fixes the spelling while it's free; everything else is ordinary refactoring. `_meta` stays a reserved key. |
-| B | T1, T2 and T5 | T3, T4, T6 and T7 | Also settles who owns the stored UI state, so 0.3.15's migration is the last one to touch these keys. Adds an owner move, and a migration spec for it, to the release. |
+| B | T1, T2 and T5 | T3, T4, T6 and T7 | Also settles who owns the stored UI state, so 0.4.0's migration is the last one to touch these keys. Adds an owner move, and a migration spec for it, to the release. |
 | C | T1–T7 | — | The whole model lands at once, and the generated code changes once instead of twice. It's the largest diff on an already-long branch, and the manifest redesign would ideally land first or together with it. |
 | — | nothing | — | Keeps the current, working design. The `.`/`/` split and bare host ids become permanent, or cost a stored-data migration later. |
 
@@ -253,7 +253,7 @@ Each phase can land on its own and has a mutation check.
 
 1. **One spelling (T1).**
    - Change the resolver, codegen, the registries and the bus to `/`.
-   - Retarget 0.3.15's moves (the host's and default-setup's) to write `<pack>/<feature>`.
+   - Retarget 0.4.0's moves (the host's and default-setup's) to write `<pack>/<feature>`.
    - *Done when* no `.` address is built or parsed anywhere (`git grep` for the five removed helpers finds
      nothing), and a migration spec takes 0.3.14 settings to `/` keys, run twice.
 2. **The host is a pack (T2).**

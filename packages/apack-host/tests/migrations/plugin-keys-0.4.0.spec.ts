@@ -1,9 +1,9 @@
-// Before 0.3.15 a plugin ran under its feature id, and records keyed by plugin (its settings, the sidebar
+// Before 0.4.0 a plugin ran under its feature id, and records keyed by plugin (its settings, the sidebar
 // visibility) were stored under it. The move puts each bare key a plugin's feature id stands for onto that
 // plugin's ref, and leaves everything else alone.
 import { describe, expect, it } from 'vitest';
 import { resolveName } from '@apack/sdk/ids';
-import { addressPluginKeys, pluginRefOf } from '../../src/migrations/app/0.3.15.ts';
+import { addressPluginKeys, pluginRefOf } from '../../src/migrations/app/0.4.0.ts';
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];
 /** Those plugins, with no built-in pack among them */
@@ -41,7 +41,7 @@ describe('addressPluginKeys', () => {
     expect(moved).toBe(1);
   });
 
-  // Before 0.3.15 a built-in pack registered first, so the plugin running under a shared bare id was the built-in one
+  // Before 0.4.0 a built-in pack registered first, so the plugin running under a shared bare id was the built-in one
   it("gives a bare id a built-in pack shares with another pack to the built-in pack's plugin", () => {
     const { record } = addressPluginKeys({ memos: { sort: 'newest' } }, { ...withOther, shipped: ['other-pack'] });
     expect(record).toEqual({ 'other-pack/memos': { sort: 'newest' } });

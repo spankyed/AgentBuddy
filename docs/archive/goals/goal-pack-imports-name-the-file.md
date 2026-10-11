@@ -280,7 +280,7 @@ error, and the machinery that used to guess is gone rather than kept for externa
   what found them, which is the argument for writing the guard against the rule rather than against the
   survey.
 - **The rewrite script's own rule was wrong for six specifiers**, and the guard caught that too:
-  `path.extname('./0.3.15')` is `.15`, so the migrations named after versions looked like they had
+  `path.extname('./0.4.0')` is `.15`, so the migrations named after versions looked like they had
   extensions. A check that resolves against the file system does not make that mistake.
 - **Every fixture pack in the CLI's integration specs was a pack too**, so the new gate held it to the rule
   and four specs failed on `'./system.contract.js'` and `'#generated/ears.js'` — files those fixtures never
