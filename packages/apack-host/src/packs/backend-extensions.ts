@@ -1,9 +1,8 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
 import type { ContentWriter } from '@apackdev/sdk/content';
 import type { ContentApplier } from '@apackdev/sdk/utils';
-import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpEntry, type PackSettingsDefaults } from '@apackdev/sdk/framework';
+import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpDocument, type HelpCatalog, type HelpProblem, type PackSettingsDefaults } from '@apackdev/sdk/framework';
 import { resolveName } from '@apackdev/sdk/ids';
-import { createLogger } from '@apackdev/sdk/logger';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {
@@ -166,39 +165,35 @@ export function createShutdownHooks() {
   };
 }
 
-/**
- * Each pack's help entries, read the first time the list is (a pack's may come from its compiled content), in the
- * order the packs were first registered. Unlike commands, two packs may answer the same question: the Settings
- * view lists them all, so there is nothing to collide over.
- */
+/** Each pack's bundled articles, qualified by pack and isolated from malformed contributions. */
 export function createHelpStore() {
-  const logger = createLogger('packs');
-  const byPack = new Map<string, () => HelpEntry[]>();
-  const rank = new Map<string, number>();
+  const byPack = new Map<string, HelpCatalog>();
   return {
-    register(packId: string, help?: () => HelpEntry[]): void {
-      if (!help) {
-        byPack.delete(packId);
-        return;
-      }
-      if (!rank.has(packId)) rank.set(packId, rank.size);
-      byPack.set(packId, help);
-    },
-    unregister(packId: string): void {
+    register(packId: string, help?: HelpDocument[], packName = packId): void {
       byPack.delete(packId);
+      if (help === undefined) return;
+      const ids = new Set<string>();
+      const problems: HelpProblem[] = [];
+      const invalid = !Array.isArray(help) || help.some(article => {
+        if (!article || typeof article.id !== 'string' || !article.id
+          || typeof article.title !== 'string' || !article.title.trim() || typeof article.body !== 'string'
+          || (article.order !== undefined && !Number.isFinite(article.order))
+          || (article.features !== undefined && (!Array.isArray(article.features) || article.features.some(f => typeof f !== 'string')))
+          || ids.has(article.id)) return true;
+        ids.add(article.id);
+        return false;
+      });
+      if (invalid) {
+        problems.push({ packId, message: 'This pack supplied invalid or duplicate help articles. Rebuild or update the pack.' });
+      }
+      byPack.set(packId, { articles: problems.length ? [] : help.map(article => ({ ...article, packId, packName })), problems });
     },
-    all: (): HelpEntry[] => [...byPack]
-      .sort(([a], [b]) => rank.get(a)! - rank.get(b)!)
-      .flatMap(([packId, read]) => {
-        try {
-          return read();
-        } catch (error) {
-          // A pack that can't read its own help costs its entries and nothing else. This list is read from inside
-          // the settings system, which sends the whole Settings view its data in the same action, so throwing here
-          // left the view with no settings at all — the app's own, over one installed pack's broken build.
-          logger.error(`Pack "${packId}" could not read its help entries, so it answers with none`, { error });
-          return [];
-        }
-      }),
+    unregister(packId: string): void { byPack.delete(packId); },
+    all: (): HelpCatalog => ({
+      articles: [...byPack.values()].flatMap(c => c.articles).sort((a, b) =>
+        a.packName.localeCompare(b.packName) || a.packId.localeCompare(b.packId)
+        || (a.order ?? Infinity) - (b.order ?? Infinity) || a.title.localeCompare(b.title)),
+      problems: [...byPack.values()].flatMap(c => c.problems),
+    }),
   };
 }

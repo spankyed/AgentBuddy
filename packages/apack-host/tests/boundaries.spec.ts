@@ -109,7 +109,7 @@ describe('host package boundaries', () => {
     const features = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory());
     const halves = features.flatMap((f) => fs.readdirSync(path.join(SRC, 'features', f.name)).map((half) => `${f.name}/${half}`));
 
-    expect(features.map((f) => f.name).sort()).toEqual(['application', 'packs', 'settings']);
+    expect(features.map((f) => f.name).sort()).toEqual(['application', 'help', 'packs', 'settings']);
     expect(halves.filter((h) => !/\/(be|fe)$/.test(h)), "a feature holds be/ and fe/, as a pack's does").toEqual([]);
   });
 

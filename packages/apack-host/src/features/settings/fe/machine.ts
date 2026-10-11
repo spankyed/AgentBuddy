@@ -7,7 +7,6 @@ import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services'
 import { sendToSystem } from '../../../events.ts'
 import type { PackContentPreview } from '@apackdev/sdk/build'
-import type { HelpEntry } from '@apackdev/sdk/framework';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 
 import { splitRef } from '@apackdev/sdk/ids';
@@ -61,13 +60,12 @@ export interface SettingsSave {
 
 export interface SettingsContext {
   settings: SettingsDocument | null;
-  help: HelpEntry[];
   /** The stored API keys, without values */
   secrets: SecretInfo[];
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packContentImport: PackContentImport;
-  activeTab: 'general' | 'plugins' | 'help';
+  activeTab: 'general' | 'plugins';
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedPluginId: string | null;
   isLoading: boolean;
@@ -85,7 +83,7 @@ export interface SettingsContext {
 export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'section'; label: string };
 
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
   | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
@@ -142,13 +140,11 @@ export function createSettingsMachine(io: SettingsIO) {
       const ev = typeOf('SETTINGS_LOADED', event);
       return {
         settings: ev.data,
-        help: ev.help ?? [],
         isLoading: false,
       };
     }),
 
     // The installed packs changed: what any of them answers with in Help changed with them
-    setHelp: assign(({ event }) => ({ help: typeOf('HELP_UPDATED', event).help })),
 
     setSecrets: assign(({ event }) => {
       const ev = typeOf('SECRETS_UPDATED', event);
@@ -423,7 +419,6 @@ export function createSettingsMachine(io: SettingsIO) {
   initial: 'loading',
   context: () => ({
     settings: null,
-    help: [],
     secrets: [],
     secretsStatus: null,
     cliTestResults: {},
@@ -477,9 +472,6 @@ export function createSettingsMachine(io: SettingsIO) {
         },
         SETTINGS_UPDATED: {
           actions: 'updateSettingsData',
-        },
-        HELP_UPDATED: {
-          actions: 'setHelp',
         },
         SETTINGS_RESET: {
           actions: 'updateSettingsData',

@@ -92,7 +92,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { ActorRefFrom, AnyStateMachine } from 'xstate'
-import { Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
+import { CircleHelp, Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/views/layout/Toolbar.vue'
 import CanvasArea from '@/views/layout/CanvasArea.vue'
 import ChatArea from '@/views/layout/ChatArea.vue'
@@ -102,6 +102,8 @@ import { applicationState } from '@/main'
 import { HOST, notifyPluginActor, visiblePluginsOf } from '@apackdev/host/fe'
 import { untypedOpenPlugin, PluginScope } from '@apackdev/sdk/fe'
 import Router from '@/views/layout/PluginRouter.vue'
+import { useContextualHelp } from '@/views/help/context';
+const { hasHelp, openFeatureHelp } = useContextualHelp();
 import type { ContextMenuItem } from '@apackdev/sdk/fe'
 import ToastNotification from '@apackdev/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/adapters/toast'
@@ -145,6 +147,7 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
   const pluginItems = contextMenuItems.value
 
   const defaultItems: ContextMenuItem[] = [
+    ...(hasHelp(currentPluginId.value) ? [{ label: 'Help', icon: CircleHelp, event: { type: 'APP_OPEN_PLUGIN_HELP', pluginId: currentPluginId.value } }] : []),
     {
       label: 'Pop Out Plugin',
       icon: ExternalLink,
@@ -202,6 +205,8 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
     if (plugin?.fallbackPanel) fallbackActor.value?.send(plugin.fallbackPanel.toggle)
     return
   }
+
+  if (event.type === 'APP_OPEN_PLUGIN_HELP' && typeof event.pluginId === 'string') { openFeatureHelp(event.pluginId); return; }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
     untypedOpenPlugin(HOST.settings, [

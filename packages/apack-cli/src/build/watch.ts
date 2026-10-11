@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { bundlePackRuntime } from './be-bundler.ts';
 import { holdPackBuildLock } from './build-lock.ts';
+import { readValidManifest } from '../utils.ts';
+import { generateEntries } from '../commands/generate-entries.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
 
 /** How long to wait for the edits to stop before rebuilding */
@@ -35,7 +37,10 @@ export interface WatchOptions {
  * the lock a rebuild landing in that window writes `runtime/index.cjs` into a directory that is about to be
  * deleted: the app then reloads the pack and gets the runtime from before the edit, with nothing reporting it.
  */
-async function rebuild(root: string, packId: string): Promise<boolean> {
+async function rebuild(root: string, packId: string, helpChanged = false): Promise<boolean> {
+  if (helpChanged) {
+    try { await generateEntries([], root); } catch (error) { console.error(`[watch] Help generation failed: ${String(error)}`); return false; }
+  }
   const lock = await holdPackBuildLock(root, { packId, what: 'apack pack build --watch (a rebuild)' });
   try {
     const result = await bundlePackRuntime(root, path.join(root, 'dist'), {});
@@ -95,7 +100,7 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   const srcDir = path.join(root, 'src');
   if (!fs.existsSync(srcDir)) throw new Error(`No ${srcDir} to watch`);
 
-  if (!(await rebuild(root, packId))) {
+  if (!(await rebuild(root, packId, true))) {
     // The first bundle is the one nothing else can stand in for: whatever asked for this loop is waiting
     // on the file, and watching on from here would leave it waiting with no error to read
     throw new Error('The first runtime bundle failed; fix the error above and start again');
@@ -106,21 +111,30 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   // The edit the next run is for. A run reads it when it starts rather than closing over one filename,
   // since a run can cover several edits
   let lastChange = '';
+  let helpChanged = false;
   const runs = coalescingRunner(async () => {
     const changed = lastChange;
-    if (!(await rebuild(root, packId))) return;
+    const refreshHelp = helpChanged;
+    helpChanged = false;
+    if (!(await rebuild(root, packId, refreshHelp))) return;
     const reload = await reloadPack(packId, options.place);
     if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
     else console.warn(`[watch] ${changed} — rebuilt, but the app did not reload (${reload.detail})`);
   });
 
-  fs.watch(srcDir, { recursive: true }, (_event, filename) => {
-    // A `.vue` or `.css` edit is the frontend's, which the renderer serves from source under `npm run dev`
-    if (!filename || !/\.tsx?$/.test(filename) || filename.endsWith('.d.ts')) return;
-    lastChange = filename;
+  const helpPath = readValidManifest(root).help?.path;
+  const helpDir = helpPath ? path.resolve(root, helpPath) : undefined;
+  const watched = new Set([srcDir]);
+  if (helpDir && !helpDir.startsWith(`${srcDir}${path.sep}`) && helpDir !== srcDir) watched.add(helpDir);
+  for (const dir of watched) fs.watch(dir, { recursive: true }, (_event, filename) => {
+    if (!filename || filename.includes('__generated__') || !/\.(tsx?|md)$/.test(filename)) return;
+    const file = path.join(dir, filename);
+    const isHelp = !!helpDir && file.startsWith(`${helpDir}${path.sep}`) && filename.endsWith('.md');
+    if (filename.endsWith('.md') && !isHelp) return;
+    lastChange = path.relative(root, file);
+    helpChanged ||= isHelp;
     runs.request();
   });
-
   console.log(`[watch] Watching ${path.relative(root, srcDir) || srcDir} for backend changes`);
   return new Promise<never>(() => {});
 }

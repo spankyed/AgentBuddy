@@ -56,6 +56,8 @@ const props = withDefaults(defineProps<{
   showGutter?: boolean
   inHistoryMode?: boolean
   pauseAvailable?: boolean
+  /** Override navigation for links in the Markdown viewer. */
+  openViewerLink?: (href: string) => void
 }>(), {
   variant: 'full',
   modelValue: '',
@@ -152,7 +154,7 @@ const imageHandlers = cfg.editorInteractions
 const clickHandler = cfg.editorInteractions
   ? { handleClick: createEditorClickHandler({ noteLinkClick: (id) => emit('noteLinkClick', id), imageClick: (src) => emit('imageClick', src) }) }
   : cfg.viewerImageClick
-    ? { handleClick: createViewerClickHandler({ imageClick: (src) => emit('imageClick', src) }) }
+    ? { handleClick: createViewerClickHandler({ imageClick: (src) => emit('imageClick', src), openLink: props.openViewerLink }) }
     : {}
 
 const handleKeyDown = createKeyboardHandler({

@@ -10,6 +10,7 @@ export function createEditorClickHandler(emit: ClickEmit): (_view: any, _pos: an
 // @public (undocumented)
 export function createViewerClickHandler(emit: {
     imageClick: (src: string) => void;
+    openLink?: (href: string) => void;
 }): (_view: any, _pos: any, event: MouseEvent) => boolean;
 
 // (No @packageDocumentation comment for this package)

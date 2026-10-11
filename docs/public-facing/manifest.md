@@ -442,3 +442,38 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
   }
 }
 ```
+
+## Help articles
+
+Declare a directory of Markdown articles:
+
+```json
+"help": { "path": "src/help" }
+```
+
+The first H1 is the article title; the remaining Markdown is its body. Optional frontmatter:
+
+```markdown
+---
+id: getting-started
+features: [code]
+order: 1
+---
+# Getting started
+
+Your guide goes here.
+```
+
+IDs default to the relative filename without `.md` (including subdirectories). An explicit ID keeps links from code stable when a file moves. IDs are unique within a pack; feature associations name features declared by that pack. Relative links to other help Markdown files are checked and resolved during the build.
+
+Help is bundled into the pack runtime, works offline and is not stored in the database. The host provides a searchable Help destination and contextual links from feature menus and settings.
+
+```ts
+import { openHelp } from '@apackdev/sdk/fe';
+
+openHelp();
+openHelp({ packId: 'my-pack', featureId: 'code' });
+openHelp({ packId: 'my-pack', articleId: 'getting-started' });
+```
+
+Build errors identify missing titles, duplicate IDs, invalid metadata and broken article links. Development watch mode reloads changes to help Markdown.

@@ -126,6 +126,9 @@ export interface CompiledRows {
 export function compileFlowDSL(dsl: FlowDSL, options?: CompileOptions): CompiledRows;
 
 // @public
+export function compileHelp(root: string, manifest: PackManifest): HelpDocument[];
+
+// @public
 export function compileMarkdownTree(dir: string, options?: MarkdownTreeOptions): MarkdownItem[];
 
 // @public
@@ -998,7 +1001,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     }>>;
-    help: z.ZodOptional<z.ZodString>;
+    help: z.ZodOptional<z.ZodObject<{
+        path: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        path: string;
+    }, {
+        path: string;
+    }>>;
     settingsSections: z.ZodOptional<z.ZodString>;
     boot: z.ZodOptional<z.ZodObject<{
         hooks: z.ZodOptional<z.ZodString>;
@@ -1331,7 +1340,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    help?: string | undefined;
+    help?: {
+        path: string;
+    } | undefined;
     settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
@@ -1462,7 +1473,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    help?: string | undefined;
+    help?: {
+        path: string;
+    } | undefined;
     settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
@@ -1593,7 +1606,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    help?: string | undefined;
+    help?: {
+        path: string;
+    } | undefined;
     settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
@@ -1724,7 +1739,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    help?: string | undefined;
+    help?: {
+        path: string;
+    } | undefined;
     settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;

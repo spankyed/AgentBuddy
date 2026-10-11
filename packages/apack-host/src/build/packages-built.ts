@@ -505,7 +505,7 @@ const digestOf = (contents: Buffer | null): string =>
  * `fingerprint-scope.integration.spec.ts` holds each of these trees to being unskippable rather than
  * trusting the list, and mutates it to prove it can fail.
  */
-export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'content', 'templates', 'fixtures']);
+export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'content', 'help', 'templates', 'fixtures']);
 
 const GUIDE = 'CLAUDE.md';
 

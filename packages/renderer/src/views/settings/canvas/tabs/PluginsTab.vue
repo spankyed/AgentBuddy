@@ -50,6 +50,7 @@
       <div v-if="selectedPlugin">
         <div class="flex items-center gap-3 mb-6">
           <h2 class="text-xl font-semibold text-white">{{ selectedPlugin.label }} Settings</h2>
+          <button data-testid="feature-help" :aria-label="`Help for ${selectedPlugin.label}`" v-if="hasHelp(selectedPlugin.id)" @click="openFeatureHelp(selectedPlugin.id)" class="text-sm text-neutral-400 underline">Help</button>
           <button
             v-if="selectedPlugin.id !== settingsPluginId"
             @click="goToPlugin(selectedPlugin.id)"
@@ -112,6 +113,8 @@
 </template>
 
 <script setup lang="ts">
+import { useContextualHelp } from '@/views/help/context';
+const { hasHelp, openFeatureHelp } = useContextualHelp();
 import { computed, ref, watch, onMounted, onUpdated } from 'vue'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 import { useSelector } from '@xstate/vue'

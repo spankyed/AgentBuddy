@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apackdev/sdk/build';
-import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
+import { _depTypesFile, _depTypesVersion, generatePackFiles, compileHelp } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
@@ -11,10 +11,10 @@ const HASH_FILE = '.inputs-hash';
 // Hash the codegen implementation too, so SDK upgrades regenerate entries
 function codegenSource(): string {
   const sdkDir = sdkPackageDir();
-  // Workspace source, then the published compiled output
-  for (const file of ['src/build/generate-entries.ts', 'dist/build/generate-entries.js']) {
-    const candidate = path.join(sdkDir, file);
-    if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf-8');
+  const sources = ['generate-entries', 'help', 'content/markdown-tree'];
+  for (const [dir, ext] of [['src', 'ts'], ['dist', 'js']]) {
+    const files = sources.map(source => path.join(sdkDir, dir, 'build', `${source}.${ext}`));
+    if (files.every(file => fs.existsSync(file))) return files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
   }
   return sdkVersion() ?? '';
 }
@@ -29,7 +29,7 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
     if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) sourceFiles(full, out);
-    else if (/\.(ts|tsx|js|mjs|vue|json)$/.test(entry.name)) out.push(full);
+    else if (/\.(ts|tsx|js|mjs|vue|json|md)$/.test(entry.name)) out.push(full);
   }
   return out;
 }
@@ -38,6 +38,8 @@ function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>
   const hash = createHash('sha256');
   hash.update(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'));
   hash.update(codegenSource());
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')) as PackManifest;
+  if (manifest.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
   const srcDir = path.join(root, 'src');
   for (const file of fs.existsSync(srcDir) ? sourceFiles(srcDir) : []) {
     hash.update(path.relative(root, file));

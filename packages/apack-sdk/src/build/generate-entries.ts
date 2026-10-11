@@ -1,3 +1,4 @@
+import { compileHelp } from './help.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { dirname, extname, join } from 'path';
@@ -488,7 +489,6 @@ export function generatePackFiles(
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {})),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
-      ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -962,8 +962,8 @@ ${items.join('\n')}
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
       : undefined;
-    // The pack's help entries, called the first time the Settings view's Help list is read
-    const help = manifest.help ? valueExport('help', manifest.help) : undefined;
+    // Validated Markdown articles embedded into the runtime registration
+    const help = manifest.help ? compileHelp(root, manifest) : undefined;
 
     // The machine each system was built from is typed by the contract the manifest names for its feature, and
     // nothing in either file says so: this asserts it where both are in scope.
@@ -994,7 +994,7 @@ ${blocks.imports.join('\n')}
 import { appliers } from './appliers.ts';
 export { setCompiledDir } from './appliers.ts';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
-${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
+
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -1008,7 +1008,8 @@ ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity],
   appliers,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
 ${sections ? '  settingsSections: __settingsSections,' : ''}
-${help ? '  help: __help,' : ''}
+  name: ${JSON.stringify(manifest.name)},
+${help ? `  help: ${JSON.stringify(help)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

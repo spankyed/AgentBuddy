@@ -11,6 +11,7 @@ export const HOST = {
   packs: resolveName('packs', HOST_PACK_ID),
   /** The app's settings: the store's system, and the renderer's Settings plugin */
   settings: resolveName('settings', HOST_PACK_ID),
+  help: resolveName('help', HOST_PACK_ID),
   /**
    * An agent or script driving the app, which claims this name on its connection rather than being registered by
    * a pack: not a feature either, and spelled as one for the same reason `bus` is — so every gate that reads a ref

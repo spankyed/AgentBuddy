@@ -28,7 +28,7 @@ describe('generated ref', () => {
       { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
-      "export type FeatureName = 'memos' | 'jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
+      "export type FeatureName = 'memos' | 'jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/help' | 'host/settings' | 'host/bus';",
     );
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });

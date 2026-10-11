@@ -4,7 +4,7 @@ import { eventTypes } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged } from '@apackdev/sdk/framework';
+import { defineSystem, onPackSettingsDefaultsChanged } from '@apackdev/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@apackdev/sdk/utils/pure';
 import { services } from '@apackdev/sdk/services';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
@@ -74,8 +74,7 @@ export const settingsSpec = defineSystem<Contract>();
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
   const data = services.settings.getAll<SettingsDocument>();
-  if (type === 'SETTINGS_LOADED') broadcastToPlugin('settings', { type, data, help: getPackHelp() });
-  else broadcastToPlugin('settings', { type, data });
+  broadcastToPlugin('settings', { type, data });
   broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: appHotkeys(data) });
 }
 
@@ -146,9 +145,6 @@ export const settingsSystem = setup({
 
     // The settings plugin's view of all the settings, after a change it didn't make itself
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
-
-    // Help is a pack contribution, so the packs changing changes it; the settings ride along on PACK_CHANGED
-    sendHelp: () => broadcastToPlugin('settings', { type: 'HELP_UPDATED', help: getPackHelp() }),
 
     refuseResetWhileReplacing: () => broadcastToPlugin('settings', {
       type: 'APP_RESET_FAILED',
@@ -274,9 +270,8 @@ export const settingsSystem = setup({
         PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         // Still a fact handler, and `sendSettingsUpdate` is why: this plugin takes `SETTINGS_LOADED` only
         // while it is loading and `SETTINGS_UPDATED` once ready, so what publishing means here depends on
-        // the receiver's state. The ask covers the first; this covers the second, with the help entries a
-        // pack brought and the features whose defaults came or went
-        PACK_CHANGED: { actions: ['sendSettingsUpdate', 'sendHelp', 'tellChangedFeatures'] },
+        // the receiver's state. The ask covers the first; this covers the second and the features whose defaults came or went
+        PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         DATA_REPLACING: { target: 'replacingData' },
         UPDATE_SETTINGS: {
           actions: 'updateSettings',
@@ -352,7 +347,6 @@ export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPL
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',
-  'HELP_UPDATED',
   'SETTINGS_SAVED',
   'SETTINGS_REFUSED',
   'SETTINGS_RESET',

@@ -491,8 +491,8 @@ export const ManifestSchema = z.object({
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
-  help: ExportTargetSchema
-    .describe('Help entries this pack answers with, listed under Help in the app\'s Settings view. "path#exportName" of a function returning them; it is called the first time the list is read, so a pack may read its compiled content then.').optional(),
+  help: z.object({ path: z.string().min(1) }).strict()
+    .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   settingsSections: ExportTargetSchema
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
   boot: BootConfigSchema.optional(),

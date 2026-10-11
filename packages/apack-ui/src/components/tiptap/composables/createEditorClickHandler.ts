@@ -44,14 +44,18 @@ export function createEditorClickHandler(emit: ClickEmit) {
   }
 }
 
-export function createViewerClickHandler(emit: { imageClick: (src: string) => void }) {
+export function createViewerClickHandler(emit: { imageClick: (src: string) => void; openLink?: (href: string) => void }) {
   return (_view: any, _pos: any, event: MouseEvent) => {
     // Links open on regular click in viewer mode
     const anchor = (event.target as HTMLElement).closest('a')
     const href = anchor?.getAttribute('href')
     if (href) {
-      const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-      openLink(url)
+      event.preventDefault()
+      if (emit.openLink) emit.openLink(href)
+      else {
+        const url = /^https?:\/\//.test(href) ? href : `https://${href}`
+        openLink(url)
+      }
       return true
     }
     const img = (event.target as HTMLElement).closest('img')

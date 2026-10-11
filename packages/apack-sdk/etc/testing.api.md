@@ -194,7 +194,7 @@ export interface TestPacks {
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
     // (undocumented)
-    readonly help: Map<string, HelpEntry[]>;
+    readonly help: Map<string, HelpArticle[]>;
     readonly plugins: Set<string>;
     readonly services: Map<string, unknown>;
     readonly steps: Map<string, StepDefinition>;
