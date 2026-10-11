@@ -13,7 +13,6 @@
     "typecheck": "vue-tsc --noEmit",
     "pretest": "tsx ../../scripts/ensure-packages-built.ts",
     "test": "vitest run",
-    "prepare": "apack generate-entries",
     "generate:entries": "apack generate-entries",
     "build": "apack build",
     "build:dev": "apack build --skip-fe",

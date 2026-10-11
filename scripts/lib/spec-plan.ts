@@ -319,8 +319,8 @@ const CONTENT_SPECS = 'tests/content';
  * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
  *
  * `apack.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
- * generated specifiers resolve by — 76 of default-setup's 95 specs go through it — and the `prepare` that
- * runs the codegen; `tsconfig.json` is what the build compiles with.
+ * generated specifiers resolve by — 76 of default-setup's 95 specs go through it;
+ * `tsconfig.json` is what the build compiles with.
  */
 const BUILD_INPUTS: readonly string[] = ['apack.json', 'package.json', 'tsconfig.json'];
 
