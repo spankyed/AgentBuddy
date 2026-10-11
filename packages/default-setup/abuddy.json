@@ -719,10 +719,12 @@
     ]
   },
   "migrations": {
-    "0.3.0": "src/migrations/0.3.0.ts#migration",
-    "0.3.1": "src/migrations/0.3.1.ts#migration",
-    "0.3.14": "src/migrations/0.3.14.ts#migration",
-    "0.3.15": "src/migrations/0.3.15.ts#migration"
+    "app": {
+      "0.3.0": "src/migrations/0.3.0.ts#migration",
+      "0.3.1": "src/migrations/0.3.1.ts#migration",
+      "0.3.14": "src/migrations/0.3.14.ts#migration",
+      "0.3.15": "src/migrations/0.3.15.ts#migration"
+    }
   },
   "settingsSections": "src/app-settings/index.ts#settingsSections",
   "help": "src/app-settings/index.ts#helpEntries"

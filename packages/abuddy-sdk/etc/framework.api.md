@@ -180,8 +180,7 @@ export interface PackRegistration {
     help?: () => HelpEntry[];
     // (undocumented)
     id: string;
-    // (undocumented)
-    migrations?: PackMigration[];
+    migrations?: PackMigrations;
     repositories?: Record<string, unknown>;
     // (undocumented)
     services?: Record<string, unknown>;

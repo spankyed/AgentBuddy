@@ -9,7 +9,7 @@
 import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@abuddy/sdk/framework';
-import type { PackManifest } from '@abuddy/sdk/build';
+import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ContentOffer } from '@abuddy/sdk/utils';
@@ -240,24 +240,28 @@ export interface PackRegistry extends PackRegistryView {
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
-   * The packs `runPackMigrations` runs, as it takes them: each one's manifest and the migrations it
-   * registered. With `packIds`, only those — activation and reload migrate the one pack they handled.
+   * Every registered pack's migrations on one version line, as the runners take them: the pack's manifest
+   * and the migrations it declared under that line. With `packIds`, only those — activation and reload
+   * migrate the one pack they handled.
    *
-   * **A pack this app ships is never in here**, and that is the whole reason this is not `loadedPacks()`
-   * joined with its registrations at the call site. A shipped pack's migrations target *app* versions and
-   * `runAppMigrations` runs them against `AppState.version`; running them again here, against the pack's
-   * own version, would run each one twice and record a second version for the same pack. Excluding them
-   * where the list is built rather than at each of the four callers is what keeps that true for the fifth.
+   * **The line is the caller's to name, and a pack the app ships is in either answer like any other.**
+   * Which line a migration is on is what its pack declared (`abuddy.json`'s `migrations.app` /
+   * `migrations.pack`), so this asks nothing about where a pack came from: `app` for the migrations run
+   * against `AppState.version`, `pack` for those run against the pack's own. Filtering on `shipped` here is
+   * the trap — it routes by provenance, which makes one `0.3.15` mean the app's release in a pack the app
+   * ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has
+   * its migrations compared against the wrong thing.
    *
-   * **The contrast with `packContentTargets` is deliberate**: an apply is one path for every pack, because what
-   * an apply is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
-   * is a version, and a shipped pack's version is the app's.
+   * **A pack declaring both gets both**, run at the two moments the runners run, which is the one thing a
+   * caller splitting a change across lines should know (`src/migrations/CLAUDE.md`).
    *
    * In dependency order (`packContentOrder`), so a pack's migrations run after those of the packs it depends
    * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
-   * is not this.
+   * is not this. That order is read from the packs' manifests, so **a registered pack whose origin carries
+   * no manifest is in neither answer** — the loader gives every origin one, and a fixture without one is a
+   * pack whose migrations nothing runs.
    */
-  packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
+  packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
    * Every registered pack as `applyPacks` takes it, in dependency order: where its content are and what it
    * depends on. With `packIds`, only those — activation and reload apply the one pack they handled.
@@ -604,11 +608,11 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     packOrigin: (packId) => origins.get(packId) ?? null,
     shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
     loadedPacks: () => [...origins.values()],
-    packMigrationTargets: (packIds) => {
+    packMigrationTargets: (line, packIds) => {
       const wanted = packIds && new Set(packIds);
       return orderedPacks()
-        .filter((o) => !o.shipped && (!wanted || wanted.has(o.id)))
-        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations }));
+        .filter((o) => !wanted || wanted.has(o.id))
+        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations?.[line] }));
     },
 
     // Both maps are keyed by the registered features' refs, the host's included
@@ -663,7 +667,8 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
         artifacts: (reg.artifacts ?? []).map(a => a.type),
         blocks: (reg.blocks ?? []).map(b => b.type),
         relKinds: reg.ears?.relKinds ?? {},
-        migrationCount: reg.migrations?.length ?? 0,
+        // Both lines: the view counts what the pack declares, not what one runner will reach
+        migrationCount: MIGRATION_LINES.reduce((n, line) => n + (reg.migrations?.[line]?.length ?? 0), 0),
         bootHooks,
         features: featureInfo(reg),
       };

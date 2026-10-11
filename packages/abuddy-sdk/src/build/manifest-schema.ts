@@ -3,6 +3,7 @@ import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
+import type { PackMigrations } from '../framework/pack-registration.ts';
 
 export { FEATURE_ID_PATTERN };
 
@@ -393,6 +394,59 @@ export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
 
 // ── Main manifest schema ────────────────────────────────────────────
 
+/** A migration's key: the version it targets, which is the only place that version is written */
+const MIGRATION_TARGET_SCHEMA = z.string()
+  .regex(/^\d+\.\d+\.\d+$/, 'Must be the version the migration targets, as "major.minor.patch"');
+
+/**
+ * Migrations, keyed by the version each targets, under the **version line** that version belongs to.
+ *
+ * **Two maps rather than one, because a bare version does not say what it is a version of.** `0.3.15` is
+ * either AgentBuddy's release or the pack's own, and letting the *runner* decide — from the pack's
+ * provenance, which is the one thing about a pack that correlates with neither — makes the same key mean
+ * both. `default-setup` is the pack that shows why: its own `version` is `0.1.0` while its migrations are
+ * keyed `0.3.0`-`0.3.15`, because they are AgentBuddy's releases, and a user's own build installed at that
+ * id would have its versions compared against the app's.
+ *
+ * - `app` — the data moves when AgentBuddy moves. A prerelease counts as its release, and a development
+ *   build runs every pending one on each boot (`@abuddy/host`'s runners).
+ * - `pack` — the data moves when this pack moves, against `version` in this manifest.
+ *
+ * **A map rather than a field on each entry**, because a field needs a default and whichever default it took
+ * would be the next thing silently deciding for an author. The key stays the target, so one line cannot
+ * declare the same version twice — JSON cannot hold a key twice.
+ */
+export const MigrationsSchema = z.object({
+  app: z.record(MIGRATION_TARGET_SCHEMA, ExportTargetSchema)
+    .describe('Migrations on AgentBuddy\'s version line, keyed by the release each targets. For data whose shape follows the app rather than this pack.').optional(),
+  pack: z.record(MIGRATION_TARGET_SCHEMA, ExportTargetSchema)
+    .describe('Migrations on this pack\'s own version line, keyed by the version each targets, compared against `version` in this manifest.').optional(),
+}).strict().describe('Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`.');
+
+/**
+ * The version lines, derived from the schema so the list and the keys cannot disagree. Codegen emits a map
+ * per line and the runners read one each.
+ */
+export const MIGRATION_LINES = Object.keys(MigrationsSchema.shape) as MigrationLine[];
+
+/** Which version line a migration's target is a version of */
+export type MigrationLine = keyof typeof MigrationsSchema.shape;
+
+/**
+ * The lines are one vocabulary written twice — here with the schema's descriptions, and in
+ * `PackMigrations` with the doc comments a pack author hovers — because a Zod shape cannot carry the second
+ * and a type cannot be built at runtime. This fails the typecheck the moment they part, which is the thing
+ * writing it twice costs.
+ *
+ * @internal
+ */
+export type _MigrationLinesMatchRegistration =
+  MigrationLine extends keyof PackMigrations
+    ? keyof PackMigrations extends MigrationLine ? true : ['the registration declares a line the manifest does not', Exclude<keyof PackMigrations, MigrationLine>]
+    : ['the manifest declares a line the registration does not', Exclude<MigrationLine, keyof PackMigrations>];
+const _linesMatch: _MigrationLinesMatchRegistration = true;
+void _linesMatch;
+
 export const ManifestSchema = z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),
   $manifestVersion: z.literal(1).optional()
@@ -428,10 +482,7 @@ export const ManifestSchema = z.object({
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
-  migrations: z.record(
-    z.string().regex(/^\d+\.\d+\.\d+$/, 'Must be the version the migration targets, as "major.minor.patch"'),
-    ExportTargetSchema,
-  ).describe('Migrations this pack runs, keyed by the version each targets. The key is the version — the module names only its description and its `up` — and a migration runs when the stored version is below its key and the key is at or below the pack\'s version.').optional(),
+  migrations: MigrationsSchema.optional(),
   build: BuildConfigSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing

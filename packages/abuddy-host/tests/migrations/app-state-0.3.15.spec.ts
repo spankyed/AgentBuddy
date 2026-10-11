@@ -87,11 +87,14 @@ beforeAll(async () => {
   const registration = {
     id: BUILT_IN_ID,
     // A boot apply: the single content revision 0.3.14 stored was this pack's
-    migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),
+    migrations: { app: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })) },
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing
-  // it through the loader would mean building a pack whose migrations close over this file's `ran`
-  registry.registerPack(registration, { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, dir: packDir, shipped: true });
+  // it through the loader would mean building a pack whose migrations close over this file's `ran`.
+  // **With a `manifest`**, as every origin the loader builds has one: both lines are answered through the
+  // packs' dependency order, which is read from their manifests, so an origin without one is in neither
+  const builtInManifest = { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION };
+  registry.registerPack(registration, { ...builtInManifest, dir: packDir, shipped: true, manifest: builtInManifest as never });
 });
 
 afterAll(() => {

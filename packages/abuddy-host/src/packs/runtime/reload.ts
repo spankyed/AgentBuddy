@@ -143,7 +143,7 @@ export async function reloadPackById(
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        runPackMigrations(registry.packMigrationTargets([packId]));
+        runPackMigrations(registry.packMigrationTargets('pack', [packId]));
         applyPacks(registry.packContentTargets([packId]));
       },
     };

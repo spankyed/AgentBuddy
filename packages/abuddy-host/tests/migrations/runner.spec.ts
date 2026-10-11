@@ -1,6 +1,9 @@
-// The boot's migrations runners: a built-in pack's migration runs against the app version, an external pack's against
-// its own, each once, and both versions are recorded. A beta runs its release's migrations (again when its version
-// changes), a development build runs every pending one, and a failed migration stops the rest and records nothing.
+// The boot's migrations runners: a migration on the `app` line runs against the app version, one on the `pack`
+// line against its pack's own, each once, and both versions are recorded. **Which line is what the pack declared,
+// never where the pack came from** — so the gate pack below is external and on the app's line, and two cases put
+// each line on the provenance it did not used to be allowed. A beta runs its release's migrations (again when its
+// version changes), a development build runs every pending one, and a failed migration stops the rest and records
+// nothing.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -51,7 +54,7 @@ describe('boot migrations', () => {
 
     const registration = {
       id: 'migrations-built-in',
-      migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }],
+      migrations: { app: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }] },
     };
     // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded.
     // **With a `manifest`, which is what makes "once" checkable here.** `packMigrationTargets` reads the
@@ -63,14 +66,17 @@ describe('boot migrations', () => {
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
-      registration: { id: manifest.id, migrations: [externalMigration] },
+      registration: { id: manifest.id, migrations: { pack: [externalMigration] } },
       origin: { ...manifest, dir: builtInDir, shipped: false, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
-    // What the boot passes on: the registry joins each registered pack's origin with its migrations
-    const installedPacks = registry.packMigrationTargets();
-    expect(installedPacks.map((t) => t.manifest.id), 'the shipped pack is not a target: runAppMigrations owns it')
-      .toEqual(['migrations-external']);
+    // What the boot passes on: the registry joins each registered pack's origin with the migrations it declared
+    // on the line asked for. Each pack is answered for by the line it chose, not by who shipped it
+    const installedPacks = registry.packMigrationTargets('pack');
+    const declaring = (line: 'app' | 'pack') => registry.packMigrationTargets(line)
+      .filter(({ migrations }) => migrations?.length).map((t) => t.manifest.id);
+    expect(declaring('pack'), 'only the pack that declared a `pack` migration').toEqual(['migrations-external']);
+    expect(declaring('app'), 'and only the one that declared an `app` migration').toEqual(['migrations-built-in']);
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
@@ -86,6 +92,30 @@ describe('boot migrations', () => {
     expect(runs).toEqual({ shipped: 1, external: 1 });
   });
 
+  it("runs a shipped pack's `pack` migration against the pack's own version, which the app's is not", () => {
+    resetTestData();
+    // The app is at TEST_APP_VERSION and the pack at 9.0.0, so a `pack` entry at 2.0.0 is pending on its own
+    // line and would be far past the cap on the app's: the version it is compared to is the one the line names
+    const ran: string[] = [];
+    const manifest = { id: 'migrations-shipped-own-line', name: 'Shipped', version: '9.0.0' };
+    registry.registerPack(
+      { id: manifest.id, migrations: { pack: [{ target: '2.0.0', description: 'own line', up: () => { ran.push('2.0.0'); } }] } },
+      { ...manifest, dir: builtInDir, shipped: true, manifest: manifest as never },
+    );
+    try {
+      const targets = registry.packMigrationTargets('pack');
+      expect(targets.filter(({ migrations }) => migrations?.length).map((t) => t.manifest.id),
+        'a shipped pack is a `pack`-line target like any other').toContain(manifest.id);
+
+      runPackMigrations(targets);
+      expect(ran).toEqual(['2.0.0']);
+      expect(appState.get().packVersions).toMatchObject({ [manifest.id]: '9.0.0' });
+      expect(appState.get().version, 'and the app line is untouched by it').toBeFalsy();
+    } finally {
+      registry.unregisterPack(manifest.id);
+    }
+  });
+
   it("stops an external pack's migrations at a failure and records its version once they all ran, keeping other packs'", () => {
     resetTestData();
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -96,7 +126,7 @@ describe('boot migrations', () => {
     let failing: string | undefined = '1.1.0';
     const pack = {
       manifest: { id: 'failing-pack', version: '1.2.0' },
-          migrations: ['1.1.0', '1.2.0'].map((target) => ({
+      migrations: ['1.1.0', '1.2.0'].map((target) => ({
         target,
         description: target,
         up: () => { if (target === failing) throw new Error('failed'); ran.push(target); },
@@ -123,19 +153,24 @@ describe('which migrations run', () => {
   beforeAll(async () => {
     const packDir = path.join(builtInDir, 'migrations-gate');
     fs.mkdirSync(packDir);
-    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, builtIn: true }));
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION }));
+    // **Registered as an external pack, with its migrations on the app's line** — which the runner used to
+    // refuse to look at. Every case below is therefore also the case that routing reads the declaration: a
+    // beta's release migrations, the release cap, the development build and the failure all come from a pack
+    // the app did not ship. Its own manifest version is TEST_APP_VERSION and is never compared to anything
     const registration = {
       id: 'migrations-gate',
-      migrations: ['0.3.14', '0.3.15', '0.3.16'].map((target) => ({
+      migrations: { app: ['0.3.14', '0.3.15', '0.3.16'].map((target) => ({
         target,
         description: target,
         up: () => {
           if (target === failing) throw new Error(`${target} failed`);
           ran.push(target);
         },
-      })),
+      })) },
     };
-    registry.registerPack(registration, { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, dir: builtInDir, shipped: true });
+    const gateManifest = { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION };
+    registry.registerPack(registration, { ...gateManifest, dir: builtInDir, shipped: false, manifest: gateManifest as never });
   });
 
   beforeEach(() => {

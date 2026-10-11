@@ -41,11 +41,14 @@ function runPending(migrations: readonly PackMigration[], stored: string, cap: s
 }
 
 /**
- * The app's migrations: the host's own first, then the built-in packs' registered in `registry`, each run when
+ * The app's migrations: the host's own first, then every registered pack's `app` migrations, each run when
  * `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's). A prerelease counts as
  * its release; a development build runs every pending migration. Nothing runs again while the recorded version
- * is the app's, except in development. External packs' migrations never run here; `runPackMigrations` runs them
- * against each pack's own version.
+ * is the app's, except in development.
+ *
+ * **Which packs' is a question this no longer asks.** A pack says which line each of its migrations is on
+ * (`abuddy.json`'s `migrations.app`), so a pack the app ships is here for the same reason an external one
+ * is — it declared one — rather than for having been shipped. The pack line is `runPackMigrations`.
  *
  * Data without a recorded version runs the host's migrations (which move a version stored before AppState
  * existed); if there's still none, the data is new and at the app version, and no pack migration runs.
@@ -62,17 +65,18 @@ export function runAppMigrations(registry: PackRegistry): boolean {
   if (!runPending(appMigrations(registry), recorded ?? '0.0.0', cap, ':app')) return false;
 
   const current = appState.get().version ?? appVersion;
-  const shippedMigrations = registry.shippedPacks().flatMap((pack) => registry.getPackRegistration(pack.id)?.migrations ?? []);
-  if (!runPending(shippedMigrations, current, cap, '')) return false;
+  const packsOnAppLine = registry.packMigrationTargets('app').flatMap(({ migrations }) => migrations ?? []);
+  if (!runPending(packsOnAppLine, current, cap, '')) return false;
 
   if (appState.get().version !== appVersion) appState.update({ version: appVersion });
   return true;
 }
 
 /**
- * External packs' migrations, each pack's run when `stored pack version < target <= manifest version`, recording
- * the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`, which moves the
- * versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded version.
+ * Packs' `pack`-line migrations, each pack's run when `stored pack version < target <= manifest version`,
+ * recording the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`,
+ * which moves the versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded
+ * version.
  */
 /**
  * What running a pack's migrations needs: which pack, at which version, and the migrations.

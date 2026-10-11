@@ -118,13 +118,14 @@ Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
   Whether a swap should re-apply is a product call this plan does not make.
 - **Nothing stops a fork that drops a feature the app assumes.** With `canUninstall` gone there is no
   derived guard. Deliberate: it is the user's pack.
-- **Migrations are routed by provenance, and that is a separate plan.** A fork at `default-setup`'s id would
-  have its migrations run against the **app's** version line. The stopgap is to route on `updatesWith`
-  instead of id membership; the real fix is
-  [`migration-version-lines.md`](migration-version-lines.md), which lets a migration declare its own line.
-  **Whichever lands second deletes the other's workaround.** Migrations are already fused and partly broken
-  (`default-setup` declares `0.1.0` and ships migrations named `0.3.0`–`0.3.15` against an app at `0.3.14`);
-  the goal here is to not make that worse, which routing on ownership achieves.
+- **Migrations no longer need a workaround here, and this is the one footgun that closed.**
+  [`migration-version-lines.md`](../archive/plans/migration-version-lines.md) landed first: a migration is
+  declared under `migrations.app` or `migrations.pack` in its pack's manifest and the runners read one map
+  each, so nothing routes on provenance. A fork at `default-setup`'s id has its migrations compared against
+  whichever line it declared them on, which is the fork author's choice. **Do not add the `updatesWith`
+  routing this plan used to propose** — it would put provenance back in the one place it has been taken out
+  of. `default-setup`'s own `version` is still decorative (`0.1.0` against migrations named for app
+  releases), which is correct now rather than merely harmless: those are declared on the app's line.
 
 ## Out of scope
 

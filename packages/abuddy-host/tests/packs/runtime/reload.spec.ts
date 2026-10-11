@@ -345,7 +345,7 @@ describe('reloading a pack', () => {
     appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
     const ran: string[] = [];
     Object.assign(globalThis, { reloadPackRuns: ran });
-    writeRebuild(runtime(`migrations: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })),`));
+    writeRebuild(runtime(`migrations: { pack: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })) },`));
 
     await reloadPackById(registry, PACK_ID, bus as never);
 

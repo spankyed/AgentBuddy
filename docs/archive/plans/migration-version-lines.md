@@ -1,3 +1,25 @@
+> **Done and closed.** A migration is declared under a version line in its pack's `abuddy.json` —
+> `migrations.app` or `migrations.pack`, keyed by the version it targets — and the runners read one map
+> each (`packMigrationTargets(line)`), so neither asks where a pack came from. `shippedPacks()` keeps the
+> one consumer that is genuinely about shipping (`migrations/app/0.3.15.ts`'s `PluginOwners.shipped`).
+>
+> **Five of the plan below were falsified before implementing, and it is kept for the design rather than
+> the mechanism.** What was wrong: a pack never writes `target` (it was already the manifest key, so the
+> ambiguous field was gone and only the *line* was missing); provenance routing was in **two** places, not
+> one (`migrations/index.ts` and `packMigrationTargets`' `!o.shipped` filter); `shippedPacks()` keeps a
+> consumer and was not deleted; **no files moved** — the change is manifest plus codegen, and
+> `default-setup/src/migrations/` has no `index.ts` to list anything in; and `appMigrations` was already
+> taken by the host's own list, which is why the shape is nested (`migrations.app`) rather than the two
+> sibling registration fields proposed here.
+>
+> Two further corrections the work found. The lines are **one method with a `line` argument**, not two
+> accessors, so a call site must name the line and the pair cannot drift. And the answer is **every pack in
+> dependency order** with the migrations it declared on that line, which means a registered pack whose
+> origin carries no manifest is in neither answer — the loader gives every origin one, and three fixtures
+> without one were packs whose migrations nothing would have run.
+>
+> The text below is the plan as written.
+
 # A migration says which version line it is on
 
 ## Context

@@ -69,8 +69,9 @@ export type { ManifestValidation } from './validate.ts';
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
   BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
-  DslEntrySchema, PackPermissionSchema,
+  DslEntrySchema, PackPermissionSchema, MigrationsSchema, MIGRATION_LINES,
 } from './manifest-schema.ts';
+export type { MigrationLine } from './manifest-schema.ts';
 
 // FE bundler — not re-exported here (uses import.meta which some
 // consumer tsconfigs reject). Import directly from './fe-bundler'.

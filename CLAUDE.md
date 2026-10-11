@@ -919,16 +919,25 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 
 ### Migrations
 
-Migrations live with their pack; the host's own (the app's state) live in `packages/abuddy-host/src/migrations/app/`. default-setup's are in `packages/default-setup/src/migrations/`: each file exports a `PackMigration` (`@abuddy/sdk/framework`) with `target`, `description` and `up()`, listed in that folder's `index.ts` and registered with the pack. `@abuddy/host/migrations` (`packages/abuddy-host/src/migrations/index.ts`) holds only the runners, which the API's boot and host's `services.appData.reset()` call through `startPacks()` (after the packs' `onInit`, before the content), and a backup import after reloading the data:
+**A migration declares which version line it is on, and nothing infers it.** A pack files each one in
+`abuddy.json` under `migrations.app` or `migrations.pack`, keyed by the version it targets — because a bare
+version does not say what it is a version of. The module states only `description` and `up()`
+(`DeclaredMigration`, `@abuddy/sdk/framework`); codegen assembles the `PackMigration { target, … }` the
+runners take from the manifest key, so a version is written in exactly one place and the line in exactly
+one. There is no `src/migrations/index.ts` — the manifest is the list.
 
-- `runAppMigrations(registry)` — the host's own app migrations (moving the app's state, and every pack's stored plugin settings onto their plugins' refs), then those of the packs the app ships, from the app's registry, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. A prerelease counts as its release (`0.3.15-beta.2` runs the `0.3.15` migrations, again on each new beta), and a development build (`ABUDDY_ENV=development`) runs every pending migration on every boot. A failed migration stops the rest and records nothing, and `startPacks()` then runs no pack migration or apply; the next boot retries. Data with no recorded version is new and at the app version (after the host's migrations moved any older one).
-- `runPackMigrations(externalPacks)` — each external pack's migrations, against that pack's own version (`stored < target <= manifest version`); records `AppState.packVersions[packId]`. External migrations never run in `runAppMigrations()`.
+Migrations live with their pack; the host's own (the app's state) live in `packages/abuddy-host/src/migrations/app/`. default-setup's are in `packages/default-setup/src/migrations/`, all on the **app's** line, which is why they are named for AgentBuddy's releases while the pack's own `version` is compared to nothing. `@abuddy/host/migrations` (`packages/abuddy-host/src/migrations/index.ts`) holds only the runners, which the API's boot and host's `services.appData.reset()` call through `startPacks()` (after the packs' `onInit`, before the content), and a backup import after reloading the data:
+
+- `runAppMigrations(registry)` — the host's own app migrations (moving the app's state, and every pack's stored plugin settings onto their plugins' refs), then every registered pack's `app`-line migrations, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. A prerelease counts as its release (`0.3.15-beta.2` runs the `0.3.15` migrations, again on each new beta), and a development build (`ABUDDY_ENV=development`) runs every pending migration on every boot. A failed migration stops the rest and records nothing, and `startPacks()` then runs no pack migration or apply; the next boot retries. Data with no recorded version is new and at the app version (after the host's migrations moved any older one).
+- `runPackMigrations(targets)` — every registered pack's `pack`-line migrations, against that pack's own version (`stored < target <= manifest version`); records `AppState.packVersions[packId]`.
+
+Both read `registry.packMigrationTargets(line)`, so **neither asks where a pack came from**: a pack the app ships may be on either line and so may an external one. Routing on provenance instead is the trap — it makes one `0.3.15` mean the app's release in a pack the app ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has its migrations compared against the wrong thing.
 
 Rules for default-setup migrations (details in `packages/abuddy-host/src/migrations/CLAUDE.md`):
 
 - **Target the next release version** — name the file after the version it targets (e.g. `0.2.4.ts` runs when the app is released as 0.2.4+). Several changes for one release go in the same file.
 - **Never bump `package.json` version manually** — the release process handles version bumps. Migrations are written ahead of time to target the upcoming release.
-- **List it in `packages/default-setup/src/migrations/index.ts`** — import and append to the `migrations` array in version order.
+- **Declare it in `packages/default-setup/abuddy.json`** under `migrations.app`, keyed by that version; `abuddy add migration <version> --app` writes the entry and the file, and `npm run compile` regenerates the pack entry. A pack whose data moves when the pack does uses `migrations.pack`, which is that command's default.
 - **Idempotent guards** — always check if the change is needed before applying (e.g. `if (!value) set(value)`), since migrations run again on every development boot, on each beta of their release, and after a reset.
 
 ### Path aliases

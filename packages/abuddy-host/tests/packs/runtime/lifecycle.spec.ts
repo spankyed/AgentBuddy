@@ -121,7 +121,7 @@ describe('activating and tearing down a pack at runtime', () => {
       PACK_ID,
       `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
         + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
-        + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
+        + "migrations: { pack: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }] }",
       {
         'runtime/content/memos.content.json': '[]',
         'runtime/content/content.json': JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }),

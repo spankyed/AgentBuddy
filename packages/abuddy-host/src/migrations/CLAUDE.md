@@ -10,8 +10,17 @@ There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/s
 
 | Runner | Runs | Runs a migration when | Records |
 | --- | --- | --- | --- |
-| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (each of `registry.shippedPacks()`'s registration's `migrations`, through `registry.getPackRegistration(id)`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
-| `runPackMigrations(loadedPacks)` | each external pack's migrations (`LoadedPack.migrations`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
+| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then every registered pack's **`app`**-line migrations (`registry.packMigrationTargets('app')`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
+| `runPackMigrations(targets)` | every registered pack's **`pack`**-line migrations (`registry.packMigrationTargets('pack')`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
+
+**Which runner gets a migration is what its pack declared, not where the pack came from.** A pack files each
+migration under a version line in `abuddy.json` — `migrations.app` or `migrations.pack` (`MIGRATION_LINES`,
+`@abuddy/sdk/build`) — because a bare version does not say what it is a version of. Routing on provenance
+instead is the trap: it makes one `0.3.15` mean the app's release in a pack the app ships and the pack's own
+version in every other, so a user's build installed at a shipped pack's id has its migrations compared
+against the wrong thing. So a pack the app ships may be on either line, an external pack may be on either,
+and **a pack declaring both gets both** — at the two moments the runners run, which is the one thing to know
+before splitting a single change across them: don't.
 
 Which app migrations run, besides `stored < target`:
 - **A release** runs those up to its version, once: nothing runs while the recorded version is the app's.
@@ -22,7 +31,7 @@ Data with no recorded version runs the host's migrations (the 0.3.15 one moves t
 
 A migration that throws is logged (`[migration] FAILED ...`) and stops the rest: `runAppMigrations` records no version and returns `false`, and `startPacks()` then runs no external pack migration and no apply, since the versions and content hashes they read may not be in place yet (the host's 0.3.15 moves them, and default-setup's 0.3.15 drops their old copy). The next boot retries from the failed migration. `runPackMigrations` stops a pack's migrations at a failure and doesn't record its version, so they run again the next time the pack starts. A pack that isn't loaded (disabled) keeps its recorded version.
 
-An external pack's registration still carries its migrations (the Packs view counts them), but `runAppMigrations` reads only the built-in packs' registrations, so a migration never runs in both.
+A migration never runs in both runners, because the map it was declared in is the one `packMigrationTargets` answers for. The Packs view's `migrationCount` counts both lines, being what the pack declares rather than what one runner reaches.
 
 Resetting app data runs both again: `services.appData.reset()` (`../services/app-data.ts`) runs the packs' shutdown hooks, empties the stores, then `startPacks()`. The reset emptied `AppState`, so the data counts as new: nothing is pending and the app version is recorded. Importing a backup runs them after reloading the data.
 
@@ -34,32 +43,42 @@ Specs: `packages/abuddy-host/tests/migrations/runner.spec.ts` (both runners, onc
 
 ## Built-in migrations
 
-default-setup's migrations are files in `packages/default-setup/src/migrations/`, listed in that folder's `index.ts` (`packages/default-setup/src/migrations/index.ts`) and registered through the pack's registration (its `abuddy.json` `migrations`). Each file exports a `PackMigration` with:
-- `target` — the version this migration applies to
+default-setup's migrations are files in `packages/default-setup/src/migrations/`, each named in its `abuddy.json` under `migrations.app` — **the app's line**, which is why they are named for AgentBuddy's releases (`0.3.15.ts`) while the pack's own `version` is `0.1.0` and compared to nothing. There is no index module: the manifest is the list, and a file no manifest names runs never.
+
+Each file exports a `DeclaredMigration` (`@abuddy/sdk/framework`) with:
 - `description` — short summary of changes
 - `up()` — the migration function (synchronous, uses the pack's repositories, e.g. `settingsQueries` / `settingsCommands`)
+
+**It does not state its target.** The manifest key is the version, and codegen assembles the
+`PackMigration { target, description, up }` the runners take from the two. Two sources for one fact is what
+that avoids: a `target` in the file and a version in the filename could disagree, and nothing read the
+filename. The modules beside them that are not migrations (`bare-feature-ids.ts`, `defaults-0.3.14.ts`,
+which `0.3.15.ts` imports) are simply unnamed in the manifest.
 
 The release script (`build/release/release.sh`) checks that a release changing `default-settings.ts` has a migration file for its version in that folder.
 
 ## Rules
 
-1. **Target the next release version.** If the current release is `0.2.3`, name your migration `0.2.4.ts` with `target: '0.2.4'`. It will run once the app is released at that version.
+1. **Target the next release version.** If the current release is `0.2.3`, name your migration `0.2.4.ts` and key it `"0.2.4"` under `migrations.app`. It runs once the app is released at that version.
 2. **Never bump `package.json` version manually.** The release process handles version bumps. Migrations are written ahead of time.
-3. **List it in `packages/default-setup/src/migrations/index.ts`.** Import your migration and append it to the `migrations` array in version order.
+3. **Declare it in `packages/default-setup/abuddy.json`**, under `migrations.app`, keyed by the version it targets: `"0.2.4": "src/migrations/0.2.4.ts#migration"`. `abuddy add migration 0.2.4 --app` writes both the entry and the file. Then `npm run compile`, which regenerates the pack entry the runners read.
 4. **Make `up()` idempotent.** Always guard with checks (e.g. `if (!field) set(field)`) since migrations run again on every development boot, on each beta of their release, and after a database reset.
 5. **Multiple changes per version are fine.** If the upcoming release has several schema changes, add them all to the same migration file.
 
-An external pack's migrations target that pack's own versions, not the app's.
+**Which line a pack's migration belongs on**, for a pack that is not this one: `pack`, unless the data's
+shape follows AgentBuddy's rather than the pack's. `pack` is `abuddy add migration`'s default for that
+reason, and it is the line a pack author's own versions are on. `app` is a real capability and not a
+mistake — a pack whose rows mirror the app's own has a reason — but it puts a third party's code on
+AgentBuddy's version line, so it deserves a deliberate `--app` rather than arriving by default.
 
 ## Adding a migration
 
 ```ts
 // packages/default-setup/src/migrations/0.X.Y.ts
 import { repository } from '#generated/repository.ts';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
 
-export const migration: PackMigration = {
-  target: '0.X.Y',
+export const migration: DeclaredMigration = {
   description: 'Describe what this migration does',
   up: () => {
     const data = repository.settingsQueries.getSettings();
@@ -68,8 +87,7 @@ export const migration: PackMigration = {
 };
 ```
 
-Then in `packages/default-setup/src/migrations/index.ts`:
-```ts
-import { migration as m0XY } from './0.X.Y';
-// append to the migrations array
+Then in `packages/default-setup/abuddy.json`, under the app's line:
+```json
+"migrations": { "app": { "0.X.Y": "src/migrations/0.X.Y.ts#migration" } }
 ```

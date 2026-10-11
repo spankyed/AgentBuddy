@@ -728,14 +728,32 @@
     },
     "migrations": {
       "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+      "properties": {
+        "app": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "propertyNames": {
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "description": "Migrations on AgentBuddy's version line, keyed by the release each targets. For data whose shape follows the app rather than this pack."
+        },
+        "pack": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "propertyNames": {
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "description": "Migrations on this pack's own version line, keyed by the version each targets, compared against `version` in this manifest."
+        }
       },
-      "propertyNames": {
-        "pattern": "^\\d+\\.\\d+\\.\\d+$"
-      },
-      "description": "Migrations this pack runs, keyed by the version each targets. The key is the version — the module names only its description and its `up` — and a migration runs when the stored version is below its key and the key is at or below the pack's version."
+      "additionalProperties": false,
+      "description": "Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`."
     },
     "build": {
       "type": "object",

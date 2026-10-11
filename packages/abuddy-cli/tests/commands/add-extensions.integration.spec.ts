@@ -214,35 +214,45 @@ describe('abuddy add artifact and block', () => {
 });
 
 describe('abuddy add migration', () => {
-  it('declares each migration under the version it targets, which the pack entry registers and tsc accepts', async () => {
+  it('declares each migration under its version line and the version it targets, which the pack entry registers and tsc accepts', async () => {
     await addMigration(['0.2.0'], pack);
     await addMigration(['--version', '0.10.1'], pack);
-    // A migration targets a release: the runners read a prerelease as its release, so this files under 0.11.0
+    // A migration targets a release on either line, so a prerelease files under the release it belongs to
     await addMigration(['0.11.0-beta.1'], pack);
+    await addMigration(['0.3.16-beta.1', '--app'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
     expect(migration).toContain("import type { DeclaredMigration } from '@abuddy/sdk/framework';");
-    // The version is the manifest key, so the module does not restate it
+    // The version is the manifest key and the line is the map, so the module restates neither
     expect(migration).not.toContain('target:');
     expect(readManifest().migrations).toEqual({
-      '0.2.0': 'src/migrations/0.2.0.ts#migration',
-      '0.10.1': 'src/migrations/0.10.1.ts#migration',
-      '0.11.0': 'src/migrations/0.11.0.ts#migration',
+      pack: {
+        '0.2.0': 'src/migrations/0.2.0.ts#migration',
+        '0.10.1': 'src/migrations/0.10.1.ts#migration',
+        '0.11.0': 'src/migrations/0.11.0.ts#migration',
+      },
+      app: { '0.3.16': 'src/migrations/0.3.16.ts#migration' },
     });
     expect(fs.existsSync(path.join(pack, 'src/migrations/index.ts'))).toBe(false);
 
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
-    // In version order, each with the target its key names
-    expect(entry).toContain("    { target: '0.2.0', ...__migration_0_2_0 },\n    { target: '0.10.1', ...__migration_0_10_1 },\n    { target: '0.11.0', ...__migration_0_11_0 },");
+    // One array per line, each in version order, each entry with the target its key names
+    expect(entry).toContain("    app: [\n      { target: '0.3.16', ...__migration_app_0_3_16 },\n    ],");
+    expect(entry).toContain("    pack: [\n      { target: '0.2.0', ...__migration_pack_0_2_0 },\n      { target: '0.10.1', ...__migration_pack_0_10_1 },\n      { target: '0.11.0', ...__migration_pack_0_11_0 },\n    ],");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
 
-  it('refuses a version it already declares, leaving the manifest as it was', async () => {
+  it('refuses a version it already declares on that line, leaving the manifest as it was', async () => {
     const before = read('abuddy.json');
-    await expect(addMigration(['0.2.0'], pack)).rejects.toThrow('Migration "0.2.0" already exists in manifest');
+    await expect(addMigration(['0.2.0'], pack)).rejects.toThrow('Migration "0.2.0" already exists in manifest under "pack"');
     expect(read('abuddy.json')).toBe(before);
+
+    // The same version on the *other* line is a different migration, so it is not a collision — and it
+    // lands on a file that is already there, which is the one thing the two lines share
+    await addMigration(['0.2.0', '--app'], pack);
+    expect(readManifest().migrations?.app?.['0.2.0']).toBe('src/migrations/0.2.0.ts#migration');
   });
 });
 

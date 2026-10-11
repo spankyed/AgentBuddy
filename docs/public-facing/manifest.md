@@ -17,7 +17,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `builtIn` | `boolean` | no | `true` for packs built into the app only |
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
-| `migrations` | `string` | no | Path to migrations index file |
+| `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
@@ -229,6 +229,47 @@ A `content.formats` value, keyed by the format name: a lowercase letter, then lo
 | `tree` | `{ branch?, branchEntity?, relKind? }` | Walk subdirectories as parent rows: a directory's own file, its entity type, and the parent → child relation (default `contains`) |
 | `fields` | `Record<string, { from, default?, type? }>` | `markdown-tree` only: record field → `body`, `filename`, `path` or `frontmatter.<name>` |
 | `media` | `string` | Directory under an entry's `path` copied with the content; `media/<file>` links become `media://<id>/<file>` |
+
+## Migrations
+
+A migration moves data the pack has already written into the shape its new code expects. Each is declared
+under the **version line** its target is on, keyed by the version it targets:
+
+```json
+{
+  "migrations": {
+    "pack": { "1.2.0": "src/migrations/1.2.0.ts#migration" },
+    "app":  { "0.3.16": "src/migrations/0.3.16.ts#migration" }
+  }
+}
+```
+
+| Line | The target is | Runs when |
+|---|---|---|
+| `pack` | a version of **this pack**, compared against `version` in this manifest | the pack updates past it |
+| `app` | a release of **AgentBuddy** | the app updates past it |
+
+Most migrations belong on `pack`: the pack's data moves when the pack does. Use `app` for data whose shape
+follows AgentBuddy's rather than yours. A target is always three numbers — the app reads a prerelease as its
+release, so `0.3.16-beta.2` would match nothing.
+
+`abuddy add migration 1.2.0` writes the entry and the file; `--app` puts it on the app's line.
+
+The version is the key, so the module states only what it does:
+
+```ts
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
+
+export const migration: DeclaredMigration = {
+  description: 'Give every memo a colour',
+  // Synchronous, and safe to run again: it runs on each prerelease of its release, on every development
+  // boot, and after a data reset — so check whether the change is needed before applying it
+  up: () => { /* … */ },
+};
+```
+
+A pack may declare both lines. They run at different moments, so a single change split across them gets an
+order you probably did not intend — keep one change on one line.
 
 ## Frontend configuration
 

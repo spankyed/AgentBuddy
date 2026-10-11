@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest, PackFeatureEntry, StepEntry } from '@abuddy/sdk/build';
+import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine } from '@abuddy/sdk/build';
 
 export { readManifest } from '../../utils';
 
@@ -53,14 +53,16 @@ export function addBlock(
 }
 
 /**
- * Adds a migration: the key is the version it targets, which is why the module it names states only its
- * description and its `up`. A root key rather than an `extensions` one — a migration moves the pack's own
- * stored data rather than contributing anything to the app.
+ * Adds a migration under one version line: the key is the version it targets, which is why the module it
+ * names states only its description and its `up`, and the line says what that version is a version of —
+ * `pack` the pack's own, `app` AgentBuddy's. A root key rather than an `extensions` one: a migration moves
+ * the pack's own stored data rather than contributing anything to the app.
  */
-export function addMigration(manifest: PackManifest, version: string, target: string): void {
-  if (!manifest.migrations) manifest.migrations = {};
-  if (manifest.migrations[version]) throw new Error(`Migration "${version}" already exists in manifest`);
-  manifest.migrations[version] = target;
+export function addMigration(manifest: PackManifest, line: MigrationLine, version: string, target: string): void {
+  const migrations = manifest.migrations ?? (manifest.migrations = {});
+  const onLine = migrations[line] ?? (migrations[line] = {});
+  if (onLine[version]) throw new Error(`Migration "${version}" already exists in manifest under "${line}"`);
+  onLine[version] = target;
 }
 
 /** Adds a pack-level service: `target` is "path#exportName" of the service object */

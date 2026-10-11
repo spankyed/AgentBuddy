@@ -26,6 +26,21 @@ export interface PackMigration extends DeclaredMigration {
 }
 
 /**
+ * A pack's migrations, split by the version line their targets are on.
+ *
+ * **A bare version does not say what it is a version of**, which is the fact this shape supplies. The
+ * alternative is a runner deciding from the pack's provenance — a pack the app ships compared against
+ * AgentBuddy's version, everyone else's against their own — under which the same `0.3.15` means two things
+ * and a pack replacing a shipped one inherits the wrong line.
+ */
+export interface PackMigrations {
+  /** Run against AgentBuddy's version, for data whose shape follows the app rather than this pack */
+  app?: PackMigration[];
+  /** Run against this pack's own `version` */
+  pack?: PackMigration[];
+}
+
+/**
  * The pack's boot hooks: code the app runs for it, and nothing else.
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
@@ -84,7 +99,12 @@ export interface PackRegistration {
   /** The pack's repositories by name (abuddy.json `features[].repositories`), registered with the app's engine */
   repositories?: Record<string, unknown>;
   boot?: PackBootHooks;
-  migrations?: PackMigration[];
+  /**
+   * The pack's migrations by version line, mirroring `abuddy.json`'s two maps: `app` runs against
+   * AgentBuddy's version, `pack` against this pack's own. Nested rather than two sibling fields so one
+   * concept stays one key — and because `appMigrations` is already the host's own list of them.
+   */
+  migrations?: PackMigrations;
   steps?: import('../steps/types.ts').StepDefinition[];
   artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
   blocks?: import('../blocks/types.ts').BlockDefinition[];

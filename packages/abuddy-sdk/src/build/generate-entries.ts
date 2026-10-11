@@ -2,6 +2,7 @@ import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { dirname, extname, join } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
+import { MIGRATION_LINES } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './content/items.ts';
@@ -483,7 +484,7 @@ export function generatePackFiles(
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
-      ...Object.values(manifest.migrations ?? {}),
+      ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {})),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
       ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
@@ -730,30 +731,35 @@ export function generatePackFiles(
   }
 
   /**
-   * The pack's migrations, each with the version its manifest key names. The key is the only place the
-   * version is written — a module exports a `DeclaredMigration`, which has no `target` — so the runners get
-   * `{ target, description, up }` from here and a version cannot be stated twice and disagree.
+   * The pack's migrations, grouped by the version line each targets. Two keys are the only places either
+   * fact is written: the manifest key is the version — a module exports a `DeclaredMigration`, which has no
+   * `target` — and the map it sits in is the line, so neither can be stated twice and disagree. The runners
+   * read one map each and ask nothing about where the pack came from.
    *
    * Emitted in key order so the runners' sort has nothing to undo, though they sort anyway: a manifest is
    * JSON and nothing promises its keys keep the order they were written in.
    */
   function migrationEntries(): { imports: string[]; literal: string } {
-    const entries = Object.entries(manifest.migrations ?? {})
-      .sort(([a], [b]) => compareVersions(a, b));
-    if (entries.length === 0) return { imports: [], literal: '' };
     const imports: string[] = [];
-    const items = entries.map(([version, target]) => {
-      const label = `Migration "${version}"`;
-      const local = `__migration_${version.replace(/[^A-Za-z0-9]/g, '_')}`;
-      const { source, exportName, value } = valueExport(label, target);
-      // The target is spread onto it, so a function or a class would contribute no `description` and no
-      // `up` and the migration would run as an empty object
-      if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the migration object itself (export const ${exportName}: DeclaredMigration = { … })`);
-      if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it`);
-      imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
-      return `    { target: '${version}', ...${local} },`;
+    const lines = MIGRATION_LINES.flatMap((line) => {
+      const entries = Object.entries(manifest.migrations?.[line] ?? {})
+        .sort(([a], [b]) => compareVersions(a, b));
+      if (entries.length === 0) return [];
+      const items = entries.map(([version, target]) => {
+        const label = `Migration "${line}/${version}"`;
+        const local = `__migration_${line}_${version.replace(/[^A-Za-z0-9]/g, '_')}`;
+        const { source, exportName, value } = valueExport(label, target);
+        // The target is spread onto it, so a function or a class would contribute no `description` and no
+        // `up` and the migration would run as an empty object
+        if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the migration object itself (export const ${exportName}: DeclaredMigration = { … })`);
+        if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it`);
+        imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
+        return `      { target: '${version}', ...${local} },`;
+      });
+      return [`    ${line}: [\n${items.join('\n')}\n    ],`];
     });
-    return { imports, literal: `[\n${items.join('\n')}\n  ]` };
+    if (lines.length === 0) return { imports: [], literal: '' };
+    return { imports, literal: `{\n${lines.join('\n')}\n  }` };
   }
 
   /** The steps for a registration literal, or no literal at all when the target carries none */

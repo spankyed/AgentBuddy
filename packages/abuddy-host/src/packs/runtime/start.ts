@@ -10,9 +10,9 @@ export function startPacks(registry: PackRegistry): void {
   // The versions and content revisions the packs' migrations and content read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries
   if (!runAppMigrations(registry)) return;
-  // `runAppMigrations` has already run the shipped packs', against the app version; `packMigrationTargets`
-  // leaves them out, so neither runner repeats the other's work
-  runPackMigrations(registry.packMigrationTargets());
+  // `runAppMigrations` has run every pack's `app`-line migrations against the app version; this is the other
+  // line, so a migration reaches one runner or the other by where its pack declared it
+  runPackMigrations(registry.packMigrationTargets('pack'));
 
   // One call for every pack, in dependency order, so every pack gets the same treatment: a failed apply is
   // retried on the next boot, and a pack sees what the packs it depends on applied in this same run
