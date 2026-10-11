@@ -29,18 +29,15 @@ import { repoFiles } from './_support/repo-files.ts';
 /** Tracked code no chain step reads, and why. An entry that stops applying is reported, not ignored. */
 const NOT_A_CHAIN_INPUT: Record<string, string> = {
   'docs/archive/research/claude_code_headless_ex.ts': 'an archived transcript that happens to end in .ts',
-  // The production packaging and release path. The chain builds the app (`build:app`) and never packages,
+  // The production packaging and release path. The chain builds the app (`build:runtime`) and never packages,
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
   // prefix so that something chain-relevant landing there has to be noticed.
-  'build/build.sh': 'npm run build-prod; packaging, which no chain step does',
-  'build/prod/clean.sh': 'part of build-prod',
-  'build/prod/run.sh': 'part of build-prod',
-  'build/prod/verify-signing.sh': 'checks a signed artifact, which only build-prod produces',
+  'build/build.sh': 'npm run build:production; packaging, which no chain step does',
   'build/release/release.sh': 'the release path, which the chain never runs',
   'build/release/beta-tag.sh': 'the release path; its rule is covered by release-beta-rule.test.sh',
   'build/release/unrelease.sh': 'the release path',
   'build/resources/gen-icons.sh': 'regenerates committed icons by hand',
-  'native/speech/macos/build.sh': 'builds the native speech helper, which build-prod invokes',
+  'native/speech/macos/build.sh': 'builds the native speech helper, which build:production invokes',
 };
 
 // `.sh` included: three of the chain's steps *are* shell scripts, so leaving the extension out meant the
@@ -121,7 +118,7 @@ describe('the chain reads every source file', () => {
    *
    * Measured before this existed: the root `lint:check` grew from `oxlint scripts tests` to `oxlint .` minus two
    * directories, which took in three packaging modules that `typecheck` did not declare — so an unused binding in
-   * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
+   * `scripts/packaged-app.ts` failed `lint:check` while the chain planned `typecheck` as cached.
    *
    * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `docs/**` and
    * the CLI's scaffold templates (`lint-scope.spec.ts` holds that second exclusion, which nothing else reads —
@@ -353,10 +350,10 @@ describe('a step keys on a staged publish tree only if it reads one', () => {
 
   /** The data is a list, so the case mutates it rather than trusting that it could fail */
   it('names a step that starts keying on one', () => {
-    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const compile = CHAIN_STEPS.find((step) => step.name === 'build:default-setup')!;
     const widened = { ...compile, inputs: [...compile.inputs, `packages/apack-ears/${PUBLISH_TREE}`] };
     expect(unexplained([widened]), 'a step given a staged tree was not reported').toEqual([
-      'compile keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
+      'build:default-setup keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
     ]);
   });
 
@@ -433,7 +430,7 @@ describe('a step declares the modules its script imports', () => {
 // A suite whose own specs name build output must declare that it reads it. This is deliberately a subset
 // check and not an equality one: a scan of spec text can prove a suite reads the tree, never that it does
 // not. `@app/api`'s specs never name the pack's `dist` — they boot the app runtime and host code resolves
-// the path — so an equality check called it independent, it ran beside `compile` under three lanes, and it
+// the path — so an equality check called it independent, it ran beside `build:default-setup` under three lanes, and it
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
 /**
@@ -482,15 +479,15 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
 
 /**
  * **Nothing here compiles a pack into the app any more**, so the check that lived here has no subject. It
- * held `build:app` to declaring every compiled file of every built-in pack, because the renderer's plugin
+ * held `build:runtime` to declaring every compiled file of every built-in pack, because the renderer's plugin
  * and the api's tsup each traced a generated entry into the pack's `src` and the renderer's Tailwind globbed
- * it for class names — and with none of that declared, one `.vue` edit left `build:app` cached over an app
+ * it for class names — and with none of that declared, one `.vue` edit left `build:runtime` cached over an app
  * that never held the change (measured 2026-10-07).
  *
  * A pack's backend is loaded at run time from its own `dist/runtime/index.cjs` and its frontend is fetched
  * over `pack://`, so the app's build reads a pack's `dist` and never its source. What would reopen the hole
- * is a bundler config here reaching into a pack's `src` again: `build:app`'s own declaration comment and
- * `scripts/build-app.ts`'s header both say so, and `coverageOf` above still holds every path a step's script
+ * is a bundler config here reaching into a pack's `src` again: `build:runtime`'s own declaration comment and
+ * `scripts/build-runtime.ts`'s header both say so, and `coverageOf` above still holds every path a step's script
  * names.
  */
 
@@ -530,7 +527,7 @@ describe('a unit suite whose specs name build output declares it', () => {
     expect(readsPack(["process.env.APACK_DEV_PACK_DIRS = 'tests/packs/external-pack'"]),
       'a variable whose name contains PACK_DIR but names a pack\'s source').toBe(false);
     expect(readsPack(['packages/default-setup/src/features/notes/fe/canvas.vue']),
-      "the pack's source, which `compile` owns rather than this").toBe(false);
+      "the pack's source, which `build:default-setup` owns rather than this").toBe(false);
   });
 
   it('leaves none of them undeclared', () => {
@@ -754,21 +751,28 @@ describe('a step keys on the command it runs', () => {
   });
 
   /**
-   * And the manifest is gone from the keys, bar one step that genuinely reads it.
+   * The manifest stays out of keys except steps that read it or cover metadata readers.
    *
-   * `typecheck:be` is the exception and it is evidenced rather than assumed: its three programs each
+   * `typecheck:api` is the exception and it is evidenced rather than assumed: its three programs each
    * resolve through the root `package.json`, which its dep files report, so it declares it through
    * `alsoReads`. The dep-file gate found this the moment the manifest left `ROOT` — while every step
    * declared it, a real read and an accident were indistinguishable.
    *
+   * Shared build metadata imports the version for script/repo programs (confirmed by their dep files)
+   * and the renderer config checked by typecheck:renderer;
+   * source-wide checks and suites cover those readers through EVERY_SOURCE.
+   *
    * `packages:ensure` declares it too, through `SHARED_INPUTS` in `BUILD_UNITS`, and is filtered out
    * rather than listed: it is never cached, so it has no key to invalidate.
    */
-  it('leaves package.json out of every step the chain caches, bar the one that reads it', () => {
+  it('keys package.json only for steps that read it or cover shared build metadata', () => {
     const cached = CHAIN_STEPS.filter((step) => step.neverCachedBecause === undefined);
     expect(cached.length, 'no step is cached, so this passes over nothing').toBeGreaterThan(20);
     expect(cached.filter((step) => step.inputs.includes('package.json')).map((step) => step.name),
       'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
-      + 'with the dep-file evidence that it reads the manifest').toEqual(['typecheck:be']);
+      + 'with the dep-file evidence that it reads the manifest').toEqual([
+        'typecheck:renderer', 'typecheck:api', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
+        'lint:check', 'test:unit:host', 'test:integration', 'build:runtime',
+      ]);
   });
 });

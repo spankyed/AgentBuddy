@@ -124,7 +124,7 @@ export function readsOf(packDir: string): BuildReads | undefined {
  * directory. A path, because there is one kind of pack: nothing here asks a manifest what kind it is.
  */
 const SCRIPTED_PACK_BUILDS: Record<string, string> = {
-  'packages/default-setup': 'npm run compile',
+  'packages/default-setup': 'npm run build:default-setup',
 };
 
 export function rebuildCommand(packDir: string): string {

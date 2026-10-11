@@ -2,7 +2,7 @@
 
 ## Symptom
 
-`npm run start` / `npm run build:be` fails with missing type declaration errors:
+`npm run dev` / `npm run build:api` fails with missing type declaration errors:
 
 ```
 error TS7016: Could not find a declaration file for module 'fs-extra'.
@@ -34,7 +34,7 @@ npm install
 
 Then rebuild:
 ```bash
-npm run build:be
+npm run build:api
 ```
 
 ## Mitigations

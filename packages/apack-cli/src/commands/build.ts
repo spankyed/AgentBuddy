@@ -80,16 +80,16 @@ export function buildStagingDir(root: string): string {
  * It sits here rather than in `build()` because `apack dev` calls that on every file change, and the
  * check reads every source of all five packages: once per command is right, once per keystroke is not.
  *
- * `npm start` depends on this one. The root `prebuild:be:dev` builds the pack the app ships with `apack
+ * `npm run dev` depends on this one. The dev launcher builds the pack the app ships with `apack
  * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
- * on that script is the fix if this ever stops ensuring.
+ * in the dev launcher is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {
   const root = findPackRoot(process.cwd());
   ensureCheckoutPackages(root);
   if (args.includes('--watch')) {
     const { watchPackRuntime } = await import('../build/watch.ts');
-    // `npm start` forks this and boots the API against the runtime it writes, so it waits to be told the
+    // `npm run dev` forks this and boots the API against the runtime it writes, so it waits to be told the
     // first bundle landed. `process.send` is absent for anyone who ran the command themselves
     await watchPackRuntime(root, readValidManifest(root).id, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
     return;

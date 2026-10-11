@@ -32,15 +32,15 @@ describe('coresFor', () => {
   });
 
   it('weighs a fixed width the same on any box, which is what a bundler takes', () => {
-    // The distinction a bare number could not make: `build:app` uses about 2.56 cores for this much work
+    // The distinction a bare number could not make: `build:runtime` uses about 2.56 cores for this much work
     // wherever it runs, so a share would have it take twice as much of a box twice the size
-    expect(coresFor('build:app', TEN)).toBe(3);
-    expect(coresFor('build:app', 20)).toBe(3);
+    expect(coresFor('build:runtime', TEN)).toBe(3);
+    expect(coresFor('build:runtime', 20)).toBe(3);
   });
 
   it('never weighs a fixed width above the box it is running on', () => {
     // Otherwise the budget goes soft for that step alone and admits it beside anything
-    expect(coresFor('build:app', 1)).toBe(1);
+    expect(coresFor('build:runtime', 1)).toBe(1);
   });
 
   it('never weighs a step at less than one core, however small the box', () => {

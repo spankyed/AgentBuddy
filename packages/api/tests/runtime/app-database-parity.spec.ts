@@ -1,6 +1,6 @@
 // The API's boot and a tool opening the data dir (openAppDatabase, which apack db uses) hydrate the same entities,
 // relations and roles: both open the store through @apack/host/database, and the tool reads the installed packs'
-// manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run compile).
+// manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run build:default-setup).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

@@ -324,7 +324,7 @@ describe('repoRelative', () => {
 
 describe('the input fingerprint', () => {
   // A unit's own output is never its own input, however broadly its inputs are declared. Two chain steps
-  // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src` it
+  // declare a whole tree and then write into it — `build:default-setup` writes `src/__generated__` under the `src` it
   // reads, the fixture-pack check writes each pack's `dist` under the `tests/packs` it reads — and both
   // were self-invalidating in waiting: the only thing keeping them cached was those builds happening to be
   // byte-identical, and the pack build already is not (union ordering in its emitted declarations).

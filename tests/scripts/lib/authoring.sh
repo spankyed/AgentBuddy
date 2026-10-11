@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HANDOFF="$ROOT/tests/authoring-handoff"
 
 # Every phase goes through here, so this is the one place that can say where the time went. This script
-# is the tail of the chain's critical path (`packages:ensure -> compile -> build:app -> this`), and it
+# is the tail of the chain's critical path (`packages:ensure -> compile -> build:runtime -> this`), and it
 # had no timing of its own — the step's total was the only number anyone had.
 step() {
   _step_report

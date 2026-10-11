@@ -26,7 +26,7 @@ describe.each([
   const all = records(file);
 
   it('are in the compiled content at all, so the checks below are reading something', () => {
-    expect(all.length, `no ${what} in dist/${file} — run npm run compile`).toBeGreaterThan(0);
+    expect(all.length, `no ${what} in dist/${file} — run npm run build:default-setup`).toBeGreaterThan(0);
   });
 
   it(`each carry a non-empty ${body}`, () => {

@@ -18,16 +18,16 @@ perturbing the recorded file would only prove that `!==` works.
 
 **Re-taking the answer means running whatever produces it, and that is the half a derivation loses
 quietly.** `facade:check` compared the committed report against `dist/types/pack-types.d.ts` — a file some
-earlier `apack build` wrote, from whatever the sources were then — so `npm run compile` was right by
+earlier `apack build` wrote, from whatever the sources were then — so `npm run build:default-setup` was right by
 ordering alone and the same command run by hand could pass over a bundle an hour old, while `--update` wrote
 a committed file off it.
 
 **Re-taking it also bought back the ordering, which is the part that took a second change to collect.** Once
-the check bundled the facade itself, being appended to `compile` was 2.7s of a second bundle in series —
+the check bundled the facade itself, being appended to `build:default-setup` was 2.7s of a second bundle in series —
 `bundlePackTypes` twice per run, the build's into `dist` and the check's into a temp dir. It is its own chain
-step now, declaring what it reads: the graph orders it after `compile` because it reads the barrel `compile`
+step now, declaring what it reads: the graph orders it after `build:default-setup` because it reads the barrel `build:default-setup`
 writes, so the ordering that used to be spelled with `&&` is derived from the same declaration that makes its
-own regenerate a no-op. Measured 2026-10-07: `compile` 26.3s before, the check 2.7s of it. What it costs not to do that is one bundle: re-bundling default-setup's facade is
+own regenerate a no-op. Measured 2026-10-07: `build:default-setup` 26.3s before, the check 2.7s of it. What it costs not to do that is one bundle: re-bundling default-setup's facade is
 2.4s (median of 3, 86% idle, 2026-10-06) and reproduces the build's output byte for byte, against `api:check`
 at 6.9s for the same shape. A check whose subject is a file it did not produce is a derivation in name only.
 

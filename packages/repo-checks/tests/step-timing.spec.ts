@@ -143,18 +143,18 @@ describe('driftedSteps', () => {
 describe('measurementsFrom', () => {
   it('leaves out a step whose time is the deadline it was killed at', () => {
     const measured = measurementsFrom([
-      { step: 'compile', ms: 13_000 },
+      { step: 'build:default-setup', ms: 13_000 },
       { step: 'test:integration', ms: 300_400, timedOut: true },
     ]);
 
-    expect([...measured.keys()], 'a killed step measured nothing').toEqual(['compile']);
+    expect([...measured.keys()], 'a killed step measured nothing').toEqual(['build:default-setup']);
   });
 
   it('keeps a step that failed early, whose time is real', () => {
     // A failure carries no `timedOut` — only a kill does, which is why the exit code is not a parameter here
-    const measured = measurementsFrom([{ step: 'typecheck:fe', ms: 4_000 }]);
+    const measured = measurementsFrom([{ step: 'typecheck:renderer', ms: 4_000 }]);
 
-    expect(measured.get('typecheck:fe'), 'it ran and stopped; the time is under, not invented').toBe(4_000);
+    expect(measured.get('typecheck:renderer'), 'it ran and stopped; the time is under, not invented').toBe(4_000);
   });
 
   it('keeps every step of a clean run', () => {
@@ -217,7 +217,7 @@ describe('outgrownRungs', () => {
 
   it('says nothing about a step the run did not measure', () => {
     // A cached step cost no time, so it is evidence of nothing — the same reason `criticalPath` skips it
-    expect(asked([ran('compile', 'suite', 13)], new Map())).toEqual([]);
+    expect(asked([ran('build:default-setup', 'suite', 13)], new Map())).toEqual([]);
   });
 
   /**
@@ -253,8 +253,8 @@ describe('outgrownRungs', () => {
   describe('off the schedule the table was measured on', () => {
     const SMALLER: Machine = { cpu: 'Some Smaller CPU', cores: 4 };
     // Inside `suite` by declaration (0.80), and four times that is not
-    const steps = [ran('test:integration', 'suite', 60), ran('typecheck:fe', 'quick', 10)];
-    const fourTimesSlower = new Map([['test:integration', 240_000], ['typecheck:fe', 40_000]]);
+    const steps = [ran('test:integration', 'suite', 60), ran('typecheck:renderer', 'quick', 10)];
+    const fourTimesSlower = new Map([['test:integration', 240_000], ['typecheck:renderer', 40_000]]);
 
     it('says nothing on another machine, where the number would count the slowdown twice', () => {
       expect(asked(steps, fourTimesSlower, SMALLER, SMALLER.cores), 'both are over on the arithmetic')
@@ -274,7 +274,7 @@ describe('outgrownRungs', () => {
       // The same readings, same table, nothing but the schedule changed — so the two cases above are the
       // gate talking and not an input that could never have been reported
       expect(asked(steps, fourTimesSlower).map((row) => row.name))
-        .toEqual(['test:integration', 'typecheck:fe']);
+        .toEqual(['test:integration', 'typecheck:renderer']);
     });
   });
 });

@@ -56,7 +56,7 @@ import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
  * not using and starved the one it was.
  *
  * Measured 2026-09-27 on ten cores, run alone, the step is flat from four at a time up — 12.9s at 3,
- * 11.2s at 4, 10.6s at 6, 11.5s at 8, 11.2s at 16 — because one leg, `typecheck:fe`, is most of the
+ * 11.2s at 4, 10.6s at 6, 11.5s at 8, 11.2s at 16 — because one leg, `typecheck:renderer`, is most of the
  * floor. So the exact number above four buys nothing, and taking all of them costs nothing now that
  * nothing else wants any.
  *

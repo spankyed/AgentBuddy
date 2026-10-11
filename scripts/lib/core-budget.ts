@@ -39,7 +39,7 @@ export const UNCAPPED = Symbol('vitest default: one less than the box');
  *
  * **The distinction is load-bearing, not cosmetic.** A worker pool told to take half the cores takes half
  * of whatever box it finds, so its entry is a `share`. A bundler given a fixed amount of work uses about
- * the same number of cores wherever it runs — `build:app` is a measured 2.2 on ten — so a `share` would
+ * the same number of cores wherever it runs — `build:runtime` is a measured 2.2 on ten — so a `share` would
  * have the chain believe it takes 4.4 on twenty and over-budget everything beside it. Writing both as a
  * bare number was the first version of this table, and it was wrong in that direction.
  */
@@ -52,7 +52,7 @@ export type PoolWidth = { readonly share: number } | { readonly cores: number } 
  * `node`, and `SIZE_MS`'s precedent (`unit-suites.ts`) is that a list whose every entry is the same value
  * is one nobody maintains. An entry is a claim about a pool, and something has to stand behind it.
  *
- * **`build:app` and `compile` are the two entries nothing declares**, so they are measured rather than
+ * **`build:runtime` and `build:default-setup` are the two entries nothing declares**, so they are measured rather than
  * described, and that distinction is why they were left out until the admission policy became the default
  * — which was the condition, and it is met. Without them both weighed one core while vite and esbuild
  * fork, so the chain over-admitted beside the two steps on its critical path.
@@ -68,17 +68,17 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
   'test:unit:pack': UNCAPPED,
   'test:integration': { share: 0.5 },
-  // **Measured as CPU time over wall time, 2026-10-02, two runs each**: `compile` 21.5s of CPU in 13.6s
-  // and 21.2s in 13.1s, so 1.6 cores; `build:app` 62.9s in 29.0s and 61.2s in 27.6s, so 2.2. Both round
+  // **Measured as CPU time over wall time, 2026-10-02, two runs each**: `build:default-setup` 21.5s of CPU in 13.6s
+  // and 21.2s in 13.1s, so 1.6 cores; `build:runtime` 62.9s in 29.0s and 61.2s in 27.6s, so 2.2. Both round
   // to two.
   //
   // That instrument rather than sampling the machine, and the reason is worth keeping: idle sampling could
   // not separate the step from a box that would not go below 2.4 cores busy, and subtracting the baseline
-  // gave `compile` 1.8 cores on one run and 2.7 on the next. A process's own CPU time does not care what
+  // gave `build:default-setup` 1.8 cores on one run and 2.7 on the next. A process's own CPU time does not care what
   // else is running. It does assume the work is awaited — a step that detaches a child would read low,
   // and neither of these does.
-  compile: { cores: 2 },
-  // **`build:app` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
+  'build:default-setup': { cores: 2 },
+  // **`build:runtime` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
   // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
   //
   // **The rounding does not do the work here, and that has to be said rather than glossed.** The range
@@ -89,7 +89,7 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // of the range. And on a boundary the tie goes **up**, because the two errors are not alike — a width
   // below the truth over-admits and starves the step beside it, which is the failure this table exists to
   // prevent and the one its own history records, where a width above the truth only leaves a core idle.
-  'build:app': { cores: 3 },
+  'build:runtime': { cores: 3 },
   // Three independent extractions at once (`scripts/api-check.ts`), measured the same way: 25.6s of CPU in
   // 7.1s, so 3.6 cores. It ran serially and counted as one until 2026-10-05, which is a step using a third
   // of this box while the budget admitted it as a single core

@@ -94,7 +94,7 @@ let first: ReturnType<typeof apply>;
  * so anything written in a `beforeAll` is gone before the first case runs.
  */
 beforeEach(() => {
-  expect(fs.existsSync(BUILT), 'the built content is missing: run npm run compile').toBe(true);
+  expect(fs.existsSync(BUILT), 'the built content is missing: run npm run build:default-setup').toBe(true);
   first = apply(compiledDir());
 });
 

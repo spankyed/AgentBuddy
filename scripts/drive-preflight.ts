@@ -10,7 +10,7 @@
  * **It reads mtimes, and not the chain's stamps, which is the opposite of what it looks like it should do.**
  * The stamps answer a different question: only `npm run chain` writes one, so `unitStaleReason` against a
  * step's stamp reports every tree that has moved since the last *chain* run — which during ordinary
- * development is all of them, however recently `npm run build:app` ran. That version of this check fired
+ * development is all of them, however recently `npm run build:runtime` ran. That version of this check fired
  * immediately after a successful build, which is the failure mode a nudge can least afford.
  *
  * Mtimes are the right instrument *here* for the reason they are the wrong one for a cache key: a rebuild
@@ -32,8 +32,8 @@ import { unitFor } from './lib/chain-stamps.ts';
 
 /** The steps that produce the app a driving session opens, in the order the chain runs them */
 const BUILDS = [
-  { step: 'compile', what: "the pack the app ships" },
-  { step: 'build:app', what: 'the renderer, main, preload and the API' },
+  { step: 'build:default-setup', what: "the pack the app ships" },
+  { step: 'build:runtime', what: 'the renderer, main, preload and the API' },
 ] as const;
 
 interface Edge { readonly file: string; readonly at: number }
@@ -45,7 +45,7 @@ interface Edge { readonly file: string; readonly at: number }
  * the latest edit. For the outputs it is *when the build last produced anything*, and the tempting
  * alternative — the oldest output, "has every product been refreshed" — is wrong because a build need not
  * rewrite all of them: `apack build` overwrites `dist/defs/` without clearing it, by design, so some of
- * `compile`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
+ * `build:default-setup`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
  * after a successful build.
  *
  * `prune` skips what a fingerprint skips, which is how a CLAUDE.md edit stays free here too.

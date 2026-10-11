@@ -21,9 +21,12 @@ import { rootEvents } from '@/transport/emitter';
 import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
 import { createRequire } from 'module';
 import pkg from '../../../../package.json';
+import { readFileSync } from 'node:fs';
 
-/** The app's version: the root package.json's */
-const APP_VERSION: string = pkg.version;
+/** Packaged processes read the same manifest; source runs use the checkout version. */
+const APP_VERSION: string = process.env.APACK_BUILD_MANIFEST
+  ? JSON.parse(readFileSync(process.env.APACK_BUILD_MANIFEST, 'utf8')).version
+  : pkg.version;
 
 const logger = createLogger('backend');
 

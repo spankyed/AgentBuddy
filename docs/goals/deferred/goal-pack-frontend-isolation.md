@@ -146,6 +146,6 @@ So installing an external pack today means trusting it as much as the app itself
 - Preload: build with `npm run build -w @app/preload`, never bare `tsc` (`packages/preload/CLAUDE.md`). Every surface change updates the SDK's `electron-api.ts` and `api:update`.
 - The example pack: no `npm install` there (ask the user); release metadata isn't edited.
 - Published packages: no `any` in pack-facing exports, the TypeScript floor, `api:update` after export changes.
-- Build order: `packages:build` before the CLI suite; default-setup's runtime (`npm run compile`) before the api suites and E2E.
+- Build order: `packages:build` before the CLI suite; default-setup's runtime (`npm run build:default-setup`) before the api suites and E2E.
 - Investigate failing tests; mutation-check every new guard.
 - External packs are first-class: keep the fixture packs, the example pack and `test:packaged-authoring` passing at every phase.

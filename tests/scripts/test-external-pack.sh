@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Both halves of the external fixture pack check, in order, for running it by hand. The chain runs them as
-# two steps: the contract half needs no app and runs before `build:app`, the Playwright half needs one and
+# two steps: the contract half needs no app and runs before `build:runtime`, the Playwright half needs one and
 # runs after (`needsApp`, scripts/lib/chain-steps.ts). Extra args are forwarded to Playwright.
 #
 # Both halves run as bash here rather than through their npm scripts, so this takes one outer bound — the

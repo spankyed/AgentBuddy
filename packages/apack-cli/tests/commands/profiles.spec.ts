@@ -46,7 +46,7 @@ describe('the environment rows', () => {
 
     const rows = environmentRows(resolve);
 
-    expect(rows.map((row) => row.env)).toEqual(['production', 'beta', 'development', 'test']);
+    expect(rows.map((row) => row.env)).toEqual(['production', 'beta', 'preview', 'development', 'test']);
     expect(rows.find((row) => row.env === 'production')).toMatchObject({ exists: true });
     expect(rows.find((row) => row.env === 'beta')).toMatchObject({ exists: false, hasAppData: false });
   });
@@ -94,7 +94,7 @@ describe('a live app on an environment row', () => {
     publishSession({ debugPort: 51873, dataDir: dir, supervisorPid: pid, startedBy });
   };
 
-  it.each(['production', 'beta', 'development', 'test'] as const)('says so on the %s row', (env) => {
+  it.each(['production', 'beta', 'preview', 'development', 'test'] as const)('says so on the %s row', (env) => {
     occupy(env, 'dev');
 
     const row = environmentRows(resolve).find((candidate) => candidate.env === env);

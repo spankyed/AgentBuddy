@@ -255,7 +255,7 @@ Run these from `packages/apack-sdk`, or from the repo root with `-w @apack/sdk`.
 ## Gotchas
 
 - `src/build/` and `src/content/` must not know any pack's entity types (library, notes, FAQs). `tests/build/no-pack-content-specifics.spec.ts` rejects those names; an exception needs a reason in its `ALLOWED` table.
-- Changing codegen output affects every pack. Tests covering it: `tests/build/generate-entries.spec.ts`, plus `apack-cli/tests/build/` (`dep-types-version`, `trigger-track-helpers`) and `default-setup/tests/unit/content-parity/`. Regenerate default-setup with `npm run compile`.
+- Changing codegen output affects every pack. Tests covering it: `tests/build/generate-entries.spec.ts`, plus `apack-cli/tests/build/` (`dep-types-version`, `trigger-track-helpers`) and `default-setup/tests/unit/content-parity/`. Regenerate default-setup with `npm run build:default-setup`.
 - `esbuild` and `typescript` are optional peers. `compile-utils.ts` imports both at module load, and `module-exports.ts` loads `typescript` lazily. Pack runtime code must not import `@apack/sdk/build`.
 - Written entities are found by `contentKey`, which starts with the pack id from `content.json`. Compiled content without `packId` fail to write until the pack is rebuilt.
 - `compilePack` wipes its output directory's content files and `media/` before compiling, even if compiling then fails.

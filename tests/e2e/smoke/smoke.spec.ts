@@ -45,7 +45,7 @@ test('runs in an isolated per-worker test data dir', async ({ electronApp, appPa
  * Chromium writes the number it chose to `DevToolsActivePort` in the data dir. So a tool that *inferred*
  * attachability — from the file, from a reachable port — would find this app and drive a test run's app
  * mid-suite. `@apack/host/dev-session`'s rule is that the file is declared instead: `apack dev` and the
- * `npm start` loop publish one because they mean their app to be driven, and nothing treats the absence of
+ * `npm run dev` loop publish one because they mean their app to be driven, and nothing treats the absence of
  * one as "try anyway".
  *
  * That was an argument until this case. The port being asserted *present* is what stops the absence below

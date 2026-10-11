@@ -19,7 +19,7 @@ import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, STAMP_READERS as POOL_STAMP_READERS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
 import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
-import { APP_BUILD_LEGS } from '../../../scripts/lib/app-build-legs.ts';
+import { RUNTIME_BUILD_LEGS } from '../../../scripts/lib/runtime-build-legs.ts';
 import { ASSUMED_RUNGS } from '../../../scripts/lib/step-timeouts.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { importedCallsIn } from '../../../scripts/lib/imported-calls.ts';
@@ -71,17 +71,17 @@ function runnerFiles(stepName: string): string[] {
 const runnerText = (stepName: string): string =>
   runnerFiles(stepName).map((file) => fs.readFileSync(file, 'utf-8')).join('\n');
 
-// `build:app`'s leg table is an enumeration of workspaces, which is the shape that goes stale silently: a
+// `build:runtime`'s leg table is an enumeration of workspaces, which is the shape that goes stale silently: a
 // workspace that gains a `build` script simply would not be built by the chain, and nothing would say so.
 // The set is derivable from the manifests, so it is checked rather than trusted.
 //
-// **It reads `APP_BUILD_LEGS`, not the npm script.** Until 2026-10-06 the script was
+// **It reads `RUNTIME_BUILD_LEGS`, not the npm script.** Until 2026-10-06 the script was
 // `npm run build -w a -w b …` and this matched `-w` over its text; the step is a scheduler over those same
-// commands now (`scripts/build-app.ts`, serial 26.9s against a 16.0s floor), so the list has to be
+// commands now (`scripts/build-runtime.ts`, serial 26.9s against a 16.0s floor), so the list has to be
 // imported or this case loses the independently-derived answer that is its whole point.
 //
 // Two exclusions, and neither is an exception so much as a division of labour. `@app/default-setup`:
-// `compile` runs that exact command, and a second run of it rewrote the `dist` five steps read, which is
+// `build:default-setup` runs that exact command, and a second run of it rewrote the `dist` five steps read, which is
 // what made a warm chain uncacheable. `@apack/sdk`: its `build` is `tsc -p tsconfig.json` over a config
 // setting `noEmit`, so it emits nothing a step whose product is `APP_OUTPUTS` could carry, and
 // `typecheck:sdk` runs that identical compile as its own step.
@@ -90,8 +90,8 @@ describe('the chain builds every workspace that has a build', () => {
   const EMITS_NOTHING = '@apack/sdk';
   const ELSEWHERE = [OWNED_BY_COMPILE, EMITS_NOTHING];
 
-  it('names them all in build:app, or leaves them to another step', () => {
-    const named = new Set(APP_BUILD_LEGS.map((leg) => leg.name));
+  it('names them all in build:runtime, or leaves them to another step', () => {
+    const named = new Set(RUNTIME_BUILD_LEGS.map((leg) => leg.name));
 
     const withBuild = PACKAGE_DIRS.flatMap((dir) => {
       const manifest = path.join(REPO_ROOT, 'packages', dir, 'package.json');
@@ -100,9 +100,9 @@ describe('the chain builds every workspace that has a build', () => {
     });
 
     const unbuilt = withBuild.filter((name) => !ELSEWHERE.includes(name) && !named.has(name));
-    expect(unbuilt, 'add these to APP_BUILD_LEGS, or say which step builds them').toEqual([]);
+    expect(unbuilt, 'add these to RUNTIME_BUILD_LEGS, or say which step builds them').toEqual([]);
     const gone = [...named].filter((name) => !withBuild.includes(name));
-    expect(gone, 'APP_BUILD_LEGS names these and they have no build script').toEqual([]);
+    expect(gone, 'RUNTIME_BUILD_LEGS names these and they have no build script').toEqual([]);
     for (const name of ELSEWHERE) {
       expect(named.has(name), `${name} is built by another step; a second run of it thrashes the cache`).toBe(false);
     }
@@ -110,9 +110,9 @@ describe('the chain builds every workspace that has a build', () => {
 
   // The leg table is data, so the way to show this case can fail is to drop a workspace from a copy of it
   it('reports a workspace the table stopped naming', () => {
-    const short = new Set(APP_BUILD_LEGS.slice(1).map((leg) => leg.name));
-    expect(APP_BUILD_LEGS[0]!.name, 'the table has something to drop').toBeDefined();
-    expect(short.has(APP_BUILD_LEGS[0]!.name)).toBe(false);
+    const short = new Set(RUNTIME_BUILD_LEGS.slice(1).map((leg) => leg.name));
+    expect(RUNTIME_BUILD_LEGS[0]!.name, 'the table has something to drop').toBeDefined();
+    expect(short.has(RUNTIME_BUILD_LEGS[0]!.name)).toBe(false);
   });
 });
 

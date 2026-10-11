@@ -3,15 +3,17 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
 import { population } from '@apack/sdk/testing';
+import { createBuildSession } from '../../../build/build-metadata.ts';
+import { completeBuildFixture } from './_support/app-build.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { PACK_WORK_DIR } from '@apack/host/build/pack-workdir';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // What the app installs, asked of the matcher electron-builder itself builds from `electron-builder.mjs`.
 //
 // Nothing else looks at that file: it is named by no chain step on purpose (`chain-inputs.spec.ts`'s
-// `NOT_A_CHAIN_INPUT` — it is read by `npm run build-prod`, which is not one), and its patterns have gone wrong
+// `NOT_A_CHAIN_INPUT` — it is read by `npm run build:production`, which is not one), and its patterns have gone wrong
 // silently before. The exclusion of `.ts` files once stripped the CLI's scaffold templates out of the installed
 // app, found by packaging the app and listing what arrived.
 //
@@ -39,10 +41,14 @@ const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm tes
 /** The `files` array electron-builder is given, which is also the data the mutation cases edit a copy of */
 let patterns: string[];
 
+const stage = createBuildSession({ APACK_ENV: 'production' });
+completeBuildFixture(stage);
+afterAll(() => { vi.unstubAllEnvs(); fs.rmSync(stage, { recursive: true, force: true }); });
 beforeAll(async () => {
-  // By URL rather than a relative specifier, as `apack-cli/tests/app/beta-app.spec.ts` reads the same config
-  const config = (await import(pathToFileURL(path.join(REPO_ROOT, 'electron-builder.mjs')).href)).default as { files: string[] };
-  patterns = config.files;
+  vi.stubEnv('APACK_BUILD_ROOT', stage);
+  // Load the same config the packaging command uses.
+  const config = (await import(pathToFileURL(path.join(REPO_ROOT, 'electron-builder.mjs')).href)).default as { files: (string | object)[] };
+  patterns = config.files.filter((file): file is string => typeof file === 'string');
 });
 
 /**
@@ -141,7 +147,7 @@ describe("the packaged app's file list", () => {
    */
   it('would carry them without the one pattern that excludes them', () => {
     const found = workDirs();
-    expect(found.length, `no pack has a ${PACK_WORK_DIR} directory here, so this case proves nothing: run npm run compile`)
+    expect(found.length, `no pack has a ${PACK_WORK_DIR} directory here, so this case proves nothing: run npm run build:default-setup`)
       .toBeGreaterThan(0);
     const stripped = without(`!packages/*/${PACK_WORK_DIR}/**`);
     expect(found.filter((file) => shipsUnder(stripped, file)).length,

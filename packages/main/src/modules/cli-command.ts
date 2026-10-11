@@ -7,9 +7,10 @@ import {getAppContext} from '../app-context.ts';
 
 const BIN_DIR = '/usr/local/bin';
 
-/** Beta installs alongside production, so its command gets its own name. */
+/** Packaged channels install alongside production, so their commands get their own names. */
 export function cliCommandName(): string {
-  return getAppContext().build === 'beta' ? 'apack-beta' : 'apack';
+  const build = getAppContext().build;
+  return build === 'beta' ? 'apack-beta' : build === 'preview' ? 'apack-preview' : 'apack';
 }
 
 /** Packaged from packages/apack-cli/bin/app-launcher.sh (see electron-builder.mjs). */

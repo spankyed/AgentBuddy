@@ -1,7 +1,7 @@
 // Data from 0.3.14, migrated by the 0.4.0 release as the app runs it: the host's app migrations, then the built-in
 // pack's. 0.3.14 stored its whole default settings with the user's changes merged in, every plugin's slice under its
 // bare feature id, the app shell's state in `plugins._meta` and the app's own in `internal`. Runs the built-in packs'
-// built runtimes (npm run compile), as app-reset.spec.ts does.
+// built runtimes (npm run build:default-setup), as app-reset.spec.ts does.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

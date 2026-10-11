@@ -75,24 +75,26 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 ### Development
 
 ```sh
-npm start                # Dev mode (skips DSL generation)
-npm run start:gen        # Dev mode with DSL generation
-npm run start:inspect    # Dev mode with Electron inspection enabled
+npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
+npm run dev:inspect      # Same workflow with Electron’s Node debugger
+npm run open             # Open/reuse the built app and hold it; no builds or watchers
 ```
 
 ### Build
 
 ```sh
-npm run build            # Build all workspaces
-npm run build:be         # Build backend only
-npm run build-prod       # Full production build
-npm run package:all      # Package for macOS, Windows, and Linux
+npm run build:default-setup          # Build the built-in pack and ensure package bundles
+npm run build:runtime    # Build the app runtime
+npm run build:api         # Build backend only
+npm run build:production       # Full production build
+npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data
 ```
 
 ### Test
 
 ```sh
-npm test                 # Playwright E2E tests
+npm test                 # Build and run every test suite
+npm run test:e2e         # Playwright E2E against existing builds
 npm run test:unit        # Unit tests (api, default-setup, host, ears)
 npm run typecheck        # Type checks for every workspace, plus import specifier and UI entry checks
 ```
@@ -102,7 +104,7 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run compile          # Build the default-setup pack (apack build, DSL defs, runtime)
+npm run build:default-setup          # Build the default-setup pack (apack build, DSL defs, runtime)
 ```
 
 ### Database Tools
@@ -123,8 +125,8 @@ npm run db:clear-settings -- --force         # Back to the default settings
 
 ## Development Notes
 
-- `npm start` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
-- `npm run start:gen` also regenerates DSL type definitions (Monaco intellisense) before launching.
+- `npm run dev` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
+- Startup builds pack content, backend and DSL definitions; Vite serves the frontend from source.
 - Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
 - Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.
 

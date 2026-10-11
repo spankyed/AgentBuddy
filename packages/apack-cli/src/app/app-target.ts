@@ -36,7 +36,7 @@ export function sourceAppProblems(root: string): string[] {
   if (!fs.existsSync(path.join(root, 'packages', 'entry-point.mjs'))) return ['not an apack checkout (no packages/entry-point.mjs)'];
   if (!fs.existsSync(path.join(root, 'node_modules', 'electron'))) problems.push('node_modules/electron is missing (run npm install)');
   for (const pkg of ['main', 'renderer']) {
-    if (!fs.existsSync(path.join(root, 'packages', pkg, 'dist'))) problems.push(`packages/${pkg}/dist is missing (run npm run build)`);
+    if (!fs.existsSync(path.join(root, 'packages', pkg, 'dist'))) problems.push(`packages/${pkg}/dist is missing (run npm run build:default-setup && npm run build:runtime)`);
   }
   return problems;
 }
@@ -164,7 +164,7 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
   if ('source' in named.choice) {
     // No `sourceAppProblems` here, and that is the point of the branch being its own: a build reads the
     // checkout's `packages/`, where launching it needs main/dist, renderer/dist and electron. Validating
-    // would fail `apack build` on a checkout nobody has run `npm run build` in.
+    // would fail `apack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
     const root = path.resolve(expandHome(named.choice.source));
     return { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
   }
@@ -364,7 +364,7 @@ export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppT
  * with a released host, which is a mismatch to report rather than a preference to hold.
  *
  * **`checkoutFor` says a checkout is there, never that it can be launched.** That is `sourceTarget`'s job
- * here (`electron`, `main/dist`, `renderer/dist`), and an unbuilt one fails naming `npm run build` rather
+ * here (`electron`, `main/dist`, `renderer/dist`), and an unbuilt one fails naming `npm run build:default-setup && npm run build:runtime` rather
  * than quietly falling through to a Beta — falling through is how you end up with the mismatch above and
  * only a warning between you and a confusing runtime failure. `configuredAppPackagesDir` deliberately does
  * *not* validate, because a build reads `packages/` and launches nothing.

@@ -211,3 +211,12 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # directory names a level or a cost half, and support dirs take a _ prefix
                          # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
 ```
+
+## Test commands
+
+- `npm test` builds the default pack and app runtime, then runs all unit tests, all integration tests, app E2E, external-pack checks and packaged-authoring checks. It stops at the first failure and does not use test-result caches.
+- `npm run test:e2e -- <filter>` runs app E2E against existing app artifacts. The full suite already includes smoke tests.
+- `npm run chain` validates changed inputs with caching, builds, static checks and selected tests. `--e2e` adds the full app E2E suite.
+- `npm run spec -- <target>` runs focused tests during development.
+
+`npm test` does not accept filters; use the appropriate suite command instead. Workspace `npm test -w <workspace>` commands keep their existing behavior.

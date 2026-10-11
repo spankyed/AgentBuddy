@@ -86,7 +86,7 @@ carries no comments.
 
 | # | Door | Covers | Where |
 |---|---|---|---|
-| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild`, `api:update` | root `package.json` |
+| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `build:default-setup`, `api:update` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @apack/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `apack build`, `apack test`, `apack dev` — from any directory, for a pack whose packages are a checkout's | `apack-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
@@ -118,17 +118,17 @@ Three things follow.
   the code — two pool steps each ensure the packages, so one can build while the other's first spec loads.
   What is still named is a holder that outlasted the bound, which is a wedge rather than a queue.
 
-One path is deliberately not in the table twice. `npm start` reaches door 3, because its
-`prebuild:be:dev` builds the built-in pack with `apack build --skip-fe`, and that command ensures —
-so the script carries no prefix of its own. `prebuild` does carry one: `npm run build -ws` fans out
-across the workspaces in no guaranteed order, so nothing there can be relied on to ensure first.
+One path is deliberately not in the table twice. `npm run dev` reaches door 3, because its
+dev launcher builds the built-in pack with `apack build --skip-fe`, and that command ensures —
+so the script carries no prefix of its own. For a full app build, run `npm run build:default-setup` before
+`npm run build:runtime`; `build:default-setup` ensures the package bundles before building the built-in pack.
 
 For an installed pack there is no checkout above it, every one of these is a no-op, and what npm
 delivered is what there is.
 
 ### What a running dev app does and doesn't pick up
 
-`npm start` leaves two halves of the built-in pack on different clocks, and knowing which is which saves
+`npm run dev` leaves two halves of the built-in pack on different clocks, and knowing which is which saves
 an afternoon.
 
 **Follows your SDK and UI source, live.** The renderer's Vite config declares the condition
@@ -139,13 +139,13 @@ running code follows source as well.
 
 **Frozen at the moment the command ran.** Everything `apack build` produced for the pack, because a
 pack build resolves the packages' `dist`: the compiled content (`*.content.json`), the facade types
-(`dist/types/pack-types.d.ts`), the step build and the content runtime (`dist/build/`). `npm start` builds
+(`dist/types/pack-types.d.ts`), the step build and the content runtime (`dist/build/`). `npm run dev` builds
 those once, through door 3, and nothing rebuilds them while the app runs.
 
 The one that bites in practice is the facade. `packages/default-setup/tsconfig.json` declares no
 condition — it is a pack config — so **your editor type-checks default-setup against the packages'
 `dist`**. Change an SDK type and the editor keeps showing the old one until something rebuilds it. Any
-command with a door does (`npm run typecheck`, `typecheck:pack`, `compile`), or `npm run packages:ensure`
+command with a door does (`npm run typecheck`, `typecheck:pack`, `build:default-setup`), or `npm run packages:ensure`
 on its own. This is the cost single mode trades for: a pack, the built-in one included, compiles against
 the layout a pack author has, and in a checkout that layout is only as current as the last build.
 
@@ -479,8 +479,8 @@ apack test -g "renders"             # Playwright args are forwarded
 From the apack monorepo, run Playwright directly (the app is auto-detected):
 
 ```bash
-npm test                                              # monorepo E2E
-PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
+npm run test:e2e                                     # monorepo E2E
+PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 ```
 
 ## Key implementation details
@@ -488,7 +488,7 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
 - **Electron binary resolution**: for a checkout the fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from its `node_modules`; a packaged app is its own executable. Packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
 - **Data dir alignment**: The fixture installs into `resolveAppContext({ build: 'test', profile: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apack/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
-- **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm start` builds and `npm run build`/CI.
+- **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm run dev` builds and `npm run build:runtime`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
 - **Dev server marker**: `apack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@apack/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.

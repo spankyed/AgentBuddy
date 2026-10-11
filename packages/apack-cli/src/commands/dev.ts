@@ -382,7 +382,7 @@ async function session(args: string[], hooks: SessionHooks) {
    * **Reclaiming an app a tool started, which is what makes `--spawn` safe to point at this data dir.**
    *
    * One app per data dir, and `SingleInstanceApp` exits on the second — so without this a spawned one-shot
-   * would hold the development dir and the developer's own `apack dev` or `npm start` would refuse, with the
+   * would hold the development dir and the developer's own `apack dev` or `npm run dev` would refuse, with the
    * blame landing on the command they just ran. The rule is narrow by construction: it takes what a tool
    * started *for itself* (`startedBy: 'drive'`) and nothing else, because a person's app is not a tool's to
    * take. The pid comes from a file the process wrote about itself, which is the only kind of kill allowed

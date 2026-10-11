@@ -47,10 +47,10 @@ describe('dim', () => {
 });
 
 describe('writerOf', () => {
-  const steps = [{ name: 'compile', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
+  const steps = [{ name: 'build:default-setup', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
 
   it('names the step whose outputs hold the file', () => {
-    expect(writerOf('packages/demo-pack/generated/library.content.json', steps)).toBe('compile');
+    expect(writerOf('packages/demo-pack/generated/library.content.json', steps)).toBe('build:default-setup');
   });
 
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
@@ -233,10 +233,10 @@ describe('staleLines', () => {
   it('names each file with what happened to it, when, and whose output it is', () => {
     expect(under({ files: [
       { file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' },
-      { file: 'packages/demo-pack/dist/content.json', how: 'added', when: 'since it ran', writer: 'compile' },
+      { file: 'packages/demo-pack/dist/content.json', how: 'added', when: 'since it ran', writer: 'build:default-setup' },
     ] })).toEqual([
         '  typecheck  tests/packs/probe.txt                 changed while it ran',
-      "             packages/demo-pack/dist/content.json  added since it ran, compile's declared output",
+      "             packages/demo-pack/dist/content.json  added since it ran, build:default-setup's declared output",
     ]);
   });
 
@@ -287,7 +287,7 @@ describe('declaredAt', () => {
 
   /** A rename degrades to no pointer rather than to a wrong one, which is why the caller takes `undefined` */
   it('answers nothing for a name the table does not hold', () => {
-    expect(declaredAt("  { name: 'test' },", 'compile')).toBeUndefined();
+    expect(declaredAt("  { name: 'test' },", 'build:default-setup')).toBeUndefined();
   });
 
   /**
@@ -549,7 +549,7 @@ describe('driftReport', () => {
    * actually true. A report that says "this reads as the box" when it does not is the only way this lies.
    */
   const QUIET = { idle: 0.88, comparable: 30 };
-  const slowerBy = (over: number) => [{ name: 'compile', declared: 24, measured: 24 + over, peers: 0 }];
+  const slowerBy = (over: number) => [{ name: 'build:default-setup', declared: 24, measured: 24 + over, peers: 0 }];
 
   it('carries the reading and the count, so a figure is not copied blind', () => {
     const report = driftReport(drifted, 10, MEASURED, true, SAME, QUIET);
@@ -573,7 +573,7 @@ describe('driftReport', () => {
   /**
    * The direction is the whole of it: load inflates a duration and cannot deflate one, so rows that all came
    * in slower may be the box, and rows that all came in faster cannot be — that is the table being stale,
-   * which is what `build:app` declared at 39s against a real 13s was.
+   * which is what `build:runtime` declared at 39s against a real 13s was.
    */
   it('reads rows that all came in slower as the box', () => {
     const report = driftReport([...slowerBy(40), { name: 'typecheck', declared: 27, measured: 61, peers: 0 }],
@@ -698,13 +698,13 @@ describe('outgrownReport', () => {
     const said = outgrownReport([
       ...found,
       {
-        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: true, peers: 0,
+        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:runtime', wholeTable: true, peers: 0,
       },
     ]);
 
     expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
-    expect(said).toContain('npm run measure -- "npm run build:app"');
+    expect(said).toContain('npm run measure -- "npm run build:runtime"');
   });
 
   it('still names the serial run, for the question measure cannot answer', () => {
@@ -745,8 +745,8 @@ describe('outgrownReport', () => {
     const said = outgrownReport([
       ...found.map((row) => ({ ...row, wholeTable: false })),
       {
-        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: false, peers: 0,
+        name: 'build:runtime', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:runtime', wholeTable: false, peers: 0,
       },
     ]);
 
@@ -786,9 +786,9 @@ describe('classifyLine', () => {
 
   // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
   it('names the steps that actually ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:fe']);
+    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:renderer']);
 
-    expect(line).toContain('It ran beside lint:check, typecheck:fe the first time.');
+    expect(line).toContain('It ran beside lint:check, typecheck:renderer the first time.');
   });
 
   it('counts the rest rather than listing a whole schedule', () => {

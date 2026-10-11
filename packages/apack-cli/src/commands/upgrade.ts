@@ -120,8 +120,9 @@ export async function upgrade(args: string[]) {
   }
 
   const { env, args: rest } = parseTargetEnv(args);
+  if (env === 'preview') throw new Error('Preview builds are local. Rebuild with npm run build:preview -- --version <version>.');
   if (env !== 'production' && env !== 'beta') {
-    throw new Error('There is no installed dev app to upgrade. Run `npm start` in the apack repo instead.');
+    throw new Error('There is no installed dev app to upgrade. Run `npm run dev` in the apack repo instead.');
   }
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     throw new Error(`apack is published for macOS on Apple Silicon only (current platform: ${process.platform}/${process.arch}).`);

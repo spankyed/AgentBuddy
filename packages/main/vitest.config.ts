@@ -14,10 +14,6 @@ export default defineConfig({
     alias: { electron: path.resolve(__dirname, 'tests/electron-stub.ts') },
   },
   ssr: { resolve: { conditions } },
-  define: {
-    // The release channel the build stamps in (build/build.sh); a test is neither channel
-    __APACK_CHANNEL__: '"unstamped"',
-  },
   test: {
     // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). Declared rather than left to vitest's 5s
     // default, which is *tighter* than the size allows: under the chain's three lanes a 5.8s typecheck in

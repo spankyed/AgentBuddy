@@ -24,7 +24,6 @@ export default {
       autoFetchRemote: false,
       autoFetchIntervalSeconds: 180,
       terminalScripts: [
-        { id: 'ts_default_0', label: 'Start', command: 'npm start' },
         { id: 'ts_default_1', label: 'Dev', command: 'npm run dev' },
         { id: 'ts_default_2', label: 'Build', command: 'npm run build' },
         { id: 'ts_default_3', label: 'Test', command: 'npm test' },

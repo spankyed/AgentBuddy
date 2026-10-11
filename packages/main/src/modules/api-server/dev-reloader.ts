@@ -2,7 +2,7 @@
  * Restarts the API when its bundle is rebuilt, so a host, SDK or API edit costs a reload rather than a
  * manual build and a restarted app.
  *
- * `npm start` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@apack/host/src` or
+ * `npm run dev` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@apack/host/src` or
  * `@apack/sdk/src` rewrites `dist/server.js`, and this asks `ApiServer` to replace the child. Measured
  * 2026-10-10: ~95ms to rebuild, 545ms for the API to come back ready. The window never closes.
  *
@@ -18,7 +18,7 @@ import { getApiPaths } from './config.ts';
 import { getAppContext } from '../../app-context.ts';
 import { logInfo, logError } from './logger.ts';
 
-/** The variable `npm start` sets on the Electron it spawns. */
+/** The variable `npm run dev` sets on the Electron it spawns. */
 export const DEV_RELOAD_ENV = 'APACK_DEV_RELOAD';
 
 /** A rebuild writes several files; without this the API restarts two or three times per edit. */

@@ -1,11 +1,11 @@
 // Typechecks this package's specs, which `tsconfig.json` leaves out (it includes `src` alone).
-// `vitest.config.ts` reads it for `paths`; `npm run typecheck:be` runs `tsc -p` over it, so a spec
+// `vitest.config.ts` reads it for `paths`; `npm run typecheck:api` runs `tsc -p` over it, so a spec
 // that drifts from the types it asserts against fails the typecheck rather than only at run time.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    // Its own, not tsconfig.json's inherited one: typecheck:be runs three tsc passes over this package
+    // Its own, not tsconfig.json's inherited one: typecheck:api runs three tsc passes over this package
     // and one shared .tsbuildinfo would have them overwrite each other, so none of them stays warm
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/api-test.tsbuildinfo",
     // `globals: true` in vitest.config.ts, so `describe`/`it`/`expect` are ambient here and nowhere else

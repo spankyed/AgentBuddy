@@ -20,4 +20,7 @@ if [ -z "$executable" ]; then
   exit 1
 fi
 
+# Data commands default to this app's channel; explicit target flags still override it.
+channel="$(ELECTRON_RUN_AS_NODE=1 "$executable" -p 'require(process.argv[1]).channel' "$resources/app/build-manifest.json")"
+export APACK_CLI_CHANNEL="$channel"
 ELECTRON_RUN_AS_NODE=1 exec "$executable" "$resources/app/packages/apack-cli/dist/package/bin/apack.mjs" "$@"

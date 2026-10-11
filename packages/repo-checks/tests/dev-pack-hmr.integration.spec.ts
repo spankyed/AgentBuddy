@@ -1,6 +1,6 @@
 /**
  * **The devex requirement of [`goal-one-kind-of-pack`](../../../docs/archive/goals/goal-one-kind-of-pack.md): from
- * `npm run start`, editing a `.vue` in *any* workspace pack patches the component rather than reloading the
+ * `npm run dev`, editing a `.vue` in *any* workspace pack patches the component rather than reloading the
  * window.** It outranked every other consideration in that goal, and nothing else here would notice it
  * going: the app would still boot, every pack would still load, and a component edit would quietly start
  * costing the app's state.

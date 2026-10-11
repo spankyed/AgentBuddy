@@ -359,7 +359,7 @@ const edgeCovers = (suite: UnitSuite, specs: readonly string[]): string =>
 const beyondOf = (edge: { suite: UnitSuite; specs: readonly string[] }, rel: string): BuildEdge =>
   ({ target: rel, covers: edgeCovers(edge.suite, edge.specs), how: `npm run spec:full -- ${rel}` });
 
-/** The build that makes the edge traversable: the pack's own, which is what the root `compile` wraps */
+/** The build that makes the edge traversable: the pack's own, which is what the root `build:default-setup` wraps */
 const packBuildRun = (root: string, suite: UnitSuite): Run => ({
   label: `${suite.workspace}: build, because the edge to its specs runs through one`,
   cwd: root,
@@ -472,12 +472,12 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   covers: args.length === 0 ? UNIT_SUITES.filter((suite) => suite.dir === pkg).map((suite) => suite.workspace) : undefined,
 });
 
-/** Playwright's, for a `tests/e2e` path — the root's `test` script rather than a package's */
+/** Playwright's, for a `tests/e2e` path — the root's `test:e2e` script rather than a package's */
 const e2eRun = (root: string, specs: readonly string[], flags: readonly string[]): Run => ({
   label: 'tests/e2e (playwright)',
   cwd: root,
   command: 'npm',
-  args: ['run', 'test', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
+  args: ['run', 'test:e2e', '--', ...specs.map((s) => path.relative(root, s)), ...flags],
   specs: specs.map((spec) => path.relative(root, spec)),
 });
 

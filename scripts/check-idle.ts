@@ -8,7 +8,7 @@
  *
  * Exits non-zero below the floor, so it composes with what it is a pre-flight for:
  *
- *     npm run check:idle && npm run measure -- --runs 3 "npm run compile"
+ *     npm run check:idle && npm run measure -- --runs 3 "npm run build:default-setup"
  *
  * **It answers "is it worth starting", not "will this be clean".** A reading is of this instant; the
  * command it gates may run for minutes, and a long one is its own load — a chain run reads 83% before

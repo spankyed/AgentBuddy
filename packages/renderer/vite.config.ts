@@ -1,3 +1,4 @@
+import { appBuildOutput } from '../../build/build-metadata.ts'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 import { delimiter, dirname, resolve } from 'node:path'
@@ -191,6 +192,7 @@ function hostSharedModulesPlugin(): Plugin {
 export default defineConfig(({ command }) => ({
   base: './',
   build: {
+    outDir: appBuildOutput('renderer'),
     modulePreload: false,
     rollupOptions: {
       // **Only when building.** Naming `build.rollupOptions.input` also tells the dev server to crawl those

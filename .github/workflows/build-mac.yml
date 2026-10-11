@@ -97,7 +97,7 @@ jobs:
           if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
             BETA_FLAG="-- --beta"
           fi
-          npm run build-prod $BETA_FLAG
+          npm run build:production $BETA_FLAG
 
       - name: Verify signing
         continue-on-error: true

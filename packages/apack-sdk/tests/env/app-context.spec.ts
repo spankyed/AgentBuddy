@@ -58,6 +58,7 @@ describe('resolveAppContext', () => {
   it('maps each environment to its existing app name', () => {
     expect(resolveAppContext({ build: 'production' }).appName).toBe('apack');
     expect(resolveAppContext({ build: 'beta' }).appName).toBe('apack-beta');
+    expect(resolveAppContext({ build: 'preview' }).appName).toBe('apack-preview');
     expect(resolveAppContext({ build: 'development' }).appName).toBe('apack-dev');
     expect(resolveAppContext({ build: 'test' }).appName).toBe('apack-test');
   });
@@ -65,6 +66,14 @@ describe('resolveAppContext', () => {
   it('rejects an invalid APACK_ENV', () => {
     process.env.APACK_ENV = 'prod';
     expect(() => resolveAppContext()).toThrow(/Invalid app environment "prod"/);
+  });
+
+  it('keeps preview storage and its URL scheme separate from production and beta', () => {
+    const preview = resolveAppContext({ build: 'preview' });
+    expect(path.basename(preview.userDataDir)).toBe('apack-preview');
+    expect(preview.userDataDir).not.toBe(resolveAppContext({ build: 'production' }).userDataDir);
+    expect(preview.userDataDir).not.toBe(resolveAppContext({ build: 'beta' }).userDataDir);
+    expect(preview.urlScheme).toBe('apack-preview');
   });
 });
 
@@ -86,6 +95,7 @@ describe('_inferElectronAppEnv', () => {
   it('packaged builds use their stamped channel', () => {
     expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'production' })).toBe('production');
     expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'beta' })).toBe('beta');
+    expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'preview', envVar: 'production' })).toBe('preview');
   });
 
   it('packaged builds ignore APACK_ENV from the launching shell', () => {

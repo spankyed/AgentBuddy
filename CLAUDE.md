@@ -69,13 +69,13 @@ parts — so each figure carries its conditions and the table can be re-derived 
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
-| nothing is cached (a cold tree) | every gated step — 30 of the 31, `test` being opt-in — on a ten-core budget (`--all`, 2026-10-07) | **185.8s** |
+| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:runtime` | **38.6s** |
+| nothing is cached (a cold tree) | every gated step — 30 of the 31, `test:e2e` being opt-in — on a ten-core budget (`--all`, 2026-10-07) | **185.8s** |
 
 **The one-package row is the one worth reading twice**, because the obvious reasoning about it is wrong.
-`build:app` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
+`build:runtime` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
 on that reasoning editing a package the app is built from would cost four times editing one it is not. It
-does not. `build:app` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
+does not. `build:runtime` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
 **cached** through it: their keys are over the built app's *content*, and a rebuild from unchanged input
 produces the same bytes, so nothing they read has moved. That rests entirely on the build being
 reproducible, which is the largest single saving in this table and the one nothing else would notice losing —
@@ -132,7 +132,7 @@ Three things the chain cannot work out for you, because they rewrite files you c
   report is what that cost.
   The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
   reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
-  in `dist`. **That is why it is a step of its own rather than appended to `compile`**, which is where it sat
+  in `dist`. **That is why it is a step of its own rather than appended to `build:default-setup`**, which is where it sat
   while it still read what the build wrote. `apack build` warns when the report has fallen behind the bundle
   it just wrote, which is a nudge at the moment the information exists and not the gate — the gate is
   `facade:check`. It is not a typecheck leg because it regenerates the pack's barrel, which a leg may not do
@@ -237,7 +237,7 @@ Things that waste the most time, in order:
   duration and all three were bounded by a path nobody had computed. And in the other direction, moving a
   step off the path need not shorten the run, because a cold chain is core-bound; what it shortens is
   whatever was waiting behind it. **Read the path and the saving before measuring a ratio.**
-- **Running `npm run build` to test a change no build output depends on.** The renderer and API build from
+- **Running `npm run build:runtime` to test a change no build output depends on.** The renderer and API build from
   source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** Build once with `sourcemap: true`,
   decode the mapping, read the source. Do that before you grep, not after.
@@ -332,14 +332,14 @@ learn — the measurements, what was tried first, and the commit that closed it.
 ### What a test may read
 
 **A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
-(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:app`'s
+(`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:runtime`'s
 outputs among its inputs. So there is no second record to disagree with the graph, and the ordering comes
 from those same two fields whatever anyone writes. Declaring it instead would need two `check:tiers` clauses
 to keep it equal to the inputs, and clauses like that cannot fail — which is what redundancy looks like
 rather than what protection looks like.
 
 The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
-to run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or
+to run after `build:runtime`, its real inputs become the whole repo, and it can no longer be cached or
 reordered. Four attempts at a cheaper chain each failed on exactly that, because nothing recorded it. A
 check that genuinely needs the app declares it — that is an answer, not a failure, and the fix is never to
 delete the check.
@@ -348,16 +348,16 @@ delete the check.
 script as text and looks for the ways this repo launches the app, because a step can launch it while
 declaring none of its outputs. Being a scan is the safe direction for that half: a wrong scan reports a
 false finding, where a wrong cache key is silent. It goes when the action graph can answer "does this
-transitively depend on `build:app`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
+transitively depend on `build:runtime`" (`docs/archive/plans/one-action-cache.md`, item 18; the follow-up is
 `docs/archive/plans/observed-inputs.md`, now closed).
 
-**`build:app` does not satisfy it.** It writes the app rather than reading one, and the rule is about
+**`build:runtime` does not satisfy it.** It writes the app rather than reading one, and the rule is about
 reading. That distinction is why this replaced a three-valued `tier`, which lumped the producer in
 with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the budget half of `tier` is now
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, before `build:app`, and `:app` runs its Playwright suite after
+pack and runs its harness specs with no app, before `build:runtime`, and `:app` runs its Playwright suite after
 it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
 never takes still reads as a reach.
 
@@ -404,7 +404,7 @@ a causal claim is an argument and no check holds an argument.
   carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
-- `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:be`. The
+- `<action>:<scope>` — an action over part of the repo: `typecheck:renderer`, `test:unit`, `build:api`. The
   second word is a place, and nothing here writes a tracked file.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
@@ -413,15 +413,15 @@ Put a new recorded artifact in the first shape and give it both halves, even whe
 an artifact with only an update is one nothing will notice has gone stale.
 
 ```bash
-npm start                # Dev mode. The built-in pack's backend runtime alone is built, then watched
-                         # (`apack build --watch`, forked by dev-mode.js): an edit under its src/ rebuilds
-                         # that one bundle in ~40ms and asks the running app to reload the pack. Nothing
-                         # else of the pack is rebuilt, which is what `npm run compile` is for
-npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
-npm run build:be         # Build backend only
-npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
-                         # built-in pack to compile — building it twice rewrote the dist five steps read
-npm run build-prod       # Full production build (build/build.sh)
+npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
+                         # The pack's backend watcher rebuilds its runtime on source changes;
+                         # Vite serves frontend source. Use build:default-setup for all pack artifacts.
+npm run dev:inspect      # Same workflow with Electron’s Node debugger
+npm run open             # Open/reuse the built app and hold it; no builds or watchers
+npm run build:api         # Build backend only
+npm run build:default-setup          # Build the built-in pack and ensure package bundles
+npm run build:runtime    # Build the app runtime after build:default-setup
+npm run build:production       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
                          # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 74.1s of
@@ -442,8 +442,8 @@ npm run typecheck        # Every check below, plus check:specifiers — its 17 l
                          # two are the only jobs that write. `-- --cores 1` runs everything one at a time, to
                          # test that claim or to read a confusing failure. A failure prints that job's output
                          # alone, and several can fail in one run where the old `&&` chain stopped at the first
-npm run typecheck:fe     # Frontend only (vue-tsc)
-npm run typecheck:be     # Backend only (tsc --noEmit, plus the api's scripts)
+npm run typecheck:renderer     # Frontend only (vue-tsc)
+npm run typecheck:api     # Backend only (tsc --noEmit, plus the api's scripts)
 npm run typecheck:ears   # @apack/ears only
 npm run typecheck:sdk    # @apack/sdk only
 npm run typecheck:host   # @apack/host only
@@ -528,7 +528,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
-npm test                 # Playwright E2E tests. **A harness, not a gate** — see below
+npm test                 # Build fresh artifacts and run every test suite, without test-result caches
+npm run test:e2e         # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @apack/source condition, and the pack suite on its own resolving the published
                          # dist. Serial, measured — a second lane buys 3% for 87% more work.
@@ -590,16 +591,15 @@ npm run test:unit:pack   # (--project per stale project, one process). Each is a
                          # worker pool across projects. Each runs packages:ensure first, since npm pretest
                          # does not fire under a root run, and then prunes the pool stamps no pool would
                          # write — the key gained its half on 2026-10-01 and left a dead file per suite
-npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @apack/ears    # EARS engine benchmark (baseline and tolerance: packages/apack-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
 npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
-npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build)
+npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build:default-setup && npm run build:runtime)
 npm run test:packaged-authoring  # Both halves, for running it by hand: author, build, test and install a pack
-                                 # outside the monorepo from the packed @apack/* tarballs (needs npm run build)
+                                 # outside the monorepo from the packed @apack/* tarballs (needs npm run build:default-setup && npm run build:runtime)
 npm run test:packaged-authoring:author  # The half that needs no app — eight of its nine phases
 npm run test:packaged-authoring:app     # The ninth, against the built app, from the author half's archive
-npm run compile          # Build packages/default-setup — `apack build`, the command every pack is built by:
+npm run build:default-setup          # Build packages/default-setup — `apack build`, the command every pack is built by:
                          # compiled content, snapshot, facade types, DSL defs, dist/runtime/index.cjs and fe.js
 
 npm run db:query -- "<code>"   # apack db query on the dev app's data (also db:exec, db:repl, db:inspect,
@@ -620,7 +620,7 @@ npm run facade:check     # A chain step: fails if the facade the pack's sources 
                          # barrels and re-bundles the facade itself (2.7s, median of 3, 2.7-2.8s, 86% idle,
                          # 2026-10-07), so `dist` is never its subject and a build from older sources cannot
                          # be mistaken for one. That is what makes it a step rather than a line appended to
-                         # `compile`, where it cost that step 2.7s in series for an ordering it stopped
+                         # `build:default-setup`, where it cost that step 2.7s in series for an ordering it stopped
                          # needing. Not a typecheck leg either, for the one reason a leg may not: it writes,
                          # regenerating the barrel it bundles. `--skip-generate` is for a caller that has
                          # just done that — `npm run typecheck` ahead of its pool — and makes it a pure read
@@ -632,7 +632,7 @@ npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same 
                          # `apack build` warns when the report has fallen behind the bundle it just produced
                          # — free there, and a nudge rather than the gate: failing would mean a pack author
                          # could not start their app until they had rewritten a reviewed artifact mid-change.
-                         # `compile` declares etc/ because of that read, so the warning is keyed; what fails
+                         # `build:default-setup` declares etc/ because of that read, so the warning is keyed; what fails
                          # on it is the facade:check step
 
 # Manifest JSON schema (-w @apack/sdk)
@@ -762,14 +762,14 @@ exactly the two-part test above, met; the ones that do not meet it are still the
 **So the question to ask of a spec here is which of the two halves it has**, and `npm run chain -- --e2e`
 is how you run the suite when a change is in that territory.
 `npm run chain -- --e2e` runs it with the chain when you want it — ordered after `test:smoke`, since both
-drive Playwright at `tests/results` — and `npm test` runs it alone.
+drive Playwright at `tests/results` — and `npm run test:e2e` runs it alone.
 
 Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
 
 ```bash
-npm test                              # Run all E2E tests
-npm test -- smoke                    # One directory: smoke, ui or app-integration
-DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
+npm run test:e2e                     # Run all E2E tests
+npm run test:e2e -- smoke                    # One directory: smoke, ui or app-integration
+DEBUG_E2E=1 npm run test:e2e                  # With Electron stdout/stderr logging
 npm run test:headed                   # Show the app's windows, to watch a test drive it. Under Playwright
                                       # they are never shown or focused (PLAYWRIGHT_VISIBLE, the guard in
                                       # packages/main WindowManager, the splash and the protocol handler)
@@ -875,7 +875,7 @@ When adding new utils, put pure functions in the appropriate file under `utils/`
 
 `@apack/ears`, `@apack/sdk` and `@apack/ui` each declare an exports map whose every entry resolves source under the `@apack/source` condition and `dist/` otherwise. **What they publish is that manifest derived, not that manifest**: `stagePublishTree` (`@apack/host/build/published-manifest`) writes `packages/<pkg>/publish/` at build time — the manifest without its source branches, without an entry a source branch was the whole of, and without `scripts`, beside a copy of what `files` names. A tarball ships no `src/`, and Node picks a matching condition and *then* requires the file, so a published source branch is a resolution failure for anyone who enables the condition rather than a fallback to `dist` — without the staging step the three maps name 99 files no tarball holds. `@app/publish-checks`' `published-manifest-paths` holds all five published trees to naming only files their tarball contains. **Two of the three maps are written, one is derived**, which is why only one has a staleness check: `@apack/ears` (3 entries) and `@apack/sdk` (31) list their exports by hand, so the map *is* the definition of public — a module nobody listed is private, and the first import of one fails at resolution with `ERR_PACKAGE_PATH_NOT_EXPORTED`, while `build-package`'s `assertExportTargetsBuilt` catches the other direction, an entry pointing at something that wasn't built. `@apack/ui` (69) computes its map from `src/` instead, since a component is public unless it is a spec or under `internal/`; that gives two things that can disagree, so `exports:check` compares them and `exports:update` rewrites the map. Adding a public module to `ui` means regenerating; adding one to `ears` or `sdk` means listing it. **A host config declares that condition outright; a pack's config declares none.** The host configs name it — tsconfig `customConditions`, Vite/Vitest `resolve.conditions`, esbuild/tsup `conditions`, `node --conditions` (the CLI bin's resolve hooks in source mode, the API process the app spawns from source) — and nothing infers it from an install. `npm run check:specifiers` fails a host config that omits it and a pack config that declares it. Two tables in `scripts/lib/import-source-conditions.ts` record the configs that do the opposite on purpose, each with its reason, and report an entry that has stopped applying: `RESOLVES_DIST_BY_DESIGN` (host configs resolving `dist`, such as the API Extractor tsconfigs) and `DECLARES_SOURCE_BY_DESIGN` (pack configs declaring the condition). The second is empty and meant to stay much the smaller of the two: it is for a host-side config that physically sits in a pack's tree, which is usually better moved out, and never for making a pack's own build work — that pack would then build unlike every pack author's, which is the failure the rule exists to prevent. Its doc comment has the full rule.
 
-A pack — built-in (`packages/default-setup`), fixture (`tests/packs/*`) or external — is built and tested by `apack build` and `apack test`, which resolve the `@apack` packages' published `dist`: the one layout a pack author ever has. The app's own builds are host builds and compile that same pack's sources with the condition (`renderer/vite.config.ts`, `api/tsup.config.ts`), so in a checkout that `dist` has to exist and match the source beside it: `npm run packages:ensure` (`scripts/ensure-packages-built.ts` over `@apack/host/build/packages-built`) rebuilds it when `@apack/ears`, `@apack/sdk`, `@apack/ui`, `@apack/testing` or `@apack/cli` is stale, and `npm run typecheck`, `npm test`, `npm run build`, `npm run compile`, `npm run typecheck:pack` and `npm run test:external-pack` all run it first, as `apack test` and `apack dev` do for a pack linked to a checkout. `@apack/testing` resolves its built bundle whoever loads it, the repo's own E2E included, so the fixture a pack runs is the one this repo runs. While `npm start` is running, the renderer and the API follow your `@apack` source edits live (both declare the condition), but everything `apack build` produced for the built-in pack — its compiled content, facade types, step build and content runtime — was made against `dist` as it stood when the command ran, and default-setup's own tsconfig declares no condition, so your editor type-checks it against that `dist` until something rebuilds it. `packages/apack-testing/CLAUDE.md` lists every entry point that does. Node commands that load workspace source run through `node scripts/with-source.mjs <command>`, which appends the condition to `NODE_OPTIONS` (`npm test`, the api's `db:*` scripts); run Playwright through `npm test -- <args>`, which carries the condition. The CLI and the API's dev boot fail when they would resolve a checkout's `dist` instead of its source. `npm run packages:build` writes `dist/`; `npm run exports:update -w @apack/ui` regenerates the UI exports map after adding or removing a module. To publish a `@apack/ui` component, add a `.ts` entry module next to it (`design/button.ts`: `export { default } from './button.vue'; export * from './button.vue';`) and run `exports:update`. TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. SFCs without an entry are internal: other `@apack/ui` files import them by relative path, and `exports:update` fails if code outside `@apack/ui` imports one.
+A pack — built-in (`packages/default-setup`), fixture (`tests/packs/*`) or external — is built and tested by `apack build` and `apack test`, which resolve the `@apack` packages' published `dist`: the one layout a pack author ever has. The app's own builds are host builds and compile that same pack's sources with the condition (`renderer/vite.config.ts`, `api/tsup.config.ts`), so in a checkout that `dist` has to exist and match the source beside it: `npm run packages:ensure` (`scripts/ensure-packages-built.ts` over `@apack/host/build/packages-built`) rebuilds it when `@apack/ears`, `@apack/sdk`, `@apack/ui`, `@apack/testing` or `@apack/cli` is stale, and `npm run typecheck`, `npm test`, `npm run build:default-setup`, `npm run typecheck:pack` and `npm run test:external-pack` all run it first, as `apack test` and `apack dev` do for a pack linked to a checkout. `@apack/testing` resolves its built bundle whoever loads it, the repo's own E2E included, so the fixture a pack runs is the one this repo runs. While `npm run dev` is running, the renderer and the API follow your `@apack` source edits live (both declare the condition), but everything `apack build` produced for the built-in pack — its compiled content, facade types, step build and content runtime — was made against `dist` as it stood when the command ran, and default-setup's own tsconfig declares no condition, so your editor type-checks it against that `dist` until something rebuilds it. `packages/apack-testing/CLAUDE.md` lists every entry point that does. Node commands that load workspace source run through `node scripts/with-source.mjs <command>`, which appends the condition to `NODE_OPTIONS` (`npm run test:e2e`, the api's `db:*` scripts); run Playwright through `npm run test:e2e -- <args>`, which carries the condition. The CLI and the API's dev boot fail when they would resolve a checkout's `dist` instead of its source. `npm run packages:build` writes `dist/`; `npm run exports:update -w @apack/ui` regenerates the UI exports map after adding or removing a module. To publish a `@apack/ui` component, add a `.ts` entry module next to it (`design/button.ts`: `export { default } from './button.vue'; export * from './button.vue';`) and run `exports:update`. TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. SFCs without an entry are internal: other `@apack/ui` files import them by relative path, and `exports:update` fails if code outside `@apack/ui` imports one.
 
 When adding new EARS or FE exports, put them in the correct barrel. Tag exports only the host uses `@internal` and name them `_x`: the underscore is what makes the boundary checkable, so pack code importing one fails `check:specifiers` (and `apack build`, for an external pack). A pack that needs one needs it promoted to public API instead. After changing public exports, run `npm run api:update` in `packages/apack-sdk` (or `packages/apack-ears`, `packages/apack-ui`) and commit the updated `etc/*.api.md` reports. A UI component's props, emits, slots and exposed members are reported in `etc/<entry>.component.md`, so changing them needs `api:update` too. The pack-facing SDK exposes no `any` (`published-sdk-any.integration.spec.ts` fails when an export does; use `unknown` or a generic); `@apack/ears`, `@apack/sdk` and `@apack/ui` support TypeScript 5.7 and later (`packages/typescript-floor`; `ai` 7's declarations need it).
 
@@ -912,7 +912,7 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 `APACK_ENV` and `APACK_USER_DATA_DIR` are the **handoff**, not the selector: how a parent process tells a child what it is and where its data is. `--build`/`APACK_BUILD` is what a person types, and the two are deliberately different names — collapsing them would put the choice and the answer under one word, which is the confusion the resolver exists to end.
 
 - The log directory is the one app path the resolver doesn't give you: only the Electron process can ask the platform for it. `packages/main/src/app-context.ts` resolves it once — `app.getPath('logs')`, or `<userDataDir>/logs` when the run was given its own data dir — and hands it to electron-log, to the API (`APACK_LOG_DIR`) and to the IPC that opens the log file, so none of them decides it for itself.
-- The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel stamped by `build/build.sh` (`production` | `beta`; an unstamped packaged build refuses to start); source runs → `APACK_ENV` if set, else `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process.
+- The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel from `build/build-metadata.ts` (`production` | `beta` | `preview`; an unstamped packaged build refuses to start); source runs → `APACK_ENV` if set, else `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. `npm run build:preview -- --version 0.4.0` creates a local unsigned preview with separate data and shared main/API version metadata; see `docs/reference/preview-builds.md`.
 - Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 SHIPPED_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js`. Such an API makes up its own token and writes it to `<copy>/api-token`; send that to call it.
 - The API takes calls only with a token. Electron main creates one per app run and passes it to the API (`APACK_API_TOKEN`); an API started without one makes up its own; the app's windows read it through the preload (`api:token`) and send it when connecting, and in development (or when it made up its own) the API writes it to `apiTokenFile` for local tools (`apack dev`, default-setup's watcher), which send it in `API_TOKEN_HEADER`. That header and the address the API listens on (`API_HOST`, `127.0.0.1` only) are defined once, in `@apack/sdk/utils/pure`, so the renderer's client uses the same ones.
 - CLI commands pass `{ env }` explicitly (`install`/`uninstall`/`list`/`open` default to production; `-d`/`-b` select dev/beta).
@@ -937,7 +937,7 @@ Rules for default-setup migrations (details in `packages/apack-host/src/migratio
 
 - **Target the next release version** — name the file after the version it targets (e.g. `0.2.4.ts` runs when the app is released as 0.2.4+). Several changes for one release go in the same file.
 - **Never bump `package.json` version manually** — the release process handles version bumps. Migrations are written ahead of time to target the upcoming release.
-- **Declare it in `packages/default-setup/apack.json`** under `migrations.app`, keyed by that version; `apack add migration <version> --app` writes the entry and the file, and `npm run compile` regenerates the pack entry. A pack whose data moves when the pack does uses `migrations.pack`, which is that command's default.
+- **Declare it in `packages/default-setup/apack.json`** under `migrations.app`, keyed by that version; `apack add migration <version> --app` writes the entry and the file, and `npm run build:default-setup` regenerates the pack entry. A pack whose data moves when the pack does uses `migrations.pack`, which is that command's default.
 - **Idempotent guards** — always check if the change is needed before applying (e.g. `if (!value) set(value)`), since migrations run again on every development boot, on each beta of their release, and after a reset.
 
 ### Path aliases

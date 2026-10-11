@@ -12,7 +12,7 @@
 //
 // **And nothing else excluded them.** `holdChainLock` keeps one chain run per checkout, and `withBuildLock`
 // (`@apack/host/build/packages-built`) keeps one build of the five `@apack` packages; a pack's own build sat
-// between the two with no lock, so `npm run compile` run beside a chain, or two agents in one checkout, raced.
+// between the two with no lock, so `npm run build:default-setup` run beside a chain, or two agents in one checkout, raced.
 // What that costs is not only a broken `dist`: a reader of the pack's `dist/build` while one build has moved it
 // aside sees no build dir at all, which is how a dependent's content compiler comes back unresolved.
 //

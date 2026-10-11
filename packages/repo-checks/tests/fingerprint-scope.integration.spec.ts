@@ -24,7 +24,7 @@ const filesUnder = (input: string): readonly string[] => {
  * A CLAUDE.md edit runs nothing. That is the first entry in the root CLAUDE.md's list of time-wasters, and
  * it is first because it is the one most often ignored — but it was a claim about the chain that the chain
  * did not hold: five guides sit inside a declared `src/` or `tests/` tree rather than at a package root, so a
- * sentence of prose re-ran up to four steps, `compile` among them. `fingerprintUnit` skips them now, and this
+ * sentence of prose re-ran up to four steps, `build:default-setup` among them. `fingerprintUnit` skips them now, and this
  * is the claim itself, asserted rather than believed.
  *
  * Checked through `fingerprintWithDigests`, which is the hash a step's cache key is taken over, so this and
@@ -171,11 +171,11 @@ describe('prose costs nothing', () => {
   const CONTENT_IN_A_KEY: Record<string, string> = {
     // A hand-edited report is the one hole the deleted API stamp could not see, so `api:check` keys on them
     'packages/apack-sdk/etc/index.api.md': 'api:check',
-    // The same hole in the pack's facade report, which the `facade:check` step compares against. `compile`
+    // The same hole in the pack's facade report, which the `facade:check` step compares against. `build:default-setup`
     // declares it too — the build reads it to warn — but the step that fails on it is the one named here
     'packages/default-setup/etc/pack-types.api.md': 'facade:check',
     // Content sources compile into the rows a user gets
-    'packages/default-setup/src/content/notes/welcome.md': 'compile',
+    'packages/default-setup/src/content/notes/welcome.md': 'build:default-setup',
     // The CLI's scaffold, rendered into a new pack and read by the specifier rules
     'packages/apack-cli/templates/pack/README.md': 'check:specifiers',
     // Test input, read by the content-parity goldens
@@ -209,12 +209,12 @@ describe('prose costs nothing', () => {
   });
 
   // The subject is a walk, and a walk that reaches nothing reports no offence. The guide this once cost the
-  // most for is the case: it is in `compile`'s declared tree, so only the skip keeps it out.
+  // most for is the case: it is in `build:default-setup`'s declared tree, so only the skip keeps it out.
   it('would see one that was in a step, so the rule above can fail', () => {
     const content = 'packages/default-setup/src/content/CLAUDE.md';
     expect(guides(), content).toContain(content);
-    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const compile = CHAIN_STEPS.find((step) => step.name === 'build:default-setup')!;
     expect([...fingerprinted(compile)].some((file) => file.startsWith('packages/default-setup/src/content/')),
-      'compile no longer reads the tree that guide sits in, so this case proves nothing').toBe(true);
+      'build:default-setup no longer reads the tree that guide sits in, so this case proves nothing').toBe(true);
   });
 });

@@ -31,21 +31,11 @@ import { repoFiles } from './_support/repo-files.ts';
  * already allows. Both passed without their entry, so both are gone.
  */
 const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> = {
-  'packages/apack-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read', 'channel'], why: 'the resolver itself' },
+  'packages/apack-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read'], why: 'the resolver itself' },
   'packages/main/src/app-context.ts': {
-    patterns: ['env-read', 'channel'], why: 'main-process bootstrap: infers the environment once',
+    patterns: ['env-read'], why: 'main-process bootstrap: infers the environment once',
   },
-  'packages/main/vite.config.js': { patterns: ['env-read', 'channel'], why: 'build time: bakes the release channel stamp' },
-  'packages/main/vitest.config.ts': {
-    patterns: ['channel'], why: 'test time: supplies the stamp the build bakes, so the bootstrap can be tested',
-  },
-  // Not the `export APACK_ENV=production` the old reason named — no pattern here matches shell. What
-  // fires is `__APACK_CHANNEL__` in a comment explaining the stamp, which is worth knowing before
-  // someone rewords it and wonders why the entry went stale
-  'build/build.sh': { patterns: ['channel'], why: 'build time: its comment names the channel stamp it bakes' },
-  'build/prod/clean.sh': {
-    patterns: ['data-dir'], why: 'manual cleanup script that deliberately removes a packaged app\'s data dir',
-  },
+  'packages/main/vite.config.js': { patterns: ['env-read'], why: 'development launcher: resolves the environment of the app it spawns' },
   'packages/repo-checks/tests/identity-guard.spec.ts': {
     patterns: ['data-dir', 'channel'], why: 'this guard, which has to spell the patterns it looks for',
   },

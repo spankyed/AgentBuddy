@@ -18,20 +18,19 @@ import { boundHost } from '../runtime/host-runtime.ts';
  * `APP_ENVS: readonly AppEnv[]` accepted a list missing a member, and the one thing that reads it is the guard
  * below — so an environment left out of the array would be rejected at startup as invalid.
  */
-export const APP_ENVS = ['production', 'beta', 'development', 'test'] as const;
+export const APP_ENVS = ['production', 'beta', 'preview', 'development', 'test'] as const;
 
 export type AppEnv = (typeof APP_ENVS)[number];
 
 /**
  * What `resolveAppContext` takes, under the word the CLI uses for it.
  *
- * The same four names as `AppEnv`, which is what they are: each of the four *is* a build — a release, a
- * prerelease, a checkout and the one tests run in — and "channel" would cover only the first two.
+ * Each environment is a build: a release, a beta, a local preview, a checkout or a test run.
  */
 export type AppBuild = AppEnv;
 
-/** Channels a packaged build can be stamped with (build/build.sh → __APACK_CHANNEL__). */
-export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
+/** Channels recorded in a packaged build manifest. */
+export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
 /** The app's own directory inside Electron's `userData`. See `AppContext.appDir`. */
 const APP_DIR = 'apack';
@@ -39,6 +38,7 @@ const APP_DIR = 'apack';
 const APP_NAMES: Record<AppEnv, string> = {
   production: 'apack',
   beta: 'apack-beta',
+  preview: 'apack-preview',
   development: 'apack-dev',
   test: 'apack-test',
 };
@@ -134,7 +134,7 @@ export function resolveAppContext(input: { build?: AppBuild; profile?: string } 
   const env = input.build ?? parseAppEnv(process.env.APACK_ENV);
   if (!env) {
     throw new Error(
-      'App build unknown: pass { build } or set APACK_ENV (production | beta | development | test). ' +
+      `App build unknown: pass { build } or set APACK_ENV (${APP_ENVS.join(' | ')}). ` +
       'Processes spawned by the app receive it automatically.',
     );
   }
@@ -150,7 +150,7 @@ export function resolveAppContext(input: { build?: AppBuild; profile?: string } 
     installedPacksFile: path.join(appDir, 'installed-packs.json'),
     apiPortFile: path.join(appDir, 'api-port'),
     apiTokenFile: path.join(appDir, 'api-token'),
-    urlScheme: env === 'beta' ? 'apack-beta' : 'apack',
+    urlScheme: env === 'beta' ? 'apack-beta' : env === 'preview' ? 'apack-preview' : 'apack',
   };
 }
 
@@ -171,10 +171,10 @@ export function _inferElectronAppEnv(input: {
   if (input.playwrightTest) return 'test';
 
   if (input.isPackaged) {
-    if (input.channel !== 'production' && input.channel !== 'beta') {
+    if (input.channel !== 'production' && input.channel !== 'beta' && input.channel !== 'preview') {
       throw new Error(
         `Packaged build has no valid release channel stamp (got "${input.channel}"). ` +
-        'Build with build/build.sh, which exports APACK_ENV=production|beta.',
+        'Build with build/build.sh (production|beta) or npm run build:preview (preview).',
       );
     }
     return input.channel;

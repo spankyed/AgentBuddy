@@ -1,7 +1,7 @@
 // Resetting the app (services.appData.reset()) leaves it as a fresh boot does: an onboarded app whose settings and
 // flows were changed comes back with default settings, the built-in packs' written flows and the migrations applied
 // (its data at the app version, nothing pending; tests/services/host-runtime.spec.ts in @apack/host shows the reset's
-// order). Runs the built-in packs' built runtimes (npm run compile), as the db scripts do.
+// order). Runs the built-in packs' built runtimes (npm run build:default-setup), as the db scripts do.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

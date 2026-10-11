@@ -5,11 +5,22 @@
 // `--build` on `apack dev` should not have to learn a second one here — and because this was the half of
 // the vocabulary change with an open question in it, where the same word selecting a different axis per
 // command was the symptom.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { APP_ENVS } from '@apack/sdk/env';
 import { parseTargetEnv } from '../src/utils';
 
 describe('which build a command reads', () => {
+  it('defaults an app-bundled preview CLI to preview data, with explicit targets taking precedence', () => {
+    vi.stubEnv('APACK_CLI_CHANNEL', 'preview');
+    try {
+      expect(parseTargetEnv([]).env).toBe('preview');
+      expect(parseTargetEnv(['--production']).env).toBe('production');
+      expect(parseTargetEnv(['--build', 'beta']).env).toBe('beta');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('is production when nothing says otherwise', () => {
     expect(parseTargetEnv([])).toEqual({ env: 'production', args: [] });
   });

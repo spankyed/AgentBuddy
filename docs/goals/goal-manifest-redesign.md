@@ -1040,7 +1040,7 @@ and `migrations` is still a root key; no pack re-applies on the next boot — `c
 manifest, so byte-identical compiled content mean an unchanged hash, which is the same fact the next
 clause checks from the other side; the compiled content for default-setup are
 byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` passes;
-`npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
+`npm run build:default-setup`, `npm run test:unit`, `npm run test:external-pack` pass.
 
 ### Phase 4 — features: what they contribute, and where
 

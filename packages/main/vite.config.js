@@ -3,11 +3,9 @@ import {spawn} from 'child_process';
 import electronPath from 'electron';
 import {defineConfig, defaultServerConditions} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
+import {appBuildOutput} from '../../build/build-metadata.ts';
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
-  define: {
-    __APACK_CHANNEL__: JSON.stringify(process.env.APACK_ENV || ''),
-  },
   // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {
     noExternal: [/^@apack\/(sdk|host)/],
@@ -17,7 +15,7 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   build: {
     ssr: true,
     sourcemap: mode === 'development' ? 'inline' : false,
-    outDir: 'dist',
+    outDir: appBuildOutput('main'),
     assetsDir: '.',
     target: `node${getNodeMajorVersion()}`,
     lib: {
@@ -113,7 +111,7 @@ function handleHotReload() {
        *
        * The `NODE_ENV` check above is the *bundle's* mode and says nothing about this: a source run takes its
        * environment from `APACK_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
-       * `APACK_ENV=beta npm start` is a beta app. Reading this hook as "development by definition" is what
+       * `APACK_ENV=beta npm run dev` is a beta app. Reading this hook as "development by definition" is what
        * let it push an unauthenticated debug port onto one.
        */
       const { _inferElectronAppEnv, resolveAppContext } = await import('@apack/sdk/env');

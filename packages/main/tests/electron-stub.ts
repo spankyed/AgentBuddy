@@ -17,6 +17,7 @@ export const app = {
     return this.paths.get(key) ?? `/platform/${key}/${this.name}`;
   },
   getVersion: () => '0.0.0-test',
+  getAppPath: () => '/stub/app',
 };
 
 /** Puts `app` back as a fresh Electron would hand it over, between tests. */

@@ -11,8 +11,7 @@ cd "$SCRIPT_DIR/.."
 
 # Channel detection (--beta flag)
 CHANNEL="production"
-# Every packaged build is stamped with its channel (baked into main as __APACK_CHANNEL__);
-# an unstamped packaged app refuses to start rather than guessing
+# The selected channel is recorded once in the staging manifest.
 export APACK_ENV=production
 for arg in "$@"; do
   if [[ "$arg" == "--beta" ]]; then
@@ -53,11 +52,10 @@ echo "🚀 apack ${CHANNEL_LABEL} Build"
 echo "=========================================="
 echo ""
 
-# Step 1: Clean previous builds
-echo -e "${BLUE}[1/7]${NC} Cleaning previous builds..."
-rm -rf dist/
-rm -rf packages/*/dist/
-echo -e "${GREEN}✓${NC} Clean complete"
+# Step 1: Prepare the selected build environment
+echo -e "${BLUE}[1/7]${NC} Preparing build environment..."
+
+echo -e "${GREEN}✓${NC} Environment ready"
 echo ""
 
 # Step 2: Install dependencies
@@ -66,6 +64,9 @@ echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 # even if NODE_ENV=production leaked from a previous session (see docs/reference/node-env-build-failure.md)
 NODE_ENV=development npm install --loglevel warn
 unset NODE_ENV
+APACK_BUILD_ROOT="$(npx tsx scripts/stage-app-build.ts)"
+export APACK_BUILD_ROOT
+echo "  Staging: $APACK_BUILD_ROOT"
 
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
@@ -74,18 +75,18 @@ echo ""
 npm run generate:entries -w @app/default-setup
 
 # Step 3: Compile default-setup
-if [ -z "$SKIP_COMPILE" ]; then
+if [ -z "$SKIP_DEFAULT_SETUP_BUILD" ]; then
   echo -e "${BLUE}[3/7]${NC} Compiling default-setup..."
-  npm run compile
+  npm run build:default-setup
   echo -e "${GREEN}✓${NC} Default-setup compiled"
 else
-  echo -e "${BLUE}[3/7]${NC} Skipping default-setup compilation (SKIP_COMPILE set)"
+  echo -e "${BLUE}[3/7]${NC} Skipping default-setup compilation (SKIP_DEFAULT_SETUP_BUILD set)"
 fi
 echo ""
 
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
-npm run build
+npm run build:runtime
 # The CLI the app bundles (Resources/cli/apack runs it)
 npm run build:package -w @apack/cli
 echo -e "${GREEN}✓${NC} Packages built"
@@ -179,5 +180,5 @@ fi
 echo ""
 echo "📦 Next steps:"
 echo "  1. Copy dev data: npm run copy-dev-data"
-echo "  2. Test the app: npm run prod-app"
+echo "  2. Test the app: npm run start:packaged -- --channel $APACK_ENV"
 echo ""

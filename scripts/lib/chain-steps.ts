@@ -27,7 +27,7 @@ import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
 
 
 export interface ChainStep {
-  /** The npm script, as `npm run <name>` (or `npm test` for the E2E suite) */
+  /** The npm script, as `npm run <name>` */
   readonly name: string;
   /**
    * What the step reads, repo-relative; a directory is walked. This is its cache key, the same shape
@@ -63,8 +63,8 @@ export interface ChainStep {
    * does — overwrites what the attempt being diagnosed wrote. A teardown that hung for 60s was
    * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
    *
-   * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:app` and
-   * `compile` write hundreds of megabytes of it — which explains no failure and would be copied on every
+   * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:runtime` and
+   * `build:default-setup` write hundreds of megabytes of it — which explains no failure and would be copied on every
    * one. Deriving it as "outputs nothing else reads" is the clever repair and gives a wrong answer in
    * silence. `chain-table.spec.ts` holds each entry to being a path the step declares it writes, so one
    * naming a tree nobody writes fails rather than copying nothing.
@@ -301,8 +301,8 @@ export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_S
     const direct = steps
       .filter((other) => other.name !== step.name && (other.outputs ?? []).some((output) => consumes(step, output)))
       .map((other) => other.name);
-    // Transitively reduced, so the graph reads like the table did: `compile` needs `packages:ensure` and
-    // everything after it needs `compile`, rather than every step naming every ancestor.
+    // Transitively reduced, so the graph reads like the table did: `build:default-setup` needs `packages:ensure` and
+    // everything after it needs `build:default-setup`, rather than every step naming every ancestor.
     const reachable = (name: string, seen = new Set<string>()): Set<string> => {
       const other = steps.find((candidate) => candidate.name === name);
       for (const next of other ? dependsOn(other, steps) : []) {
@@ -399,11 +399,9 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
 }
 
 /**
- * In dependency order. `compile` stays ahead of `build` and is not redundant with it: `build -ws` gives no
- * ordering guarantee, since no workspace declares a dependency on `@app/default-setup`, and the renderer's
- * build reads the generated pack entry that `compile` writes.
+ * In dependency order. `build:default-setup` builds the built-in pack before `build:runtime` reads its outputs.
  *
- * `test:external-pack` is split: its contract half runs here, before `build`, because validating,
+ * `test:external-pack` is split: its contract half runs here, before `build:runtime`, because validating,
  * building and typechecking a pack and running its harness specs needs no app — proved by running it with
  * `packages/renderer/dist` moved aside. Its Playwright half needs the app.
  *
@@ -516,11 +514,11 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
 const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
-  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs', 'build/build-metadata.ts', 'package.json',
   // The drive layer's one tracked file. The driving scripts beside it are gitignored and ad-hoc, so naming
   // the directory would re-run a typecheck every time someone poked at the app
   'drive/playwright.config.ts',
-  'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
+  'build/prod/verify-node-modules.mjs',
   'packages/apack-cli/bin/apack.mjs', 'packages/apack-cli/bin/source-hooks.mjs',
   'packages/apack-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
   'packages/dev-mode.js', 'packages/entry-point.mjs'];
@@ -567,7 +565,7 @@ export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'pack
  * It was a field until 2026-10-02, on the recorded grounds that deriving it would let a step that gains an
  * app dependency be "silently reclassified instead of refused". That argument does not hold, and the reason
  * is worth keeping: **the expensive consequence is already derived from the same inputs.** A step declaring
- * `APP_OUTPUTS` runs after `build:app` because `dependsOn` reads outputs against inputs, whatever any field
+ * `APP_OUTPUTS` runs after `build:runtime` because `dependsOn` reads outputs against inputs, whatever any field
  * says — so the field could not be the thing that made an app dependency deliberate. What it did was carry a
  * second copy of that fact, which `check:tiers` then spent two of its three clauses keeping equal.
  *
@@ -585,7 +583,7 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
 /**
  * What *runs* the app's builds, as against what those builds read.
  *
- * `build:app` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
+ * `build:runtime` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
  * four commands now, and these decide which workspaces are built and how. A pass recorded before the leg
  * table changed is not evidence about the pass after it — drop a leg and the step would otherwise stay
  * fresh while producing one `dist` fewer.
@@ -598,7 +596,7 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
  * `scripts/bounded.ts` wrapper a shell-script step runs under, and declaring the wrapper would re-run four
  * builds for an edit that cannot reach them.
  */
-const APP_RUNNER = ['scripts/build-app.ts', 'scripts/lib/app-build-legs.ts', 'scripts/lib/bounded-spawn.ts',
+const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.ts', 'scripts/lib/bounded-spawn.ts',
   'scripts/lib/chain-schedule.ts', 'scripts/lib/exit-on-epipe.ts', 'scripts/lib/measure.ts'];
 
 /**
@@ -623,15 +621,15 @@ const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', '
   'scripts/lib/spec-durations-reporter.ts',
   'scripts/lib/spec-halves.ts', ...BOUNDED_RUNNER];
 /**
- * What `compile` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
+ * What `build:default-setup` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
  * invalidating itself the first time codegen stops being byte-identical.
  */
 export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
 
 /**
- * The built-in pack's own sources, which **two steps compile**: `compile`, which is the pack's build, and
- * `build:app`, because the app is built from them too. That second reader is the surprising one and the reason
+ * The built-in pack's own sources, which **two steps compile**: `build:default-setup`, which is the pack's build, and
+ * `build:runtime`, because the app is built from them too. That second reader is the surprising one and the reason
  * this is named rather than spelled twice — the renderer's `builtInPacksPlugin` generates a module of static
  * imports of the pack's generated FE entry, so Vite follows them into each feature's `fe` directory and the pack's
  * components land in the renderer bundle, while the api's tsup traces its generated BE entry the same way.
@@ -653,13 +651,13 @@ const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/apac
   'packages/default-setup/package.json'];
 
 /**
- * What a step reads to derive something from the pack's sources, which `compile` and `facade:check` both do:
+ * What a step reads to derive something from the pack's sources, which `build:default-setup` and `facade:check` both do:
  * those sources, the tsconfig the declaration bundler compiles them with, the committed facade report, and
  * the `@apack/cli` bundle that does the deriving.
  *
  * Named once because the two lists are identical and nothing would notice them drifting apart — the failure
  * `packages:ensure`' inputs are derived to avoid, a few hundred lines up. The two steps differ in what they
- * *write*, not in what they read: `compile` declares `PACK_OUTPUTS`, and the check declares nothing.
+ * *write*, not in what they read: `build:default-setup` declares `PACK_OUTPUTS`, and the check declares nothing.
  */
 const PACK_DERIVED_READS = [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
   'packages/default-setup/etc', ...PACKAGE_BUILD_READS];
@@ -686,8 +684,8 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  *
  * **This cannot be derived from the spec sources, and a scan of them is not the authority.** `@app/api`'s
  * specs never name the pack's `dist`: they boot the app runtime, and host code resolves the path. Declaring
- * that suite as reading nothing let it run beside `compile` under three lanes, where it failed with
- * "Missing or unreadable settings.content.json" — after passing serially forever, because `compile` always
+ * that suite as reading nothing let it run beside `build:default-setup` under three lanes, where it failed with
+ * "Missing or unreadable settings.content.json" — after passing serially forever, because `build:default-setup` always
  * happened to finish first.
  *
  * Ground truth comes from running each suite with the tree moved aside, which is repeatable:
@@ -700,7 +698,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  *
  * `@apack/host` is listed anyway, and that is the second thing a scan would get wrong. Its
  * `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is missing, so it passes
- * without the pack and would pass vacuously if it raced `compile`. A check that silently stops checking is
+ * without the pack and would pass vacuously if it raced `build:default-setup`. A check that silently stops checking is
  * worse than one that fails, so its verdict depends on that tree and it declares it.
  */
 /**
@@ -859,8 +857,8 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
  *
  * **It does not declare the pack's `dist`, because no leg reads it.** Checked against the dep files: not
  * one of the fourteen reads `packages/default-setup/dist`. What `typecheck:pack` really reads is the 19
- * generated files under `src/__generated__`, which `compile` also writes and which `src` already covers —
- * so the edge to `compile` survives on the leg that has it, and the other fourteen stop waiting for a
+ * generated files under `src/__generated__`, which `build:default-setup` also writes and which `src` already covers —
+ * so the edge to `build:default-setup` survives on the leg that has it, and the other fourteen stop waiting for a
  * build they never read.
  *
  * What the scope narrows is the source: an edit under the renderer no longer invalidates `typecheck:ears`.
@@ -986,8 +984,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // attw opening a tarball that is no longer there — observed once, as
   // `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`, and not reproducible in 20 tries against concurrent packs,
   // which is the profile of a window rather than a collision. Measured with it in, 2026-09-27 under `--all`:
-  // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `compile` ->
-  // `build:app` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
+  // 5.5s here, 176.7s for the chain, and not on the critical path (`packages:ensure` -> `build:default-setup` ->
+  // `build:runtime` -> `test:packaged-authoring`, 111s), so running it alone costs its own time and no more. The
   // alternative is packing to a temp directory ourselves and handing attw the tarball, which is the fix if this
   // step ever needs to share a lane.
   /**
@@ -1058,9 +1056,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/build/published-manifest.ts',
       'packages/apack-host/src/build/source-resolution.ts',
       'packages/apack-host/src/replace-dir.ts'] },
-  // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
-  // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
+  // Build the built-in pack before build:runtime reads its outputs.
+  { name: 'build:default-setup', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
@@ -1083,8 +1080,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * the state `npm run typecheck` is run in.
    *
    * **Here the write cannot be observed, and that is derived rather than hoped for.** Declaring
-   * `packages/default-setup/src` reads what `compile` writes (`PACK_OUTPUTS` holds `src/__generated__`), so
-   * `dependsOn` puts this after it; `compile` runs the same codegen, so the `.inputs-hash` matches by the
+   * `packages/default-setup/src` reads what `build:default-setup` writes (`PACK_OUTPUTS` holds `src/__generated__`), so
+   * `dependsOn` puts this after it; `build:default-setup` runs the same codegen, so the `.inputs-hash` matches by the
    * time this runs and the regenerate is a no-op. One declaration gives both the edge and the quiet.
    * Declaring that write instead does not work: as an `outputs` it reverses the edge into a cycle, and the
    * graph has no way to say *written transiently, so no reader may see it* — which is a mutex rather than an
@@ -1101,7 +1098,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * stamp-reading derivation looks, so nothing would report its absence.
    */
   { name: 'facade:check', timeout: 'quick', seconds: 7, inputs: PACK_DERIVED_READS },
-  // The fixture packs depend on default-setup, so they need its snapshot from compile
+  // The fixture packs depend on default-setup, so they need its snapshot from build:default-setup
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `apack
   // build` skips `generate-entries` when its `.inputs-hash` matches. It takes no `forceArgs` because a skip
@@ -1127,8 +1124,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   ...POOL_STEPS,
   // The CLI specs that run a real build, install or child process. They need the built packages,
   // never the app — which is why they can run before `build` rather than behind it.
-  // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
-  // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
+  // Needs `build:default-setup` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
+  // on default-setup and so reads its `dist`. It used to run after `build:default-setup` only because of where it sat
   // in this table, which `orderedSteps` never promised.
   // `POOL_SECONDS`, not a literal: one cost declared twice drifts the moment somebody edits whichever copy
   // they found first
@@ -1138,21 +1135,17 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
-  // `build:app`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
-  // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
-  // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
-  // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
-  // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
+  // build:default-setup owns pack outputs; build:runtime only builds the four app workspaces.
   // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
   // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
   // and its frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`,
-  // which now holds both bundles. A pack source edit reaches this step through `compile`, which is a declared
+  // which now holds both bundles. A pack source edit reaches this step through `build:default-setup`, which is a declared
   // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
-  { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
+  { name: 'build:runtime', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
-      'packages/api/tsup.config.ts', ...APP_ENTRY,
+      'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
@@ -1199,7 +1192,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // built. It became a chain step, and then the reasoning about it became about caching a flaky pass —
   // which is a question you only ask of a regression gate. It has not caught one. Off the chain it costs
   // nothing and is still there when you want it, which is what it was for.
-  { name: 'test', timeout: 'suite', seconds: 26,
+  { name: 'test:e2e', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],

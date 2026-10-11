@@ -35,7 +35,7 @@ export const REASON_COLUMN = STEP_NAME_WIDTH + 21; // verdict(7) ␣ marker(3) �
  *
  * Three characters, blank for a step that does not, so the column is a marker rather than a classification
  * — which is what replaced it. `tier` printed `t1`/`t2`/`t3` here, three values no reader could act on,
- * where the one that changes how a run behaves is whether the step waits for `build:app`.
+ * where the one that changes how a run behaves is whether the step waits for `build:runtime`.
  */
 export const marker = (needsApp: boolean): string => (needsApp ? 'app' : '   ');
 
@@ -424,7 +424,7 @@ const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  ($
  * **The direction decides what a correlated move means, and the two are opposites.** Load can only make a
  * step slower, so rows that all came in slower may be the box; rows that all came in *faster* cannot be,
  * because nothing about contention speeds a step up — that is the table being genuinely stale, which is
- * what `build:app` at 39s against a real 13s was. Mixed directions say neither and get no sentence.
+ * what `build:runtime` at 39s against a real 13s was. Mixed directions say neither and get no sentence.
  *
  * **One row gets no verdict however far it moved.** A single step carrying a drift is that step's business,
  * and the rows are printed, so a reader sees concentration without the report computing it. The recorder

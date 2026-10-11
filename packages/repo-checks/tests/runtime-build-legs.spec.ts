@@ -1,6 +1,6 @@
-// The table `build:app` schedules, and the two claims it rests on that a type cannot make.
+// The table `build:runtime` schedules, and the two claims it rests on that a type cannot make.
 //
-// `scripts/build-app.ts` runs its work on import, so the table is its own module and this is a spec over
+// `scripts/build-runtime.ts` runs its work on import, so the table is its own module and this is a spec over
 // that module — the same split `typecheck-legs`/`typecheck.ts` has. What is worth checking is not the
 // shape, which TypeScript has, but that each `command` really names a script the workspace has: npm exits
 // **0** for `npm run <missing> -w <ws>`, having printed and done nothing, so a leg naming a renamed script
@@ -8,7 +8,7 @@
 // quoted in docs.
 import { describe, expect, it } from 'vitest';
 import { population } from '@apack/sdk/testing';
-import { APP_BUILD_LEGS, BUILD_TIMEOUT, type AppBuildLeg } from '../../../scripts/lib/app-build-legs.ts';
+import { RUNTIME_BUILD_LEGS, BUILD_TIMEOUT, type RuntimeBuildLeg } from '../../../scripts/lib/runtime-build-legs.ts';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { workspaceScripts } from '../../../scripts/lib/npm-scripts.ts';
 
@@ -18,7 +18,7 @@ import { workspaceScripts } from '../../../scripts/lib/npm-scripts.ts';
  * Extracted rather than written inline for `uncollected`'s reason (`spec-placement.spec.ts`): a firing
  * case that restates the comparison proves the fixture is wrong and not that the rule reports it.
  */
-const problems = (legs: readonly AppBuildLeg[]): string[] =>
+const problems = (legs: readonly RuntimeBuildLeg[]): string[] =>
   legs.flatMap((leg) => {
     if (leg.command.includes('${') || leg.command.includes('`')) {
       return [`${leg.name} builds its command by interpolation, which hides the workspace from every reader`];
@@ -37,22 +37,22 @@ const problems = (legs: readonly AppBuildLeg[]): string[] =>
 
 describe('the app build legs', () => {
   it('there are some, so the cases below are not reading an empty table', () => {
-    expect(population('the app build legs', APP_BUILD_LEGS).length).toBeGreaterThan(1);
+    expect(population('the app build legs', RUNTIME_BUILD_LEGS).length).toBeGreaterThan(1);
   });
 
   it('names a script each workspace really has', () => {
-    expect(problems(APP_BUILD_LEGS),
+    expect(problems(RUNTIME_BUILD_LEGS),
       'npm exits 0 for a script a workspace does not have, so this leg would build nothing and pass')
       .toEqual([]);
   });
 
   it('builds each workspace once', () => {
-    const names = APP_BUILD_LEGS.map((leg) => leg.name);
+    const names = RUNTIME_BUILD_LEGS.map((leg) => leg.name);
     expect([...new Set(names)], 'two legs for one workspace race each other for its dist').toEqual(names);
   });
 
   it('costs something, since a leg at zero is one whose timeout report reads as a bug', () => {
-    for (const leg of APP_BUILD_LEGS) expect(leg.seconds, leg.name).toBeGreaterThan(0);
+    for (const leg of RUNTIME_BUILD_LEGS) expect(leg.seconds, leg.name).toBeGreaterThan(0);
   });
 
   /**
@@ -63,26 +63,26 @@ describe('the app build legs', () => {
    * surviving one a surprise, and `chain-graph.spec.ts` holds the same pair for the bounded shell steps.
    */
   it('bounds a build at the class the chain bounds the step at', () => {
-    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'build:app');
-    expect(step, 'no build:app step, so this case has nothing to compare against').toBeDefined();
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'build:runtime');
+    expect(step, 'no build:runtime step, so this case has nothing to compare against').toBeDefined();
     expect(BUILD_TIMEOUT).toBe(step!.timeout);
   });
 
   // Over the table, since it agrees today and an assertion over agreement cannot fail on its own
   it('would report a command built by interpolation', () => {
-    const [first] = APP_BUILD_LEGS;
+    const [first] = RUNTIME_BUILD_LEGS;
     const interpolated = [{ ...first!, command: `npm run build -w \${name}` }];
     expect(problems(interpolated)).toEqual([expect.stringContaining('by interpolation')]);
   });
 
   it('would report a leg naming a script its workspace lacks', () => {
-    const [first] = APP_BUILD_LEGS;
+    const [first] = RUNTIME_BUILD_LEGS;
     const renamed = [{ ...first!, command: `npm run build-nothing -w ${first!.name}` }];
     expect(problems(renamed)).toEqual([expect.stringContaining('has no `build-nothing` script')]);
   });
 
   it('would report a leg whose command names another workspace', () => {
-    const [first, second] = APP_BUILD_LEGS;
+    const [first, second] = RUNTIME_BUILD_LEGS;
     const crossed = [{ ...first!, command: `npm run build -w ${second!.name}` }];
     expect(problems(crossed)).toEqual([expect.stringContaining('wrong one')]);
   });

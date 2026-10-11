@@ -7,6 +7,7 @@ import { consoleEars, type ConsoleScope } from '@apack/sdk/database-console';
 import { errorMessage } from '@apack/sdk/utils/pure';
 import { cliDirs } from '../../app/app-target';
 import { listProfiles } from '../../app/profiles';
+import { defaultDataBuild } from '../../utils';
 
 /** Where a command's lines go: results on stdout, what it targets and warnings on stderr */
 export interface DbIo {
@@ -32,7 +33,7 @@ const TARGET_OPTIONS = {
 export const TARGET_USAGE = [
   '  -d, --dev              The development app\'s data',
   '  -b, --beta             The beta app\'s data',
-  '  --production           The production app\'s data (what a command that only reads takes by default)',
+  '  --production           The production app\'s data (standalone CLI default; bundled CLI uses its app channel)',
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
   '  --profile <name>      An `apack dev` profile, by the name run and clean print',
   '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
@@ -88,7 +89,7 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir',
     profile !== undefined && '--profile'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
-  const env: AppEnv = beta ? 'beta' : dev ? 'development' : 'production';
+  const env: AppEnv = beta ? 'beta' : dev ? 'development' : production ? 'production' : defaultDataBuild();
   // A named app is that app's data dir, not the one APACK_USER_DATA_DIR points at: the flag says which app, and a
   // command that changes data must name one. With no flag the variable still applies, which is how the repo's
   // db:* scripts and tests read a temp data dir.

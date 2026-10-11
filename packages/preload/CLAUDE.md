@@ -6,7 +6,7 @@ The preload script every apack window loads (`packages/main`'s `WindowManager` p
 
 `tsconfig.json` has no `outDir`. It sets `noEmit: true`, so `tsc` and `tsc -p .` only type-check. But `tsc src/index.ts`, or any call that passes files or overrides `noEmit`, ignores or bypasses that and writes `.js` next to the sources in `src/`. The root `.gitignore` ignores `packages/preload/src/**/*.js` as a safety net, so nothing flags such a file. A stray `src/index.js` would be the literal target of `exposed.ts`'s `import './index.js'`.
 
-- Build: `npm run build -w @app/preload` (`vite build`), or `npm run build` / `npm start` at the root.
+- Build: `npm run build -w @app/preload` (`vite build`), or `npm run build:runtime` / `npm run dev` at the root.
 - Type-check: `npm run typecheck -w @app/preload` (`tsc --noEmit`). Root `npm run typecheck` runs it as `typecheck:preload`.
 - Test: `npm test -w @app/preload` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` pool.
 
@@ -38,7 +38,7 @@ the bridge just called — every assertion reads an empty map.
 
 - `src/index.ts` — the whole surface: builds the API objects and calls `contextBridge.exposeInMainWorld('electronAPI', …)`.
 - `src/exposed.ts` — the build entry. It imports `./index.js` for that side effect; the re-export beside it carries nothing, since the surface reaches a window through `contextBridge`.
-- `vite.config.js` — SSR library build of `src/exposed.ts` to `dist/exposed.mjs` (Electron requires `.mjs` for ESM preloads), targeting the Chrome version from `@app/electron-versions`. Inline sourcemaps in development. In `npm start` it builds in watch mode and sends the renderer dev server a `full-reload` after each rebuild.
+- `vite.config.js` — SSR library build of `src/exposed.ts` to `dist/exposed.mjs` (Electron requires `.mjs` for ESM preloads), targeting the Chrome version from `@app/electron-versions`. Inline sourcemaps in development. In `npm run dev` it builds in watch mode and sends the renderer dev server a `full-reload` after each rebuild.
 - `package.json` exports only `./exposed.mjs` → `dist/exposed.mjs`. `packages/entry-point.mjs` resolves that path and hands it to `initApp`.
 
 ## Values read at load

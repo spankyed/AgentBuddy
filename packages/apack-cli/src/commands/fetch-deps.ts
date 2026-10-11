@@ -8,7 +8,7 @@ import { CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch,
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apack/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
-import { resolveAppContext, type AppEnv } from '@apack/sdk/env';
+import { APP_ENVS, resolveAppContext, type AppEnv } from '@apack/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
 // ── Dependency value parsing ──
@@ -160,7 +160,7 @@ function unusable(depId: string, rejected: Rejected): Error {
 
 /** A pack installed in an apack's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
-  for (const env of ['production', 'beta', 'development', 'test'] as const) {
+  for (const env of APP_ENVS) {
     const found = findDepFiles(path.join(resolveAppContext({ build: env }).packsDir, depId));
     if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }

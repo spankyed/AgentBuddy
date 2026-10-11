@@ -76,7 +76,7 @@ watching one question.
   apack drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
   apack drive --state                         ->  {"value":{...},"state":"attached",...}
 
-A question is asked of the app apack dev (or npm start) is holding. One JSON object goes to stdout and
+A question is asked of the app apack dev (or npm run dev) is holding. One JSON object goes to stdout and
 nothing else, so it pipes: "value" is the answer, "state" is attached or spawned, "startedBy" says whose
 app answered, and "supervisorPid" is what ends it. The exit code is the status — 0 with a value, 3 when
 no app is running, 1 when the verb failed.
@@ -85,7 +85,7 @@ With no app running it says so and exits 3 rather than starting one: a question 
 process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
 costs one flag on the first question and an attach on every one after.
 
-An app a question started on your development data dir stays until apack dev or npm start takes the
+An app a question started on your development data dir stays until apack dev or npm run dev takes the
 directory back. One on a --profile closes itself after 10 minutes with no question attached, and each
 question resets that. apack profiles lists what is still running, and stops it.
 
@@ -482,7 +482,7 @@ export async function drive(args: string[]) {
     if (flags.build !== undefined) {
       throw new Error(
         `--build ${flags.build} names a build to launch, and a question launches nothing: it attaches to the `
-        + 'app `apack dev` or `npm start` is holding, which only a development build can be — a packaged or '
+        + 'app `apack dev` or `npm run dev` is holding, which only a development build can be — a packaged or '
         + 'test app publishes no session. Drop it, or use `apack drive <script> --build` for a run that '
         + 'launches its own app.',
       );

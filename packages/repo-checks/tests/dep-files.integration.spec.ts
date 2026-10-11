@@ -59,7 +59,7 @@ describe('the compiler says what it read', () => {
   /**
    * Which legs this can speak for, named rather than implied.
    *
-   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:fe` writes build
+   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:renderer` writes build
    * infos that record no program at all, because a solution-style config records its references and the
    * referenced configs do the compiling. Asserting the list keeps that honest in both directions — a leg
    * quietly losing its dep file shows up here, and so does one gaining it.
@@ -75,7 +75,7 @@ describe('the compiler says what it read', () => {
       .map((leg) => leg.name)
       .sort();
     expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
-      .toEqual(['typecheck:fe']);
+      .toEqual(['typecheck:renderer']);
   });
 
   it('finds dep files to read, or says plainly that there is no evidence here', () => {
@@ -299,7 +299,7 @@ describe('a dep file is checked against itself before it is believed', () => {
   });
 
   /**
-   * Why `typecheck:fe` is on the uncovered list, as a fact rather than a claim.
+   * Why `typecheck:renderer` is on the uncovered list, as a fact rather than a claim.
    *
    * The renderer *does* write build infos — three, under `packages/renderer/node_modules/.tmp` — and they
    * record no program at all: no `fileNames` key, because a solution-style config records its references
@@ -322,7 +322,7 @@ describe('a dep file is checked against itself before it is believed', () => {
 /**
  * And the same question of `apack build`, which is the other tool here that can be asked.
  *
- * Two chain steps run it — `compile` and `test:external-pack:contract`, 70s between them — and until the
+ * Two chain steps run it — `build:default-setup` and `test:external-pack:contract`, 70s between them — and until the
  * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
  * the answer all along and threw it away: esbuild's `metafile.inputs`, Rollup's `watchFiles` for the three
  * declaration bundles, and the frontend bundle's module graph.
@@ -372,7 +372,7 @@ describe('apack build says what it read', () => {
   it('finds a build record to read, or says plainly that there is no evidence here', () => {
     const found = buildReads.packsWithReads();
     if (found.length === 0) {
-      expect.fail('no pack has a .apack/reads.json: run npm run compile once, then this can check what '
+      expect.fail('no pack has a .apack/reads.json: run npm run build:default-setup once, then this can check what '
         + 'the build read. An empty run is not a passing one.');
     }
     for (const packDir of found) {
@@ -452,7 +452,7 @@ describe('apack build says what it read', () => {
   });
 
   it('reports a read the step does not declare', () => {
-    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const compile = CHAIN_STEPS.find((step) => step.name === 'build:default-setup')!;
     const elsewhere = 'packages/api/src/server.ts';
     expect(fs.existsSync(path.join(REPO_ROOT, elsewhere)), 'this case needs a real file to be about').toBe(true);
     expect(undeclared([elsewhere], compile)).toEqual([elsewhere]);
@@ -527,7 +527,7 @@ describe('a build record is checked against itself before it is believed', () =>
  * not a gate over it: the list is asserted so it cannot drift in prose, so a step gaining observation
  * shows up, and so a new step that nothing watches has to be added here deliberately.
  *
- * `typecheck:fe` is in this list and in the one above for the same reason.
+ * `typecheck:renderer` is in this list and in the one above for the same reason.
  */
 describe('what has looked at a step at all', () => {
   const observation = (): { byDepFile: string[]; byGraph: string[]; byNothing: string[] } => {
@@ -567,15 +567,15 @@ describe('what has looked at a step at all', () => {
    * resolving from the published tarballs is the thing they exist to prove. There is nothing to build here,
    * and what protects them instead is that their inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`,
    * `APP_OUTPUTS`) rather than hand-listed, which is the only protection available to a step nothing can
-   * observe. `build:app` has one leg that derivation does not reach — it compiles the built-in pack's own
+   * observe. `build:runtime` has one leg that derivation does not reach — it compiles the built-in pack's own
    * sources into the renderer and the api, which no output of another step covers — so that leg is
    * hand-listed and `chain-inputs.spec.ts` asserts it, which is the third kind of protection and the one to
    * reach for when a step reads something nothing writes. Two entries because the check is two steps, split at the app boundary. `test:smoke` and
    * `test` are the same shape: Playwright driving a real Electron process.
    *
-   * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
+   * *A tool could report, and two now are asked.* `build:default-setup` and `test:external-pack:contract` both run
    * `apack build`, which records what each bundling phase read — the describe above reads it. Measured
-   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@apack/sdk`'s and `@apack/ears`'
+   * 2026-10-02 on its first run: 285 files for `build:default-setup`, 131 of them `@apack/sdk`'s and `@apack/ears`'
    * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
    *
@@ -603,17 +603,17 @@ describe('what has looked at a step at all', () => {
       // (`PACKAGE_BUILD_OUTPUTS`) rather than hand-listed, plus the two trees it compares being declared
       // outright — which is the protection `test:packaged-authoring` relies on for the same reason.
       'api:check',
-      'build:app',
-      'compile',
+      'build:default-setup',
+      'build:runtime',
       'facade:check',
       'packages:check',
-      'test',
+      'test:e2e',
       'test:external-pack:app',
       'test:external-pack:contract',
       'test:packaged-authoring:app',
       'test:packaged-authoring:author',
       'test:smoke',
-      'typecheck:fe',
+      'typecheck:renderer',
     ]);
   });
 });

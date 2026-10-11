@@ -14,13 +14,13 @@ Things that waste the most time, in order:
   declares `docs/` among its inputs, so the chain agrees — `npm run chain -- --dry` after a doc edit reports
   every step cached. A `CLAUDE.md` is free wherever it sits, which took a change: five of them live inside
   a declared `src/` or `tests/` tree rather than at a package root, so a sentence of prose used to re-run
-  up to four steps, `compile` among them. `fingerprintUnit` skips them by name now, and repo-checks'
+  up to four steps, `build:default-setup` among them. `fingerprintUnit` skips them by name now, and repo-checks'
   *"prose costs nothing"* holds the claim this paragraph makes. The two exceptions are a spec that asserts the text and a code fence someone will
   copy: check that one command. This is first on the list because it is the one most often ignored, and a
   full `typecheck` is 11s against a doc edit's 0s.
 - **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so the only
   durations that add up are the ones along its longest chain of dependencies — `npm run chain -- --dry --all`
-  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `compile` -> `build:app` ->
+  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `build:default-setup` -> `build:runtime` ->
   `test:packaged-authoring`**, which matches the 158.3s cold run above. Nothing else is a saving.
   `test:unit:pack` is the worked example and the warning: it is **89% setup overhead** — 115s of module
   evaluation against 13s of tests, the most alarming ratio in the repo — and it is off the path, so halving
@@ -28,7 +28,7 @@ Things that waste the most time, in order:
   `packages/apack-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
   ratio getting worse. **Read the path before measuring a ratio**, which is the mistake this bullet is made
   of: two sessions went into that pool's overhead before anyone asked whether it was on the path.
-- **Running `npm run build` to test a change no build output depends on.** The renderer and API build
+- **Running `npm run build:runtime` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
   column is a solved problem: build once with `sourcemap: true` in the renderer's Vite config, decode
@@ -37,7 +37,7 @@ Things that waste the most time, in order:
   caught it, the CLI suite proves the fix.
 - **Reading the source twice to explain a bug the running app would show you.** A hang or a dropped
   event in the real app is worth one instrumented E2E run — a `console.error` in the failing path,
-  `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"` — and the run you already did wrote
+  `npm run build:api`, `DEBUG_E2E=1 npm run test:e2e -- <spec> --grep "<title>"` — and the run you already did wrote
   the app's whole output to `tests/results/app-<workerIndex>.log`, so read that before re-running. Two carefully argued
   explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
   including what to rebuild first and how to put the instrumentation back.
@@ -132,7 +132,7 @@ Rules that pay for themselves:
 
   **Skipping the phase is not the other lever.** `apack build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
-  nobody has made yet. The chain already caches `compile` on declared inputs, so an unchanged tree never
+  nobody has made yet. The chain already caches `build:default-setup` on declared inputs, so an unchanged tree never
   pays the 11.3s in the first place, and the gate would only serve a hand-run build. What is left is making
   the two builds cheaper, or leaving it.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
