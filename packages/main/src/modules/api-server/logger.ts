@@ -1,7 +1,7 @@
 import log from 'electron-log/main';
 import { app } from 'electron';
 import * as path from 'path';
-import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@abuddy/host/logs';
+import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@apack/host/logs';
 import { getAppContext } from '../../app-context.ts';
 
 // Asking for the context is what decides it, so electron-log is configured from the app's answer rather
@@ -84,7 +84,7 @@ function formatRendererArg(arg: unknown): string {
 function appendStructuredLog(fileName: string, level: string, args: unknown[]): void {
   appendCappedLine(logDir(), fileName, JSON.stringify({
     timestamp: new Date().toISOString(),
-    startupId: process.env.AGENTBUDDY_STARTUP_ID,
+    startupId: process.env.APACK_STARTUP_ID,
     level,
     message: args.map(formatRendererArg).join(' '),
     args,
@@ -118,7 +118,7 @@ export function logRendererFatal(summary: string, ...args: unknown[]): void {
 
 export function logStartupBanner(): void {
   log.info('='.repeat(60));
-  log.info(`AgentBuddy Started: ${new Date().toISOString()}`);
+  log.info(`apack Started: ${new Date().toISOString()}`);
   log.info(`Version: ${app.getVersion()}`);
   log.info(`Platform: ${process.platform}`);
   log.info(`Electron: ${process.versions.electron}`);

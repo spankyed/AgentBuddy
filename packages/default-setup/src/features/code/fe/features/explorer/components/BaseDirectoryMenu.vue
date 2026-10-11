@@ -132,7 +132,7 @@ import {
 import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal, Copy, RefreshCw } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 import { useProjectActions } from '../composables/useProjectActions.ts'
-import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
+import { useTrackedMenuOpen } from '@apack/sdk/fe'
 
 const props = defineProps<{
   baseDirectory: string

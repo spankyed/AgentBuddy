@@ -76,7 +76,7 @@ import {
   DropdownMenuRoot, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from 'reka-ui';
-import type { TabGroupColor } from '@abuddy/sdk/fe';
+import type { TabGroupColor } from '@apack/sdk/fe';
 import BrowserGroupMenuItems from './BrowserGroupMenuItems.vue';
 import './group-colors.css';
 

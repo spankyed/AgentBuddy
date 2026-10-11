@@ -5,9 +5,9 @@
 // on "load more" appends the same page twice, and two quick selections are decided by arrival order.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@abuddy/sdk/testing';
+import { answerTo } from '@apack/sdk/testing';
 import { sentCall } from '../../../_support/calls.ts';
-import type { ActionEntity } from '@abuddy/sdk';
+import type { ActionEntity } from '@apack/sdk';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -147,7 +147,7 @@ it('clears what it is waiting for once the answer lands', () => {
  * asked for, on the common path rather than an edge.
  *
  * Held by two things independently — `answersCall` refuses an empty slot, and the slot is `null` — so this
- * fires only on losing both. `abuddy-sdk/tests/events/calls.spec.ts` holds the check itself.
+ * fires only on losing both. `apack-sdk/tests/events/calls.spec.ts` holds the check itself.
  */
 it('refuses an answer carrying no call when nothing is outstanding', () => {
   const actor = listed();

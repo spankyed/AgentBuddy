@@ -30,12 +30,12 @@ Four symptoms, all the same cause:
   only job is to police two caches agreeing. The root `CLAUDE.md` states the rule being broken, about
   `packages:ensure`: *"Two caches over one body of work is the bug, not the cost."*
 - **`typecheck` is 18 heterogeneous legs under one fingerprint.** 32.6s of declared CPU, no per-leg
-  caching anywhere in `scripts/typecheck.ts`. A change to `@abuddy/ears` runs `vue-tsc` over the renderer.
+  caching anywhere in `scripts/typecheck.ts`. A change to `@apack/ears` runs `vue-tsc` over the renderer.
 - **The integration half has no per-suite cache**, because it is not pooled. Pooling was an *execution*
   decision (process economy, `docs/archive/plans/test-unit-scheduling.md`) and caching came along as a
   passenger. `test:integration` is a raw `vitest run` whose step inputs are `workspace(dir)`, not
   `suiteInputs(dir)` — which is an under-declaration rather than a naming detail. Measured 2026-10-01, the
-  files `suiteInputs` reaches that the step does not declare: 386 for `@abuddy/cli`, 1944 for
+  files `suiteInputs` reaches that the step does not declare: 386 for `@apack/cli`, 1944 for
   `@app/repo-checks`, 275 for `@app/publish-checks`. The two pool steps *derive* their inputs
   (`[...new Set(suites.flatMap(suiteInputs))]`); `test:integration` is a literal entry in the step table,
   which is the whole reason it drifted.
@@ -144,7 +144,7 @@ What the repo has and lacks, against that model:
 | | where | shape |
 |---|---|---|
 | chain steps | `scripts/lib/chain-steps.ts` | 13, hand-declared `inputs`/`outputs`/`needs`/`tier` |
-| step fingerprint | `fingerprintUnit`, `@abuddy/host/build/packages-built` | sha256 over declared inputs minus outputs/excludes |
+| step fingerprint | `fingerprintUnit`, `@apack/host/build/packages-built` | sha256 over declared inputs minus outputs/excludes |
 | per-suite cache | `poolUnitFor`, `scripts/lib/unit-pool.ts:35` | `suiteInputs(suite)`, **keyed by directory** — "a suite has one stamp whichever pool runs it" |
 | typecheck legs | `scripts/lib/typecheck-legs.ts` | 18 legs, **no cache**, and its own lane count set against the chain's |
 | integration half | `package.json` | `vitest run --config …`, **no per-suite stamps** — the inputs are `inputsForSuites` now, the inner cache is not |
@@ -170,8 +170,8 @@ which no part of this list touches — so none of it moves the cold run, and all
    number anyone feels, got none of it. Measured 2026-10-01 at 28 steps: 1715ms read per step against 189ms
    shared, where parsing all 28 stamps is 3ms. Sharing the dispatch reads (`115582524`) is what collected
    it — a warm chain went 2.5s to **0.9s**, under the 1.5s it cost at 13 steps.
-1. **An action.** One (tool, scope) pair: `tsc -p packages/abuddy-host`, `vitest --project @abuddy/ears`,
-   `oxlint .`, `abuddy build @app/default-setup`. **47 where there are 13 steps**, counted rather than
+1. **An action.** One (tool, scope) pair: `tsc -p packages/apack-host`, `vitest --project @apack/ears`,
+   `oxlint .`, `apack build @app/default-setup`. **47 where there are 13 steps**, counted rather than
    estimated — see the last section.
 
    **It replaces two types, not one.** `BuildUnit` is `{ inputs, excludes, outputs }` and `ChainStep` is
@@ -337,7 +337,7 @@ which no part of this list touches — so none of it moves the cold run, and all
 
 | piece | where | why it matters |
 |---|---|---|
-| `fingerprintUnit` / `BuildUnit` | `@abuddy/host/build/packages-built` | the hashing, the exclusion rules, `STAMP_VERSION` |
+| `fingerprintUnit` / `BuildUnit` | `@apack/host/build/packages-built` | the hashing, the exclusion rules, `STAMP_VERSION` |
 | `poolUnitFor` + stamp states | `scripts/lib/unit-pool.ts` | per-scope caching already works; this is the model to generalise |
 | `reachableFrom` | `scripts/lib/module-graph.ts:61` | AST-based on purpose — regexes invented 61 imports that do not exist |
 | `workspaceDeps` / `PACKAGE_DIRS` | `scripts/lib/workspace-deps.ts`, `import-populations.ts` | derived populations, already refusing to be empty |
@@ -421,7 +421,7 @@ nothing, which is why these came before the decisions above rather than after.
 - **Per-leg typecheck caching: worth nothing for most edits.** 7 of 11 single-package edits leave
   `typecheck:fe` stale, and it is the 6.2s critical leg. The other four save 6-8s. Decision 1.
 - **Per-suite staleness in the integration half: the largest warm-chain win on this list.** `repo-checks`
-  declares `repo: true` and is stale on any source edit; `abuddy-cli` and `publish-checks` are stale only
+  declares `repo: true` and is stale on any source edit; `apack-cli` and `publish-checks` are stale only
   within their own dependency closures, so the common case is **1 of 3 suites stale**. Measured:
   repo-checks' integration half is **5.06s** against the pooled run's 48.2s. Inner per-suite caching takes
   the common case from 48s to about 5s, and the pool pattern already exists for the unit suites.

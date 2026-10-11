@@ -3,8 +3,8 @@
 > **Done** (`352f21ce5`), except `RESET_APP`, which stays in settings deliberately — see *Disposition* below.
 >
 > **The paths below were stale when the work started.** This was written while settings was a default-setup
-> feature; it is the host's now (`packages/abuddy-host/src/features/settings/{be,fe}`), and so is the packs
-> system (`packages/abuddy-host/src/features/packs/be/system.ts`) rather than `packs/runtime/packs-system.ts`.
+> feature; it is the host's now (`packages/apack-host/src/features/settings/{be,fe}`), and so is the packs
+> system (`packages/apack-host/src/features/packs/be/system.ts`) rather than `packs/runtime/packs-system.ts`.
 > `Settings` is a host-declared entity beside `AppState`, which no pack may declare, so the store, its one
 > writer and the system answering the view are the app's; what a pack owns is the *content* of every section
 > but `plugins`, which is opaque to the host.
@@ -23,7 +23,7 @@
 - **Not removed**: the outgoing types in `OutgoingSettingsEvents`. Step 8 says to remove them, which contradicts
   step 6's choice to answer the settings plugin: a plugin declares what it receives, and it still receives these.
   They carry a comment naming the packs system as their sender instead.
-- **Unforeseen cost**: `@abuddy/testing`'s harness deliberately ran exactly one of the host's systems, settings.
+- **Unforeseen cost**: `@apack/testing`'s harness deliberately ran exactly one of the host's systems, settings.
   Content import moving means it runs two, since a pack's tests content their own compiled output constantly. That
   list is still hand-maintained and underived, and it is now longer.
 
@@ -34,17 +34,17 @@ Settings system (`features/settings/be/system.ts`) owned content data import, pr
 Three content-related concerns baked into the settings state machine:
 
 1. **`IMPORT_PACK_CONTENT`** — Calls `importCompiledContent()` with a user-chosen directory, include filters, and import mode, then syncs the root flow setting and sends the bus `PACK_CHANGED`. Emits `PACK_CONTENT_IMPORTED` / `PACK_CONTENT_IMPORT_FAILED`.
-2. **`PREVIEW_PACK_CONTENT`** — Calls `previewPackContent()` (`@abuddy/sdk/content`, generic over a compiled content directory) and reports what's available. Emits `PACK_CONTENT_PREVIEW` / `PACK_CONTENT_PREVIEW_FAILED`.
+2. **`PREVIEW_PACK_CONTENT`** — Calls `previewPackContent()` (`@apack/sdk/content`, generic over a compiled content directory) and reports what's available. Emits `PACK_CONTENT_PREVIEW` / `PACK_CONTENT_PREVIEW_FAILED`.
 3. **`toContentSelection()`** — Converts the FE's JSON-safe include shape (`null | string[]`) into `ContentSelectionSet` (`true | Set<string>`).
 
 These depend on `importCompiledContent` (from `#generated/appliers`) and `previewPackContent`.
 
-*Done since:* app reset left settings. `RESET_APP`'s `resetAppActor` only calls `services.appData.reset()`, which the host implements (`packages/abuddy-host/src/services/app-data.ts`): it empties the stores and keys, then runs each pack's `onInit` and boot apply and the app migrations. Settings still emits `APP_RESET_COMPLETE` / `APP_RESET_FAILED` and tells the brain to restart.
+*Done since:* app reset left settings. `RESET_APP`'s `resetAppActor` only calls `services.appData.reset()`, which the host implements (`packages/apack-host/src/services/app-data.ts`): it empties the stores and keys, then runs each pack's `onInit` and boot apply and the app migrations. Settings still emits `APP_RESET_COMPLETE` / `APP_RESET_FAILED` and tells the brain to restart.
 
 ## Why Move It
 
 - **Settings is the wrong owner.** Content import/preview/reset are pack-level operations. Settings happens to be where the UI lives, but the system doing the work should be the one that understands packs.
-- **The packs system already exists.** `packages/abuddy-host/src/features/packs/be/system.ts` (the host `packs` system) handles install, uninstall, and enable/disable. Content import and preview are the same domain — "manage what data a pack provides."
+- **The packs system already exists.** `packages/apack-host/src/features/packs/be/system.ts` (the host `packs` system) handles install, uninstall, and enable/disable. Content import and preview are the same domain — "manage what data a pack provides."
 - **App reset is infrastructure.** Wiping the database, re-applying, and running migrations is a host-level operation; it now lives in `services.appData.reset()`, and only its event still goes through settings.
 - **Unblocks pack-scoped applying.** Once the packs system owns content orchestration, external packs can use the same preview/import flow without routing through settings.
 
@@ -66,8 +66,8 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 ### SDK / shared utilities
 
-- `toContentSelection()` moves to `@abuddy/sdk/utils` — it's a pure data conversion with no feature coupling.
-- `previewPackContent()` is already a generic SDK utility (`@abuddy/sdk/content`); the packs system can call it directly.
+- `toContentSelection()` moves to `@apack/sdk/utils` — it's a pure data conversion with no feature coupling.
+- `previewPackContent()` is already a generic SDK utility (`@apack/sdk/content`); the packs system can call it directly.
 
 ## Steps
 
@@ -77,7 +77,7 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 2. **Move action implementations.** Lift `previewPackContent`, `importPackContent`, `resetAppActor`, and `onResetComplete`/`onResetFailed` from settings into the packs system. Move `toContentSelection()` alongside or into SDK utils.
 
-3. **Wire packs system to apply infra.** The packs system is host code, not a pack — it needs access to `importCompiledContent`. Since it already imports from `@abuddy/sdk`, `importCompiledContent` from `@abuddy/sdk/utils` and `previewPackContent` from `@abuddy/sdk/content` work; the reset calls `services.appData.reset()`.
+3. **Wire packs system to apply infra.** The packs system is host code, not a pack — it needs access to `importCompiledContent`. Since it already imports from `@apack/sdk`, `importCompiledContent` from `@apack/sdk/utils` and `previewPackContent` from `@apack/sdk/content` work; the reset calls `services.appData.reset()`.
 
 4. **Update `packsEvents` set** with the new event types so the bus routes them to the packs system.
 
@@ -99,16 +99,16 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 ### Phase 4 — preview disposition
 
-9. *Done:* preview is the SDK's generic `previewPackContent()` (`@abuddy/sdk/content`).
+9. *Done:* preview is the SDK's generic `previewPackContent()` (`@apack/sdk/content`).
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `packages/abuddy-host/src/features/packs/be/{system,types}.ts` | Preview/import handlers, `toContentSelection`, the two incoming events |
-| `packages/abuddy-host/src/features/settings/be/{system,types}.ts` | Remove the apply handlers, helper, imports and transitions |
-| `packages/abuddy-host/src/features/settings/fe/machine.ts` | Route the two sends to `packs` |
-| `packages/abuddy-testing/src/harness.ts` | Register the host `packs` system beside `settings` |
+| `packages/apack-host/src/features/packs/be/{system,types}.ts` | Preview/import handlers, `toContentSelection`, the two incoming events |
+| `packages/apack-host/src/features/settings/be/{system,types}.ts` | Remove the apply handlers, helper, imports and transitions |
+| `packages/apack-host/src/features/settings/fe/machine.ts` | Route the two sends to `packs` |
+| `packages/apack-testing/src/harness.ts` | Register the host `packs` system beside `settings` |
 
 ## Open Questions
 

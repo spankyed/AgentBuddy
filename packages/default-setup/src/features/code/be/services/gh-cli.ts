@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import https from 'https'
 import { resolveForService } from '../utils/resolve-cli.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '../types.ts'
 
 const logger = createLogger('gh-cli')

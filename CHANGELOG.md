@@ -33,7 +33,7 @@
 - style(calendar): adjust header spacing and right-align weekday labels
 - chore(plugins): reorder Calendar and Browser in plugin list
 - chore(calendar): unpin calendar plugin by default
-- chore(video): remove agentbuddy-film-landscape.mp4 output file
+- chore(video): remove apack-film-landscape.mp4 output file
 - style(renderer): reorder enum literal types to match declaration order
 
 -e # Changelog
@@ -2272,14 +2272,14 @@
 ### Features
 -  add script to generate application icons from SVG source
 -  add script to generate application icons from SVG source
--  add script for cleaning AgentBuddy production data
+-  add script for cleaning apack production data
 -  add release script for automated versioning and changelog generation
 -  add interactive release CLI and automated release pipeline
 -  add automated release pipeline with version bumping and changelog
 -  add comprehensive release process documentation for automation and CI improvements
 -  add code signing, notarization, and distribution infrastructure
 -  enhance PROD-BUILD documentation with detailed build steps and prerequisites
--  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  add PROD-BUILD documentation for production build process of apack Electron app
 -  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
 -  add frontmatter support to default-setup compilers
 -  add comprehensive import/export documentation for library metadata handling
@@ -2931,7 +2931,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  add type imports for NodeEntity and NodeKind from @apack/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -4266,7 +4266,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @abuddy
+-  update package namespace from @agent to @apack
 
 ### Other
 - update logo, fix white bandana
@@ -5517,7 +5517,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @abuddy/common
+- Rename package from @agent/common to @apack/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -5699,14 +5699,14 @@
 ### Features
 -  add script to generate application icons from SVG source
 -  add script to generate application icons from SVG source
--  add script for cleaning AgentBuddy production data
+-  add script for cleaning apack production data
 -  add release script for automated versioning and changelog generation
 -  add interactive release CLI and automated release pipeline
 -  add automated release pipeline with version bumping and changelog
 -  add comprehensive release process documentation for automation and CI improvements
 -  add code signing, notarization, and distribution infrastructure
 -  enhance PROD-BUILD documentation with detailed build steps and prerequisites
--  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  add PROD-BUILD documentation for production build process of apack Electron app
 -  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
 -  add frontmatter support to default-setup compilers
 -  add comprehensive import/export documentation for library metadata handling
@@ -6358,7 +6358,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  add type imports for NodeEntity and NodeKind from @apack/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -7691,7 +7691,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @abuddy
+-  update package namespace from @agent to @apack
 
 ### Other
 - cleanup generate-icons.sh script
@@ -8941,7 +8941,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @abuddy/common
+- Rename package from @agent/common to @apack/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -9123,14 +9123,14 @@
 ### Features
 -  add script to generate application icons from SVG source
 -  add script to generate application icons from SVG source
--  add script for cleaning AgentBuddy production data
+-  add script for cleaning apack production data
 -  add release script for automated versioning and changelog generation
 -  add interactive release CLI and automated release pipeline
 -  add automated release pipeline with version bumping and changelog
 -  add comprehensive release process documentation for automation and CI improvements
 -  add code signing, notarization, and distribution infrastructure
 -  enhance PROD-BUILD documentation with detailed build steps and prerequisites
--  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  add PROD-BUILD documentation for production build process of apack Electron app
 -  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
 -  add frontmatter support to default-setup compilers
 -  add comprehensive import/export documentation for library metadata handling
@@ -9782,7 +9782,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  add type imports for NodeEntity and NodeKind from @apack/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -11112,7 +11112,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @abuddy
+-  update package namespace from @agent to @apack
 
 ### Other
 - cleanup generate-icons.sh script
@@ -12362,7 +12362,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @abuddy/common
+- Rename package from @agent/common to @apack/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -12542,14 +12542,14 @@
 ## v0.0.2 (2026-04-03)
 
 ### Features
--  add script for cleaning AgentBuddy production data
+-  add script for cleaning apack production data
 -  add release script for automated versioning and changelog generation
 -  add interactive release CLI and automated release pipeline
 -  add automated release pipeline with version bumping and changelog
 -  add comprehensive release process documentation for automation and CI improvements
 -  add code signing, notarization, and distribution infrastructure
 -  enhance PROD-BUILD documentation with detailed build steps and prerequisites
--  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  add PROD-BUILD documentation for production build process of apack Electron app
 -  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
 -  add frontmatter support to default-setup compilers
 -  add comprehensive import/export documentation for library metadata handling
@@ -13201,7 +13201,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  add type imports for NodeEntity and NodeKind from @apack/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -14525,7 +14525,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @abuddy
+-  update package namespace from @agent to @apack
 
 ### Other
 - update defs
@@ -15762,7 +15762,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @abuddy/common
+- Rename package from @agent/common to @apack/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -15942,14 +15942,14 @@
 ## v0.0.1 (2026-04-03)
 
 ### Features
--  add script for cleaning AgentBuddy production data
+-  add script for cleaning apack production data
 -  add release script for automated versioning and changelog generation
 -  add interactive release CLI and automated release pipeline
 -  add automated release pipeline with version bumping and changelog
 -  add comprehensive release process documentation for automation and CI improvements
 -  add code signing, notarization, and distribution infrastructure
 -  enhance PROD-BUILD documentation with detailed build steps and prerequisites
--  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  add PROD-BUILD documentation for production build process of apack Electron app
 -  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
 -  add frontmatter support to default-setup compilers
 -  add comprehensive import/export documentation for library metadata handling
@@ -16601,7 +16601,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  add type imports for NodeEntity and NodeKind from @apack/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -17919,7 +17919,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @abuddy
+-  update package namespace from @agent to @apack
 
 ### Other
 - chore: reset version to 0.0.0 and fix CI release permissions
@@ -19151,7 +19151,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @abuddy/common
+- Rename package from @agent/common to @apack/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations

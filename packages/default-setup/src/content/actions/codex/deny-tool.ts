@@ -1,6 +1,6 @@
 /** CDX: Deny Tool — declines a pending approval request. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { getCodexState, killTurn, updateChatState, persistCodexState } from './_helpers/thread-context.ts';
 

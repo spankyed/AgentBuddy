@@ -3,10 +3,10 @@
  *
  * This module is a hand-rolled subprocess wrapper around the `claude` binary.
  * It keeps Claude Code the driver of the actual conversation (TOS-safe) while
- * exposing a clean, typed Node API to the rest of AgentBuddy.
+ * exposing a clean, typed Node API to the rest of apack.
  *
  * Shape:
- *   import { claudeCode } from '@abuddy/sdk/services'
+ *   import { claudeCode } from '@apack/sdk/services'
  *
  *   // Streaming conversation
  *   const conv = await claudeCode.query({ cwd, prompt: 'hi' })

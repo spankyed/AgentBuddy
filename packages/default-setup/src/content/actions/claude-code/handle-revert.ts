@@ -15,7 +15,7 @@
  * action via `services.action.getAndExecute`.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { persistClaudeState, getClaudeState, killTurn, updateChatState } from './_helpers/thread-context.ts';
 

@@ -43,7 +43,7 @@ export const CONFIG_BY_HALF: Readonly<Record<Half, string>> = {
 /**
  * The vitest configs a package runs its specs under, read from the package rather than assumed.
  *
- * Three packages have two — `@abuddy/cli`, `@app/repo-checks`, `@app/publish-checks` — and the other nine
+ * Three packages have two — `@apack/cli`, `@app/repo-checks`, `@app/publish-checks` — and the other nine
  * have one.
  */
 export function configsFor(packageDir: string): string[] {

@@ -89,13 +89,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import type { DatabaseState } from '../state.ts';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 
 const actor: DatabaseState = usePlugin();

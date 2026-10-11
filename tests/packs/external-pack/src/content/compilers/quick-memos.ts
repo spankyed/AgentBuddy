@@ -1,6 +1,6 @@
-// The "quick-memos" content format's compiler module (abuddy.json content.formats): one Memo per line
+// The "quick-memos" content format's compiler module (apack.json content.formats): one Memo per line
 import * as fs from 'node:fs';
-import type { ContentCompileContext, ContentItem } from '@abuddy/sdk/build';
+import type { ContentCompileContext, ContentItem } from '@apack/sdk/build';
 
 const titleOf = (text: string): string => `Quick: ${text}`;
 

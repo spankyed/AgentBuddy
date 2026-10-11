@@ -13,9 +13,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import CopyButton from '@abuddy/ui/design/CopyButton'
+import type { ArtifactItem } from '@apack/sdk/artifacts';
+import DataRenderer from '@apack/ui/components/DataRenderer';
+import CopyButton from '@apack/ui/design/CopyButton'
 
 const props = defineProps<{
   artifact: ArtifactItem;

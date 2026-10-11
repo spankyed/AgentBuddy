@@ -1,0 +1,785 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for editor validation."
+    },
+    "$manifestVersion": {
+      "type": "number",
+      "const": 1,
+      "description": "Schema version. Enables future format evolution."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique pack identifier. Lowercase, alphanumeric with hyphens."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable pack name."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Semver version string."
+    },
+    "builtIn": {
+      "type": "boolean",
+      "description": "Whether this pack is bundled with the host app."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of the pack's purpose."
+    },
+    "hostVersion": {
+      "type": "string",
+      "description": "Semver range for compatible host versions (e.g. \">=0.3.0\")."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier."
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references."
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ears",
+          "llm",
+          "filesystem",
+          "network",
+          "terminal"
+        ]
+      },
+      "description": "Capabilities this pack requires from the host."
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
+      },
+      "description": "EARS entity types this pack registers, each key equal to its value, the type name ({ \"Memo\": \"Memo\" }). The SDK defines Relation, Flow, Node, TNode, Action, Prompt.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
+      }
+    },
+    "relKinds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "not": {
+          "enum": [
+            "contains",
+            "transitions_to",
+            "instance_of",
+            "spawned",
+            "tracked"
+          ]
+        }
+      },
+      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "CONTAINS",
+            "TRANSITIONS_TO",
+            "INSTANCE_OF",
+            "SPAWNED",
+            "TRACKED"
+          ]
+        }
+      }
+    },
+    "entityShapes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source file path relative to pack root."
+          },
+          "type": {
+            "type": "string",
+            "description": "Exported TypeScript type name for the entity attributes."
+          }
+        },
+        "required": [
+          "source",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries."
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "designation": {
+            "type": "string",
+            "description": "Links the system to an EARS designation."
+          },
+          "settings": {
+            "type": "string",
+            "description": "Path to default settings file."
+          },
+          "typesEntry": {
+            "type": "string",
+            "description": "Additional types to include in the generated type barrel."
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string",
+                "description": "Path to the backend system module."
+              },
+              "contract": {
+                "type": "string",
+                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apack/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events."
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "incoming": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Event types this system listens for."
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Event routing declarations."
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "additionalProperties": false,
+            "description": "Backend system module."
+          },
+          "plugin": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string",
+                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
+              },
+              "contract": {
+                "type": "string",
+                "description": "\"path#exportName\" of this plugin's contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apack/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin's machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature's system events."
+              },
+              "default": {
+                "type": "boolean",
+                "description": "Show this plugin when the app starts. At most one of a pack's features may claim it; the first pack to register one across the app wins."
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "additionalProperties": false,
+            "description": "Frontend plugin definition."
+          },
+          "services": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            },
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Services. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
+          },
+          "repositories": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            },
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
+          },
+          "references": {
+            "type": "string",
+            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice."
+    },
+    "extensions": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "step",
+                  "trigger"
+                ],
+                "description": "Whether this is a regular step or a trigger. \"step\" is the default."
+              },
+              "node": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too."
+              },
+              "build": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead."
+              },
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "facet": {
+                    "type": "string",
+                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                    "description": "\"path#exportName\" of the TriggerFacet: how a track compiles, decompiles and validates."
+                  },
+                  "register": {
+                    "type": "string",
+                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                    "description": "\"path#exportName\" of the function that starts the trigger. Loaded when it is first registered."
+                  }
+                },
+                "required": [
+                  "facet"
+                ],
+                "additionalProperties": false,
+                "description": "For a trigger: its TriggerFacet and the function that starts it."
+              },
+              "fe": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of its StepFEFacet: what the flow editor draws and the form it opens."
+              },
+              "runtime": {
+                "type": "object",
+                "properties": {
+                  "handler": {
+                    "type": "string",
+                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                    "description": "\"path#exportName\" of the function that runs the step. Loaded on its first run, unless `sync`."
+                  },
+                  "sync": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "The handler's sends have to land in the brain's own dispatch, so its module is imported with the pack entry rather than on the step's first run. For a handler that both ends the flow and completes itself, where the two sends must be ordered with the transition that called it."
+                  },
+                  "isAsync": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "The handler returns a promise, so the brain reports a rejection as the step's error."
+                  },
+                  "waits": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "The step holds the flow at this node instead of completing."
+                  },
+                  "spawnsSubflow": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "The step runs another flow, which the brain spawns in place of a step node."
+                  }
+                },
+                "additionalProperties": false,
+                "description": "What the brain runs, and the flags it reads before running it."
+              },
+              "dsl": {
+                "type": "object",
+                "properties": {
+                  "primaryField": {
+                    "type": "string",
+                    "description": "The field whose value becomes the step label in the flow editor."
+                  },
+                  "defaultLabel": {
+                    "type": "string",
+                    "description": "Fallback label when primaryField is empty."
+                  },
+                  "custom": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "Marks the step as a custom (non-built-in) type."
+                  }
+                },
+                "additionalProperties": false,
+                "description": "DSL configuration for flow-helper generation."
+              }
+            },
+            "required": [
+              "node"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "description": "Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live. The type is the key, so a pack cannot declare one twice."
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "icon": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9]*$",
+                "description": "Name of the lucide-vue-next icon shown in the artifact list."
+              },
+              "fe": {
+                "type": "string",
+                "description": "Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer."
+              }
+            },
+            "required": [
+              "icon"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "description": "Artifact types this pack contributes. Each names its icon and viewer. The type is the key, so a pack cannot declare one twice."
+        },
+        "blocks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "display",
+                  "input"
+                ],
+                "description": "Whether the chat renders it as content or as something the user acts on. Display is the default."
+              },
+              "fe": {
+                "type": "string",
+                "description": "Path to the component that draws it (a .vue file, taken by its default export)."
+              },
+              "be": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of its backend facet (BlockBEFacet), for a block that summarises itself in a transcript."
+              }
+            },
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "description": "Message blocks this pack contributes. Each names where its code lives. The type is the key, so a pack cannot declare one twice."
+        },
+        "commands": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "placeholder": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What the chat shows after the command: the argument it takes, or what it does."
+              }
+            },
+            "required": [
+              "placeholder"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Slash commands this pack adds to the chat, keyed by the name typed after the \"/\". Sending one fires a `user.command` event the pack's flows handle. The type is the key, so a pack cannot declare one twice."
+        },
+        "services": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Pack-level services, belonging to no one feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file. A feature's own are its `services`."
+        },
+        "dsl": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string",
+                "description": "Path to the DSL type definition module."
+              },
+              "targets": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "monaco"
+                  ]
+                },
+                "description": "Editor targets for intellisense integration."
+              },
+              "prefix": {
+                "type": "string",
+                "description": "Namespace prefix for DSL symbols."
+              },
+              "globals": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Global type mappings injected into the DSL scope."
+              },
+              "inline": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Packages whose declarations are bundled into the editor definitions, besides @apack/* and the pack's own modules. The editor loads no node_modules, so a type it needs from another package belongs here."
+              }
+            },
+            "required": [
+              "entry",
+              "targets"
+            ],
+            "additionalProperties": false
+          },
+          "description": "DSL type definitions for Monaco editor intellisense."
+        },
+        "fe": {
+          "type": "object",
+          "properties": {
+            "tiptapPlugins": {
+              "type": "string",
+              "description": "Path to tiptap plugin registration module."
+            },
+            "appExtensions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "propertyNames": {
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Frontend contributions: what the pack adds to the app's own UI."
+        }
+      },
+      "additionalProperties": false,
+      "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types and frontend extensions."
+    },
+    "help": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled content then."
+    },
+    "settingsSections": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then."
+    },
+    "boot": {
+      "type": "object",
+      "properties": {
+        "hooks": {
+          "type": "string",
+          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack's backend stops)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Boot sequence configuration."
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "Source directory or file, relative to the pack root."
+                  },
+                  "format": {
+                    "type": "string",
+                    "pattern": "^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$",
+                    "description": "The format compiling `path`: a name in this pack's content.formats, or \"<dependency id>:<name>\" for a dependency's."
+                  },
+                  "applier": {
+                    "type": "string",
+                    "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
+                  },
+                  "onUserEdit": {
+                    "type": "string",
+                    "enum": [
+                      "theirs",
+                      "offer"
+                    ],
+                    "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
+        },
+        "datasets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Source directory or file, relative to the pack root."
+              },
+              "format": {
+                "type": "string",
+                "pattern": "^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$",
+                "description": "The format compiling `path`: a name in this pack's content.formats, or \"<dependency id>:<name>\" for a dependency's."
+              },
+              "applier": {
+                "type": "string",
+                "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
+              },
+              "onUserEdit": {
+                "type": "string",
+                "enum": [
+                  "theirs",
+                  "offer"
+                ],
+                "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
+              }
+            },
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Compiled datasets the pack reads back itself, never written to the database. Each names a format declaring no entity."
+        },
+        "formats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "markdown-tree",
+                  "json"
+                ],
+                "description": "A built-in format: a directory of markdown, or a JSON array of records."
+              },
+              "compiler": {
+                "type": "string",
+                "description": "A module in this pack whose default export compiles an entry's path into records. Used instead of \"format\"."
+              },
+              "entity": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1
+                  }
+                ],
+                "description": "The entity types the format's items are written as. Omitted, sources using it are compiled and never written (content.datasets)."
+              },
+              "identity": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "description": "Fields matched to find an existing entity (\"parent\" = the tree parent). Ignored for entity types whose owning pack registers a content writer with \"find\"."
+              },
+              "tree": {
+                "type": "object",
+                "properties": {
+                  "branch": {
+                    "type": "string",
+                    "description": "A directory's own markdown file (e.g. \"index.md\"), giving the directory's frontmatter and body."
+                  },
+                  "branchEntity": {
+                    "type": "string",
+                    "description": "The entity type directories become. Defaults to `entity`."
+                  },
+                  "relKind": {
+                    "type": "string",
+                    "description": "The relation from a parent entity to each child. Defaults to \"contains\"."
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Walk subdirectories as parent entities."
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "pattern": "^(body|filename|path|frontmatter\\.[\\w-]+)$",
+                      "description": "Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field."
+                    },
+                    "default": {
+                      "description": "Used when the source is absent. The string \"filename\" means the display name."
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "string",
+                      "description": "Coerce a present value to a string (YAML reads an unquoted 2024 as a number)."
+                    }
+                  },
+                  "required": [
+                    "from"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Item fields for markdown-tree: field name → where its value comes from."
+              },
+              "media": {
+                "type": "string",
+                "pattern": "^(?!\\.{1,2}(?:\\/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[^/\\\\:]+(?:\\/[^/\\\\:]+)*$",
+                "description": "A directory under a source's path copied with the content; media/<file> links become media://<id>/<file>."
+              }
+            },
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Named formats that turn a source into items. A content source names one; a dependent pack names one of these as \"<this pack id>:<name>\"."
+        },
+        "writers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "description": "How one entity type this pack declares is found, created, updated and removed when content is written as it (\"path#exportName\" of a ContentWriter object). Any pack writing that entity type goes through them."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A pack's content: what it ships, how it is compiled, and how it reaches the database."
+    },
+    "migrations": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "propertyNames": {
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "description": "Migrations on apack's version line, keyed by the release each targets. For data whose shape follows the app rather than this pack."
+        },
+        "pack": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+          },
+          "propertyNames": {
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "description": "Migrations on this pack's own version line, keyed by the version each targets, compared against `version` in this manifest."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`."
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "opaqueDeps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Dependencies the frontend bundle includes whole instead of tree-shaking, by package name. For a prebuilt bundle — a dependency shipped as one already-minified file, or compiled from another language — where the shake removes almost nothing and walking it is most of the build. Each ships as it is, so nothing inside it is dead-code eliminated."
+        },
+        "bundleUi": {
+          "type": "boolean",
+          "description": "Bundle a copy of @apack/ui into the pack instead of using the host app's. All of @apack/ui is bundled, so the pack never mixes the two."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Build-time configuration: settings that change what the build produces, never what the app loads."
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://apack.dev/schemas/apack.json",
+  "$comment": "Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run schema:update",
+  "title": "apack Pack Manifest",
+  "description": "Configuration manifest for an apack pack. Declares metadata, features, entities, services, extensions, content, and build-time codegen inputs."
+}

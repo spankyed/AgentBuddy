@@ -13,10 +13,10 @@
 
 Implement docs/goals/goal-one-kind-of-pack.md on AS/one-kind-of-pack, at or after 02688f256 — the base
 its Background was surveyed at. The branch was cut from master at b8c1a34f5, which contains it.
-Before Phase 1, confirm the base: `bundledLoaders` in abuddy-host/src/packs/runtime/loader.ts, the
-`if (!external)` early return in abuddy-cli/src/commands/build.ts, `builtInPacksPlugin` in
+Before Phase 1, confirm the base: `bundledLoaders` in apack-host/src/packs/runtime/loader.ts, the
+`if (!external)` early return in apack-cli/src/commands/build.ts, `builtInPacksPlugin` in
 renderer/vite.config.ts, `builtInPackLoadersModule` in api/tsup.config.ts, `partitionPolicy` in
-abuddy-sdk/src/build/manifest-schema.ts and `packages/default-setup/dev-build.mjs` all exist at HEAD. If
+apack-sdk/src/build/manifest-schema.ts and `packages/default-setup/dev-build.mjs` all exist at HEAD. If
 they don't, stop and say so — the Background was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -25,7 +25,7 @@ going. Standing rules apply as written in Constraints and root CLAUDE.md — no 
 code, stored user data excepted.
 
 The requirement that outranks the rest: after Phase 3, `npm run start` alone gives full frontend and
-backend hot reload for every pack in the workspace, with no `abuddy run` process. Phase 3 is not done
+backend hot reload for every pack in the workspace, with no `apack run` process. Phase 3 is not done
 until `tests/packs/external-pack` behaves like `packages/default-setup`.
 
 Finished when:
@@ -80,12 +80,12 @@ that was always meant to stay.
 | site | what it says | becomes |
 |---|---|---|
 | `scripts/lib/build-reads.ts:134` | `isBuiltIn` is "the one thing here whose subject this goal deletes" | **gone**, Phase 1 |
-| `abuddy-cli/src/build/build-reads.ts:28` | the first of two reasons the read record is keyed by phase | **the sentence goes**, Phase 1; the keying stays on the second reason |
+| `apack-cli/src/build/build-reads.ts:28` | the first of two reasons the read record is keyed by phase | **the sentence goes**, Phase 1; the keying stays on the second reason |
 | `repo-checks/tests/dep-files.integration.spec.ts:400` | the two-kind evidence loop, needing a built-in pack *and* an external one | **gone**, Phase 1 — one record then carries all nine phases and the loop collapses into the case above it |
 | `scripts/lib/chain-steps.ts:1083` | `build:app` declares `PACK_SOURCES` because the renderer compiles the pack's frontend | **gone**, Phase 3 — the comment says so itself: *"this comes back out with it"* |
-| `abuddy-cli/tests/build/fe-bundler-dev-server.integration.spec.ts:19` | why the `pack://` page-reload ceiling is the reason a dev-only source import exists | **stays** — it explains Phase 3's design, and is still true afterwards |
+| `apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts:19` | why the `pack://` page-reload ceiling is the reason a dev-only source import exists | **stays** — it explains Phase 3's design, and is still true afterwards |
 
-The three `build-reads` and `dep-files` rows are the same fact in three places: `abuddy build` records what
+The three `build-reads` and `dep-files` rows are the same fact in three places: `apack build` records what
 each bundling phase read, and that record is built-in-aware because a built-in pack never runs the runtime
 and frontend phases. Phase 1 is what makes it run them.
 
@@ -109,11 +109,11 @@ rather than a devex regression.
 ### What the distinction buys
 
 Exactly three privileges. `loadSingleExternalPack` strips each one from an external pack
-(`abuddy-host/src/packs/runtime/loader.ts:235-257`), with a warning:
+(`apack-host/src/packs/runtime/loader.ts:235-257`), with a warning:
 
 | privilege | declared | who uses it |
 |---|---|---|
-| `earlySystem` — the system starts before EARS hydration, outside the bus | `manifest-schema.ts:173`, refused for external packs at `:259` | **one feature in the repo**: default-setup's `logs` (`packages/default-setup/abuddy.json:238`) |
+| `earlySystem` — the system starts before EARS hydration, outside the bus | `manifest-schema.ts:173`, refused for external packs at `:259` | **one feature in the repo**: default-setup's `logs` (`packages/default-setup/apack.json:238`) |
 | `boot.contentManifest` — the declarative content path, with `contentPolicy` | `pack-registration.ts:20`, `manifest-schema.ts:122` | default-setup's seven content sources |
 | `ears.partitionPolicy.excludedEntityTypes` | `loader.ts:250-257`, consumed at `database/schema.ts:174` | **nobody** — default-setup's is `{"excludedEntityTypes": []}` |
 
@@ -129,7 +129,7 @@ undercounted it:
 1. the renderer's `builtInPacksPlugin` (`renderer/vite.config.ts`) — the frontend, dev and production;
 2. the api's tsup generating a loaders module and bundling the backend into the api bundle
    (`api/tsup.config.ts:5,11`);
-3. `abuddy build`, which **returns early for a built-in pack** (`abuddy-cli/src/commands/build.ts:305-310`,
+3. `apack build`, which **returns early for a built-in pack** (`apack-cli/src/commands/build.ts:305-310`,
    *"Built-in packs' FE is compiled into the renderer … and their backend into the API bundle, never loaded
    from dist/"*) — so it produces content, types, defs and a snapshot and then stops, skipping
    `bundlePackRuntime` and `bundlePackFE`;
@@ -170,7 +170,7 @@ plus its refinement.
 eleven are named by no step below, because most are axis 1 and stay: `BUILT_IN_PACKS_DIR` in
 `main/src/modules/api-server/config.ts`, `pack.ts` refusing to pack a built-in, `installer.ts` skipping
 built-in ids while resolving dependencies, `discovery.ts` filtering manifests. One must not be touched at all —
-`abuddy-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `abuddy-cli/tests/packs/host-output.spec.ts` (357 lines) is mostly about the
+`apack-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `apack-cli/tests/packs/host-output.spec.ts` (357 lines) is mostly about the
 built-in-only publish, `loader.spec.ts` (858) and `reload.spec.ts` (382) each carry a near-duplicate half,
 `discovery.spec.ts` (128) shrinks, and `api/tests/runtime/packaged-boot.spec.ts` (103) changes shape.
 
@@ -186,12 +186,12 @@ gains it.** Those are the three sentences that matter; the rest is why.
 | | frontend | backend |
 |---|---|---|
 | a pack that ships with the app, under `npm start` | **component-level HMR** — the renderer's Vite imports its entry from source, so the pack's modules are in the renderer's own graph | watch → esbuild → `POST /dev/reload` (`default-setup/dev-build.mjs`, forked by `dev-mode.js`) |
-| any other pack, under `abuddy run` | **a window reload** — measured 2026-10-07, and nothing at all before `0a25ff990` fixed `compiledSource` | watch → `abuddy build` → install → `POST /dev/reload` |
+| any other pack, under `apack run` | **a window reload** — measured 2026-10-07, and nothing at all before `0a25ff990` fixed `compiledSource` | watch → `apack build` → install → `POST /dev/reload` |
 
 Neither row is about shipping with the app. The frontend row is about whose Vite owns the modules; the
-backend row is about a watcher that lives *inside* one pack because `abuddy build` refuses to build its
+backend row is about a watcher that lives *inside* one pack because `apack build` refuses to build its
 runtime. Steps 1 and 3 remove both reasons, and the second column is then one watcher for every pack —
-which is what retires `abuddy run` for a pack in this workspace.
+which is what retires `apack run` for a pack in this workspace.
 
 **Frontend HMR has nothing to do with being built-in.** `builtInPacksPlugin` generates a module of **static**
 imports:
@@ -215,11 +215,11 @@ Of the plugin's 46 lines, the `@<pack-id>/` alias half has **no remaining user**
 with `#` subpath imports now.
 
 **The external path is already wired for HMR**, which matters as the fallback and as the path every author
-uses (`abuddy-cli/src/commands/run.ts:325-360`):
+uses (`apack-cli/src/commands/run.ts:325-360`):
 
 - `@vitejs/plugin-vue` — genuine SFC HMR rather than a reload.
-- `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@abuddy/sdk` and
-  `@abuddy/ui` resolve to the host's copies, so **one Vue instance**.
+- `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@apack/sdk` and
+  `@apack/ui` resolve to the host's copies, so **one Vue instance**.
 - `hmr: { protocol: 'ws', host: 'localhost' }`, `cors: true`.
 - The backend watcher **skips `.vue` and `.css`** (`run.ts:394`), which is the author saying Vite owns them.
 - The proxy is a full mirror, not a whitelist: `devServerUrl` returns `http://localhost:${port}${filePath}`
@@ -234,21 +234,21 @@ produces `page reload`, not a component update, because the app imports the pack
 outside Vite's graph — so no importer is there to accept one. **That is this path's ceiling**, and the reason
 step 3's dev source import is load-bearing rather than a convenience. Getting that far also took a fix:
 `compiledSource` read `ctx.load().code`, which throws in a dev server, so the loop did nothing at all while
-`abuddy run` printed that it was hot-reloading.
+`apack run` printed that it was hot-reloading.
 
-**Type resolution improves.** `packages/default-setup/tsconfig.json` declares no `@abuddy/source` condition,
+**Type resolution improves.** `packages/default-setup/tsconfig.json` declares no `@apack/source` condition,
 so the editor already type-checks it against `dist` — the pack-author layout. The fork today is that the
 renderer's Vite compiles its frontend from source with the condition, so the editor and the running dev app
 resolve differently.
 
 **The hazard to keep in mind:** with a dev source import the frontend comes from source while the backend
-comes from the built runtime, so a feature added to `abuddy.json` without a rebuild shows a plugin whose
-system is not registered. That is true today for the same reason, and `abuddy run`'s `abuddy.json` watcher
+comes from the built runtime, so a feature added to `apack.json` without a rebuild shows a plugin whose
+system is not registered. That is true today for the same reason, and `apack run`'s `apack.json` watcher
 regenerating entries (`run.ts:377`) is the mitigation to keep.
 
 ### "Runs first" is already derived
 
-`packContentOrder` (`abuddy-host/src/packs/discovery.ts:147`) is a cycle-tolerant topological sort over
+`packContentOrder` (`apack-host/src/packs/discovery.ts:147`) is a cycle-tolerant topological sort over
 declared `dependencies`, already covered by `tests/packs/dependencies.spec.ts`. Its own doc names the
 special case it is bypassed by:
 
@@ -267,11 +267,11 @@ The entry point, in five steps:
 
 1. **`electron-builder.mjs:119-171`** — `files` takes `packages/**/*`, minus `!packages/*/src/**`, plus
    `packages/*/dist/**`, with `asar: false` (`:176`). Since 2026-10-02 it also drops
-   `!packages/*/.abuddy/**`: a pack's working directory, which that recursive include had been carrying into
+   `!packages/*/.apack/**`: a pack's working directory, which that recursive include had been carrying into
    the installer. Worth knowing here because this goal makes a shipped directory authoritative — it holds the
    pack, not the build's leftovers, and nothing in the steps below has to arrange that. default-setup lands
    as a real directory at
-   `<resourcesPath>/app/packages/default-setup/`: `abuddy.json` and `dist/` (the seven `*.content.json`,
+   `<resourcesPath>/app/packages/default-setup/`: `apack.json` and `dist/` (the seven `*.content.json`,
    `snapshot.json`, `types/`, `defs/`, `build/`, `runtime/index.cjs`).
 2. **`main/src/modules/api-server/config.ts:103`** — Electron main passes
    `BUILT_IN_PACKS_DIR = <resourcesPath>/app/packages` when packaged, `<appPath>/packages` otherwise, and
@@ -297,7 +297,7 @@ changed.
 | the claim | what was wrong |
 |---|---|
 | "four pieces of work that remove it", sequenced 1-4 | `boot.contentManifest` is stripped from external packs, so installing default-setup before merging the content paths ships a pack that writes nothing. The order was wrong, and the migration was a prerequisite rather than the revertible tail |
-| "three build paths" | Four. `abuddy build` returns early for a built-in pack, so `dev-build.mjs` exists — 164 lines no other pack has |
+| "three build paths" | Four. `apack build` returns early for a built-in pack, so `dev-build.mjs` exists — 164 lines no other pack has |
 | "item 1 is free" | Deleting `dev-build.mjs` removes the backend watcher `npm start` depends on |
 | "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
 | "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
@@ -310,10 +310,10 @@ Final.
 
 **1. The requirement is the developer experience, and it is the one thing that cannot be traded.** After
 Phase 3, `npm run start` alone gives full frontend and backend hot reload for **every** pack in the
-workspace, with no `abuddy run` process. This is not a tightening: it is what one pack has today, and the
+workspace, with no `apack run` process. This is not a tightening: it is what one pack has today, and the
 work is to stop that depending on which pack it is. Phase 3 carries it as a test rather than an argument.
 
-**2. What orders the phases is the code, not risk.** `abuddy build`'s `if (!external)` gate blocks the
+**2. What orders the phases is the code, not risk.** `apack build`'s `if (!external)` gate blocks the
 generic backend watcher, so Phase 1 precedes Phase 3; `loadSingleExternalPack` strips `boot.contentManifest`
 and `evaluateContentPolicy` runs only on the declarative path, so Phase 5 precedes Phase 6.
 
@@ -356,9 +356,9 @@ deletes: `installedPacks()` answers it once a shipped pack is installed.
 
 ## Phases
 
-### Phase 1 — Delete the `if (!external)` gate in `abuddy build`
+### Phase 1 — Delete the `if (!external)` gate in `apack build`
 
-`build.ts:305-310` returns early for a built-in pack. Remove it and `abuddy build` produces
+`build.ts:305-310` returns early for a built-in pack. Remove it and `apack build` produces
 `dist/runtime/index.cjs` and `dist/runtime/fe.js` for default-setup with the same bundlers every other pack
 uses. Unify the snapshot filename while here: `build.ts:147` writes `BUILT_IN_SNAPSHOT` where every other
 pack writes `PACK_LAYOUT.snapshot`.
@@ -371,16 +371,16 @@ carries an alias plugin for `@/` specifiers that no default-setup source has use
 
 **This is not free for the dev loop, which an earlier version of this doc got wrong.** `dev-build.mjs` is
 also the backend watcher: `dev-mode.js:27` forks it with `--watch` and `:52` waits for its first compile
-before the API boots. The watch belongs in the CLI, as `abuddy build --watch`, so there is one home for it
+before the API boots. The watch belongs in the CLI, as `apack build --watch`, so there is one home for it
 and a pack author gets the same loop — the shim this doc first proposed would have been a third place that
 knows how to bundle a pack's backend.
 
 **What `--watch` rebuilds is the runtime alone, and the numbers are why.** Measured 2026-10-07 on
-default-setup: a full `abuddy build` is **23.7s**, of which the Vite frontend bundle is 11.1s; the backend
+default-setup: a full `apack build` is **23.7s**, of which the Vite frontend bundle is 11.1s; the backend
 runtime bundle on its own is **40ms** (956KB, three runs, 30-50ms). A loop that re-ran the whole build per
 edit would cost 24s against today's ~1s, so `--watch` rebuilds the one output whose staleness the app can
 see and says so in its own help text. That is also exactly today's semantics: `npm start` never recompiled
-content or facade types on an edit either. It is what `abuddy run`'s BE watcher should adopt — it calls
+content or facade types on an edit either. It is what `apack run`'s BE watcher should adopt — it calls
 `build([])` per edit, which is that 23.7s for a pack this size.
 
 **And it retires three built-in-aware pieces of the build record**, since removing that gate is exactly what
@@ -388,13 +388,13 @@ makes default-setup record the `runtime` and `fe` phases like any other pack. Ea
 
 - `isBuiltIn`, and one branch of `rebuildCommand`, in `scripts/lib/build-reads.ts` — they exist only to name
   the command that rebuilds a pack's record, and with one kind of pack the path answers that, as it already
-  does for a fixture pack. These two outlive Phase 1: the branch still picks `npm run compile` over `abuddy
+  does for a fixture pack. These two outlive Phase 1: the branch still picks `npm run compile` over `apack
   build` for default-setup, and `manifest.builtIn` is not gone until Phase 6.
 - the two-kind evidence guard in `repo-checks/tests/dep-files.integration.spec.ts` — the nine bundling phases
   take a built-in pack *and* an external one to observe between them, precisely because a built-in pack
   records neither of those two. Afterwards one record carries all nine and the guard collapses into the case
   above it, which asks only whether a record exists.
-- the first of the two reasons that record is keyed by phase (`abuddy-cli/src/build/build-reads.ts`): that a
+- the first of the two reasons that record is keyed by phase (`apack-cli/src/build/build-reads.ts`): that a
   built-in pack stops before those bundles. The keying stays — `--skip-fe` and `--skip-generate` still skip
   phases — and only that sentence goes.
 
@@ -405,7 +405,7 @@ default-setup like any pack and the step on the chain's critical path is observe
 
 **Two more pieces come out with `dev-build.mjs`, and one bites before the other.** It writes *two* files:
 `dist/runtime/index.cjs` and `dist/runtime/content-index.sha256`, the sha256 of the compiled content index its
-runtime was built beside. `publishHostPackOutput` (`abuddy-host/src/packs/layout.ts:307-310`) **throws** when
+runtime was built beside. `publishHostPackOutput` (`apack-host/src/packs/layout.ts:307-310`) **throws** when
 those two disagree, so a `--watch` wrapper that drops the hash leaves a packaged app unable to publish its own
 build output. Then the guard itself goes: it exists only because content and runtime are built by *different
 commands* — its own comment says so, and the throw reads *"content compiled again without rebuilding the
@@ -416,7 +416,7 @@ naming the edit that would fire it, which is this repo's rule for one.
 **A pack's backend bundle inlines its npm dependencies, and three of default-setup's cannot be inlined.**
 `node-pty` and `fsevents` (chokidar's optional macOS watcher) load a `.node`, which is compiled machine code
 esbuild has no loader for; `@vscode/ripgrep` computes its binary's path from its own `__dirname`, which in a
-bundle is the bundle's directory. They are named in `RESOLVED_AT_RUNTIME` (`abuddy-cli/src/build/be-bundler.ts`)
+bundle is the bundle's directory. They are named in `RESOLVED_AT_RUNTIME` (`apack-cli/src/build/be-bundler.ts`)
 and resolve from `node_modules` at run time. `dev-build.mjs` never met this, having left every package
 external. The failure names the file it could not find, so a fourth is diagnosed the same way.
 
@@ -424,9 +424,9 @@ external. The failure names the file it could not find, so a fourth is diagnosed
 a deliberate `chain --all --record --forget --step compile`, on the machine the cost table was measured on.
 `PACK_OUTPUTS` needs nothing: it declares `packages/default-setup/dist` whole.
 
-**Files:** `abuddy-cli/src/commands/build.ts`, `packages/default-setup/dev-build.mjs`,
+**Files:** `apack-cli/src/commands/build.ts`, `packages/default-setup/dev-build.mjs`,
 `packages/dev-mode.js`, `packages/default-setup/package.json`, `scripts/lib/build-reads.ts`,
-`abuddy-cli/src/build/build-reads.ts`, `abuddy-host/src/packs/layout.ts`, `scripts/lib/chain-steps.ts`,
+`apack-cli/src/build/build-reads.ts`, `apack-host/src/packs/layout.ts`, `scripts/lib/chain-steps.ts`,
 `repo-checks/tests/dep-files.integration.spec.ts`.
 
 **Why first:** it is what makes a shipped pack a *complete* pack on disk, which every later step assumes, and
@@ -434,7 +434,7 @@ it is the only step that deletes a mechanism no other pack has.
 
 **Done when:** `npm run compile` leaves `packages/default-setup/dist/runtime/index.cjs` **and**
 `runtime/fe.js`; `dev-build.mjs` holds no esbuild call; `npm start` still hot-reloads a backend edit, with
-the first compile still gating the API boot; `abuddy-cli/tests/build/*` and
+the first compile still gating the API boot; `apack-cli/tests/build/*` and
 `repo-checks/tests/dep-files.integration.spec.ts` pass with the two-kind evidence guard collapsed into the
 case above it. Mutation: put the gate back and the `compile` observation count drops from nine phases to
 seven.
@@ -468,17 +468,17 @@ does, and the frontend loads over `pack://` for every pack.
   (`PackProtocol.ts:71-75` is the single `path.resolve` and its prefix check).
 - **Re-key `builtInPacksPlugin` rather than deleting it**: dev-only `virtual:dev-pack-frontends`, generated
   from local pack directories (this repo's workspace packs with an FE entry, plus anything named by
-  `ABUDDY_DEV_PACK_DIRS`), absent from the production config. The loader prefers the dev map when a pack id
+  `APACK_DEV_PACK_DIRS`), absent from the production config. The loader prefers the dev map when a pack id
   is in it, else `pack://`. Its alias half goes, having no user.
 - `reloadBuiltInPack` and `reloadExternalPack` become one function, both now being "re-require the built
   runtime from the pack's directory".
 
 **What this step does not touch, and the two config files are why it is worth saying:** the generated entries
-those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `abuddy
+those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `apack
 generate-entries` on the triggers and under the stamp
 [`codegen-staleness.md`](../plans/codegen-staleness.md) records — a pack's own typecheck reads them through
 `#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
-is only who imports them: after this, each pack's own `abuddy build` rather than the renderer's and the api's.
+is only who imports them: after this, each pack's own `apack build` rather than the renderer's and the api's.
 
 After this, `manifest.builtIn` decides **nothing about behaviour**: one load path, one reload path, one build
 path, one frontend path, no privileges. What survives is axis 1 — the directory a pack lives in.
@@ -490,7 +490,7 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
   fails on a module nothing provides.
 - **The dev-reload wire.** `api/src/transport/websocket.ts:59,72` takes `{ packId, builtIn }` out of the
   `POST /dev/reload` body and branches to the two reload functions this step merges, so the body shape changes
-  and `abuddy run`, which posts it, changes with it. Narrowing it is available on its own: the server can
+  and `apack run`, which posts it, changes with it. Narrowing it is available on its own: the server can
   derive the kind from its registry rather than trust the caller, which is the better shape either way and
   shrinks this step.
 - **`build:app` stops reading the pack's sources, which closes a defect that exists today.** The renderer
@@ -498,29 +498,29 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
   `packages/renderer/dist/assets/index-*.js` — and `build:app` declares neither that tree nor anything that
   moves with it: `PACK_OUTPUTS` is the pack's `dist`, which holds no frontend bundle for a built-in pack, plus
   `src/__generated__`, whose only file that moves on a `.vue` edit is the dot-prefixed `.inputs-hash`, which
-  `inputFiles` skips (`abuddy-host/src/build/packages-built.ts:286`). Measured 2026-10-07: edit a `.vue`, run
+  `inputFiles` skips (`apack-host/src/build/packages-built.ts:286`). Measured 2026-10-07: edit a `.vue`, run
   `compile`, and `chain --dry` reports `build:app` **cached**, and `test:smoke` with it — a green chain over an
   app that never held the change. **It is fixable today** by declaring `packages/default-setup/src` on that
   step, and waits on nothing here; after this step the edge is gone and that declaration comes back out.
 - **What stays, and has to be said because this step claims `manifest.builtIn` decides nothing about
-  behaviour:** the Packs plugin reports it (`abuddy-host/src/features/packs/be/system.ts:70,88,97`). That is
+  behaviour:** the Packs plugin reports it (`apack-host/src/features/packs/be/system.ts:70,88,97`). That is
   axis 1 — which directory a pack lives in — and it is the one behaviour the claim excepts.
 
-**Files:** `abuddy-host/src/packs/runtime/{loader,reload}.ts`, `api/tsup.config.ts`,
+**Files:** `apack-host/src/packs/runtime/{loader,reload}.ts`, `api/tsup.config.ts`,
 `api/src/runtime/index.ts`, `api/src/env.d.ts`, `api/src/transport/websocket.ts`, `renderer/vite.config.ts`,
 `renderer/env.d.ts`, `main/src/modules/pack-protocol/PackProtocol.ts`,
-`abuddy-host/src/fe/pack-frontends.ts`, `abuddy-cli/src/commands/run.ts`, `scripts/lib/chain-steps.ts`.
+`apack-host/src/fe/pack-frontends.ts`, `apack-cli/src/commands/run.ts`, `scripts/lib/chain-steps.ts`.
 
 **The pre-flight is done.** A packaged API process can `esmRequire` the pack's `dist/runtime/index.cjs` out
 of `resources/` — measured 2026-10-07 by building the api bundle with `runtimeEntry` defaulted to `'only'`,
 so no bundled loader existed to fall back to, and booting it: *"Loaded built-in pack (dev): default-setup"*,
 then the server up. The other half cannot be tested in a checkout at all — `source-resolution.ts:73` refuses
-any process that resolves `@abuddy/*` to `dist` while a `src/` sits beside it, which is every checkout and no
+any process that resolves `@apack/*` to `dist` while a `src/` sits beside it, which is every checkout and no
 packaged build — and needs no test, being what every installed external pack already does in production
 through the same `withHostResolution`.
 
 **The acceptance test, which is the requirement and not a nicety.** After this step, from `npm run start`
-alone, with no `abuddy run` process:
+alone, with no `apack run` process:
 
 - editing a `.vue` in **any** workspace pack patches the component and keeps the app's state;
 - editing that pack's backend rebuilds it and hot-reloads it in place;
@@ -542,7 +542,7 @@ its settings would be reset at every boot and its notes would come back after on
 6 is not a preference.
 
 **Done when — and this is Decision 1's test, not a checklist item.** From `npm run start` alone, with no
-`abuddy run` process:
+`apack run` process:
 
 - editing a `.vue` in `tests/packs/external-pack` patches the component and keeps the app's state;
 - editing a `.vue` in `packages/default-setup` does the same, as it does today;
@@ -556,7 +556,7 @@ which is what says the path is shared.
 
 ### Phase 4 — Delete `earlySystem`
 
-`earlySystem` has one user — default-setup's `logs` (`abuddy.json:238`) — and forces
+`earlySystem` has one user — default-setup's `logs` (`apack.json:238`) — and forces
 `loadSingleExternalPack` to strip it from every external pack (`loader.ts:235-243`). The pack-facing half
 goes for good: the manifest field, its refinement, the codegen branch and the strip. No pack should ever
 get it back, and the host needs no manifest to express anything.
@@ -574,13 +574,13 @@ the manifest field (`manifest-schema.ts:173`) and the whole `if (!manifest.built
 (`:258-263`), which holds nothing else, so `.strict()` refuses the key afterwards rather than a bespoke
 message; the codegen branch that turns it into `packSystem(…, { early: true })`
 (`generate-entries.ts:578`); the strip in `loadSingleExternalPack` (`loader.ts:235-243`) and its case
-(`loader.spec.ts:92-95`); the declaration in `packages/default-setup/abuddy.json:238`. Then
-`npm run schema:update -w @abuddy/sdk` for `abuddy.schema.json:179-182` and `npm run api:update`.
+(`loader.spec.ts:92-95`); the declaration in `packages/default-setup/apack.json:238`. Then
+`npm run schema:update -w @apack/sdk` for `apack.schema.json:179-182` and `npm run api:update`.
 Three specs assert the field and move with it: `manifest-schema.spec.ts:148-150` (the refusal — delete),
 `entries.spec.ts:116-126` (drop it from the fixture and drop the `early: true` expectation), and
 `modules.spec.ts:339,401`, whose exhaustive field lists fail by design when a field goes.
 
-**What is lost, by boot step** (`packages/abuddy-host/src/packs/runtime/CLAUDE.md`):
+**What is lost, by boot step** (`packages/apack-host/src/packs/runtime/CLAUDE.md`):
 
 | step | logged | reaches the viewer after this |
 |---|---|---|
@@ -601,8 +601,8 @@ manifest field — and [`plans/logs-to-host.md`](../../plans/deferred/logs-to-ho
 want it back the same day. Decide it when Phase 4 is implemented; either answer keeps the capability out
 of the pack contract, which is the part that is settled.
 
-**Done when:** `earlySystem` is absent from `manifest-schema.ts`, `abuddy.schema.json` and
-`packages/default-setup/abuddy.json`; a manifest declaring it is refused by `.strict()` rather than by a
+**Done when:** `earlySystem` is absent from `manifest-schema.ts`, `apack.schema.json` and
+`packages/default-setup/apack.json`; a manifest declaring it is refused by `.strict()` rather than by a
 bespoke refinement; and the Logs plugin still shows everything logged from the bus actor on.
 Mutation: put `earlySystem: true` in a fixture manifest and watch the schema refuse it.
 
@@ -656,7 +656,7 @@ about shipping:
 
 ---
 
-**Done when:** a fresh data dir boots with default-setup installed under `<userData>/abuddy/packs/`;
+**Done when:** a fresh data dir boots with default-setup installed under `<userData>/apack/packs/`;
 a second boot installs nothing; a shipped copy whose integrity differs re-installs; `SHIPPED_PACKS_DIR`
 has replaced `BUILT_IN_PACKS_DIR` at every reader; `publishHostPackOutput`, `pruneHostPackOutputs`,
 `hostPacksDir` and `database/schema.ts`'s `degraded` branch are gone; `fetch-deps.ts:157` reads `packsDir`.
@@ -729,7 +729,7 @@ ship a broken app.
 
 - Not making packs installable from a registry: `resolveFromRemoteRegistry` still throws for every name.
 - Not a performance change. The win is four build paths becoming one and two load paths becoming one.
-- Not a change to `@abuddy/sdk`'s published surface, except that `partitionPolicy` leaves the manifest schema
+- Not a change to `@apack/sdk`'s published surface, except that `partitionPolicy` leaves the manifest schema
   in step 2 (and `earlySystem` would in open-question step A), which needs `schema:update` and `api:update`.
 
 ## Constraints
@@ -739,16 +739,16 @@ The standing rules, plus this goal's own:
 - commit each phase as it finishes, no attribution lines, `git commit -- <paths>`, and `git diff --cached`
   first — something outside the session stages files in this repo;
 - pushing, tagging and PRs are on request; no publishing, releases or triggered workflows;
-- no real data dirs (`~/Library/Application Support/abuddy*`), no broad `pkill`; an app launched outside
-  the test environment gets an isolated `ABUDDY_USER_DATA_DIR`, and `abuddy run --ephemeral` is the
+- no real data dirs (`~/Library/Application Support/apack*`), no broad `pkill`; an app launched outside
+  the test environment gets an isolated `APACK_USER_DATA_DIR`, and `apack run --ephemeral` is the
   cheapest way to get one;
 - no bare `tsc` in `packages/preload`, no `npm install` in the example pack, no version or release metadata;
-- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
 - published packages expose no `any`, keep the TypeScript floor, and need `api:update` after an export
   change;
 - `packages:ensure` once before any fan-out; a stale build looks like a bug, so check what a failing run
   loads before reading the code;
-- migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`, and go in the latest unreleased target
+- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`, and go in the latest unreleased target
   rather than a new version file;
 - investigate a failing test rather than loosening it; mutation-check every new guard;
 - external packs are first-class: `tests/packs/*`, the example pack and `test:packaged-authoring` keep
@@ -765,7 +765,7 @@ habit.
 ## Outcome
 
 **Every pack is installed, and loaded from where it is installed.** `installShippedPacks` copies each
-directory under `SHIPPED_PACKS_DIR` that holds an `abuddy.json` into `<userData>/abuddy/packs/<id>`, and
+directory under `SHIPPED_PACKS_DIR` that holds an `apack.json` into `<userData>/apack/packs/<id>`, and
 `loadAppPacks` then loads every pack by one path. `manifest.builtIn` decides nothing: it survives as a
 field a pack declares and as `pack.ts`'s refusal to pack a pack that ships inside the app, which Phase 6's
 own text keeps as axis 1.
@@ -774,9 +774,9 @@ own text keeps as axis 1.
 
 | Phase | | |
 |---|---|---|
-| 1 | done | `abuddy build --watch` replaces `dev-build.mjs`; `RESOLVED_AT_RUNTIME` named. The watch rebuilds the runtime alone — 40ms against the full build's 23.7s |
+| 1 | done | `apack build --watch` replaces `dev-build.mjs`; `RESOLVED_AT_RUNTIME` named. The watch rebuilds the runtime alone — 40ms against the full build's 23.7s |
 | 2 | done | `partitionPolicy` gone; `appPartitionPolicy()` is a constant in `database/open.ts` |
-| 3 | done | `npm run start` alone gives frontend and backend hot reload for every workspace pack, `tests/packs/external-pack` included, with no `abuddy run`. Held by `repo-checks`' `dev-pack-hmr` |
+| 3 | done | `npm run start` alone gives frontend and backend hot reload for every workspace pack, `tests/packs/external-pack` included, with no `apack run`. Held by `repo-checks`' `dev-pack-hmr` |
 | 4 | done | `earlySystem` deleted, not widened |
 | 5 | done | one `applyPacks`, one `packContentRevisions`/`packContentDeps`, one policy for every pack |
 | 6 | done | install replaces publish; `publishHostPackOutput`, `pruneHostPackOutputs`, `hostPacksDir`, `loadBuiltInPacks`, `discoverBuiltInPacks`, the `publishing` staging kind and `schema.ts`'s `degraded` branch are gone |
@@ -792,14 +792,14 @@ installed pack has none. So:
   `shared-deps.ts`, where the bundler's externals and the loader's `hostPackages` both read it, and
   `hostPackages` now covers every external. `pack-externals.spec.ts` holds the two halves together.
 - **A lazy `require` outlived the resolution that served it.** esbuild defers a module body into an
-  `__init` the bundle calls on first use, so default-setup's action step required `@abuddy/sdk/logger`
+  `__init` the bundle calls on first use, so default-setup's action step required `@apack/sdk/logger`
   when a step first ran, long after `withHostResolution` had restored the resolver. Applying the require
   cache cannot cover it, Node resolving before it reads the cache. `keepHostModulesResolvable` installs
   resolution for the process and never throws; `withModuleBridge`'s refusals stay scoped to the load they
   diagnose, which is where a *rebuild this pack* message belongs.
 
 Both would have shipped: `DEBUG_E2E=1 npm test -- smoke` passed its four cases while the app logged
-`Cannot find module '@abuddy/sdk/logger'` for every action step. **A green suite beside a failing app is
+`Cannot find module '@apack/sdk/logger'` for every action step. **A green suite beside a failing app is
 what that flag is for.**
 
 **Three premises in this plan were wrong**, corrected in place where they are stated: `dev-build.mjs`'s
@@ -818,7 +818,7 @@ answered freshness rather than integrity, and `be-bundler.ts`'s comment claimed 
   (`SCRIPTED_PACK_BUILDS`) rather than asking a manifest what kind a pack is.
 - A leftover `host-packs/` in an existing dev data dir is **left alone**. It is derived build output that
   nothing reads any more, and deleting from a user's data dir was not asked for.
-- `installShippedPacks` filters on an `abuddy.json` being present, not on `builtIn`. In this checkout only
+- `installShippedPacks` filters on an `apack.json` being present, not on `builtIn`. In this checkout only
   `packages/default-setup` matches; a second shipped pack would be installed, which is the point.
 
 **What was not done, and why**

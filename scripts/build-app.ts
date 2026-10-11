@@ -18,14 +18,14 @@
  *
  * WHAT THE FOUR BUILDS OWE EACH OTHER: NOTHING
  *
- * Each resolves workspace code through the `@abuddy/source` condition to **source** — the renderer's
+ * Each resolves workspace code through the `@apack/source` condition to **source** — the renderer's
  * `resolve.conditions`, the api's `esbuildOptions.conditions`, main's `ssr.resolve.conditions` — so none
  * reads another's `dist`. Their outputs are the four disjoint directories `APP_OUTPUTS` names, and the one
  * directory two of them share (`node_modules/.cache/tsbuildinfo/`) takes a distinct filename each.
  *
  * **None of the four reads a pack's sources, and that is what keeps this step's inputs its own.** No pack is
  * compiled into the app: a pack's backend is loaded at run time from the `dist/runtime/index.cjs` its own
- * `abuddy build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
+ * `apack build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
  * build reads the app's four workspaces and the built packs' `dist`, and an edit to a pack's `src` reaches
  * this step only through `compile`, which the chain orders ahead of it. A bundler config here that reached
  * into a pack's `src` again would make this step's real inputs the whole repo, which is the thing four
@@ -35,7 +35,7 @@
  *
  * `check:tiers` scans this file's text for the ways the repo launches the app, and comments are stripped
  * while **string literals are not** — so a log line or an error message naming `playwright test`,
- * `abuddy test` or `_electron.launch` would fail that check for `build:app`. `chain-graph.spec.ts` derives
+ * `apack test` or `_electron.launch` would fail that check for `build:app`. `chain-graph.spec.ts` derives
  * a step's timeout rung from the same text, so an `npm install` in it would imply `scenario` against the
  * declared `suite`. The commands themselves live in `lib/app-build-legs.ts`, which says why.
  */

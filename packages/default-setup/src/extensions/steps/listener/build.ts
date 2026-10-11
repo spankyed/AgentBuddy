@@ -1,7 +1,7 @@
-import type { TriggerFacet, StepNodeFacet } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
+import type { TriggerFacet, StepNodeFacet } from '@apack/sdk/steps';
+import { EARS } from '@apack/sdk';
 
-/** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
 export const listenerTriggerBuild: TriggerFacet = {
   trackField: 'event',
   compile(track, trackId, ts, trackKey) {

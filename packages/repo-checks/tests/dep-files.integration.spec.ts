@@ -2,14 +2,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
 import { depFileNames, pruneOrphanDepFiles, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import * as buildReads from '../../../scripts/lib/build-reads.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 /**
  * The compiler reports what it read, and what `typecheck` declares has to cover it.
@@ -206,9 +206,9 @@ describe('the compiler says what it read', () => {
   it('asks the script which leg compiles a dep file, not the leg\'s cache key', () => {
     const ensure = TYPECHECK_LEGS.find((leg) => leg.name === ENSURE)!;
     expect(scopeOf(ensure), 'its key names the packages it builds, which is what makes this a difference')
-      .toContain('abuddy-sdk');
+      .toContain('apack-sdk');
     expect(namedByScript(ENSURE).dirs, 'and its script names none of them, because it compiles none').toEqual([]);
-    expect(covering('abuddy-sdk').map((leg) => leg.name)).not.toContain(ENSURE);
+    expect(covering('apack-sdk').map((leg) => leg.name)).not.toContain(ENSURE);
   });
 
   it('leaves nothing a leg read outside what that leg declares', () => {
@@ -320,7 +320,7 @@ describe('a dep file is checked against itself before it is believed', () => {
 });
 
 /**
- * And the same question of `abuddy build`, which is the other tool here that can be asked.
+ * And the same question of `apack build`, which is the other tool here that can be asked.
  *
  * Two chain steps run it — `compile` and `test:external-pack:contract`, 70s between them — and until the
  * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
@@ -334,7 +334,7 @@ describe('a dep file is checked against itself before it is believed', () => {
  * **It covers the bundling, not the step.** The phases with no bundler to ask are absent from the record,
  * which is why both steps stay on the list at the end of this file.
  */
-describe('abuddy build says what it read', () => {
+describe('apack build says what it read', () => {
   /** The step that builds a pack: the one that declares that pack's `dist` among its outputs */
   const building = (packDir: string) =>
     CHAIN_STEPS.find((step) => (step.outputs ?? []).includes(`${packDir}/dist`));
@@ -372,7 +372,7 @@ describe('abuddy build says what it read', () => {
   it('finds a build record to read, or says plainly that there is no evidence here', () => {
     const found = buildReads.packsWithReads();
     if (found.length === 0) {
-      expect.fail('no pack has a .abuddy/reads.json: run npm run compile once, then this can check what '
+      expect.fail('no pack has a .apack/reads.json: run npm run compile once, then this can check what '
         + 'the build read. An empty run is not a passing one.');
     }
     for (const packDir of found) {
@@ -390,7 +390,7 @@ describe('abuddy build says what it read', () => {
    * go; the gate below cannot, because fewer reads is never a finding there.
    *
    * Whether a record is here at all is the case above's question, and one record answers this one: every
-   * pack is built by `abuddy build`, so each records all nine phases its manifest asks for.
+   * pack is built by `apack build`, so each records all nine phases its manifest asks for.
    */
   it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
     const built = buildReads.packsWithReads();
@@ -457,7 +457,7 @@ describe('abuddy build says what it read', () => {
     expect(fs.existsSync(path.join(REPO_ROOT, elsewhere)), 'this case needs a real file to be about').toBe(true);
     expect(undeclared([elsewhere], compile)).toEqual([elsewhere]);
     // And the same comparison says nothing about a file the step does declare, so it is not simply failing
-    expect(undeclared(['packages/default-setup/abuddy.json'], compile)).toEqual([]);
+    expect(undeclared(['packages/default-setup/apack.json'], compile)).toEqual([]);
   });
 });
 
@@ -494,7 +494,7 @@ describe('a build record is checked against itself before it is believed', () =>
    */
   it('reads nothing out of a record it would not trust', () => {
     const packDir = built();
-    const file = path.join(REPO_ROOT, packDir, '.abuddy', 'reads.json');
+    const file = path.join(REPO_ROOT, packDir, '.apack', 'reads.json');
     const original = fs.readFileSync(file, 'utf-8');
     try {
       const record = JSON.parse(original) as { bundlers: Record<string, string> };
@@ -574,8 +574,8 @@ describe('what has looked at a step at all', () => {
    * `test` are the same shape: Playwright driving a real Electron process.
    *
    * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
-   * `abuddy build`, which records what each bundling phase read — the describe above reads it. Measured
-   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@abuddy/sdk`'s and `@abuddy/ears`'
+   * `apack build`, which records what each bundling phase read — the describe above reads it. Measured
+   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@apack/sdk`'s and `@apack/ears`'
    * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
    *
@@ -621,10 +621,10 @@ describe('what has looked at a step at all', () => {
 /**
  * **What a bundle read, against what its build unit declares.**
  *
- * The third thing this repo can observe, after the compilers' dep files and `abuddy build`'s module graphs —
- * and the one whose absence cost a real defect. `@abuddy/cli` and `@abuddy/testing` are bundled by esbuild
- * with `@abuddy/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
- * only the first. So an edit to `@abuddy/sdk/src` left both bundles stale with their stamps reading fresh,
+ * The third thing this repo can observe, after the compilers' dep files and `apack build`'s module graphs —
+ * and the one whose absence cost a real defect. `@apack/cli` and `@apack/testing` are bundled by esbuild
+ * with `@apack/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
+ * only the first. So an edit to `@apack/sdk/src` left both bundles stale with their stamps reading fresh,
  * `packages:ensure` rebuilt nothing, and it surfaced only when a packaged-authoring run type-checked a
  * generated file against an SDK whose type no longer matched the CLI that emitted it.
  *
@@ -637,7 +637,7 @@ describe('what has looked at a step at all', () => {
  * on a file that was not read last time, which is this same defect wearing a different hat.
  */
 describe('a bundle reads nothing its build unit leaves undeclared', () => {
-  const BUNDLED = ['@abuddy/cli', '@abuddy/testing'];
+  const BUNDLED = ['@apack/cli', '@apack/testing'];
 
   it('finds the records to read, or says plainly that there is no evidence here', () => {
     for (const workspace of BUNDLED) {
@@ -679,6 +679,6 @@ describe('a bundle reads nothing its build unit leaves undeclared', () => {
   it('reports a read the unit does not declare', () => {
     const planted = 'packages/renderer/src/main.ts';
     expect(fs.existsSync(path.join(REPO_ROOT, planted)), 'point this at a file that exists').toBe(true);
-    expect(notCoveredBy(BUILD_UNITS['@abuddy/cli']!, [planted])).toEqual([planted]);
+    expect(notCoveredBy(BUILD_UNITS['@apack/cli']!, [planted])).toEqual([planted]);
   });
 });

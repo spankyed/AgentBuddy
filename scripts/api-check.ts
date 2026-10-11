@@ -2,7 +2,7 @@
 /**
  * `npm run api:check`: every published package's API reports, regenerated and compared, concurrently.
  *
- * It was `npm run api:check -w @abuddy/ears -w @abuddy/sdk -w @abuddy/ui`, which npm runs **serially**. The
+ * It was `npm run api:check -w @apack/ears -w @apack/sdk -w @apack/ui`, which npm runs **serially**. The
  * three are independent — each compiles its own declarations and extracts its own reports — so the step spent
  * its time one core at a time. Measured 2026-10-05 on a ten-core box, warm `dist`: **12.5s serially against
  * 7.1s together**, for the same 22-23s of CPU. The cores it takes are declared in `POOL_WIDTH`, so the chain
@@ -12,7 +12,7 @@
  * `dist` rather than building one, because this is a chain step and a step that writes what it declares as an
  * input leaves every later step stale. `npm run api:update` is the fixer and carries `packages:ensure`.
  */
-import { packagesBuiltOrRefuse } from '@abuddy/host/build/packages-built';
+import { packagesBuiltOrRefuse } from '@apack/host/build/packages-built';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { API_CHECK_TIMEOUT, API_REPORT_PACKAGES, apiCheckCommand } from './lib/api-report-packages.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
@@ -27,11 +27,11 @@ exitOnEpipe();
  * `api-reports.ts` refuses as well, and that is not a second rule — it is the same function called at the
  * other door. Each package's `api:build` runs its own `tsc` *before* `api-reports.ts` loads, so the refusal
  * there arrives after ~2s per package has already been spent; its job is to catch a direct
- * `npm run api:check -w @abuddy/sdk`, which never reaches this file. This one is for the command the chain
+ * `npm run api:check -w @apack/sdk`, which never reaches this file. This one is for the command the chain
  * runs, where the cost is three of those compiles.
  *
  * **A new caller of this is a new freshness door, and the doors are a numbered table**
- * (`packages/abuddy-testing/CLAUDE.md`) — most of them are npm scripts, and JSON carries no comments, so
+ * (`packages/apack-testing/CLAUDE.md`) — most of them are npm scripts, and JSON carries no comments, so
  * nothing but that table says a door exists. Copying this line without adding a row is how door 8 arrived
  * unrecorded; no check holds the table, which describes kinds of door rather than call sites.
  */

@@ -9,7 +9,7 @@
  * Runs on flow entry before CDX: Start Server.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 
 export const meta: ActionMeta = {

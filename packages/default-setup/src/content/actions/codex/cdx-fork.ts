@@ -2,7 +2,7 @@
  * CDX: Fork - forks the current thread from the last assistant message.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 
 export const meta: ActionMeta = {

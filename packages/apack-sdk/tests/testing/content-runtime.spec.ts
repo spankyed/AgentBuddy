@@ -1,0 +1,58 @@
+// A built pack's content runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
+// host, no app. default-setup's is the example: a Note written through it gets default-setup's rows.
+import { installedEngine as ears, type EARS } from '@apack/ears';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { registerContentRuntime, resetTestData, startTestRuntime, type ContentRuntime } from '../../src/testing/index.ts';
+import { compileBuiltinFormat } from '../../src/build/content/items.ts';
+import { createFormatApplier } from '../../src/content/format-applier.ts';
+import { findRelations } from '@apack/ears';
+import type { PackManifest } from '../../src/build/manifest.ts';
+
+const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
+const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'content-runtime.mjs');
+// dist/ is gitignored; CI builds default-setup (apack build) and requires the facet
+const built = fs.existsSync(FACET);
+if (!built && process.env.REQUIRE_CONTENT_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_CONTENT_RUNTIME) but not built`);
+
+describe.skipIf(!built)("a built pack's content runtime", () => {
+  let dir: string;
+  beforeAll(async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-runtime-'));
+    process.env.APACK_ENV ??= 'test';
+    process.env.APACK_USER_DATA_DIR ??= dir;
+    startTestRuntime();
+    const { contentRuntime } = await import(pathToFileURL(FACET).href) as { contentRuntime: ContentRuntime };
+    registerContentRuntime(contentRuntime);
+    resetTestData();
+  });
+  afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it("registers the pack's repositories and content writers, so applying goes through them", async () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(DEFAULT_SETUP, 'apack.json'), 'utf-8')) as PackManifest;
+    const source = path.join(dir, 'notes');
+    fs.mkdirSync(path.join(source, 'plan'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'intro.md'), '---\ntitle: Intro\n---\nSee the [plan](note://Note-plan-target).\n');
+    fs.writeFileSync(path.join(source, 'plan', 'index.md'), '---\ntitle: Plan\ntype: tasklist\n---\nSteps.\n');
+    fs.writeFileSync(path.join(source, 'plan', 'first.md'), '---\ntype: task\n---\nDo it.\n');
+    const compiled = path.join(dir, 'compiled');
+    fs.mkdirSync(compiled);
+    fs.writeFileSync(path.join(compiled, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', entries: [] }));
+    fs.writeFileSync(path.join(compiled, 'notes.content.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.content!.formats!.notes, source) }));
+
+    const format = manifest.content!.formats!.notes;
+    const counts = createFormatApplier({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });
+    expect(counts).toEqual({ created: 3, updated: 0, skipped: 0 });
+
+    const notes = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Intro');
+    expect(notes[0]).toMatchObject({ shortCode: expect.stringMatching(/^NOTE-\d+$/), lastSeen: 0 });
+    expect(findRelations({ sourceEntity: notes[0].id, relationType: 'references' })).toEqual([
+      expect.objectContaining({ targetEntity: 'Note-plan-target' }),
+    ]);
+    const [plan] = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Plan');
+    expect(findRelations({ sourceEntity: plan.id, relationType: 'contains' })).toHaveLength(1);
+  });
+});

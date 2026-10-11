@@ -1,8 +1,8 @@
 import {app} from 'electron';
 import * as path from 'node:path';
-import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@abuddy/sdk/env';
+import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@apack/sdk/env';
 
-declare const __ABUDDY_CHANNEL__: string;
+declare const __APACK_CHANNEL__: string;
 
 /** The app's environment and paths, plus the log directory only this process can resolve. */
 export interface MainAppContext extends AppContext {
@@ -29,11 +29,11 @@ function initialise(): MainAppContext {
   const env = _inferElectronAppEnv({
     playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
     isPackaged: app.isPackaged,
-    channel: __ABUDDY_CHANNEL__,
-    envVar: process.env.ABUDDY_ENV,
+    channel: __APACK_CHANNEL__,
+    envVar: process.env.APACK_ENV,
   });
   // Read before the assignment below, so this is the caller's choice and not the one made here
-  const isolated = Boolean(process.env.ABUDDY_USER_DATA_DIR);
+  const isolated = Boolean(process.env.APACK_USER_DATA_DIR);
   const resolved = resolveAppContext({ build: env });
 
   // Electron derives its userData dir and single-instance lock from these
@@ -46,8 +46,8 @@ function initialise(): MainAppContext {
   const logsDir = isolated ? path.join(resolved.appDir, 'logs') : app.getPath('logs');
   app.setPath('logs', logsDir);
 
-  process.env.ABUDDY_ENV = resolved.build;
-  process.env.ABUDDY_USER_DATA_DIR = resolved.userDataDir;
+  process.env.APACK_ENV = resolved.build;
+  process.env.APACK_USER_DATA_DIR = resolved.userDataDir;
   return {...resolved, logsDir};
 }
 

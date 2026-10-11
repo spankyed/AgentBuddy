@@ -16,7 +16,7 @@
 // same type does not satisfy it. Checked by mutation: with `answerSettings`' reply arm deleted, the three
 // cases that name a call fail and the no-sender one passes.
 //
-// The address itself is still watched where it can be, in `@abuddy/host`'s
+// The address itself is still watched where it can be, in `@apack/host`'s
 // `tests/features/settings/answer.spec.ts`, which opens a delivery with `_runDelivery` and reads it.
 //
 // What this file covers beyond that is the rest of the path: that the real system, with the real store,
@@ -24,7 +24,7 @@
 // still broadcasts the data beside the answer. The database's `reply-to-asker.spec.ts` is the same division for
 // the same reason.
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 
 const SETTINGS = 'host/settings'
 /** The connection the ask arrived on, which is what makes an ask a window's rather than the backend's */

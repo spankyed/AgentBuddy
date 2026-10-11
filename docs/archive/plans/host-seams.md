@@ -17,21 +17,21 @@ the same address, known at compile time. The `hasDesignation('settings')` guards
 plugin exists, which since the move is always yes.
 
 **2. The host's sends can't say who sent them.** `Message.from` is stamped only by `defineEvents(packId)`
-(`abuddy-sdk/src/events/index.ts:249`), which a pack's `#generated/events` calls. The host uses the
+(`apack-sdk/src/events/index.ts:249`), which a pack's `#generated/events` calls. The host uses the
 untyped free sends, so its messages carry no sender. Its broadcast targets: 22 to `HOST.packs`, 15 to
 `settingsView()`, 2 to `HOST.application`. With the designation gone all 39 are compile-time constants,
 so the host's sends can be *typed* against `HostPluginEvents`/`HostSystemEvents` — which already exist —
 not merely stamped.
 
 **3. Actions are the other half.** `services.emitter.broadcastToPlugin` is declared
-`typeof untypedBroadcastToPlugin` (`abuddy-sdk/src/services/index.ts:40`), the raw function, and an
+`typeof untypedBroadcastToPlugin` (`apack-sdk/src/services/index.ts:40`), the raw function, and an
 action runs outside any pack scope. Those two gaps are objections 1 and 2 in
 `docs/goals/wont-do/goal-sender-enforced-audiences.md`.
 
 **4. `fe/public.ts` survives only in the host, for one type.** It is gone from default-setup, replaced by
 two mechanisms rather than renamed: the contract (`fe/contract.ts`, types only) and the readers
 `#generated/fe` generates. The host's three `fe/public.ts` export runtime values, and have two consumers:
-`abuddy-host/src/fe/index.ts:8-10` re-exports all three (the package's export surface, not a crossing),
+`apack-host/src/fe/index.ts:8-10` re-exports all three (the package's export surface, not a crossing),
 and `features/packs/fe/frontends.ts:7` imports the type `ShellPackFrontends` from
 `../../application/fe/public.ts` — the only cross-feature host frontend import there is.
 `ShellPackFrontends` (`features/application/fe/types.ts:12`) is a port: the shell takes it, the packs
@@ -59,11 +59,11 @@ sends, which keep only that provenance check; moving 57 sites off them is the ot
 
 ## What We're Not Doing
 
-**1. No `abuddy.json` for the host.** The manifest schema refuses `host` as a pack id
+**1. No `apack.json` for the host.** The manifest schema refuses `host` as a pack id
 (`manifest-schema.ts:213`) — a rule that stops a pack impersonating the app. `discoverBuiltInPacks` scans
 `packages/` for manifests, so one there is a standing hazard. `hostRegistration(systems)` is parameterised
 by which systems the caller runs (9 call sites) where a generated registration is static. And the host
-would build through a bespoke path rather than `abuddy build`. Of the four benefits, two are void:
+would build through a bespoke path rather than `apack build`. Of the four benefits, two are void:
 `eventTypes<E>()` already makes the hand-written `PACKS_PLUGIN_EVENT_TYPES` impossible to drift, and the
 contract-leaf rule guards a codegen cycle the host cannot have. The one benefit worth having is what
 step 2 delivers without a manifest.
@@ -96,7 +96,7 @@ Two things the steps below did not predict, both recorded where they were found:
   plan says to) would have broken the gate rather than freed it. What replaced it is a derived rule — a package
   may name its features' frontends from a module it publishes *and* that sits outside every feature, the
   hand-written counterpart of a pack's generated `pack-entry-fe.ts` — so nothing is blessed by path or by
-  filename, and a tree with no `exports` excepts nothing. The second half of that is not decoration: `@abuddy/host`
+  filename, and a tree with no `exports` excepts nothing. The second half of that is not decoration: `@apack/host`
   publishes `./settings` from `features/settings/be/index.ts`, and excepting a module by visibility alone handed
   that one feature a licence no other feature had (found in review, fixed in `29620c935`'s successor).
 - **Step 3's `via` is not only an action's.** Stamping a source rather than specifically an action costs nothing
@@ -125,7 +125,7 @@ binds `createSends({ from: HOST_PACK_ID })`. Drops the `from?` third parameter f
 **Stamping only.** This step was written expecting to type the sends too, against
 `HostPluginEvents`/`HostSystemEvents`. Those are the published maps, not the host's own, so that was never
 the right target — it is finding 5, and step 5 closes it. Stamping is what the deferred enforcement goal
-was blocked on, so it lands alone; `packages/abuddy-host/src/events.ts` records why, and step 5 deletes
+was blocked on, so it lands alone; `packages/apack-host/src/events.ts` records why, and step 5 deletes
 that note.
 
 ### 3 — Actions send as their pack
@@ -143,18 +143,18 @@ default-setup's sandbox, so it takes `api:update` and the pack suites.
 ### 4 — Move the port, delete the exception
 
 Closes finding 4. Move `ShellPackFrontends` (and any sibling on `application/fe/public.ts:6` the packs feature implements)
-into `abuddy-host/src/fe/`, which both features already import from. Point `features/packs/fe/frontends.ts`
+into `apack-host/src/fe/`, which both features already import from. Point `features/packs/fe/frontends.ts`
 at it. Then delete `HOST_SRC_ROOT`, the `public` branch in `findCrossFeatureImports`, and the spec case
 pinning the exception.
 
-Fold the three `fe/public.ts` barrels into `abuddy-host/src/fe/index.ts`.
+Fold the three `fe/public.ts` barrels into `apack-host/src/fe/index.ts`.
 
 Independent of 1–3; can land in any order relative to them.
 
 ### 5 — The host sends by name, typed
 
 Closes finding 5. Export `SettingsPluginEvents` (one word), then define the host's two maps in
-`abuddy-host/src/events.ts` and bind `defineEvents<HostPlugins, HostSystems>(HOST_PACK_ID)` in place of the
+`apack-host/src/events.ts` and bind `defineEvents<HostPlugins, HostSystems>(HOST_PACK_ID)` in place of the
 `createSends({ from })` binding:
 
 ```ts
@@ -175,22 +175,22 @@ real. Lands after step 2, whose note it deletes.
 
 | File | Change |
 |------|--------|
-| `packages/abuddy-host/src/features/registration.ts` | Drop `designation: 'settings'` |
+| `packages/apack-host/src/features/registration.ts` | Drop `designation: 'settings'` |
 | `packages/renderer/src/views/packs/plugin.ts` | Drop `designation: 'settings'` |
-| `packages/abuddy-host/src/features/settings/be/system.ts` | `settingsView()` → `HOST.settings` |
+| `packages/apack-host/src/features/settings/be/system.ts` | `settingsView()` → `HOST.settings` |
 | `packages/renderer/src/runtime/settings.ts`, `views/WebApp.vue`, `views/settings/canvas/tabs/PluginsTab.vue`, `views/layout/Toolbar.vue`, `views/layout/ToolbarPluginContextMenu.vue` | `getDesignated('settings')` → `HOST.settings`; drop the `hasDesignation` guards |
-| `packages/abuddy-sdk/src/events/index.ts` | `createSends`; untyped exports and `defineEvents` built from it; `from?` parameter goes |
-| `packages/abuddy-host/src/**` (39 broadcast sites) | Send through the host's bound sends |
-| `packages/abuddy-sdk/src/services/index.ts` | `emitter` carries a pack identity |
+| `packages/apack-sdk/src/events/index.ts` | `createSends`; untyped exports and `defineEvents` built from it; `from?` parameter goes |
+| `packages/apack-host/src/**` (39 broadcast sites) | Send through the host's bound sends |
+| `packages/apack-sdk/src/services/index.ts` | `emitter` carries a pack identity |
 | `packages/default-setup/src/extensions/steps/action/sandbox.ts` | Thread the pack id to the emitter |
-| `packages/abuddy-host/src/features/settings/be/system.ts` | Export `SettingsPluginEvents` for the map |
-| `packages/abuddy-host/src/events.ts` | The host's two maps; bind `defineEvents`, dropping the `createSends` note |
-| `packages/abuddy-host/src/**` (39 broadcasts, 18 system sends) | `HOST.*` → bare feature ids |
-| `packages/abuddy-host/src/features/application/fe/types.ts` → `src/fe/` | Move `ShellPackFrontends` to the seam |
-| `packages/abuddy-host/src/features/packs/fe/frontends.ts` | Import the port from `src/fe/` |
+| `packages/apack-host/src/features/settings/be/system.ts` | Export `SettingsPluginEvents` for the map |
+| `packages/apack-host/src/events.ts` | The host's two maps; bind `defineEvents`, dropping the `createSends` note |
+| `packages/apack-host/src/**` (39 broadcasts, 18 system sends) | `HOST.*` → bare feature ids |
+| `packages/apack-host/src/features/application/fe/types.ts` → `src/fe/` | Move `ShellPackFrontends` to the seam |
+| `packages/apack-host/src/features/packs/fe/frontends.ts` | Import the port from `src/fe/` |
 | `scripts/check-import-specifiers.ts` | Delete `HOST_SRC_ROOT` and the `public` branch |
-| `packages/abuddy-cli/tests/build/import-specifiers.spec.ts` | Drop the case pinning the exception |
-| `packages/abuddy-host/src/features/*/fe/public.ts` | Fold into `src/fe/index.ts`, or rename |
+| `packages/apack-cli/tests/build/import-specifiers.spec.ts` | Drop the case pinning the exception |
+| `packages/apack-host/src/features/*/fe/public.ts` | Fold into `src/fe/index.ts`, or rename |
 
 ## Open Questions
 

@@ -197,15 +197,15 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
-import { untypedOpenPlugin } from '@abuddy/sdk/fe'
-import { resolveName } from '@abuddy/sdk/ids'
+import { usePlugin } from '@apack/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
+import { untypedOpenPlugin } from '@apack/sdk/fe'
+import { resolveName } from '@apack/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'

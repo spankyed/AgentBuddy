@@ -2,7 +2,7 @@
  * A unit pool's per-project cache: where a project's stamp lives and what it is a fingerprint of.
  *
  * The definition, not the command — `scripts/test-unit-pool.ts` is the command over it, the same split as
- * `scripts/ensure-packages-built.ts` over `@abuddy/host/build/packages-built`. It is a module of its own for
+ * `scripts/ensure-packages-built.ts` over `@apack/host/build/packages-built`. It is a module of its own for
  * one reason: the guard in `chain-inputs.spec.ts` has to read what the pool actually fingerprints, and the
  * pool script runs its `main()` on import, so a spec cannot ask it.
  *
@@ -11,8 +11,8 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { holdExclusiveLock, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
-import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
+import { holdExclusiveLock, type ExclusiveLock } from '@apack/host/exclusive-lock';
+import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@apack/host/build/packages-built';
 import { INTEGRATION_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { coresFor } from './core-budget.ts';
@@ -24,7 +24,7 @@ import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTot
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
  * `fingerprintUnit` and one reader cover all three.
  */
-export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-unit-pool');
+export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'apack-unit-pool');
 
 /**
  * Keyed by directory **and half**, because a suite with two halves has two things to remember.
@@ -70,7 +70,7 @@ export const STAMP_READERS = { poolStampFor } as const;
  * wrong thing. A build records a fact about files, which is true whoever asked for it; this suppresses a
  * verdict about behaviour, which is the chain's to record and not a diagnostic's.
  */
-export const DIAGNOSTIC_RUN_ENV = 'ABUDDY_DIAGNOSTIC_RUN';
+export const DIAGNOSTIC_RUN_ENV = 'APACK_DIAGNOSTIC_RUN';
 
 /**
  * Set by the chain on every step it spawns, and read here because this is where the stamps are kept.
@@ -88,7 +88,7 @@ export const DIAGNOSTIC_RUN_ENV = 'ABUDDY_DIAGNOSTIC_RUN';
  * A positive signal rather than another negative one: the chain is the thing that knows it is the chain,
  * and anything else running a pool is by definition running it some other way.
  */
-export const CHAIN_RUN_ENV = 'ABUDDY_CHAIN_RUN';
+export const CHAIN_RUN_ENV = 'APACK_CHAIN_RUN';
 
 /**
  * Under what conditions a pool run happened, as one declaration with the type derived from it.
@@ -162,7 +162,7 @@ export const POOLS = {
   host: {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
-    // with-source supplies the @abuddy/source condition the host suites resolve under
+    // with-source supplies the @apack/source condition the host suites resolve under
     run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...reporterArgs()] }],
   },
   pack: {
@@ -311,7 +311,7 @@ export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance
  * The projects a run was asked for and did not report.
  *
  * **A `--project` filter that matches nothing is silently dropped**, as long as one other filter matched:
- * measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, ignores the second and
+ * measured, `--project @apack/ears --project @apack/no-such-project` runs ears, ignores the second and
  * exits 0 with no warning. Only a filter matching *nothing at all* is an error. So a suite whose workspace
  * stopped matching its vitest project name would be stamped as having passed a run it was excluded from,
  * and would then stay cached — "recorded fresh having never run", through a different door.
@@ -422,7 +422,7 @@ const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<strin
  * what makes that available: *"a package with one config has nowhere to move a spec to."* Nothing counted
  * the markers against it, and the count is the finding — **eleven of the fourteen are in such a package**,
  * so for those the remedy the gate points at costs a new vitest config and a root project entry rather
- * than a rename. The three in `@abuddy/cli` have both halves and so could move today.
+ * than a rename. The three in `@apack/cli` have both halves and so could move today.
  *
  * That is what this line is for: the gap between the markers that could act on this evidence and the ones
  * that could not. `f2a003bb2` moved two specs on it, so the question is no longer whether the gate is ever
@@ -449,7 +449,7 @@ const markerReachLines = (marked: ReadonlyMap<string, Map<string, string>>, widt
  * parsing what it printed, so there is nothing to keep in step with vitest.
  *
  * The half's total comes first because it is the number a ranking cannot give: measured 2026-10-05, the
- * five slowest files hold 46% of `repo-checks`' fast half and 97% of `abuddy-sdk`'s, and the shape no
+ * five slowest files hold 46% of `repo-checks`' fast half and 97% of `apack-sdk`'s, and the shape no
  * top-five can show at all is many files each creeping a little — 349 of 388 fast-half files are under
  * 500ms and total 24.1s between them.
  *

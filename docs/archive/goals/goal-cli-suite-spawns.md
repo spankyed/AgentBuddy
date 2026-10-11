@@ -1,5 +1,5 @@
 > **Done** (`AS/cli-suite-spawns`, in a worktree). **Superseded in part** by
-> [`goal-measured-placement.md`](goal-measured-placement.md): this split `@abuddy/cli`'s suite by whether a
+> [`goal-measured-placement.md`](goal-measured-placement.md): this split `@apack/cli`'s suite by whether a
 > spec spawns a process, and spawning turned out to be a proxy that said three things wrongly. Placement is
 > now measured cost. The split itself stands; the predicate does not.
 
@@ -10,16 +10,16 @@
 
 Implement docs/goals/goal-cli-suite-spawns.md on master, at or after ee0611269 — the base its Background was
 surveyed at.
-Before Phase 1, confirm the base: packages/abuddy-cli/tests/helpers/pack-builds.ts exists and exports `run`
-and `TSC`, packages/abuddy-cli/src/commands/build.ts exports `buildCommand`, and
-packages/abuddy-cli/tests/cli/scaffold.spec.ts and tests/build/facade-typing.spec.ts exist. If they don't, stop
+Before Phase 1, confirm the base: packages/apack-cli/tests/helpers/pack-builds.ts exists and exports `run`
+and `TSC`, packages/apack-cli/src/commands/build.ts exports `buildCommand`, and
+packages/apack-cli/tests/cli/scaffold.spec.ts and tests/build/facade-typing.spec.ts exist. If they don't, stop
 and say so — the plan was surveyed somewhere else.
 Then re-measure with Decision 6's recipe before sizing anything: the numbers below are from 2026-09-24, this
 goal is arithmetic about where the time goes, and a stale table invalidates it.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
 them or stop to ask.
 This can run in a worktree beside goal-test-tiers.md — see "Doing this in a worktree". A symlinked node_modules
-is fine until Phase 2 touches abuddy-cli/src, which is a build input; give the worktree its own before that.
+is fine until Phase 2 touches apack-cli/src, which is a build input; give the worktree its own before that.
 Take every measurement with nothing else running.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep going.
 No backward compatibility in code: change signatures, move modules, migrate every in-repo caller, test,
@@ -29,7 +29,7 @@ Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new helper is mutation-checked.
 - Every remaining `run('node', [CLI, …])` call site is one whose assertion is about the process — an exit
   code, stderr, argv parsing or a tty — and a comment beside it says which.
-- `npm test -w @abuddy/cli` passes with the same test count it has today, or more. Not fewer: this goal moves
+- `npm test -w @apack/cli` passes with the same test count it has today, or more. Not fewer: this goal moves
   work off the process boundary, it does not delete coverage.
 - Measured and recorded in the doc: the suite's wall time and total test time before and after, and
   `npm run chain`'s `test:unit` step before and after.
@@ -46,9 +46,9 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - delete or skip a test to make the suite faster. A test that must spawn is an answer, not a failure.
 - replace a spawn with an in-process call where the test asserts on the exit code, stderr, argv parsing or a
@@ -59,13 +59,13 @@ Never:
 
 # Goal: the CLI suite spawns a process only where the process is the thing under test
 
-`@abuddy/cli`'s suite is 56s of `test:unit`'s ~100s — the single largest block of time in the pre-merge
+`@apack/cli`'s suite is 56s of `test:unit`'s ~100s — the single largest block of time in the pre-merge
 chain. It is not slow because a few tests are slow; it is slow because it starts processes. This goal moves
 the work that does not need a process boundary off it, and leaves the work that does.
 
 ## Background (2026-09-24, at ee0611269 on master)
 
-Measured with `npx vitest run --root packages/abuddy-cli --reporter=verbose`, on an idle machine. An earlier
+Measured with `npx vitest run --root packages/apack-cli --reporter=verbose`, on an idle machine. An earlier
 run taken while another suite was running reported 249s of test time for the same work, which is why the
 prompt block says not to measure under contention.
 
@@ -91,7 +91,7 @@ one place, which is why this is a goal rather than a patch.
 
 `tests/helpers/pack-builds.ts` exports `run`, which is `execFileSync`. Across the spec files:
 
-- **`CLI` is named about 70 times** — each one `node bin/abuddy.mjs <command>`, paying node startup plus
+- **`CLI` is named about 70 times** — each one `node bin/apack.mjs <command>`, paying node startup plus
   loading the CLI's bundle before the command begins.
 - **`TSC` is named 5 times** — each a `tsc` binary spawn, paying process start plus lib loading.
 
@@ -103,7 +103,7 @@ This is the important part, and it is why the goal is small in concept:
   `ts.getParsedCommandLineOfConfigFile` and `ts.createProgram` (`:343`, `:392`) rather than spawning `tsc`.
   Five `TSC` spawns remain elsewhere. The SDK does the same thing in `build/module-exports.ts`, so the
   pattern is established in two places.
-- **A shared fixture.** `scaffold.spec.ts` already runs `abuddy init` once in `beforeAll` (`:32-34`) for nine
+- **A shared fixture.** `scaffold.spec.ts` already runs `apack init` once in `beforeAll` (`:32-34`) for nine
   tests. It is still 3.0s a test, so what remains per test is a build or a typecheck, not the scaffold.
 
 So the work is finishing two patterns the suite already demonstrates, not introducing them.
@@ -134,14 +134,14 @@ spawn without one is visible in review.
 the process boundary is the aim; deleting a case is not, and a case that turns out to need a process is
 recorded as such rather than removed.
 
-**3. Call the CLI's command functions, not its bin.** The CLI is a module; `bin/abuddy.mjs` is a wrapper that
+**3. Call the CLI's command functions, not its bin.** The CLI is a module; `bin/apack.mjs` is a wrapper that
 parses argv and exits. A test producing a built pack should call the build command directly, which skips node
 startup and the bundle load. Nothing about the command's behaviour changes, which is the point.
 
 This needs no new seam and no public API change: the commands are already exported functions
 (`src/commands/build.ts` exports `buildCommand(args)` and `build(args)`), and these tests already import from
 `../../src/…` — `app/app-target`, `app/beta-app`, `app/playwright`, `build/be-bundler`, `build/dsl-defs` and
-others. So Phase 2 is reaching for a door that is open, and `packages/abuddy-cli/src` should not need to
+others. So Phase 2 is reaching for a door that is open, and `packages/apack-cli/src` should not need to
 change. If a command turns out to swallow something a test needs, say so in the summary rather than widening
 the published surface for a test's convenience.
 
@@ -159,7 +159,7 @@ this is how the table in Background was produced — the reporter gives per-test
 summed:
 
 ```bash
-npx vitest run --root packages/abuddy-cli --reporter=verbose 2>&1 \
+npx vitest run --root packages/apack-cli --reporter=verbose 2>&1 \
   | grep -oE "✓ tests/[^ ]+\.spec\.ts.*[0-9]+ms$" > /tmp/cli-all.txt
 python3 - <<'EOF'
 import re, collections
@@ -181,23 +181,23 @@ it does run, which is the half caching cannot do.
 ## Doing this in a worktree, alongside `goal-test-tiers.md`
 
 This goal is a good candidate to run in parallel with that one, and the two barely touch: this one is
-`packages/abuddy-cli/tests/**` and `tests/helpers/pack-builds.ts`, while that one is `scripts/`, the packages'
-`vitest.config.ts`, `tests/scripts/` and `abuddy-cli/src/commands/test.ts`. The single shared directory is
-`abuddy-cli/tests/build/`, where the tiers goal adds specs and this one edits others — different files, which
+`packages/apack-cli/tests/**` and `tests/helpers/pack-builds.ts`, while that one is `scripts/`, the packages'
+`vitest.config.ts`, `tests/scripts/` and `apack-cli/src/commands/test.ts`. The single shared directory is
+`apack-cli/tests/build/`, where the tiers goal adds specs and this one edits others — different files, which
 merge.
 
 **The symlinked `node_modules` is fine for most of this, and not for one part.** `.claude/worktrees/` creates
 `node_modules` as a symlink to the main checkout, which puts the build stamps and the lock there too
-(`STAMP_DIR = repoFile('node_modules', '.cache', 'abuddy-packages-build')`, `packages-built.ts:107-108`) while
+(`STAMP_DIR = repoFile('node_modules', '.cache', 'apack-packages-build')`, `packages-built.ts:107-108`) while
 `packages/*/dist` stays per-checkout. That only matters when the two checkouts disagree about a *build input*,
 because `unitStaleReason` (`:190-205`) compares a stamp against the inputs, and
-`packages/abuddy-cli/tests` is not one — the `@abuddy/cli` unit's inputs are the root manifests,
-`scripts/bundle-package.ts`, `abuddy-cli/{bin,src,package.json,tsconfig.json}` and `abuddy-host/{src,package.json}`.
+`packages/apack-cli/tests` is not one — the `@apack/cli` unit's inputs are the root manifests,
+`scripts/bundle-package.ts`, `apack-cli/{bin,src,package.json,tsconfig.json}` and `apack-host/{src,package.json}`.
 
 So Phase 1, and every edit confined to `tests/`, leave the fingerprint identical to master's and the shared
 stamp stays valid for both checkouts. Two things do need care:
 
-- **Only if a phase changes `abuddy-cli/src`**, which Decision 3 says it should not need to: the commands are
+- **Only if a phase changes `apack-cli/src`**, which Decision 3 says it should not need to: the commands are
   already exported and the tests already import them. Should that change, `src` *is* an input, the two
   checkouts' fingerprints diverge from that commit, and each `packages:ensure` rebuilds what the other just
   built — so give the worktree its own `node_modules` (`npm install` inside it) at that point.
@@ -219,7 +219,7 @@ overlap with anything; Phases 2 and 3 end in a number, and that number needs an 
   is under test* (exit code, stderr, argv, tty) or *the spawn produces something we then assert on*.
 - No behaviour change. The output of this phase is the list, in the code.
 
-**Done when:** every `run(...)` call site in `packages/abuddy-cli/tests` carries a one-line reason, and the
+**Done when:** every `run(...)` call site in `packages/apack-cli/tests` carries a one-line reason, and the
 summary reports the split — how many of each. That number is what Phases 2 and 3 are sized against.
 
 ### Phase 2 — Call the command in-process where the process is not under test
@@ -304,7 +304,7 @@ Every number below was taken on a **contended machine** and none is a clean figu
 was building and testing in the same checkout throughout; the 1-minute load average is given with each
 reading, and for reference the suite's own baseline was taken at load 12.
 
-A 34-hour runaway `abuddy generate-entries` (PID 83105, orphaned, 98.5% of a core, started ~Sep 23) was
+A 34-hour runaway `apack generate-entries` (PID 83105, orphaned, 98.5% of a core, started ~Sep 23) was
 found and killed before any of this. It had been consuming a core during the Background measurement too,
 which is part of why that 182.6s does not reproduce.
 
@@ -327,17 +327,17 @@ load average of 109. Take those two numbers before claiming the goal's headline.
 ### The suite did not get faster, and that is the finding
 
 Taken on a quiet machine (load 6-12) once the other session stopped, before and after, each a full
-`npm run test:unit` so the `@abuddy/cli` step is measured exactly as the chain runs it:
+`npm run test:unit` so the `@apack/cli` step is measured exactly as the chain runs it:
 
 | | before | after |
 |---|---|---|
-| `@abuddy/cli` suite, wall | 59.07s | 59.54s |
-| `@abuddy/cli` suite, total test time | 261.6s | 259.9s |
+| `@apack/cli` suite, wall | 59.07s | 59.54s |
+| `@apack/cli` suite, total test time | 261.6s | 259.9s |
 | tests | 764 | 764 |
 | `npm run test:unit`, whole step | 144.5s (load 20) | 113.5s (load 12) |
 
 **The suite is unchanged.** The `test:unit` difference is ambient load, not this work: the only step
-this change can touch is `@abuddy/cli`, and that step moved 0.5s on a 59s wall, which is noise.
+this change can touch is `@apack/cli`, and that step moved 0.5s on a 59s wall, which is noise.
 
 The four converted files *did* get faster, by the same ~20% in the suite that they showed in isolation:
 

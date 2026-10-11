@@ -4,14 +4,14 @@
  *
  * **Nothing here writes where another step reads, and that is the point of the file.** `attw --pack <dir>` runs
  * `npm pack` *inside* the tree it is analysing and deletes the tarball afterwards, so a reader of that tree
- * sees a file appear and vanish: `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'` is what that costs. Keeping every
+ * sees a file appear and vanish: `ENOENT: open 'publish/apack-ui-0.1.0.tgz'` is what that costs. Keeping every
  * other step away from those trees instead is a mutex against 29 of the chain's 30 steps, which is 6.0s of a
  * cold run — simulated over the table's declared seconds, and the step's whole cost, since conflicting with
  * everything means running alone. So `packTree` packs each tree into a temp directory outside the repository
  * and `attw` is given the path.
  *
  * **Both populations are derived**, because a shell chain cannot derive one: it would name every tree once per
- * tool, and `attw`'s skipping of `@abuddy/cli` would be implicit in the shape of the command, where a further
+ * tool, and `attw`'s skipping of `@apack/cli` would be implicit in the shape of the command, where a further
  * package shipping no declarations goes silently unchecked. The trees come from `publishedTreeDirs()`, and
  * attw's subset is *a tree whose manifest declares types* — the reason the CLI is skipped rather than the fact.
  *
@@ -27,8 +27,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { REPO_ROOT, packagesBuiltOrRefuse, publishedTreeDirs } from '@abuddy/host/build/packages-built';
-import { packTree } from '@abuddy/host/build/published-manifest';
+import { REPO_ROOT, packagesBuiltOrRefuse, publishedTreeDirs } from '@apack/host/build/packages-built';
+import { packTree } from '@apack/host/build/published-manifest';
 import { checksFor, type PublishedTree } from './lib/packages-check-plan.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
@@ -37,7 +37,7 @@ exitOnEpipe();
 /**
  * **A gate must not report success about an artifact it did not verify**, which is the whole of why this is
  * here: publint and attw over a tree the sources have moved past say the published packages are fine about
- * output nobody would publish. Door 8 of the freshness doors (`packages/abuddy-testing/CLAUDE.md`, the only
+ * output nobody would publish. Door 8 of the freshness doors (`packages/apack-testing/CLAUDE.md`, the only
  * record that a door exists — add a row before adding a caller).
  *
  * It refuses rather than rebuilding, as door 7 does: this is a chain step, and a step that writes what it
@@ -51,7 +51,7 @@ const trees: PublishedTree[] = Object.entries(publishedTreeDirs()).map(([pkg, di
   pkg, dir, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as Record<string, unknown>,
 }));
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-packages-check-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-packages-check-'));
 const failures: { label: string; output: string }[] = [];
 
 /**

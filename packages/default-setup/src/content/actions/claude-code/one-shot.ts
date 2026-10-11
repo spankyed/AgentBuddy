@@ -7,7 +7,7 @@
  * applied, no thread state is touched.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 
 export const meta: ActionMeta = {

@@ -1,13 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from '../../../scripts/lib/typecheck-legs.ts';
 import { ARTIFACT_CHECKS } from '../../../scripts/lib/typecheck-jobs.ts';
 import { rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 /**
  * A leg's scope comes from its script, and a declared one has something the script cannot say.
@@ -78,7 +78,7 @@ describe('a typecheck leg takes its scope from its script', () => {
   });
 
   it('refuses a leg whose script names a workspace it cannot resolve', () => {
-    const invented: Leg = { name: 'typecheck:bogus', command: 'npm run typecheck --workspace @abuddy/not-a-package', seconds: 1 };
+    const invented: Leg = { name: 'typecheck:bogus', command: 'npm run typecheck --workspace @apack/not-a-package', seconds: 1 };
     // The leg's own `command` is not what is read — the root script of that name is, and there is none here,
     // so this is the no-mentions refusal. The resolvable-mention rule is the case above, over the real table.
     expect(() => scopeOf(invented)).toThrow(/names no workspace, so declare a scope/);

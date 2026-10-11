@@ -60,13 +60,13 @@ jobs:
         run: tests/scripts/release-beta-rule.test.sh
 
       - name: Schema drift check
-        run: npm run schema:check --workspace @abuddy/sdk
+        run: npm run schema:check --workspace @apack/sdk
 
       # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
       # content parity, dependent-pack, SDK bridge drift and content runtime tests
       - name: Build default-setup pack artifacts
         working-directory: packages/default-setup
-        run: npx abuddy build
+        run: npx apack build
 
       # The facade types dependents compile against match the reviewed report. It bundles the facade itself
       # rather than reading what the build above wrote, so the order here is convenience and not a dependency
@@ -80,15 +80,15 @@ jobs:
         run: npm test --workspace @app/default-setup -- --reporter=verbose
 
       - name: Unit tests (sdk)
-        run: npm test --workspace @abuddy/sdk -- --reporter=verbose
+        run: npm test --workspace @apack/sdk -- --reporter=verbose
         env:
           REQUIRE_CONTENT_RUNTIME: '1'
 
       - name: Unit tests (ears)
-        run: npm test --workspace @abuddy/ears -- --reporter=verbose
+        run: npm test --workspace @apack/ears -- --reporter=verbose
 
       - name: Unit tests (host)
-        run: npm test --workspace @abuddy/host -- --reporter=verbose
+        run: npm test --workspace @apack/host -- --reporter=verbose
         env:
           REQUIRE_RUNTIME_ENTRY: '1'
 
@@ -98,9 +98,9 @@ jobs:
 
       # After the build: a package's reports read its dependencies' published declarations
       - name: API reports
-        run: npm run api:check --workspace @abuddy/ears --workspace @abuddy/sdk --workspace @abuddy/ui
+        run: npm run api:check --workspace @apack/ears --workspace @apack/sdk --workspace @apack/ui
 
-      # publint and arethetypeswrong on every packed package (@abuddy/cli ships no types, so attw skips it)
+      # publint and arethetypeswrong on every packed package (@apack/cli ships no types, so attw skips it)
       - name: Validate packed packages
         run: npm run packages:check
 
@@ -108,10 +108,10 @@ jobs:
         run: npm run packages:publish -- --dry-run
 
       - name: Unit tests (cli)
-        run: npm test --workspace @abuddy/cli -- --reporter=verbose
+        run: npm test --workspace @apack/cli -- --reporter=verbose
 
       - name: Integration tests (cli)
-        run: npm run test:integration --workspace @abuddy/cli -- --reporter=verbose
+        run: npm run test:integration --workspace @apack/cli -- --reporter=verbose
 
       - name: Unit tests (repo checks)
         run: npm test --workspace @app/repo-checks -- --reporter=verbose
@@ -122,7 +122,7 @@ jobs:
       - name: Unit tests (renderer)
         run: npm run test:unit --workspace @app/renderer -- --run
 
-  # Builds tests/packs/external-pack with the abuddy CLI and runs its Playwright
+  # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
     runs-on: macos-14
@@ -147,7 +147,7 @@ jobs:
       - name: External pack E2E
         run: npm run test:external-pack
 
-      # Outside-author end state: packed @abuddy/* tarballs only, in a temp dir outside the repo
+      # Outside-author end state: packed @apack/* tarballs only, in a temp dir outside the repo
       - name: Packaged pack authoring E2E
         run: npm run test:packaged-authoring
 

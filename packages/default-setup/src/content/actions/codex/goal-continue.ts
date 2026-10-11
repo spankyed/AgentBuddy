@@ -1,6 +1,6 @@
 /** CDX: Goal Continue — auto-continues a Codex turn when the thread goal is active. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 import { getCodexState, persistCodexState } from './_helpers/thread-context.ts';
 

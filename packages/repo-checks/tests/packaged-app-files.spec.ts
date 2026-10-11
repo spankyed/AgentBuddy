@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { population } from '@abuddy/sdk/testing';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
+import { population } from '@apack/sdk/testing';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { PACK_WORK_DIR } from '@abuddy/host/build/pack-workdir';
+import { PACK_WORK_DIR } from '@apack/host/build/pack-workdir';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -40,7 +40,7 @@ const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm tes
 let patterns: string[];
 
 beforeAll(async () => {
-  // By URL rather than a relative specifier, as `abuddy-cli/tests/app/beta-app.spec.ts` reads the same config
+  // By URL rather than a relative specifier, as `apack-cli/tests/app/beta-app.spec.ts` reads the same config
   const config = (await import(pathToFileURL(path.join(REPO_ROOT, 'electron-builder.mjs')).href)).default as { files: string[] };
   patterns = config.files;
 });
@@ -86,8 +86,8 @@ function filesUnder(dir: string): string[] {
 const perPackage = (part: string): string[] =>
   PACKAGE_DIRS.flatMap((pkg) => filesUnder(path.join('packages', pkg, part)));
 
-const TEMPLATES = 'packages/abuddy-cli/templates';
-const PACKED_TEMPLATES = 'packages/abuddy-cli/dist/package/templates';
+const TEMPLATES = 'packages/apack-cli/templates';
+const PACKED_TEMPLATES = 'packages/apack-cli/dist/package/templates';
 
 describe("the packaged app's file list", () => {
   /**
@@ -113,14 +113,14 @@ describe("the packaged app's file list", () => {
    * wrong, and this case said so on its first run.
    */
   it('would lose its TypeScript templates if both patterns that carry them went', () => {
-    const stripped = without('packages/*/dist/**', 'packages/abuddy-cli/dist/package/templates/**');
+    const stripped = without('packages/*/dist/**', 'packages/apack-cli/dist/package/templates/**');
     const typescript = packedTemplates().filter((file) => file.endsWith('.ts'));
     expect(population('the TypeScript templates', typescript).filter((file) => shipsUnder(stripped, file))).toEqual([]);
   });
 
   /**
    * A pack's working directory, which `packages/**` took until 2026-10-02 — dotted directories included,
-   * since electron-builder reads no `.gitignore`. `abuddy build` keeps its dependency cache, its staging and
+   * since electron-builder reads no `.gitignore`. `apack build` keeps its dependency cache, its staging and
    * its record of what each bundling phase read there, and the app loads none of it: measured, the built-in
    * pack's record alone was 25K of build-internal data in every installer.
    *
@@ -154,7 +154,7 @@ describe("the packaged app's file list", () => {
 
   /**
    * The trees `stagePublishTree` writes so `npm publish` has something to publish. The app never loads one — it
-   * resolves `@abuddy/sdk` through `node_modules` to `packages/abuddy-sdk/dist` — and the recursive include of
+   * resolves `@apack/sdk` through `node_modules` to `packages/apack-sdk/dist` — and the recursive include of
    * `packages` took all three until the publish exclusion was added, because electron-builder reads no
    * `.gitignore`.
    */
@@ -178,7 +178,7 @@ describe("the packaged app's file list", () => {
     });
 
     it("ships every file of a package's compiled output", () => {
-      expect(population("@abuddy/sdk's dist", filesUnder('packages/abuddy-sdk/dist')).filter((file) => !ships(file))).toEqual([]);
+      expect(population("@apack/sdk's dist", filesUnder('packages/apack-sdk/dist')).filter((file) => !ships(file))).toEqual([]);
     });
 
     /** The mapping the templates cases derive: what `bundle-package` copied is what they assumed it would */

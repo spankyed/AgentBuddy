@@ -117,8 +117,8 @@
 import { ref, watch } from 'vue'
 import { Plus, X, GripVertical } from 'lucide-vue-next'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
-import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import ColorPicker, { DEFAULT_COLORS } from '@apack/ui/design/ColorPicker'
+import type { SettingUpdate } from '@apack/sdk/fe'
 
 interface Project {
   name: string

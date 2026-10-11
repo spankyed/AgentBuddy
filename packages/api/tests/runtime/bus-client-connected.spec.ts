@@ -7,25 +7,25 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
-import type { Message } from '@abuddy/sdk/events';
+import type { Message } from '@apack/sdk/events';
 
-vi.mock('@abuddy/host/app-state', () => ({
+vi.mock('@apack/host/app-state', () => ({
   appState: { get: () => ({ hasOnboarded: true }) },
   HOST_ENTITY_TYPES: ['AppState'],
 }));
 
-const { createPackRegistry } = await import('@abuddy/host/packs');
+const { createPackRegistry } = await import('@apack/host/packs');
 const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
-const { createAppBus, createBusMachine } = await import('@abuddy/host/bus');
+const { createAppBus, createBusMachine } = await import('@apack/host/bus');
 const { rootEvents } = await import('@/transport/emitter');
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
-const { bindHost } = await import('@abuddy/sdk/runtime');
-const { createHostRuntime } = await import('@abuddy/host/services');
-const { createEarsEngine } = await import('@abuddy/ears');
-const { untypedBroadcastToPlugin } = await import('@abuddy/sdk/events');
-type LmdbStore = import('@abuddy/ears/lmdb').LmdbStore;
+const { bindHost } = await import('@apack/sdk/runtime');
+const { createHostRuntime } = await import('@apack/host/services');
+const { createEarsEngine } = await import('@apack/ears');
+const { untypedBroadcastToPlugin } = await import('@apack/sdk/events');
+type LmdbStore = import('@apack/ears/lmdb').LmdbStore;
 bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
 
@@ -293,7 +293,7 @@ describe('PACK_CHANGED on the bus', () => {
   });
 });
 
-// A pack can be installed, uninstalled or rebuilt before a client ever connects: `abuddy dev` against a
+// A pack can be installed, uninstalled or rebuilt before a client ever connects: `apack dev` against a
 // running backend, or a headless boot. The bus has to act on those either way.
 describe('pack lifecycle before a client connects', () => {
   const systemIds = ['second-pack/feature'];

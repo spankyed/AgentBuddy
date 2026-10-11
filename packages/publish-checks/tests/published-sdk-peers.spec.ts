@@ -1,18 +1,18 @@
-// Packs type `services` (HostServices) from @abuddy/sdk/services. A package its declarations import that a pack
+// Packs type `services` (HostServices) from @apack/sdk/services. A package its declarations import that a pack
 // may not have installed (an optional peer) silently turns those types into `any` under skipLibCheck, so every
-// package they reach must be a dependency or a required peer of @abuddy/sdk.
+// package they reach must be a dependency or a required peer of @apack/sdk.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { packageName } from '@abuddy/host/build/specifiers';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
+import { packageName } from '@apack/host/build/specifiers';
 
 // Skips without built packages, and refuses rather than reading a stale `dist`
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
-const SDK = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
+const SDK = path.join(REPO_ROOT, 'packages', 'apack-sdk');
 
 /** Packages the declarations reachable from `entry` import, following relative imports */
 function importedPackages(entry: string): Set<string> {
@@ -30,7 +30,7 @@ function importedPackages(entry: string): Set<string> {
   return packages;
 }
 
-describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk/services', () => {
+describe.skipIf(!PACKAGES_BUILT)('published @apack/sdk/services', () => {
   it('imports only packages every pack has installed: dependencies and required peers', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(SDK, 'package.json'), 'utf-8'));
     const optional = new Set(Object.keys(manifest.peerDependenciesMeta ?? {}).filter((name) => manifest.peerDependenciesMeta[name].optional));

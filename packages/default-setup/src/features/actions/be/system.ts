@@ -3,15 +3,15 @@ import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 // Cross-plugin send: the flows plugin also receives action events
 import { setup } from 'xstate';
-import type { Reply } from '@abuddy/sdk/events';
-import { defineSystem } from '@abuddy/sdk/framework';
+import type { Reply } from '@apack/sdk/events';
+import { defineSystem } from '@apack/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract.ts';
 import type { OutgoingActionEvents } from './types.ts';
 import { repository } from '#generated/repository.ts';
-import { createLogger } from '@abuddy/sdk/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
+import { createLogger } from '@apack/sdk/logger';
+import { toMap, toIdentifierSet, mapScalar } from '@apack/sdk/utils';
 import { exportActions } from './repository/export-actions.ts';
 import { ref } from '#generated/ref.ts';
 
@@ -24,7 +24,7 @@ import { ref } from '#generated/ref.ts';
  */
 const answer = (reply: Reply<OutgoingActionEvents> | undefined, event: OutgoingActionEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('actions', event));
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('actions');
 

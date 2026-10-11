@@ -38,12 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import { settingsProblems } from '@abuddy/host/settings'
+import { usePlugin } from '@apack/sdk/fe'
+import { settingsProblems } from '@apack/host/settings'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
-import type { SettingsState } from '@abuddy/host/fe'
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor'
+import type { SettingsState } from '@apack/host/fe'
 
 const actor: SettingsState = usePlugin()
 const settings = useSelector(actor, (state) => state.context.settings)

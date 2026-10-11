@@ -13,11 +13,11 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import type { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@abuddy/ears';
-import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@abuddy/sdk/utils'
+import { hasIdCollision } from '@apack/ears';
+import { restoreJsonMediaRefs, restoreMarkdownMediaRefs, toDisplayName } from '@apack/sdk/utils'
 import { parseFrontmatter, parseMarkdownSections } from './utils.ts'
 import type { ContentSection } from '#features/library/be/types.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 interface ImportResult {
   created: number

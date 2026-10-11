@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { inputFiles, REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
@@ -10,7 +10,7 @@ import type { Half } from '../../../scripts/lib/spec-halves.ts';
 /** The halves a suite runs in: every suite has a fast one, and only a suite with a second config has the other */
 const halvesOf = (suite: UnitSuite): Half[] =>
   (INTEGRATION_SUITES.some((other) => other.dir === suite.dir) ? ['fast', 'integration'] : ['fast']);
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 /**
  * A suite declares the files its specs load.
@@ -24,10 +24,10 @@ import { population } from '@abuddy/sdk/testing';
  * The consequence is specific and quiet. A suite's project is re-run when *its* declared inputs move
  * (`poolUnitFor`, `scripts/lib/unit-pool.ts`), so a spec that imports a file nobody declared keeps its last
  * result while that file changes. Measured on the two this found: touching
- * `packages/abuddy-ui/src/tailwind-preset.ts` left `@abuddy/cli`'s project not stale, and the spec that
+ * `packages/apack-ui/src/tailwind-preset.ts` left `@apack/cli`'s project not stale, and the spec that
  * imports it did not re-run.
  *
- * **Relative imports only**, which is what `reachableFrom` follows. A bare `@abuddy/…` specifier is covered
+ * **Relative imports only**, which is what `reachableFrom` follows. A bare `@apack/…` specifier is covered
  * instead by `workspaceDeps` reading the manifest, so this compares a graph against a declaration *and*
  * another declaration rather than against an observation — worth knowing before trusting it as proof. What
  * it cannot see at all is a path built at runtime: the repo-wide guards ask git what the tree holds, which

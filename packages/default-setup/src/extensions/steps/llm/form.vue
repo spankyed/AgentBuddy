@@ -229,13 +229,13 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@abuddy/ui/components/BaseForm'
-import TipSection from '@abuddy/ui/components/TipSection'
+import BaseForm from '@apack/ui/components/BaseForm'
+import TipSection from '@apack/ui/components/TipSection'
 import { withDefault, writtenDefault } from '../create/field-default.ts'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
-import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
-import type { PromptEntity } from '@abuddy/sdk'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@apack/sdk/models'
+import type { PromptEntity } from '@apack/sdk'
 
 const props = defineProps<{
   node: NodeEntity

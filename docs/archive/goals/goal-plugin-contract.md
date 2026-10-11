@@ -7,8 +7,8 @@
 
 Implement docs/goals/goal-plugin-contract.md on the current branch. Background's figures were re-verified on
 2026-09-23; the checks below are the authority, not a commit.
-Before Phase 1, confirm: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
-packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and the seven
+Before Phase 1, confirm: packages/apack-sdk/src/fe/plugin.ts exports `pluginAccepts`,
+packages/apack-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and the seven
 packages/default-setup/src/features/*/fe/public.ts exist. If any is wrong, stop and say so.
 Read docs/archive/goals/goal-plugin-inbox.md's Outcome first, then this doc's Background, Spike results,
 Decisions, Phases and Constraints. Decisions are final: implement them, don't reopen or ask.
@@ -29,7 +29,7 @@ Finished when:
 - An external pack reads a dependency's plugin state with types (proved in tests/fixtures/external-pack),
   typed `T | undefined` — that frontend may still be loading.
 - `usePluginState`/`readPluginState` name only the generated readers; the SDK's untyped pair is
-  `useUntypedPluginState`/`readUntypedPluginState`; `abuddy.json` names each contract at
+  `useUntypedPluginState`/`readUntypedPluginState`; `apack.json` names each contract at
   `features[].plugin.contract`.
 - `findCrossFeatureImports` no longer excepts `fe/public`: no feature imports another feature's `fe/`.
 - npm run typecheck, schema:check, api:check (sdk, ui), facade:check -w @app/default-setup,
@@ -42,11 +42,11 @@ or session lines, `git commit -- <paths>` for that phase's files only, `git diff
 
 Never:
 - push, tag, open a PR, npm publish, create releases or trigger workflows (dry runs only) unless asked.
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - give the contract a runtime value (a `pluginContract()`-style call) or read it from `fe/plugin.ts`: the
   first is needless ceremony, the second restores the cycle (Spike results).
@@ -85,7 +85,7 @@ in with it.
 **Reading another plugin has no typed path.** `fe/public.ts` is a file per feature whose job is letting one
 feature read another's state; 14 such edges remain, 10 of them from `src/extensions/**`, where components are
 host-rendered with no `PluginScope`. The runtime already works cross-pack — `usePluginState`
-(`abuddy-sdk/src/fe/plugin-state.ts`) resolves through the shell's registry, which knows nothing about pack
+(`apack-sdk/src/fe/plugin-state.ts`) resolves through the shell's registry, which knows nothing about pack
 boundaries — so an external pack can read default-setup's threads plugin *today*. Only the type is missing,
 and with it the discoverability.
 
@@ -125,7 +125,7 @@ means reading the call's return type, so codegen would import `fe/plugin.ts`, wh
 and the cycle returns.
 
 **Ten contexts pass the facade gate, at +9%.** Exporting all ten from `pack-types.ts` and running
-`abuddy build` produced no facade problems. `dist/types/pack-types.d.ts` grew **5522 → 6018 lines
+`apack build` produced no facade problems. `dist/types/pack-types.d.ts` grew **5522 → 6018 lines
 (+496, +9.0%)**. Two contexts are not exported today and must be: `BrowserContext`
 (`features/browser/fe/state.ts`) and `ThreadsContext` (`features/threads/fe/state.ts:256`).
 
@@ -138,7 +138,7 @@ load-bearing in the Decisions below, and because the list is cheaper to keep tha
 
 | # | The constraint | Ours, at | Costs today |
 |---|---|---|---|
-| 1 | `Message` is `{ to, event }` — no sender | `abuddy-sdk/src/events/index.ts`, 8 construction sites | Decision 7 argued *from* it |
+| 1 | `Message` is `{ to, event }` — no sender | `apack-sdk/src/events/index.ts`, 8 construction sites | Decision 7 argued *from* it |
 | 2 | `ExportInfo.type` is a `boolean` | `build/module-exports.ts:11` | drove the wrong conclusion in Spike results |
 | 3 | the reader resolves values only | same file — built for `export const x = f<T>()` | `pluginAccepts`, `defineSystem`'s empty call, `_outgoing`/`_accepts` |
 | 4 | `defineSystem` takes one union for incoming and internal | `framework/define-system.ts:52` | `ADD_LOG` is published API |
@@ -203,7 +203,7 @@ Final.
    `checker.getDeclaredTypeOfSymbol`, beside the existing `exportedValueType`. `ExportInfo` does not change;
    this is a new reader, not a different answer from an old one.
 
-   **The leaf is named in `abuddy.json`, not found by convention** — in the `plugin` object that already
+   **The leaf is named in `apack.json`, not found by convention** — in the `plugin` object that already
    exists, in the `"path#export"` shape `repositories` and `services` already use:
 
    ```json
@@ -261,17 +261,17 @@ Final.
    question Decision 6 already gives the shell.
 
    **The SDK's untyped pair is renamed: `useUntypedPluginState` and `readUntypedPluginState`**, staying
-   public in `@abuddy/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
+   public in `@apack/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
    the path people should take — the convention this repo already follows three times:
 
-   | typed, `#generated/*` | untyped, `@abuddy/sdk` |
+   | typed, `#generated/*` | untyped, `@apack/sdk` |
    |---|---|
    | `qx` | `untypedQx` |
    | `tx` | `untypedTx` |
    | `navigateToPlugin` | `openPlugin` |
 
    `tx`/`untypedTx` is the most recent and was applied for this reason: the untyped write had been exported
-   under the same name as the typed one, so `import { tx, untypedQx } from '@abuddy/ears'` read as a matched
+   under the same name as the typed one, so `import { tx, untypedQx } from '@apack/ears'` read as a matched
    pair when only one half was qualified. The one exception is instructive — the Database console keeps `tx`
    as its REPL global (`database-console/index.ts`, `defs/database.ts`), because that name is a different,
    user-facing API and the two lists must agree.
@@ -318,13 +318,13 @@ The change everything else rests on, and the only one that closes the cycle.
   `annotated` argument at its call site. `eventTypeLiterals` keeps the parameter only while
   `outgoingEventTypesOf` still passes it; [`goal-contracts-as-types.md`](goal-contracts-as-types.md) removes
   that last caller and assumes this deletion happened here.
-- `abuddy.json` gains `features[].plugin.contract` (Decision 2), with `manifest-schema.ts`,
+- `apack.json` gains `features[].plugin.contract` (Decision 2), with `manifest-schema.ts`,
   `generate:schema` and `schema:check`. `library` omits it and gets no leaf.
-- `PluginInbox` stays a type helper in `@abuddy/sdk/fe`, constraining the `inbox` half's audiences.
+- `PluginInbox` stays a type helper in `@apack/sdk/fe`, constraining the `inbox` half's audiences.
 - `state.ts` imports its context from the leaf. Nothing else moves; the machine keeps its generated sends.
 - The selectors stay for now on the SDK's untyped `usePluginState`; Phase 3 deletes them.
 
-**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @abuddy/sdk`,
+**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apack/sdk`,
 `npm test -w @app/default-setup` pass; `git grep pluginAccepts` returns nothing and no SDK export replaced it; `#generated/events` imports
 no `fe/plugin.ts`; a `declaredTypeOf` spec covers a type alias, an interface and a missing name; a guard in
 `scripts/check-import-specifiers.ts` rejects a leaf importing `./state`, `#generated/events`, `#generated/fe`
@@ -367,10 +367,10 @@ After Phases 1 and 2.
   `#generated/references`, which already aggregates reference config.
 
 **Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in
-`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its
+`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@apack/sdk/fe` and its
 specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `tx`/`untypedTx` rename
 that landed this convention: a multi-line `import {` block, a module that *re-exports* the name (its consumers
-then import it from there, not from the SDK), `await import('@abuddy/sdk/fe')` destructuring, and the name
+then import it from there, not from the SDK), `await import('@apack/sdk/fe')` destructuring, and the name
 inside a string or a test label. The third is the one to take seriously — **`npm run typecheck` did not catch
 a dynamic-import case**, and ten api specs failed at runtime instead. a fixture-pack spec reads a default-setup plugin's state with types, and
 a `@ts-expect-error` pins that the dependency read is `T | undefined`. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
@@ -388,8 +388,8 @@ makes `check:specifiers` pass again, proving the rule is what rejects it.
 - The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
   at their callers.
 
-**Done when:** `npm test -w @abuddy/host` and `-w @abuddy/sdk` pass; a spec in
-`abuddy-host/tests/features/application/fe/` pins that a send to a plugin whose pack is still loading is
+**Done when:** `npm test -w @apack/host` and `-w @apack/sdk` pass; a spec in
+`apack-host/tests/features/application/fe/` pins that a send to a plugin whose pack is still loading is
 delivered once it arrives, and reported through `notify` once loading settles with no such plugin; a read of
 an absent plugin returns `undefined` instead of throwing; and the scope spec the archived goal left open
 passes — `broadcastToPlugin` reaches **every** window, the renderer's `sendToPlugin` only its own (two windows
@@ -405,8 +405,8 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — The leaf and the contract | done | `fe/contract.ts` per feature, named at `features[].plugin.contract`; `findContractLeafImports` (`scripts/check-import-specifiers.ts`) walks the closure. Mutation: importing `./state` from a leaf is reported |
-| 2 — The `pack` audience | done | `PluginInbox`/`PluginInboxAudiences` (`abuddy-sdk/src/fe/plugin.ts`); `INBOX_AUDIENCES` in `module-exports.ts` rejects an audience that isn't one; `PackPluginEvents` carries only the `public` half |
-| 3 — The read channel | done | `usePluginState`/`readPluginState` generated per pack from each contract; `useUntypedPluginState`/`readUntypedPluginState`/`pluginIsRunning` are the untyped escape hatch (`abuddy-sdk/src/fe/plugin-state.ts`, `tests/fe/plugin-state.spec.ts`) |
+| 2 — The `pack` audience | done | `PluginInbox`/`PluginInboxAudiences` (`apack-sdk/src/fe/plugin.ts`); `INBOX_AUDIENCES` in `module-exports.ts` rejects an audience that isn't one; `PackPluginEvents` carries only the `public` half |
+| 3 — The read channel | done | `usePluginState`/`readPluginState` generated per pack from each contract; `useUntypedPluginState`/`readUntypedPluginState`/`pluginIsRunning` are the untyped escape hatch (`apack-sdk/src/fe/plugin-state.ts`, `tests/fe/plugin-state.spec.ts`) |
 | 4 — The shell owns the send paths | done | `openPlugin` (`fe/navigation.ts`), `navigateToPlugin` from `#generated/fe`; `fe/public.ts` is gone from pack features, kept only by the host (`HOST_SRC_ROOT`) |
 
 ### Corrections to the Decisions
@@ -416,7 +416,7 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
   names a `path#Export` rather than the plugin entry.
 - **`usePluginState` kept its name; the SDK's untyped pair was renamed.** The plan left the collision open. The
   generated readers are what pack code should reach for, so they keep the plain name and the SDK's became
-  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@abuddy/ears`.
+  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@apack/ears`.
 
 ### Open items
 Neither `Deferred` item is still open; both were settled after this was archived.
@@ -466,9 +466,9 @@ own". There is no such item: `pluginAccepts` is the API this goal deleted, and n
 
 - Commit each phase as it finishes, no attribution lines, `git commit -- <paths>`; check `git diff --cached`
   first. Pushing, tagging and PRs are on request.
-- No publishing, releases or triggered workflows; no real data dirs; E2E in the `abuddy-test` namespace.
+- No publishing, releases or triggered workflows; no real data dirs; E2E in the `apack-test` namespace.
 - No bare `tsc` in `packages/preload`; no `npm install` in the example pack; no version metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any` in the pack-facing SDK, the TypeScript 5.7 floor, `api:update` after export
   changes with `etc/` committed.
 - Build order: `packages:build` before the CLI suite; `compile` before the api suites and E2E. Suites don't

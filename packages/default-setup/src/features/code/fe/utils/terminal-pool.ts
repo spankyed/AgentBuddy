@@ -5,7 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { terminalEventBus } from './terminal-events.ts'
-import { openLink } from '@abuddy/sdk/fe'
+import { openLink } from '@apack/sdk/fe'
 import type { TerminalInfo } from '../features/terminal/state.ts'
 import '@xterm/xterm/css/xterm.css'
 
@@ -352,7 +352,7 @@ class TerminalPool {
 
 export const terminalPool = new TerminalPool()
 
-document.addEventListener('abuddy:paste', ((e: CustomEvent<{ text: string }>) => {
+document.addEventListener('apack:paste', ((e: CustomEvent<{ text: string }>) => {
   const el = e.target as HTMLElement
   const entry = terminalPool.findByElement(el)
   if (!entry) return

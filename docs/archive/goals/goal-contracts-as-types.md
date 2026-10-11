@@ -8,8 +8,8 @@
 Implement docs/goals/goal-contracts-as-types.md, at or after ad1bc3894 on AS/plugin-inbox — the base its
 Background was surveyed at — and after docs/goals/goal-plugin-contract.md lands, which is where
 `declaredTypeOf` comes from. This goal does the same thing for systems that that one did for plugins.
-Before Phase 1, confirm the base: `declaredTypeOf` exists in packages/abuddy-sdk/src/build/module-exports.ts,
-`SystemSpec` in packages/abuddy-sdk/src/framework/define-system.ts still carries `_incoming` and `_outgoing`,
+Before Phase 1, confirm the base: `declaredTypeOf` exists in packages/apack-sdk/src/build/module-exports.ts,
+`SystemSpec` in packages/apack-sdk/src/framework/define-system.ts still carries `_incoming` and `_outgoing`,
 and `git grep -l "satisfies SystemEntry" -- '*/be/system.ts'` lists 13 files (11 default-setup, the host's
 settings, the fixture's memos) — note the pathspec: `'packages/*/src'` matches nothing here and returns a
 false zero. If any of that is wrong, stop and say so.
@@ -48,11 +48,11 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - keep a phantom property as a fallback path beside the type read. One reader, or the old footguns come
   back with a second way to hit them.
@@ -68,7 +68,7 @@ one, and then closes the pattern.
 
 ### What codegen asks, and how
 
-`ModuleExports` (`packages/abuddy-sdk/src/build/module-exports.ts:14`) has exactly three readers:
+`ModuleExports` (`packages/apack-sdk/src/build/module-exports.ts:14`) has exactly three readers:
 
 | reader | reads | shape |
 |---|---|---|
@@ -115,8 +115,8 @@ export interface SystemSpec<TEvents, TOutgoing, TContext = {}> {
 
 `satisfies SystemEntry` exists **only** to keep that widening from happening. It is not a type-safety idiom
 here; it is a workaround for how codegen reads, and it has spread accordingly: 13 feature `system.ts` files,
-the `abuddy add feature` scaffold (`abuddy-cli/src/commands/add`), three `docs/public-facing` pages, the root
-`CLAUDE.md`, and specs in `abuddy-cli/tests/build` and `abuddy-sdk/tests/build` that assert on the error
+the `apack add feature` scaffold (`apack-cli/src/commands/add`), three `docs/public-facing` pages, the root
+`CLAUDE.md`, and specs in `apack-cli/tests/build` and `apack-sdk/tests/build` that assert on the error
 text it produces.
 
 ### The audience that has nowhere to go
@@ -140,7 +140,7 @@ The event unions are what hasn't moved: `IncomingLogEvents`, `LogsInternalEvents
 are declared in `be/system.ts`, not in the leaf beside it.
 
 Two features have no leaf at all and need one: the host's `settings` and `packs`
-(`packages/abuddy-host/src/features/*/be/` holds `system.ts` and, for settings, `document.ts`, `index.ts`,
+(`packages/apack-host/src/features/*/be/` holds `system.ts` and, for settings, `document.ts`, `index.ts`,
 `store.ts`).
 
 **This is the difference from the frontend.** `goal-plugin-contract.md` had to *invent* `fe/types.ts` to
@@ -181,7 +181,7 @@ Final.
    It mirrors `goal-plugin-contract.md`'s `fe/types.ts` deliberately — the same file name, the same export
    name, the same rule that codegen reads it and nothing else. A pack author learns one thing.
 
-   **And it is named the same way**: `features[].system.contract` in `abuddy.json`, in the `"path#export"`
+   **And it is named the same way**: `features[].system.contract` in `apack.json`, in the `"path#export"`
    shape `repositories` and `services` already use, inside the `system` object that already holds `entry`:
 
    ```json
@@ -252,7 +252,7 @@ reader gives the same answer as the old one did, which is the only version of th
 - Add `Contract` to each feature's `be/types.ts` (Decision 1); move `IncomingXEvents`, `XInternalEvents`
   and `OutgoingXEvents` out of `be/system.ts` into the leaf beside it.
 - Create `be/types.ts` for the host's `settings` and `packs` features, which have none.
-- `abuddy.json` gains `features[].system.contract` (Decision 1), with `manifest-schema.ts`,
+- `apack.json` gains `features[].system.contract` (Decision 1), with `manifest-schema.ts`,
   `generate:schema` and `schema:check`.
 - `defineSystem<Contract>()` (Decision 2), 14 call sites (11 default-setup, 2 host, 1 fixture).
 - `outgoingEventTypesOf(file)` takes the feature's `be/types.ts` and reads `Contract` with `declaredTypeOf`,
@@ -262,14 +262,14 @@ reader gives the same answer as the old one did, which is the only version of th
   `goal-plugin-contract.md`'s Phase 1 — confirm that before starting, since this goal assumes it.
 - Delete `_incoming` and `_outgoing` from `SystemSpec`; `SystemEntry.spec` stops being a `Pick<>`
   (Decision 3). Remove every `satisfies SystemEntry` outside `docs/archive/`: the 13 `be/system.ts` files,
-  the `abuddy add feature` scaffold, the `docs/public-facing` pages, the root `CLAUDE.md` sentence, and the
-  specs in `abuddy-cli/tests/build` and `abuddy-sdk/tests/build` that assert the annotation error text —
+  the `apack add feature` scaffold, the `docs/public-facing` pages, the root `CLAUDE.md` sentence, and the
+  specs in `apack-cli/tests/build` and `apack-sdk/tests/build` that assert the annotation error text —
   those specs lose their subject, so delete them rather than rewording them.
 - Extend `goal-plugin-contract.md`'s leaf guard to `be/types.ts`: one rule, both leaves, since the backend
   leaves already obey it (Background).
 - The guard from Decision 6.
 
-**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @abuddy/sdk`,
+**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apack/sdk`,
 `npm test -w @app/default-setup`, `test:external-pack` pass; `git grep "satisfies SystemEntry"` and
 `git grep "_outgoing"` return nothing outside `docs/archive/`; `api:update` run and `etc/` committed. The
 check that carries the phase: the generated event maps are **byte-identical** to before it
@@ -294,13 +294,13 @@ the facade is smaller than before the phase (record both line counts). Mutation:
 
 ### Phase 3 — Close the pattern
 
-- Update `docs/public-facing/` and `packages/abuddy-sdk/CLAUDE.md` wherever they teach `defineSystem`'s
+- Update `docs/public-facing/` and `packages/apack-sdk/CLAUDE.md` wherever they teach `defineSystem`'s
   three parameters or `satisfies SystemEntry`.
-- `abuddy add feature`'s templates (`packages/abuddy-cli/src/`) scaffold `be/types.ts` with a `Contract`.
-- One paragraph in `packages/abuddy-sdk/CLAUDE.md`: contracts are declared types in `types.ts`, read by
+- `apack add feature`'s templates (`packages/apack-cli/src/`) scaffold `be/types.ts` with a `Contract`.
+- One paragraph in `packages/apack-sdk/CLAUDE.md`: contracts are declared types in `types.ts`, read by
   `declaredTypeOf`; a phantom-carrying value is how it used to work and what the guard rejects.
 
-**Done when:** the full chain passes; `abuddy add feature` in a scratch pack produces a feature that builds
+**Done when:** the full chain passes; `apack add feature` in a scratch pack produces a feature that builds
 with no hand edits; no doc outside `docs/archive/` mentions `satisfies SystemEntry` or `_outgoing`.
 
 ## Outcome (2026-09-23)
@@ -311,7 +311,7 @@ The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan na
 ### Per phase
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — The contract type, and the reader that reads it | done | `SystemContract` + `defineSystem<Contract>()` (`abuddy-sdk/src/framework/define-system.ts`); `declaredTypeOf`/`outgoingEventTypesOf` read it without resolving the machine; `features[].system.contract` in the manifest schema (`85a673913`, `cadf8a952`) |
+| 1 — The contract type, and the reader that reads it | done | `SystemContract` + `defineSystem<Contract>()` (`apack-sdk/src/framework/define-system.ts`); `declaredTypeOf`/`outgoingEventTypesOf` read it without resolving the machine; `features[].system.contract` in the manifest schema (`85a673913`, `cadf8a952`) |
 | 2 — The internal audience | done | `internal` is a contract field feeding the machine's event union and nothing a dependent sees. Three systems had events to move, not the twelve the phase estimated: `logs` (`ADD_LOG`), `brain` (`TNODE_SPAWNED`, `TNODE_UPDATED`, `CHILD_COMPLETED`) and the host's `settings`. Sendable surface 205 → 200 union members. Mutation: folding `internal` back into `incoming` makes `ADD_LOG` sendable and the fixture's `@ts-expect-error` unused (TS2578) |
 | 3 — Close the pattern | done | `satisfies SystemEntry` is gone from every system and from every doc outside this archive; the scaffold writes `be/contract.ts`; `facade-gate-system-contract.spec.ts` asserts an annotated entry and a bare one publish identical facades (`dfde6bb99`, `682b1be90`) |
 
@@ -362,9 +362,9 @@ The contract moved to `be/contract.ts` rather than the `be/types.ts` the plan na
 
 - Commit each phase as it finishes, no attribution lines, `git commit -- <paths>`; check `git diff --cached`
   first. Pushing, tagging and PRs are on request.
-- No publishing, releases or triggered workflows; no real data dirs; E2E in the `abuddy-test` namespace.
+- No publishing, releases or triggered workflows; no real data dirs; E2E in the `apack-test` namespace.
 - No bare `tsc` in `packages/preload`; no `npm install` in the example pack; no version metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any` in the pack-facing SDK, the TypeScript 5.7 floor, `api:update` after export
   changes with `etc/` committed.
 - Build order: `packages:build` before the CLI suite; `compile` before the api suites and E2E. Suites don't

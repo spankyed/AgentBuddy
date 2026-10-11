@@ -1,13 +1,13 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
-import { contextMenuFn } from '@abuddy/sdk/fe'
+import breadcrumb, { breadcrumbWithParams } from '@apack/sdk/fe'
+import { contextMenuFn } from '@apack/sdk/fe'
 import { Edit, Trash2 } from 'lucide-vue-next'
-import { safeEvents } from '@abuddy/sdk/fe'
+import { safeEvents } from '@apack/sdk/fe'
 import {
   targetIs,
   type TrailClickEvent,
-} from '@abuddy/sdk/fe'
-import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+} from '@apack/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apack/sdk/fe'
 import type {
   NodeEntity,
   EdgeEntity,
@@ -15,11 +15,11 @@ import type {
 import type { FlowsContext, FlowsInboxEvent } from './contract.ts'
 import type { OutgoingFlowsEvents } from '#features/flows/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
-import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
-import { stepRegistry } from '@abuddy/sdk/steps'
+import { getNodeConfig, isTriggerNode } from '@apack/ui/components/node-styles'
+import { stepRegistry } from '@apack/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils.ts'
-import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
-import type { FlowEntity, EARS } from '@abuddy/sdk'
+import { computeMaxBottom, type LayoutNodeData } from '@apack/ui/components/node-dimensions'
+import type { FlowEntity, EARS } from '@apack/sdk'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -9,7 +9,7 @@ import { repoFiles } from './_support/repo-files.ts';
  * What this package is for, as a check rather than as a convention.
  *
  * The repo's own tooling is checked by specs like everything else, and those specs used to live in
- * `@abuddy/cli` — not because they were about the CLI, but because it was the package with a vitest config
+ * `@apack/cli` — not because they were about the CLI, but because it was the package with a vitest config
  * nearest the scripts. Fifteen of them accumulated there, and they were invisible to `npm run spec`: a
  * change to `scripts/` belongs to no package, so the command that runs "the specs your changes affect" ran
  * none of them.
@@ -24,7 +24,7 @@ const REPO_SCRIPTS = path.join(REPO_ROOT, 'scripts') + path.sep;
 /**
  * **Importing** a module under the repo's `scripts/`.
  *
- * Resolves each relative specifier rather than matching `/scripts/` as text, because `@abuddy/ui` has a
+ * Resolves each relative specifier rather than matching `/scripts/` as text, because `@apack/ui` has a
  * `scripts/` of its own and a spec about *its* export map is not a repo check.
  *
  * This is what the first check below asks, and it asks only this, because what that check protects is
@@ -77,13 +77,13 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'runner, read from git, over the repo\'s own config as well as the packs\'',
   'tests/lint-scope.spec.ts': 'what the root lint command excludes from packages/ — a property of the '
     + 'script at the tree\'s root and the templates it names, with no scripts/ module behind it',
-  'tests/identity-guard.spec.ts': 'that only @abuddy/sdk/env decides the app\'s environment and data '
+  'tests/identity-guard.spec.ts': 'that only @apack/sdk/env decides the app\'s environment and data '
     + 'paths — a property of every tracked file, read from git, with no scripts/ module behind it. It is '
     + 'here because its subject is the repo: a suite whose project does not declare the repo is not re-run '
     + 'when the thing it checks moves, which is how it missed one for two chain runs',
   'tests/dev-pack-hmr.integration.spec.ts': 'that the dev server serves **every** workspace pack\'s '
     + 'frontend from source, so a component edit patches rather than reloads — a property quantified over '
-    + 'the packs in the tree, which no one workspace owns: it reads the renderer\'s config, @abuddy/host\'s '
+    + 'the packs in the tree, which no one workspace owns: it reads the renderer\'s config, @apack/host\'s '
     + 'discovery and a pack under tests/packs, and would be a suite declaring none of the others wherever '
     + 'else it sat',
   'tests/repo-files.spec.ts': 'what "the files this repo has" means for the checks above — the working tree '

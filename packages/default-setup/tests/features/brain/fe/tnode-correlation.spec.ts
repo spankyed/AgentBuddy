@@ -16,7 +16,7 @@
 // it; that is a line, and saying so is better than leaving the list looking derived.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
+import type { StepRuntimeError, TNodeEntity } from '@apack/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));

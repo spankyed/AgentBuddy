@@ -1,20 +1,20 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { population } from '@abuddy/sdk/testing';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { population } from '@apack/sdk/testing';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
- * Environment identity and data paths are decided only by @abuddy/sdk/env (and the main
+ * Environment identity and data paths are decided only by @apack/sdk/env (and the main
  * process bootstrap that feeds it). This guard fails if the old, divergent resolution
  * patterns come back anywhere in the repo's code.
  *
- * Here and not in `@abuddy/sdk`, where it lived until 2026-10-01, because its subject is every tracked
+ * Here and not in `@apack/sdk`, where it lived until 2026-10-01, because its subject is every tracked
  * file and not that package — it imports nothing from it. A suite's project is re-run when that project's
  * inputs move, so a guard over the repo has to sit in a suite that declares the repo (`SUITE_READS`'
- * `repo`), and making `@abuddy/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
- * 0.4s check. It missed a forbidden path committed to `@abuddy/cli` for exactly that reason.
+ * `repo`), and making `@apack/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
+ * 0.4s check. It missed a forbidden path committed to `@apack/cli` for exactly that reason.
  */
 
 /**
@@ -26,12 +26,12 @@ import { repoFiles } from './_support/repo-files.ts';
  * gaining a channel read.
  *
  * The same pass found two entries excusing nothing. `electron-builder.mjs` reads
- * `process.env.ABUDDY_ENV === 'beta'`, and the env pattern's `(?!\s*=)` — meant to permit assignment —
- * exempts a comparison too; `abuddy-sdk/tests/env/app-context.spec.ts` is a test, which that pattern
+ * `process.env.APACK_ENV === 'beta'`, and the env pattern's `(?!\s*=)` — meant to permit assignment —
+ * exempts a comparison too; `apack-sdk/tests/env/app-context.spec.ts` is a test, which that pattern
  * already allows. Both passed without their entry, so both are gone.
  */
 const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> = {
-  'packages/abuddy-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read', 'channel'], why: 'the resolver itself' },
+  'packages/apack-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read', 'channel'], why: 'the resolver itself' },
   'packages/main/src/app-context.ts': {
     patterns: ['env-read', 'channel'], why: 'main-process bootstrap: infers the environment once',
   },
@@ -39,8 +39,8 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
   'packages/main/vitest.config.ts': {
     patterns: ['channel'], why: 'test time: supplies the stamp the build bakes, so the bootstrap can be tested',
   },
-  // Not the `export ABUDDY_ENV=production` the old reason named — no pattern here matches shell. What
-  // fires is `__ABUDDY_CHANNEL__` in a comment explaining the stamp, which is worth knowing before
+  // Not the `export APACK_ENV=production` the old reason named — no pattern here matches shell. What
+  // fires is `__APACK_CHANNEL__` in a comment explaining the stamp, which is worth knowing before
   // someone rewords it and wonders why the entry went stale
   'build/build.sh': { patterns: ['channel'], why: 'build time: its comment names the channel stamp it bakes' },
   'build/prod/clean.sh': {
@@ -49,7 +49,7 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
   'packages/repo-checks/tests/identity-guard.spec.ts': {
     patterns: ['data-dir', 'channel'], why: 'this guard, which has to spell the patterns it looks for',
   },
-  'packages/abuddy-sdk/src/logger/logger.ts': {
+  'packages/apack-sdk/src/logger/logger.ts': {
     patterns: ['node-env'], why: 'whether debug logging is on by default — a build-mode question, not an identity one',
   },
   'packages/default-setup/src/features/brain/be/system.ts': {
@@ -60,9 +60,9 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
 type PatternId = 'data-dir' | 'env-read' | 'channel' | 'node-env';
 
 const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTests?: boolean }> = [
-  { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @abuddy/sdk/env' },
-  { id: 'env-read', pattern: /process\.env\.ABUDDY_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
-  { id: 'channel', pattern: /__ABUDDY_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
+  { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @apack/sdk/env' },
+  { id: 'env-read', pattern: /process\.env\.APACK_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
+  { id: 'channel', pattern: /__APACK_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
   // Deliberately narrower than every NODE_ENV read: a bundler config asking what mode it builds in is not
   // this repo's business, and every one of those compares against 'development' or assigns. What this
   // catches is NODE_ENV standing in for the app's identity — which is what decided where the user's
@@ -93,8 +93,8 @@ function fires(file: string): PatternId[] {
  */
 const FIRES_ON: Record<PatternId, string> = {
   'data-dir': "path.join(home, 'Library', 'Application Support', appName)",
-  'env-read': 'const env = process.env.ABUDDY_ENV;',
-  'channel': 'const channel = __ABUDDY_CHANNEL__;',
+  'env-read': 'const env = process.env.APACK_ENV;',
+  'channel': 'const channel = __APACK_CHANNEL__;',
   'node-env': "const packaged = process.env.NODE_ENV === 'production';",
 };
 
@@ -129,7 +129,7 @@ describe('environment identity guard', () => {
         }
       });
     }
-    expect(violations, 'Resolve identity via @abuddy/sdk/env (resolveAppContext)').toEqual([]);
+    expect(violations, 'Resolve identity via @apack/sdk/env (resolveAppContext)').toEqual([]);
   });
 
   /**

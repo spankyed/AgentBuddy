@@ -1,9 +1,9 @@
 import type { OutgoingPullRequestEvents } from '../contract.ts'
 import { broadcastToPlugin } from '#generated/events.ts';
-import { defineHandlers } from '@abuddy/sdk/framework';
+import { defineHandlers } from '@apack/sdk/framework';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import { GitRepository } from '../services/git.ts'
 import * as ghCli from '../services/gh-cli.ts'
 

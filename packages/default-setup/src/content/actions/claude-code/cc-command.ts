@@ -6,7 +6,7 @@
  * - CC: Thread Ops (cc-thread-ops.ts) — compact, fork, add-dir, set-dir
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context.ts';
 import { DONT_BYPASS } from './_helpers/auto-approve.ts';

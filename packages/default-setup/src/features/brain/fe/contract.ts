@@ -2,9 +2,9 @@
 // system's outgoing union already reaches it. What it publishes is its state.
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`.
-// `abuddy.json` names it at `features[].plugin.contract`.
+// `apack.json` names it at `features[].plugin.contract`.
 import type { EventListenerEntity } from '#generated/types.ts'
-import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
+import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apack/sdk/steps'
 import type { NormalizedTNodeTree } from './trace-tree.ts'
 
 export interface BrainContext {

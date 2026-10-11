@@ -1,24 +1,24 @@
-// The API's boot and a tool opening the data dir (openAppDatabase, which abuddy db uses) hydrate the same entities,
-// relations and roles: both open the store through @abuddy/host/database, and the tool reads the installed packs'
+// The API's boot and a tool opening the data dir (openAppDatabase, which apack db uses) hydrate the same entities,
+// relations and roles: both open the store through @apack/host/database, and the tool reads the installed packs'
 // manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run compile).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { EarsQuery } from '@abuddy/ears';
-import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
-import { PACK_LAYOUT } from '@abuddy/host/packs';
+import type { EarsQuery } from '@apack/ears';
+import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_LAYOUT } from '@apack/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadAppPacks, startPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal, installShippedPacks } = await import('@abuddy/host/packs');
-const { openAppDatabase } = await import('@abuddy/host/database');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
-const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
-const { untypedTx } = await import('@abuddy/ears');
+const { loadAppPacks, startPacks } = await import('@apack/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@apack/host/packs');
+const { openAppDatabase } = await import('@apack/host/database');
+const { resolveAppContext } = await import('@apack/sdk/env');
+const { unbindHost } = await import('@apack/sdk/runtime/internals');
+const { untypedTx } = await import('@apack/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
@@ -48,13 +48,13 @@ async function bootApi() {
 }
 
 /**
- * Installs an external pack declaring its own entity type, as `abuddy install` leaves one: the API registers its
+ * Installs an external pack declaring its own entity type, as `apack install` leaves one: the API registers its
  * runtime, the tool reads the manifest beside it
  */
 async function installExternalPack(id: string, entityType: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
   const ears = { entities: { [entityType]: entityType }, relKinds: {} };
-  fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
+  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));

@@ -178,7 +178,7 @@ checked by setting the integration pool's half to `fast`: two cases fire), and t
 no pool would write, since the rename left one dead file per suite.
 
 Measured 2026-10-01: a `repo-checks` edit runs 6 files in **5.8s** against all 26 in **43.6s**. The asymmetry
-is why it pays — `abuddy-cli`'s half alone is 227.5s of the 276.7s of file time, so any edit that does not
+is why it pays — `apack-cli`'s half alone is 227.5s of the 276.7s of file time, so any edit that does not
 touch it skips 82% of the pool's work.
 
 ## Named, and deliberately not proposed

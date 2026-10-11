@@ -2,7 +2,7 @@ import * as path from 'path'
 import { repository } from '#generated/repository.ts';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/be/types.ts';
 import { EARS } from '#generated/ears.ts';
-import { getPackCommands } from '@abuddy/sdk/framework';
+import { getPackCommands } from '@apack/sdk/framework';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 import type { CommandItem } from '#generated/types.ts';
@@ -109,7 +109,7 @@ export class LibraryService {
   }
 
   /**
-   * The chat's slash commands: the ones registered packs declare (abuddy.json `commands`, in
+   * The chat's slash commands: the ones registered packs declare (apack.json `commands`, in
    * registration order), then the field sections of every document in the commands folder, in document
    * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
    */

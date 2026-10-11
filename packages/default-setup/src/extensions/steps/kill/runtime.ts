@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
 
 export function handler(_tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown): void {
   const a = actor as { send: (event: any) => void };

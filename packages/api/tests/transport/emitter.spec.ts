@@ -12,21 +12,21 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { LogEvent } from '@abuddy/sdk/logger';
+import type { LogEvent } from '@apack/sdk/logger';
 import { rootEvents } from '@/transport/emitter';
 
 let logDir: string;
 let previous: string | undefined;
 
 beforeEach(() => {
-  previous = process.env.AGENTBUDDY_LOG_DIR;
+  previous = process.env.APACK_LOG_DIR;
   logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-emitter-'));
-  process.env.AGENTBUDDY_LOG_DIR = logDir;
+  process.env.APACK_LOG_DIR = logDir;
 });
 
 afterEach(() => {
-  if (previous === undefined) delete process.env.AGENTBUDDY_LOG_DIR;
-  else process.env.AGENTBUDDY_LOG_DIR = previous;
+  if (previous === undefined) delete process.env.APACK_LOG_DIR;
+  else process.env.APACK_LOG_DIR = previous;
   fs.rmSync(logDir, { recursive: true, force: true });
 });
 

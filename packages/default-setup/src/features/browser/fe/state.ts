@@ -4,7 +4,7 @@ import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTa
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '#generated/events.ts';
 import { openPlugin } from '#generated/fe.ts';
-import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
+import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@apack/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
 export type { Bookmark, BrowserTab, BrowserTabPersistedId } from './contract.ts';
@@ -35,7 +35,7 @@ interface NormalizeTabsResult {
 type BrowserEvents =
   // UI events
   | BrowserInboxEvent
-  // A link to open, from anywhere in the app (`openLink` from @abuddy/sdk/fe): here or in the system's browser
+  // A link to open, from anywhere in the app (`openLink` from @apack/sdk/fe): here or in the system's browser
   | { type: 'LINK.OPEN'; url: string }
   // The app's, when this feature's settings change
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: BrowserSettings }

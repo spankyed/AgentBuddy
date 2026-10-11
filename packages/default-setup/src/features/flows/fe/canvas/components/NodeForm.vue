@@ -29,12 +29,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity } from '#generated/types.ts'
-import { stepRegistry } from '@abuddy/sdk/steps'
+import { stepRegistry } from '@apack/sdk/steps'
 
-import BaseForm from '@abuddy/ui/components/BaseForm'
+import BaseForm from '@apack/ui/components/BaseForm'
 import NodeTypeMenu from './NodeTypeMenu.vue'
-import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/models'
+import type { ActionEntity, FlowEntity, PromptEntity } from '@apack/sdk'
+import type { ModelCatalogEntry } from '@apack/sdk/models'
 
 interface Props {
   selectedNode?: NodeEntity | null

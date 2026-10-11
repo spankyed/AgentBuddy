@@ -1,5 +1,5 @@
 import { Library } from 'lucide-vue-next'
-import { definePlugin } from '@abuddy/sdk/fe'
+import { definePlugin } from '@apack/sdk/fe'
 import { librarySystem } from './state.ts'
 import LibraryCanvas from './canvas.vue'
 import LibraryPanel from './panel.vue'

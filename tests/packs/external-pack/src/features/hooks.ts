@@ -1,4 +1,4 @@
-// The pack's backend lifecycle (abuddy.json boot.hooks): the app runs onInit at boot and onShutdown when it stops the pack
+// The pack's backend lifecycle (apack.json boot.hooks): the app runs onInit at boot and onShutdown when it stops the pack
 import { journal } from './memos/be/journal.ts';
 
 export const onInit = () => journal.open();

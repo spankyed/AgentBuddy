@@ -1,13 +1,13 @@
 /** CDX: Handle Fork — create an app-server fork for a newly forked app thread. */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { ensureSessionMarker, getCodexState, persistCodexState, dequeueMessage, updateChatState } from './_helpers/thread-context.ts';
 import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Fork',
-  description: 'Copies Codex thread state to an AgentBuddy fork using Codex app-server thread/fork.',
+  description: 'Copies Codex thread state to an apack fork using Codex app-server thread/fork.',
   category: 'codex',
   input: {
     sourceThreadId: { type: 'string', required: true },

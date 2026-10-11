@@ -1,9 +1,9 @@
 // The window's client to the API: the SDK's sends and the shell's subscription, over tRPC and the Electron main
 // process's report of the API's status. Nothing else in the renderer calls the bus or reads the loaded packs.
-import type { ShellClient, ShellFailure } from '@abuddy/host/fe';
+import type { ShellClient, ShellFailure } from '@apack/host/fe';
 import { trpc, reconnectApiClient } from '@/transport';
 import { globalToast } from '@/adapters/toast';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 /** What the Electron main process reports about the API process */
 type ApiStatusEvent = { type: string; port?: number; restarting?: boolean; reloaded?: boolean; error?: unknown; message?: string; stack?: string; source?: string };

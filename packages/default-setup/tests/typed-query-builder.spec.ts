@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { QueryBuilder } from '@abuddy/ears';
+import type { QueryBuilder } from '@apack/ears';
 import { EARS, qx, type EntityName, type PackShapes } from '#generated/ears.ts';
 
 // ─── qx() overloads ────────────────────────────────────────────────────

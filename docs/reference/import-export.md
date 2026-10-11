@@ -151,14 +151,14 @@ Flows import via a compiled DSL JSON file. The DSL is validated against availabl
 
 ## Import Pack Content
 
-Settings → General → "Import Pack Content" imports a pack's compiled content from a directory (any pack's `runtime/content/` — `dist/runtime/content/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackContent(dir)` (`@abuddy/sdk/content`), then calls `importCompiledContent({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered applier for each `<key>.content.json` listed in `content.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
+Settings → General → "Import Pack Content" imports a pack's compiled content from a directory (any pack's `runtime/content/` — `dist/runtime/content/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackContent(dir)` (`@apack/sdk/content`), then calls `importCompiledContent({ compiledDir, include, mode })` (`@apack/sdk/utils`), which runs the pack's registered applier for each `<key>.content.json` listed in `content.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
 
 ## Content pipeline
 
-At boot, the host content every pack's compiled content (`applyPacks`, `@abuddy/host/packs/runtime`) from its
+At boot, the host content every pack's compiled content (`applyPacks`, `@apack/host/packs/runtime`) from its
 `runtime/content` directory, in dependency order so a pack's content can reference what the packs it depends on
 written. A SHA-256 hash of those files is recorded per pack as its applied content's revision
-(`appliedContent`, `@abuddy/host/app-state`). If it matches on the next startup, writing is skipped; changed
+(`appliedContent`, `@apack/host/app-state`). If it matches on the next startup, writing is skipped; changed
 data triggers a re-apply. A pack whose last content failed is retried when a pack it depends on has written since
 (`AppState.failedAgainst` holds what that attempt faced). Beside the revision, that record holds one entry per
 row the pack has written — a hash per part of what was written — which is what makes a boot apply a three-way
@@ -189,12 +189,12 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 
 | Function | Location | Purpose |
 |---|---|---|
-| `toSlug(name)` | `@abuddy/sdk/utils` (`utils/export.ts`) | Name → filesystem-safe slug (lowercase, dashes) |
-| `toDisplayName(str)` | `@abuddy/sdk/utils` (`utils/shared.ts`) | Slug → display name (replace dashes with spaces) |
-| `uniqueFilename(name, used)` | `@abuddy/sdk/utils` (`utils/export.ts`) | Dedup filenames (`foo.md` → `foo-2.md`) |
+| `toSlug(name)` | `@apack/sdk/utils` (`utils/export.ts`) | Name → filesystem-safe slug (lowercase, dashes) |
+| `toDisplayName(str)` | `@apack/sdk/utils` (`utils/shared.ts`) | Slug → display name (replace dashes with spaces) |
+| `uniqueFilename(name, used)` | `@apack/sdk/utils` (`utils/export.ts`) | Dedup filenames (`foo.md` → `foo-2.md`) |
 | `buildFrontmatter(tags, name?)` | `library/be/utils.ts` | Build YAML frontmatter string |
 | `parseFrontmatter(content)` | `library/be/utils.ts` | Extract `{ tags, name?, description?, body }` |
 | `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
 | `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
-| `importCompiledContent(options)` | `@abuddy/sdk/utils` (`utils/apply.ts`) | Run the registered appliers over a compiled content directory |
-| `computeManifestContentRevision(dir, artifacts)` | `@abuddy/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |
+| `importCompiledContent(options)` | `@apack/sdk/utils` (`utils/apply.ts`) | Run the registered appliers over a compiled content directory |
+| `computeManifestContentRevision(dir, artifacts)` | `@apack/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |

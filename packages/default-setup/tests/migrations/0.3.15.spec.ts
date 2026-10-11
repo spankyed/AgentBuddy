@@ -6,9 +6,9 @@
 // what still equals 0.3.14's default is dropped, so today's defaults apply.
 import { services } from '#generated/services.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { untypedTx, untypedQx } from '@abuddy/ears'
-import type { EARS as SdkEARS } from '@abuddy/sdk'
-import { dropAttribute } from '@abuddy/sdk/testing'
+import { untypedTx, untypedQx } from '@apack/ears'
+import type { EARS as SdkEARS } from '@apack/sdk'
+import { dropAttribute } from '@apack/sdk/testing'
 import { migration } from '../../src/migrations/0.3.15.ts'
 import { EARS, createEntityWithDefaults } from '#generated/ears.ts'
 import { ref } from '#generated/ref.ts'

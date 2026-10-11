@@ -2,7 +2,7 @@ import { watch, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { NotesState } from '../state.ts'
 import type { NoteDTO } from '#generated/types.ts'
-import type TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
+import type TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
 
 export function useSubDocumentInsert(
   actor: NotesState,

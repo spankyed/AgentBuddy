@@ -60,7 +60,7 @@ import {
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
   getPaletteGradientClasses
-} from '@abuddy/ui/components/node-styles'
+} from '@apack/ui/components/node-styles'
 
 interface PaletteItem {
   type: string

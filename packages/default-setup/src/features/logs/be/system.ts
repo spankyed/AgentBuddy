@@ -1,12 +1,12 @@
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup, fromCallback, spawnChild } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem } from '@apack/sdk/framework';
 
 import type { Contract } from './contract.ts';
 import type { LogEntry } from './types.ts';
-import { randomId } from '@abuddy/sdk/utils';
-import { onLog, type LogEvent } from '@abuddy/sdk/logger';
+import { randomId } from '@apack/sdk/utils';
+import { onLog, type LogEvent } from '@apack/sdk/logger';
 import type { LogsSettings } from '#generated/types.ts';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils.ts';
 import { ref } from '#generated/ref.ts';

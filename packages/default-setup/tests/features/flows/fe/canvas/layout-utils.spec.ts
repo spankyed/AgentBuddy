@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { testPacks } from '@abuddy/sdk/testing'
-import { type StepDefinition } from '@abuddy/sdk/steps'
-import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/ui/components/node-dimensions'
-import type { LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
+import { testPacks } from '@apack/sdk/testing'
+import { type StepDefinition } from '@apack/sdk/steps'
+import { NODE_DIMENSIONS, getDescriptor } from '@apack/ui/components/node-dimensions'
+import type { LayoutNodeData } from '@apack/ui/components/node-dimensions'
 import {
   parseHandleIndex,
   buildPortId,

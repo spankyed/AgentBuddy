@@ -1,8 +1,8 @@
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { reportError, createLogger } from '@abuddy/sdk/logger';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import { reportError, createLogger } from '@apack/sdk/logger';
 import { services } from '#generated/services.ts';
 import type { TransformNode, TransformOutputType } from './types.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });
 

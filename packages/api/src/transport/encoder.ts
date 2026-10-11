@@ -27,8 +27,8 @@
 // The replacer is therefore an optimisation rather than the mechanism: `withoutCycles` stringifies BigInts too,
 // so deleting it changes no output byte and merely routes every BigInt message through a throw and a full walk.
 // The only case that can tell the two apart is the one asserting a BigInt is sent *without* a warning.
-import { createLogger } from '@abuddy/sdk/logger';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { createLogger } from '@apack/sdk/logger';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('app-events');
 

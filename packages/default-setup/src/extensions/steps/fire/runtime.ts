@@ -1,6 +1,6 @@
 import { sendToSystem } from '#generated/events.ts';
-import type { TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
-import { extractValueByPath } from '@abuddy/sdk/utils';
+import type { TNodeEntity, ExecutionContext } from '@apack/sdk/steps';
+import { extractValueByPath } from '@apack/sdk/utils';
 import type { FireNode } from './types.ts';
 
 /** A payload with its `$.` paths resolved against the execution context, at any depth; other values as they are */

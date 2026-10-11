@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { STAMP_DIR } from '../../../scripts/lib/chain-stamps.ts';
 import {
   KEEP_RUNS, RUNS_DIR, evidenceFile, evidenceHeader, evidenceLine, openRunEvidence, runId, runsToPrune,

@@ -2,8 +2,8 @@
 // (a WebSocket subprotocol, never the URL), and a WebSocket or /dev/reload call without it (a web page's, say) is
 // refused. A malformed request doesn't take the API down.
 import * as net from 'node:net';
-import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { test, expect } from '@abuddy/testing';
+import { API_TOKEN_HEADER } from '@apack/sdk/utils/pure';
+import { test, expect } from '@apack/testing';
 
 /** Whether a WebSocket to `url` offering `protocols` opens, and the subprotocol the server chose */
 function connects(url: string, protocols: string[]): Promise<{ open: boolean; protocol?: string }> {
@@ -37,11 +37,11 @@ test('refuses API connections and reloads without the run token', async ({ appPa
   const base = `127.0.0.1:${apiPort}`;
 
   expect(await connects(`ws://${base}`, [])).toEqual({ open: false });
-  expect(await connects(`ws://${base}`, ['abuddy', 'abuddy-token.guess'])).toEqual({ open: false });
-  expect(await connects(`ws://${base}/?token=${encodeURIComponent(apiToken)}`, ['abuddy'])).toEqual({ open: false });
+  expect(await connects(`ws://${base}`, ['apack', 'apack-token.guess'])).toEqual({ open: false });
+  expect(await connects(`ws://${base}/?token=${encodeURIComponent(apiToken)}`, ['apack'])).toEqual({ open: false });
   // The server answers with the app's protocol, never the token one
-  expect(await connects(`ws://${base}`, ['abuddy', `abuddy-token.${apiToken}`])).toEqual({ open: true, protocol: 'abuddy' });
-  expect(await connects(`ws://${base}`, [`abuddy-token.${apiToken}`, 'abuddy'])).toEqual({ open: true, protocol: 'abuddy' });
+  expect(await connects(`ws://${base}`, ['apack', `apack-token.${apiToken}`])).toEqual({ open: true, protocol: 'apack' });
+  expect(await connects(`ws://${base}`, [`apack-token.${apiToken}`, 'apack'])).toEqual({ open: true, protocol: 'apack' });
 
   const reload = (headers: Record<string, string>) => fetch(`http://${base}/dev/reload`, {
     method: 'POST',
@@ -55,5 +55,5 @@ test('refuses API connections and reloads without the run token', async ({ appPa
 
   // The API is still up after a request no URL parser accepts
   await sendMalformedUpgrade(Number(apiPort));
-  expect(await connects(`ws://${base}`, ['abuddy', `abuddy-token.${apiToken}`])).toEqual({ open: true, protocol: 'abuddy' });
+  expect(await connects(`ws://${base}`, ['apack', `apack-token.${apiToken}`])).toEqual({ open: true, protocol: 'apack' });
 });

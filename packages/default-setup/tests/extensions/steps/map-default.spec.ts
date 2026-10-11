@@ -7,9 +7,9 @@
 // reading it. These cases are what makes it reachable; with the long form removed from `expandRecord` the first
 // one fails.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@abuddy/testing/harness'
+import { importFlows, startApp } from '@apack/testing/harness'
 import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
-import { untypedQx } from '@abuddy/ears'
+import { untypedQx } from '@apack/ears'
 
 const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
 

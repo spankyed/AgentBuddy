@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { reachableFrom, spawnCallsIn, spawnSitesIn, tsFilesUnder } from '../../../scripts/lib/process-spawns.ts';
 
@@ -48,21 +48,21 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
-  'packages/abuddy-cli/tests/_support/pack-builds.ts': { calls: 1,
-    why: 'the shared `run` spawns the repo\'s own bin/abuddy.mjs, for the cases that need argv dispatch and a real process boundary; callCli covers the rest in-process' },
-  'packages/abuddy-cli/tests/build/types-bundler-determinism.integration.spec.ts': { calls: 1,
-    why: 'two `abuddy build` runs whose outputs are compared, and two builds sharing one process would share its module state — which is the thing under test' },
-  'packages/abuddy-cli/tests/commands/add-extensions.integration.spec.ts': { calls: 1,
+  'packages/apack-cli/tests/_support/pack-builds.ts': { calls: 1,
+    why: 'the shared `run` spawns the repo\'s own bin/apack.mjs, for the cases that need argv dispatch and a real process boundary; callCli covers the rest in-process' },
+  'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts': { calls: 1,
+    why: 'two `apack build` runs whose outputs are compared, and two builds sharing one process would share its module state — which is the thing under test' },
+  'packages/apack-cli/tests/commands/add-extensions.integration.spec.ts': { calls: 1,
     why: 'vue-tsc, which needs the Vue language service that ts.createProgram is not; its two plain tsc spawns became the in-process typecheckPack' },
-  'packages/abuddy-cli/tests/commands/db.integration.spec.ts': { calls: 5,
+  'packages/apack-cli/tests/commands/db.integration.spec.ts': { calls: 5,
     why: 'the CLI\'s db command against a data dir: it opens LMDB and exits, and neither survives being run in the worker' },
-  'packages/abuddy-cli/tests/commands/release.integration.spec.ts': { calls: 1,
+  'packages/apack-cli/tests/commands/release.integration.spec.ts': { calls: 1,
     why: 'git, in a throwaway repository' },
-  'packages/abuddy-cli/tests/commands/scaffold.integration.spec.ts': { calls: 1,
+  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts': { calls: 1,
     why: 'the scaffolded pack\'s own toolchain — the CLI bin and then its vitest — run as a pack author runs them, which is the fidelity the spec is for' },
-  'packages/abuddy-cli/tests/harness/dependency-runtime.integration.spec.ts': { calls: 1,
+  'packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts': { calls: 1,
     why: 'a nested `vitest run`: the harness under test is what launches a run, so it cannot be the run that is launching it' },
-  'packages/abuddy-cli/tests/harness/harness-setup.integration.spec.ts': { calls: 1,
+  'packages/apack-cli/tests/harness/harness-setup.integration.spec.ts': { calls: 1,
     why: 'a nested `vitest run`, for the same reason — and the one whose spawner reaches the binary through a variable' },
   'packages/publish-checks/tests/published-exports.integration.spec.ts': { calls: 1,
     why: 'CONSUMER_MATRIX compiles a consumer with each supported TypeScript, and the subprocess is the fidelity: running the 5.7 floor in-process would put two typescript instances in one process' },
@@ -111,7 +111,7 @@ describe('a subprocess in the integration pool is one that has to be', () => {
    * whatever the detector does: it passed with the detector stubbed to return nothing.
    */
   it('fails when a file that spawns is dropped from the population', () => {
-    const dropped = 'packages/abuddy-cli/tests/_support/pack-builds.ts';
+    const dropped = 'packages/apack-cli/tests/_support/pack-builds.ts';
     const whole = spawnSitesIn(loaded, REPO_ROOT).map((site) => site.file);
     expect(whole, 'the file this drops is not in the answer to begin with, so nothing is being mutated')
       .toContain(dropped);

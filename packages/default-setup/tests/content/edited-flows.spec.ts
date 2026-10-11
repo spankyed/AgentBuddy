@@ -5,16 +5,16 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { CONTENT_INDEX_FILE, contentFile } from '@abuddy/sdk/build';
-import { createFlowApplier, createFormatApplier } from '@abuddy/sdk/content';
-import { importCompiledContent, type ApplyRecord } from '@abuddy/sdk/utils';
-import { registerPack, unregisterPack } from '@abuddy/testing/harness';
+import { CONTENT_INDEX_FILE, contentFile } from '@apack/sdk/build';
+import { createFlowApplier, createFormatApplier } from '@apack/sdk/content';
+import { importCompiledContent, type ApplyRecord } from '@apack/sdk/utils';
+import { registerPack, unregisterPack } from '@apack/testing/harness';
 import { findWhere } from '#generated/ears.ts';
-import { dropAttribute } from '@abuddy/sdk/testing';
-import { findRelations, untypedTx } from '@abuddy/ears';
+import { dropAttribute } from '@apack/sdk/testing';
+import { findRelations, untypedTx } from '@apack/ears';
 import { repository } from '#generated/repository.ts';
 import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
-import type { EARS } from '@abuddy/ears';
+import type { EARS } from '@apack/ears';
 
 type FlowRow = { id: EARS.EntityId; label: string; contentHash?: string };
 const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
@@ -176,7 +176,7 @@ describe('a flow the user deleted', () => {
     expect(flow('Codex'), 'a destroyed flow leaves nothing behind, which is the premise').toEqual([]);
 
     // Root Flow changes in the same run, so an apply that wrote nothing at all would fail here rather than
-    // pass the assertion below. The exemptions are in abuddy-sdk's flow-applier spec
+    // pass the assertion below. The exemptions are in apack-sdk's flow-applier spec
     const counts = contentFlows(compiled(['Codex', 'Root Flow']));
 
     expect(flow('Codex'), 'the apply created the flow the user deleted').toEqual([]);

@@ -4,18 +4,18 @@ import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 // stays deferred. `onConnected`/`onIncoming` come from here for the same reason.
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
-import { defineSystem } from '@abuddy/sdk/framework';
-import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
+import { defineSystem } from '@apack/sdk/framework';
+import { UnknownBackupDatabasesError } from '@apack/sdk/services';
 import type { Contract } from './contract.ts';
 import { executeQuery } from './execute/query.ts';
 import { executeTransaction } from './execute/transaction.ts';
 import { generateSchemaInfo } from './repository/schema.ts';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query.ts';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import { ref } from '#generated/ref.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('database');
 
@@ -222,7 +222,7 @@ export const databaseSystem = setup({
           broadcastToPlugin('database', {
             type: 'IMPORT_DATABASE_ERROR',
             error: errorMessage(error),
-            // The user decides whether to import a newer AgentBuddy's backup without what this one can't hold
+            // The user decides whether to import a newer apack's backup without what this one can't hold
             ...(error instanceof UnknownBackupDatabasesError && { unknownDatabases: error.databases }),
           });
         }

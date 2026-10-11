@@ -30,7 +30,7 @@ and every declared boundary is enforced.**
    success message, `tier === t` for a display grouping. Nothing expresses *"a lower tier may not read a
    higher tier's outputs"*, which is the rule the ordering exists for.
 3. **Tier 1's definition is false of every tier-1 step.** There are three, and all three declare the built
-   `@abuddy` packages and depend on `compile`, which is tier 2:
+   `@apack` packages and depend on `compile`, which is tier 2:
 
    | tier | step | needs a higher tier | declares built packages |
    |---|---|---|---|
@@ -38,7 +38,7 @@ and every declared boundary is enforced.**
    | 1 | `test:unit:host` | `compile` | yes |
    | 1 | `test:unit:pack` | `compile` | yes |
 
-   Not an artifact of over-declaring: `SUITE_READS` documents the real reads in prose — `@abuddy/testing`'s
+   Not an artifact of over-declaring: `SUITE_READS` documents the real reads in prose — `@apack/testing`'s
    bundle, published packages packed and installed, a built `dist` a spec skips without. **Enforce the
    tier-1 definition and tier 1 is empty.** The gradation is not under-enforced, it has no subject.
 4. **The budget reaches its subject through a stranger.** `suite-timeouts.spec.ts:37` resolves
@@ -100,7 +100,7 @@ config importing a constant across package layers, which is why the configs hold
 `suite-timeouts.spec.ts` checks those literals. So `size` is a declaration in `unit-suites.ts` and the spec
 checks config literals against it — the same mechanism as today, with a truthful source.
 
-`@abuddy/testing`'s `definePackTestConfig` keeps its `15_000` literal. It is published, and an external pack
+`@apack/testing`'s `definePackTestConfig` keeps its `15_000` literal. It is published, and an external pack
 author has no chain, no steps and no suite table, so taking a `size` would push a repo concept into a
 pack-facing API for nothing. The repo's check reads the pack suite's `size` instead of its tier to verify
 that literal. The only change there is the comment above it, which currently cites
@@ -139,7 +139,7 @@ sizes none. One `const` and one interpolation, trivially restored if someone mis
 | `scripts/spec.ts`, `scripts/lib/spec-dry.ts` | the `[tier N]` label |
 | `packages/repo-checks/tests/suite-timeouts.spec.ts` | reads `size`, drops the `spec -> step` hop |
 | `packages/repo-checks/tests/{chain-graph,chain-output}.spec.ts` | tier assertions |
-| `packages/abuddy-testing/src/vitest.ts` | the comment only |
+| `packages/apack-testing/src/vitest.ts` | the comment only |
 
 Plus the tier tables in the root `CLAUDE.md` and `packages/repo-checks/CLAUDE.md`.
 

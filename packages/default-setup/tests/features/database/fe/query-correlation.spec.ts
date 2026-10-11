@@ -12,7 +12,7 @@
 // call.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@abuddy/sdk/testing';
+import { answerTo } from '@apack/sdk/testing';
 import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
@@ -73,7 +73,7 @@ it('does not let one verb take the other verb\'s answer', () => {
  * An answer carrying no call at all, with nothing outstanding — refused.
  *
  * Held by two things independently — `answersCall` refuses an empty slot, and the slot is `null` — so this
- * fires only on losing both. `abuddy-sdk/tests/events/calls.spec.ts` holds the check itself.
+ * fires only on losing both. `apack-sdk/tests/events/calls.spec.ts` holds the check itself.
  */
 it('refuses a result carrying no call when no query is outstanding', () => {
   const actor = console_();

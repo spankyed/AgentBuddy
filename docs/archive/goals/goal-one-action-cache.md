@@ -13,7 +13,7 @@ doc files between them changed, so the survey holds at the branch point.
 Before Phase 1, confirm the base: `TIER_TIMEOUT_MS`, `inputsForSuites` and `SUITE_READS` in
 scripts/lib/chain-steps.ts, `unitStepName` in scripts/lib/unit-suites.ts, `APP_MARKERS` in
 scripts/check-test-tiers.ts, `exclusiveRunning` in scripts/lib/chain-schedule.ts, `TYPECHECK_LEGS` in
-scripts/lib/typecheck-legs.ts and `freshnessSweep` in packages/abuddy-host/src/build/packages-built.ts
+scripts/lib/typecheck-legs.ts and `freshnessSweep` in packages/apack-host/src/build/packages-built.ts
 all exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first, and the two design docs they cite
 (docs/plans/one-action-cache.md, docs/plans/tier-split.md). Decisions are final: implement them, don't
@@ -126,7 +126,7 @@ here; its own "Done when" is the authority, summarised:
   catches a reach the inputs do not show, and Phase 2 is what retires it.
 - Delete the `t1=/t2=/t3=` breakdown in `chain.ts`; the measured critical path beside it is the
   better number and is already printed.
-- `@abuddy/testing`'s `definePackTestConfig` keeps its `15_000` literal — it is published, and an
+- `@apack/testing`'s `definePackTestConfig` keeps its `15_000` literal — it is published, and an
   external pack author has no suite table. Only its comment changes.
 
 **Done when:** `tier`, `Tier` and `TIER_TIMEOUT_MS` appear nowhere; `npm run spec -- suite-timeouts
@@ -263,7 +263,7 @@ this on its first run.
   from the which-file-changed *diagnostic* — the verdict needs one hash, and only a report needs the map.
   That is a change to the stamp format and its `STAMP_VERSION`, which is why it is not in this goal.
 - **`check:tiers` still reads script text**, and a marker inside a string literal reads as an invocation:
-  one rule's `why` text said `abuddy test` in prose and refused the step until the sentence was reworded.
+  one rule's `why` text said `apack test` in prose and refused the step until the sentence was reworded.
   Recorded where the scan is.
 - **Item 7 (Gradle's rule) is unadopted**, per the correction above.
 - The per-leg scopes are wider than the dep files show for the legs with no dep file — the lint, the
@@ -297,12 +297,12 @@ this on its first run.
 - Commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached`
   first; pushing, tagging and PRs are on request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad `pkill`, E2E in the `abuddy-test` namespace.
+- No real data dirs, no broad `pkill`, E2E in the `apack-test` namespace.
 - Preload: no bare `tsc` (`packages/preload/CLAUDE.md`). No `npm install` in the example pack. No
   edits to version or release metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes.
-- Migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`.
+- Migrations follow `packages/apack-host/src/migrations/CLAUDE.md`.
 - Investigate failing tests; mutation-check new guards rather than trusting a green run.
 - Keep the loop narrow: `npm run spec` during the work, the full chain once per phase at its end. The
   root `CLAUDE.md`'s "What to run after a change" says which command covers which change.

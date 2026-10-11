@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ArtifactItem } from '@abuddy/sdk';
+import type { ArtifactItem } from '@apack/sdk';
 
 defineProps<{ artifact: ArtifactItem }>();
 </script>

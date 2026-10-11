@@ -5,7 +5,7 @@
 /// <reference path="./src/electron.d.ts" />
 
 declare module 'virtual:dev-pack-frontends' {
-  import type { PackFERegistration } from '@abuddy/sdk/fe';
+  import type { PackFERegistration } from '@apack/sdk/fe';
   const packs: Record<string, () => Promise<{ default: PackFERegistration }>>;
   export default packs;
 }

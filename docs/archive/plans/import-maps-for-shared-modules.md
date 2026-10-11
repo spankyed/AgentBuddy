@@ -1,6 +1,6 @@
 > **Done and closed.** Packs share the host's frontend modules by resolution: each is an entry of the
 > renderer's build, the document carries an import map naming all 122 specifiers, and a pack's bundle leaves
-> them external. `window.__abuddy`, `generateGlobalProxy` and the whole export-name discovery around it are
+> them external. `window.__apack`, `generateGlobalProxy` and the whole export-name discovery around it are
 > gone — 134 lines from `fe-bundler.ts` and 69 spec cases whose subject was one mechanism policing the other.
 >
 > **Four corrections the work found**, each one the plan had wrong:
@@ -13,7 +13,7 @@
 >   server and reading the specifiers Vite wrote, which answers for a pre-bundled dep and a workspace
 >   package's `/@fs/…` source alike. With no route, the plan's security section has no subject: there is no
 >   allow-list to get wrong because there is nothing to serve.
-> - **`abuddy run` needed a fix the plan did not foresee.** Vite appends `importAnalysisPlugin` *after* the
+> - **`apack run` needed a fix the plan did not foresee.** Vite appends `importAnalysisPlugin` *after* the
 >   user's `post` plugins and rewrites an external to `/@id/<specifier>`, which the browser resolves against
 >   the module's own `pack://` URL and asks the pack's dev server for — and that server left the specifier
 >   external and has nothing to answer with. `keepExternalsBarePlugin` undoes it in the response, the only
@@ -27,14 +27,14 @@
 >
 > Verified: 122/122 map targets resolvable in both halves, the dev map's `vue` byte-identical to the URL the
 > renderer's own entry imports, smoke 4/4 and app-integration 11/11 against a built app, and both fixture
-> packs' suites — including the host's `@abuddy/ui` editor rendering inside a pack, a pack writing through
-> `@abuddy/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
+> packs' suites — including the host's `@apack/ui` editor rendering inside a pack, a pack writing through
+> `@apack/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
 >
 > The text below is the plan as written.
 
 # Share the host's modules through resolution, not through a side channel
 
-Compiled 2026-10-07 on `AS/one-action-cache`, after fixing `abuddy run`'s frontend loop
+Compiled 2026-10-07 on `AS/one-action-cache`, after fixing `apack run`'s frontend loop
 (`fe-bundler.ts`'s `compiledSource`) and finding that every sharp edge in that area has one parent. Rewritten
 2026-10-08, after `goal-one-kind-of-pack` hit the same defect on the backend **and fixed it** — see **The
 backend already did this**, which is now the precedent this plan argues from rather than a second half it
@@ -42,12 +42,12 @@ has to carry. Every location, count and measurement was checked against the tree
 
 ## Context
 
-A pack's frontend must use **the host's instance** of Vue, `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui` —
+A pack's frontend must use **the host's instance** of Vue, `@apack/sdk`, `@apack/ears` and `@apack/ui` —
 two Vue instances fail at runtime, and an unbound second SDK copy throws "No host is bound". Today that is
 done with a global and a generated proxy:
 
 - the renderer's `host-deps` virtual module (`renderer/vite.config.ts:70-86`) does
-  `import * as X from '<specifier>'` for every shared specifier and assigns them onto `window.__abuddy`;
+  `import * as X from '<specifier>'` for every shared specifier and assigns them onto `window.__apack`;
 - the pack's bundler claims each shared specifier in `resolveId` and `load`s a **generated proxy module**
   (`generateGlobalProxy`, `fe-bundler.ts`) that reads the global and re-exports its names.
 
@@ -71,7 +71,7 @@ And its failure mode is a `console.warn` plus an `undefined` (`warnMissing`), wh
 time naming the export.
 
 **The alternative is a web standard.** An import map lets the pack keep `import { usePlugin } from
-'@abuddy/sdk/fe'` **as written and external**, and the browser resolves it to the host's module. Nothing
+'@apack/sdk/fe'` **as written and external**, and the browser resolves it to the host's module. Nothing
 needs to know the names, because `export * from` does not.
 
 ## Why this app can use it unconditionally
@@ -89,7 +89,7 @@ The usual objection to import maps is browser support. It does not apply here:
 - `generateGlobalProxy`, `discoverModuleExports`, `discoverSharedExports`, `discoverRuntimeExports`,
   `compiledSource` and `DevEnvironmentLike` — and with them `packExternalsPlugin`'s `load` hook, which
   becomes externalisation only.
-- `window.__abuddy` and its `env.d.ts` declaration.
+- `window.__apack` and its `env.d.ts` declaration.
 - The dev/build divergence class, and so the equivalence case added on 2026-10-07 — its subject stops
   existing. `fe-bundler-dev-server`'s subject goes the same way.
 - The 69 name-equality cases, replaced by one that asks whether the map names every shared specifier and
@@ -98,7 +98,7 @@ The usual objection to import maps is browser support. It does not apply here:
 And it gains correct ESM semantics: live bindings, and a link-time error naming a missing export.
 
 **It is also worth 1.59s of every frontend rebuild.** Measured 2026-10-08 by instrumenting
-`discoverSharedExports` over `abuddy build` for default-setup: **48 specifiers, 1586ms** — modules compiled
+`discoverSharedExports` over `apack build` for default-setup: **48 specifiers, 1586ms** — modules compiled
 for no output but a list of names, 14% of that build's 11.3s frontend bundle.
 
 **Per rebuild, not per build**, since `phase-cache.ts` landed the same day: a pack whose scope has not moved
@@ -107,9 +107,9 @@ So this saving is paid when the bundle is actually made. Not the reason to do th
 step's 13s → 31s growth either, which is the frontend bundle existing at all now.
 
 **The larger prize is next to it, and the phase cache is what exposed it.** `feInputsHash`
-(`abuddy-cli/src/build/phase-cache.ts:164`) hashes the `@abuddy` packages' `dist` into the frontend phase's
+(`apack-cli/src/build/phase-cache.ts:164`) hashes the `@apack` packages' `dist` into the frontend phase's
 scope, and its doc says why: *"the frontend phase read 329 files under the pack's `src/` and 84 in the
-`@abuddy` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
+`@apack` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
 the frontend phase's scope narrows to the pack's own sources — so rebuilding the SDK stops invalidating every
 pack's frontend bundle. That is a cache hit across a whole class of change, which is worth more than the
 1.59s, and it is why narrowing that scope is part of step 2 rather than a follow-up.
@@ -117,7 +117,7 @@ pack's frontend bundle. That is a cache hit across a whole class of change, whic
 ## The design
 
 **One route shape, generated from the lists that already exist** (`getSharedFeDeps`, `getSdkFeModules`,
-`getUiFeModules` in `@abuddy/host/build/shared-deps` — 8 SDK frontend modules, 68 `@abuddy/ui` modules, plus
+`getUiFeModules` in `@apack/host/build/shared-deps` — 8 SDK frontend modules, 68 `@apack/ui` modules, plus
 the third-party shared deps).
 
 **1. The host serves each shared specifier as a module.** A generated shim per specifier, `export * from
@@ -136,13 +136,13 @@ production, which `transformIndexHtml` can read from `ctx.bundle` at build time.
 
 ### The one piece of discovery that survives
 
-`export *` does **not** re-export `default`, and most `@abuddy/ui` entries are a component's default export.
+`export *` does **not** re-export `default`, and most `@apack/ui` entries are a component's default export.
 So a shim needs `export { default } from '<specifier>'` as well — and that is a build error for a module
 without one. So the generator needs one bit per specifier, *does it have a default*, which is far less than
 a name list and is available where it is needed: the host's build is always a build, where Rollup's
 `ModuleInfo.exports` answers it.
 
-There is precedent for the shape: `@abuddy/ui`'s own public entries are already generated shims that read
+There is precedent for the shape: `@apack/ui`'s own public entries are already generated shims that read
 `export { default } from './x.vue'; export * from './x.vue';` (`exports:update`).
 
 ## The backend already did this
@@ -151,7 +151,7 @@ There is precedent for the shape: `@abuddy/ui`'s own public entries are already 
 example rather than a second problem. Its bug:
 
 > A lazy require outlived its resolution. esbuild defers a module body into an `__init`, so the action step
-> required `@abuddy/sdk/logger` when a step first ran — long after the scoped patch was gone, and the require
+> required `@apack/sdk/logger` when a step first ran — long after the scoped patch was gone, and the require
 > cache cannot help because Node resolves first.
 
 **The fix was to stop scoping the resolution.** `keepHostModulesResolvable` (`packs/module-bridge.ts:104`)
@@ -160,7 +160,7 @@ patches `Module._resolveFilename` once for the process, behind a `hostModulesKep
 a pack's require does too … What is scoped to `fn` is the refusals, which are diagnostics about the pack
 being loaded."* Its companion bug — `vue` and `@vscode/ripgrep` as externals nothing provided — was closed
 the same way, by `HOST_PROVIDED_PACKAGES` and a build-time subset check holding the loader's list against
-the externals a pack is built with (`abuddy-cli/tests/build/pack-externals.spec.ts`).
+the externals a pack is built with (`apack-cli/tests/build/pack-externals.spec.ts`).
 
 So the two sides are no longer symmetric, and that is the argument:
 
@@ -180,18 +180,18 @@ platform implements. The frontend gets the better of the two mechanisms for free
 **One asymmetry still worth closing, and it is small:** the backend now checks at build time that every
 external its bundle emits is provided (`pack-externals.spec.ts`). The frontend has no equivalent — it warns
 at *runtime* instead (`generateGlobalProxy`'s `warnMissing`), which is why `DEBUG_E2E=1 npm test -- smoke`
-could pass its four cases while the app logged `Cannot find module '@abuddy/sdk/logger'` for every action
+could pass its four cases while the app logged `Cannot find module '@apack/sdk/logger'` for every action
 step. Under an import map the same question becomes "does the map name every specifier the pack imports",
 answerable at build time from two declarations — which is the case listed under *Verification*.
 
 ## Security
 
-**There is no runtime boundary today, and this does not remove one.** `window.__abuddy`
+**There is no runtime boundary today, and this does not remove one.** `window.__apack`
 (`renderer/vite.config.ts:85`) is a plain enumerable global: any code in the renderer, a pack's frontend
 included, can read it and ignore the proxies. The proxies are module resolution, not containment. What
-actually holds the line is **build time** — `check:specifiers` for this repo's packs and `abuddy build` for
-external ones, refusing `@abuddy/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
-(`@abuddy/ears/lmdb`, *"the app's LMDB store"*).
+actually holds the line is **build time** — `check:specifiers` for this repo's packs and `apack build` for
+external ones, refusing `@apack/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
+(`@apack/ears/lmdb`, *"the app's LMDB store"*).
 
 An import map leaves that boundary where it was: the pack's source still names the specifier, so the same
 build-time checks see the same thing. In one respect it is tighter — a bare specifier absent from the map
@@ -201,26 +201,26 @@ does not resolve at all, where today the global is open to whatever the host put
 
 **`/@host/<specifier>` must serve only the specifiers the map contains, and 404 everything else.** A route
 that builds a shim from whatever specifier was requested is an arbitrary-module re-export endpoint: a pack
-could ask for `/@host/@abuddy/host/secrets` or `/@host/@abuddy/ears/lmdb` at runtime and be handed a module
+could ask for `/@host/@apack/host/secrets` or `/@host/@apack/ears/lmdb` at runtime and be handed a module
 the build-time rules exist to forbid. Those rules never run at runtime, so nothing else would stop it.
 
 Two things bound the exposure, and they are the reason this is a requirement rather than a reason not to
 proceed:
 
 - **Production has no such route.** The shims are emitted at build time from a fixed list, so the on-demand
-  case is dev-only — which means `abuddy run` and `npm start`.
+  case is dev-only — which means `apack run` and `npm start`.
 - **The modules worth protecting are not in the renderer.** `secretsStore`, the LMDB store and the
   migrations run in the API process; a shim re-exporting them into a browser context would mostly fail to
   resolve. The renderer's sensitive surface is the preload bridge and the API token, and any renderer code
   reaches those today either way.
 
 **It needs a firing case**, because its subject is input: ask the route for a host-only specifier — one from
-`APP_ONLY_EXPORTS` and one under `@abuddy/host` — and assert it is refused rather than served. A gate with
+`APP_ONLY_EXPORTS` and one under `@apack/host` — and assert it is refused rather than served. A gate with
 no case is a gate nothing has watched fail, and this one is the only runtime check in the design.
 
 ### Three smaller points
 
-- **Do not serve the shims from a CORS-open server.** `abuddy run`'s pack dev server sets `cors: true`
+- **Do not serve the shims from a CORS-open server.** `apack run`'s pack dev server sets `cors: true`
   (`run.ts`). The host's shims belong to the renderer's dev server, not that one, and should not inherit it
    — otherwise any page in a browser can fetch the host's modules. Not an escalation, since it is shipped
   code, but no reason to widen the surface.
@@ -241,7 +241,7 @@ frame, and a far larger piece of work than this plan.
 
 ### 0. The spike, before anything else
 
-One specifier end to end: pick `@abuddy/sdk/fe`, emit it as an extra renderer entry, inject a one-entry
+One specifier end to end: pick `@apack/sdk/fe`, emit it as an extra renderer entry, inject a one-entry
 import map, and externalise that specifier in `packExternalsPlugin` instead of proxying it. Then load the
 `external-pack` fixture's frontend and check three things:
 
@@ -258,7 +258,7 @@ has no server, so the map's targets are relative `file://` URLs.
 ### 1. The host's side
 
 Generate the shims and the map from the three shared lists, in the renderer's config beside the
-`host-deps` plugin that is being replaced. Keep `window.__abuddy` in place for this step, so nothing breaks
+`host-deps` plugin that is being replaced. Keep `window.__apack` in place for this step, so nothing breaks
 while both exist.
 
 ### 2. The pack's side
@@ -268,12 +268,12 @@ while both exist.
 says in its commit message which it was: subject gone, or awkward.
 
 **`resolveId` has to say `external`, and that is not the same as declining to claim.** `bundlePackFE` sets no
-`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@abuddy/sdk` and
-`@abuddy/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
+`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@apack/sdk` and
+`@apack/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
 Both have to change. The `generateBundle` guard that fails a build when an inlined SDK module reaches a host
 binding stays exactly as it is — it is the check that catches this step going wrong.
 
-**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@abuddy` packages'
+**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@apack` packages'
 `dist`, a scope that still hashes it is a declaration claiming reads nobody makes — and it costs a frontend
 rebuild on every SDK change. The reads record (`build-reads.ts`) is how that scope was checked against
 reality in the first place, so re-read it after the change rather than reasoning about it: the phase's
@@ -281,7 +281,7 @@ recorded reads are the evidence that the narrower scope is right.
 
 ### 3. Remove the global
 
-Delete `window.__abuddy`, the `host-deps` virtual module's object assembly and the `env.d.ts` declaration.
+Delete `window.__apack`, the `host-deps` virtual module's object assembly and the `env.d.ts` declaration.
 Keep the global for one release only if a packaged pack in the wild could still reference it — which today
 nothing can, since no pack is distributed outside this repo (`resolveFromRemoteRegistry` throws for every
 name), so delete it in the same change.
@@ -295,13 +295,13 @@ name), so delete it in the same change.
   source, `tests/packs/external-pack` included, and `repo-checks`' `dev-pack-hmr.integration.spec.ts` holds
   it to patching a component rather than reloading. A packaged build (`npm run build-prod`) with the same
   pack installed covers the other, and is the one that exercises `file://` and emitted chunk names.
-  `abuddy run` remains the path for a pack outside the tree, where the proxy is replaced by the map.
+  `apack run` remains the path for a pack outside the tree, where the proxy is replaced by the map.
 - **The map names every specifier a pack imports, checked at build time** — the guard the backend already
   has as `pack-externals.spec.ts` and the frontend has only as a runtime warning. Two declarations, so it is
   derivable: the specifiers a pack's bundle leaves external against the specifiers the map carries.
 - **One Vue instance, asserted rather than assumed**: the fixture pack renders a component that reads the
   host's Vue — if the map ever resolves to a second copy, that breaks loudly. `tests/packs/bundled-ui-pack`
-  is the existing subject for the opposite case (a pack that deliberately carries its own `@abuddy/ui`), and
+  is the existing subject for the opposite case (a pack that deliberately carries its own `@apack/ui`), and
   it must keep working: `fe.bundleUi` means *do not* map those specifiers.
 - **A missing export fails at link time**, which is the new failure mode: build a pack against a name the
   host does not have and confirm the error names the export, rather than warning and handing back
@@ -320,7 +320,7 @@ why the design serves shims at a stable `/@host/<specifier>` route rather than m
 gets `undefined`; afterwards its frontend fails to load. That is better — it is loud, early and specific —
 but it is a behaviour change, and `hostVersion` ranges are what should be catching the case first.
 
-**`fe.bundleUi` must keep opting out.** A pack that bundles its own `@abuddy/ui` must not have those
+**`fe.bundleUi` must keep opting out.** A pack that bundles its own `@apack/ui` must not have those
 specifiers mapped, or it gets the host's copy anyway. `bundlesUi(packDir)` already gates the proxy list and
 must gate the map the same way — with a case, since this is the one path where mapping *more* is wrong.
 

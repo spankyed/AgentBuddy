@@ -1,0 +1,80 @@
+// Data dirs for the database specs: a built-in pack published as the app publishes it, external packs installed,
+// and a database written through the composition the app uses
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { untypedTx, installEngine } from '@apack/ears';
+import { _appDataPaths } from '@apack/sdk/utils';
+import { openDatabaseStore } from '../../src/database/open.ts';
+import { readInstalledSchema } from '../../src/database/schema.ts';
+import { _appDirOf } from '@apack/sdk/env';
+
+export const tempDirs: string[] = [];
+
+export function tempDir(prefix: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  fs.mkdirSync(_appDirOf(dir), { recursive: true });
+  tempDirs.push(dir);
+  return dir;
+}
+
+export function removeTempDirs(): void {
+  for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+}
+
+function writeJSON(file: string, value: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(value));
+}
+
+/**
+ * A data dir with packs installed: `core`, which the app ships (Note, Trace, `mentions`), and any others
+ * given. Every pack is installed, so they are all written the same way: one manifest per pack under
+ * `packs/<id>/`, which is the data dir's one account of itself.
+ */
+export function dataDirWithPacks({ external = [] as Array<{ id: string; entities: Record<string, string>; enabled?: boolean }> } = {}): string {
+  const dir = tempDir('host-database-');
+  writeJSON(path.join(_appDirOf(dir), 'packs', 'core', 'apack.json'), {
+    id: 'core', name: 'Core', version: '1.0.0', builtIn: true,
+    entities: { Note: 'Note', Trace: 'Trace' },
+    relKinds: { MENTIONS: 'mentions' },
+  });
+  for (const pack of external) {
+    writeJSON(path.join(_appDirOf(dir), 'packs', pack.id, 'apack.json'), {
+      id: pack.id, name: pack.id, version: '1.0.0', entities: pack.entities,
+    });
+  }
+  const listed = external.filter((pack) => pack.enabled !== undefined);
+  if (listed.length > 0) {
+    writeJSON(path.join(_appDirOf(dir), 'installed-packs.json'), {
+      packs: listed.map((pack) => ({ id: pack.id, name: pack.id, version: '1.0.0', dir: path.join(_appDirOf(dir), 'packs', pack.id), enabled: pack.enabled, installedAt: '' })),
+    });
+  }
+  return dir;
+}
+
+const context = (userDataDir: string) => ({
+  userDataDir,
+  packsDir: path.join(_appDirOf(userDataDir), 'packs'),
+  installedPacksFile: path.join(_appDirOf(userDataDir), 'installed-packs.json'),
+});
+
+/** Writes through a store opened on the data dir, as the app writes (the engine installed meanwhile) */
+export async function writeData(userDataDir: string, write: () => void): Promise<void> {
+  const paths = _appDataPaths(userDataDir);
+  const { store, engine } = openDatabaseStore({
+    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    schema: readInstalledSchema(context(userDataDir)),
+    log: () => {},
+  });
+  const previous = installEngine(engine.query);
+  try {
+    await store.hydrate();
+    write();
+  } finally {
+    installEngine(previous);
+    store.close();
+  }
+}
+
+export { context as schemaContext, untypedTx };

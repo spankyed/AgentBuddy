@@ -3,7 +3,7 @@
  * `kill()` calls end that flow, so whether it stops the flow is the thing the onboarding run depends on.
  */
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
+import { importFlows, startApp, type FlowRun } from '@apack/testing/harness'
 import { kill, on, transform } from '#generated/flow-helpers.ts'
 import { killStepBuild } from '#extensions/steps/kill/build.ts'
 

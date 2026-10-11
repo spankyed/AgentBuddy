@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, TSC_VERSIONS, installPublishedPackages } from '../src/published-packages.ts';
 
-/** Every export of the packed @abuddy/ears, @abuddy/sdk and @abuddy/ui resolves to declarations for consumers. */
+/** Every export of the packed @apack/ears, @apack/sdk and @apack/ui resolves to declarations for consumers. */
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
@@ -15,7 +15,7 @@ afterAll(() => {
 
 /** The packed package's exports, and whether each is code a consumer imports */
 function exportsOf(name: string): Array<{ key: string; code: boolean }> {
-  const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@apack', name, 'package.json'), 'utf-8'));
   return Object.entries(manifest.exports as Record<string, unknown>).map(([key, target]) => ({
     key,
     code: !key.endsWith('.json') && typeof target === 'object' && target !== null && 'types' in target,
@@ -24,7 +24,7 @@ function exportsOf(name: string): Array<{ key: string; code: boolean }> {
 
 /** Export subpaths a consumer imports as code: not metadata, and not a source-only host hook. */
 function codeExports(name: string): string[] {
-  return exportsOf(name).filter((entry) => entry.code).map(({ key }) => `@abuddy/${name}${key.slice(1)}`);
+  return exportsOf(name).filter((entry) => entry.code).map(({ key }) => `@apack/${name}${key.slice(1)}`);
 }
 
 function nonCodeExports(name: string): string[] {
@@ -58,10 +58,10 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
     // in this list and fails here. The SDK's source-only `./runtime/internals` is not among them because the
     // published manifest has no such entry — `publishedManifest` drops one the source condition was the whole of
     expect(nonCodeExports('ears')).toEqual(['./package.json']);
-    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json']);
+    expect(nonCodeExports('sdk')).toEqual(['./package.json', './apack.schema.json']);
     expect(nonCodeExports('ui')).toEqual(['./package.json']);
-    expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/ears', '@abuddy/ears/lmdb', '@abuddy/sdk/repositories', '@abuddy/sdk/events', '@abuddy/sdk/templates', '@abuddy/ui/components/tiptap/TiptapEditor']));
-    // Packs send with @abuddy/sdk/events; the host's transport and API client aren't an entry
+    expect(specifiers).toEqual(expect.arrayContaining(['@apack/ears', '@apack/ears/lmdb', '@apack/sdk/repositories', '@apack/sdk/events', '@apack/sdk/templates', '@apack/ui/components/tiptap/TiptapEditor']));
+    // Packs send with @apack/sdk/events; the host's transport and API client aren't an entry
     fs.writeFileSync(path.join(consumer!, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
     fs.writeFileSync(path.join(consumer!, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {

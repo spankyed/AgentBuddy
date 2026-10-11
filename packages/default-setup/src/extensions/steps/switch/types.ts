@@ -1,7 +1,7 @@
-import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase, DSLStepNode } from '@abuddy/sdk/build';
+import type { NodeBase } from '@apack/sdk';
+import type { DSLNodeBase, DSLStepNode } from '@apack/sdk/build';
 
-import { BinaryOperator } from '@abuddy/sdk/utils';
+import { BinaryOperator } from '@apack/sdk/utils';
 
 
 export type Predicate = {

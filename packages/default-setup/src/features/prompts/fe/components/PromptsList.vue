@@ -122,11 +122,11 @@
 
 <script setup lang="ts">
 import { Trash2, Sparkle, Plus } from 'lucide-vue-next';
-import Button from '@abuddy/ui/design/button';
-import CategoryFilter from '@abuddy/ui/design/CategoryFilter';
+import Button from '@apack/ui/design/button';
+import CategoryFilter from '@apack/ui/design/CategoryFilter';
 import type { Category } from '#generated/types.ts';
-import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll';
-import type { PromptEntity, EARS } from '@abuddy/sdk';
+import { useInfiniteScroll } from '@apack/ui/composables/useInfiniteScroll';
+import type { PromptEntity, EARS } from '@apack/sdk';
 
 const props = defineProps<{
   prompts: PromptEntity[];

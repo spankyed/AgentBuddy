@@ -1,4 +1,4 @@
-import type { PromptMeta } from '@abuddy/sdk/build';
+import type { PromptMeta } from '@apack/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Edit Phase Tips System',

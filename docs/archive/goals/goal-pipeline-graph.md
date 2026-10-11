@@ -15,7 +15,7 @@ Implement docs/goals/goal-pipeline-graph.md on master, at or after 0f0e57a15 —
 was surveyed at.
 Before Phase 1, confirm the base: the `chain` script in the root package.json is a single `&&` line of
 eight commands, and `BUILD_UNITS`, `fingerprintUnit`, `stampedBuild` and `ensurePackagesBuilt` exist in
-packages/abuddy-host/src/build/packages-built.ts. If they don't, stop and say so — the plan was surveyed
+packages/apack-host/src/build/packages-built.ts. If they don't, stop and say so — the plan was surveyed
 somewhere else.
 Read Background, Spike results, Decisions, Phases and Constraints first. Decisions are final: implement
 them, don't reopen them or stop to ask.
@@ -49,12 +49,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - add a third-party task runner (nx, turborepo, wireit) — Decision 1 rejects it on evidence, and the
   primitives it would replace are the ones this goal builds on.
@@ -95,7 +95,7 @@ Its costs, in order of what they prevent:
 
 ### The mechanism this goal builds on
 
-`packages/abuddy-host/src/build/packages-built.ts` is already a content-addressed task cache, scoped to
+`packages/apack-host/src/build/packages-built.ts` is already a content-addressed task cache, scoped to
 five package builds. Everything a task runner needs is there except the edges:
 
 | Task-runner concept | Where it already is |
@@ -159,9 +159,9 @@ rather than process startup:
 
 | Suite | Wall | Note |
 |---|---|---|
-| `@abuddy/cli` | 56.0s | reports `tests 249.4s` across workers — already ~4.5× parallel |
+| `@apack/cli` | 56.0s | reports `tests 249.4s` across workers — already ~4.5× parallel |
 | `@app/default-setup` | 15.4s | reports `setup 97.3s` — an expensive per-file setup, undiagnosed |
-| `@abuddy/host` | 12.5s | |
+| `@apack/host` | 12.5s | |
 | the other five | ~15s combined | |
 
 **`packages:ensure` runs 18 times** in one chain (3 in `compile`, 4 in `typecheck`, 3 in `build`, 6 in
@@ -299,8 +299,8 @@ the section names the graph as the thing that decides. Docs only, so nothing to 
 - **`@app/default-setup` reports `setup 97.3s` against 15.4s wall.** The most suspicious number in the
   run and undiagnosed. An expensive per-file setup paid by every test file; worth profiling on its own,
   and it is a cost caching hides rather than fixes.
-- **The `@abuddy/cli` suite at 56s**, 54% of `test:unit`. Already ~4.5× parallel internally; it does real
-  `abuddy build` runs per test, and a shared fixture cache is the obvious lever. Which tests dominate is
+- **The `@apack/cli` suite at 56s**, 54% of `test:unit`. Already ~4.5× parallel internally; it does real
+  `apack build` runs per test, and a shared fixture cache is the obvious lever. Which tests dominate is
   unmeasured, so this needs profiling before a proposal.
 - **`test:packaged-authoring` at 71s**, mostly npm installs from packed tarballs. A warm `node_modules`
   cache is the lever.
@@ -314,9 +314,9 @@ The repo's standing rules (root `CLAUDE.md`) apply:
 - commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request;
 - no publishing, releases or triggered workflows;
-- no real data dirs, no broad pkill, E2E in the `abuddy-test` namespace;
+- no real data dirs, no broad pkill, E2E in the `apack-test` namespace;
 - preload, example pack and release metadata rules;
-- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
 - published packages: no `any`, the TypeScript floor, `api:update` after export changes with `etc/`
   committed;
 - one fingerprint protocol: extend `packages-built.ts` rather than adding a second hashing scheme, and

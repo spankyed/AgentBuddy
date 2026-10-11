@@ -21,7 +21,7 @@ class MacOSAppMenu implements AppModule {
         submenu: [
           {role: 'about'},
           {type: 'separator'},
-          // Only packaged apps bundle the CLI; source runs use the workspace `abuddy`
+          // Only packaged apps bundle the CLI; source runs use the workspace `apack`
           ...(electronApp.isPackaged
             ? [
                 {

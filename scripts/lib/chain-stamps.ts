@@ -8,7 +8,7 @@
  * transformation below, which is a second copy of a cache key — the thing most worth not having two of.
  */
 import * as path from 'node:path';
-import { REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
 import type { ChainStep } from './chain-steps.ts';
 import { commandText, rootScripts } from './npm-scripts.ts';
 
@@ -19,7 +19,7 @@ import { commandText, rootScripts } from './npm-scripts.ts';
  * It holds two other things, each named so that `pruneStamps` passes over it: the chain's lock
  * (`chain-lock.ts`) and a directory per run of what its steps said (`chain-evidence.ts`).
  */
-export const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
+export const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'apack-chain');
 
 /**
  * A step's stamp, named after the step with `:` and `/` flattened to `-`.

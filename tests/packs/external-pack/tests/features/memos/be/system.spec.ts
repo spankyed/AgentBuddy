@@ -1,6 +1,6 @@
 // The memos system under the app's bus: its startup data on connect, and a memo added from the client
 import { describe, expect, it } from 'vitest';
-import { importContent, startApp } from '@abuddy/testing/harness';
+import { importContent, startApp } from '@apack/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 describe('memos system', () => {

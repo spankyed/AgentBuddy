@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findWhere } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import { apply as importContent, applyContent, compileContent, resetDatabase, snapshot } from './harness.ts';
-import type { ApplyRecord } from '@abuddy/sdk/utils';
+import type { ApplyRecord } from '@apack/sdk/utils';
 // No local row type: `findWhere` already returns the entity with its branded id and declared fields, and a
 // `{ id: never; [field: string]: unknown }` alias discarded both — `never` is assignable to every parameter,
 // so an id typed that way reaches any call unchecked.

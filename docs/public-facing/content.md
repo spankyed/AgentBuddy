@@ -1,6 +1,6 @@
 # Content
 
-A pack's content is source files compiled to JSON at build time and written into the database when the pack is installed or updated. `abuddy.json` `content.sources` names each one.
+A pack's content is source files compiled to JSON at build time and written into the database when the pack is installed or updated. `apack.json` `content.sources` names each one.
 
 ## The four stages
 
@@ -9,7 +9,7 @@ A pack's content passes through four, and each has its own vocabulary. **The con
 | Stage | What happens | Named |
 |---|---|---|
 | **author** | you write the sources | `src/content/`, `content.sources`, `content.formats`, `content.writers` |
-| **compile** | `abuddy build` turns them into items and hashes each one | `dist/runtime/content/*.content.json`, `content.json`, `contentHash` |
+| **compile** | `apack build` turns them into items and hashes each one | `dist/runtime/content/*.content.json`, `content.json`, `contentHash` |
 | **apply** | the app writes those items into the database, and converges them on every upgrade | `applyPacks()`, a `ContentApplier`'s `apply()`, `ApplyResult` |
 | **import** | the user asks for the content back, which reads none of the record below | `importContent()`, `ImportMode`, `ImportResult` |
 | **record** | the app remembers what it last wrote, part by part, so your edits survive the next import | `contentKey`, the pack's applied content |
@@ -29,7 +29,7 @@ The SDK compiles three content keys itself:
 
 A feature's default settings go in `features.<id>.settings` (see [Feature settings](manifest.md#feature-settings)); the settings entity and its content are default-setup's (its `settings` entry and format).
 
-Any other entity type — yours, a dependency's, or the SDK's — is written from markdown or JSON with a format and a content source in `abuddy.json`, and no SDK code (see [Writing entities](#writing-entities)).
+Any other entity type — yours, a dependency's, or the SDK's — is written from markdown or JSON with a format and a content source in `apack.json`, and no SDK code (see [Writing entities](#writing-entities)).
 
 ## Actions
 
@@ -38,7 +38,7 @@ An action is an async function with typed metadata. Actions are invoked by flow 
 ### Scaffolding
 
 ```bash
-abuddy add action analyze-text --category analysis
+apack add action analyze-text --category analysis
 ```
 
 Creates `src/content/actions/analysis/analyze-text.ts`.
@@ -46,7 +46,7 @@ Creates `src/content/actions/analysis/analyze-text.ts`.
 ### Structure
 
 ```typescript
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 
 export const meta: ActionMeta = {
@@ -112,7 +112,7 @@ The compiled body of `action` runs in one sandbox, whether a flow's action step 
 
 ### Available services
 
-Actions receive a `services` object: default-setup's feature services (each is the object its `abuddy.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
+Actions receive a `services` object: default-setup's feature services (each is the object its `apack.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
 
 **default-setup's services**
 
@@ -148,13 +148,13 @@ Actions receive a `services` object: default-setup's feature services (each is t
 
 ### Metadata
 
-`ActionMeta` (`@abuddy/sdk/build`):
+`ActionMeta` (`@apack/sdk/build`):
 
 | Field | Type | Description |
 |---|---|---|
 | `label` | `string` | The action's name: flow `action` steps and `services.action.getByLabel` find it by label. Two actions with one label fail the build |
 | `description` | `string?` | Shown in the Actions UI |
-| `category` | `string?` | Groups the action in the Actions UI (`abuddy add action --category`, default the pack id) |
+| `category` | `string?` | Groups the action in the Actions UI (`apack add action --category`, default the pack id) |
 | `input` | `Record<string, ActionParameter>` | The parameters, by name |
 | `output` | `unknown?` | A description of the result, stored with the action |
 
@@ -177,7 +177,7 @@ The function's return value is the step's result (`$.lastStep.result`).
 
 The build bundles each action file with esbuild and extracts its `meta` and the body of `action`:
 
-- **Imports**: a relative import is bundled into the action. The only package import allowed is `@abuddy/sdk/actions` (`formatProviderError(error, provider, alternatives?)`, `buildTranscript(messages, { maxMessages?, maxChars? })`); any other package, `node:` modules included, fails the build. Type-only imports (`ActionMeta`, `Services`, `Z`) are erased and always allowed.
+- **Imports**: a relative import is bundled into the action. The only package import allowed is `@apack/sdk/actions` (`formatProviderError(error, provider, alternatives?)`, `buildTranscript(messages, { maxMessages?, maxChars? })`); any other package, `node:` modules included, fails the build. Type-only imports (`ActionMeta`, `Services`, `Z`) are erased and always allowed.
 - **Node globals** (`require`, `process`, `__dirname`, `__filename`, `Buffer`, `global`) in the bundled code only produce a build warning, but the action runs in the app's backend without them.
 - **`meta` is evaluated on its own**: write it as an object literal that references no imports or other variables.
 - **Top-level helpers** (functions and constants next to `action`) are inlined into the action. A helper function whose only uses are direct calls can declare a `services` parameter: the build removes it and the helper uses the action's `services`.
@@ -191,7 +191,7 @@ A prompt is a synchronous template function with typed inputs.
 ### Scaffolding
 
 ```bash
-abuddy add prompt summarize-text
+apack add prompt summarize-text
 ```
 
 Creates `src/content/prompts/summarize-text.ts`.
@@ -199,7 +199,7 @@ Creates `src/content/prompts/summarize-text.ts`.
 ### Structure
 
 ```typescript
-import type { PromptMeta } from '@abuddy/sdk/build';
+import type { PromptMeta } from '@apack/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Summarize Text',
@@ -239,7 +239,7 @@ ${params.text}`;
 
 ### Metadata
 
-`PromptMeta` (`@abuddy/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
+`PromptMeta` (`@apack/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
 
 `TemplateInput`: `name`, `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `defaultValue?`, `example?`. Like an action's parameters, these describe the inputs; the template applies its own defaults.
 
@@ -247,7 +247,7 @@ ${params.text}`;
 
 - `template(params, usePrompt)` must be **synchronous** and return a string. Keep the parameters named `params` and `usePrompt`: the build keeps only the body.
 - `usePrompt(label, params)` renders another prompt by label (up to 10 levels deep), returning `undefined` when there's none.
-- Prompt files are scanned and bundled like actions: `export const meta`, relative imports, `@abuddy/sdk/actions` as the only package import, no `*.example.ts`.
+- Prompt files are scanned and bundled like actions: `export const meta`, relative imports, `@apack/sdk/actions` as the only package import, no `*.example.ts`.
 - Prompts are rendered by label with `services.prompt.usePrompt('Summarize Text', params)`, or by a flow's `llm` step.
 
 ## Flows
@@ -257,7 +257,7 @@ A flow is a declarative workflow composed of steps. Flows use a DSL with typed h
 ### Scaffolding
 
 ```bash
-abuddy add flow onboarding
+apack add flow onboarding
 ```
 
 Creates `src/content/flows/onboarding.ts`.
@@ -265,7 +265,7 @@ Creates `src/content/flows/onboarding.ts`.
 ### Structure
 
 ```typescript
-import type { FlowDSL } from '@abuddy/sdk/build';
+import type { FlowDSL } from '@apack/sdk/build';
 import { entry, on, keepAlive, action, fire, branch, subflow } from '#generated/flow-helpers.ts';
 
 export default {
@@ -329,7 +329,7 @@ export default {
 
 ### Flow definitions
 
-A flow file's default export is a `FlowDSL` (`@abuddy/sdk/build`): flow name → a `Track[]`, or a `FlowConfig`.
+A flow file's default export is a `FlowDSL` (`@apack/sdk/build`): flow name → a `Track[]`, or a `FlowConfig`.
 
 | Type | Fields |
 |---|---|
@@ -339,7 +339,7 @@ A flow file's default export is a `FlowDSL` (`@abuddy/sdk/build`): flow name →
 
 Every other flow runs as a subflow that a running flow spawned: default-setup's `Root Flow` spawns its long-running work modes from its entry track. An event reaches every running flow (see `fire`'s `scope`).
 
-**A worked example of the exported form** lives in the AgentBuddy repo at
+**A worked example of the exported form** lives in the apack repo at
 `packages/default-setup/tests/extensions/steps/__golden__/exported-flows.json` — what
 `exportFlowsToDSL` writes for a flow that uses every step default-setup registers, including a
 `FlowConfig` with `root`, the `exits` nesting and a `subflow` reference. It is recorded by the spec
@@ -443,11 +443,11 @@ Point your manifest at the content directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `abuddy build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every written key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs content in dependency order, so a pack's content can reference what a pack it declares a dependency on written. An apply that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last written is remembered as the files and not only their contents.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `apack build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every written key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs content in dependency order, so a pack's content can reference what a pack it declares a dependency on written. An apply that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last written is remembered as the files and not only their contents.
 
 ### Include sets
 
-ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `content.json` lists them:
+ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@apack/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `content.json` lists them:
 
 | Key | Item name |
 |---|---|
@@ -457,7 +457,7 @@ ContentAppliers take an include set per key (`ContentSelection = true | Readonly
 
 ## Writing entities
 
-Content rows of an entity type from markdown or JSON in two parts of `abuddy.json`:
+Content rows of an entity type from markdown or JSON in two parts of `apack.json`:
 
 - **A format** in `content.formats` says how a source becomes records: a built-in format (`markdown-tree` or `json`) or a compiler module, and the settings it uses.
 - **A content source** in `content.sources` names a source and the format that compiles it: `{ "path", "format" }`. The entry key is yours to name.
@@ -522,7 +522,7 @@ When a source needs parsing that field sources can't express, give the format a 
 
 ```typescript
 // src/content/compilers/glossary.ts
-import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@abuddy/sdk/build';
+import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apack/sdk/build';
 
 export default function compileGlossary({ path, format }: ContentCompileContext): ContentItem[] {
   // Skip the format's media directory, if it has one
@@ -549,7 +549,7 @@ An entry with all three, `{ "path", "format", "applier" }`, is compiled with the
 
 ```typescript
 // src/content/custom.ts
-import type { ApplyContext, ApplyResult } from '@abuddy/sdk/utils';
+import type { ApplyContext, ApplyResult } from '@apack/sdk/utils';
 
 export function apply(ctx: ApplyContext): ApplyResult {
   ctx.log('  custom content');
@@ -605,7 +605,7 @@ Without hooks, the applier writes rows directly: it matches existing rows on the
 
 ```typescript
 // src/content/writers/memos.ts
-import type { ContentWriter, ContentItem } from '@abuddy/sdk/content';
+import type { ContentWriter, ContentItem } from '@apack/sdk/content';
 import { repository } from '#generated/repository.ts';
 
 export const memoContentWriter: ContentWriter<ContentItem & { title: string; text: string; pinned?: boolean }> = {
@@ -643,7 +643,7 @@ Parts rather than one hash per item is what keeps an edit from spreading. A thir
 
 When a changed item no longer sets a field the last apply set (the source dropped `completed: true`), updating the entity resets that field: without hooks the applier drops it from the row, and an `update` hook gets it in `clearedFields` to reset (default-setup's Note hooks reset it to a new note's value). A field no apply of the entity ever set, like a user's favorite, isn't touched.
 
-Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). An apply finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity content a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't written again beside it. The pack id comes from `content.json`, which `abuddy build` writes; writing compiled content without it fails until the pack is rebuilt.
+Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). An apply finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity content a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't written again beside it. The pack id comes from `content.json`, which `apack build` writes; writing compiled content without it fails until the pack is rebuilt.
 
 Flows follow the same rules, with the parts above: its row's fields, each node's values, and its wiring (independent of the relations' order). Editing a node marks that node, adding or removing one marks it and the wiring, and renaming the flow marks its fields. Moving nodes in the editor doesn't mark anything.
 
@@ -716,7 +716,7 @@ An edited item you stopped shipping is kept, and under an `offer` entry it is na
 
 A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
 
-1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `abuddy.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `abuddy build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
+1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
 2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
 
 Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list whenever it is asked to publish, and only when it has changed since — so a pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
@@ -727,6 +727,6 @@ Sending `/name args` fires a `user.command` event (`$.event.data.payload.command
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add it to `extensions.commands` in `abuddy.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
+3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.

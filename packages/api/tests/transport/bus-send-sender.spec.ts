@@ -15,10 +15,10 @@
 // Note that the last case, dropping a field nothing declares, passes just as happily while the dropped field is
 // one the envelope *does* declare. It is not the guard for this; the `Required<…>` case is.
 import { describe, expect, it, vi } from 'vitest';
-import type { Message } from '@abuddy/sdk/events';
+import type { Message } from '@apack/sdk/events';
 
 const received: Message[] = [];
-vi.mock('@abuddy/host/bus', () => ({
+vi.mock('@apack/host/bus', () => ({
   receiveClientEvent: (_registry: unknown, message: Message) => { received.push(message); },
   UnknownClientEventError: class extends Error {},
 }));

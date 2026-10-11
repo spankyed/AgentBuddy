@@ -156,7 +156,7 @@ just happened and is true on any machine. Only `driftReport`, which compares aga
 needed gating.
 
 **And the local-override option is closed rather than left open.** A per-machine duration is *already*
-persisted: every chain stamp under `node_modules/.cache/abuddy-chain/` carries `takenAt` and `builtAt`, so
+persisted: every chain stamp under `node_modules/.cache/apack-chain/` carries `takenAt` and `builtAt`, so
 the last successful run of each step on this box is on disk. If an off-reference drift signal is ever
 wanted, it is derivable from that, with no second cost table to keep true — which is the shape to use, and
 the reason not to build one now.

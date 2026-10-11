@@ -14,10 +14,10 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import type { BlockConfig } from '#generated/types.ts'
-import { blockRegistry } from '@abuddy/sdk/blocks'
+import { blockRegistry } from '@apack/sdk/blocks'
 import { ref, computed } from 'vue'
 import type { ThreadsState } from '../../state.ts'
 

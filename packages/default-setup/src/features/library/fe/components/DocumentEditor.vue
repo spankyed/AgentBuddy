@@ -90,13 +90,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
-import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
+import NameSaveHeader from '@apack/ui/design/NameSaveHeader'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
-import TagInput from '@abuddy/ui/design/tag-input'
+import TagInput from '@apack/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
 import type { DocumentDTO } from '#generated/types.ts'
 import type { ContentSection } from '#features/library/be/types.ts'

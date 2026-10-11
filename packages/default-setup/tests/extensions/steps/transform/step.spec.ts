@@ -1,8 +1,8 @@
 // The transform step runs its script as an action runs (services.action.executeAction) with the previous step's result
 // and its mapped fields, and completes with the returned value per its outputType
 import { describe, expect, it } from 'vitest';
-import { importFlows, startApp } from '@abuddy/testing/harness';
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import { importFlows, startApp } from '@apack/testing/harness';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
 import { on, transform } from '#generated/flow-helpers.ts';
 import { handler } from '#extensions/steps/transform/runtime.ts';
 

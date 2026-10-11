@@ -3,7 +3,7 @@ import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import type { GitStatusFile, StashEntry, CommitLogEntry } from '../types.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 
 const logger = createLogger('git')
 

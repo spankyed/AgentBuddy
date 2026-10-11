@@ -3,10 +3,10 @@
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`. Its inbox used to
 // be `OutgoingActionEvents` — eleven events from the actions feature's `be/system`, where this plugin handles
 // three. Spelling those three out is what lets the contract live in a leaf at all: a leaf may not import another
-// feature. `abuddy.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@abuddy/sdk/fe'
-import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/models'
+// feature. `apack.json` names it at `features[].plugin.contract`.
+import type { NavHistory, PluginInbox } from '@apack/sdk/fe'
+import type { ActionEntity, FlowEntity, PromptEntity } from '@apack/sdk'
+import type { ModelCatalogEntry } from '@apack/sdk/models'
 import type { EARS } from '#generated/ears.ts'
 import type { EdgeEntity, NodeEntity } from '#generated/types.ts'
 

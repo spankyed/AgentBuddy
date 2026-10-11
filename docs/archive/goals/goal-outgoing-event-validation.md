@@ -22,7 +22,7 @@ Finished when:
   event is dropped, named with the system, the plugin and the type.
 - The declared types are runtime data generated from the manifest, not a list maintained by hand, and a
   pack that adds an event to a plugin gets it by rebuilding.
-- `npm run typecheck`; `npm test -w @abuddy/host`; `npm test -w @abuddy/sdk`; `npm test -w @abuddy/cli`;
+- `npm run typecheck`; `npm test -w @apack/host`; `npm test -w @apack/sdk`; `npm test -w @apack/cli`;
   `npm test -w @app/default-setup`; `npm run test:external-pack`.
 ```
 
@@ -30,7 +30,7 @@ Finished when:
 
 The app checks events **into** systems and nothing checks events **out** to plugins.
 
-Incoming: the API's `bus.send` delegates to `receiveClientEvent` (`@abuddy/host/bus/client-events.ts`),
+Incoming: the API's `bus.send` delegates to `receiveClientEvent` (`@apack/host/bus/client-events.ts`),
 which looks the event's `systemId` up in `registry.getEventValidationMap()` and throws
 `UnknownClientEventError` when the type isn't one that system accepts. The map is built in
 `pack-registration.ts`'s `buildEventValidationMap()` from what each registered system declares.
@@ -122,7 +122,7 @@ goal is to make the class safe rather than to visit its members.
 - It goes into the pack's registration (`PackRegistration`), the way `systems[].events` carries the
   incoming set today.
 - **Done when:** a rebuilt `packages/default-setup` exports the map; its entries match the `PackEvents`
-  type for the same plugins; a spec in `abuddy-sdk/tests/build/generate-entries.spec.ts` covers a pack
+  type for the same plugins; a spec in `apack-sdk/tests/build/generate-entries.spec.ts` covers a pack
   with an own plugin, a `sendsTo` target and a plugin nobody sends to. Mutation: dropping a `sendsTo`
   target from the manifest removes its entry.
 
@@ -130,7 +130,7 @@ goal is to make the class safe rather than to visit its members.
 - `createPackRegistry()` gains the outgoing equivalent of `getEventValidationMap()`, built from the
   registrations and from `HostPluginEvents` for host plugins, cached and dropped on register/unregister
   exactly as the incoming map is.
-- **Done when:** `abuddy-host/tests/packs/event-validation-map.spec.ts` (or a sibling) covers both maps;
+- **Done when:** `apack-host/tests/packs/event-validation-map.spec.ts` (or a sibling) covers both maps;
   registering and unregistering a pack adds and removes its plugins' entries. Mutation: not dropping the
   cache on unregister fails a spec.
 
@@ -139,7 +139,7 @@ goal is to make the class safe rather than to visit its members.
   the plugin and the type, and drops the event.
 - An event for a plugin the map has no entry for is a miss, not a pass: that is the case the notes bug's
   neighbours live in.
-- **Done when:** `abuddy-host/tests/bus/` covers a good send delivered, a bad type reported and dropped,
+- **Done when:** `apack-host/tests/bus/` covers a good send delivered, a bad type reported and dropped,
   and an unknown plugin reported and dropped; a pack test that makes a bad send fails through
   `takeSystemErrors` without any assertion of its own. Mutation: skipping the check delivers the bad
   event and the spec fails.
@@ -169,9 +169,9 @@ registration that had nothing to do with events. The phases were the cheap part.
 ### Per phase
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — declared types as runtime data | done | `receivedEventTypes` in `#generated/events`, read by `eventTypesOf`; `abuddy-sdk/tests/build/generate-entries.spec.ts` |
-| 2 — the registry side | done | `getPluginEventValidationMap()`; `abuddy-host/tests/packs/event-validation-map.spec.ts` |
-| 3 — the check | done | `bus/machine.ts` reports and drops; `abuddy-host/tests/bus/outgoing-events.spec.ts` |
+| 1 — declared types as runtime data | done | `receivedEventTypes` in `#generated/events`, read by `eventTypesOf`; `apack-sdk/tests/build/generate-entries.spec.ts` |
+| 2 — the registry side | done | `getPluginEventValidationMap()`; `apack-host/tests/packs/event-validation-map.spec.ts` |
+| 3 — the check | done | `bus/machine.ts` reports and drops; `apack-host/tests/bus/outgoing-events.spec.ts` |
 | 4 — the repo's own sends | done | `CLIENT_CONNECTED` on `application` and the host `packs` plugin were real contract gaps, both closed by declaring |
 | 5 — payload schemas | **not started** | Open decision 1 unsettled |
 
@@ -220,7 +220,7 @@ throughout went 60s and 15s timeouts to 2.1s and 163ms once the feedback loop wa
 ## Constraints
 
 **Never**: commit, stage or push without being asked; publish anything or trigger a workflow; open, copy
-or modify a real user data dir (`~/Library/Application Support/abuddy*`); `pkill`/`killall` Electron or
+or modify a real user data dir (`~/Library/Application Support/apack*`); `pkill`/`killall` Electron or
 node; run bare `tsc` in `packages/preload`; edit version or release metadata; add a
 backward-compatibility shim or re-export; loosen a failing assertion instead of investigating it; leave a
 new guard or helper without a mutation check.

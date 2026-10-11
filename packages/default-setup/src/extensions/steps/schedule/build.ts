@@ -1,5 +1,5 @@
-import type { TriggerFacet, StepNodeFacet } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
+import type { TriggerFacet, StepNodeFacet } from '@apack/sdk/steps';
+import { EARS } from '@apack/sdk';
 import { Cron } from 'croner';
 
 export function compile(track: Record<string, unknown>, trackId: string, ts: number, trackKey: string): Record<string, unknown> {
@@ -44,7 +44,7 @@ export function validate(node: Record<string, unknown>): { valid: boolean; error
   return { valid: errors.length === 0, errors };
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
 export const scheduleTriggerBuild: TriggerFacet = {
   trackField: 'schedule',
   compile,

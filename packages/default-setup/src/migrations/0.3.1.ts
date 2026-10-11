@@ -1,9 +1,9 @@
 import { findAll, qx } from '#generated/ears.ts';
 import { EARS } from '../__generated__/ears.ts';
-import { untypedTx } from '@abuddy/ears';
+import { untypedTx } from '@apack/ears';
 import type { ThreadEntity } from '../features/threads/be/types.ts';
-import type { DeclaredMigration } from '@abuddy/sdk/framework';
-import { createLogger } from '@abuddy/sdk/logger';
+import type { DeclaredMigration } from '@apack/sdk/framework';
+import { createLogger } from '@apack/sdk/logger';
 
 const logger = createLogger('migrations');
 

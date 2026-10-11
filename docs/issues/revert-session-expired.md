@@ -21,7 +21,7 @@ RevertHistoryPopup.vue → REVERT_THREAD event
 
 ## Findings
 
-### 1. Nothing in AgentBuddy deletes session JSONL files
+### 1. Nothing in apack deletes session JSONL files
 **Severity:** Root cause is external
 
 `sessions.remove()` exists (`services/claude-code/sessions.ts:287`) but is **never called** during revert or any normal operation. The session JSONL file must be deleted by:

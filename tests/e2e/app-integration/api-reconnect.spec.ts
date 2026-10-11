@@ -2,7 +2,7 @@
 // subscription again, on the same port or on the one main reports the restarted API moved to.
 import { execFileSync } from 'node:child_process';
 import type { Page } from '@playwright/test';
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 /** The API process: the app's main process's child running the API server */
 function apiPid(mainPid: number): number {

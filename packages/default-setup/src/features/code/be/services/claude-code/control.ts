@@ -27,7 +27,7 @@
  *     `{subtype:'error'}` control_responses so the conversation continues
  */
 
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import type {
   CanUseToolRequest,
   ControlRequestHandler,
@@ -35,7 +35,7 @@ import type {
   PermissionDecision,
   PermissionHandler,
 } from './types.ts'
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('claude-code-control')
 

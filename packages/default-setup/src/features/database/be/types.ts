@@ -1,5 +1,5 @@
-import type { TNodeEntity } from '@abuddy/sdk/steps';
-import type { KeyboardShortcut } from '@abuddy/sdk/types';
+import type { TNodeEntity } from '@apack/sdk/steps';
+import type { KeyboardShortcut } from '@apack/sdk/types';
 import { EARS } from '#generated/ears.ts';
 
 export interface DatabaseQueryResult {
@@ -62,7 +62,7 @@ export type OutgoingDatabaseEvents =
    * **None of them names the request, because the envelope does.** `reply` stamps `Message.answering` with
    * the call the request was sent under, and the delivery door puts that on the delivered event under a
    * reserved key — so a requester tells its own answer from someone else's by asking `answersCall`
-   * (`@abuddy/sdk/events`), and neither side declares a field for it.
+   * (`@apack/sdk/events`), and neither side declares a field for it.
    *
    * **The call is the requester's, which is what makes it identify a request rather than an emit.** The case
    * it exists for is a requester that gave up waiting and asked again: an id stamped when the *answer* is

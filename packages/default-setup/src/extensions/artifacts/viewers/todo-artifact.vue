@@ -102,7 +102,7 @@ import { sendToSystem } from '#generated/events.ts'
 import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check } from 'lucide-vue-next';
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
 
 interface TodoTask {
   id: string;

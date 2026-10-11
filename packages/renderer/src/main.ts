@@ -5,16 +5,16 @@ import type { Actor } from 'xstate';
 import App from './views/App.vue'
 import './style.css'
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
-// @abuddy/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
+// @apack/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
 import { hostFrontend } from '@/views/packs/plugin';
 import { createAppShell } from '@/runtime/shell';
-import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
+import { HOST, installFromProtocol, runFrontendMigrations } from '@apack/host/fe';
 import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
 import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
-import { untypedSendToSystem } from '@abuddy/sdk/events';
+import { untypedSendToSystem } from '@apack/sdk/events';
 
 declare const __APP_VERSION__: string;
 
@@ -44,7 +44,7 @@ const initialPluginId = isPluginPopout ? query.get('pluginId') ?? undefined : un
 
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
-console.log(`AgentBuddy v${__APP_VERSION__}`);
+console.log(`apack v${__APP_VERSION__}`);
 runFrontendMigrations(localStorage, __APP_VERSION__);
 
 // const { inspect } = createBrowserInspector();
@@ -95,7 +95,7 @@ applicationState.subscribe({
   }
 });
 
-// Listen for deep link protocol actions (abuddy://install?pack=...)
+// Listen for deep link protocol actions (apack://install?pack=...)
 window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
   if (action === 'install') installFromProtocol(params);
 });

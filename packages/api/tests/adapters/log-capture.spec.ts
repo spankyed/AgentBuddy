@@ -1,4 +1,4 @@
-// The API prints each log event once, whether it comes from @abuddy/sdk/logger, an error report or a console call,
+// The API prints each log event once, whether it comes from @apack/sdk/logger, an error report or a console call,
 // and every one of them reaches the log event stream
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -6,11 +6,11 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-log-capture-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store } = openAppStore();
-const { createLogger, reportError } = await import('@abuddy/sdk/logger');
+const { createLogger, reportError } = await import('@apack/sdk/logger');
 const { rootEvents } = await import('@/transport/emitter');
 const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
 

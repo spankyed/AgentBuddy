@@ -129,8 +129,8 @@ describe('specFilesUnder', () => {
 
 describe('the half a path runs in', () => {
   it('reads the suffix, which is the whole rule', () => {
-    expect(halfOfPath('packages/abuddy-cli/tests/a.integration.spec.ts')).toBe('integration');
-    expect(halfOfPath('packages/abuddy-cli/tests/a.spec.ts')).toBe('fast');
+    expect(halfOfPath('packages/apack-cli/tests/a.integration.spec.ts')).toBe('integration');
+    expect(halfOfPath('packages/apack-cli/tests/a.spec.ts')).toBe('fast');
   });
 
   // Every half has a config, or a pool would ask for one that does not exist

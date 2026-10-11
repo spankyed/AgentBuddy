@@ -192,12 +192,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import type { SettingUpdate } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
+import type { SettingUpdate } from '@apack/sdk/fe'
 
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
 import type { NotesState } from './state.ts'
 

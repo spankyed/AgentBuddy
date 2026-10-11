@@ -1,5 +1,5 @@
-import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { NodeBase } from '@apack/sdk';
+import type { DSLNodeBase } from '@apack/sdk/build';
 
 export interface DSLKillNode extends DSLNodeBase {
   type: 'kill';

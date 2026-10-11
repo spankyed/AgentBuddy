@@ -1,7 +1,7 @@
 // The pack's scheduled flow, built with default-setup's flow helpers (branch, schedule and the step helpers' typed options)
 import { describe, expect, it, vi } from 'vitest';
-import type { FlowDSL } from '@abuddy/sdk/build';
-import { importFlows, mockService, importContent, startApp } from '@abuddy/testing/harness';
+import type { FlowDSL } from '@apack/sdk/build';
+import { importFlows, mockService, importContent, startApp } from '@apack/testing/harness';
 import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers.ts';
 import { repository } from '#generated/repository.ts';
 import type { Services } from '#generated/services.ts';

@@ -8,23 +8,23 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // The release that migrates 0.3.14's data; the test environment runs release rules
-vi.mock('@abuddy/sdk/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@abuddy/sdk/env')>();
+vi.mock('@apack/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apack/sdk/env')>();
   return { ...actual, getAppVersion: () => '0.3.15' };
 });
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-upgrade-0314-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
-const { hostRegistration } = await import('@abuddy/host/features');
-const { loadAppPacks } = await import('@abuddy/host/packs/runtime');
-const { installShippedPacks } = await import('@abuddy/host/packs');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
-const { runAppMigrations } = await import('@abuddy/host/migrations');
-const { appliedContent, appState } = await import('@abuddy/host/app-state');
-const { untypedTx, untypedQx } = await import('@abuddy/ears');
+const { hostRegistration } = await import('@apack/host/features');
+const { loadAppPacks } = await import('@apack/host/packs/runtime');
+const { installShippedPacks } = await import('@apack/host/packs');
+const { resolveAppContext } = await import('@apack/sdk/env');
+const { runAppMigrations } = await import('@apack/host/migrations');
+const { appliedContent, appState } = await import('@apack/host/app-state');
+const { untypedTx, untypedQx } = await import('@apack/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const SETTINGS_ID = 'Settings-app';

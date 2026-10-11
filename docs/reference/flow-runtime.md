@@ -1,6 +1,6 @@
 # Flow Runtime
 
-This document describes how AgentBuddy executes flows at runtime. It covers the backend brain runtime, flow actors, step actors, trigger routing, schedules, traces, and completion semantics.
+This document describes how apack executes flows at runtime. It covers the backend brain runtime, flow actors, step actors, trigger routing, schedules, traces, and completion semantics.
 
 ## Vocabulary
 
@@ -24,7 +24,7 @@ This document describes how AgentBuddy executes flows at runtime. It covers the 
 | `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
 | `packages/default-setup/src/features/brain/be/flow-completion.ts` | Centralizes flow completion rules. |
 | `packages/default-setup/src/features/brain/be/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
-| `packages/abuddy-sdk/src/events/index.ts` (`sendToSystem`) | Sends `TRIGGER_BRAIN_EVENT` to the system playing the brain role (`sendToSystem({ role: 'brain' }, …)`, and `services.emitter.sendToSystem` from actions). |
+| `packages/apack-sdk/src/events/index.ts` (`sendToSystem`) | Sends `TRIGGER_BRAIN_EVENT` to the system playing the brain role (`sendToSystem({ role: 'brain' }, …)`, and `services.emitter.sendToSystem` from actions). |
 
 ## Brain Lifecycle
 

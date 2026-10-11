@@ -3,7 +3,7 @@
  * running turn. The user clicked "Cancel" on the amber "Queued" indicator.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services } from '#generated/services.ts';
 import { dequeueMessage, getClaudeState } from './_helpers/thread-context.ts';
 

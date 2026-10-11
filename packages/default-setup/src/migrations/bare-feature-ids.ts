@@ -21,7 +21,7 @@ const REMOVED_SINCE_0314: readonly string[] = ['calendar'];
 
 /**
  * The 0.3.14 features that are no longer this pack's but still exist, with the ref they run under now. `settings`
- * became the app's own feature when the settings store moved to @abuddy/host, so a link written then still opens
+ * became the app's own feature when the settings store moved to @apack/host, so a link written then still opens
  * the same view — at the app's ref rather than this pack's.
  */
 const MOVED_SINCE_0314: Readonly<Record<string, string>> = { settings: 'host/settings' };

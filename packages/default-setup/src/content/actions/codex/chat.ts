@@ -6,7 +6,7 @@
  */
 
 import type { GeneralSettings } from '#app-settings/types.ts';
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer.ts';
 import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer.ts';

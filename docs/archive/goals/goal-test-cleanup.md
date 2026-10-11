@@ -28,8 +28,8 @@ Finished when:
 - No test in the repo fails only because a name removed by an earlier refactor came back, a message was
   reworded, a call count changed, or a generated file's formatting changed, except where the Decisions
   keep that check.
-- The deleted files no longer exist: packages/abuddy-sdk/tests/designations/pack-facing.spec.ts,
-  packages/abuddy-ears/tests/no-engine-state-access.spec.ts,
+- The deleted files no longer exist: packages/apack-sdk/tests/designations/pack-facing.spec.ts,
+  packages/apack-ears/tests/no-engine-state-access.spec.ts,
   packages/default-setup/tests/unit/service-registry.spec.ts,
   packages/default-setup/tests/unit/generated-entries-import.spec.ts.
 - Every doc that cited a deleted guard describes the code as it is (the root CLAUDE.md sentence about
@@ -39,8 +39,8 @@ Finished when:
 - Every allowance left in a guard has been shown to be load-bearing: delete it, watch the guard fail,
   put it back.
 - Each phase's package suite passes, and Phase 9's full check list passes at the end.
-- `npm test -w @abuddy/cli` runs no build, install or child process and finishes under 15s;
-  `npm run test:integration -w @abuddy/cli` runs the specs that do; CI and the pre-merge chain run both.
+- `npm test -w @apack/cli` runs no build, install or child process and finishes under 15s;
+  `npm run test:integration -w @apack/cli` runs the specs that do; CI and the pre-merge chain run both.
 - `npm run test:unit` runs its suites concurrently and finishes under 25s, and a concurrent
   `test:external-pack` does not make it fail.
 - Every regression path covered today is still covered by `npm run test:all`, wherever it now runs.
@@ -58,7 +58,7 @@ Commit as you go:
 
 Never:
 - Constraints' standing rules are hard stops, not advice: no push/tag/PR, no publish or release, no real
-  data dir, no broad pkill, no app outside the test env without an isolated ABUDDY_USER_DATA_DIR, no bare
+  data dir, no broad pkill, no app outside the test env without an isolated APACK_USER_DATA_DIR, no bare
   tsc on preload, no version metadata, and no change to the typed EARS types to make a call site compile.
 - delete a test because it fails; investigate it, and keep it if it found something.
 - widen a kept test's scope, add new coverage, or refactor the code under test. Phases 3-9 remove and
@@ -123,11 +123,11 @@ Asking "could someone write this today?" is necessary and not sufficient. A guar
 reachable and still be dead weight, because something cheaper already rejects it.
 
 `no-engine-state-access.spec.ts` is the worked example, and the reason Decision 4 reads as it does. Its
-`ADMIN_WRITES` half forbids `import { edgeStore } from '@abuddy/ears'` — a real symbol, in a real
+`ADMIN_WRITES` half forbids `import { edgeStore } from '@apack/ears'` — a real symbol, in a real
 package, and an admin write with no engine behind it, so the check looks live. It is not:
 
 ```
-error TS2724: '"@abuddy/ears"' has no exported member named 'edgeStore'. Did you mean 'EdgeStore'?
+error TS2724: '"@apack/ears"' has no exported member named 'edgeStore'. Did you mean 'EdgeStore'?
 ```
 
 None of the 15 admin-write names are exported. The compiler rejects the import at the import site, with
@@ -144,11 +144,11 @@ Verifying a one-line change costs minutes, so it gets skipped or done wrong. War
 | Stage | Total | Longest step |
 |---|---|---|
 | `npm run typecheck` (11 steps) | 48.9s | `typecheck:pack` **16.4s** (vue-tsc over default-setup) |
-| `npm run test:unit` (7 suites, sequential) | 92.3s | `@abuddy/cli` **53.1s** |
+| `npm run test:unit` (7 suites, sequential) | 92.3s | `@apack/cli` **53.1s** |
 | `npm run build` | 44.0s | |
 | `npm run compile` | 14.1s | |
 
-Every other typecheck step is 1.2–5.3s; every other unit suite is 1.9–18.4s. **`@abuddy/cli` is 58% of
+Every other typecheck step is 1.2–5.3s; every other unit suite is 1.9–18.4s. **`@apack/cli` is 58% of
 all unit-test time** — 61 files and 653 tests then, 68 and 718 now, so re-measure before Phase 1, one
 warm run each, reported as a table in the Outcome.
 
@@ -156,8 +156,8 @@ Inside it: 277s of file-time in 53s of wall clock, concentrated in sixteen files
 against forty-five at ≤5s (25.9s).
 
 ```
-51.1s  tests/build/facade-typing.spec.ts              real `abuddy build` ×2, then a 4-cell tsc matrix
-38.2s  tests/cli/scaffold.spec.ts                     abuddy init → add feature → build → tsc → pack
+51.1s  tests/build/facade-typing.spec.ts              real `apack build` ×2, then a 4-cell tsc matrix
+38.2s  tests/cli/scaffold.spec.ts                     apack init → add feature → build → tsc → pack
 23.5s  tests/build/fe-bundler-host-registry.spec.ts   real Vite library builds
 21.0s  tests/build/types-bundler-determinism.spec.ts  two facade builds + npm pack
 15.4s  tests/harness/harness-setup.spec.ts            vitest inside a temp pack
@@ -201,9 +201,9 @@ Final.
    The retired-names guard is **not** among them: it was added in 0b1242c14 and deleted in cf4490213,
    once the rename it escorted had landed and it had grown to 56 names and 16 allowances across 8 files.
    An earlier draft of this decision kept it, which contradicted the Background table.
-4. **Delete `packages/abuddy-ears/tests/no-engine-state-access.spec.ts`.** Its `MODULE_STATE` scan only
+4. **Delete `packages/apack-ears/tests/no-engine-state-access.spec.ts`.** Its `MODULE_STATE` scan only
    greps for names this refactor removed, and its `ADMIN_WRITES` check is already enforced by tsc, since
-   `@abuddy/ears`'s index exports none of those names. `no-module-state.spec.ts` keeps the real guard.
+   `@apack/ears`'s index exports none of those names. `no-module-state.spec.ts` keeps the real guard.
    The root CLAUDE.md sentence citing it is updated in the same phase.
 5. **Keep `tests/e2e/smoke.spec.ts` "runs in an isolated per-worker test data dir".** It tests the
    fixture rather than the app, which is normally a delete, but it is what stops an E2E run from
@@ -211,7 +211,7 @@ Final.
 6. **Don't re-record the content-parity goldens.** The audit suggested re-recording them with notes
    included, to retire `NOTES_INTENDED_DIFFERENCES`. That changes what the goldens cover and belongs in
    its own change (Deferred).
-7. **Leave `packages/abuddy-host/tests/packs/pack-protocol.spec.ts` alone.** Its 7 tests don't import
+7. **Leave `packages/apack-host/tests/packs/pack-protocol.spec.ts` alone.** Its 7 tests don't import
    product code — they check a MIME map declared in the test and a copy of the install logic — but the
    branch only moved the file, so it is outside this goal's scope (Deferred).
 8. **A phase is one package's tests**, so each lands on its own with its suite green.
@@ -223,8 +223,8 @@ Final.
    `api/src/packs` — which is why `boundaries.spec.ts`'s absence checks for that directory went in
    acf10618a. An allowlist catches what nobody predicted and cannot go stale as the code moves.
 10. **A duplicate that names its level is not a duplicate.** `api/tests/unit/boot-recovery.spec.ts`
-   repeats two `@abuddy/host` unit tests on purpose, and says why: *"The unit tests for these live in
-   @abuddy/host. This one boots the real composition, because what both regressions broke was the
+   repeats two `@apack/host` unit tests on purpose, and says why: *"The unit tests for these live in
+   @apack/host. This one boots the real composition, because what both regressions broke was the
    boot."* Spare a test that states the level it adds. Where one is kept without saying, add the
    sentence — an unexplained duplicate is indistinguishable from an accident, which is how ~30 of them
    got here.
@@ -276,12 +276,12 @@ for a moved name, an unbridged-leaf case. The file stays; those individual tests
 | Guard | Forbids | Still reachable because |
 |---|---|---|
 | `scripts/check-import-specifiers.ts` (13 rules) | layering, pack boundaries, relative `.js` specifiers, `lmdb`, `_internal` imports, `console` in pack backends, repository casts, source conditions | every symbol it names is exported and importable |
-| `abuddy-ears/tests/no-module-state.spec.ts` | module-level mutable state in `src/` | `new Map()` at module scope is an ordinary thing to write |
-| `abuddy-sdk/tests/build/no-pack-content-specifics.spec.ts` | pack entity names in the SDK's build and apply modules | `Document`, `Note` and `FAQ` exist in default-setup and are easy to reach for |
-| `abuddy-sdk/tests/env/identity-guard.spec.ts` | hand-rolled environment and data-dir resolution | a literal `Application Support` path or a raw `ABUDDY_ENV` read is a natural shortcut |
+| `apack-ears/tests/no-module-state.spec.ts` | module-level mutable state in `src/` | `new Map()` at module scope is an ordinary thing to write |
+| `apack-sdk/tests/build/no-pack-content-specifics.spec.ts` | pack entity names in the SDK's build and apply modules | `Document`, `Note` and `FAQ` exist in default-setup and are easy to reach for |
+| `apack-sdk/tests/env/identity-guard.spec.ts` | hand-rolled environment and data-dir resolution | a literal `Application Support` path or a raw `APACK_ENV` read is a natural shortcut |
 | `api/tests/unit/source-layout.spec.ts` | any file under `api/src` outside its list | an allowlist (Decision 9): it catches files nobody predicted |
-| `abuddy-host/tests/packs/runtime/sdk-bridge-drift.spec.ts` | the bridge list drifting from the exports map | both sides change independently, and neither fails the other |
-| `abuddy-cli/tests/build/published-sdk-types.integration.spec.ts` | a published entry that stops resolving, the package shipping anything but `dist`, `package.json` and the schema, and source maps leaking | it resolves the packed package the way a pack does, which nothing else here does. It does **not** catch a *widened* exports map — `api:check` does, by wanting a report per entry (see the Outcome) |
+| `apack-host/tests/packs/runtime/sdk-bridge-drift.spec.ts` | the bridge list drifting from the exports map | both sides change independently, and neither fails the other |
+| `apack-cli/tests/build/published-sdk-types.integration.spec.ts` | a published entry that stops resolving, the package shipping anything but `dist`, `package.json` and the schema, and source maps leaking | it resolves the packed package the way a pack does, which nothing else here does. It does **not** catch a *widened* exports map — `api:check` does, by wanting a report per entry (see the Outcome) |
 
 `no-engine-state-access.spec.ts` is **not** here: tsc rejects its subject at the import site, so it is a
 second opinion, not a guard (Decision 4, and *A second test, found after the audit*).
@@ -303,20 +303,20 @@ apparent additions and 17 real ones.
 
 ### Phase 1 — split the CLI suite
 
-Not about test content: `@abuddy/cli` is ~53s against 3–9s for every other package, and it is Phase 3.
+Not about test content: `@apack/cli` is ~53s against 3–9s for every other package, and it is Phase 3.
 Splitting it makes the most expensive phase in this goal roughly 3.5× cheaper to iterate on, and the
 criterion is structural, so nothing here waits on a verdict.
 
 - Rename each spec that runs a build, an install or a child process to `*.integration.spec.ts`. The
   candidates are the sixteen over 5s in *The loop*, minus `import-specifiers.spec.ts`, plus any file
   under 5s that spawns — classify by reading, not by the timing table.
-- `packages/abuddy-cli/vitest.config.ts`: the default `include` excludes `**/*.integration.spec.ts`.
+- `packages/apack-cli/vitest.config.ts`: the default `include` excludes `**/*.integration.spec.ts`.
   Add a `test:integration` script whose `include` is only that.
-- Root `package.json`: `test:unit` keeps calling `npm test -w @abuddy/cli` (now the fast half). The
+- Root `package.json`: `test:unit` keeps calling `npm test -w @apack/cli` (now the fast half). The
   pre-merge chain and `.github/workflows/ci.yml` gain the integration step.
-- Update `packages/abuddy-cli/CLAUDE.md`'s Tests section: which suite holds what, the rule for choosing,
+- Update `packages/apack-cli/CLAUDE.md`'s Tests section: which suite holds what, the rule for choosing,
   and that deleting the last spawning test from an integration spec moves that file back (Decision 16).
-- **Done when:** `npm test -w @abuddy/cli` finishes under 15s and runs no child process; every spec is in
+- **Done when:** `npm test -w @apack/cli` finishes under 15s and runs no child process; every spec is in
   exactly one of the two suites; a guard spec fails when a fast-suite file spawns a build. Mutation:
   renaming one integration spec back to `*.spec.ts` fails that guard.
 
@@ -325,14 +325,14 @@ criterion is structural, so nothing here waits on a verdict.
 - `withBuildLock` currently fails immediately when another process holds the lock, which is right for a
   command and wrong for a reader. Give the freshness checkers a way to wait for an in-flight build
   instead of reporting its half-written stamps as stale. `runningPackageBuild`
-  (`@abuddy/host/build/packages-built`) already identifies a live build; `assertCheckoutPackagesFresh`
+  (`@apack/host/build/packages-built`) already identifies a live build; `assertCheckoutPackagesFresh`
   already reports it separately. The missing half is `published-packages.ts` and the fixers.
 - Then make `test:unit` run its suites concurrently rather than as an `&&` chain.
 - **Done when:** `npm run test:unit` and `npm run test:external-pack` started together both pass, ten
   times in a row; `test:unit` wall clock is under 25s. Mutation: reverting the lock change makes the
   concurrent run fail with a stamp error.
 
-### Phase 3 — @abuddy/cli
+### Phase 3 — @apack/cli
 
 Delete:
 - `tests/build/with-source.spec.ts`: "is the only way npm scripts in the checkout get the condition" (it
@@ -354,14 +354,14 @@ Trim:
   `install-host-version.spec.ts`, `build/host-import-guard.spec.ts` ("rejects an export only the app
   loads"), `harness/shared-ears.spec.ts` (both message tests): match the part of the message a user acts
   on, not the sentence. In `fe-bundler-shared-ui`'s "warns once", keep the one-call check.
-- `fe-bundler-host-registry.spec.ts`: loosen the import chain to `src/entry.ts → @abuddy/sdk/logger`;
+- `fe-bundler-host-registry.spec.ts`: loosen the import chain to `src/entry.ts → @apack/sdk/logger`;
   drop the `else` branch asserting the source layout compiles SFCs.
 - `dependency-flow-helpers.spec.ts`: drop the exact generated re-export line; keep `flowHelpers.exports`.
 - `facade-typing.spec.ts`: drop the CONSUMER fixture's `Secret` and `Note` `@ts-expect-error` blocks;
   keep `Settings` and `AppState`, which are the documented rule.
-- `published-exports.spec.ts`: drop the removed `@abuddy/sdk/rpc` line.
+- `published-exports.spec.ts`: drop the removed `@apack/sdk/rpc` line.
 - `published-sdk-types.spec.ts`: drop the consumer's `@ts-expect-error` lines for moved names
-  (`findRelations` from `/repositories`, `@abuddy/sdk/ears`, both `/internals` paths, `@abuddy/sdk/packs`)
+  (`findRelations` from `/repositories`, `@apack/sdk/ears`, both `/internals` paths, `@apack/sdk/packs`)
   and the "ships no host-only module" assertions for those paths, and the old-directory-name filter;
   keep the positive resolves, the package file list and the no-sourcemaps check. Keep the `findAll`
   line: that one is a current contract.
@@ -373,10 +373,10 @@ Trim:
 - `scaffold.spec.ts`: drop the exact generated import lines in the step-and-service test; loosen the
   unit-test count to `/Tests\s+\d+ passed/` plus no "failed".
 
-**Done when:** the two tests are gone, the trims are applied, `npm test -w @abuddy/cli` passes, and
+**Done when:** the two tests are gone, the trims are applied, `npm test -w @apack/cli` passes, and
 `npm run packages:build` has run first (the CLI suite needs it).
 
-### Phase 4 — @abuddy/host
+### Phase 4 — @apack/host
 
 Delete:
 - `bus/client-events.spec.ts`: "logs arrays over 5 items as their count and first 5".
@@ -404,7 +404,7 @@ Trim:
 - `boundaries.spec.ts` "holds only the app-implemented services in src/services": drop the runtime-keys
   comparison, which repeats `services/host-runtime.spec.ts`; keep the file-list rule.
 - `build/shared-deps.spec.ts`: check that each `APP_ONLY_EXPORTS` key names an existing export instead of
-  pinning the list; drop the removed `@abuddy/ears/internals` line.
+  pinning the list; drop the removed `@apack/ears/internals` line.
 - `bus/client-events.spec.ts` "puts an accepted event on the bus and logs it": drop the exact log message.
 - `fe/pack-store-designations.spec.ts` "keep a role with the plugin that played it first",
   `packs/staging.spec.ts`, `secrets/store.spec.ts`: drop the pinned `console.warn` text; assert it was
@@ -432,51 +432,51 @@ From the pack-naming audit:
   four-method console patch to catch them. Keep that every pack returns `enabled: true`, that one line
   is logged rather than one per pack, and that the line names the packs. Drop the sentence pins.
 
-**Done when:** the listed tests are gone, the trims are applied, and `npm test -w @abuddy/host` passes.
+**Done when:** the listed tests are gone, the trims are applied, and `npm test -w @apack/host` passes.
 
-### Phase 5 — @abuddy/sdk and @abuddy/ears
+### Phase 5 — @apack/sdk and @apack/ears
 
 Delete:
-- `abuddy-ears/tests/no-engine-state-access.spec.ts` (whole file, Decision 4). Update the root CLAUDE.md
+- `apack-ears/tests/no-engine-state-access.spec.ts` (whole file, Decision 4). Update the root CLAUDE.md
   sentence that cites it, and any other doc `git grep no-engine-state-access` finds.
-- `abuddy-sdk/tests/designations/pack-facing.spec.ts` (whole file): "no longer exports
+- `apack-sdk/tests/designations/pack-facing.spec.ts` (whole file): "no longer exports
   `registerDesignations`"; `api:check` controls the published surface.
-- `abuddy-sdk/tests/build/no-pack-content-specifics.spec.ts`: "every allowlist entry still matches a line".
-- `abuddy-sdk/tests/build/manifest-schema.spec.ts`: "rejects the removed boot.earlySystem and
+- `apack-sdk/tests/build/no-pack-content-specifics.spec.ts`: "every allowlist entry still matches a line".
+- `apack-sdk/tests/build/manifest-schema.spec.ts`: "rejects the removed boot.earlySystem and
   boot.createDefaultSettings"; the unknown-key cases cover it.
-- `abuddy-sdk/tests/runtime/bound-transport.spec.ts`: "sendToBrainSystem sends to the designated brain",
+- `apack-sdk/tests/runtime/bound-transport.spec.ts`: "sendToBrainSystem sends to the designated brain",
   "reportError logs a system error and sends it to the clients" (both duplicates).
-- `abuddy-sdk/tests/testing/fake-inference.spec.ts`: "records a model call per batch the AI SDK splits a
+- `apack-sdk/tests/testing/fake-inference.spec.ts`: "records a model call per batch the AI SDK splits a
   call into" (pins AI SDK batch sizes).
-- `abuddy-sdk/tests/content/flow-applier.spec.ts` and `tests/content/applier.spec.ts`: the "fails with a rebuild
+- `apack-sdk/tests/content/flow-applier.spec.ts` and `tests/content/applier.spec.ts`: the "fails with a rebuild
   error when the compiled content name no pack" tests; `content-registry.spec.ts` covers the shared check.
-- `abuddy-sdk/tests/runtime/internals-entry.spec.ts`: "is exported only under the @abuddy/source
+- `apack-sdk/tests/runtime/internals-entry.spec.ts`: "is exported only under the @apack/source
   condition" (pins the `package.json` export object; `published-exports.spec.ts` covers the entry).
 - If `generate-entries.spec.ts` still has "ignores dependencies built when their manifests still declared
   the SDK's names", delete it and the matching `if (key in sdkOwned) continue;` in
   `src/build/generate-entries.ts` (it was gone at the time of writing).
 
 Trim:
-- `abuddy-ears/tests/installed-engine.spec.ts`: assert `toThrow('No EARS engine is installed')` rather
+- `apack-ears/tests/installed-engine.spec.ts`: assert `toThrow('No EARS engine is installed')` rather
   than the three-clause sentence, for all 12 functions.
-- `abuddy-ears/tests/lmdb/persistence.spec.ts`: drop the "nothing to a secrets partition" assertion and
+- `apack-ears/tests/lmdb/persistence.spec.ts`: drop the "nothing to a secrets partition" assertion and
   that clause from the title.
-- `abuddy-sdk/tests/build/generate-entries.spec.ts`: drop the facade header-comment match; keep the
+- `apack-sdk/tests/build/generate-entries.spec.ts`: drop the facade header-comment match; keep the
   `systemIds` mapping and `system-ids.ts` export and drop the character-exact declarations; drop the
   `not.toMatch(/label|icon|isPinned/)`, the `not.toContain('registerRepository')` and the loop grepping
   every generated file for removed registration calls; loosen the `export const {` formatting match.
-- `abuddy-sdk/tests/testing/test-host.spec.ts`: drop the `boundHost().transport.rootEvents` identity.
-- `abuddy-sdk/tests/runtime/unbound.spec.ts`: delete the `Without`/`WithoutService` type block; the one
+- `apack-sdk/tests/testing/test-host.spec.ts`: drop the `boundHost().transport.rootEvents` identity.
+- `apack-sdk/tests/runtime/unbound.spec.ts`: delete the `Without`/`WithoutService` type block; the one
   real `bindHost(createHostRuntime(...))` site enforces it.
-- `abuddy-sdk/tests/runtime/internals-entry.spec.ts` "holds what @abuddy/sdk/runtime leaves out": keep
-  the check that `@abuddy/sdk/runtime` exports none of the host-only names; replace the exact internals
+- `apack-sdk/tests/runtime/internals-entry.spec.ts` "holds what @apack/sdk/runtime leaves out": keep
+  the check that `@apack/sdk/runtime` exports none of the host-only names; replace the exact internals
   export list with `arrayContaining`.
 
 Keep, though they are contract-heavy: the ears `tests/contract/` specs, `no-module-state.spec.ts`, and
-the typed-EARS specs (`packages/abuddy-sdk/TYPED-EARS.md`).
+the typed-EARS specs (`packages/apack-sdk/TYPED-EARS.md`).
 
-**Done when:** the listed tests are gone, the trims are applied, `npm test -w @abuddy/sdk` and
-`npm test -w @abuddy/ears` pass, `npm run typecheck` passes, and no doc names a deleted file.
+**Done when:** the listed tests are gone, the trims are applied, `npm test -w @apack/sdk` and
+`npm test -w @apack/ears` pass, `npm run typecheck` passes, and no doc names a deleted file.
 
 ### Phase 6 — default-setup, part A
 
@@ -568,13 +568,13 @@ From the repo inventory:
 - `renderer` is the densest package in the repo (16 of 33 flagged); read all of it rather than sampling.
 
 Delete:
-- `packages/api/tests/unit/host-data-services.spec.ts`: the whole `relation reads in @abuddy/ears`
-  describe (three tests) and the setup only it uses; `abuddy-ears/tests/contract/relations.spec.ts` and
+- `packages/api/tests/unit/host-data-services.spec.ts`: the whole `relation reads in @apack/ears`
+  describe (three tests) and the setup only it uses; `apack-ears/tests/contract/relations.spec.ts` and
   `installed-engine.spec.ts` cover them.
 - `packages/api/tests/unit/bus-client-connected.spec.ts`: "reaches every system when a client connects"
-  and "reaches an external pack with plugins once…" (both in `abuddy-host/tests/bus/app-bus.spec.ts`).
+  and "reaches an external pack with plugins once…" (both in `apack-host/tests/bus/app-bus.spec.ts`).
 - `packages/renderer/src/core/__tests__/fe-host.spec.ts`: "throws, naming bindFeHost, before the renderer
-  binds it" (SDK behaviour, covered by `abuddy-sdk/tests/runtime/unbound.spec.ts`).
+  binds it" (SDK behaviour, covered by `apack-sdk/tests/runtime/unbound.spec.ts`).
 
 Trim:
 - `api/bound-runtime.spec.ts`: drop the `typeof generateText === 'function'` line.
@@ -623,8 +623,8 @@ single package's phase can do.
 ### Phase 10 — project references for the type checks (optional)
 
 - `typecheck:pack` is 16.4s of vue-tsc over default-setup, a third of `npm run typecheck`. The
-  `@abuddy/source` condition used to block `tsc -b`; pack configs no longer declare it, so references
-  are possible. They need every package to go `composite` and `@abuddy/host` to gain a build.
+  `@apack/source` condition used to block `tsc -b`; pack configs no longer declare it, so references
+  are possible. They need every package to go `composite` and `@apack/host` to gain a build.
 - The largest change here with the least certain payoff, and the only phase that touches no test. Do it
   last, and stop if Phases 1 and 2 already made the loop fast enough to stop being a complaint.
 - **Done when:** `npm run typecheck` is under 30s with every check still running, or the phase is
@@ -634,7 +634,7 @@ single package's phase can do.
 
 - **Re-recording the content-parity goldens** with notes included, retiring `NOTES_INTENDED_DIFFERENCES` and
   the dropped `sourceHash` and counts in `content-parity.spec.ts` (Decision 6).
-- **`packages/abuddy-host/tests/packs/pack-protocol.spec.ts`** (Decision 7): its 7 tests check a MIME map
+- **`packages/apack-host/tests/packs/pack-protocol.spec.ts`** (Decision 7): its 7 tests check a MIME map
   declared in the test and a re-implementation of the install logic, so they can't catch a change in the
   product code. Rewriting them against the real module, or deleting them, is its own change.
 - **Tests older than the audited branch.** The audit covered only what `AS/package-boundaries` added or
@@ -645,10 +645,10 @@ single package's phase can do.
 - Commit each phase as it finishes, conventional message, no attribution lines, `git commit -- <paths>`;
   check `git diff --cached` first. Pushing, tagging and PRs are on request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad pkill; E2E runs in the `abuddy-test` namespace.
+- No real data dirs, no broad pkill; E2E runs in the `apack-test` namespace.
 - Never run bare tsc on `packages/preload`; no `npm install` in the example pack; don't edit
   version/release metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`); this goal doesn't change
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`); this goal doesn't change
   them, and only deletes typed-EARS tests that duplicate another typed-EARS test.
 - Published packages: `api:update` after export changes. This goal shouldn't change any export; if a
   report changes, something other than a test was edited.
@@ -679,14 +679,14 @@ Per suite, warm, one run each. "Before" is at the start of Phase 1; "after" is a
 
 | Suite | Before | After | Tests before | Tests after |
 |---|---|---|---|---|
-| `@abuddy/cli` (whole) | **58.4s** | — | 764 | — |
-| `@abuddy/cli` (fast half) | — | **8.9s** | — | 475 |
-| `@abuddy/cli` (integration half) | — | 44.0s | — | 294 |
+| `@apack/cli` (whole) | **58.4s** | — | 764 | — |
+| `@apack/cli` (fast half) | — | **8.9s** | — | 475 |
+| `@apack/cli` (integration half) | — | 44.0s | — | 294 |
 | `@app/default-setup` | 15.1s | 14.7s | 767 | 720 |
-| `@abuddy/sdk` | 12.6s | 12.0s | 548 | 539 |
-| `@abuddy/host` | 8.2s | 8.1s | 705 | 684 |
+| `@apack/sdk` | 12.6s | 12.0s | 548 | 539 |
+| `@apack/host` | 8.2s | 8.1s | 705 | 684 |
 | `@app/api` | 3.7s | 3.0s | 85 | 70 |
-| `@abuddy/ears` | 3.0s | 2.9s | 118 | 116 |
+| `@apack/ears` | 3.0s | 2.9s | 118 | 116 |
 | `@app/renderer` | 2.3s | 2.3s | 34 | 33 |
 | `@app/main` | 0.8s | 0.7s | 19 | 19 |
 
@@ -695,7 +695,7 @@ three consecutive runs (44.1s, 42.5s, 43.0s).
 
 **Phase 2's 25s target is not met, and lane count will not reach it.** Three lanes measures 41s against two
 lanes' 43s — no real gain — and fails intermittently on a test hitting vitest's 5s default under contention.
-That is not one test: raising `@abuddy/sdk`'s timeout to 20s moves the failure to `@abuddy/cli` timing out at
+That is not one test: raising `@apack/sdk`'s timeout to 20s moves the failure to `@apack/cli` timing out at
 the same 5s. The margins are thin across suites, and the distance from 43s to 25s wants the suites cheaper
 rather than more of them at once.
 
@@ -724,9 +724,9 @@ number in the whole loop: the cli suite a developer runs on every change, 58.4s 
 |---|---|
 | 1 | CLI suite split at the process boundary. 31 of 70 specs run a real build, install or process; those are `*.integration.spec.ts` on their own command. `suite-split.spec.ts` keeps it that way |
 | 2 | `waitForPackageBuild` lets a freshness reader wait for an in-flight build instead of reporting its half-written stamps as stale; `test:unit` runs two suites at a time |
-| 3 | `@abuddy/cli`: 4 tests deleted, ~30 trims |
-| 4 | `@abuddy/host`: 21 tests deleted, 14 trims |
-| 5 | `@abuddy/sdk` and `@abuddy/ears`: 2 whole files, 9 tests, 7 trims |
+| 3 | `@apack/cli`: 4 tests deleted, ~30 trims |
+| 4 | `@apack/host`: 21 tests deleted, 14 trims |
+| 5 | `@apack/sdk` and `@apack/ears`: 2 whole files, 9 tests, 7 trims |
 | 6 | default-setup part A: the export clones merged, 11 tests fewer |
 | 7 | default-setup part B: 36 tests fewer |
 | 8 | api, renderer, E2E, fixture packs: 16 tests fewer |
@@ -740,10 +740,10 @@ same edit, so the guard is what catches it rather than a second opinion.
 
 | Guard | The edit | Result |
 |---|---|---|
-| `check-import-specifiers.ts` | a pack backend imports `@abuddy/host/packs` | fails; `typecheck:pack` passes — only the guard |
+| `check-import-specifiers.ts` | a pack backend imports `@apack/host/packs` | fails; `typecheck:pack` passes — only the guard |
 | `no-module-state.spec.ts` | `const blueprintCache = new Map()` at module scope in `src/` | fails; `typecheck:ears` passes — only the guard |
 | `no-pack-content-specifics.spec.ts` | `src/content` special-cases `'Document'` and `'Note'` | fails; `typecheck:sdk` passes — only the guard |
-| `identity-guard.spec.ts` | a literal `Library/Application Support/abuddy` path in the SDK | fails; `typecheck:sdk` passes — only the guard |
+| `identity-guard.spec.ts` | a literal `Library/Application Support/apack` path in the SDK | fails; `typecheck:sdk` passes — only the guard |
 | `source-layout.spec.ts` | a new `packages/api/src/helpers.ts` | fails; `typecheck:be` passes — only the guard |
 | `sdk-bridge-drift.spec.ts` | one entry dropped from the bridge map | fails; `typecheck:host` passes — only the guard |
 | `published-sdk-types` | `./repositories` removed from the exports map | fails — see the finding below |
@@ -757,7 +757,7 @@ package shipping anything but `dist`, `package.json` and the schema, and source 
 stays; its description should be corrected to what it does.
 
 **`api:check` does catch the widening, and it is outside the chain.** Checked after the above: with
-`./packs` added, `npm run api:check -w @abuddy/sdk` fails — API Extractor wants a report per entry and
+`./packs` added, `npm run api:check -w @apack/sdk` fails — API Extractor wants a report per entry and
 `etc/packs.api.md` does not exist. So the surface is not unguarded. But `api:check` is deliberately not a
 chain step, and `api:stamp` — the 0.6s half `typecheck` runs in its place — **passes on the same edit**,
 reporting "API reports match its declarations". It hashes built declarations, and an entry aliasing files
@@ -804,7 +804,7 @@ cases.
 
 ### Open items
 
-- **A test was pinning the app's own version.** `install-host-version` asserted `requires AgentBuddy
+- **A test was pinning the app's own version.** `install-host-version` asserted `requires apack
   >=99.0.0; this is 0.3.14`. The second clause is this repo's current version: it would have failed on the
   next release while saying nothing about the code. Now matches only the part that means something.
 - **`facade:check` was already failing** before any test was touched, from two changes that predate this
@@ -825,7 +825,7 @@ sub-invocations, which no amount of project references touches. What is left is 
 (vue-tsc over the renderer, which references would barely help), `pack` 4.8s, `be` 3.5s,
 `check:specifiers` 3.3s — so the ceiling on references here is a couple of seconds.
 
-Against that: every package would go `composite` and `@abuddy/host` would gain a build it does not have.
+Against that: every package would go `composite` and `@apack/host` would gain a build it does not have.
 That is the phase's own description of itself — "the largest change here with the least certain payoff" —
 and its own instruction, "stop if Phases 1 and 2 already made the loop fast enough to stop being a
 complaint". They did: the loop a developer actually pays went from 58.4s to 8.9s.
@@ -838,14 +838,14 @@ Run at review time, it was the finding rather than the proof it was meant to be.
 fixed (`BuildIntent`, `06fa1eb6b`), and the check discriminates: four consecutive runs of the two suites
 against stale packages pass, and reverting the wait fails them. What follows is why it did not.
 
-With the lock change reverted, `@abuddy/sdk` dirtied so the packages are genuinely stale, and `test:unit`
+With the lock change reverted, `@apack/sdk` dirtied so the packages are genuinely stale, and `test:unit`
 and `test:external-pack` started together: `test:unit` fails with stamp errors. With the change back in
 place and the same conditions: **it fails the same way**. Reverting it changes nothing, so the check cannot
 tell the two apart.
 
 The logs say why. "Published packages are out of date … Rebuilding 2 of 5" is `ensurePackagesBuilt`
 reporting what it is about to do, not an error. The failure is `withBuildLock` throwing *another package
-build holds … pid 34600 (@abuddy/testing)*. Two processes each ran `ensurePackagesBuilt`, each waited and
+build holds … pid 34600 (@apack/testing)*. Two processes each ran `ensurePackagesBuilt`, each waited and
 found no build running, each found the same units stale, and each spawned `npm run build:package`. The one
 that reached the lock second threw.
 

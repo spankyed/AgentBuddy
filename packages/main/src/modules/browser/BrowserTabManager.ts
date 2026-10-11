@@ -44,7 +44,7 @@ export class BrowserTabManager {
     const defaultUA = ses.getUserAgent();
     const cleanUA = defaultUA
       .replace(/\s*Electron\/[\w.]+/, '')
-      .replace(/\s*AgentBuddy\/[\w.]+/, '');
+      .replace(/\s*apack\/[\w.]+/, '');
     ses.setUserAgent(cleanUA);
 
     // Permission request handler

@@ -264,8 +264,8 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
-import { useSettingsSection } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
+import { useSettingsSection } from '@apack/sdk/fe'
 import type { GeneralSettings } from '#app-settings/types.ts'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'

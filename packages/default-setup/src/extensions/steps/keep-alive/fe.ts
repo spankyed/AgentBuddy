@@ -1,4 +1,4 @@
-import type { StepFEFacet } from '@abuddy/sdk/steps';
+import type { StepFEFacet } from '@apack/sdk/steps';
 import { Activity } from 'lucide-vue-next';
 
 export const keepAliveStepFE: StepFEFacet = {

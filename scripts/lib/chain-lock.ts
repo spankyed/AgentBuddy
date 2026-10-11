@@ -1,7 +1,7 @@
-// One chain run per checkout, and the policy over `@abuddy/host/exclusive-lock`'s mechanism: where the lock
+// One chain run per checkout, and the policy over `@apack/host/exclusive-lock`'s mechanism: where the lock
 // file lives, what the refusal says, and how long `--wait` waits.
 //
-// **Two runs share this checkout's stamps**, `node_modules/.cache/abuddy-chain`, so each would cache results
+// **Two runs share this checkout's stamps**, `node_modules/.cache/apack-chain`, so each would cache results
 // the other took against a different tree — and a step marked `cached` would mean "some run with these inputs
 // passed" rather than "this tree passed". Nothing noticed before: the freshness sweep reports a step whose
 // inputs moved mid-run as a step that will not be cached next time, which is a caching note over a
@@ -10,7 +10,7 @@
 // It is a module of its own because `chain.ts` runs the chain on import (a top-level `await main()`), so a
 // spec can only reach this by it being here — the same reason `chain-stamps.ts` and `chain-flags.ts` exist.
 import * as path from 'node:path';
-import { holdExclusiveLockWaiting, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
+import { holdExclusiveLockWaiting, type ExclusiveLock } from '@apack/host/exclusive-lock';
 import { STAMP_DIR } from './chain-stamps.ts';
 
 /**

@@ -3,7 +3,7 @@
 // events. Plugins are named the same way, so `nextEmit` takes this pack's own by feature id and a
 // dependency's as default-setup/<feature>, and reports the id the plugin runs under.
 import { describe, expect, it } from 'vitest';
-import { startApp } from '@abuddy/testing/harness';
+import { startApp } from '@apack/testing/harness';
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 
 describe('typed sends to systems', () => {

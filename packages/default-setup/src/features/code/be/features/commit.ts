@@ -1,7 +1,7 @@
 import type { ThreadsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
-import { defineHandlers } from '@abuddy/sdk/framework';
+import { defineHandlers } from '@apack/sdk/framework';
 import { assign, setup, type AnyActorRef } from 'xstate'
 
 import { GitRepository, StashConflictError } from '../services/git.ts'

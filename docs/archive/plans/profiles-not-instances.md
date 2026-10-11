@@ -4,9 +4,9 @@
 > instruction mid-phase: **the old `<cli data>/instances/` directory is not migrated.** A one-shot rename is
 > the kind of code nobody finds to delete later, and a profile is a disposable data dir by definition. The
 > migration and its four cases were written, mutation-checked and then removed. Two additions the phase
-> settled: `abuddy profiles --ephemeral` became `--all`, since `--ephemeral` had to name nothing; and
+> settled: `apack profiles --ephemeral` became `--all`, since `--ephemeral` had to name nothing; and
 > `ephemeral` stays as the property and the `.ephemeral/` directory, because the flag changed and the
-> concept did not. For the vocabulary as it is now, see `abuddy-cli/src/app/profiles.ts`.
+> concept did not. For the vocabulary as it is now, see `apack-cli/src/app/profiles.ts`.
 Compiled 2026-10-09. A rename with no behaviour in it, to be landed **before**
 [`attachable-dev-session.md`](attachable-dev-session.md) rather than inside it.
 
@@ -33,7 +33,7 @@ sentence in the release note rather than a function in the tree.
 | Term | What it is |
 |---|---|
 | **data dir** | the generic thing: a folder holding one app's whole state. One running app per data dir |
-| **environment** | one of four *fixed* data dirs, by name — `abuddy`, `abuddy-beta`, `abuddy-dev`, `abuddy-test` (`APP_NAMES`). Nobody creates these |
+| **environment** | one of four *fixed* data dirs, by name — `apack`, `apack-beta`, `apack-dev`, `apack-test` (`APP_NAMES`). Nobody creates these |
 | **profile** | an *extra* data dir under the CLI's own folder, created by name. Carries no environment |
 
 An environment and a profile are both data dirs; that is the whole relationship. Keeping the third row's
@@ -43,7 +43,7 @@ name out of the way of the other two is what this change is.
 
 **It is already taken, by the thing it is not.** An instance of an app is ordinarily a *running process*,
 and Electron's own term is the single-instance lock — which is about a process, not storage. One sentence
-in `abuddy-cli/src/commands/drive.ts` uses both senses at once: *"Electron's single-instance lock is scoped
+in `apack-cli/src/commands/drive.ts` uses both senses at once: *"Electron's single-instance lock is scoped
 to the data dir, so it cannot join an app `run` already has on that instance."*
 
 **And the right word already describes it exactly.** `instances.ts`' own header says *"a data dir you can
@@ -57,7 +57,7 @@ explaining one — which is the tell that the word was wrong rather than the con
 | From | To |
 |---|---|
 | `--instance <name>` | `--profile <name>` |
-| `abuddy instances`, `instances new\|rename\|rm` | `abuddy profiles`, `profiles new\|rename\|rm` |
+| `apack instances`, `instances new\|rename\|rm` | `apack profiles`, `profiles new\|rename\|rm` |
 | `src/app/instances.ts` | `src/app/profiles.ts` |
 | `instanceFor`, `instanceInUse`, `mintInstance`, `listInstances`, `renameInstance`, `removeInstance`, `openInstance`, `parseInstanceFlags`, `INSTANCE_USAGE`, `OpenedInstance` | the same with `profile`/`Profile` |
 | `<cli data>/instances/` | `<cli data>/profiles/` |
@@ -80,16 +80,16 @@ after a build is exactly what that plan rejects, so none is introduced here.
 
 | File | Change |
 |---|---|
-| `abuddy-cli/src/app/instances.ts` → `profiles.ts` | the module, its exports, the directory name, and the one-time rename of the old root |
-| `abuddy-cli/src/commands/instances.ts` → `profiles.ts` | the command; `index.ts`'s `COMMANDS` and `USAGE` |
-| `abuddy-cli/src/commands/{run,drive}.ts` | the flag, the usage text, `--fresh --rm` |
-| `abuddy-cli/src/commands/db/target.ts` | `--instance` is one of its target flags (20 mentions), and `output.ts` prints the resolved target |
-| `abuddy-cli/src/commands/clean.ts`, `doctor.ts` | both name `abuddy instances` in what they print — `clean` in the message that redirects the flag it used to take |
-| `abuddy-cli/src/index.ts` | `COMMANDS` and the `USAGE` lines |
-| `abuddy-cli/src/app/instance-secrets.ts` → `profile-secrets.ts` | `copySecretsInto` is unchanged inside |
-| `abuddy-cli/tests/app/`, `tests/commands/` | the specs that name the flag or the module |
-| `abuddy-testing/src/index.ts` | the comment at `:350`; the package is in the rename's scope, not only the CLI |
-| prose | `abuddy-cli/CLAUDE.md`, `docs/public-facing/cli.md`, `drive/README.md`, root `CLAUDE.md` where it names the flag, `abuddy-testing/CLAUDE.md:514` (`E2E_DATA_DIR`, "set by `abuddy drive` for an instance") and `tests/e2e/CLAUDE.md:181` (which documents the flag) |
+| `apack-cli/src/app/instances.ts` → `profiles.ts` | the module, its exports, the directory name, and the one-time rename of the old root |
+| `apack-cli/src/commands/instances.ts` → `profiles.ts` | the command; `index.ts`'s `COMMANDS` and `USAGE` |
+| `apack-cli/src/commands/{run,drive}.ts` | the flag, the usage text, `--fresh --rm` |
+| `apack-cli/src/commands/db/target.ts` | `--instance` is one of its target flags (20 mentions), and `output.ts` prints the resolved target |
+| `apack-cli/src/commands/clean.ts`, `doctor.ts` | both name `apack instances` in what they print — `clean` in the message that redirects the flag it used to take |
+| `apack-cli/src/index.ts` | `COMMANDS` and the `USAGE` lines |
+| `apack-cli/src/app/instance-secrets.ts` → `profile-secrets.ts` | `copySecretsInto` is unchanged inside |
+| `apack-cli/tests/app/`, `tests/commands/` | the specs that name the flag or the module |
+| `apack-testing/src/index.ts` | the comment at `:350`; the package is in the rename's scope, not only the CLI |
+| prose | `apack-cli/CLAUDE.md`, `docs/public-facing/cli.md`, `drive/README.md`, root `CLAUDE.md` where it names the flag, `apack-testing/CLAUDE.md:514` (`E2E_DATA_DIR`, "set by `apack drive` for an instance") and `tests/e2e/CLAUDE.md:181` (which documents the flag) |
 
 ## Verification
 
@@ -103,7 +103,7 @@ A rename is held by the typecheck, so what needs a case is only what a rename ca
   finding is a word in a comment, where a missed one is a flag nobody can find. The scan needs the sense
   separated from the word: `err instanceof Error` and *"two instances of Vue"* are not this concept, so it
   reads the strings a command prints and the flags it parses, not every occurrence. **Its population is
-  the repo, not this package** — three of the sites are in `@abuddy/testing` and in `tests/e2e`, which a
+  the repo, not this package** — three of the sites are in `@apack/testing` and in `tests/e2e`, which a
   CLI-scoped scan would pass over.
 
-Then `npm run spec packages/abuddy-cli` and `npm run chain`.
+Then `npm run spec packages/apack-cli` and `npm run chain`.

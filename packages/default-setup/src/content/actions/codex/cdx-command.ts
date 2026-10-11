@@ -2,7 +2,7 @@
  * CDX: Run Command - dispatcher for lightweight cdx- commands.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { EntityId, Services, Z } from '#generated/services.ts';
 import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context.ts';
 

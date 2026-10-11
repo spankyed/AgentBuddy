@@ -1,6 +1,6 @@
 // The applied content over this pack's real compiled content: what an apply records for all of it, and what a
 // second apply then decides. This is the gate that says the merge is right about 80-odd real items, which no
-// table of constructed cases can (`abuddy-sdk/tests/content/merge.spec.ts` is that table).
+// table of constructed cases can (`apack-sdk/tests/content/merge.spec.ts` is that table).
 //
 // The subject is derived from the compiled index rather than listed here: a spec that reports nothing may have
 // looked at nothing, and the index is what declares what there is to look at.
@@ -8,10 +8,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@abuddy/sdk/utils';
-import { CONTENT_INDEX_FILE } from '@abuddy/sdk/build';
-import { contentEntity } from '@abuddy/sdk/content';
-import { untypedQx as qx, untypedTx, type EARS } from '@abuddy/ears';
+import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apack/sdk/utils';
+import { CONTENT_INDEX_FILE } from '@apack/sdk/build';
+import { contentEntity } from '@apack/sdk/content';
+import { untypedQx as qx, untypedTx, type EARS } from '@apack/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */

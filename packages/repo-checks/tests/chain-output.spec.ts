@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { firstChange, REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
@@ -106,7 +106,7 @@ describe('voidedLine', () => {
     expect(voidedLine(['typecheck'], true), 'it already did').not.toContain('--strict');
   });
 
-  // One defect can void many steps at once: api:check rebuilding @abuddy/testing mid-chain once left twenty
+  // One defect can void many steps at once: api:check rebuilding @apack/testing mid-chain once left twenty
   it('counts them rather than listing twenty names in a sentence', () => {
     const line = voidedLine(['a', 'b', 'c'], true);
 
@@ -242,8 +242,8 @@ describe('staleLines', () => {
 
   /** The verdict is the header's, not the row's — except when it is not the one every step here shares */
   it('prints a reason only when it is not the ordinary one', () => {
-    expect(under({ reason: 'not built (no packages/abuddy-sdk/dist)', files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
-      .toEqual(['  typecheck  not built (no packages/abuddy-sdk/dist)']);
+    expect(under({ reason: 'not built (no packages/apack-sdk/dist)', files: [{ file: 'src/a.ts', how: 'changed', when: '' }] }))
+      .toEqual(['  typecheck  not built (no packages/apack-sdk/dist)']);
   });
 
   /**

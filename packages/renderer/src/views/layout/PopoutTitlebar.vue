@@ -71,9 +71,9 @@ import {
 } from 'reka-ui'
 import WindowControls from '@/views/layout/WindowControls.vue'
 import PluginMenuItems from '@/views/layout/PluginMenuItems.vue'
-import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
-import type { ContextMenuItem } from '@abuddy/sdk/fe'
-import type { BreadcrumbItem } from '@abuddy/host/fe'
+import { useTrackedMenuOpen } from '@apack/sdk/fe'
+import type { ContextMenuItem } from '@apack/sdk/fe'
+import type { BreadcrumbItem } from '@apack/host/fe'
 
 withDefaults(defineProps<{
   breadcrumbs?: BreadcrumbItem[]

@@ -24,7 +24,7 @@ into folders broke three of them at once, and the suite is what said so.
 
 **Audited against those two halves on 2026-10-08: twelve of the thirteen specs here meet both.** Each
 `app-integration/` spec rests on something no harness has — a token-bearing WebSocket, an API process
-crashed and restarted, `abuddy db` against a live data dir, `POST /dev/reload`, `media://`, the bus
+crashed and restarted, `apack db` against a live data dir, `POST /dev/reload`, `media://`, the bus
 dropping sends until a client connects, key strings absent from logs and files — and each `ui/` spec
 asserts rendered output, which is the other half: a component reaching for a plugin it is not rendered in
 (`navigation`), main accepting a ref as a window id (`popout`), a pack's compiled entries reaching the
@@ -32,13 +32,13 @@ Settings view (`settings-help`), a panel a plugin lends another actually drawing
 
 **The shape that fails the second half is worth recognising, because it reads like a UI test.** A spec
 that sends a plugin an event and then asserts *shell state* — which plugin is open, what the context holds
-— needs no window: the shell's side of that is covered on fakes (`@abuddy/host`'s
+— needs no window: the shell's side of that is covered on fakes (`@apack/host`'s
 `tests/features/application/fe/`) and the pack's side is `setupPackTests` with `startFeTestRuntime`, in
 milliseconds. `packages/default-setup/tests/features/browser/fe/open-link.spec.ts` is one written that
 way, and being cheap is what lets it assert both branches of the setting it reads rather than the default
 alone.
 
-**If it needs neither, it is a harness test.** `setupPackTests` (`@abuddy/testing`) runs a pack's code in
+**If it needs neither, it is a harness test.** `setupPackTests` (`@apack/testing`) runs a pack's code in
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
 boundary pays a full Electron launch for nothing.
 
@@ -67,8 +67,8 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 
 ## Rules for agents
 
-- **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
-- **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name and a fresh temp data dir per worker (`$TMPDIR/abuddy-e2e-*`, via `ABUDDY_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
+- **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod apack alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
+- **E2E runs alongside dev and prod apps.** Tests use the `apack-test` app name and a fresh temp data dir per worker (`$TMPDIR/apack-e2e-*`, via `APACK_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
 - **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/archive/issues/postmortem-external-pack-calendar-extraction.md, item 1).
 - **The app under test is built, not source.** `npm test` does not rebuild it, so a backend edit is not in
   the run until `npm run build:be`. See [Debugging the running app](#debugging-the-running-app), which also
@@ -77,20 +77,20 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 
 ## How the fixture works
 
-The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `abuddy init-tests` scaffolds.
+The test infrastructure lives in `@apack/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack init-tests` scaffolds.
 
 ### Startup lifecycle
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `ABUDDY_APP_EXECUTABLE`, `ABUDDY_ROOT`, then auto-detection, walking up from the `@abuddy/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
+1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detection, walking up from the `@apack/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
-   - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
-   - Always rebuild the pack with `node <abuddy bin> build` (the bin is `ABUDDY_CLI`, else the `@abuddy/cli` the pack resolves, else the checkout's)
+   - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
+   - Always rebuild the pack with `node <apack bin> build` (the bin is `APACK_CLI`, else the `@apack/cli` the pack resolves, else the checkout's)
    - Install it into the worker's temp data dir with the pack installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
 
-3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `abuddy`, it would start Electron as plain Node) and minus the `@abuddy/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `ABUDDY_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
+3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `apack`, it would start Electron as plain Node) and minus the `@apack/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `APACK_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
 
 4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s. The viewport is then pinned to 1400×900, since the window's default size differs between dev and production builds of main.
 
@@ -120,7 +120,7 @@ Three fixtures are provided, each at a different scope:
 
 ```ts
 app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
-                                 // `drive`, a pack's tests/screenshots/ under `abuddy test`
+                                 // `drive`, a pack's tests/screenshots/ under `apack test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -147,7 +147,7 @@ Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`,
 Import from the local fixtures, not from `@playwright/test`:
 
 ```ts
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 test('verify my change', async ({ app, appPage }) => {
   await app.navigate('code');
@@ -162,7 +162,7 @@ config, and outside every test glob:
 
 ```ts
 // drive/notes.ts
-import { drive } from '@abuddy/testing';
+import { drive } from '@apack/testing';
 
 drive('check something', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -177,7 +177,7 @@ npm run drive -- drive/notes.ts  # one script
 ```
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
-file is. A pack author gets the same thing from `abuddy drive`, which scaffolds the directory on first use
+file is. A pack author gets the same thing from `apack drive`, which scaffolds the directory on first use
 and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
@@ -196,7 +196,7 @@ unless you rebuild first:
 
 | You edited | Rebuild with |
 |---|---|
-| `packages/abuddy-host/src/**`, `packages/abuddy-sdk/src/**`, `packages/api/src/**` | `npm run build:be` (bundles them into the API) |
+| `packages/apack-host/src/**`, `packages/apack-sdk/src/**`, `packages/api/src/**` | `npm run build:be` (bundles them into the API) |
 | `packages/renderer/src/**` | `npm run build -w @app/renderer` |
 | `packages/main/src/**`, `packages/preload/src/**` | `npm run build -w @app/main`, `-w @app/preload` |
 | a built-in pack (`packages/default-setup/**`) | `npm run compile` |
@@ -234,9 +234,9 @@ restore from that copy rather than by hand or with `git checkout`:
 
 ```bash
 SC=<your scratchpad>
-cp packages/abuddy-host/src/bus/machine.ts "$SC/machine.orig"
+cp packages/apack-host/src/bus/machine.ts "$SC/machine.orig"
 # …instrument, build, run, read…
-cp "$SC/machine.orig" packages/abuddy-host/src/bus/machine.ts
+cp "$SC/machine.orig" packages/apack-host/src/bus/machine.ts
 git status --porcelain   # confirm nothing of yours is left behind
 ```
 
@@ -259,14 +259,14 @@ There are two ways to test external packs:
 
 ### 1. From the pack's own repo (preferred for pack developers)
 
-Pack developers can write and run E2E tests without the AgentBuddy repo. The fixture is `@abuddy/testing`. See `packages/abuddy-testing/CLAUDE.md` for the full guide.
+Pack developers can write and run E2E tests without the apack repo. The fixture is `@apack/testing`. See `packages/apack-testing/CLAUDE.md` for the full guide.
 
 ```bash
 cd /path/to/my-pack
-abuddy init-tests          # scaffold config + sample test, add @abuddy/testing + @playwright/test
+apack init-tests          # scaffold config + sample test, add @apack/testing + @playwright/test
 npm install
-abuddy test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
-abuddy test --build beta   # CI: never prompts; --build <path> for a checkout
+apack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
+apack test --build beta   # CI: never prompts; --build <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -283,9 +283,9 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 
 #### What happens when `PACK_DIR` is set
 
-1. **Read manifest** — parses `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
-2. **Isolated data dir** — creates `$TMPDIR/abuddy-e2e-*` for the worker
-3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
+1. **Read manifest** — parses `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
+2. **Isolated data dir** — creates `$TMPDIR/apack-e2e-*` for the worker
+3. **Build**: always runs `apack build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
 6. **Check applying** — fails if the pack's installed-packs entry has a `lastError`
@@ -295,7 +295,7 @@ The in-repo fixture pack at `tests/packs/external-pack` exercises this whole pat
 
 ### Finding plugin IDs
 
-Plugin IDs are the keys of the pack's `abuddy.json` `features` entries that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
+Plugin IDs are the keys of the pack's `apack.json` `features` entries that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
 
 ## Renderer globals
 
@@ -313,10 +313,10 @@ The renderer exposes on `window`:
 | *(always)* | The same output is written to `tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
-| `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |
-| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --build beta`); wins over `ABUDDY_ROOT` |
-| `ABUDDY_CLI=/path/to/abuddy.mjs` | The abuddy bin that builds `PACK_DIR` (set by `abuddy test`) |
-| `ABUDDY_BUILD=beta` | Read by `abuddy test` (and `abuddy build`), not the fixture: use the newest matching AgentBuddy Beta without prompting (CI) |
+| `APACK_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
+| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack test --build beta`); wins over `APACK_ROOT` |
+| `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack test`) |
+| `APACK_BUILD=beta` | Read by `apack test` (and `apack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 
@@ -349,7 +349,7 @@ data dir, the pack loader: things no harness test can reach.
 |------|---------|
 | `app-integration/api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
 | `app-integration/api-reconnect.spec.ts` | The window keeps working across an API crash: main restarts it and the client re-establishes its bus subscription, on the same port or the one main reports |
-| `app-integration/db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
+| `app-integration/db-cli.spec.ts` | `apack db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
 | `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the pack the app ships refreshes the installed copy from what was rebuilt, re-applies the changed content data and resends startup data. The one spec in this suite that has caught a regression: a pack is loaded from the data dir, so without that refresh a rebuild reached the app only by accident, which no harness can see |
 | `app-integration/feature-addressing.spec.ts` | A name becoming an address: every path where a feature ref had to resolve and, when it didn't, the app ran on with the click or the setting silently lost |
 | `app-integration/import-pack-content.spec.ts` | Settings → Import Pack Content: compiles default-setup's notes and library entries into a compiled content directory, previews it, imports a selection, re-imports in keep-existing mode |
@@ -367,4 +367,4 @@ data dir, the pack loader: things no harness test can reach.
 
 | Elsewhere | |
 |------|---------|
-| `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |
+| `packages/apack-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { stampFor } from '../../../scripts/lib/chain-stamps.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 
 /**
  * The stamp store holds a record for each cached step and for nothing else.
@@ -29,7 +29,7 @@ import { population } from '@abuddy/sdk/testing';
  * Evidence-dependent, like the dep files: a checkout that has never run the chain has no store, and the
  * case below says so rather than passing over an empty directory.
  */
-const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
+const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'apack-chain');
 const stampName = (step: string): string => `${step.replace(/[:/]/g, '-')}.json`;
 const stamps = (): string[] => (fs.existsSync(STAMP_DIR)
   ? fs.readdirSync(STAMP_DIR).filter((file) => file.endsWith('.json')).sort()
@@ -70,7 +70,7 @@ describe('the chain stamps exactly the steps it caches', () => {
   it('finds a stamp store, or says there is no evidence rather than passing over none', () => {
     const found = stamps();
     if (found.length === 0) {
-      expect.fail('no stamp store at node_modules/.cache/abuddy-chain: run npm run chain once. '
+      expect.fail('no stamp store at node_modules/.cache/apack-chain: run npm run chain once. '
         + 'An empty directory is not a passing run.');
     }
     population('chain stamps', found, { atLeast: 10 });

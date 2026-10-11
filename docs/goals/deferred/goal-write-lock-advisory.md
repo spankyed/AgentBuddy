@@ -4,7 +4,7 @@
 > the dev server whether they answer, rather than inferring it from a pid) are unstarted and independent
 > of the rest. Phases 4 and 5, the advisory lock itself, are deferred **on value, not on a dependency**:
 > the spike below settles which package to use, measures it working, and records what it does not cover —
-> no musl build, so it would take `abuddy db` off Alpine, where the current pure-Node acquisition runs.
+> no musl build, so it would take `apack db` off Alpine, where the current pure-Node acquisition runs.
 > Read the Recommendation before picking this up.
 
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
@@ -14,8 +14,8 @@
 
 Implement docs/goals/deferred/goal-write-lock-advisory.md on AS/external-pack-authoring, at or after
 b1eaa70f4 — the base its Background was surveyed at.
-Before Phase 1, confirm the base: `packages/abuddy-host/src/database/write-lock.ts` writes a JSON lock
-file and resolves it with `lockIsHeld`, and `packages/abuddy-host/src/process-liveness.ts` exports
+Before Phase 1, confirm the base: `packages/apack-host/src/database/write-lock.ts` writes a JSON lock
+file and resolves it with `lockIsHeld`, and `packages/apack-host/src/process-liveness.ts` exports
 `lockIsHeld`, `recordIsStale` and `readApiEndpoint`. If they don't, stop and say so — the plan was
 surveyed somewhere else.
 Read Background, Decisions, Spike results, Phases, Tradeoffs and Constraints first. Phase 0 is done and
@@ -44,12 +44,12 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - use `proper-lockfile` or any heartbeat-based lock. Its heartbeat lapses under the synchronous LMDB
   work the lock protects, producing the exact double-writer it prevents (Decision 5).
@@ -60,7 +60,7 @@ Never:
 
 ## Sequencing: read `goal-lmdb-only.md` first
 
-This was surveyed while `db-write.lock` guards every write of `abuddy db`. It does so because the app keeps
+This was surveyed while `db-write.lock` guards every write of `apack db`. It does so because the app keeps
 the database in memory, and a tool's change would be overwritten by the app's next write from its stale
 copy. `goal-lmdb-only.md` deletes that copy.
 
@@ -89,7 +89,7 @@ advisory lock can replace exactly one:
 | `db-write.lock` (`write-lock.ts:57`) | our tools | **Yes.** A mutual-exclusion lock held for a duration is what `flock` is |
 | `app.lock` (`running.ts`) | the Electron main process | **No.** Not a mutual-exclusion lock: `requestSingleInstanceLock()` is what keeps one app per data dir, and this only publishes that it is using one. Since 2026-09-20; this row read Chromium's `SingletonLock`, which we did not write |
 | staging dirs (`staging.ts:30`) | our installer | No. A record of an install that was in progress, read once at boot, not a lock |
-| dev-server marker (`dev-server.ts:75`) | `abuddy dev` | Not by a lock — but the question has a better answer (Decision 2) |
+| dev-server marker (`dev-server.ts:75`) | `apack dev` | Not by a lock — but the question has a better answer (Decision 2) |
 
 **Acquisition was not atomic, and that is the bug that mattered.** `holdDatabaseWriteLock` called
 `findDatabaseWriter` and then wrote the file with `writeFileSync` + `renameSync`, which overwrites. Check,
@@ -111,8 +111,8 @@ What is left is `SIGKILL` and power loss, and the recovery is one `rm` behind an
 file. That is the whole of what an advisory lock buys here.
 
 **Where a native module would land.** `holdDatabaseWriteLock` is called from
-`abuddy-cli/src/commands/db/target.ts:90` — the **published** CLI. A native dependency in this path
-becomes a dependency of every pack author's `npm i @abuddy/cli`, on every platform they use, not just the
+`apack-cli/src/commands/db/target.ts:90` — the **published** CLI. A native dependency in this path
+becomes a dependency of every pack author's `npm i @apack/cli`, on every platform they use, not just the
 `mac-arm64` the app ships as.
 
 **The ABI constraint.** The packaged app is Electron. `@napi-rs/keyring` works there because N-API is
@@ -123,7 +123,7 @@ ABI-stable across Node and Electron. A `node-gyp`/NAN module (`fs-ext` and its r
 dev-server marker both exist so a caller can decide whether to talk to an endpoint. Asking the endpoint is
 both exact and cheaper than inferring it from a pid and an mtime — and it catches a process that is alive
 but no longer serving, which no pid check can. The pack watcher already works this way: `findAppApi` reads the port and lets the request fail
-(`abuddy-cli/src/build/dev-reload.ts`).
+(`apack-cli/src/build/dev-reload.ts`).
 
 ## Decisions
 
@@ -145,7 +145,7 @@ but no longer serving, which no pid check can. The pack watcher already works th
    did not need it.
 
 4. **The lock file keeps the information; the lock carries the authority.** `db-write.lock` still holds
-   `{ pid, machine, what, since }`, so `findDatabaseWriter` can still say *"abuddy db import (pid 1234)"*.
+   `{ pid, machine, what, since }`, so `findDatabaseWriter` can still say *"apack db import (pid 1234)"*.
    What changes is that "is it held" is answered by the advisory lock rather than by reasoning about the
    pid. A file with no lock behind it is a leftover, not a holder.
 
@@ -200,7 +200,7 @@ What was measured, not assumed:
 - **No musl prebuild, and no build fallback.** `prebuilds/` has `linux-x64` and `linux-arm64`, both glibc;
   there is no `linuxmusl-*`, and the package has no install script to fall back to. On Alpine,
   `require-addon` finds no binary and throws at require time. `holdDatabaseWriteLock` is called from
-  `abuddy-cli/src/commands/db/target.ts`, so this is a hard failure in the **published** CLI, on a
+  `apack-cli/src/commands/db/target.ts`, so this is a hard failure in the **published** CLI, on a
   platform Docker users reach by default — not a degradation. 32-bit Linux ARM is missing for the same
   reason.
 - **Advisory on POSIX, mandatory on Windows.** `LockFileEx` is enforced by the OS, so a held range can
@@ -269,7 +269,7 @@ It connects to the port it read rather than checking the publisher's pid. A file
 answers on reports no API, as it does today; a file naming a port something *else* now holds stops being
 reported as ours, which the pid check could not tell.
 
-**Done when:** `findRunningApp` and `abuddy dev` still report a running app, `process-liveness.spec.ts`
+**Done when:** `findRunningApp` and `apack dev` still report a running app, `process-liveness.spec.ts`
 covers a port nothing listens on and one a different process holds, and no caller passes a pid to decide
 this. `running-app.spec.ts` keeps its case for a wedged API, which `app.lock` answers and the port alone
 would not. **Mutation:** removing the connect check makes the "port nothing answers on" case report an API.
@@ -277,7 +277,7 @@ would not. **Mutation:** removing the connect check makes the "port nothing answ
 ### Phase 3 — the dev-server marker asks the dev server
 
 `devServerUrl` returns the URL when the server answers. The diagnosis this preserves is the one
-`c74ef2f56` added it for: a marker a crashed `abuddy run` left behind must not be served from, and the
+`c74ef2f56` added it for: a marker a crashed `apack run` left behind must not be served from, and the
 reason must name the marker.
 
 **Done when:** `dev-server.spec.ts` covers a marker whose server answers and one whose server is gone,
@@ -321,8 +321,8 @@ What an advisory lock would still buy, exactly:
 
 Against: a permanent native dependency in the **published** CLI, which reaches fewer platforms than the
 code it would replace. The spike shows the dependency is cheaper than it was thought to be — prebuilt, no
-build tools, the right primitive on each platform, and `abuddy db` already pulls `lmdb`, a native module
-distributed the same way. But it has no musl build, so `abuddy db` would stop working on Alpine, where
+build tools, the right primitive on each platform, and `apack db` already pulls `lmdb`, a native module
+distributed the same way. But it has no musl build, so `apack db` would stop working on Alpine, where
 `openSync(file, 'wx')` works today. That is the decisive point: the trade is not a better lock for a worse
 one, it is a loud recoverable failure on every platform exchanged for no failure on most and a hard failure
 on the rest.
@@ -334,13 +334,13 @@ build — that last one would remove the only objection that isn't about size.
 ## Tradeoffs recorded
 
 - **A native dependency in the published CLI, narrowing which platforms it runs on.** Every pack author
-  running `abuddy db` gains 6 packages and 1.7 MB — and loses Alpine and 32-bit Linux ARM, which the
+  running `apack db` gains 6 packages and 1.7 MB — and loses Alpine and 32-bit Linux ARM, which the
   current pure-Node acquisition supports. Decision 6 keeps that a refusal rather than a silent loss of
   exclusion. The spike measured this rather than assuming it, and it is why the Recommendation defers.
 - **The `rm` escape hatch narrows.** Today any stuck lock is fixable by deleting a file, and the error
   says so. With a kernel-held lock, a stuck lock means a live process — so a leaked descriptor in a
   long-lived process would be unfixable without killing it. Mitigated by keeping the file and its message,
-  and by the lock being held only for the duration of a `abuddy db` command.
+  and by the lock being held only for the duration of a `apack db` command.
 - **A new silent-failure mode on network filesystems**, where today the scheme merely degrades to a
   guess. Phase 4 exists only because of this, and Decision 6 makes the failure loud.
 - **Phase 2 changes what "an API is running" means** — from "the process that wrote this is alive" to
@@ -352,7 +352,7 @@ build — that last one would remove the only objection that isn't about size.
 
   **`app.lock` has since softened this.** `findRunningApp` asks the app's own marker first, and the main
   process publishes that for as long as it runs, so a wedged API no longer takes the answer to "no app"
-  on its own. The direction still matters for `abuddy dev`, which reads the endpoint alone.
+  on its own. The direction still matters for `apack dev`, which reads the endpoint alone.
 
 ## Deferred
 
@@ -369,7 +369,7 @@ build — that last one would remove the only objection that isn't about size.
   another-machine case, and "a release only removes this process's own". A phase that makes one fail has
   the design wrong, except the take-over case, which Phase 3 changes on purpose — a lock nobody holds is
   takeable because the kernel says so, not because a pid is gone.
-- The lock must work between a **Node** process (`abuddy db`) and an **Electron** process (the app's API
+- The lock must work between a **Node** process (`apack db`) and an **Electron** process (the app's API
   boot). Same file, two runtimes: this is the case to test first in the spike.
-- `@abuddy/testing`'s harness and the CLI bundle both inline host; a native dependency must not break
+- `@apack/testing`'s harness and the CLI bundle both inline host; a native dependency must not break
   `npm run packages:check`.

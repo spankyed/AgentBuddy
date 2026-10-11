@@ -1,11 +1,11 @@
 import type { NodeKind } from '#generated/types.ts'
 import { default as TriggerNode } from './TriggerNode.vue'
-import { default as BaseNode } from '@abuddy/ui/components/BaseNode'
-import { nodeConfigs } from '@abuddy/ui/components/node-styles'
-import { stepRegistry } from '@abuddy/sdk/steps'
+import { default as BaseNode } from '@apack/ui/components/BaseNode'
+import { nodeConfigs } from '@apack/ui/components/node-styles'
+import { stepRegistry } from '@apack/sdk/steps'
 
 export { BaseNode }
-export type { HandleConfig } from '@abuddy/ui/components/node-handles'
+export type { HandleConfig } from '@apack/ui/components/node-handles'
 
 export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
   get(_target, type: string | symbol) {

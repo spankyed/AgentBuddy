@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { test, expect } from '@abuddy/testing';
+import { test, expect } from '@apack/testing';
 
 test('app launches without crashing', async ({ electronApp, appPage }) => {
   const window = await electronApp.browserWindow(appPage);
@@ -32,9 +32,9 @@ test('runs in an isolated per-worker test data dir', async ({ electronApp, appPa
     name: app.getName(),
     userData: app.getPath('userData'),
   }));
-  expect(name).toBe('abuddy-test');
-  // A fresh temp dir per worker, never the shared ~/…/abuddy-test data dir
-  expect(userData).toMatch(/[\\/]abuddy-e2e-[^\\/]+$/);
+  expect(name).toBe('apack-test');
+  // A fresh temp dir per worker, never the shared ~/…/apack-test data dir
+  expect(userData).toMatch(/[\\/]apack-e2e-[^\\/]+$/);
 });
 
 /**
@@ -44,7 +44,7 @@ test('runs in an isolated per-worker test data dir', async ({ electronApp, appPa
  * Playwright drives Electron over CDP, so it launches every app here with `--remote-debugging-port`, and
  * Chromium writes the number it chose to `DevToolsActivePort` in the data dir. So a tool that *inferred*
  * attachability — from the file, from a reachable port — would find this app and drive a test run's app
- * mid-suite. `@abuddy/host/dev-session`'s rule is that the file is declared instead: `abuddy dev` and the
+ * mid-suite. `@apack/host/dev-session`'s rule is that the file is declared instead: `apack dev` and the
  * `npm start` loop publish one because they mean their app to be driven, and nothing treats the absence of
  * one as "try anyway".
  *

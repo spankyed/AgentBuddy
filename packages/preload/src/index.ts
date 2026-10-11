@@ -1,5 +1,5 @@
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
-import type {_HostBridge, SpeechEvent} from '@abuddy/sdk/fe';
+import type {_HostBridge, SpeechEvent} from '@apack/sdk/fe';
 
 const DEFAULT_API_PORT = 3001;
 
@@ -207,7 +207,7 @@ const browser = {
   getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
 } satisfies _HostBridge['browser'];
 
-// Protocol action listener (abuddy:// deep link handling)
+// Protocol action listener (apack:// deep link handling)
 const protocolAction = {
   onAction: (callback: (data: { action: string; params: Record<string, string> }) => void) => {
     const handler = (_: Electron.IpcRendererEvent, data: { action: string; params: Record<string, string> }) =>

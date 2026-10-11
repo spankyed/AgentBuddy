@@ -1,0 +1,788 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { createActor, setup, type AnyEventObject } from 'xstate';
+import { HOST } from '../../../../src/refs.ts';
+import { _appDirOf, resolveAppContext } from '@apack/sdk/env';
+import { resetTestData, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
+import { readInstalledPacks } from '../../../../src/packs/installed.ts';
+import { registry } from '../../../packs/runtime/test-host.ts';
+import { appliedContent, appState } from '../../../../src/app-state/index.ts';
+import { installPackFromLocal } from '../../../../src/packs/installer.ts';
+import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
+import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
+import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
+import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
+import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
+import { createFormatApplier } from '@apack/sdk/content';
+import { untypedQx, untypedTx } from '@apack/ears';
+
+const PACK_ID = 'reinstall-pack';
+
+let tmpDir: string;
+let origEnv: { env?: string; userDataDir?: string };
+
+beforeEach(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'packs-system-'));
+  origEnv = { env: process.env.APACK_ENV, userDataDir: process.env.APACK_USER_DATA_DIR };
+  process.env.APACK_ENV = 'test';
+  process.env.APACK_USER_DATA_DIR = tmpDir;
+});
+
+afterEach(() => {
+  if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
+  registry.clearLoadProblem(PACK_ID);
+  if (origEnv.env === undefined) delete process.env.APACK_ENV;
+  else process.env.APACK_ENV = origEnv.env;
+  if (origEnv.userDataDir === undefined) delete process.env.APACK_USER_DATA_DIR;
+  else process.env.APACK_USER_DATA_DIR = origEnv.userDataDir;
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+/** The pack source `apack build` would leave, at `version`; `content` gives it compiled data that won't content */
+function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
+  const dir = path.join(tmpDir, 'source');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  if (failsImport) {
+    // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
+    fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'content', 'flows.content.json'), '[]');
+  }
+  return dir;
+}
+
+/** A GitHub release of `source`, served to `fetch` from memory, with its published checksum */
+async function stubRelease(source: string) {
+  const stage = path.join(tmpDir, 'stage');
+  fs.rmSync(stage, { recursive: true, force: true });
+  stagePack(source, stage);
+  const { file, sha256 } = await createPackArchive(stage, path.join(tmpDir, 'release'));
+  const name = path.basename(file);
+  const assets = [
+    { name, browser_download_url: `https://example.test/${name}` },
+    { name: `${name}.sha256`, browser_download_url: `https://example.test/${name}.sha256` },
+  ];
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify({ assets }), { status: 200 });
+    if (url.endsWith('.sha256')) return new Response(`${sha256}  ${name}\n`, { status: 200 });
+    return new Response(fs.readFileSync(file), { status: 200 });
+  }));
+}
+
+/** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
+function runPacksSystem() {
+  const sent: AnyEventObject[] = [];
+  const busStub = setup({ types: {} as { events: AnyEventObject } }).createMachine({
+    on: { '*': { actions: ({ event }) => void sent.push(event) } },
+  });
+  const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
+  const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
+    invoke: [
+      { src: 'bus', systemId: HOST.bus },
+      { src: 'packs', systemId: HOST.packs },
+    ],
+  });
+  const actor = createActor(root).start();
+  const stop = () => {
+    actor.stop();
+    stopListening();
+  };
+  return { sent, send: (event: AnyEventObject) => actor.system.get(HOST.packs).send(event), stop };
+}
+
+/** The pack-scoped events the system emitted, unwrapped from the bus envelope */
+const emitted = (sent: AnyEventObject[]) => sent.flatMap(e => {
+  const inner = (e as { message?: { event: AnyEventObject } }).message?.event;
+  return inner ? [inner] : [];
+});
+
+describe('installing over a pack that is already running', () => {
+  it('tears the running copy down first, so the reinstall activates instead of colliding', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+
+      await vi.waitFor(() => {
+        const types = emitted(system.sent).map(e => e.type);
+        expect(types, JSON.stringify(emitted(system.sent))).toContain('PACK_INSTALL_COMPLETE');
+      });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_INSTALL_FAILED');
+      // Registered once, by the copy that was just installed
+      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
+describe('a pack that ships with the app', () => {
+  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
+
+  it.each([['a pack the app ships', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is part of apack, so it can't be uninstalled` });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * Disabling is the other half of what the Packs view hides for a shipped pack, and it has to be refused
+   * here too: every pack is an installed record now, so nothing in the handler turns one away on its own.
+   * Without this the event tears the pack down and persists `enabled: false`, and the switch that would put
+   * it back is the one the view doesn't draw — so the app boots with no packs and no way out of it.
+   */
+  it("can't be disabled, and is told so with its real state", async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      takeSystemErrors();
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(takeSystemErrors().map(e => e.message)).toEqual([`"${PACK_ID}" is part of apack, so it can't be disabled`]);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(emitted(system.sent).find(e => e.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ packId: PACK_ID, enabled: true });
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.enabled, 'the record is untouched').not.toBe(false);
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * The third door to losing it, and the one that was left open. Uninstalling and disabling are refused
+   * above; an install naming its id used to tear the running pack down and replace its files, which is the
+   * same outcome by another route — so `canUninstall: false` hid a button while the Packs view's own
+   * install field achieved what the button would have.
+   *
+   * *"Installing over a pack is how an update lands"* was the argument for allowing it, and it does not
+   * reach a pack that updates with the app: the next boot's hash comparison reverts the replacement
+   * (`tests/packs/shipped-packs.spec.ts`), so what an install bought was a session running a pack nobody
+   * chose. Refused before the teardown, which is what the last assertion here holds.
+   */
+  it("is not replaced by an install taking its id, and keeps running", async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED'))
+        .toMatchObject({ error: `"${PACK_ID}" is part of apack, so an install can't take its id` });
+      const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json');
+      expect(JSON.parse(fs.readFileSync(installed, 'utf-8')).version, 'its files are untouched').toBe('1.0.0');
+      expect(emitted(system.sent).map(e => e.type), 'and it was never torn down')
+        .not.toContain('PACK_DEACTIVATED');
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The system whose whole job is listing packs once did not re-send it, so an open Packs view stayed stale
+// after an `apack dev` reload. It publishes on the one ask now, whatever caused it — the bus sends that
+// after a pack changes, a client connects or the data is replaced (`tests/bus/send-state.spec.ts`).
+describe('the packs system asked to publish', () => {
+  it('sends the list again', () => {
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'SEND_STATE' });
+
+      expect(emitted(system.sent).map(e => e.type)).toEqual(['PACKS_LIST']);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The packs directory is what makes a pack installed. `apack install` and `apack dev` write it and
+// never installed-packs.json, so a pack with no row is the ordinary case, not a broken one.
+describe('a pack with nothing recorded about it', () => {
+  it('is listed, enabled', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      expect(fs.existsSync(resolveAppContext({ build: 'test', profile: tmpDir }).installedPacksFile)).toBe(false);
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+
+      const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
+      expect(list?.packs).toContainEqual(
+        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, canUninstall: true }),
+      );
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The app skips an installed pack it can't load and boots on. The pack is still installed and enabled, so the Packs
+// view lists it, and has to say why it isn't running rather than show it as enabled.
+describe('an installed pack the app could not load', () => {
+  const listed = (system: ReturnType<typeof runPacksSystem>) => {
+    system.sent.length = 0;
+    system.send({ type: 'GET_INSTALLED_PACKS' });
+    const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
+    // Named rather than dereferenced through `?.`: no PACKS_LIST is the regression this helper exists to
+    // catch, and a truncated chain reports it as a TypeError on the next line instead of by name
+    expect(list, 'the system emitted no PACKS_LIST').toBeDefined();
+    return (list!.packs as PackInfo[]).find(p => p.id === PACK_ID);
+  };
+  const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, PACK_LAYOUT.snapshot);
+
+  it('is listed with why, until a load of it succeeds', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    // A build another apack made: what an app update leaves an installed pack as
+    fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
+    loadAppPacks(registry);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+
+    const system = runPacksSystem();
+    try {
+      expect(listed(system)).toMatchObject({
+        enabled: true,
+        loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
+      });
+
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+      await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
+
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
+      expect(listed(system)?.loadProblem).toBeUndefined();
+    } finally {
+      system.stop();
+    }
+  });
+
+  it('is listed with why its activation failed, and not once it is disabled', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    fs.writeFileSync(snapshotFile(), JSON.stringify({}));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(false);
+
+    const system = runPacksSystem();
+    try {
+      expect(listed(system)?.loadProblem).toMatch(/^its snapshot is format \(none\), written by an older apack CLI/);
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(listed(system)).toMatchObject({ enabled: false, loadProblem: undefined });
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// A write that fails is only a log line by default, and the app then disagrees with the user until the
+// next boot puts the pack back the way it was. The decision that was lost is what has to be said.
+describe('a decision that could not be saved', () => {
+  it('says which one, rather than letting the toggle look like it worked', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+      takeSystemErrors();
+      // A directory where the record goes: the rename onto it fails, whatever is written beside it
+      fs.mkdirSync(resolveAppContext({ build: 'test', profile: tmpDir }).installedPacksFile, { recursive: true });
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(takeSystemErrors().map(e => e.message).join('\n'))
+        .toMatch(new RegExp(`Couldn't save that ${PACK_ID} is disabled`));
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+describe('a pack that is gone', () => {
+  it('leaves no row behind when it is uninstalled', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+      recordInstalled(PACK_ID, 'acme/reinstall-pack');
+
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
+      });
+      expect(readInstalledPacks()).toEqual([]);
+    } finally {
+      system.stop();
+    }
+  });
+
+  // The pack is still in the packs directory, so it is still installed — there is no record to roll back,
+  // because the record never claimed it was installed in the first place
+  it('stays listed when the uninstall fails', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      // A read-only pack directory: the uninstall can't unlink what is inside it, so it throws with the
+      // pack still there — which is the case this is about, an uninstall that did not happen
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o500);
+
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED');
+      });
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o700);
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const list = emitted(system.sent).filter(e => e.type === 'PACKS_LIST').pop();
+      expect(list?.packs).toContainEqual(expect.objectContaining({ id: PACK_ID }));
+    } finally {
+      fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o700);
+      system.stop();
+    }
+  });
+
+  it("drops what was recorded about packs boot doesn't find, so rows don't pile up", async () => {
+    const { recordInstalled, forgetPacksExcept } = await import('../../../../src/packs/installed.ts');
+    recordInstalled('gone-pack', 'acme/gone');
+    recordInstalled('here-pack', 'acme/here');
+
+    forgetPacksExcept(new Set(['here-pack']));
+
+    expect(readInstalledPacks()).toMatchObject([{ id: 'here-pack' }]);
+  });
+});
+
+describe('installing over a pack that is already running', () => {
+  // The install replaces the pack's directory. A pack left running across that reads the new code on its
+  // next lazy require, so the teardown has to happen while the files it was loaded from are still there.
+  it('tears the running copy down before its files are replaced', async () => {
+    const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+    await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+
+    /** What the pack's manifest on disk said each time the callback ran */
+    const versionsWhenCalled: string[] = [];
+    await installPackFromLocal(packSource('2.0.0'), undefined, {
+      beforePlace: () => {
+        const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json');
+        versionsWhenCalled.push(JSON.parse(fs.readFileSync(installed, 'utf-8')).version);
+      },
+    });
+
+    expect(versionsWhenCalled, 'the old copy is still in place when the caller is told').toEqual(['1.0.0']);
+  });
+
+  it('refuses a second install of the same slug while one is in flight', async () => {
+    const system = runPacksSystem();
+    try {
+      const warned: string[] = [];
+      const realWarn = console.warn;
+      console.warn = (...args: unknown[]) => void warned.push(args.map(String).join(' '));
+      try {
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+      } finally {
+        console.warn = realWarn;
+      }
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE');
+      });
+      // One install started, not two
+      expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_STARTED')).toHaveLength(1);
+      expect(warned.join('\n')).toMatch(/Operation already in progress/);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// What the app has done to a pack's data outlives the pack's directory, because the data does: an
+// uninstall removes packs/<id> and nothing in the database. Running a reinstalled pack's migrations
+// again over rows they have already moved is the failure this avoids.
+describe('what a reinstall does not redo', () => {
+  it('leaves the applied content and migrated version an uninstall did not invalidate', async () => {
+    resetTestData();
+    appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map([['k', { parts: {} }]]) });
+    await installPackFromLocal(packSource('1.0.0'));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
+      });
+
+      expect(appliedContent.get(PACK_ID)).toEqual({ revision: 'the-revision', items: { k: { parts: {} } } });
+      expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// Installing is the remedy a user reaches for when a pack's data didn't content, so what it reports has to be about
+// the pack they end up with. It wasn't: `recordInstalled` replaces the record, which dropped the `lastError` the
+// earlier failure left — so reinstalling a pack whose data never written reported that it had installed cleanly,
+// and took away the only sign that it hadn't.
+//
+// **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-apply by
+// accident, through the file times that were once in the content revision: the apply failed again and wrote the error
+// back. Content are keyed on content now, so the same pack installed again is the same bytes and nothing is
+// re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
+// content outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
+// install still says the pack's data failed to apply, which is what the user needs to know.
+describe('reinstalling a pack whose data did not content', () => {
+  const outcomes = (sent: AnyEventObject[]) =>
+    emitted(sent).map(e => e.type).filter(t => t === 'PACK_INSTALL_COMPLETE' || t === 'PACK_INSTALL_FAILED');
+
+  it('says so again, rather than reporting the reinstall as clean', async () => {
+    const source = packSource('1.0.0', { failsImport: true });
+
+    const first = runPacksSystem();
+    try {
+      first.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      await vi.waitFor(() => expect(outcomes(first.sent)).toHaveLength(1));
+      expect(outcomes(first.sent)).toEqual(['PACK_INSTALL_FAILED']);
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
+    } finally {
+      first.stop();
+    }
+
+    // The same pack again, byte for byte: nothing about its data has changed, so nothing is written again
+    const second = runPacksSystem();
+    try {
+      second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      await vi.waitFor(() => expect(outcomes(second.sent)).toHaveLength(1));
+
+      expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError,
+        'the reinstall erased the earlier failure, which is the only sign the data never written').toBeTruthy();
+    } finally {
+      second.stop();
+    }
+  });
+});
+
+// The id an uninstall is given names the directory it deletes, recursively
+describe('uninstalling by an id that is not an installed pack', () => {
+  it.each([['..'], [''], ['a/../..'], ['not-installed']])('is refused before anything stops or is deleted: %j', async (packId) => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is not an installed pack` });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json'))).toBe(true);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// An update takes whatever the release holds, which its source decides and the app doesn't
+describe('updating to a release that holds another pack', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (registry.getPackExtensions('shipped-pack')) registry.unregisterPack('shipped-pack');
+  });
+
+  async function updateTo(releaseId: string) {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+    recordInstalled(PACK_ID, 'acme/reinstall-pack');
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    await stubRelease(packSource('2.0.0', { id: releaseId }));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      return emitted(system.sent);
+    } finally {
+      system.stop();
+    }
+  }
+
+  const installedVersion = () => JSON.parse(fs.readFileSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json'), 'utf-8')).version;
+
+  // Refused for the same reason as any other id, and worded the same: the release is for a different pack
+  // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
+  it("is refused the same way when that pack is one the app ships, and the installed copy runs again", async () => {
+    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
+
+    const sent = await updateTo('shipped-pack');
+
+    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "shipped-pack", not "reinstall-pack"') });
+    expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'shipped-pack'))).toBe(false);
+    expect(installedVersion()).toBe('1.0.0');
+    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+  });
+
+  it('is refused when that pack is any other, and the installed copy runs again', async () => {
+    const sent = await updateTo('other-pack');
+
+    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "other-pack", not "reinstall-pack"') });
+    expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
+    expect(installedVersion()).toBe('1.0.0');
+    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+  });
+});
+
+/**
+ * **An import is write-only, which is what makes it an import and not an apply.** It reads nothing of what
+ * the last apply wrote — so no verdict here can be reached from it — and it records what it wrote, because
+ * an import that rewrote entities and recorded nothing would leave the applied content describing the
+ * version before it, which the next boot's apply would read as the user's edits.
+ */
+describe('importing a pack’s content', () => {
+  /** A compiled directory the real generic applier can read, with one memo item */
+  function compiledMemos(): string {
+    const dir = path.join(tmpDir, 'compiled');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({
+      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1 }],
+    }));
+    fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({
+      records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
+    }));
+    return dir;
+  }
+
+  it('records what it wrote and leaves the revision where it is', async () => {
+    const { startTestRuntime, testPacks } = await import('@apack/sdk/testing');
+    const { createFormatApplier } = await import('@apack/sdk/content');
+    resetTestData();
+    startTestRuntime({ entityTypes: ['Memo'] });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map() });
+    testPacks.appliers.set(PACK_ID, [createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] })]);
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map((e) => e.type)).toContain('PACK_CONTENT_IMPORTED');
+      });
+
+      const content = appliedContent.get(PACK_ID);
+      expect(Object.values(content.items), 'the item the import wrote, with a part per field')
+        .toEqual([{ entityType: 'Memo', contentHash: 'intro-v1', parts: { body: expect.any(String), name: expect.any(String) } }]);
+      expect(content.revision, 'asking for the data again is not a change to what the pack declares')
+        .toBe('the-revision');
+
+      /**
+       * **And the record it wrote is not one it reads.** The user destroys the entity and asks for the
+       * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
+       * which is exactly not what was asked for.
+       */
+      const { untypedQx, untypedTx } = await import('@apack/ears');
+      const memos = () => untypedQx('Memo' as never).pickAll();
+      untypedTx(memos()[0]!.id).destroy();
+      expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
+
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(memos(), 'the content the user asked for was not put back').toHaveLength(1);
+      });
+    } finally {
+      testPacks.appliers.delete(PACK_ID);
+      system.stop();
+    }
+  });
+});
+
+/**
+ * **The three answers a user gives to one content item**, which are the only requests in the app that write
+ * a pack's content over what the user has made of it, or remove it.
+ *
+ * The fixture is two entries over two SDK entity types, which is default-setup's own shape: one that offers
+ * and one that does not. Two entries rather than one because the thing most worth holding here is what a
+ * request about *one* item does to everything else — the answer was "overwrites all of it", and nothing
+ * could have said so with a single entry.
+ */
+describe('a user answering for one of a pack’s content items', () => {
+  const CONTENT_PACK = 'content-pack';
+  const ACTION_KEY = `${CONTENT_PACK}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
+  const PROMPT_KEY = `${CONTENT_PACK}:prompts/${encodeURIComponent(JSON.stringify(['Prompt', 'Greet']))}`;
+
+  /**
+   * The pack as installed, in the data dir's packs directory — which is where the restore looks, because
+   * the host put it there and a pack never says where its compiled content is.
+   */
+  function contentPack(version: 'v1' | 'v2'): string {
+    const dir = path.join(_appDirOf(tmpDir), 'packs', CONTENT_PACK);
+    const content = path.join(dir, PACK_LAYOUT.contentDir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(content, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
+    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
+    fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
+      records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
+    }));
+    fs.writeFileSync(path.join(content, 'prompts.content.json'), JSON.stringify({
+      records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
+    }));
+    return dir;
+  }
+
+  /** The prompt's writer records its removal instead of destroying, as a pack's own delete does */
+  const removed: string[] = [];
+
+  function registerContentPack(): void {
+    registry.registerPack({
+      id: CONTENT_PACK,
+      appliers: [
+        createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),
+        createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'], onUserEdit: 'offer' }),
+      ],
+      contentWriters: {
+        Prompt: {
+          remove(id) {
+            removed.push(id);
+            untypedTx(id).update('deleted' as never, true);
+          },
+        },
+      },
+    });
+  }
+
+  const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
+
+  let dir: string;
+  beforeEach(() => {
+    resetTestData();
+    removed.length = 0;
+    dir = contentPack('v1');
+    registerContentPack();
+    // The apply that writes both items and records what it wrote, which is what makes the rest an answer
+    applyPacks([{ manifest: { id: CONTENT_PACK }, dir }]);
+  });
+
+  afterEach(() => {
+    if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
+  });
+
+  const entityOf = (key: string, entity: 'Action' | 'Prompt') =>
+    (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
+
+  /**
+   * **One item restored leaves every other entry alone**, which is the whole of what makes this request
+   * safe to put behind a button. A selection naming one entry says nothing about the others, and a run
+   * that read it as "everything else too" would write the pack's version over every item the user had
+   * edited under every other entry — on a click that asked for one.
+   */
+  it('writes the item the user asked for, and nothing of any other entry', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    untypedTx(prompt as never).update('description' as never, 'mine');
+    fs.rmSync(dir, { recursive: true, force: true });
+    contentPack('v2');
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(describedBy(entityOf(ACTION_KEY, 'Action')!), 'the item they asked for').toBe('theirs v2');
+      expect(describedBy(prompt), 'and the one they did not, which they had edited').toBe('mine');
+      expect(takeSystemErrors()).toEqual([]);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **Deleting goes through the owner's own delete.** The entity types a pack writes are removed by whoever
+   * declared them — a flow through its repository, which takes its nodes and wiring with it, and anything
+   * with a `remove` writer the way that pack removes one. Destroying the entity here would orphan the first
+   * and skip the second, which for a note is the user's undo.
+   */
+  it('removes a deleted item through its pack’s own writer', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DELETE_CONTENT_ITEM', packId: CONTENT_PACK, key: PROMPT_KEY });
+
+      expect(removed, 'the writer that owns the entity type').toEqual([prompt]);
+      expect(appliedContent.get(CONTENT_PACK).items[PROMPT_KEY], 'and nothing is left for a later apply to describe').toBeUndefined();
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **An offer the restore could not answer stays open.** A run that wrote nothing for the item has changed
+   * nothing about it, and clearing the offer anyway would mean the user is never asked again about a
+   * version they never received.
+   */
+  it('keeps the offer when the restore wrote nothing for that item', () => {
+    const offer = { kind: 'update' as const, parts: ['description'], contentHash: 'echo-v2' };
+    appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
+    // The content no longer holds an item under that label, so the selection matches no record
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.contentDir, 'actions.content.json'), JSON.stringify({ records: [] }));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(appliedContent.get(CONTENT_PACK).items[ACTION_KEY]?.offer, 'still outstanding').toEqual(offer);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /** "Keep mine" records the version they declined, and the list then offers to reset it instead */
+  it('records the version the user declined, and lists the item as one they keep', () => {
+    appliedContent.record(CONTENT_PACK, {
+      wrote: new Map(),
+      offers: new Map([[ACTION_KEY, { kind: 'update', parts: ['description'], contentHash: 'echo-v2' }]]),
+    });
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DISMISS_CONTENT_OFFER', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      const item = appliedContent.get(CONTENT_PACK).items[ACTION_KEY];
+      expect(item?.dismissed, 'the version they were shown').toBe('echo-v2');
+      expect(item?.offer, 'and the decision is taken').toBeUndefined();
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const lists = emitted(system.sent).filter((e) => e.type === 'PACKS_LIST');
+      const listed = lists[lists.length - 1]?.packs as PackInfo[];
+      const pack = listed.find(p => p.id === CONTENT_PACK);
+      expect(pack?.contentOffers, 'nothing outstanding').toEqual([]);
+      expect(pack?.contentKept.map(k => k.key), 'and an item to reset to factory').toEqual([ACTION_KEY]);
+    } finally {
+      system.stop();
+    }
+  });
+});

@@ -20,7 +20,7 @@ Never:
 - commit, stage, push or tag unless the user asks in this session. Leave changes for review.
 - add backward-compat shims or legacy code paths: change formats directly and migrate in-repo users.
   Data on this machine's production app is handled by packages/api/scripts/db/fix-prod-upgrade.ts only.
-- run packages/api/scripts/db/fix-prod-upgrade.ts, or open or modify ~/Library/Application Support/abuddy*.
+- run packages/api/scripts/db/fix-prod-upgrade.ts, or open or modify ~/Library/Application Support/apack*.
 - npm publish, create GitHub releases, or trigger workflows.
 - pkill/killall Electron or node; run bare tsc on packages/preload; edit version/release metadata.
 - loosen a failing assertion instead of investigating.
@@ -30,7 +30,7 @@ Never:
 
 Earlier work on this branch (uncommitted at the time of writing):
 - **Services:** they are explicit `path#export` objects, and generate-entries resolves exports with the TypeScript compiler.
-- **Facade:** `abuddy build` gates each pack's facade types (packages/abuddy-cli/src/build/facade-gate.ts). default-setup's facade is reviewed in `packages/default-setup/etc/pack-types.api.md`.
+- **Facade:** `apack build` gates each pack's facade types (packages/apack-cli/src/build/facade-gate.ts). default-setup's facade is reviewed in `packages/default-setup/etc/pack-types.api.md`.
 - **Slash commands:** they come from every document in the library's `internal/commands` folder (`services.library.commands()`).
 
 The items below are what's left from the reviews and audits of that work.
@@ -40,13 +40,13 @@ The items below are what's left from the reviews and audits of that work.
 ### 1. `boot.earlySystem` and `boot.createDefaultSettings`: remove
 
 **State:**
-- **The live path:** `features[].earlySystem: true` becomes the generated `boot.earlySystem` machine (`packages/abuddy-sdk/src/build/generate-entries.ts` ~435-478), and `api/src/setup/backend.ts` starts it before hydration.
+- **The live path:** `features[].earlySystem: true` becomes the generated `boot.earlySystem` machine (`packages/apack-sdk/src/build/generate-entries.ts` ~435-478), and `api/src/setup/backend.ts` starts it before hydration.
 - **Default settings:** created by the pack's `onInit` hook (`packages/default-setup/src/features/hooks.ts`), declared through `boot.hooks`.
 - **The dead fields:**
-  - The manifest schema still accepts `boot.earlySystem` and `boot.createDefaultSettings` (`packages/abuddy-sdk/src/build/manifest-schema.ts` ~95-96).
-  - `abuddy.schema.json`, `etc/build.api.md` and `docs/public-facing/manifest.md` still describe them.
+  - The manifest schema still accepts `boot.earlySystem` and `boot.createDefaultSettings` (`packages/apack-sdk/src/build/manifest-schema.ts` ~95-96).
+  - `apack.schema.json`, `etc/build.api.md` and `docs/public-facing/manifest.md` still describe them.
   - Nothing reads either field.
-  - default-setup's `abuddy.json` still sets `boot.earlySystem`, duplicating the feature flag.
+  - default-setup's `apack.json` still sets `boot.earlySystem`, duplicating the feature flag.
 
 **History:**
 - `ec285dab2` (09-08) added `boot.earlySystem` as a copy of the feature flag. No generator ever read it.
@@ -56,9 +56,9 @@ The items below are what's left from the reviews and audits of that work.
 **Latent bug:** "built-in only" is written in the schema descriptions but not enforced. An external pack that sets `features[].earlySystem: true` builds, but its system never starts. At load, `api/src/packs/pack-loader.ts` ~335 drops it with only a warning.
 
 **Do:**
-1. Delete both fields from `BootConfigSchema`, and `boot.earlySystem` from `packages/default-setup/abuddy.json`.
+1. Delete both fields from `BootConfigSchema`, and `boot.earlySystem` from `packages/default-setup/apack.json`.
 2. Add a schema issue for `!builtIn && features.some(f => f.earlySystem)`.
-3. Run `npm run generate:schema -w @abuddy/sdk` and `npm run api:update` in packages/abuddy-sdk.
+3. Run `npm run generate:schema -w @apack/sdk` and `npm run api:update` in packages/apack-sdk.
 4. Update the docs:
    - `docs/public-facing/manifest.md`: drop the rows, and use `hooks` in the example, documenting `onInit` and `onShutdown`.
    - `docs/public-facing/architecture.md` ~57.
@@ -73,7 +73,7 @@ The items below are what's left from the reviews and audits of that work.
 
 **State:**
 - **The files:** 14 of them, 12 in default-setup plus `tests/fixtures/external-pack` and `tests/fixtures/bundled-ui-pack`, each `{ name, settings, designation? }`. Nothing imports them.
-- **Only reader:** `validateFeatures()` (`packages/abuddy-sdk/src/build/validate.ts` ~38-85) via `abuddy validate`. It checks `name` and that the settings file exists, never `designation`, and scans folders instead of `features[]`.
+- **Only reader:** `validateFeatures()` (`packages/apack-sdk/src/build/validate.ts` ~38-85) via `apack validate`. It checks `name` and that the settings file exists, never `designation`, and scans folders instead of `features[]`.
 - **Where designations come from:** the manifest. generate-entries ~439-466 and ~553 pass `features[].designation` to systems and plugins.
 - **Stale docs:** `packages/default-setup/CLAUDE.md` still says systems pass `designation` from `feature.config.ts`; that was removed on 09-09.
 
@@ -81,18 +81,18 @@ The items below are what's left from the reviews and audits of that work.
 - `3c926d2f6` (09-07): systems imported the file for designation.
 - `69099c834` (09-09): moved designation into the manifest.
 - `9f04aa9fd`, a minute later: put `defineSystem(id, { designation })` back with no users. It is still in `etc/framework.api.md`.
-- `1dee2929d` (09-12): `abuddy init` stopped writing the file, but `abuddy add feature` still does.
+- `1dee2929d` (09-12): `apack init` stopped writing the file, but `apack add feature` still does.
 - `de7a41228` (09-14): removed the last build use.
 
 **Bugs:**
-- **Designation ignored:** `abuddy add feature --designation X` writes X only into `feature.config.ts`, never into `abuddy.json`, so the designation silently does nothing (`packages/abuddy-cli/src/commands/add/feature.ts`).
+- **Designation ignored:** `apack add feature --designation X` writes X only into `feature.config.ts`, never into `apack.json`, so the designation silently does nothing (`packages/apack-cli/src/commands/add/feature.ts`).
 - **Inconsistent precedence:** the generated frontend entry lets the manifest win, but `packages/renderer/src/packs/pack-loader.ts` ~87 lets a plugin's own `designation` win.
-- **Unchecked id rule:** the designation registry maps role → role (`packages/abuddy-sdk/src/designations/index.ts` ~8), so a designation only routes correctly when it equals the feature id. Nothing checks that.
+- **Unchecked id rule:** the designation registry maps role → role (`packages/apack-sdk/src/designations/index.ts` ~8), so a designation only routes correctly when it equals the feature id. Nothing checks that.
 
 **Do:**
-1. **Delete the 14 files** and `FeatureConfig` from `packages/abuddy-sdk/src/build/types.ts` and its index.
-2. **Replace `validateFeatures`** with a check over `features[]` in the manifest: each `settings`, `system.entry` and `plugin.entry` file exists, and a designation equals its feature id. Update `abuddy validate`.
-3. **`abuddy add feature`:** stop writing the file, and write `--designation` into `abuddy.json`. Add a scaffold test.
+1. **Delete the 14 files** and `FeatureConfig` from `packages/apack-sdk/src/build/types.ts` and its index.
+2. **Replace `validateFeatures`** with a check over `features[]` in the manifest: each `settings`, `system.entry` and `plugin.entry` file exists, and a designation equals its feature id. Update `apack validate`.
+3. **`apack add feature`:** stop writing the file, and write `--designation` into `apack.json`. Add a scaffold test.
 4. **One designation source:**
    - Remove `designation` from `defineSystem` options and from `SystemSpec`/`SystemEntry` (`framework/define-system.ts`, `system-utils.ts`), then run `api:update`.
    - Make the renderer use the manifest's designation only.
@@ -109,7 +109,7 @@ The items below are what's left from the reviews and audits of that work.
 
 ### 3. External pack migrations run twice
 
-- `registerExternalPacks` registers each pack's `migrations` (`packages/api/src/packs/pack-loader.ts` ~506), so `getRegisteredMigrations()` (`packages/abuddy-host/src/packs/pack-registration.ts` ~285) includes them.
+- `registerExternalPacks` registers each pack's `migrations` (`packages/api/src/packs/pack-loader.ts` ~506), so `getRegisteredMigrations()` (`packages/apack-host/src/packs/pack-registration.ts` ~285) includes them.
 - `runMigrations()` (`packages/api/src/setup/migrations/index.ts`) runs them, checked against the app's stored version and `APP_VERSION`.
 - `runPackMigrations(externalPacks)` then runs them again, checked against each pack's stored version and manifest version (`backend.ts` ~112-116).
 
@@ -145,10 +145,10 @@ Fix what would make a reader fail first. Every item is verified against the code
 
 ### Would make a reader fail
 
-- **Install command:** `abuddy install github:user/repo` fails (`cli.md`, `getting-started.md` ~106). Any input containing "/" is treated as `owner/repo[@tag]`, so `github:user` becomes the owner (`packages/abuddy-cli/src/commands/install.ts` ~12, ~34; `abuddy-host/src/packs/pack-installer.ts` ~265-273).
-- **Install location and layout:** `architecture.md` (Install, `pack://`) and `packages/api/src/packs/CLAUDE.md` say packs install to `~/.agentbuddy/packs` with a `dist/` layout.
+- **Install command:** `apack install github:user/repo` fails (`cli.md`, `getting-started.md` ~106). Any input containing "/" is treated as `owner/repo[@tag]`, so `github:user` becomes the owner (`packages/apack-cli/src/commands/install.ts` ~12, ~34; `apack-host/src/packs/pack-installer.ts` ~265-273).
+- **Install location and layout:** `architecture.md` (Install, `pack://`) and `packages/api/src/packs/CLAUDE.md` say packs install to `~/.apack/packs` with a `dist/` layout.
   - Location: `resolveAppContext().userDataDir` (`packs/`, `host-packs/`, `pack-registry.json`).
-  - Layout: `abuddy.json`, `bundle.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json` (`abuddy-host/src/packs/bundle.ts` ~26-38).
+  - Layout: `apack.json`, `bundle.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json` (`apack-host/src/packs/bundle.ts` ~26-38).
   - Installing is stage → verify → place.
 - **Boot order** in `architecture.md` and `packages/api/src/packs/CLAUDE.md` leaves out steps. The real order (`packages/api/src/setup/backend.ts`):
   1. register the host packs system;
@@ -165,7 +165,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   12. the bus starts.
 - **External pack system ids:** `features.md` ~108/~115 sends to bare ids (`'bookmarks'`). External packs' systems are `<packId>.<featureId>` (`api/src/packs/pack-loader.ts` ~490); point to `busId` from `#generated/bus-ids`.
 - **`extensions.md` signatures:**
-  - **Step build facet:** it is `compile(node, nodeId, ts, ctx)`, which returns `{ entity, relations }`, plus `validate(step, path, ctx)` and `getLabel(step, index)` (`abuddy-sdk/src/steps/types.ts` ~60-70).
+  - **Step build facet:** it is `compile(node, nodeId, ts, ctx)`, which returns `{ entity, relations }`, plus `validate(step, path, ctx)` and `getLabel(step, index)` (`apack-sdk/src/steps/types.ts` ~60-70).
   - **DSL helper:** a step gets one only with `dsl` (`primaryField` needs an `export interface DSL…Node`; `generate-entries.ts` ~1123, ~1139).
   - **Artifact viewers** receive `artifact: ArtifactItem`, not `data` (`threads/fe/canvas/agent/content-viewer.vue` ~26).
   - **Blocks** receive their props spread out plus `disabled`/`response`, and answer with `@submit`/`@cancel` (`threads/fe/chat/interactions/InteractionContainer.vue`).
@@ -175,7 +175,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - Migrations live in `packages/default-setup/src/migrations` (`PackMigration`); `packages/api/src/setup/migrations` holds only the runner.
   - `npm run test-build` doesn't exist.
   - `packages/default-setup/src/registries/plugins.ts` doesn't exist; plugins come from `features[].plugin` via the generated FE entry.
-  - The bus machine is `createBusMachine` in `packages/abuddy-host/src/bus`; `api/src/systems.ts` wires it.
+  - The bus machine is `createBusMachine` in `packages/apack-host/src/bus`; `api/src/systems.ts` wires it.
   - Repositories are `index.ts`/`queries.ts`/`commands.ts` declared in `features[].repositories`, not `startup/read/create/update`.
 - **`packages/api/src/setup/migrations/CLAUDE.md`:** unclear which `index.ts` it means, and `runPackMigrations` isn't described.
 - **Stale READMEs:**
@@ -183,12 +183,12 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `packages/default-setup/src/features/library/fe/components/search-index/README.md` names components that don't exist, with a wrong model list.
   - `packages/default-setup/tests/unit/_hybrid/README.md` lists specs that aren't there, and a separation plan that's already done.
 - **Content `CLAUDE.md` imports:** `packages/default-setup/src/content/CLAUDE.md` gives the wrong import paths:
-  - `ActionMeta` and `PromptMeta` come from `@abuddy/sdk/build`;
+  - `ActionMeta` and `PromptMeta` come from `@apack/sdk/build`;
   - `Services` and `Z` come from `@/__generated__/services`.
 
   It also links `WRITING-ACTIONS.md`/`WRITING-PROMPTS.md`, which don't exist.
 - **`db` CLI README:**
-  - It never says every script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.
+  - It never says every script needs `APACK_ENV` and `APACK_USER_DATA_DIR`.
   - It claims every command runs from the root, but `db:export`/`db:import`/`db:apply`/`db:clearSettings` exist only in `packages/api/package.json`.
   - `db:cli` takes `-e/-s/-o/-f/-v`.
 - **Root `README.md`:**
@@ -196,7 +196,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - a stale project structure;
   - only three of six providers.
 - **`.changeset/README.md`:**
-  - The fixed group also includes `@abuddy/ui`.
+  - The fixed group also includes `@apack/ui`.
   - Only cli and testing publish `dist/package`; sdk and ui publish their workspace package.
 
 ### Missing
@@ -205,8 +205,8 @@ Fix what would make a reader fail first. Every item is verified against the code
   - The commands `release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]`, `release publish`, `init-tests` and `test [--app-root|--app beta]`.
   - The `-d/-b` flags on install/uninstall/list.
   - Build's `--release` and `--skip-fe`, and its checks: facade gate, content runtime load, feature settings, dependency version warning.
-  - `abuddy dev` is a Vite HMR server that installs into dev data, not a watcher.
-  - `abuddy init` creates no feature.
+  - `apack dev` is a Vite HMR server that installs into dev data, not a watcher.
+  - `apack init` creates no feature.
   - Only `add feature`/`service`/`step` run generate-entries.
   - The feature name rule is camelCase.
   - The `fetch-deps` resolution order.
@@ -226,7 +226,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - **Unexplained:** `$.event`/`$.steps`/`$.lastStep` mappings, the switch operators, and `FlowConfig` (`root`, `final`, `next`).
   - **Misstated action rules:**
     - `_` prefixes skip only flows;
-    - only `@abuddy/sdk/actions` is importable;
+    - only `@apack/sdk/actions` is importable;
     - Node globals only warn;
     - `z`/`flowId` are passed only by the flow action step.
   - **The applier module contract** (`ContentApplierContext` → `ContentCounts`), `contentPolicy`, and include sets.
@@ -242,7 +242,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - roles: `grantRole`/`revokeRole`/`getRoles`/`findWithRole`/`EARS.RoleKind`;
   - relation and entity helpers: `createRelation`/`removeRelation`/`destroyEntity`/`exists`/`countEntities`;
   - blueprints (`bp`, `spawn`) and graph helpers (`descendants`, `ancestors`, `topoSort`, `shortestPath`, `wouldCreateCycle`);
-  - the rest of `@abuddy/sdk/models`;
+  - the rest of `@apack/sdk/models`;
   - `logger`/`emitter` members;
   - a correction: TNode rows go to the trace store; they aren't "never persisted".
 - **`testing.md`:**
@@ -250,9 +250,9 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `send` before `connect()` throws, and events aren't in `emitted()` until connected;
   - the `nextEmit`/`runFlow` default timeouts, `FlowRun.eventTNodeIds`, exported types, and `takeSystemErrors`;
   - the harness gives every system `CLIENT_CONNECTED` on `connect()`.
-- **`packages/abuddy-testing/CLAUDE.md` and `tests/e2e/CLAUDE.md`:**
+- **`packages/apack-testing/CLAUDE.md` and `tests/e2e/CLAUDE.md`:**
   - the file maps are missing `secrets.spec.ts` and `import-pack-content.spec.ts`;
-  - app resolution order: `appExecutable`, `appRoot`, `ABUDDY_APP_EXECUTABLE`, `ABUDDY_ROOT`, then auto-detect;
+  - app resolution order: `appExecutable`, `appRoot`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detect;
   - the in-memory hosts include `secrets`;
   - `mockInference` includes `relevance`/rerank.
 - **`architecture.md`:**
@@ -269,10 +269,10 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `keep_alive` is the step's real type name (the doc says `keep-alive`).
   - `content-runtime.ts` in the generated files list.
 - **Packages with no README or CLAUDE.md:**
-  - abuddy-host: secrets, installer/updater/staging, bus composition, data dirs, source resolution;
-  - abuddy-sdk: the build pipeline and `module-exports`, the apply engine, registries;
-  - abuddy-cli: command inventory, facade gate, source vs dist mode;
-  - abuddy-ui: component conventions;
+  - apack-host: secrets, installer/updater/staging, bus composition, data dirs, source resolution;
+  - apack-sdk: the build pipeline and `module-exports`, the apply engine, registries;
+  - apack-cli: command inventory, facade gate, source vs dist mode;
+  - apack-ui: component conventions;
   - api: `core/` layout and routers, tests;
   - main;
   - preload: its IPC surface, and never running bare tsc;

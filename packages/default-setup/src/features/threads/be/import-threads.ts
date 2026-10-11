@@ -12,12 +12,12 @@ import { tx } from '#generated/ears.ts';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@abuddy/ears';
-import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
+import { hasIdCollision } from '@apack/ears';
+import { restoreJsonMediaRefs } from '@apack/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'
 import { ref } from '#generated/ref.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 interface ImportResult {
   created: number

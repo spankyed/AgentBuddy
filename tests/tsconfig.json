@@ -5,9 +5,9 @@
     // is not project references (docs/goals/goal-test-tiers.md).
     "incremental": true,
     "tsBuildInfoFile": "../node_modules/.cache/tsbuildinfo/tests.tsbuildinfo",
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports), as the
+    // Workspace @apack/* packages resolve to source (see their package.json exports), as the
     // Playwright runner does under `npm test`; without it editors would read a stale dist
-    "customConditions": ["@abuddy/source"],
+    "customConditions": ["@apack/source"],
     "allowImportingTsExtensions": true,
     "target": "ES2022",
     "module": "esnext",

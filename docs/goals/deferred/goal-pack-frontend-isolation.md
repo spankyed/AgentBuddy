@@ -20,7 +20,7 @@ Finished when:
 - npm run typecheck, api:check (sdk, ui, ears), packages:build + packages:check, and the renderer,
   sdk, cli and default-setup unit suites pass.
 - npm run build, the E2E suite, npm run test:external-pack, npm run test:packaged-authoring and the
-  example pack's `abuddy test --build <repo>` pass.
+  example pack's `apack test --build <repo>` pass.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Never:
@@ -28,12 +28,12 @@ Never:
   chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
   and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - isolate the built-in pack (default-setup) unless Open decision 1 chose B.
 ```
@@ -41,10 +41,10 @@ Never:
 ## Background (2026-09-17, at 5f1642a6b)
 
 **How external pack frontends run today.**
-- The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, over the window's `importModule` in `packages/renderer/src/adapters/pack-frontends.ts`).
+- The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/apack-host/src/features/packs/fe/frontends.ts`, over the window's `importModule` in `packages/renderer/src/adapters/pack-frontends.ts`).
   - The code runs in the app window's own JavaScript realm, with the same globals as the host.
-  - It shares the host's `@abuddy/sdk` and `@abuddy/ui` by resolution — the bundle leaves those specifiers bare and the document's import map names the host's module — and renders its plugins (Vue components) into the app's DOM.
-- A pack's plugins are XState machines the app shell spawns (`packages/abuddy-host/src/features/application/fe/`). They talk to the backend through `@abuddy/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
+  - It shares the host's `@apack/sdk` and `@apack/ui` by resolution — the bundle leaves those specifiers bare and the document's import map names the host's module — and renders its plugins (Vue components) into the app's DOM.
+- A pack's plugins are XState machines the app shell spawns (`packages/apack-host/src/features/application/fe/`). They talk to the backend through `@apack/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
 
 **What that code can reach.** Anything the app window can, because the host and the pack share one realm:
 - **`window.electronAPI`**, the whole preload surface (`packages/preload/src/index.ts`):
@@ -53,7 +53,7 @@ Never:
   - the `browser.*` tab controls;
   - `media.*` writes;
   - `apiToken`.
-- **The API token.** `electronAPI.apiToken` lets code open its own WebSocket to the API with full access (`bus.send` to any system, `secrets.add`/`replaceValue`/`delete`/`allowUnprotected`, `packages/api/src/transport/secrets.ts`). Branch `AS/api-token-req` removed `apiToken` from the SDK's published `Window.electronAPI` type (`packages/abuddy-sdk/src/fe/electron-api.ts`) so pack authors aren't pointed at it, but the preload still exposes it at runtime. The renderer reads it through its own type (`packages/renderer/src/transport/index.ts`).
+- **The API token.** `electronAPI.apiToken` lets code open its own WebSocket to the API with full access (`bus.send` to any system, `secrets.add`/`replaceValue`/`delete`/`allowUnprotected`, `packages/api/src/transport/secrets.ts`). Branch `AS/api-token-req` removed `apiToken` from the SDK's published `Window.electronAPI` type (`packages/apack-sdk/src/fe/electron-api.ts`) so pack authors aren't pointed at it, but the preload still exposes it at runtime. The renderer reads it through its own type (`packages/renderer/src/transport/index.ts`).
 - **The app window itself:** the DOM, the host's actors (`window.applicationState`), other packs' plugins, and anything the user types.
 
 **Where the boundary already holds.**
@@ -64,10 +64,10 @@ Never:
 So installing an external pack today means trusting it as much as the app itself. The token work closed the API to web pages and other local processes, but not to pack frontends.
 
 **What depends on the shared realm.**
-- `@abuddy/ui` components render inside the host's DOM and styles; with `build.bundleUi` a pack bundles its own copy.
-- Host-shared frontend state lives in `@abuddy/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
+- `@apack/ui` components render inside the host's DOM and styles; with `build.bundleUi` a pack bundles its own copy.
+- Host-shared frontend state lives in `@apack/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
 - Pack extensions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
-- The E2E fixture (`@abuddy/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
+- The E2E fixture (`@apack/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
 
 ## Open decisions (settle with the user before Phase 1)
 
@@ -78,7 +78,7 @@ So installing an external pack today means trusting it as much as the app itself
 2. **The isolation mechanism.** — *open*
    - **A. A sandboxed iframe per pack** inside the app window, on its own origin (a `pack://<id>` page with `sandbox="allow-scripts"`, no `allow-same-origin`). The host talks to it through `postMessage`.
      - **Pros:** it renders inline where plugins render today, and has no preload, so no `electronAPI`.
-     - **Cons:** `@abuddy/ui` and styles load inside each frame; host-rendered extensions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
+     - **Cons:** `@apack/ui` and styles load inside each frame; host-rendered extensions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
    - **B. A `WebContentsView` per pack**, like browser tabs: its own process, with a minimal preload that exposes only the SDK bridge.
      - **Pros:** the strongest isolation (a separate renderer process).
      - **Cons:** positioning views over the app layout (as the browser plugin does), more memory per pack, and the same limit on shared components.
@@ -88,7 +88,7 @@ So installing an external pack today means trusting it as much as the app itself
 
 3. **What crosses the boundary.** — *open*
    - **A. The pack-facing SDK only:** events (`sendToSystem`, incoming events), the lookups packs may read, `untypedOpenPlugin`, `secretsClient` (metadata only), and nothing from `electronAPI`. Anything a pack needs from the preload becomes an SDK call the host mediates (for example "pick a file" instead of "read any path").
-   - **B. The SDK plus a per-pack, permissioned `electronAPI` subset**, declared in `abuddy.json` and shown to the user at install time.
+   - **B. The SDK plus a per-pack, permissioned `electronAPI` subset**, declared in `apack.json` and shown to the user at install time.
 
 4. **How extensions the host renders work** (tiptap plugins, blocks, artifact viewers, step forms, app extensions) for isolated packs. — *open*
    - **A. Not supported for isolated packs:** these extension types stay built-in-only until a follow-up designs them.
@@ -100,16 +100,16 @@ So installing an external pack today means trusting it as much as the app itself
 ### Phase 1 — the isolated host for one pack
 
 - Build the chosen mechanism (Open decision 2) for a single external pack. The pack's `runtime/fe.js` loads there instead of through `import()` in the app window.
-- The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, driven by the app shell in `packages/abuddy-host/src/features/application/fe/`).
+- The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/apack-host/src/features/packs/fe/frontends.ts`, driven by the app shell in `packages/apack-host/src/features/application/fe/`).
 - No `window.electronAPI` or `window.applicationState` exists in the isolated context, and its document carries no import map naming the host's modules.
 
 **Done when:** the `tests/packs/external-pack` fixture renders its plugin through the isolated host. A renderer unit spec shows the isolated context has no `electronAPI`. Mutation: loading the pack with `import()` again fails that spec.
 
 ### Phase 2 — the SDK bridge
 
-- A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@abuddy/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@abuddy/sdk` unchanged.
+- A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@apack/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@apack/sdk` unchanged.
 - The host validates every message: a pack can only send to systems it may address (`resolveName` rules), and only the calls the bridge defines.
-- `@abuddy/ui` and styles load inside the isolated context. What the FE bundler leaves external has to be answered there instead: an isolated pack bundles UI, or its own document carries a map naming a host-provided copy inside that context.
+- `@apack/ui` and styles load inside the isolated context. What the FE bundler leaves external has to be answered there instead: an isolated pack bundles UI, or its own document carries a map naming a host-provided copy inside that context.
 
 **Done when:**
 - a fixture pack's plugin sends and receives events, reads lookups and lists secrets through the bridge;
@@ -119,16 +119,16 @@ So installing an external pack today means trusting it as much as the app itself
 ### Phase 3 — extensions and testing support
 
 - Implement Open decision 4 for tiptap plugins, blocks, artifact viewers, step forms and app extensions.
-- `@abuddy/testing` finds isolated plugins, and `abuddy test` / `abuddy init-tests` scaffolds keep working for pack authors (`packages/abuddy-testing/CLAUDE.md`).
-- `abuddy dev`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
+- `@apack/testing` finds isolated plugins, and `apack test` / `apack init-tests` scaffolds keep working for pack authors (`packages/apack-testing/CLAUDE.md`).
+- `apack dev`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
 
-**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `abuddy dev` reloads an isolated pack's frontend in an E2E spec.
+**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `apack dev` reloads an isolated pack's frontend in an E2E spec.
 
 ### Phase 4 — proof and docs
 
 - **The proof.** A new fixture pack tries to read `window.electronAPI`, `window.parent`, `window.top`, `document.cookie`, the host DOM and `localStorage` of the app origin, and to open a WebSocket to the API with a guessed or found token. An E2E spec asserts every attempt fails and reports it.
 - **The preload.** It stops exposing `apiToken` to anything but the host's API client, if the mechanism allows it (for example a `contextBridge` function that opens the socket and never returns the token).
-- **Docs.** Update `docs/public-facing` (the pack author guides: what a pack frontend can reach), `packages/renderer/CLAUDE.md`, `packages/preload/CLAUDE.md` and `packages/abuddy-sdk/CLAUDE.md`.
+- **Docs.** Update `docs/public-facing` (the pack author guides: what a pack frontend can reach), `packages/renderer/CLAUDE.md`, `packages/preload/CLAUDE.md` and `packages/apack-sdk/CLAUDE.md`.
 
 **Done when:** the proof spec passes, and fails when the pack is loaded the old way (mutation). The docs describe the boundary.
 

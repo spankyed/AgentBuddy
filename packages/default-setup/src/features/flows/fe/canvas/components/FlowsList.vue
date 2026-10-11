@@ -95,10 +95,10 @@
 import type { ComponentPublicInstance } from 'vue'
 import { ref, computed, nextTick, watch } from 'vue'
 import { Workflow, Search, X } from 'lucide-vue-next'
-import type { FlowEntity } from '@abuddy/sdk'
+import type { FlowEntity } from '@apack/sdk'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
-import Button from '@abuddy/ui/design/button'
+import Button from '@apack/ui/design/button'
 
 interface Props {
   flows: Partial<FlowEntity>[]

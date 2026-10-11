@@ -1,6 +1,6 @@
 # @app/preload
 
-The preload script every AgentBuddy window loads (`packages/main`'s `WindowManager` passes it as `webPreferences.preload`). It is the only bridge between the renderer and the main process. Through `contextBridge` it exposes one object, `window.electronAPI`, to the renderer and to pack frontend code. Windows run with `contextIsolation: true`, `nodeIntegration: false` and `sandbox: false`.
+The preload script every apack window loads (`packages/main`'s `WindowManager` passes it as `webPreferences.preload`). It is the only bridge between the renderer and the main process. Through `contextBridge` it exposes one object, `window.electronAPI`, to the renderer and to pack frontend code. Windows run with `contextIsolation: true`, `nodeIntegration: false` and `sandbox: false`.
 
 ## Never run bare `tsc` here
 
@@ -45,7 +45,7 @@ the bridge just called — every assertion reads an empty map.
 
 - `apiPort` — from the `--api-port=<n>` argument main appends when it creates the window (default `3001`). It is fixed for the window's life; the renderer follows later port changes through `apiStatus.onEvent` (`api:started`).
 - `apiToken` — the token the API requires for this app run, read from main with `ipcRenderer.sendSync('api:token')` as the preload loads (never on the command line, where other processes could read it). The renderer's tRPC client sends it when connecting. The SDK's `Window.electronAPI` type leaves it out on purpose, so pack authors aren't pointed at it; the renderer reads it through its own type (`core/trpc.ts`). Leaving it out of the type only stops advertising it: external pack frontends run in the app window (loaded with `import()` from `pack://`), so they can still read `electronAPI.apiToken`, and the rest of `electronAPI`, at runtime. Closing that means isolating pack frontends from the app window, for example in a sandboxed iframe or a `WebContentsView` per pack with only an SDK message bridge and no preload. That isn't built yet; the plan is [`docs/goals/goal-pack-frontend-isolation.md`](../../docs/goals/deferred/goal-pack-frontend-isolation.md).
-- `startupId` — from `--startup-id=<id>`: the id main generates per launch and also passes to the API as `AGENTBUDDY_STARTUP_ID`.
+- `startupId` — from `--startup-id=<id>`: the id main generates per launch and also passes to the API as `APACK_STARTUP_ID`.
 
 ## IPC surface
 
@@ -71,23 +71,23 @@ the bridge just called — every assertion reads an empty map.
 | `browser.createTab` / `loadTab` / `duplicateTab` / `setTabMuted` / `clearCache` / `getTabs` / `getActiveTab` | `browser:*` | invoke | `browser` |
 | `browser.closeTab` / `selectTab` / `navigate` / `goBack` / `goForward` / `reload` / `stop` / `setBounds` / `show` / `hide` / `toggleDevTools` | `browser:*` | send | `browser` |
 | `browser.onTabCreated` / `onTabRemoved` / `onTabUpdated` / `onActiveTabChanged` / `onFocusAddressBar` | `browser:tab-created` / `-removed` / `-updated` / `active-tab-changed` / `focus-address-bar` | on | `BrowserTabManager` |
-| `protocolAction.onAction(cb)` | `protocol-action` | on | `ProtocolHandler` (`abuddy://<action>?…` deep links) |
+| `protocolAction.onAction(cb)` | `protocol-action` | on | `ProtocolHandler` (`apack://<action>?…` deep links) |
 | `rendererReady()` | `renderer:ready` | send | `window-manager`: shows the main window and closes the splash (15 s fallback) |
 
 Every `on*` subscription returns an unsubscribe function. Main also broadcasts `api:starting` and `api:log` (dev stdout/stderr), which nothing here subscribes to.
 
 ## The type contract lives in the SDK
 
-The renderer and packs don't import this package's types. `Window.electronAPI` is declared in `packages/abuddy-sdk/src/fe/electron-api.ts`, a published contract re-exported by `@abuddy/sdk/fe`, so pack authors see it too (`packages/renderer/src/electron.d.ts` only points there). `SpeechEvent`, the event type that global's `speech.onEvent` hands back, is published from `@abuddy/sdk/fe` beside it, which is what this package and `@app/main` both import. When you change the surface here:
+The renderer and packs don't import this package's types. `Window.electronAPI` is declared in `packages/apack-sdk/src/fe/electron-api.ts`, a published contract re-exported by `@apack/sdk/fe`, so pack authors see it too (`packages/renderer/src/electron.d.ts` only points there). `SpeechEvent`, the event type that global's `speech.onEvent` hands back, is published from `@apack/sdk/fe` beside it, which is what this package and `@app/main` both import. When you change the surface here:
 
 1. Add the main handler (`ipcMain.handle` for `invoke`, `ipcMain.on` for `send`).
 2. Declare it on `_HostBridge` in `electron-api.ts`, and leave it out of `PackFacingBridge`'s `Omit`s unless pack authors should not be pointed at it.
 3. Expose it in `src/index.ts`. The typecheck fails until steps 2 and 3 agree, in either direction.
-4. Run `npm run api:update` in `packages/abuddy-sdk` (see the root `CLAUDE.md`, "SDK packages").
+4. Run `npm run api:update` in `packages/apack-sdk` (see the root `CLAUDE.md`, "SDK packages").
 
 The declaration marks `electronAPI` optional, because it is missing outside Electron (vitest/jsdom). Callers use `window.electronAPI?.…`.
 
-**The surface and the declaration are one thing, and the compiler holds them to each other.** `_HostBridge` (`abuddy-sdk/src/fe/electron-api.ts`) is the whole bridge; `src/index.ts` asserts its exposed object `satisfies` it, so a member exposed and not declared is an excess property and one declared and not exposed is missing. **Each group asserts its own slice too** (`satisfies _HostBridge['shell']`, and so on), because the groups are consts: assigning one into the final literal is an ordinary assignment, so an excess property *inside* a group passes the outer check alone.
+**The surface and the declaration are one thing, and the compiler holds them to each other.** `_HostBridge` (`apack-sdk/src/fe/electron-api.ts`) is the whole bridge; `src/index.ts` asserts its exposed object `satisfies` it, so a member exposed and not declared is an excess property and one declared and not exposed is missing. **Each group asserts its own slice too** (`satisfies _HostBridge['shell']`, and so on), because the groups are consts: assigning one into the final literal is an ordinary assignment, so an excess property *inside* a group passes the outer check alone.
 
 `window.electronAPI` is declared as `PackFacingBridge`, which is `_HostBridge` minus the two members pack authors are not pointed at — `apiToken` and `apiStatus.openLogFile`. The `Omit`s are the only place that list is written; a parallel array of member names beside them would be the same declaration twice.
 

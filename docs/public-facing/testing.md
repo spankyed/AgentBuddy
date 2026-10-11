@@ -2,34 +2,34 @@
 
 A pack has two kinds of tests:
 
-- **Unit tests** (`npm test`, vitest) run your pack's code without the app, through `@abuddy/testing/harness`: content and repositories, systems, services and flows, with your dependencies' behaviour.
-- **E2E tests** (`abuddy test`, Playwright) run your pack in AgentBuddy, UI included. See the `@abuddy/testing` fixture (`abuddy init-tests`).
+- **Unit tests** (`npm test`, vitest) run your pack's code without the app, through `@apack/testing/harness`: content and repositories, systems, services and flows, with your dependencies' behaviour.
+- **E2E tests** (`apack test`, Playwright) run your pack in apack, UI included. See the `@apack/testing` fixture (`apack init-tests`).
 
 This page covers unit tests.
 
 ## Setup
 
-`abuddy init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
+`apack init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
 
 ```typescript
 // vitest.config.ts
-import { definePackTestConfig } from '@abuddy/testing/vitest';
+import { definePackTestConfig } from '@apack/testing/vitest';
 
 export default definePackTestConfig();
 ```
 
 That one call is the whole config. It gives you:
 
-- **A throwaway data dir per run**, one subdir per worker. The harness fails without `ABUDDY_USER_DATA_DIR`,
+- **A throwaway data dir per run**, one subdir per worker. The harness fails without `APACK_USER_DATA_DIR`,
   and a per-worker split is what stops one spec's reset deleting another worker's files mid-test.
 - **`include: ['tests/**/*.spec.ts']`**, because a spec's path mirrors the source it covers, less `tests/e2e/`
-  (Playwright's, run by `abuddy test`) and `tests/_support/` (helpers and fixtures, not specs).
+  (Playwright's, run by `apack test`) and `tests/_support/` (helpers and fixtures, not specs).
 - **A stub for your `.vue` files**, so `vitest related` and `--changed` can walk your pack's module graph.
   Without it they stop at the first SFC they reach, which is any pack with a plugin. Your specs can import a
   plugin module and read everything but the component; rendering one throws and says how to enable it.
 - **`globals: true`**, and timeouts that match what a pack's unit tests are allowed.
-- **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@abuddy` packages
-  exactly as `abuddy build` does, to the `dist` each published package ships, which is the one layout a pack
+- **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@apack` packages
+  exactly as `apack build` does, to the `dist` each published package ships, which is the one layout a pack
   ever has. There is nothing to select.
 
 What you may pass it:
@@ -49,27 +49,27 @@ What you may pass it:
 // tests/setup.ts
 import { contentRuntime } from '#generated/content-runtime.ts';
 import { registration } from '#generated/pack-entry.ts';
-import { setupPackTests } from '@abuddy/testing/harness';
+import { setupPackTests } from '@apack/testing/harness';
 
 await setupPackTests({ contentRuntime, registration });
 ```
 
-- **What's registered:** your entity types, repositories, content writers and appliers, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
+- **What's registered:** your entity types, repositories, content writers and appliers, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@apack/sdk`) is registered too.
 - **Without `registration`**, only data code runs: each dependency contributes its content runtime (entity types, repositories, content writers). Pass your appliers (`import { appliers } from '#generated/appliers.ts'`, `setupPackTests({ contentRuntime, appliers })`) for `importContent`; a registration carries its own. These tests start faster and never load a dependency's runtime.
-- **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
-- **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
-- **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
+- **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@apack/testing/harness`, and `unregisterPack(id)` when done.
+- **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@apack/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
+- **Run `apack build` once first**, so dependencies are fetched into `.apack/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` does the same mid-test: a fresh engine, the secrets emptied and the media store cleared; registrations stay. `testMediaPath(entityId?)` names the media store (or one row's folder in it) for a test that asserts on written media.
-- **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@abuddy/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@abuddy/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine. Install `@abuddy/ears` at the version your `@abuddy/sdk` uses: when they differ, npm gives the SDK its own copy, and `setupPackTests` fails naming both.
+- **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@apack/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@apack/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine. Install `@apack/ears` at the version your `@apack/sdk` uses: when they differ, npm gives the SDK its own copy, and `setupPackTests` fails naming both.
 - **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a test that runs alongside another (`it.concurrent`, `describe.concurrent` or `sequence.concurrent` next to another concurrent test) fails. Spec files still run in parallel, each in its own worker.
-- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@abuddy/testing/harness`: it returns the `SYSTEM_ERROR` events systems reported with `reportError` (without `step`) since the last call (`message`, `source`, `stack`, …), and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
-- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@abuddy/testing` is added at your `@abuddy/sdk` range (they're released together); when your `@abuddy/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
+- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@apack/testing/harness`: it returns the `SYSTEM_ERROR` events systems reported with `reportError` (without `step`) since the last call (`message`, `source`, `stack`, …), and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
+- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `apack add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@apack/testing` is added at your `@apack/sdk` range (they're released together); when your `@apack/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
 ## Content
 
 ```typescript
-import { importContent } from '@abuddy/testing/harness';
+import { importContent } from '@apack/testing/harness';
 import { findAll } from '#generated/ears.ts';
 
 it('content notes', async () => {
@@ -85,7 +85,7 @@ it('content notes', async () => {
 `startApp` runs registered systems under the same bus the app uses, and plays the client:
 
 ```typescript
-import { importContent, startApp } from '@abuddy/testing/harness';
+import { importContent, startApp } from '@apack/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 it('stores a memo a client adds and sends it back', async () => {
@@ -112,7 +112,7 @@ it('stores a memo a client adds and sends it back', async () => {
 
 **Boot hooks run around a test's apps.** The first app a test starts runs each registered pack's `boot.onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs `boot.onShutdown`. A pack that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
 
-`abuddy add feature` scaffolds a system test like this for each feature.
+`apack add feature` scaffolds a system test like this for each feature.
 
 ## Frontend
 
@@ -121,7 +121,7 @@ state or sends to its system is tested as the app runs it. Pass each plugin's st
 module: the module imports `.vue` components, which a unit test doesn't load.
 
 ```typescript
-import { startApp, startShell } from '@abuddy/testing/harness';
+import { startApp, startShell } from '@apack/testing/harness';
 import { openPlugin } from '#generated/fe.ts';
 import memosState from '../../src/features/memos/fe/state.ts';
 import notesState from '../../src/features/notes/fe/state.ts';
@@ -158,7 +158,7 @@ Start one shell per test, in place of `startFeTestRuntime`: it binds the fronten
 `services` (from `#generated/services`) holds your services and your dependencies'. `mockService` replaces one for the current test:
 
 ```typescript
-import { mockService } from '@abuddy/testing/harness';
+import { mockService } from '@apack/testing/harness';
 import { services, type Services } from '#generated/services.ts';
 
 it('digests a note, with only the inference call it makes mocked', async () => {
@@ -169,14 +169,14 @@ it('digests a note, with only the inference call it makes mocked', async () => {
 
 Give only the members the code under test uses. A mock lasts for the test it's made in: make it in the test or a `beforeEach` (`mockService` fails in `beforeAll` or at the top of a file). Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
 
-`services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@abuddy/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
+`services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apack/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
 
 ## Models
 
-Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@abuddy/sdk/testing`; `ai` comes with `@abuddy/sdk` as a peer dependency):
+Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@apack/sdk/testing`; `ai` comes with `@apack/sdk` as a peer dependency):
 
 ```typescript
-import { mockInference } from '@abuddy/testing/harness';
+import { mockInference } from '@apack/testing/harness';
 
 const inference = mockInference('A short summary');          // or (call) => reply, per language model call
 // … run code that calls services.inference …
@@ -201,7 +201,7 @@ mockInference('unused', { embedding: (value) => [value.length, 0], image: pngByt
 Flows run in unit tests as they do in the app. The brain runs the root flow, the one flow marked `root: true`, when the app starts, and every other flow runs as a subflow something spawned: default-setup's `Root Flow` spawns its long-running work modes, each kept alive by `entry([keepAlive()])`. An event reaches every running flow. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { importFlows, mockInference, importContent, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importContent, startApp } from '@apack/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 it('summarizes a note', async () => {
@@ -232,24 +232,24 @@ it('summarizes a note', async () => {
 
 ## Exports
 
-`@abuddy/testing/harness`:
+`@apack/testing/harness`:
 
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
 
-`@abuddy/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
+`@apack/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
 
-`@abuddy/sdk/testing`, for the two cases the harness doesn't cover:
+`@apack/sdk/testing`, for the two cases the harness doesn't cover:
 
 - **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns. It has no app shell: code that reaches the shell fails naming `startShell`, which binds a frontend host with the real one.
 
   ```typescript
-  import { startFeTestRuntime } from '@abuddy/sdk/testing';
+  import { startFeTestRuntime } from '@apack/sdk/testing';
 
   const stopFeTestRuntime = startFeTestRuntime();
   afterAll(stopFeTestRuntime);
   ```
 
-- **`registeredContentKeys(packId)`** (`@abuddy/sdk/utils`) — the content keys a registered pack has appliers for, which are the only keys an import of its content can write. Assert against it when a test needs to know that an applier is registered under the key its content source names, rather than inferring it from a `importContent` count.
+- **`registeredContentKeys(packId)`** (`@apack/sdk/utils`) — the content keys a registered pack has appliers for, which are the only keys an import of its content can write. Assert against it when a test needs to know that an applier is registered under the key its content source names, rather than inferring it from a `importContent` count.

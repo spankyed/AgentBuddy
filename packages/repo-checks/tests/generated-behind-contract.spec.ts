@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { generatePackFiles, type PackManifest } from '@abuddy/sdk/build';
+import { generatePackFiles, type PackManifest } from '@apack/sdk/build';
 import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-specifiers.ts';
 
 /**

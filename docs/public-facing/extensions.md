@@ -4,7 +4,7 @@ Packs can extend the host's flow editor, artifact system, message UI, rich-text 
 
 ## Steps
 
-A step definition adds a new node type to the visual flow editor. A `StepDefinition` (`@abuddy/sdk/steps`) has these fields:
+A step definition adds a new node type to the visual flow editor. A `StepDefinition` (`@apack/sdk/steps`) has these fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -19,8 +19,8 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 ### Scaffolding
 
 ```bash
-abuddy add step my-step
-abuddy add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
+apack add step my-step
+apack add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
 ```
 
 Creates:
@@ -40,8 +40,8 @@ declares is refused.
 ### Build facet (build.ts)
 
 ```typescript
-import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
+import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@apack/sdk/steps';
+import { EARS } from '@apack/sdk';
 import type { DSLMyStepNode } from './types.ts';
 
 export const myStepStepBuild: StepBuildFacet = {
@@ -74,7 +74,7 @@ export const myStepStepBuild: StepBuildFacet = {
 
 ```typescript
 // runtime.ts
-import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
 
 export async function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send(event: unknown): void };
@@ -92,11 +92,11 @@ brain reads them before it decides how to run the step; `sync` is the one that c
 
 | Member | Description |
 |---|---|
-| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@abuddy/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
+| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apack/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
-| `waits` | The step never completes on its own (keep-alive). `runFlow` in `@abuddy/testing` treats such a step as settled |
+| `waits` | The step never completes on its own (keep-alive). `runFlow` in `@apack/testing` treats such a step as settled |
 
 Conventions the brain reads from a `COMPLETE` result and the node:
 
@@ -130,7 +130,7 @@ whose module is loaded when the trigger is first registered.
 ### Frontend facet (fe.ts)
 
 ```typescript
-import type { StepFEFacet } from '@abuddy/sdk/steps';
+import type { StepFEFacet } from '@apack/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Box } from 'lucide-vue-next';
 
@@ -161,7 +161,7 @@ export const myStepStepFE: StepFEFacet = {
 | `handlePrefix?` | Multi-output steps: new outgoing handles are `<prefix>-0`, `<prefix>-1`, … (`'branch'` pairs with `sourceHandle: 'branch-N'`) |
 | `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
 
-The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@abuddy/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
+The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@apack/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
 #### Node config fields
 
@@ -181,8 +181,8 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 ### Types (types.ts)
 
 ```typescript
-import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { NodeBase } from '@apack/sdk';
+import type { DSLNodeBase } from '@apack/sdk/build';
 
 export interface DSLMyStepNode extends DSLNodeBase {
   type: 'my-step';
@@ -198,7 +198,7 @@ export interface MyStepNode extends NodeBase {
 
 ### Manifest
 
-A step is declared in `abuddy.json` under `extensions.steps`, keyed by its type, with each facet named where its code is:
+A step is declared in `apack.json` under `extensions.steps`, keyed by its type, with each facet named where its code is:
 
 ```json
 {
@@ -234,7 +234,7 @@ A step is declared in `abuddy.json` under `extensions.steps`, keyed by its type,
 
 Codegen sends each facet where it is used, so no barrel keeps them in step with each other: `build` and
 `runtime` to the pack's backend registration, `fe` to its frontend one, and `build` (or `trigger`) alone to
-`src/__generated__/steps-build.ts`, which `abuddy build` bundles to `dist/build/steps.build.mjs` — the
+`src/__generated__/steps-build.ts`, which `apack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code. A dependency's step types
 are loaded that way too, and a type this pack and a dependency both define fails the build.
 
@@ -261,7 +261,7 @@ The helper is named after `type` in camelCase, with `-` and `_` separating words
 
 ## Artifacts
 
-An artifact is a typed content item (code, image, markdown, …) shown in a thread's artifact panel. An `ArtifactDefinition` (`@abuddy/sdk/artifacts`) is `{ type, fe? }`:
+An artifact is a typed content item (code, image, markdown, …) shown in a thread's artifact panel. An `ArtifactDefinition` (`@apack/sdk/artifacts`) is `{ type, fe? }`:
 
 | `fe` field | Required | Description |
 |---|---|---|
@@ -271,7 +271,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 ### Scaffolding
 
 ```bash
-abuddy add artifact chart --icon BarChart3
+apack add artifact chart --icon BarChart3
 ```
 
 Writes the manifest entry under `extensions.artifacts` and creates `src/extensions/artifacts/viewers/chart-artifact.vue`. A type the manifest already declares is refused.
@@ -282,7 +282,7 @@ The viewer receives `artifact: ArtifactItem`:
 
 ```vue
 <script setup lang="ts">
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@apack/sdk/artifacts';
 
 defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 </script>
@@ -299,7 +299,7 @@ defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 
 ### Manifest
 
-An artifact is declared in `abuddy.json` under `extensions.artifacts`, keyed by its type:
+An artifact is declared in `apack.json` under `extensions.artifacts`, keyed by its type:
 
 ```json
 {
@@ -341,7 +341,7 @@ default-setup's threads feature provides `services.artifact` (declare `default-s
 
 ## Blocks
 
-A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@abuddy/sdk/blocks`) is `{ type, kind?, fe?, be? }`:
+A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apack/sdk/blocks`) is `{ type, kind?, fe?, be? }`:
 
 - **Display blocks** (`kind` omitted or `'display'`) render data (markdown, code, tool activity).
 - **Input blocks** (`kind: 'input'`) collect a response (text, choices, approvals).
@@ -349,8 +349,8 @@ A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@abu
 ### Scaffolding
 
 ```bash
-abuddy add block rating                # display block
-abuddy add block color-picker --input  # input block
+apack add block rating                # display block
+apack add block color-picker --input  # input block
 ```
 
 Writes the manifest entry under `extensions.blocks` and creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`. A type the manifest already declares is refused.
@@ -384,7 +384,7 @@ defineEmits<{ submit: [value: { color: string }]; cancel: [] }>();
 
 ### Manifest
 
-A block is declared in `abuddy.json` under `extensions.blocks`, keyed by its type. Each entry names where its code lives, and codegen
+A block is declared in `apack.json` under `extensions.blocks`, keyed by its type. Each entry names where its code lives, and codegen
 splits the two facets between the entries: the component goes into the pack's frontend bundle, the backend
 facet into its runtime, so a backend process never loads a Vue component to know a block exists.
 
@@ -466,7 +466,7 @@ services.chat.sendBlockMessage({
 - **`toggleStates`** — an on/off pair. The backend flips `state` between the two itself.
 - **`states`** — a map of named states, where a flow decides which one comes next.
 
-Each `ButtonConfig` (`@abuddy/sdk/blocks`) is `{ id, label, state }` plus one of those two maps; every state entry carries its own `label`, optional `variant` and optional `disabled`. Pass `keepInteractive: true` to leave the buttons live after a response instead of disabling them.
+Each `ButtonConfig` (`@apack/sdk/blocks`) is `{ id, label, state }` plus one of those two maps; every state entry carries its own `label`, optional `variant` and optional `disabled`. Pass `keepInteractive: true` to leave the buttons live after a response instead of disabling them.
 
 ```typescript
 services.chat.sendBlockMessage({
@@ -519,7 +519,7 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### Tiptap plugins
 
-`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@abuddy/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
+`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apack/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
 
 | Field | Description |
 |---|---|
@@ -545,4 +545,4 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features.<id>.references` (`ReferenceTypeConfig`s from `@abuddy/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features.<id>.references` (`ReferenceTypeConfig`s from `@apack/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.

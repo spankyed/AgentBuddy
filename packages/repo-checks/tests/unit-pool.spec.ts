@@ -1,7 +1,7 @@
 // Reading a run's own reporter to find out what it actually covered.
 //
 // The pool asks for N projects with `--project` and then stamps all N. That is only sound if the filter
-// selected them: measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, drops the
+// selected them: measured, `--project @apack/ears --project @apack/no-such-project` runs ears, drops the
 // second silently and exits 0. Only a filter matching *nothing at all* is an error. So a suite whose
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
@@ -10,10 +10,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
-import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
+import { declaredPaths, diffableStamp } from '@apack/host/build/packages-built';
 import { DIAGNOSTIC_RUN_ENV, holdPoolLock, POOLS, livePoolStamps, poolLockFor, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
@@ -265,14 +265,14 @@ const ran = (...projects: string[]): ReportedRun => ({ projects, modules: [] });
  * minimum project count, and no case this cannot answer.
  */
 describe('projectsThatDidNotRun', () => {
-  const asked = ['@abuddy/ears', '@app/main'];
+  const asked = ['@apack/ears', '@app/main'];
 
   it('names a project that was asked for and never reported', () => {
-    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears'))).toEqual(['@app/main']);
+    expect(projectsThatDidNotRun(asked, ran('@apack/ears'))).toEqual(['@app/main']);
   });
 
   it('says nothing when every project reported', () => {
-    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears', '@app/main'))).toEqual([]);
+    expect(projectsThatDidNotRun(asked, ran('@apack/ears', '@app/main'))).toEqual([]);
   });
 
   it('names them all when the filter matched none of several', () => {
@@ -295,7 +295,7 @@ describe('projectsThatDidNotRun', () => {
   // A project the run started and found no file for is still a project that ran, and it is nameable from
   // nowhere else: it appears in no reporter's output, only in the specifications the run began with
   it('counts a project that reported no files, which no output could have shown', () => {
-    expect(projectsThatDidNotRun(['@abuddy/ui'], { projects: ['@abuddy/ui'], modules: [] })).toEqual([]);
+    expect(projectsThatDidNotRun(['@apack/ui'], { projects: ['@apack/ui'], modules: [] })).toEqual([]);
   });
 });
 
@@ -316,7 +316,7 @@ describe('whyItRuns', () => {
   });
 
   /**
-   * Live in this store, not hypothetical: `abuddy-unit-pool/abuddy-ears.json` is a 175-byte stamp from before
+   * Live in this store, not hypothetical: `apack-unit-pool/apack-ears.json` is a 175-byte stamp from before
    * the digests were recorded, and `node_modules/.cache` is never cleared, so it is what a machine has today.
    */
   it('says so when the stamp predates the digests, rather than guessing', () => {
@@ -414,7 +414,7 @@ describe('the pools', () => {
    *
    * The command is taken from the pool's own `run`, which is why it is specific enough to be worth hashing:
    * the integration pool names the config it passes, and the host pool the wrapper that supplies the
-   * `@abuddy/source` condition. Two pools running one suite two ways is the whole subject.
+   * `@apack/source` condition. Two pools running one suite two ways is the whole subject.
    */
   it('record what each pool would run, as its command', () => {
     // Counted over pools, not entries: every suite has an entry per provenance, so counting those called
@@ -477,7 +477,7 @@ describe('a diagnostic run', () => {
 
   /** A unit over one real file, since the fingerprint is of bytes on disk */
   function fixture(): { unit: { inputs: string[]; outputs: never[]; command: string }; stamp: string } {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-record-run-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-record-run-'));
     made.push(dir);
     const input = path.join(dir, 'input.ts');
     fs.writeFileSync(input, 'export const x = 1;\n');
@@ -617,7 +617,7 @@ describe('poolDurationLines', () => {
     poolDurationLines('host', 6, new Date(0), { root, workers });
 
   it('leads with the half it measured, and what it cost around the tests', () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 1000 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 1000 }] });
     expect(lines(root)[0]).toMatch(/fast half, \d+ file\(s\) this run measured, .* of import and setup around them/);
   });
 
@@ -628,7 +628,7 @@ describe('poolDurationLines', () => {
       [dir, Array.from({ length: 20 }, (_, n) => ({ file: `tests/a${n}.spec.ts`, ms: 3000, overheadMs: 500 }))])));
     expect(lines(work)[1]).toMatch(/work\/cores against a .* floor — work-bound/);
     // Floor-bound: one file larger than everything else put together
-    const floor = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
+    const floor = whole({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
     expect(lines(floor)[1]).toMatch(/floor — floor-bound/);
   });
 
@@ -642,7 +642,7 @@ describe('poolDurationLines', () => {
    * reading a chain run, which is why it is a clause and why this case holds it to the line.
    */
   it('says the verdict is the larger figure and not a prediction', () => {
-    const floor = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
+    const floor = whole({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
     expect(lines(floor)[1]).toContain('not a prediction of the wall');
   });
 
@@ -656,7 +656,7 @@ describe('poolDurationLines', () => {
   it('names what neither figure accounts for, once a caller measures the step', () => {
     // Overhead non-zero, or `halfBound` reads the record as predating the field and withholds the verdict —
     // which is the other reason this line can be absent, and is covered above
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 19_000, overheadMs: 1000 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 19_000, overheadMs: 1000 }] });
     const bound = lines(root)[1]!;
     expect(bound, 'the fixture is floor-bound on its one big file').toContain('20.0s floor');
 
@@ -676,7 +676,7 @@ describe('poolDurationLines', () => {
    * the floor look binding — the reading that split a 96-case file for nothing.
    */
   it('withholds the verdict where a record predates overhead', () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 0 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 0 }] });
     expect(lines(root)[1]).toMatch(/which binds is unknown: \d+ file\(s\) predate overhead/);
   });
 
@@ -688,12 +688,12 @@ describe('poolDurationLines', () => {
    * A pool runs only the projects whose inputs moved, so a partial run is the ordinary case.
    */
   it('names an outlier when it measured the whole half', () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 }] });
     expect(lines(root).join('\n')).toMatch(/out of line with its half, so a candidate for splitting/);
   });
 
   it('names none from a half it measured in part, however wide the gap', () => {
-    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 },
+    const root = planted({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 },
       { file: 'tests/small.spec.ts', ms: 100, overheadMs: 100 }] });
     expect(lines(root).join('\n'), 'one suite of eleven is not a half').not.toMatch(/out of line with its half/);
   });
@@ -701,7 +701,7 @@ describe('poolDurationLines', () => {
   // An outlier is judged on what a file cost, so the ranking beside it is ordered the same way — otherwise
   // the line can name a file the list does not show
   it('ranks by cost, so the file it names is the one listed first', () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/setup-heavy.spec.ts', ms: 100, overheadMs: 30_000 },
+    const root = whole({ 'apack-sdk': [{ file: 'tests/setup-heavy.spec.ts', ms: 100, overheadMs: 30_000 },
       { file: 'tests/test-heavy.spec.ts', ms: 5000, overheadMs: 100 }] });
     const printed = lines(root);
     // Indexed from the end, because the ranking is the trailing block and the verdicts above it vary in
@@ -723,9 +723,9 @@ describe('poolDurationLines', () => {
    * unmarked file in the tail need not be among the rows a reader can see.
    */
   it('names a file in the slow tail that carries no marker', () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/loud.spec.ts', ms: 30_000, overheadMs: 100 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/loud.spec.ts', ms: 30_000, overheadMs: 100 }] });
     const printed = lines(root).join('\n');
-    expect(printed).toMatch(/in the slow tail and unmarked:[^\n]*abuddy-sdk\/tests\/loud\.spec\.ts/);
+    expect(printed).toMatch(/in the slow tail and unmarked:[^\n]*apack-sdk\/tests\/loud\.spec\.ts/);
     expect(printed, 'with what makes it a report rather than a failure').toContain('reported, not failed');
   });
 
@@ -736,7 +736,7 @@ describe('poolDurationLines', () => {
    * rather than the `too few files` branch the two-file fixture above lands on.
    */
   it('checks no marker on a partial run, and says which run it was', () => {
-    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 100 },
+    const root = planted({ 'apack-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 100 },
       ...Array.from({ length: 19 }, (_, n) => ({ file: `tests/small${n}.spec.ts`, ms: 100, overheadMs: 10 }))] });
     expect(lines(root).join('\n')).toMatch(/no @slow: marker checked here — this run covered 1 of \d+ project\(s\)/);
   });
@@ -750,18 +750,18 @@ describe('poolDurationLines', () => {
    */
   it('counts the markers whose package has nowhere to move a spec', () => {
     const root = whole({});
-    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+    fs.writeFileSync(path.join(root, 'packages', 'apack-sdk', 'tests', 'a.spec.ts'),
       '// @slow: it builds a program per case\nimport x from \'y\';\n');
     expect(lines(root).join('\n')).toMatch(/1\s+of 1 @slow: marker\(s\) sit in a package with no second half/);
   });
 
   it('says nothing of reach once the marked package has a half to move to', () => {
     const root = whole({});
-    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+    fs.writeFileSync(path.join(root, 'packages', 'apack-sdk', 'tests', 'a.spec.ts'),
       '// @slow: it builds a program per case\nimport x from \'y\';\n');
     // Both configs, which is what `hasSplit` reads — the line is about what the repo makes possible
     for (const config of Object.values(CONFIG_BY_HALF)) {
-      fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', config), '');
+      fs.writeFileSync(path.join(root, 'packages', 'apack-sdk', config), '');
     }
     expect(lines(root).join('\n')).not.toMatch(/sit in a package with no second half/);
   });
@@ -778,7 +778,7 @@ describe('poolDurationLines', () => {
    * Skipped on a box too small to tell the two apart, which says so rather than passing vacuously.
    */
   it.skipIf(os.availableParallelism() < 3)("divides the work by the pool's workers, not the machine's cores", () => {
-    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 80_000, overheadMs: 10_000 }] });
+    const root = whole({ 'apack-sdk': [{ file: 'tests/a.spec.ts', ms: 80_000, overheadMs: 10_000 }] });
     const declared = coresFor(poolStepName('host'));
     expect(declared, 'an uncapped pool is the box less one, so there is something to tell apart')
       .toBeLessThan(os.availableParallelism());

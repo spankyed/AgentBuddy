@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
-import { startApp } from '@abuddy/testing/harness';
+import { startApp } from '@apack/testing/harness';
 
 const cliPaths = () => services.settings.forFeature<{ cliPaths?: Record<string, string> }>(ref('code')).cliPaths ?? {};
 

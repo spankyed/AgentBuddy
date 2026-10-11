@@ -1,7 +1,7 @@
 // Service mocks last one test: the harness restores services after each, and inference fails until a test mocks it.
 // A test app's waits and calls end when it stops, and its systems get events before a client connects, while their sends to plugins wait for one.
 import { describe, expect, it } from 'vitest';
-import { mockInference, mockService, startApp } from '@abuddy/testing/harness';
+import { mockInference, mockService, startApp } from '@apack/testing/harness';
 import { services } from '#generated/services.ts';
 import { sendToSystem } from '#generated/events.ts';
 

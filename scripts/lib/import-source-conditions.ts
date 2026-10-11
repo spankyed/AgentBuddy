@@ -1,5 +1,5 @@
 /**
- * The source-condition rule: which workspace configs must declare `@abuddy/source`, and which must not.
+ * The source-condition rule: which workspace configs must declare `@apack/source`, and which must not.
  *
  * The definition, not the command — `scripts/check-import-specifiers.ts` is the command over it, the same
  * split as `scripts/spec.ts` over `scripts/lib/spec-plan.ts`. It is one rule with private machinery no other
@@ -9,8 +9,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { SOURCE_CONDITION } from '@abuddy/host/build/source-resolution';
-import { readSource } from '../../packages/abuddy-cli/src/build/pack-sources.ts';
+import { SOURCE_CONDITION } from '@apack/host/build/source-resolution';
+import { readSource } from '../../packages/apack-cli/src/build/pack-sources.ts';
 import { CLI_TEMPLATE_PACK, readJsonFile, repoRelative, repoRoot, SKIPPED_DIRS } from './import-populations.ts';
 
 /**
@@ -30,9 +30,9 @@ const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFiles', 'globalSetup', 'benchmark', 'typecheck'];
 
 /**
- * Pack configs that declare the `@abuddy/source` condition on purpose, with the reason each does.
+ * Pack configs that declare the `@apack/source` condition on purpose, with the reason each does.
  *
- * The rule this excepts: a pack resolves the `@abuddy` packages' published `dist`, the one layout a pack
+ * The rule this excepts: a pack resolves the `@apack` packages' published `dist`, the one layout a pack
  * author ever has. A pack config that declares the condition compiles against this checkout's source
  * instead, so it builds something no pack author can reproduce.
  *
@@ -76,11 +76,11 @@ export const RESOLVES_DIST_BY_DESIGN = new Map<string, string>([
   // API Extractor reads the .d.ts rollup of a package's dependencies, so they must resolve to built
   // declarations; with the source condition tsc would analyse the dependency's .ts instead and report
   // diagnostics for source the report never covers.
-  ['packages/abuddy-sdk/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @abuddy/ears resolves to its built declarations'],
-  ['packages/abuddy-ui/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @abuddy/sdk resolves to its built declarations'],
+  ['packages/apack-sdk/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apack/ears resolves to its built declarations'],
+  ['packages/apack-ui/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apack/sdk resolves to its built declarations'],
   // tsdown keeps every dependency and peer external (deps.neverBundle), so it never resolves
-  // @abuddy/sdk at all; vue-tsc emits the declarations under tsconfig.package.json, which declares it.
-  ['packages/abuddy-ui/tsdown.config.ts', 'every @abuddy dependency stays external (deps.neverBundle), so nothing is resolved'],
+  // @apack/sdk at all; vue-tsc emits the declarations under tsconfig.package.json, which declares it.
+  ['packages/apack-ui/tsdown.config.ts', 'every @apack dependency stays external (deps.neverBundle), so nothing is resolved'],
 ]);
 
 function conditionOption(file: string): string {
@@ -114,7 +114,7 @@ interface ConditionScan {
   packages: readonly string[];
   configs: string[];
   code: string[];
-  /** Every directory holding an `abuddy.json` */
+  /** Every directory holding an `apack.json` */
   packs: string[];
   /** Whether a file imports one of `packages`, by absolute path */
   imports: Map<string, boolean>;
@@ -148,7 +148,7 @@ function walkTree(dir: string, scan: ConditionScan, ancestors: Set<string>): voi
       if (CONFIG_FILE.test(entry.name)) scan.configs.push(full);
       if (CODE_FILE.test(entry.name)) scan.code.push(full);
       // A directory with a manifest is a pack, and a pack resolves the packages' published dist
-      if (entry.name === 'abuddy.json') scan.packs.push(dir);
+      if (entry.name === 'apack.json') scan.packs.push(dir);
     }
   }
   ancestors.delete(real);
@@ -450,12 +450,12 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
  * next one through. An exception that no longer applies is reported too, so the list doesn't outlive
  * its reason.
  *
- * **It reads config text, where `abuddy-cli/src/build/pack-resolution.ts` asks the resolver, and that is
+ * **It reads config text, where `apack-cli/src/build/pack-resolution.ts` asks the resolver, and that is
  * settled rather than unfinished.** Three measurements, 2026-09-27:
  *
  * - **Nothing would be gained.** Of 29 tsconfigs, every one that reaches a source package's `src` does it
  *   through `customConditions` — none through a `paths` entry, an `extends` chain or a project reference.
- *   (A probe saying otherwise counted `@abuddy/sdk` resolved from inside `packages/abuddy-sdk`, which lands
+ *   (A probe saying otherwise counted `@apack/sdk` resolved from inside `packages/apack-sdk`, which lands
  *   in its own `src` whatever the conditions say: a package resolved from within itself is not this rule's
  *   subject.)
  * - **Something would be lost.** Resolution only answers against the filesystem as it is. On a checkout
@@ -482,7 +482,7 @@ export function findMissingSourceConditions(
     configs: [], code: [], packs: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
   };
   walkTree(root, scan, new Set());
-  // The scaffold's templates are a pack with no manifest — `abuddy.json` is built in code, from an object with
+  // The scaffold's templates are a pack with no manifest — `apack.json` is built in code, from an object with
   // computed keys — so the walk cannot recognise it, and its `vitest.config.ts` would be read as one of the
   // repo's own and told to declare the source condition. It is the pack every pack author starts from, so the
   // rule that applies is the pack one: declare nothing.
@@ -499,7 +499,7 @@ export function findMissingSourceConditions(
     if (inPack(file)) {
       if (verdict === false) continue;
       if (packExceptions.has(relative)) { packApplied.add(relative); continue; }
-      problems.push(`${relative}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`
+      problems.push(`${relative}: a pack resolves the @apack packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`
         + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there');
       continue;
     }

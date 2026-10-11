@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -59,7 +59,7 @@ import type { CodeState } from '#features/code/fe/state.ts'
 import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import { File, Copy } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
-import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
+import TrackedContextMenuRoot from '@apack/ui/design/TrackedContextMenuRoot'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '#features/code/fe/features/explorer/constants.ts'
 
 const props = defineProps<{

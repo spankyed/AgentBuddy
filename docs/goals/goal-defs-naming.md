@@ -19,7 +19,7 @@ Finished when:
   The facade bundle is `facades` everywhere — the snapshot field, the cache directory, the constant.
 - A dependency built before the rename fails a dependent's build with a message naming the remedy, and is
   never silently read as an untyped dependency.
-- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @abuddy/sdk`, `npm run api:update` (and
+- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apack/sdk`, `npm run api:update` (and
   the committed `etc/`), `npm run build`, `npm run test:external-pack`, `npm run test:packaged-authoring`.
 - A final summary: phase -> done, evidence, the conventional choices made.
 
@@ -36,14 +36,14 @@ rename.
 
 | Sense | Where | Verdict |
 |---|---|---|
-| A pack's **DSL type definitions**, as source | `src/defs/{action,database,prompt}.ts`, `abuddy.json` `extensions.dsl[].entry` | keep |
+| A pack's **DSL type definitions**, as source | `src/defs/{action,database,prompt}.ts`, `apack.json` `extensions.dsl[].entry` | keep |
 | The same, built for the editor | `DEFS_DIR`, `bundleDslDefs`, `dist/defs/monaco/<name>-defs.d.ts` | keep |
-| The **facade bundle** a pack publishes for its dependents | `PackSnapshot.defs`, `PACK_TYPES_DEF`, `.abuddy/deps/<id>/defs/pack-types.d.ts` | **rename** |
+| The **facade bundle** a pack publishes for its dependents | `PackSnapshot.defs`, `PACK_TYPES_DEF`, `.apack/deps/<id>/defs/pack-types.d.ts` | **rename** |
 
 The third is the intruder, and the repo has already named it everywhere else: `facade-gate.ts`,
 `facadeProblems`, `facade:check`/`facade:update`, `bundlePackTypes`, `PACK_TYPES_FORMAT`,
 `etc/pack-types.api.md`, and the error text "this CLI generates facade format N". `defs` is the last place
-it is called something else. One line in `abuddy-sdk/src/build/manifest.ts` holds the whole collision:
+it is called something else. One line in `apack-sdk/src/build/manifest.ts` holds the whole collision:
 
 ```ts
 /** The facade shape this pack's `defs` are in (`PACK_TYPES_FORMAT` when it was built) */
@@ -59,7 +59,7 @@ leftovers were prose, a key and a parameter. Phase 3 below is written against th
 ### Why it is worth doing now
 
 Reviewing the notes for this branch, I spent several exchanges establishing that
-`.abuddy/deps/<id>/defs/pack-types.d.ts` is not `dist/defs/monaco/*.d.ts`. The question was reasonable and
+`.apack/deps/<id>/defs/pack-types.d.ts` is not `dist/defs/monaco/*.d.ts`. The question was reasonable and
 the answer was not obvious from the names. That is the cost the rename removes.
 
 ## Decisions
@@ -70,10 +70,10 @@ the answer was not obvious from the names. That is the cost the rename removes.
 2. **`facades`, not `packTypes`.** It matches `facade-gate.ts`, `facadeProblems` and `facade:check`, and it
    reads as a plural of things the pack publishes, which is what the field holds.
 3. **No compatibility read.** Nothing has shipped: no git tag contains the pack machinery, so no snapshot
-   with the old field exists outside a checkout's build output and `.abuddy/deps` caches, both regenerated
+   with the old field exists outside a checkout's build output and `.apack/deps` caches, both regenerated
    on demand. The code never reads `defs` as a fallback.
-4. **The cache directory follows the field.** `.abuddy/deps/<id>/defs/` -> `facades/`. It is a cache, not a
-   format: `cacheDep` rewrites it and `abuddy clean` removes it.
+4. **The cache directory follows the field.** `.apack/deps/<id>/defs/` -> `facades/`. It is a cache, not a
+   format: `cacheDep` rewrites it and `apack clean` removes it.
 
 5. **A snapshot with no facade is malformed, and is rejected.** The gate today is the facade's exports,
    not `typesFormat` — deliberately, and pinned by two tests ("accepts a capable facade whose recorded
@@ -86,7 +86,7 @@ the answer was not obvious from the names. That is the cost the rename removes.
    been bitten by ("Packs with looser code get no error at all, just silently lost typing").
 
    So the `continue` goes: a dependency whose snapshot carries no facade is rejected by name, with the
-   rebuild remedy. Every snapshot `abuddy build` writes has one — a facade that fails the gate throws
+   rebuild remedy. Every snapshot `apack build` writes has one — a facade that fails the gate throws
    before the snapshot is written — so "no facade" only ever means "built by a CLI older than this one",
    which is exactly the case that must not pass silently. The untyped-dependency concept goes with it,
    and the comment allowing it ("older snapshots have none, so their types stay untyped").
@@ -100,13 +100,13 @@ the answer was not obvious from the names. That is the cost the rename removes.
 
 ### Phase 1 — the snapshot field
 
-- `PackSnapshot.defs` -> `facades` (`abuddy-sdk/src/build/manifest.ts`), and the doc comment that currently
+- `PackSnapshot.defs` -> `facades` (`apack-sdk/src/build/manifest.ts`), and the doc comment that currently
   uses both words.
-- `PACK_TYPES_DEF` -> `PACK_TYPES_FACADE` (`abuddy-sdk/src/build/manifest.ts`, re-exported from
+- `PACK_TYPES_DEF` -> `PACK_TYPES_FACADE` (`apack-sdk/src/build/manifest.ts`, re-exported from
   `build/index.ts`).
-- Writers and readers: `abuddy-cli/src/commands/build.ts` (the local `defs` record and the snapshot write),
+- Writers and readers: `apack-cli/src/commands/build.ts` (the local `defs` record and the snapshot write),
   `fetch-deps.ts` (`cacheDep`, and `defCount` -> `facadeCount` in the printed summary),
-  `abuddy-sdk/src/build/generate-entries.ts` (`requireFacadeExports`, `typedDeps`, `emitDepTypes` if it
+  `apack-sdk/src/build/generate-entries.ts` (`requireFacadeExports`, `typedDeps`, `emitDepTypes` if it
   still exists — see Deferred).
 - Specs asserting `snapshot.defs['pack-types']`: `dep-types-version`, `dependency-graph`, `facade-typing`,
   `generate-entries`.
@@ -128,8 +128,8 @@ the message names the pack and the remedy and does not mention the old field. Th
 
 ### Phase 3 — the cache directory, the docs, and keeping it retired
 
-- `.abuddy/deps/<id>/defs/` -> `facades/` in `cacheDep` and `resolveFromLocal`.
-- Docs: `abuddy-cli/CLAUDE.md`, `abuddy-sdk/CLAUDE.md`, `docs/public-facing/architecture.md`, and any
+- `.apack/deps/<id>/defs/` -> `facades/` in `cacheDep` and `resolveFromLocal`.
+- Docs: `apack-cli/CLAUDE.md`, `apack-sdk/CLAUDE.md`, `docs/public-facing/architecture.md`, and any
   sentence that uses `defs` for the facade.
 - A guard is **not** the tool here. `defs` stays a live word for the DSL sense, so a name list cannot
   separate the senses — the limitation Decision 7 of `goal-naming-conventions.md` records.
@@ -141,8 +141,8 @@ fails when the field is renamed back.
 
 ## Deferred
 
-- **The `emitDepTypes` deletion is a separate task and should land first.** `.abuddy/generated/types.ts` is
-  written by `abuddy generate`, re-exports four names from the cache, and is imported by nothing — the
+- **The `emitDepTypes` deletion is a separate task and should land first.** `.apack/generated/types.ts` is
+  written by `apack generate`, re-exports four names from the cache, and is imported by nothing — the
   scaffolded tsconfig compiles it, so it can only fail, never help. Removing it deletes two of this goal's
   call sites and the only consumer of the cache as program input. Tracked separately.
 - **Renaming the DSL sense** (`dist/defs/monaco/` -> `dist/monaco/`). Not needed once the facade sense is
@@ -153,7 +153,7 @@ fails when the field is renamed back.
 Never, unless the user asks in this session:
 - commit, stage, push or tag;
 - publish anything, or trigger a workflow;
-- open, copy or modify `~/Library/Application Support/abuddy*`, or any real data dir.
+- open, copy or modify `~/Library/Application Support/apack*`, or any real data dir.
 
 Always:
 - mutation-check every new guard or test: break the thing on purpose, watch the right test fail, restore

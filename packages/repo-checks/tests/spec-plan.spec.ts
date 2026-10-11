@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import {
   affectedIntegrationSuites, affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
   OWN_FLAGS, splitArgs, specsUnder, verdictOf,
@@ -10,7 +10,7 @@ import {
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { population } from '@abuddy/sdk/testing';
+import { population } from '@apack/sdk/testing';
 import { checkedSpecs, needsAppForRun, pricedSpecs, specsOfSuites } from '../../../scripts/lib/spec-dry.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
@@ -19,7 +19,7 @@ import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
  * What `npm run spec` decides to run, asserted without running any of it.
  *
  * The routing is the whole value of that command, and it was wrong for a year in a way nothing could catch:
- * a source file ran its own package's specs, so editing `@abuddy/sdk` ran one of the seven suites covering
+ * a source file ran its own package's specs, so editing `@apack/sdk` ran one of the seven suites covering
  * it and reported green. A plan that is data rather than a loop is what makes the decision checkable, which
  * is why `scripts/lib/spec-plan.ts` exists separately from the command over it.
  */
@@ -50,24 +50,24 @@ const changedIn = (...pkgs: string[]): string[] => pkgs.map((pkg) => `packages/$
 
 describe('what a target plans', () => {
   it('runs every spec covering a source file, in one root run over all projects', () => {
-    const runs = plan('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    const runs = plan('packages/apack-sdk/src/types/sdk-entities.ts');
     expect(runs.map((r) => r.label)).toEqual([
       ENSURE_LABEL,
-      'every spec covering packages/abuddy-sdk/src/types/sdk-entities.ts',
+      'every spec covering packages/apack-sdk/src/types/sdk-entities.ts',
     ]);
     const [, related] = runs;
     expect(related!.cwd, 'a root run, so vitest resolves the graph across every project at once').toBe(REPO_ROOT);
-    expect(related!.args).toEqual(['vitest', 'related', '--run', 'packages/abuddy-sdk/src/types/sdk-entities.ts']);
+    expect(related!.args).toEqual(['vitest', 'related', '--run', 'packages/apack-sdk/src/types/sdk-entities.ts']);
   });
 
   it('puts packages:ensure in front of a root run, which npm fires no pretest for', () => {
-    expect(plan('packages/abuddy-sdk/src/types/sdk-entities.ts')[0]!.label).toBe(ENSURE_LABEL);
+    expect(plan('packages/apack-sdk/src/types/sdk-entities.ts')[0]!.label).toBe(ENSURE_LABEL);
     // and not in front of a package run, whose own `test` script has the hook
     expect(labels('packages/repo-checks/tests/slow-tests.spec.ts')).not.toContain(ENSURE_LABEL);
   });
 
   it('says what a root run does not cover, rather than leaving it to be discovered', () => {
-    const [, related] = plan('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    const [, related] = plan('packages/apack-sdk/src/types/sdk-entities.ts');
     expect(related!.notes?.join(' '), 'a pack suite resolves dist, so no import edge runs from this file to its specs')
       .toContain('@app/default-setup');
   });
@@ -85,7 +85,7 @@ describe('what a target plans', () => {
    * Every package, partitioned — not a sample.
    *
    * The first version of this listed nine of the twelve by hand, looked exhaustive, and was missing
-   * `abuddy-host`, which reaches `@app/default-setup` transitively through `@abuddy/testing` (whose bundle
+   * `apack-host`, which reaches `@app/default-setup` transitively through `@apack/testing` (whose bundle
    * inlines it). Three doc comments said "four dependencies, so eight cannot reach it" on the strength of
    * that sample. Reading the list from disk is what makes a new package, or a new dependency edge, fail here
    * rather than quietly widen what `--full` runs.
@@ -93,7 +93,7 @@ describe('what a target plans', () => {
   it('partitions every package into those that reach a pack suite and those that do not', () => {
     const reaches = PACKAGE_DIRS.filter((dir) => affectedPackSuites([dir]).length > 0);
     expect(reaches, 'a dependency edge changed: check the partition is still what you meant, and that no doc '
-      + 'comment states a count').toEqual(['abuddy-ears', 'abuddy-host', 'abuddy-sdk', 'abuddy-testing', 'abuddy-ui']);
+      + 'comment states a count').toEqual(['apack-ears', 'apack-host', 'apack-sdk', 'apack-testing', 'apack-ui']);
     // And the rest genuinely say nothing, rather than being absent from a list
     for (const dir of PACKAGE_DIRS.filter((d) => !reaches.includes(d))) {
       expect(affectedPackSuites([dir]), dir).toEqual([]);
@@ -135,12 +135,12 @@ describe('what --full adds', () => {
   const full = (target: string) => planTargets([target], [], REPO_ROOT, { full: true }).runs;
 
   it('runs the pack suites a rebuilt dist would reach, after the root run', () => {
-    const runs = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
-    // Both seams, because every integration half declares `@abuddy/sdk` too: a rebuilt dist for the pack
+    const runs = full('packages/apack-sdk/src/types/sdk-entities.ts');
+    // Both seams, because every integration half declares `@apack/sdk` too: a rebuilt dist for the pack
     // suite, a second config for the integration halves, and the root run reaching neither
     expect(runs.map((r) => r.label)).toEqual([
       ENSURE_LABEL,
-      'every spec covering packages/abuddy-sdk/src/types/sdk-entities.ts',
+      'every spec covering packages/apack-sdk/src/types/sdk-entities.ts',
       '@app/default-setup, against a rebuilt dist',
       'the integration halves, as the chain pools them',
     ]);
@@ -151,7 +151,7 @@ describe('what --full adds', () => {
   });
 
   it('drops the notes it would otherwise print, the runs below being the answer', () => {
-    const [, related] = full('packages/abuddy-sdk/src/types/sdk-entities.ts');
+    const [, related] = full('packages/apack-sdk/src/types/sdk-entities.ts');
     expect(related!.notes, 'telling you to run spec:full while running spec:full').toEqual([]);
   });
 
@@ -226,14 +226,14 @@ describe('what --full adds', () => {
   });
 
   it('passes flags to vitest untouched, wherever the run lands', () => {
-    const [, related] = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], ['-t', 'a case'], REPO_ROOT).runs;
+    const [, related] = planTargets(['packages/apack-sdk/src/types/sdk-entities.ts'], ['-t', 'a case'], REPO_ROOT).runs;
     expect(related!.args.slice(-2)).toEqual(['-t', 'a case']);
   });
 });
 
 describe('what the change set plans', () => {
   it('asks every host project once, and the pack suite only when it changed', () => {
-    expect(planChanged(changedIn('abuddy-ears'), [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('apack-ears'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
     expect(planChanged(changedIn('default-setup'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect', 'packages/default-setup: (changed)']);
@@ -246,14 +246,14 @@ describe('what the change set plans', () => {
   });
 
   it('does not ask a host project separately, because the root run already covers it', () => {
-    expect(planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT).runs.map((r) => r.label))
+    expect(planChanged(changedIn('apack-sdk'), [], REPO_ROOT).runs.map((r) => r.label))
       .toEqual([ENSURE_LABEL, 'the specs your changes affect']);
   });
 });
 
 describe('packageOf', () => {
   it('names the package a repo path is in, and null for one in none', () => {
-    expect(packageOf('packages/abuddy-sdk/src/x.ts')).toBe('abuddy-sdk');
+    expect(packageOf('packages/apack-sdk/src/x.ts')).toBe('apack-sdk');
     expect(packageOf('scripts/lib/x.ts')).toBeNull();
     expect(packageOf('tests/e2e/smoke/smoke.spec.ts')).toBeNull();
   });
@@ -268,10 +268,10 @@ describe('how the arguments split', () => {
   });
 
   it('consumes its own flags in first position, and nowhere else', () => {
-    expect(splitArgs(['--full', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: true, bail: true, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
-    expect(splitArgs(['--no-bail', 'packages/abuddy-sdk/src/x.ts']))
-      .toEqual({ full: false, bail: false, dry: false, targets: ['packages/abuddy-sdk/src/x.ts'], flags: [] });
+    expect(splitArgs(['--full', 'packages/apack-sdk/src/x.ts']))
+      .toEqual({ full: true, bail: true, dry: false, targets: ['packages/apack-sdk/src/x.ts'], flags: [] });
+    expect(splitArgs(['--no-bail', 'packages/apack-sdk/src/x.ts']))
+      .toEqual({ full: false, bail: false, dry: false, targets: ['packages/apack-sdk/src/x.ts'], flags: [] });
     // Not a target's suffix, and not a flag's value: both stay vitest's to accept or reject, because a
     // command that filtered it out wherever it appeared would eat the second one silently
     expect(splitArgs(['a-spec', '--full'])).toEqual({ full: false, bail: true, dry: false, targets: ['a-spec'], flags: ['--full'] });
@@ -312,11 +312,11 @@ describe('a change set a spec could not cover', () => {
   });
 
   /**
-   * A pack's build edges are covered without being *coverable*: `abuddy.json` is a `.json` and a content source
+   * A pack's build edges are covered without being *coverable*: `apack.json` is a `.json` and a content source
    * may be a `.md`. Naming one as a target says what covers it, so a change set holding one must not answer
    * "nothing a spec could cover" — the two routes would contradict each other about the same file.
    */
-  it.each(['packages/default-setup/abuddy.json', 'packages/default-setup/src/content/notes/welcome.md'])(
+  it.each(['packages/default-setup/apack.json', 'packages/default-setup/src/content/notes/welcome.md'])(
     'runs the pack suite for %s, which no extension test would call coverable', (changed) => {
       expect(planChanged([changed], [], REPO_ROOT).runs.map((r) => r.label))
         .toEqual([ENSURE_LABEL, 'packages/default-setup: (changed)']);
@@ -325,14 +325,14 @@ describe('a change set a spec could not cover', () => {
   // And no root run for them: they are in no root project's graph, so asking is the empty vitest this route
   // stopped paying for
   it('asks the root only for what is in its graph', () => {
-    const labels = planChanged(['packages/default-setup/abuddy.json'], [], REPO_ROOT).runs.map((r) => r.label);
+    const labels = planChanged(['packages/default-setup/apack.json'], [], REPO_ROOT).runs.map((r) => r.label);
     expect(labels).not.toContain('the specs your changes affect');
-    expect(planChanged(['packages/default-setup/abuddy.json', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT)
+    expect(planChanged(['packages/default-setup/apack.json', 'packages/apack-sdk/src/x.ts'], [], REPO_ROOT)
       .runs.map((r) => r.label), 'and asks it when one of them is').toContain('the specs your changes affect');
   });
 
   it('still plans everything when one coverable file is among them', () => {
-    const runs = planChanged(['docs/x.md', 'packages/abuddy-sdk/src/x.ts'], [], REPO_ROOT).runs;
+    const runs = planChanged(['docs/x.md', 'packages/apack-sdk/src/x.ts'], [], REPO_ROOT).runs;
     expect(runs.map((r) => r.label)).toContain('the specs your changes affect');
   });
 });
@@ -389,7 +389,7 @@ describe('no plan runs a suite twice', () => {
 
   // The union is still complete: deduplicating must not drop the suite, only the second copy of it
   it('still runs the pack suite when a dependency alone changed', () => {
-    const runs = planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT, { full: true }).runs;
+    const runs = planChanged(changedIn('apack-sdk'), [], REPO_ROOT, { full: true }).runs;
     expect(runs.flatMap((r) => r.covers ?? [])).toContain('@app/default-setup');
   });
 });
@@ -425,7 +425,7 @@ describe('which runs claim to have covered something', () => {
   const claims = (target: string): (string | undefined)[] => plan(target).map((r) => r.claimsCoverageOf);
 
   it('a source file is claimed, by the root route and by a pack\'s own', () => {
-    expect(claims('packages/abuddy-sdk/src/fe/settings.ts')).toContain('packages/abuddy-sdk/src/fe/settings.ts');
+    expect(claims('packages/apack-sdk/src/fe/settings.ts')).toContain('packages/apack-sdk/src/fe/settings.ts');
     expect(claims('packages/default-setup/src/extensions/steps/fire/runtime.ts'))
       .toContain('packages/default-setup/src/extensions/steps/fire/runtime.ts');
   });
@@ -460,8 +460,8 @@ describe('which runs claim to have covered something', () => {
     const claimed = (paths: string[]) => planChanged(paths, [], REPO_ROOT).runs
       .filter((r) => r.claimsCoverageOf !== undefined).length;
 
-    expect(claimed(['packages/abuddy-sdk/src/fe/settings.ts'])).toBe(1);
-    expect(claimed(['docs/goals/README.md', 'CLAUDE.md', 'packages/abuddy-sdk/README.md'])).toBe(0);
+    expect(claimed(['packages/apack-sdk/src/fe/settings.ts'])).toBe(1);
+    expect(claimed(['docs/goals/README.md', 'CLAUDE.md', 'packages/apack-sdk/README.md'])).toBe(0);
   });
 });
 
@@ -514,7 +514,7 @@ describe('a target with no runs at all', () => {
 
   /** A source directory whose specs live under `tests/` is the same shape, and the commoner one. */
   it('plans nothing for a source directory whose specs are elsewhere', () => {
-    expect(planTargets(['packages/abuddy-ears/src/lmdb'], [], REPO_ROOT).runs).toEqual([]);
+    expect(planTargets(['packages/apack-ears/src/lmdb'], [], REPO_ROOT).runs).toEqual([]);
   });
 });
 
@@ -588,7 +588,7 @@ describe("the package's CLAUDE.md names what is here", () => {
 /**
  * The two edges no module graph can see, and the packs they are derived for.
  *
- * A pack's specs import what `abuddy build` produced, never the source that produced it, so the edge runs
+ * A pack's specs import what `apack build` produced, never the source that produced it, so the edge runs
  * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
  * covers. Those are opposite facts and until these routes existed they got the same sentence: a content source
  * was told *"No spec covers …"*, which `tests/content/` refutes.
@@ -596,7 +596,7 @@ describe("the package's CLAUDE.md names what is here", () => {
 describe('a pack file whose specs sit behind a build', () => {
   const PACK = 'default-setup';
   const CONTENT = `packages/${PACK}/src/content/actions/claude-code/answer-question.ts`;
-  const MANIFEST = `packages/${PACK}/abuddy.json`;
+  const MANIFEST = `packages/${PACK}/apack.json`;
   /**
    * The pack's build inputs, derived from what `packBuildEdge` routes at the pack's own top level rather
    * than listed here — a copy of that list would agree with it by being written twice, which is what let
@@ -613,7 +613,7 @@ describe('a pack file whose specs sit behind a build', () => {
    */
   it('routes every pack under packages/, so a new one cannot arrive unrouted', () => {
     const packs = fs.readdirSync(path.join(REPO_ROOT, 'packages'), { withFileTypes: true })
-      .filter((e) => e.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', e.name, 'abuddy.json')))
+      .filter((e) => e.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'packages', e.name, 'apack.json')))
       .map((e) => e.name);
     expect(packs.length, 'no pack was derived from the tree, so the cases below prove nothing').toBeGreaterThan(0);
 
@@ -621,7 +621,7 @@ describe('a pack file whose specs sit behind a build', () => {
     expect(packs.filter((p) => !suites.has(p)),
       'these packs have no unit suite, so nothing can be routed to them — declare one in unit-suites.ts').toEqual([]);
     for (const pack of packs) {
-      expect(packBuildEdge(`packages/${pack}/abuddy.json`, REPO_ROOT), `${pack}'s manifest`).toBeDefined();
+      expect(packBuildEdge(`packages/${pack}/apack.json`, REPO_ROOT), `${pack}'s manifest`).toBeDefined();
     }
   });
 
@@ -645,7 +645,7 @@ describe('a pack file whose specs sit behind a build', () => {
   it('leaves every other file in the pack alone', () => {
     expect(packBuildEdge(`packages/${PACK}/src/features/brain/be/system.ts`, REPO_ROOT)).toBeUndefined();
     expect(packBuildEdge(`packages/${PACK}/tests/content/content-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
-    expect(packBuildEdge('packages/abuddy-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
+    expect(packBuildEdge('packages/apack-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
   });
 
   // The apply half is offered only where the pack has both halves, so a pack with sources and no goldens is
@@ -748,15 +748,15 @@ describe('pricedSpecs', () => {
   // nine of these directories reached $TMPDIR before anything removed one
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
   writeDurations(root, [
-    { dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 },
-    { dir: 'abuddy-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300, overheadMs: 0 },
+    { dir: 'apack-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 },
+    { dir: 'apack-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300, overheadMs: 0 },
   ], '2026-10-05T21:07:00.000Z');
   writeDurations(root, [
-    { dir: 'abuddy-cli', file: 'tests/c.integration.spec.ts', half: 'integration', ms: 40_000, overheadMs: 0 },
+    { dir: 'apack-cli', file: 'tests/c.integration.spec.ts', half: 'integration', ms: 40_000, overheadMs: 0 },
   ], '2026-10-04T09:00:00.000Z');
 
   it('sums what this machine measured, and reports when it measured it', () => {
-    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-host/tests/b.spec.ts'], root);
+    const priced = pricedSpecs(['packages/apack-host/tests/a.spec.ts', 'packages/apack-host/tests/b.spec.ts'], root);
     expect(priced).toEqual({ ms: 1500, priced: 2, unpriced: [], measuredAt: '2026-10-05T21:07:00.000Z',
       // One reading apiece, so no trend: `trendOf` has nothing to compare against until a second run
       trend: new Map() });
@@ -765,13 +765,13 @@ describe('pricedSpecs', () => {
   // The half is in the key, so a spec is priced from the run that measured *it* rather than from whichever
   // of its suite's two records was written last
   it('prices a spec from its own half\'s record', () => {
-    const priced = pricedSpecs(['packages/abuddy-cli/tests/c.integration.spec.ts'], root);
+    const priced = pricedSpecs(['packages/apack-cli/tests/c.integration.spec.ts'], root);
     expect(priced.ms).toBe(40_000);
     expect(priced.measuredAt, 'the record its own half came from').toBe('2026-10-04T09:00:00.000Z');
   });
 
   it('reports the oldest run its prices came from, since that is how stale the answer is', () => {
-    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-cli/tests/c.integration.spec.ts'], root);
+    const priced = pricedSpecs(['packages/apack-host/tests/a.spec.ts', 'packages/apack-cli/tests/c.integration.spec.ts'], root);
     expect(priced.measuredAt).toBe('2026-10-04T09:00:00.000Z');
   });
 
@@ -779,17 +779,17 @@ describe('pricedSpecs', () => {
   // fresh clone has measured nothing, and a sum over none of twelve specs that does not say so is worse
   // than no sum at all
   it('names a spec no run here has measured instead of pricing it at zero', () => {
-    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-host/tests/never-ran.spec.ts'], root);
+    const priced = pricedSpecs(['packages/apack-host/tests/a.spec.ts', 'packages/apack-host/tests/never-ran.spec.ts'], root);
     expect(priced.ms).toBe(1200);
     expect(priced.priced).toBe(1);
-    expect(priced.unpriced).toEqual(['packages/abuddy-host/tests/never-ran.spec.ts']);
+    expect(priced.unpriced).toEqual(['packages/apack-host/tests/never-ran.spec.ts']);
   });
 
   it('prices nothing at all where no run has written a cache', () => {
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-empty-'));
     try {
-      const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], empty);
-      expect(priced).toEqual({ ms: 0, priced: 0, unpriced: ['packages/abuddy-host/tests/a.spec.ts'],
+      const priced = pricedSpecs(['packages/apack-host/tests/a.spec.ts'], empty);
+      expect(priced).toEqual({ ms: 0, priced: 0, unpriced: ['packages/apack-host/tests/a.spec.ts'],
         measuredAt: undefined, trend: new Map() });
     } finally {
       fs.rmSync(empty, { recursive: true, force: true });
@@ -807,11 +807,11 @@ describe('pricedSpecs', () => {
   it('reports how a named spec has moved across the window', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-trend-'));
     try {
-      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 }], '2026-10-01T00:00:00.000Z');
-      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 2900, overheadMs: 0 }], '2026-10-02T00:00:00.000Z');
-      const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], root);
+      writeDurations(root, [{ dir: 'apack-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 }], '2026-10-01T00:00:00.000Z');
+      writeDurations(root, [{ dir: 'apack-host', file: 'tests/a.spec.ts', half: 'fast', ms: 2900, overheadMs: 0 }], '2026-10-02T00:00:00.000Z');
+      const priced = pricedSpecs(['packages/apack-host/tests/a.spec.ts'], root);
       expect(priced.ms, 'the price is still the newest reading').toBe(2900);
-      expect(priced.trend.get('packages/abuddy-host/tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
+      expect(priced.trend.get('packages/apack-host/tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -828,16 +828,16 @@ describe('pricedSpecs', () => {
  *
  * A pack suite is out of reach because it resolves `dist`; an integration half is out of reach because it
  * is a second vitest config whose specs the root projects `exclude`. The consequence is identical and the
- * silence was worse: `npm run spec -- packages/abuddy-cli/src/build/pack-rules.ts` printed *"every spec
+ * silence was worse: `npm run spec -- packages/apack-cli/src/build/pack-rules.ts` printed *"every spec
  * covering pack-rules.ts"*, ran nine specs and exited 0, with `add-extensions.integration.spec.ts` — which
- * imports that module directly — among the ones it skipped. 22 modules in `@abuddy/cli` are imported
+ * imports that module directly — among the ones it skipped. 22 modules in `@apack/cli` are imported
  * directly by an integration spec.
  *
  * `Half` reached `packageRun` when a named integration spec was fixed, and stopped there. The two routes
  * that make a *claim* never learned it.
  */
 describe('a source file whose specs sit behind a second config', () => {
-  const COVERED = 'packages/abuddy-cli/src/build/pack-rules.ts';
+  const COVERED = 'packages/apack-cli/src/build/pack-rules.ts';
 
   it('partitions every package into those that reach an integration half and those that do not', () => {
     const reaches = PACKAGE_DIRS.filter((dir) => affectedIntegrationSuites([dir]).length > 0);
@@ -855,8 +855,8 @@ describe('a source file whose specs sit behind a second config', () => {
   it('says so on a target whose integration half covers it', () => {
     const [, related] = planTargets([COVERED], [], REPO_ROOT).runs;
     expect(related!.notes?.join(' '), 'the run claims to cover it and reaches none of those specs')
-      .toContain('@abuddy/cli');
-    // Not "through a build": these specs resolve @abuddy/source like any host project, and spec:full
+      .toContain('@apack/cli');
+    // Not "through a build": these specs resolve @apack/source like any host project, and spec:full
     // reaches them without building anything
     expect(related!.notes?.join(' ')).toContain('second config');
   });
@@ -908,7 +908,7 @@ describe('a source file whose specs sit behind a second config', () => {
    * claiming coverage it did not have, and a change-set route reporting *"No spec covers 1 changed file a
    * spec could cover"* for an integration spec — which covers itself.
    */
-  it.each([COVERED, 'packages/abuddy-cli/tests/commands/release.integration.spec.ts'])(
+  it.each([COVERED, 'packages/apack-cli/tests/commands/release.integration.spec.ts'])(
     'never omits the half in silence for %s, as a target or as a change', (file) => {
       // Either is honest, and the two routes differ honestly: naming an integration spec runs it through
       // its own config, where the same file arriving in a change set can only be pointed at. What neither
@@ -982,7 +982,7 @@ describe('what the plan would list', () => {
    * the pack suite launches one.
    */
   it('labels a run from the chain step it is, and nothing else', () => {
-    const [ensure, walk] = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT).runs;
+    const [ensure, walk] = planTargets(['packages/apack-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT).runs;
     expect(needsAppForRun(ensure!, REPO_ROOT), 'packages:ensure needs no app').toBe(false);
     expect(needsAppForRun(walk!, REPO_ROOT), 'a root vitest is no chain step').toBeUndefined();
 
@@ -994,12 +994,12 @@ describe('what the plan would list', () => {
   // Every run a plan can produce is either collected or explained: one that is neither would print an empty
   // prediction and read as costing nothing
   it('declares what it would collect for every run that answers a graph', () => {
-    const planned = planTargets(['packages/abuddy-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT, { full: true }).runs;
+    const planned = planTargets(['packages/apack-sdk/src/types/sdk-entities.ts'], [], REPO_ROOT, { full: true }).runs;
     for (const run of planned) {
       const answersAGraph = run.args.includes('related') || run.args.includes('--changed');
       expect(run.collects !== undefined, `${run.label}`).toBe(answersAGraph);
     }
-    expect(planChanged(changedIn('abuddy-sdk'), [], REPO_ROOT).runs.find((r) => r.collects?.changed)).toBeDefined();
+    expect(planChanged(changedIn('apack-sdk'), [], REPO_ROOT).runs.find((r) => r.collects?.changed)).toBeDefined();
   });
 });
 

@@ -7,7 +7,7 @@ import type { Category } from '#generated/types.ts';
 
 
 
-import type { PromptEntity } from '@abuddy/sdk';
+import type { PromptEntity } from '@apack/sdk';
 
 /**
  * Data sent on prompts system connection

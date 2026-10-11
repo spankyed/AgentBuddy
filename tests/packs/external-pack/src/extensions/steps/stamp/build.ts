@@ -1,4 +1,4 @@
-import type { StepBuildFacet, StepNodeFacet, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepNodeFacet, StepCompileResult, StepValidationError } from '@apack/sdk/steps';
 import { EARS } from '#generated/ears.ts';
 import type { DSLStampNode } from './types.ts';
 

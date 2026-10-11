@@ -4,7 +4,7 @@
  * Penalizes: gaps between matches, distance from start
  */
 
-import { escapeHtml } from '@abuddy/sdk/utils/pure'
+import { escapeHtml } from '@apack/sdk/utils/pure'
 
 export interface FuzzyMatch {
   score: number

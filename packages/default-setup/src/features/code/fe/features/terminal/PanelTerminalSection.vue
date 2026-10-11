@@ -190,10 +190,10 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import type { CodeSettings } from '#generated/types.ts'
-import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
+import { updateSettings, useFeatureSettings } from '@apack/sdk/fe'
 import { ref as featureRef } from '#generated/ref.ts'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -211,14 +211,14 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
-import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
+import TrackedContextMenuRoot from '@apack/ui/design/TrackedContextMenuRoot'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '#features/code/fe/features/explorer/constants.ts'
 import type { CodeState } from '#features/code/fe/state.ts'
 import type { TerminalInfo } from './state.ts'
 import { terminalPool } from '#features/code/fe/utils/terminal-pool.ts'
 import { useTerminalActions } from '#features/code/fe/composables/useTerminalActions.ts'
 import RunScriptPopover from './RunScriptPopover.vue'
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
+import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
 import { useSectionVisibilityMenu } from '#features/code/fe/composables/useSectionVisibilityMenu.ts'
 import type { TerminalScript } from '#generated/types.ts'
 import type { Terminal } from '@xterm/xterm'

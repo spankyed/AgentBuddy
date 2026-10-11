@@ -15,14 +15,14 @@
  * deleted half, so both directions come out right. `.gitignore` is honoured, so a scratch file in
  * `tests/e2e/scratch` stays invisible; a scratch file anywhere else is one the checks should be talking about.
  *
- * `identity-guard.spec.ts` had its own copy of this while it lived in `@abuddy/sdk`, since
+ * `identity-guard.spec.ts` had its own copy of this while it lived in `@apack/sdk`, since
  * `repo-check-boundary` refuses the cross-package import that would have shared it. It is here now, and
  * uses this.
  */
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 
 export function repoFiles(...patterns: string[]): string[] {
   return execFileSync('git', ['ls-files', '-co', '--exclude-standard', ...patterns],

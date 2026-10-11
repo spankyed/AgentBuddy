@@ -2,9 +2,9 @@ import { tx, qx } from '#generated/ears.ts';
 import { Index } from 'usearch'
 
 import { EARS } from '#generated/ears.ts'
-import { randomId } from '@abuddy/sdk/utils'
+import { randomId } from '@apack/sdk/utils'
 import { getIndexFilePath } from './paths.ts'
-import { createLogger } from '@abuddy/sdk/logger'
+import { createLogger } from '@apack/sdk/logger'
 import type {
   SearchIndex,
   SearchIndexConfig,
@@ -18,7 +18,7 @@ import type {
 import type { DocumentDTO } from '../types.ts'
 import * as searchService from './service.ts'
 import { libraryQueries } from '../repository/index.ts'
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('search-index')
 

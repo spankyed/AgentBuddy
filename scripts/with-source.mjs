@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Runs a command whose Node processes resolve workspace @abuddy/* packages to their source (the
-// @abuddy/source condition in their package.json exports). The condition is appended to any
+// Runs a command whose Node processes resolve workspace @apack/* packages to their source (the
+// @apack/source condition in their package.json exports). The condition is appended to any
 // NODE_OPTIONS the caller set, so their flags survive.
 //
 //   node scripts/with-source.mjs playwright test smoke
@@ -9,7 +9,7 @@ import { realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const SOURCE_CONDITION = '--conditions=@abuddy/source';
+export const SOURCE_CONDITION = '--conditions=@apack/source';
 
 /**
  * `PATH` with this repo's `node_modules/.bin` in front, which is the one thing npm supplies and a bare

@@ -12,8 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import CopyButton from '@abuddy/ui/design/CopyButton'
+import type { ArtifactItem } from '@apack/sdk/artifacts';
+import CopyButton from '@apack/ui/design/CopyButton'
 
 defineProps<{
   artifact: ArtifactItem;

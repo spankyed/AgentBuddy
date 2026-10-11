@@ -1,20 +1,20 @@
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
-import { safeEvents } from '@abuddy/sdk/fe'
+import breadcrumb, { breadcrumbWithParams } from '@apack/sdk/fe'
+import { safeEvents } from '@apack/sdk/fe'
 import {
   targetIs,
   TRAIL_CLICK,
   type TrailClickEvent,
-} from '@abuddy/sdk/fe'
+} from '@apack/sdk/fe'
 import type { PromptsSettings } from '#generated/types.ts'
 import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
 import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
-import type { TemplateInput } from '@abuddy/sdk'
+import type { TemplateInput } from '@apack/sdk'
 import { sendToSystem } from '#generated/events.ts'
-import { answersCall, newCall } from '@abuddy/sdk/events'
+import { answersCall, newCall } from '@apack/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@abuddy/sdk/fe'
-import type { PromptEntity } from '@abuddy/sdk'
+import { contextMenuFn } from '@apack/sdk/fe'
+import type { PromptEntity } from '@apack/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

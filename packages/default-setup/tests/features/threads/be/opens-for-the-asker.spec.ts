@@ -8,8 +8,8 @@
 // `THREAD_TAB_REQUESTED` are the asker's; `REFRESH_RECENT_THREADS` is news — the list changed for everyone,
 // because the thread was marked visited. Put either answer back on a broadcast and a case here fails.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { testRootEvents } from '@abuddy/sdk/testing'
-import { startApp } from '@abuddy/testing/harness'
+import { testRootEvents } from '@apack/sdk/testing'
+import { startApp } from '@apack/testing/harness'
 import { repository } from '#generated/repository.ts'
 
 const THREADS = 'default-setup/threads'

@@ -19,11 +19,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { ImportMode, ApplyResult, ContentSelection } from '@abuddy/sdk/utils';
-import { untypedQx } from '@abuddy/ears';
-import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
+import type { ImportMode, ApplyResult, ContentSelection } from '@apack/sdk/utils';
+import { untypedQx } from '@apack/ears';
+import { dropAttribute, entityIds } from '@apack/sdk/testing';
 import { compileContent, resetDatabase, apply, snapshot, type Snapshot } from './harness.ts';
-import type { EARS } from '@abuddy/ears';
+import type { EARS } from '@apack/ears';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const UPDATE = process.env.UPDATE_CONTENT_GOLDEN === '1';
@@ -68,7 +68,7 @@ function forGolden(step: Step, withNotes: boolean) {
         //
         // What the hash used to cover by accident is covered on purpose now: compiled-bodies.spec.ts asserts every
         // record has a body that parses and a hash of the compiler's shape, and the user-owned rule a missing hash
-        // triggers is the applier's, tested once in @abuddy/sdk's applier.spec.ts.
+        // triggers is the applier's, tested once in @apack/sdk's applier.spec.ts.
         if (alias.startsWith('Action:') || alias.startsWith('Prompt:')) {
           const { actionFn, templateFn, contentHash, ...stable } = row;
           void actionFn; void templateFn; void contentHash;

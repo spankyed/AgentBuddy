@@ -1,4 +1,4 @@
-> **Absorbed by [`goal-package-boundaries.md`](goal-package-boundaries.md)** (its Decision 9 and Phase 6). It wasn't implemented on its own; that goal implemented it. Two of its decisions were superseded there: installation goes through `HostRuntime` (`bindHost` installs the engine's query face), not a host module registry (Decision 3 here), and the engine lives in a new package, `@abuddy/ears`, not in the SDK (Decision 6 here). The text below is the plan as written, before that work; the names and paths it cites are the code of that time. For the engine as it is, see `packages/abuddy-ears/CLAUDE.md`.
+> **Absorbed by [`goal-package-boundaries.md`](goal-package-boundaries.md)** (its Decision 9 and Phase 6). It wasn't implemented on its own; that goal implemented it. Two of its decisions were superseded there: installation goes through `HostRuntime` (`bindHost` installs the engine's query face), not a host module registry (Decision 3 here), and the engine lives in a new package, `@apack/ears`, not in the SDK (Decision 6 here). The text below is the plan as written, before that work; the names and paths it cites are the code of that time. For the engine as it is, see `packages/apack-ears/CLAUDE.md`.
 
 ```
 # Goal: EARS as an explicit engine instance
@@ -18,7 +18,7 @@ Finished when:
   `api:check` (sdk, ui), `packages:build` + `packages:check`, and the api, sdk,
   host, cli, default-setup and renderer unit suites pass.
 - `npm run test:external-pack`, the smoke E2E, `npm run test:packaged-authoring`
-  and the example pack's `abuddy test --app-root <repo>` (8 tests) pass.
+  and the example pack's `apack test --app-root <repo>` (8 tests) pass.
 - A final summary: phase → done, evidence, benchmark numbers, conventional choices.
 
 Never:
@@ -27,7 +27,7 @@ Never:
   commit's files.
 - npm publish, create GitHub releases, or trigger workflows.
 - pkill/killall Electron or node; launch the app outside the test env without an
-  isolated ABUDDY_USER_DATA_DIR.
+  isolated APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit
   version/release metadata.
 - loosen a failing assertion or the benchmark tolerance instead of investigating.
@@ -35,13 +35,13 @@ Never:
 
 ## Background
 
-EARS is the in-memory entity/attribute/relation store behind `qx`, `tx` and `repository`. It lives in `packages/abuddy-sdk/src/ears/` (about 1,800 lines) as a **module-level singleton**:
+EARS is the in-memory entity/attribute/relation store behind `qx`, `tx` and `repository`. It lives in `packages/apack-sdk/src/ears/` (about 1,800 lines) as a **module-level singleton**:
 
 - **State is ambient.** `attribute-storage.ts` (attribute store, entity index), `relation-index.ts`, `edge-store.ts`, `query.ts` (prefix cache), `graph.ts`, `blueprint.ts` and `repository.ts` (repository registry) hold module-scope Maps. Whoever shares the module instance shares the data.
-- **Host access depends on module identity.** The api hydrates from LMDB, injects persistence and resets memory through write functions (`initEARSRuntime`, `setPersistence`, `putAttr`, `bulkLoadAttr`, `clearMemory`, `edgeStore`, `relationIndex`). They must act on the same Maps packs query, so `@abuddy/host` can't hold its own copy.
-  - That's why `@abuddy/sdk/ears/internals` exists, exported only under the `@abuddy/source` condition and re-exported by `@abuddy/host/ears`.
-  - It's the one exception to "host-only code lives in `@abuddy/host`". It needs special cases: an attw `--exclude-entrypoints`, a `tsconfig.package.json` exclusion, a bridge drift-spec policy entry and an unreachability test.
-  - It also locks `@abuddy/host` to SDK source.
+- **Host access depends on module identity.** The api hydrates from LMDB, injects persistence and resets memory through write functions (`initEARSRuntime`, `setPersistence`, `putAttr`, `bulkLoadAttr`, `clearMemory`, `edgeStore`, `relationIndex`). They must act on the same Maps packs query, so `@apack/host` can't hold its own copy.
+  - That's why `@apack/sdk/ears/internals` exists, exported only under the `@apack/source` condition and re-exported by `@apack/host/ears`.
+  - It's the one exception to "host-only code lives in `@apack/host`". It needs special cases: an attw `--exclude-entrypoints`, a `tsconfig.package.json` exclusion, a bridge drift-spec policy entry and an unreachability test.
+  - It also locks `@apack/host` to SDK source.
 - **Initialization depends on import order.**
   - `packages/api/src/core/ears/attribute-storage.ts` opens the LMDB environments and calls `setPersistence` when the module loads.
   - `packages/api/src/setup/sdk-host-init.ts` relies on that: "persistence already injected by attribute-storage module load".
@@ -53,8 +53,8 @@ EARS is the in-memory entity/attribute/relation store behind `qx`, `tx` and `rep
 - **Other engine users.** The CLI runs the engine in memory when it compiles and decompiles flows (`build/compilers/flow-to-dsl.ts` uses `qx` and `edgeStore`). At runtime, pack code reaches the api's bundled instance through the SDK bridge (`packages/api/src/packs/pack-loader.ts`).
 
 Alternatives considered and rejected:
-- **Move engine state into `@abuddy/host`, with the SDK delegating through the host module registry.** The SDK would have no standalone engine, breaking the CLI flow compiler, SDK tests and pack unit tests.
-- **Publish the write API** (a separate `@abuddy/ears` package, or `ears/internals` marked `@internal`). Packs could call lifecycle operations that act on the app's live module state.
+- **Move engine state into `@apack/host`, with the SDK delegating through the host module registry.** The SDK would have no standalone engine, breaking the CLI flow compiler, SDK tests and pack unit tests.
+- **Publish the write API** (a separate `@apack/ears` package, or `ears/internals` marked `@internal`). Packs could call lifecycle operations that act on the app's live module state.
 
 ## Decisions
 
@@ -79,12 +79,12 @@ Final.
    - Calling `qx`/`tx` with no engine installed throws a clear error naming the fix.
    - A silent in-memory fallback would hide boot-order bugs in the app.
 6. **Where the code lives.**
-   - The engine stays in `@abuddy/sdk`, exposed as the published entry `@abuddy/sdk/ears/engine` (`createEarsEngine` and the `EarsEngine`, `EarsQuery` and `EarsAdmin` types).
-   - `@abuddy/sdk/ears/internals` and its source-only export are deleted.
-   - `@abuddy/host/ears` keeps the LMDB delegates and gains hydration wiring written against `EarsAdmin`.
+   - The engine stays in `@apack/sdk`, exposed as the published entry `@apack/sdk/ears/engine` (`createEarsEngine` and the `EarsEngine`, `EarsQuery` and `EarsAdmin` types).
+   - `@apack/sdk/ears/internals` and its source-only export are deleted.
+   - `@apack/host/ears` keeps the LMDB delegates and gains hydration wiring written against `EarsAdmin`.
    - No new package.
 7. **Pack unit tests get `setupEars(options?)`.**
-   - It lives in `@abuddy/sdk/ears/engine`, creates and installs a fresh engine, and returns it.
+   - It lives in `@apack/sdk/ears/engine`, creates and installs a fresh engine, and returns it.
    - The scaffold's example unit test uses it.
 8. **Trust model is unchanged.** Packs run in-process, so a pack could register its own engine, as it could any host module today. The change defines contract and correctness, not a security boundary.
 9. **The SDK bridge stays.** It also shares the step, artifact and block registries and the host module registry itself. Removing it isn't part of this goal.
@@ -92,7 +92,7 @@ Final.
 ## Phases
 
 ### Phase 1 — Safety net
-- **Engine contract tests** in `packages/abuddy-sdk/tests/ears/`, black-box against today's public API:
+- **Engine contract tests** in `packages/apack-sdk/tests/ears/`, black-box against today's public API:
   - `tx` create, update and delete, with the ids and fields returned;
   - relations: link, unlink, `linksTo`, `relatedTo`, `linkSymmetric`, cycle detection;
   - roles: grant, revoke, `withRole`;
@@ -101,7 +101,7 @@ Final.
   - repository registration;
   - the exact order and payload of persistence-sink calls for a sequence of writes;
   - hydration through bulk load, followed by queries.
-- **Benchmark** (`packages/abuddy-sdk/bench/ears.bench.ts`, Vitest bench): hydrate a realistic graph of 50k entities, 200k attributes and 100k relations, then time:
+- **Benchmark** (`packages/apack-sdk/bench/ears.bench.ts`, Vitest bench): hydrate a realistic graph of 50k entities, 200k attributes and 100k relations, then time:
   - `qx` by type with a `where` and `pickAll`;
   - relation traversal;
   - `tx` batches of 1,000 creates.
@@ -119,8 +119,8 @@ Final.
 
 ### Phase 3 — The host owns the instance
 - **api boot:** create the LMDB sinks and policy explicitly, then `createEarsEngine({ persistence, isEntityType })`. Register `engine.query` and keep `engine.admin` for hydration, reset and backup/restore. Remove the import-time `setPersistence` in `core/ears/attribute-storage.ts` and the ordering reliance in `sdk-host-init.ts`.
-- **Host code:** `@abuddy/host/ears` exposes hydration and reset helpers taking `EarsAdmin`. Migrate the api (`core/ears`, `core/persistence`, `scripts/db/*`) and default-setup (`database` feature, tests) off the imported write functions onto the admin handle.
-- **Runtime hygiene:** the SDK bridge keeps bridging `@abuddy/sdk/ears`; the installed query face is what pack code reaches.
+- **Host code:** `@apack/host/ears` exposes hydration and reset helpers taking `EarsAdmin`. Migrate the api (`core/ears`, `core/persistence`, `scripts/db/*`) and default-setup (`database` feature, tests) off the imported write functions onto the admin handle.
+- **Runtime hygiene:** the SDK bridge keeps bridging `@apack/sdk/ears`; the installed query face is what pack code reaches.
 
 **Done when:** no production code imports `ears/internals` write functions. Reordering the imports in `sdk-host-init.ts` doesn't change boot, shown by a test that boots the host modules in a different order and checks that hydration and queries work. All suites and E2E pass.
 
@@ -128,7 +128,7 @@ Final.
 - The CLI flow compiler and decompiler create and install a private engine per compile.
 - SDK tests replace `in-memory-ears.ts` and `round-trip.ts` with `createEarsEngine`/`setupEars`.
 - default-setup tests replace `clearMemory()` resets with a fresh engine per test.
-- Add `setupEars` to `@abuddy/sdk/ears/engine` and to the scaffold's unit test template. Document it in `docs/public-facing/services-and-data.md`.
+- Add `setupEars` to `@apack/sdk/ears/engine` and to the scaffold's unit test template. Document it in `docs/public-facing/services-and-data.md`.
 - Run the default-setup and SDK suites with file parallelism enabled, and keep it enabled if they pass.
 
 **Done when:** no test calls `clearMemory` or `initEARSRuntime`, and the scaffolded pack's unit test uses `setupEars`. Suites pass, with parallelism enabled where it holds.
@@ -136,18 +136,18 @@ Final.
 ### Phase 5 — Remove the default instance and the hook
 - Delete the temporary default instance, `src/ears/internals.ts`, the `./ears/internals` export, the attw `--exclude-entrypoints`, the `tsconfig.package.json` exclusion, the drift-spec policy entry and the unreachability assertion for the hook.
 - Add a test that `qx`/`tx` throw a clear error when no engine is installed.
-- Update the host-only check: the packed SDK still ships no host-only module, and `@abuddy/sdk/ears/engine` resolves with types in node16 and bundler.
+- Update the host-only check: the packed SDK still ships no host-only module, and `@apack/sdk/ears/engine` resolves with types in node16 and bundler.
 - Run `npm run api:update`. Only `ears.engine.api.md` may be added; other pack-facing reports stay unchanged.
 - Docs: root `CLAUDE.md` (SDK packages section), `docs/archive/goals/goal-sdk-types-architecture.md` (implementation notes) and the data-layer docs.
 
-**Done when:** `@abuddy/host` builds against SDK exports only, needing no source-only entry. The benchmark is within tolerance. Everything in "Finished when" passes.
+**Done when:** `@apack/host` builds against SDK exports only, needing no source-only entry. The benchmark is within tolerance. Everything in "Finished when" passes.
 
 ## Constraints
 
 - Commit as you go in logical chunks, with conventional messages and no Co-Authored-By or Claude-Session lines. Check `git diff --cached` before each commit and stage only that commit's files. Never push or tag.
 - Never publish externally, create GitHub releases or trigger workflows.
-- Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `abuddy-test` namespace.
-- Don't launch the app outside the test environment without isolating `ABUDDY_USER_DATA_DIR`. Manual API boots: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node --conditions=@abuddy/source dist/server.js`.
+- Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `apack-test` namespace.
+- Don't launch the app outside the test environment without isolating `APACK_USER_DATA_DIR`. Manual API boots: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node --conditions=@apack/source dist/server.js`.
 - Never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit monorepo version/release metadata.
 - Rebuild `packages/default-setup/dist/dev-entry.cjs` (`node packages/default-setup/dev-build.mjs`) before running the api suites.
 - Investigate failing tests and benchmark regressions before changing assertions or tolerances; mutation-check every new guard or test.

@@ -1,6 +1,6 @@
 // How the shell tells the user something went wrong in this window: a toast for what it can carry on from, and the
 // error page `index.html` defines for what it can't.
-import type { ShellNotify } from '@abuddy/host/fe';
+import type { ShellNotify } from '@apack/host/fe';
 import { globalToast } from '@/adapters/toast';
 
 declare global {

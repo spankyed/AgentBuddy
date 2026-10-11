@@ -1,9 +1,9 @@
 // The user's API keys: the only way a key's value reaches the backend. These procedures call the host store directly,
 // never the event bus, so a value reaches no bus log, no `onIncoming` listener and no event; none returns a value.
 import { z } from 'zod';
-import { providerLabels } from '@abuddy/sdk/models';
-import type { SecretsSnapshot } from '@abuddy/sdk/services';
-import { secretsStore, secretsSnapshot } from '@abuddy/host/secrets';
+import { providerLabels } from '@apack/sdk/models';
+import type { SecretsSnapshot } from '@apack/sdk/services';
+import { secretsStore, secretsSnapshot } from '@apack/host/secrets';
 import { procedure, router } from './trpc';
 
 const provider = z.enum([...(Object.keys(providerLabels) as [string, ...string[]]), 'custom']) as z.ZodType<SecretsSnapshot['secrets'][number]['provider']>;

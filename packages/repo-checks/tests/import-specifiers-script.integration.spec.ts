@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { CHECKS } from '../../../scripts/check-import-specifiers.ts';
 
 /**
@@ -13,7 +13,7 @@ import { CHECKS } from '../../../scripts/check-import-specifiers.ts';
  */
 let root: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-specifiers-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-specifiers-'));
 });
 afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });

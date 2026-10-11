@@ -1,8 +1,8 @@
-import type { StepBuildFacet, StepNodeFacet } from '@abuddy/sdk/steps';
-import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
-import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
-import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepNodeFacet } from '@apack/sdk/steps';
+import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apack/sdk/steps';
+import { EARS } from '@apack/sdk';
+import { expandRecord, collapseRecord, mapProblems } from '@apack/sdk/steps';
+import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
 
 export function compile(
   node: Record<string, unknown>,
@@ -88,7 +88,7 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   return dsl;
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
 export const actionStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } };
 
 /** What a node of this type starts with; the backend writes it and the canvas draws it */

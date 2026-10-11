@@ -1,12 +1,12 @@
 import type { OutgoingTerminalEvents } from '../contract.ts'
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
-import { defineHandlers } from '@abuddy/sdk/framework';
+import { defineHandlers } from '@apack/sdk/framework';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { terminalService } from '../services/terminal.ts'
 import type { TerminalInfo, CodeSettings } from '../types.ts'
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 import { ref } from '#generated/ref.ts';
 
 const logger = createLogger('terminal');

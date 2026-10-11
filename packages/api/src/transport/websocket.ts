@@ -6,25 +6,25 @@ import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/transport';
 import { createContext } from '@/transport/context';
 import { jsonSafeEncoder } from '@/transport/encoder';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
-import { reloadPackById } from '@abuddy/host/packs/runtime';
-import { writePrivateFile } from '@abuddy/host/private-file';
-import { resolveAppContext } from '@abuddy/sdk/env';
-import type { ApiEndpoint } from '@abuddy/host/process-liveness';
-import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
+import { reloadPackById } from '@apack/host/packs/runtime';
+import { writePrivateFile } from '@apack/host/private-file';
+import { resolveAppContext } from '@apack/sdk/env';
+import type { ApiEndpoint } from '@apack/host/process-liveness';
+import { API_HOST, API_TOKEN_HEADER } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
 
 /**
  * The WebSocket subprotocol the app's windows speak, the one the server answers with. They send the API token as a
- * second subprotocol (`abuddy-token.<token>`), not in the URL: browsers print a socket's URL when it fails to connect,
+ * second subprotocol (`apack-token.<token>`), not in the URL: browsers print a socket's URL when it fails to connect,
  * and the app logs what the window prints. The renderer's API client (`packages/renderer/src/core/trpc.ts`) offers both.
  */
-export const API_PROTOCOL = 'abuddy';
-const TOKEN_PROTOCOL = 'abuddy-token.';
+export const API_PROTOCOL = 'apack';
+const TOKEN_PROTOCOL = 'apack-token.';
 
 /** Whether a WebSocket connection may open: the subprotocols it offers (`Sec-WebSocket-Protocol`) carry the API token */
 export function acceptsConnection(offeredProtocols: string | undefined, token = apiToken()): boolean {
@@ -35,7 +35,7 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
 
 /**
  * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
- * for a caller with the API token: `abuddy dev` and the built-in pack's watcher read it from the development app's
+ * for a caller with the API token: `apack dev` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
 export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().build, token = apiToken()): string | null {
@@ -91,9 +91,9 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
 
 /**
  * Tells local tools where this API is. Every run publishes its port, so a tool finds it and can tell that an app is
- * running on the data dir, whatever the platform (`abuddy db` refuses to change a database an app holds); the port
+ * running on the data dir, whatever the platform (`apack db` refuses to change a database an app holds); the port
  * alone opens nothing, since a call needs the token. The token itself goes to a file only where a local tool may use
- * it: a development app (`abuddy dev`, the built-in pack's watcher), and an API started by hand, which made up its
+ * it: a development app (`apack dev`, the built-in pack's watcher), and an API started by hand, which made up its
  * own. That file is readable only by the user. Both are removed when the process exits.
  */
 export function publishApiFiles(port: number, token: string): void {
@@ -107,7 +107,7 @@ export function publishApiFiles(port: number, token: string): void {
   if (process.env.NODE_ENV !== 'development' && !apiTokenIsOwn()) return;
   try {
     writePrivateFile(apiTokenFile, token);
-    if (apiTokenIsOwn()) logger.info(`No ABUDDY_API_TOKEN given: clients send the token in ${apiTokenFile}`);
+    if (apiTokenIsOwn()) logger.info(`No APACK_API_TOKEN given: clients send the token in ${apiTokenFile}`);
   } catch {}
 }
 

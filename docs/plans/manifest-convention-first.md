@@ -7,7 +7,7 @@ default-setup's manifest in this shape — generated from the real one, not writ
 
 ## Context
 
-`abuddy.json` is 711 lines and 19 root keys for the built-in pack. It is also a barrel written in JSON:
+`apack.json` is 711 lines and 19 root keys for the built-in pack. It is also a barrel written in JSON:
 **190 path strings**, 95 bare and 95 with `#export`, and almost every one of them restates a convention
 the tree already follows.
 
@@ -32,7 +32,7 @@ pointer; each plugin's accepted events are 11 literal arrays inside `dist/runtim
 "what does this pack contribute" needs the manifest *plus* the compiled content *plus* the backend bundle,
 and no artifact holds all three.
 
-**The symptom that proves it is structural.** `abuddy info` — the one command whose job is to say what a
+**The symptom that proves it is structural.** `apack info` — the one command whose job is to say what a
 pack has — hardcoded `src/content/actions` instead of reading `content.sources.actions.path`, because the
 manifest does not carry what it needed. It also printed `Features: 0` for a pack with eleven, since
 `Record<string, T>`'s index signature makes `.length` type-check as `T`. Both fixed in `673790d5e`; the
@@ -111,7 +111,7 @@ goes entirely: `helpers.ts` existing is the same fact.
 
 ## The resolved shape
 
-`abuddy build` already compiles 90 actions and knows every label; it writes them to `dist/*.content.json`
+`apack build` already compiles 90 actions and knows every label; it writes them to `dist/*.content.json`
 and discards the inventory. The snapshot gains it:
 
 ```jsonc
@@ -124,7 +124,7 @@ and discards the inventory. The snapshot gains it:
 }
 ```
 
-Three things become available that are not today: `abuddy info` can list what a pack ships rather than
+Three things become available that are not today: `apack info` can list what a pack ships rather than
 counting files; the host can answer "what does this pack contribute" at install time without loading it;
 and a flow's action references become declared data, so renaming an action is checkable from the rename's
 side rather than only from the flow's.
@@ -156,15 +156,15 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
 ## The work
 
 1. **Settle the fork above.** Everything else is mechanical once it is answered.
-2. **One layout table per contribution kind**, in `@abuddy/sdk/build`, read by codegen, `validate`,
-   `doctor` and `abuddy add` — the `FEATURE_LAYOUT` Decision 7 asks for, generalised to steps, blocks,
+2. **One layout table per contribution kind**, in `@apack/sdk/build`, read by codegen, `validate`,
+   `doctor` and `apack add` — the `FEATURE_LAYOUT` Decision 7 asks for, generalised to steps, blocks,
    artifacts, services, repositories and content. A spec fails when the documented table and the constant
    disagree.
 3. **`contributes` in the snapshot**, written by the build from what it already computed, with each
-   plugin's `receives` lifted out of the backend bundle. `abuddy info` reads it.
-4. **The authored manifest**, in the shape of the example: default-setup, both fixture packs, the `abuddy
+   plugin's `receives` lifted out of the backend bundle. `apack info` reads it.
+4. **The authored manifest**, in the shape of the example: default-setup, both fixture packs, the `apack
    init` scaffold, `packFixture`'s `DEFAULT_MANIFEST` and `generate-entries`' spec-support `manifest()`.
-5. **`abuddy add` writes the short form**, and the canonical key order at all three levels (root,
+5. **`apack add` writes the short form**, and the canonical key order at all three levels (root,
    `extensions`, each feature).
 
 ## Footguns
@@ -183,11 +183,11 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
 
 ## Out of scope
 
-- **A TypeScript manifest** (`abuddy.config.ts` with real imports, no `#export` at all). It is the obvious
+- **A TypeScript manifest** (`apack.config.ts` with real imports, no `#export` at all). It is the obvious
   end point and the wrong move before step 3: the host must read a shipped pack's description without
   executing it, so the resolved artifact is a prerequisite rather than an alternative. Revisit once
   `contributes` exists.
-- **Enumerating content in `abuddy.json`.** 90 hand-maintained lines with nothing keeping them honest is
+- **Enumerating content in `apack.json`.** 90 hand-maintained lines with nothing keeping them honest is
   the barrel this repo deleted seven of. The file that lists what a pack ships should be the one nobody
   edits.
 

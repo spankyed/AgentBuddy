@@ -77,7 +77,7 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
  * A promise that resolves after a delay — a spec asserting on a duration rather than on the thing it waits for.
  *
  * A sleep puts a guess about how long something takes into every passing run, and when the guess is short the
- * failure reads exactly like the bug it was meant to catch. `@abuddy/sdk/testing/waiting` is the alternative,
+ * failure reads exactly like the bug it was meant to catch. `@apack/sdk/testing/waiting` is the alternative,
  * and its header has the rule: a wait is driven by the thing it waits for and names what never happened — an
  * event where there is one, a poll where there is none.
  */

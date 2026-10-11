@@ -140,12 +140,12 @@ describe('code persisted tabs', () => {
   })
 
   it('prunes stale terminal output cache entries', () => {
-    localStorage.setItem('agentbuddy_terminal_output_Terminal-live', 'live')
-    localStorage.setItem('agentbuddy_terminal_output_Terminal-stale', 'stale')
+    localStorage.setItem('apack_terminal_output_Terminal-live', 'live')
+    localStorage.setItem('apack_terminal_output_Terminal-stale', 'stale')
 
     terminalEventBus.prunePersistedOutputs(['Terminal-live'])
 
-    expect(localStorage.getItem('agentbuddy_terminal_output_Terminal-live')).toBe('live')
-    expect(localStorage.getItem('agentbuddy_terminal_output_Terminal-stale')).toBeNull()
+    expect(localStorage.getItem('apack_terminal_output_Terminal-live')).toBe('live')
+    expect(localStorage.getItem('apack_terminal_output_Terminal-stale')).toBeNull()
   })
 })

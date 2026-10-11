@@ -1,7 +1,7 @@
-import type { NodeBase } from '@abuddy/sdk';
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { ModelId } from '@abuddy/sdk/models';
-import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
+import type { NodeBase } from '@apack/sdk';
+import type { DSLNodeBase } from '@apack/sdk/build';
+import type { ModelId } from '@apack/sdk/models';
+import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
 
 /**
  * **Provisional — the LLM step's authoring surface is still being designed.**

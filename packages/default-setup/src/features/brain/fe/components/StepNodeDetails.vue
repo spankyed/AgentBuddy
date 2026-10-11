@@ -118,8 +118,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
-import type { TNodeEntity } from '@abuddy/sdk/steps';
-import DataRenderer from '@abuddy/ui/components/DataRenderer';
+import type { TNodeEntity } from '@apack/sdk/steps';
+import DataRenderer from '@apack/ui/components/DataRenderer';
 import { openPlugin } from '#generated/fe.ts';
 
 interface Props {

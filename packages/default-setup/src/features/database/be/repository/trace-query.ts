@@ -1,8 +1,8 @@
-import type { TraceStore } from '@abuddy/sdk/services';
+import type { TraceStore } from '@apack/sdk/services';
 import { services } from '#generated/services.ts';
 import { EARS } from '#generated/ears.ts';
-import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
-import { createLogger } from '@abuddy/sdk/logger';
+import type { TNodeEntity, TrackTree } from '@apack/sdk/steps';
+import { createLogger } from '@apack/sdk/logger';
 
 const logger = createLogger('database:trace');
 

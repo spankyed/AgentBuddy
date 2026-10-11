@@ -4,9 +4,9 @@
 // plugin go through the app's bus, which delivers them once a client is connected.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { createLogger } from '@abuddy/sdk/logger';
-import { testRootEvents } from '@abuddy/sdk/testing';
-import type { Message } from '@abuddy/testing/harness';
+import { createLogger } from '@apack/sdk/logger';
+import { testRootEvents } from '@apack/sdk/testing';
+import type { Message } from '@apack/testing/harness';
 import logsEntry from '#features/logs/be/system.ts';
 import { registration } from '#generated/pack-entry.ts';
 

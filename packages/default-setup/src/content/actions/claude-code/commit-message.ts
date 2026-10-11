@@ -5,7 +5,7 @@
  * code system's generateCommitMessage handler).
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { formatProviderError } from '../_helpers/format-provider-error.ts';
 

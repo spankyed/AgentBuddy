@@ -3,7 +3,7 @@
 // without it they share a key, the parent holds only the last, and stopping it leaves the rest running with
 // their system ids taken — which is what a pack reload then collides with.
 import { describe, expect, it } from 'vitest';
-import { startApp } from '@abuddy/testing/harness';
+import { startApp } from '@apack/testing/harness';
 
 describe('the code system’s child systems', () => {
   it('are tracked by their own ids, and released when it stops', async () => {

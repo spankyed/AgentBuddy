@@ -1,4 +1,4 @@
-import type { FlowDSL } from '@abuddy/sdk/build';
+import type { FlowDSL } from '@apack/sdk/build';
 import { action, branch, fire, schedule } from '#generated/flow-helpers.ts';
 
 /** Adds a weekly review memo: default-setup's schedule trigger, action and switch steps, through its flow helpers */

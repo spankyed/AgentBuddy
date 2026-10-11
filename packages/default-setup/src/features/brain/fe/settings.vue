@@ -140,9 +140,9 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 import { ref, computed } from 'vue'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '#generated/types.ts'
 import { sendToSystem } from '#generated/events.ts'

@@ -2,7 +2,7 @@
 
 ## Context
 
-User-defined services let AgentBuddy install code from GitHub repos, compile it locally, load it into the backend runtime, and expose it to actions/flows through `services.*`.
+User-defined services let apack install code from GitHub repos, compile it locally, load it into the backend runtime, and expose it to actions/flows through `services.*`.
 
 The first implementation pass is a working prototype. This document captures the security concerns and design decisions that need a second pass before the feature should be treated as safe for broad use.
 
@@ -10,7 +10,7 @@ The first implementation pass is a working prototype. This document captures the
 
 For the prototype, user-defined services should be treated as trusted local extensions.
 
-Installing a service means the user is choosing to run that repo's code with AgentBuddy backend privileges. The prototype should make this clear in the UI, but it does not need to solve sandboxing, signing, permission prompts, or curated distribution yet.
+Installing a service means the user is choosing to run that repo's code with apack backend privileges. The prototype should make this clear in the UI, but it does not need to solve sandboxing, signing, permission prompts, or curated distribution yet.
 
 ## Primary risks
 
@@ -21,7 +21,7 @@ Installing a service means the user is choosing to run that repo's code with Age
 | Secret exposure | Services may receive API keys or access existing services that can read secrets. |
 | Filesystem access | Services can use Node APIs or existing services to read/write local files. |
 | Network exfiltration | Services can send user data, secrets, prompts, files, or workflow data to external endpoints. |
-| Process spawning | Services may indirectly access CLI/process capabilities through existing AgentBuddy services. |
+| Process spawning | Services may indirectly access CLI/process capabilities through existing apack services. |
 | Persistent side effects | Services can create timers, sockets, watchers, caches, or background work that survive reloads. |
 | Supply-chain drift | Updating a GitHub repo or dependency can change behavior after the user initially trusted it. |
 | Type/runtime mismatch | Type declarations can make a service look safer or narrower than its runtime behavior. |
@@ -49,7 +49,7 @@ Secret config values should be stored as secret references, not plain values in 
 
 ### Capability boundaries
 
-The second pass should decide whether services receive the full `services` object or a scoped capability object. A scoped object would let AgentBuddy expose only the APIs a service declares or the user approves.
+The second pass should decide whether services receive the full `services` object or a scoped capability object. A scoped object would let apack expose only the APIs a service declares or the user approves.
 
 ### Lifecycle management
 
@@ -96,7 +96,7 @@ The prototype does not need to solve:
 
 ## Acceptance bar before wider release
 
-Before treating user-defined services as broadly safe, AgentBuddy should have:
+Before treating user-defined services as broadly safe, apack should have:
 
 - Clear install/update trust prompts
 - Commit-pinned installs

@@ -398,7 +398,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 - **Three homes, not one spec**, because two of the five answers are out of any single suite's reach:
   `holdsWrittenValues`/`holdsWrittenGraph` are module-private and callable from no spec, and `appliedContent`
   is written by `applyPacks`, which a pack suite never runs (and may not import). So: the derivation rules over
-  a synthetic fixture in `abuddy-sdk/tests/content/`, the per-item and per-part agreement over real content in
+  a synthetic fixture in `apack-sdk/tests/content/`, the per-item and per-part agreement over real content in
   `default-setup/tests/content/`, and `revision` against `appliedContent` in host's `loader.spec.ts`.
 - **The agreement with the stored digests is behavioural, not arithmetic.** `writtenFields.hash` is one digest
   over the whole value array, so it is not derivable from per-part hashes — and a spec that re-hashes the
@@ -431,7 +431,7 @@ and `createFlowApplier` become thin adapters that know only how to read and writ
   predicate — it is a destructive act before the merge, not a verdict within it.
 - The deletion question becomes one case: in the applied content, no live entity (absent **or** trashed).
 - Delete what Decision 13 names, including the entity attributes. **No migration**: nothing has this data but
-  development dirs, so they are reset (`appData.reset()`, or `abuddy db reset`) and the first apply writes
+  development dirs, so they are reset (`appData.reset()`, or `apack db reset`) and the first apply writes
   the applied content. A translation from the old attributes would be a subsystem written for nobody.
 - **Surface the conflicts here, before any UI exists.** The moment the merge runs, a conflict is computable,
   and saying so costs a line: one summary per apply in the log and an entry in the Logs plugin — *"3 items
@@ -462,7 +462,7 @@ After Phase 2, and landable before Phase 4. `applyPack` and `importPackContent` 
 (Decision 5), the `content` naming (Decision 10) and the vocabulary (Decision 11) through the manifest, the
 pack trees, the goldens, the docs and the pack-facing API. `api:update` and `schema:update` are part of this
 phase, as is rewriting every pack manifest in the tree — all of them are in this repo, so the rename is a
-change the typecheck and `abuddy validate` prove you finished.
+change the typecheck and `apack validate` prove you finished.
 
 **The split rides here rather than going first**, although it is the conceptual error and is expressible
 today. It touches the files Phase 2 rewrites, so doing it standalone migrates every caller twice; and until
@@ -498,7 +498,7 @@ the import path; `drive/` exercises the banner and the diff in the running app.
 ## Verification
 
 Each phase runs the narrow checks in its "Done when" during the work, and `npm run chain` once at the end.
-Phases 1 and 2 touch `@abuddy/sdk/src`, which the CLI and testing bundles inline, so expect a near-cold
+Phases 1 and 2 touch `@apack/sdk/src`, which the CLI and testing bundles inline, so expect a near-cold
 chain (~170s) rather than a warm one. Phase 3 rewrites the manifest of every pack in the tree, so
 `test:external-pack` and `test:packaged-authoring` are part of its own checks rather than an afterthought.
 

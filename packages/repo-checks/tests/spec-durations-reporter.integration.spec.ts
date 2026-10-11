@@ -26,7 +26,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { boundedSpawn } from '../../../scripts/lib/bounded-spawn.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
@@ -37,7 +37,7 @@ import { POOLS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 /**
  * The cheapest suite that has the half a shape runs, so each spawn is seconds rather than minutes.
  *
- * **Derived, which the comment here claimed before the code did it.** It named `abuddy-ui` and said a suite
+ * **Derived, which the comment here claimed before the code did it.** It named `apack-ui` and said a suite
  * that shrank past it would take over without an edit, which was simply false. The count comes from
  * `specFiles`, so it is a fact about the tree and needs no measurement and no threshold.
  *

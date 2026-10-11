@@ -13,7 +13,7 @@
 // which is what lets the viewer place an answer by the page it is for instead of by where it has got to.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import type { TNodeEntity } from '@abuddy/sdk/steps';
+import type { TNodeEntity } from '@apack/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));

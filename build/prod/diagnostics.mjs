@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..', '..');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const outDir = join(repoRoot, 'diagnostics', `agentbuddy-prod-${stamp}`);
+const outDir = join(repoRoot, 'diagnostics', `apack-prod-${stamp}`);
 mkdirSync(outDir, { recursive: true });
 
 function run(command, args) {
@@ -44,7 +44,7 @@ function listRecentDiagnosticReports() {
   const dir = join(homedir(), 'Library', 'Logs', 'DiagnosticReports');
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter(name => /AgentBuddy|abuddy|Electron|node/i.test(name))
+    .filter(name => /apack|apack|Electron|node/i.test(name))
     .map(name => {
       const file = join(dir, name);
       const stat = statSync(file);
@@ -54,7 +54,7 @@ function listRecentDiagnosticReports() {
     .slice(0, 10);
 }
 
-const logsDir = join(homedir(), 'Library', 'Logs', 'abuddy');
+const logsDir = join(homedir(), 'Library', 'Logs', 'apack');
 copyIfExists(join(logsDir, 'main.log'), 'main.log');
 copyIfExists(join(logsDir, 'renderer.log'), 'renderer.log');
 copyIfExists(join(logsDir, 'app-events.log'), 'app-events.log');
@@ -65,7 +65,7 @@ for (const report of listRecentDiagnosticReports()) {
   copyIfExists(report.file, `diagnostic-${report.name}`);
 }
 
-const installedApp = '/Applications/AgentBuddy.app';
+const installedApp = '/Applications/apack.app';
 const installedServer = join(installedApp, 'Contents', 'Resources', 'app', 'packages', 'api', 'dist', 'server.js');
 const localServer = join(repoRoot, 'packages', 'api', 'dist', 'server.js');
 const packageJson = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));

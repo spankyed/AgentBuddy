@@ -107,10 +107,10 @@ The record reports **zero** misplacements — `spec-cost:check` passes — so ev
 
 | spec | quiet | busy 1 | busy 2 | record says | kind |
 |---|---|---|---|---|---|
-| `abuddy-cli/tests/commands/run-install.spec.ts` | 3163 | 3106 | 3297 | **1317** | split — a rename is available |
-| `abuddy-host/tests/build/published-manifest.spec.ts` | 2838 | 3600 | 3202 | 3652 | single-config, `outgrown` |
-| `abuddy-host/tests/database/write-lock.spec.ts` | 4890 | 4812 | 4769 | 4695 | single-config, `outgrown` |
-| `abuddy-sdk/tests/build/generate-entries.spec.ts` | 17745 | 31448 | 31067 | 11308 | single-config, `outgrown` |
+| `apack-cli/tests/commands/run-install.spec.ts` | 3163 | 3106 | 3297 | **1317** | split — a rename is available |
+| `apack-host/tests/build/published-manifest.spec.ts` | 2838 | 3600 | 3202 | 3652 | single-config, `outgrown` |
+| `apack-host/tests/database/write-lock.spec.ts` | 4890 | 4812 | 4769 | 4695 | single-config, `outgrown` |
+| `apack-sdk/tests/build/generate-entries.spec.ts` | 17745 | 31448 | 31067 | 11308 | single-config, `outgrown` |
 
 Three are `outgrown` — a single-config package has nowhere to move a spec, so the entry records what makes it expensive and no rename is implied. The fourth is a finding.
 
@@ -147,7 +147,7 @@ Have the pool report a spec that blew its budget *in that run*, with no record, 
 
 ## Outcome (2026-10-05)
 
-Both phases answered from the three runs the prior goal captured, so no fresh measurement was needed and nothing under `scripts/` or `packages/` changed. **The answer to the goal's question is no**, which Decision 3 named as a success: calibrating within the run improves only the flips the window already absorbs and leaves the sustained-load failure at 3 of 23, and a run-local flag is 20-70% false against the record and cannot gate. The clock is not removable, because the budget it audits is wall-clock. What the spikes did turn up is a defect neither option addressed: the record measures each spec in a per-package vitest while specs run pooled, and `abuddy-cli/tests/commands/run-install.spec.ts` is recorded at 1317 ms against a pooled 3106-3297 ms in all three runs — in a split package, so a rename is available, with the audit passing regardless.
+Both phases answered from the three runs the prior goal captured, so no fresh measurement was needed and nothing under `scripts/` or `packages/` changed. **The answer to the goal's question is no**, which Decision 3 named as a success: calibrating within the run improves only the flips the window already absorbs and leaves the sustained-load failure at 3 of 23, and a run-local flag is 20-70% false against the record and cannot gate. The clock is not removable, because the budget it audits is wall-clock. What the spikes did turn up is a defect neither option addressed: the record measures each spec in a per-package vitest while specs run pooled, and `apack-cli/tests/commands/run-install.spec.ts` is recorded at 1317 ms against a pooled 3106-3297 ms in all three runs — in a split package, so a rename is available, with the audit passing regardless.
 
 ### Per phase
 
@@ -165,7 +165,7 @@ Both phases answered from the three runs the prior goal captured, so no fresh me
 ### Open items
 
 - ~~**The recommendation**: move `measure()`'s numbers to the pooled run via vitest's JSON reporter.~~ **Done 2026-10-06, and the reporter is not the `json` one.** Verified against vitest 3.2.4: `json` carries **no per-file duration** — only a span between a module's first and last *test*, which excludes file-level hooks and collection, measured 0.5–42ms low per file and ~30% low on a small one — and **no project name anywhere**. `junit` carries the exact duration but still no project name. A custom `onTestRunEnd` reporter carries all three, and `diagnostic().duration` is the identical field the console prints: verified equal for 12 of 12 files in one run. `scripts/lib/spec-durations-reporter.ts` is it, on the pattern `spec-count-reporter.ts` already established (hooks pinned with `satisfies keyof Reporter`, so a vitest upgrade is a compile error; destination from the environment; prints nothing). It also closed a hole no output-based answer could: a project that ran *zero files* appears in no reporter's output, so `projectsThatDidNotRun` could only ever answer for a multi-project run — it names every project the run started now.
-- `run-install.spec.ts` may genuinely belong in `@abuddy/cli`'s integration half. Worth confirming once the measurement context is fixed, since that is what would decide it.
+- `run-install.spec.ts` may genuinely belong in `@apack/cli`'s integration half. Worth confirming once the measurement context is fixed, since that is what would decide it.
 - A per-spec reference, rather than a per-run one, is the only version of Phase 1 that could collapse the "in both runs" count. Unmeasured, and a larger design than this goal asked about.
 
 ## What was given up, and what turned out not to be a loss (2026-10-06)

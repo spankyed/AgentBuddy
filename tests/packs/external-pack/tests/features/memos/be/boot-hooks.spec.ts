@@ -1,7 +1,7 @@
 // The pack's boot.onInit and boot.onShutdown run around a test's apps as around the app's run: onInit when the first
 // app starts, onShutdown when the last one stops
 import { describe, expect, it } from 'vitest';
-import { startApp } from '@abuddy/testing/harness';
+import { startApp } from '@apack/testing/harness';
 import { journal } from '../../../../src/features/memos/be/journal.ts';
 
 describe("the pack's boot hooks", () => {

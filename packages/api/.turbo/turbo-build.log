@@ -1,5 +1,5 @@
 
-> @abuddy/api@1.0.0 build /Users/spankyed/Develop/Projects/AgentBuddy/apps/api
+> @apack/api@1.0.0 build /Users/spankyed/Develop/Projects/apack/apps/api
 > tsc -p . && tsup src/types.ts src/server.ts --format esm,cjs --dts
 
 CLI Building entry: src/server.ts, src/types.ts

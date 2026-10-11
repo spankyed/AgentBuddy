@@ -1,5 +1,5 @@
 {
-  "name": "@abuddy-pack/e2e-fixture",
+  "name": "@apack-pack/e2e-fixture",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,10 +7,10 @@
     "#generated/*": "./src/__generated__/*"
   },
   "scripts": {
-    "build": "abuddy build",
-    "validate": "abuddy validate",
+    "build": "apack build",
+    "validate": "apack validate",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "abuddy test",
+    "test:e2e": "apack test",
     "test": "vitest run"
   }
 }

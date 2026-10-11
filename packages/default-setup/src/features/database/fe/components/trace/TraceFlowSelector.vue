@@ -77,12 +77,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
-import type { TNodeEntity } from '@abuddy/sdk/steps'
+import type { TNodeEntity } from '@apack/sdk/steps'
 
 const databaseActor: DatabaseState = usePlugin()
 

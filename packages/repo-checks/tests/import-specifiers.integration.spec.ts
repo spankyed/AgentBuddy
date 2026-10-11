@@ -3,9 +3,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { packFixture as buildPackFixture } from '@abuddy/sdk/testing/pack-fixture';
-import { population } from '@abuddy/sdk/testing';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { packFixture as buildPackFixture } from '@apack/sdk/testing/pack-fixture';
+import { population } from '@apack/sdk/testing';
 import { RUNTIME_ONLY_DEPS, workspaceDeps } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
@@ -25,7 +25,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 let root: string;
 let written: Set<string>;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-specifiers-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-specifiers-'));
   written = new Set();
   for (const [file, content] of Object.entries({
     'query.ts': 'export const q = 1;',
@@ -76,7 +76,7 @@ function rewrite(file: string, content: string): void {
 }
 
 /**
- * The subpath map a pack fixture declares, which is how a pack names its own modules: `abuddy init` writes one and
+ * The subpath map a pack fixture declares, which is how a pack names its own modules: `apack init` writes one and
  * every own-module specifier in this repo's packs is one. `@/` is not an alternative to it — `findPackOwnAliases`
  * below and the CLI's `pack-own-aliases` both refuse one — so no fixture here writes that spelling except the cases
  * whose subject it is.
@@ -128,43 +128,43 @@ describe('findJsSpecifiers', () => {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
-  "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
+  "// import { untypedBroadcastToPlugin } from '@apack/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "/* import * as events from '@apack/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
   "import { untypedBroadcastToPlugin, untypedSendToSystem } from '#generated/events';",
-  "import { onConnected, onIncoming } from '@abuddy/sdk/events';",
+  "import { onConnected, onIncoming } from '@apack/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
-  "import * as ears from '@abuddy/ears';",
-  "import { x } from '@abuddy/sdk/rpcx';",
+  "import * as ears from '@apack/ears';",
+  "import { x } from '@apack/sdk/rpcx';",
   'const { busId } = trpc; trpc.buses.list();',
   "logger.info('saved');",
 ].join('\n');
 
 describe('findInternalPackageImports', () => {
   it.each([
-    ["import { _getMediaPath } from '@abuddy/sdk/utils';", '_getMediaPath from @abuddy/sdk/utils'],
-    ["const { _getMediaPath } = await import('@abuddy/sdk/utils');", '_getMediaPath from @abuddy/sdk/utils'],
+    ["import { _getMediaPath } from '@apack/sdk/utils';", '_getMediaPath from @apack/sdk/utils'],
+    ["const { _getMediaPath } = await import('@apack/sdk/utils');", '_getMediaPath from @apack/sdk/utils'],
   ])('flags %s', (code, problem) => {
     write('pack/feature.ts', code);
     expect(findInternalPackageImports(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
   });
 
   it("flags one a pack's tests import, not only its sources", () => {
-    writeAt('tests/unit/content.spec.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';\n");
-    expect(findInternalPackageImports(['tests'], root)).toEqual(['tests/unit/content.spec.ts:1: _getMediaPath from @abuddy/sdk/utils']);
+    writeAt('tests/unit/content.spec.ts', "import { _getMediaPath } from '@apack/sdk/utils';\n");
+    expect(findInternalPackageImports(['tests'], root)).toEqual(['tests/unit/content.spec.ts:1: _getMediaPath from @apack/sdk/utils']);
   });
 
   it('allows public names, a public name aliased to an underscore, a pack-local one and other packages', () => {
     write('pack/feature.ts', [
-      "import { importCompiledContent, ensureDirectoryExists } from '@abuddy/sdk/utils';",
-      "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
+      "import { importCompiledContent, ensureDirectoryExists } from '@apack/sdk/utils';",
+      "import { formatProviderError as _formatProviderError } from '@apack/sdk/actions';",
       "import { _fmt } from './_helpers/format.ts';",
-      "import * as utils from '@abuddy/sdk/utils';",
+      "import * as utils from '@apack/sdk/utils';",
       "import { _ } from 'lodash';",
       ALLOWED,
     ].join('\n'));
-    write('pack/__generated__/events.ts', "import { _rootEvents } from '@abuddy/sdk/runtime';\n");
+    write('pack/__generated__/events.ts', "import { _rootEvents } from '@apack/sdk/runtime';\n");
     expect(findInternalPackageImports(['src/pack'], root)).toEqual([]);
   });
 
@@ -175,14 +175,14 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { untypedBroadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
-    ["import onConnected, { untypedSendToSystem } from '@abuddy/sdk/events';", 'untypedSendToSystem from @abuddy/sdk/events'],
-    ["import { untypedBroadcastToPlugin, services } from '@abuddy/sdk/services';", 'untypedBroadcastToPlugin from @abuddy/sdk/services'],
-    ["import { registerRepository, untypedTx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
-    ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
-    ["export type { untypedBroadcastToPlugin } from '@abuddy/sdk/events';", 'untypedBroadcastToPlugin from @abuddy/sdk/events'],
-    ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
-    ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
+    ["import { untypedBroadcastToPlugin as toPlugin } from '@apack/sdk/events';", 'untypedBroadcastToPlugin from @apack/sdk/events'],
+    ["import onConnected, { untypedSendToSystem } from '@apack/sdk/events';", 'untypedSendToSystem from @apack/sdk/events'],
+    ["import { untypedBroadcastToPlugin, services } from '@apack/sdk/services';", 'untypedBroadcastToPlugin from @apack/sdk/services'],
+    ["import { registerRepository, untypedTx } from '@apack/ears';", 'registerRepository from @apack/ears'],
+    ["import { unregisterRepository } from '@apack/ears';", 'unregisterRepository from @apack/ears'],
+    ["export type { untypedBroadcastToPlugin } from '@apack/sdk/events';", 'untypedBroadcastToPlugin from @apack/sdk/events'],
+    ["import * as events from '@apack/sdk/events';", '* from @apack/sdk/events (import the names)'],
+    ["export * from '@apack/sdk/events';", '* from @apack/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
     write('pack/feature.ts', code);
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
@@ -190,20 +190,20 @@ describe('findRawPackHelpers', () => {
 
   it('allows comments, strings and the generated facades, and exempts generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/ears';\n");
+    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@apack/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @abuddy/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { untypedBroadcastToPlugin } from '@apack/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { untypedBroadcastToPlugin } from '@apack/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: untypedBroadcastToPlugin from @apack/sdk/events']);
   });
 });
 
 describe('findRawTransport', () => {
   it.each([
-    ["import { trpc } from '@abuddy/sdk/rpc';", '@abuddy/sdk/rpc'],
-    ["const rpc = await import('@abuddy/sdk/rpc/client');", '@abuddy/sdk/rpc/client'],
+    ["import { trpc } from '@apack/sdk/rpc';", '@apack/sdk/rpc'],
+    ["const rpc = await import('@apack/sdk/rpc/client');", '@apack/sdk/rpc/client'],
     ['_rootEvents.emitOutgoing(event);', '_rootEvents'],
     ["trpc.bus.send.mutate({ systemId: 'notes', type: 'GET_NOTES' });", 'trpc.bus'],
     ['trpc?.bus.send.mutate(event);', 'trpc.bus'],
@@ -214,7 +214,7 @@ describe('findRawTransport', () => {
 
   it('allows comments, strings and the typed sends, and checks generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/events.ts', "\nimport { _rootEvents } from '@abuddy/sdk/runtime';\n");
+    write('pack/__generated__/events.ts', "\nimport { _rootEvents } from '@apack/sdk/runtime';\n");
     expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:2: _rootEvents']);
   });
 });
@@ -254,46 +254,46 @@ describe('findPackBackendConsole', () => {
 });
 
 /**
- * Read from the syntax tree, since the rule became the pack rule `abuddy build` runs (`goal-one-rule-set.md`).
+ * Read from the syntax tree, since the rule became the pack rule `apack build` runs (`goal-one-rule-set.md`).
  * The case this used to have for a specifier inside a template literal is gone with its subject: the CLI's
  * templates are files now, and in a pack's own source a string that looks like an import is a string.
  */
 describe('findHostImports', () => {
   it.each([
-    ["import { edgeStore } from '@abuddy/host/ears';", '@abuddy/host/ears'],
-    ["import type { PackRegistration } from '@abuddy/host/packs';", '@abuddy/host/packs'],
-    ["export { hydrate } from '@abuddy/host/ears';", '@abuddy/host/ears'],
-    ["const backup = await import('@abuddy/host/backup');", '@abuddy/host/backup'],
-    ["const { envs } = require('@abuddy/host/ears');", '@abuddy/host/ears'],
-    ["import '@abuddy/host';", '@abuddy/host'],
+    ["import { edgeStore } from '@apack/host/ears';", '@apack/host/ears'],
+    ["import type { PackRegistration } from '@apack/host/packs';", '@apack/host/packs'],
+    ["export { hydrate } from '@apack/host/ears';", '@apack/host/ears'],
+    ["const backup = await import('@apack/host/backup');", '@apack/host/backup'],
+    ["const { envs } = require('@apack/host/ears');", '@apack/host/ears'],
+    ["import '@apack/host';", '@apack/host'],
   ])('flags %s', (code, specifier) => {
     write('pack/feature.ts', code);
     expect(findHostImports(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${specifier}`]);
   });
 
   it('checks generated files and allows the SDK', () => {
-    write('pack/feature.ts', `import { findRelations, untypedQx } from '@abuddy/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
-    write('pack/__generated__/ears.ts', "import { qx } from '@abuddy/host/ears';\n");
-    expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @abuddy/host/ears']);
+    write('pack/feature.ts', `import { findRelations, untypedQx } from '@apack/ears';\nimport { services } from '#generated/services';\n${ALLOWED}`);
+    write('pack/__generated__/ears.ts', "import { qx } from '@apack/host/ears';\n");
+    expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @apack/host/ears']);
   });
 });
 
 describe('findAppImportsInPackTests', () => {
   it.each([
-    ["const { init } = await import('../../../abuddy-cli/src/commands/init');", '../../../abuddy-cli/src/commands/init'],
-    ["import { installPackFromLocal } from '../../../abuddy-host/src/packs/pack-installer';", '../../../abuddy-host/src/packs/pack-installer'],
+    ["const { init } = await import('../../../apack-cli/src/commands/init');", '../../../apack-cli/src/commands/init'],
+    ["import { installPackFromLocal } from '../../../apack-host/src/packs/pack-installer';", '../../../apack-host/src/packs/pack-installer'],
   ])('flags %s', (code, specifier) => {
     write('pack-tests/unit/feature.spec.ts', code);
     expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([`src/pack-tests/unit/feature.spec.ts:1: ${specifier}`]);
   });
 
   // What is left for this rule is a relative path into the app's sources, which no pack outside this repo can
-  // write. The two shapes it used to claim as well — `@abuddy/host` and a `@/` alias — are rows 1 and 2 of the
+  // write. The two shapes it used to claim as well — `@apack/host` and a `@/` alias — are rows 1 and 2 of the
   // derived tests-half sweep, which asserts *exactly one* claimant across every rule that reads a pack's tests.
   it('allows the SDK, the harness and the pack itself', () => {
     write('pack-tests/unit/feature.spec.ts', [
-      "import { untypedQx } from '@abuddy/ears';",
-      "import { startApp } from '@abuddy/testing/harness';",
+      "import { untypedQx } from '@apack/ears';",
+      "import { startApp } from '@apack/testing/harness';",
       "import { repository } from '#generated/repository.ts';",
       "import { handler } from '../../src/extensions/steps/llm/runtime';",
       ALLOWED,
@@ -312,24 +312,24 @@ describe('findUpwardImports', () => {
   // The five rows the fixture below builds a directory for. These cases are about the mechanism, so a row with
   // no tree behind it would only make the manifest read throw; the real twelve are covered by `holds for the
   // repo` and the two coverage cases at the end of this block.
-  const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+  const modelled = ['apack-ears', 'apack-sdk', 'apack-host', 'api', 'renderer'];
   const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
-    .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+    .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^apack-/, '')}` }));
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
-    layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
-      'src/index.ts': "import { untypedTx } from '@abuddy/ears';\nexport type { Q } from '@abuddy/ears/lmdb';\nexport * from '@abuddy/sdk/events';\n",
+    layer('layers/sdk', { dependencies: { '@apack/ears': '^0.1.0', yaml: '*' } }, {
+      'src/index.ts': "import { untypedTx } from '@apack/ears';\nexport type { Q } from '@apack/ears/lmdb';\nexport * from '@apack/sdk/events';\n",
     });
-    layer('layers/host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, {
-      'src/index.ts': "import { services } from '@abuddy/sdk/services';\nimport { untypedQx } from '@abuddy/ears';\nimport { x } from '../x.ts';\n",
-      'tests/a.spec.ts': "vi.mock('@abuddy/ears');\n",
+    layer('layers/host', { dependencies: { '@apack/ears': '*', '@apack/sdk': '*' } }, {
+      'src/index.ts': "import { services } from '@apack/sdk/services';\nimport { untypedQx } from '@apack/ears';\nimport { x } from '../x.ts';\n",
+      'tests/a.spec.ts': "vi.mock('@apack/ears');\n",
     });
-    layer('layers/api', { devDependencies: { '@abuddy/ears': '*', '@abuddy/host': '*', '@abuddy/sdk': '*' } }, {
-      'src/setup/backend.ts': "import { openLmdbStore } from '@abuddy/ears/lmdb';\nimport { createHostRuntime } from '@abuddy/host/services';\nimport { bindHost } from '@abuddy/sdk/runtime';\n",
+    layer('layers/api', { devDependencies: { '@apack/ears': '*', '@apack/host': '*', '@apack/sdk': '*' } }, {
+      'src/setup/backend.ts': "import { openLmdbStore } from '@apack/ears/lmdb';\nimport { createHostRuntime } from '@apack/host/services';\nimport { bindHost } from '@apack/sdk/runtime';\n",
     });
-    layer('layers/renderer', { dependencies: { '@abuddy/host': '*', '@abuddy/sdk': '*', '@abuddy/ui': '*' } }, {
-      'src/main.ts': "import { createFePackRegistry } from '@abuddy/host/fe';\nimport { bindFeHost } from '@abuddy/sdk/runtime';\n",
-      'src/App.vue': "<script setup lang=\"ts\">\nimport Button from '@abuddy/ui/design/button';\n</script>\n",
+    layer('layers/renderer', { dependencies: { '@apack/host': '*', '@apack/sdk': '*', '@apack/ui': '*' } }, {
+      'src/main.ts': "import { createFePackRegistry } from '@apack/host/fe';\nimport { bindFeHost } from '@apack/sdk/runtime';\n",
+      'src/App.vue': "<script setup lang=\"ts\">\nimport Button from '@apack/ui/design/button';\n</script>\n",
     });
   };
 
@@ -339,16 +339,16 @@ describe('findUpwardImports', () => {
   });
 
   it.each([
-    ['ears', 'src/query.ts', "import { EARS } from '@abuddy/sdk';", 'layers/ears/src/query.ts:1: @abuddy/sdk'],
-    ['ears', 'tests/query.spec.ts', "const { tx } = await import('@abuddy/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @abuddy/sdk/testing'],
-    ['sdk', 'src/services/app.ts', "import { createHostRuntime } from '@abuddy/host/services';", 'layers/sdk/src/services/app.ts:1: @abuddy/host/services'],
-    ['sdk', 'src/fe/ui.ts', "export type { Button } from '@abuddy/ui/design/button';", 'layers/sdk/src/fe/ui.ts:1: @abuddy/ui/design/button'],
+    ['ears', 'src/query.ts', "import { EARS } from '@apack/sdk';", 'layers/ears/src/query.ts:1: @apack/sdk'],
+    ['ears', 'tests/query.spec.ts', "const { tx } = await import('@apack/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @apack/sdk/testing'],
+    ['sdk', 'src/services/app.ts', "import { createHostRuntime } from '@apack/host/services';", 'layers/sdk/src/services/app.ts:1: @apack/host/services'],
+    ['sdk', 'src/fe/ui.ts', "export type { Button } from '@apack/ui/design/button';", 'layers/sdk/src/fe/ui.ts:1: @apack/ui/design/button'],
     ['host', 'src/bus/app.ts', "import { rootEvents } from '@app/api/core/router/bus-emitter';", 'layers/host/src/bus/app.ts:1: @app/api/core/router/bus-emitter'],
     ['host', 'src/bus/app.ts', "import { rootEvents } from '../../../api/src/core/router/bus-emitter.ts';", 'layers/host/src/bus/app.ts:1: ../../../api/src/core/router/bus-emitter.ts'],
     ['host', 'src/bus/app.ts', "import { logger } from '@/core/shared/debug/logger';", 'layers/host/src/bus/app.ts:1: @/core/shared/debug/logger'],
-    ['host', 'scripts/x.ts', "import { cli } from '@abuddy/cli';", 'layers/host/scripts/x.ts:1: @abuddy/cli'],
-    ['api', 'src/router.ts', "import Button from '@abuddy/ui/design/button';", 'layers/api/src/router.ts:1: @abuddy/ui/design/button'],
-    ['renderer', 'src/store.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';", 'layers/renderer/src/store.ts:1: @abuddy/ears/lmdb'],
+    ['host', 'scripts/x.ts', "import { cli } from '@apack/cli';", 'layers/host/scripts/x.ts:1: @apack/cli'],
+    ['api', 'src/router.ts', "import Button from '@apack/ui/design/button';", 'layers/api/src/router.ts:1: @apack/ui/design/button'],
+    ['renderer', 'src/store.ts', "import { openLmdbStore } from '@apack/ears/lmdb';", 'layers/renderer/src/store.ts:1: @apack/ears/lmdb'],
   ])('flags an upward import in %s: %s', (pkg, file, code, problem) => {
     allowed();
     writeAt(path.join('layers', pkg, file), code);
@@ -356,20 +356,20 @@ describe('findUpwardImports', () => {
   });
 
   it.each([
-    ['ears', { peerDependencies: { '@abuddy/sdk': '*' } }, 'layers/ears/package.json: peerDependencies: @abuddy/sdk'],
-    ['sdk', { dependencies: { '@abuddy/ears': '*', '@abuddy/host': '*' } }, 'layers/sdk/package.json: dependencies: @abuddy/host'],
-    ['host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' }, devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
-  ])("flags an @abuddy package %s's manifest may not declare", (pkg, manifest, problem) => {
+    ['ears', { peerDependencies: { '@apack/sdk': '*' } }, 'layers/ears/package.json: peerDependencies: @apack/sdk'],
+    ['sdk', { dependencies: { '@apack/ears': '*', '@apack/host': '*' } }, 'layers/sdk/package.json: dependencies: @apack/host'],
+    ['host', { dependencies: { '@apack/ears': '*', '@apack/sdk': '*' }, devDependencies: { '@apack/cli': '*' } }, 'layers/host/package.json: devDependencies: @apack/cli'],
+  ])("flags an @apack package %s's manifest may not declare", (pkg, manifest, problem) => {
     allowed();
     rewriteAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
   it.each([
-    ['api', { devDependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, 'layers/api/package.json: undeclared: @abuddy/host'],
-    ['renderer', { dependencies: { '@abuddy/host': '*', '@abuddy/sdk': '*' } }, 'layers/renderer/package.json: undeclared: @abuddy/ui'],
-    ['host', { dependencies: { '@abuddy/sdk': '*' } }, 'layers/host/package.json: undeclared: @abuddy/ears'],
-  ])('flags an @abuddy package %s imports without declaring it', (pkg, manifest, problem) => {
+    ['api', { devDependencies: { '@apack/ears': '*', '@apack/sdk': '*' } }, 'layers/api/package.json: undeclared: @apack/host'],
+    ['renderer', { dependencies: { '@apack/host': '*', '@apack/sdk': '*' } }, 'layers/renderer/package.json: undeclared: @apack/ui'],
+    ['host', { dependencies: { '@apack/sdk': '*' } }, 'layers/host/package.json: undeclared: @apack/ears'],
+  ])('flags an @apack package %s imports without declaring it', (pkg, manifest, problem) => {
     allowed();
     rewriteAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
@@ -387,7 +387,7 @@ describe('findUpwardImports', () => {
   it('reports a workspace that holds code and has no layer', () => {
     const short = LAYERS.filter((layer) => layer.dir !== 'packages/preload');
     expect(findUpwardImports(short))
-      .toEqual(['packages/preload: holds code and has no layer, so nothing says which @abuddy packages it may import']);
+      .toEqual(['packages/preload: holds code and has no layer, so nothing says which @apack packages it may import']);
   });
 
   it('reports a workspace that is both layered and excused', () => {
@@ -401,13 +401,13 @@ describe('findUpwardImports', () => {
    *
    * Each of them asks whether a row permits enough; a permission nothing uses is invisible to all three, so a
    * row drifts permissive an entry at a time and a row allowing everything reads like one that earned it.
-   * That is what made `@abuddy/cli`'s row a grant rather than a decision when it landed.
+   * That is what made `@apack/cli`'s row a grant rather than a decision when it landed.
    */
   it('reports a permission a row has and imports nowhere', () => {
     allowed();
-    const wider = layers.map((l) => (l.name === '@app/api' ? { ...l, allowed: [...l.allowed, '@abuddy/ui'] } : l));
+    const wider = layers.map((l) => (l.name === '@app/api' ? { ...l, allowed: [...l.allowed, '@apack/ui'] } : l));
     expect(findUpwardImports(wider, root))
-      .toEqual(['layers/api: allows @abuddy/ui and imports it nowhere, so the permission grants nothing']);
+      .toEqual(['layers/api: allows @apack/ui and imports it nowhere, so the permission grants nothing']);
   });
 
   // The reason comes from RUNTIME_ONLY_DEPS, which `workspaceDeps` reads too — a permission is unused because
@@ -415,9 +415,9 @@ describe('findUpwardImports', () => {
   it('reports a reason for a permission that is now used', () => {
     allowed();
     const WHY = 'kept for the packaged app rather than for an import';
-    const runtimeOnly = new Map([['layers/api @abuddy/ears', WHY]]);
+    const runtimeOnly = new Map([['layers/api @apack/ears', WHY]]);
     expect(findUpwardImports(layers, root, UNLAYERED_BY_DESIGN, runtimeOnly))
-      .toEqual([`layers/api: imports @abuddy/ears, so its unusedBecause ("${WHY}") no longer applies`]);
+      .toEqual([`layers/api: imports @apack/ears, so its unusedBecause ("${WHY}") no longer applies`]);
   });
 
   // The third clause the sibling exemption lists carry and this one did not until 2026-10-02: an entry whose
@@ -449,23 +449,23 @@ describe('findUnimportedDependencies', () => {
   const WHY = 'spawned by path, not imported';
 
   it('reports an entry no manifest declares any more', () => {
-    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @abuddy/nope', WHY]]);
+    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @apack/nope', WHY]]);
     expect(findUnimportedDependencies(repoRootDir(), stale))
-      .toEqual([`packages/main @abuddy/nope: listed in RUNTIME_ONLY_DEPS (${WHY}) but no manifest declares it`]);
+      .toEqual([`packages/main @apack/nope: listed in RUNTIME_ONLY_DEPS (${WHY}) but no manifest declares it`]);
   });
 
   it('reports an entry whose package imports it after all', () => {
-    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @abuddy/sdk', WHY]]);
+    const stale = new Map([...RUNTIME_ONLY_DEPS, ['packages/main @apack/sdk', WHY]]);
     expect(findUnimportedDependencies(repoRootDir(), stale))
-      .toEqual([`packages/main: imports @abuddy/sdk, so its RUNTIME_ONLY_DEPS entry (${WHY}) no longer applies`]);
+      .toEqual([`packages/main: imports @apack/sdk, so its RUNTIME_ONLY_DEPS entry (${WHY}) no longer applies`]);
   });
 
   // The other reader. Without it `typecheck:main` declared 1868 files, 195 of them from packages main imports
   // nothing from, against 52 of its own source
   it('keeps a process dependency out of the cache key', () => {
-    expect(workspaceDeps('main')).not.toContain('abuddy-cli');
-    expect(workspaceDeps('main'), 'the deps main really compiles').toContain('abuddy-host');
-    expect([...RUNTIME_ONLY_DEPS.keys()]).toContain('packages/main @abuddy/cli');
+    expect(workspaceDeps('main')).not.toContain('apack-cli');
+    expect(workspaceDeps('main'), 'the deps main really compiles').toContain('apack-host');
+    expect([...RUNTIME_ONLY_DEPS.keys()]).toContain('packages/main @apack/cli');
   });
 
   it('holds for the repo', () => {
@@ -481,11 +481,11 @@ describe('findLmdbImports', () => {
     except: rule.except && `src/${rule.except}`,
   }));
   const allowed = () => {
-    write('packages/abuddy-ears/src/lmdb/envs.ts', "import { open } from 'lmdb';\nimport type { Partition } from '../persistence/policy.ts';\n");
-    write('packages/abuddy-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
-    write('packages/abuddy-host/src/services/app-data.ts', "import type { LmdbStore } from '@abuddy/ears/lmdb';\n");
-    write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';\n");
-    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedTx } from '@abuddy/ears';\n");
+    write('packages/apack-ears/src/lmdb/envs.ts', "import { open } from 'lmdb';\nimport type { Partition } from '../persistence/policy.ts';\n");
+    write('packages/apack-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
+    write('packages/apack-host/src/services/app-data.ts', "import type { LmdbStore } from '@apack/ears/lmdb';\n");
+    write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@apack/ears/lmdb';\n");
+    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedTx } from '@apack/ears';\n");
   };
 
   it('allows the LMDB store to load lmdb, and the host and the API to open it', () => {
@@ -494,14 +494,14 @@ describe('findLmdbImports', () => {
   });
 
   it.each([
-    ['packages/abuddy-host/src/services/trace-store.ts', "import { open } from 'lmdb';"],
-    ['packages/abuddy-host/tests/store.spec.ts', "const lmdb = await import('lmdb');"],
+    ['packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';"],
+    ['packages/apack-host/tests/store.spec.ts', "const lmdb = await import('lmdb');"],
     ['packages/api/src/setup/backend.ts', "import type { Database } from 'lmdb';"],
     ['packages/api/scripts/db/fix.ts', "const { open } = require('lmdb/dist/index.cjs');"],
-    ['packages/abuddy-ears/src/index.ts', "export { openLmdbStore } from './lmdb/index.ts';"],
-    ['packages/abuddy-ears/src/persistence/policy.ts', "import type { LmdbDbs } from '../lmdb/envs.ts';"],
-    ['packages/abuddy-ears/src/query.ts', "import { open } from 'lmdb';"],
-    ['packages/default-setup/src/features/notes/be/system.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';"],
+    ['packages/apack-ears/src/index.ts', "export { openLmdbStore } from './lmdb/index.ts';"],
+    ['packages/apack-ears/src/persistence/policy.ts', "import type { LmdbDbs } from '../lmdb/envs.ts';"],
+    ['packages/apack-ears/src/query.ts', "import { open } from 'lmdb';"],
+    ['packages/default-setup/src/features/notes/be/system.ts', "import { openLmdbStore } from '@apack/ears/lmdb';"],
     ['tests/packs/external-pack/tests/unit/memos.spec.ts', "vi.mock('lmdb');"],
   ])('flags %s', (file, code) => {
     allowed();
@@ -532,9 +532,9 @@ describe('findLmdbImports', () => {
 
 describe('findSharedPackageLists', () => {
   it.each([
-    ["const EXTERNALS = ['@abuddy/sdk', '@abuddy/sdk/*'];", ['"@abuddy/sdk"', '"@abuddy/sdk/*"']],
-    ["if (source.startsWith('@abuddy/ears/')) return;", ['"@abuddy/ears/"']],
-    ['bridge({ bridgedPackages: [`@abuddy/ears`] });', ['"@abuddy/ears"']],
+    ["const EXTERNALS = ['@apack/sdk', '@apack/sdk/*'];", ['"@apack/sdk"', '"@apack/sdk/*"']],
+    ["if (source.startsWith('@apack/ears/')) return;", ['"@apack/ears/"']],
+    ['bridge({ bridgedPackages: [`@apack/ears`] });', ['"@apack/ears"']],
   ])('flags a shared package named outside an import: %s', (code, found) => {
     write('consumer.ts', code);
     expect(findSharedPackageLists(['src/consumer.ts'], root)).toEqual(found.map((what) => `src/consumer.ts:1: ${what}`));
@@ -542,12 +542,12 @@ describe('findSharedPackageLists', () => {
 
   it('allows imports of the packages and their specific modules', () => {
     write('consumer.ts', [
-      "import { untypedTx } from '@abuddy/ears';",
-      "export * from '@abuddy/sdk';",
-      "const sdk = await import('@abuddy/sdk');",
-      "const runtime = resolve('@abuddy/sdk/runtime');",
-      "// '@abuddy/sdk' in a comment",
-      "const message = 'packs import @abuddy/sdk instead';",
+      "import { untypedTx } from '@apack/ears';",
+      "export * from '@apack/sdk';",
+      "const sdk = await import('@apack/sdk');",
+      "const runtime = resolve('@apack/sdk/runtime');",
+      "// '@apack/sdk' in a comment",
+      "const message = 'packs import @apack/sdk instead';",
     ].join('\n'));
     expect(findSharedPackageLists(['src/consumer.ts'], root)).toEqual([]);
   });
@@ -587,7 +587,7 @@ describe('findSharedPackageLists', () => {
  * pack's halves can be pointed at the same directory.
  *
  * One shape, because there used to be two and the difference was invisible. A fixture at `src/pack` has no
- * `package.json` and no `abuddy.json`, so `own-modules` (which needs the `imports` map) and `contract-leaves`
+ * `package.json` and no `apack.json`, so `own-modules` (which needs the `imports` map) and `contract-leaves`
  * (which needs the manifest) **cannot fire there at all** — measured. Half the sweep's fixtures were that shape,
  * so for those rows those two rules' "and no other rule claims it" said nothing: they were not able to claim.
  *
@@ -612,11 +612,11 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findJsSpecifiers(['src'], root);
   },
   findRawPackHelpers: () => {
-    packFixture({ 'src/f.ts': "import { untypedSendToSystem } from '@abuddy/sdk/events';" });
+    packFixture({ 'src/f.ts': "import { untypedSendToSystem } from '@apack/sdk/events';" });
     return findRawPackHelpers(PACK_SRC, root);
   },
   findInternalPackageImports: () => {
-    packFixture({ 'src/f.ts': "import { _getMediaPath } from '@abuddy/sdk/utils';" });
+    packFixture({ 'src/f.ts': "import { _getMediaPath } from '@apack/sdk/utils';" });
     return findInternalPackageImports(PACK_SRC, root);
   },
   findComponentSends: () => {
@@ -639,7 +639,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findPackBackendConsole(PACK_SRC, root);
   },
   findHostImports: () => {
-    packFixture({ 'src/f.ts': "import { edgeStore } from '@abuddy/host/ears';" });
+    packFixture({ 'src/f.ts': "import { edgeStore } from '@apack/host/ears';" });
     return findHostImports(PACK_SRC, root);
   },
   findPackOwnAliases: () => {
@@ -653,23 +653,23 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findExtensionlessOwnModules(PACK_SRC, root);
   },
   findAppImportsInPackTests: () => {
-    packFixture({ 'tests/unit/feature.spec.ts': "import { hydrate } from '../../../abuddy-host/src/database/store';" });
+    packFixture({ 'tests/unit/feature.spec.ts': "import { hydrate } from '../../../apack-host/src/database/store';" });
     return findAppImportsInPackTests(PACK_TESTS, root);
   },
   findUpwardImports: () => {
     // Only the rows this tree builds a directory for: one with no tree behind it makes the manifest read throw
-    const modelled = ['abuddy-ears', 'abuddy-sdk', 'abuddy-host', 'api', 'renderer'];
+    const modelled = ['apack-ears', 'apack-sdk', 'apack-host', 'api', 'renderer'];
     const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
-      .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
+      .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^apack-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
-    const upward = { 'src/index.ts': "import { services } from '@abuddy/sdk/services';\n" };
+    const upward = { 'src/index.ts': "import { services } from '@apack/sdk/services';\n" };
     for (const { dir } of layers) layer(dir, {}, dir === 'layers/ears' ? upward : {});
     return findUpwardImports(layers, root);
   },
   findUnimportedDependencies: () => {
     // A real workspace name, because that is what makes a specifier a workspace dependency; the source file is
     // what puts this package in the population at all, and it imports nothing
-    writeAt('packages/demo/package.json', JSON.stringify({ name: '@app/demo', dependencies: { '@abuddy/sdk': '*' } }));
+    writeAt('packages/demo/package.json', JSON.stringify({ name: '@app/demo', dependencies: { '@apack/sdk': '*' } }));
     writeAt('packages/demo/src/index.ts', 'export const x = 1;\n');
     return findUnimportedDependencies(root, new Map());
   },
@@ -679,7 +679,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
       dirs: rule.dirs.map((dir) => `src/${dir}`),
       except: rule.except && `src/${rule.except}`,
     }));
-    write('packages/abuddy-host/src/services/trace-store.ts', "import { open } from 'lmdb';");
+    write('packages/apack-host/src/services/trace-store.ts', "import { open } from 'lmdb';");
     return findLmdbImports(rules, root);
   },
   findRawGitListings: () => {
@@ -687,7 +687,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findRawGitListings(['src'], root, {});
   },
   findSharedPackageLists: () => {
-    write('consumer.ts', "const EXTERNALS = ['@abuddy/sdk'];");
+    write('consumer.ts', "const EXTERNALS = ['@apack/sdk'];");
     return findSharedPackageLists(['src/consumer.ts'], root);
   },
   findRepositoryCasts: () => {
@@ -711,7 +711,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findContractLeafImports(PACK_SRC, root);
   },
   findPackageScriptImports: () => {
-    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing' }));
+    writeAt('packages/thing/package.json', JSON.stringify({ name: '@apack/thing' }));
     writeAt('packages/thing/scripts/build.ts', "import { x } from '../../../scripts/lib/x.ts';");
     return findPackageScriptImports(root);
   },
@@ -800,7 +800,7 @@ describe("this checkout's pack list", () => {
     try {
       for (const name of ['one', 'two']) {
         fs.mkdirSync(path.join(tree, name), { recursive: true });
-        fs.writeFileSync(path.join(tree, name, 'abuddy.json'), '{}');
+        fs.writeFileSync(path.join(tree, name, 'apack.json'), '{}');
         // Asked after each, so the second answer has a first one to be stale against
         expect(packDirs(tree), 'a memo ignoring the root would still be answering with the first walk')
           .toContain(name);
@@ -890,7 +890,7 @@ describe('CHECKS', () => {
    * `own-modules` reported a relative `.js` to a pack author and nothing at all here.
    *
    * Asserted over each rule's own example, which `exampleFor` both writes and runs through the repo's entry
-   * point. `packRuleProblems` is what `abuddy build` calls, and prints pack-relative where this prints
+   * point. `packRuleProblems` is what `apack build` calls, and prints pack-relative where this prints
    * repo-relative, which is the one difference between them that is meant to exist.
    */
   it.each([...sweepers('src')].map((rule) => rule.id))('%s reports the same offence to a pack author and to this repo', (id) => {
@@ -1022,8 +1022,8 @@ describe('CHECKS', () => {
 
   /**
    * The population a rule about a pack's own code reads. A rule that covered `src` alone was narrower in this repo
-   * than the same rule is for a pack, since `abuddy test` runs the set over a pack's `tests` — which is how
-   * `@abuddy/host` in a pack's test came to be reported by a third rule instead of the one that owns it.
+   * than the same rule is for a pack, since `apack test` runs the set over a pack's `tests` — which is how
+   * `@apack/host` in a pack's test came to be reported by a third rule instead of the one that owns it.
    */
   it("covers every pack's src and its tests", () => {
     const packs = packDirs();
@@ -1045,25 +1045,25 @@ describe('CHECKS', () => {
    */
   it('finds no pack inside a test-output directory', () => {
     fs.mkdirSync(path.join(root, 'real'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'real/abuddy.json'), '{}');
+    fs.writeFileSync(path.join(root, 'real/apack.json'), '{}');
     for (const buried of ['tests/results/trace-1', 'real/tests/results/trace-2', 'test-results/trace-3']) {
       fs.mkdirSync(path.join(root, buried), { recursive: true });
-      fs.writeFileSync(path.join(root, buried, 'abuddy.json'), '{}');
+      fs.writeFileSync(path.join(root, buried, 'apack.json'), '{}');
     }
     // The scaffold's template pack is appended rather than walked to, so it is here whatever the tree holds
-    expect(packDirs(root)).toEqual(['packages/abuddy-cli/templates/pack', 'real']);
+    expect(packDirs(root)).toEqual(['packages/apack-cli/templates/pack', 'real']);
   });
 
   /**
    * The one shape two pack rules are both right about, and the two consumers answer differently on purpose.
    *
-   * `abuddy validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
-   * `abuddy-cli/tests/build/pack-rules.spec.ts`. `packRule` here runs one rule at a time, because `--rule <id>`
+   * `apack validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
+   * `apack-cli/tests/build/pack-rules.spec.ts`. `packRule` here runs one rule at a time, because `--rule <id>`
    * has to answer for that rule alone and an answer that depended on which other rules ran would not be one. So
    * this side reports both, and that is the difference, not a bug: pinned so nobody 'fixes' one to match the other.
    */
   it('reports a leaf reaching another feature under both rules, running one rule at a time', () => {
-    writeAt('pack/abuddy.json', JSON.stringify({
+    writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: { memos: { plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
@@ -1087,7 +1087,7 @@ describe('CHECKS', () => {
    * hand after several commits, and the fixtures that could not fire were found by hand too.
    *
    * The places are read off what the rules test before they report — `place.generated`, `BACKEND_PATH` over
-   * `inRoot`, inside a feature against outside every one, and the roles `abuddy.json` names — and the offences
+   * `inRoot`, inside a feature against outside every one, and the roles `apack.json` names — and the offences
    * are one line each, lifted from the examples above. The cross product is what finds an intersection nobody
    * thought of, which is the whole point: a hand-written list of "pairs that can collide" would be the same
    * guess as the fixtures it replaces.
@@ -1111,10 +1111,10 @@ describe('CHECKS', () => {
 
   /** One offending line per rule, in `#` subpaths so the same text means the same thing at every place */
   const OFFENCES: Record<string, string> = {
-    'host-imports': "import { edgeStore } from '@abuddy/host/ears';",
+    'host-imports': "import { edgeStore } from '@apack/host/ears';",
     'lmdb-imports': "import { open } from 'lmdb';",
-    'internal-package-imports': "import { _getMediaPath } from '@abuddy/sdk/utils';",
-    'untyped-sends': "import { untypedSendToSystem } from '@abuddy/sdk/events';",
+    'internal-package-imports': "import { _getMediaPath } from '@apack/sdk/utils';",
+    'untyped-sends': "import { untypedSendToSystem } from '@apack/sdk/events';",
     'raw-transport': '_rootEvents.emitOutgoing(event);',
     'backend-console': "console.log('written');",
     'pack-own-aliases': "import { x } from '@/features/memos/be/x.ts';",
@@ -1140,7 +1140,7 @@ describe('CHECKS', () => {
     tests: 'tests/decoy.spec.ts',
   } as const;
   const DECOY_FILES = Object.fromEntries(Object.values(DECOY)
-    .map((file) => [file, "import { edgeStore } from '@abuddy/host/ears';\n"]));
+    .map((file) => [file, "import { edgeStore } from '@apack/host/ears';\n"]));
 
   /**
    * A cell two rules both claim, with the verdict a reader can check. Hand-written, because a real overlap needs a
@@ -1148,7 +1148,7 @@ describe('CHECKS', () => {
    * sit here. A new row is a decision to raise, not to take.
    *
    * These say *claimed*, not *reported*: this sweep runs one rule at a time, where `packRuleProblems` merges them
-   * for a pack author. Which rule wins each is pinned in `abuddy-cli/tests/build/pack-rules.spec.ts`.
+   * for a pack author. Which rule wins each is pinned in `apack-cli/tests/build/pack-rules.spec.ts`.
    */
   const ACCEPTED_OVERLAP: Record<string, { winner: string; why: string }> = {
     'cross-feature-imports at a contract leaf (fe)': { winner: 'contract-leaves', why: 'both word it as the specifier' },
@@ -1276,16 +1276,16 @@ describe('CHECKS', () => {
   });
 
   /**
-   * The other population, and nothing swept it: `abuddy test` runs the whole rule set over a pack's `tests`
+   * The other population, and nothing swept it: `apack test` runs the whole rule set over a pack's `tests`
    * (`refusePackRuleViolations(cwd, TEST_DIRS)`), so an offence there has an owner exactly as one in `src` does.
-   * Three rules claimed `@abuddy/host` in a pack's test until `f04775d70`, and this is the case that would have
+   * Three rules claimed `@apack/host` in a pack's test until `f04775d70`, and this is the case that would have
    * said so — the fixtures live in `tests/`, where a src sweep cannot reach.
    */
   it.each([
-    ['@abuddy/host', "import { hydrate } from '@abuddy/host/ears';", 'findHostImports'],
+    ['@apack/host', "import { hydrate } from '@apack/host/ears';", 'findHostImports'],
     ['a @/ alias', "import { openAppStore } from '@/setup/backend';", 'findPackOwnAliases'],
-    ['an @internal export', "import { _getMediaPath } from '@abuddy/sdk/utils';", 'findInternalPackageImports'],
-    ['the app by relative path', "import { hydrate } from '../../../abuddy-host/src/database/store';", 'findAppImportsInPackTests'],
+    ['an @internal export', "import { _getMediaPath } from '@apack/sdk/utils';", 'findInternalPackageImports'],
+    ['the app by relative path', "import { hydrate } from '../../../apack-host/src/database/store';", 'findAppImportsInPackTests'],
     ['an extensionless own module', "import { sendToSystem } from '#generated/events';", 'findExtensionlessOwnModules'],
   ])("in a pack's tests, %s is claimed by exactly one rule", (_shape, code, owner) => {
     packFixture({ 'tests/unit/feature.spec.ts': code });
@@ -1297,7 +1297,7 @@ describe('CHECKS', () => {
 /**
  * A pack names its own modules by the file that is there. Two forms fail the same way — nothing, and the
  * `.js` a pack never emits — so they get one rule and one message, and the search that names the file the
- * author meant is the one `abuddy build` runs over every pack outside this checkout.
+ * author meant is the one `apack build` runs over every pack outside this checkout.
  */
 describe('findExtensionlessOwnModules', () => {
   /** A pack with an `imports` map, which is what makes a `#` string a specifier rather than a colour */
@@ -1422,7 +1422,7 @@ describe('findPackOwnAliases', () => {
    * spelling reports it, and what resolves specifiers does not resolve it at all.
    */
   it('is the only rule that reacts to one, the resolvers skipping it', () => {
-    writeAt('pack/abuddy.json', JSON.stringify({
+    writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: { memos: { plugin: { contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
@@ -1445,7 +1445,7 @@ describe('findPackOwnAliases', () => {
 describe('findPackageScriptImports', () => {
   /** A package with a scripts/ directory, which is the only shape this rule looks at */
   function pkg(deps: Record<string, string>, files: Record<string, string>, field = 'dependencies'): void {
-    writeAt('packages/thing/package.json', JSON.stringify({ name: '@abuddy/thing', [field]: deps }));
+    writeAt('packages/thing/package.json', JSON.stringify({ name: '@apack/thing', [field]: deps }));
     writeAt('packages/thing/src/own.ts', 'export const own = 1;');
     for (const [file, content] of Object.entries(files)) writeAt(`packages/thing/${file}`, content);
   }
@@ -1469,10 +1469,10 @@ describe('findPackageScriptImports', () => {
   });
 
   it('flags a reach outside the package and an undeclared dependency', () => {
-    pkg({}, { 'scripts/build.ts': "import { x } from '../../../scripts/lib/x.ts';\nimport { y } from '@abuddy/host/build/discover';" });
+    pkg({}, { 'scripts/build.ts': "import { x } from '../../../scripts/lib/x.ts';\nimport { y } from '@apack/host/build/discover';" });
     expect(findPackageScriptImports(root)).toEqual([
       'packages/thing/scripts/build.ts:1: ../../../scripts/lib/x.ts',
-      'packages/thing/scripts/build.ts:2: @abuddy/host/build/discover',
+      'packages/thing/scripts/build.ts:2: @apack/host/build/discover',
     ]);
   });
 });
@@ -1482,25 +1482,25 @@ describe('findPackageScriptImports', () => {
  * so a leaf that can reach its actor closes that cycle — which is why the rule is a closure walk and not a check
  * of the leaf's own imports.
  *
- * The fixture is a pack, `abuddy.json` included: that file is what makes a tree a pack, and a fixture without one
+ * The fixture is a pack, `apack.json` included: that file is what makes a tree a pack, and a fixture without one
  * isn't testing the thing the rule runs on.
  */
 /**
  * The CLI's scaffold is a pack with no manifest, and `packDirs()` names it outright because the walk that finds
- * every other pack cannot see it — `abuddy.json` is built in code, from computed keys (`init.ts`).
+ * every other pack cannot see it — `apack.json` is built in code, from computed keys (`init.ts`).
  *
  * That made it the one pack whose rules ran against the wrong directory: `packRootOf` climbed past it to
- * `packages/abuddy-cli` and handed that package to every rule, so `contract-leaves` found no features,
+ * `packages/apack-cli` and handed that package to every rule, so `contract-leaves` found no features,
  * `cross-feature-imports` read the wrong package's published entry points, and `own-modules` read an `imports`
  * map belonging to someone else. All three reported nothing, and none of them because the scaffold was clean.
  */
 describe("the CLI's scaffold, a pack with no manifest", () => {
-  const TEMPLATE = 'packages/abuddy-cli/templates/pack';
+  const TEMPLATE = 'packages/apack-cli/templates/pack';
   const scaffold = (files: Record<string, string>) => {
     // The CLI's own `package.json`, which is the whole point: without something above the scaffold to find,
     // the walk runs out of tree and lands on the scaffold by accident, and a fixture built that way passes
     // whether the fix is there or not — measured, by removing the fix and watching it stay green
-    writeAt('packages/abuddy-cli/package.json', JSON.stringify({ name: '@abuddy/cli' }));
+    writeAt('packages/apack-cli/package.json', JSON.stringify({ name: '@apack/cli' }));
     for (const [file, content] of Object.entries(files)) writeAt(`${TEMPLATE}/${file}`, content);
   };
 
@@ -1562,7 +1562,7 @@ describe('findContractLeafImports', () => {
    * guess at a filename — no manifest field names the machine, since `Plugin.state` is a value — so `./plugin`
    * matched nothing before this, and a leaf importing it was reported only as whatever its closure reached.
    */
-  it("flags a leaf that imports an entry abuddy.json names, whatever the file is called", () => {
+  it("flags a leaf that imports an entry apack.json names, whatever the file is called", () => {
     pack({
       'features/memos/fe/contract.ts': "import type { P } from './plugin';",
       'features/memos/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
@@ -1573,7 +1573,7 @@ describe('findContractLeafImports', () => {
 
   // It is the entry's path that matters, not its name: a pack whose machine is `machine.ts` is caught the same way
   it('flags an entry the manifest names under an unconventional filename', () => {
-    writeAt('pack/abuddy.json', JSON.stringify({
+    writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: {
         memos: { plugin: { entry: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
@@ -1800,7 +1800,7 @@ describe('findCrossFeatureImports', () => {
     ]);
   });
   /**
-   * The one module that may name its features' frontends is what the package publishes — `@abuddy/host`'s `./fe`
+   * The one module that may name its features' frontends is what the package publishes — `@apack/host`'s `./fe`
    * barrel, the hand-written counterpart of a pack's generated `pack-entry-fe.ts`. It is read from the package's
    * `exports`, so nothing has to be listed here, and a module that merely sits outside every feature gets no
    * licence from that: the case above about one is flagged exactly as a feature would be.
@@ -1813,7 +1813,7 @@ describe('findCrossFeatureImports', () => {
   });
 
   /**
-   * Published *and* outside every feature. A package may publish one feature's own module — `@abuddy/host`
+   * Published *and* outside every feature. A package may publish one feature's own module — `@apack/host`
    * publishes `./settings` from `features/settings/be/index.ts` — and a feature's barrel is not the package's
    * assembly. Excepting it by visibility alone handed that one feature a licence to read another's frontend that
    * no other feature had, silently, which is the hole this whole rule exists to close.
@@ -1826,7 +1826,7 @@ describe('findCrossFeatureImports', () => {
 
   /**
    * What a syntax tree leaves out and a regex does not. Written before the rule read one, so each of these
-   * failed first: the reader is why `abuddy-cli/CLAUDE.md` records that "a regex literal holding an unbalanced
+   * failed first: the reader is why `apack-cli/CLAUDE.md` records that "a regex literal holding an unbalanced
    * quote made a commented-out import look real and failed a build naming a comment".
    *
    * Not hypothetical. Three commented-out imports already sit in `default-setup`'s SFCs, in
@@ -1855,8 +1855,8 @@ describe('findCrossFeatureImports', () => {
 
 describe('findRepositoryCasts', () => {
   it.each([
-    ['packages/abuddy-sdk/src/content/format-applier.ts', "import { repository } from '@abuddy/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
-    ['packages/abuddy-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
+    ['packages/apack-sdk/src/content/format-applier.ts', "import { repository } from '@apack/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
+    ['packages/apack-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
     ['packages/default-setup/src/features/notes/be/system.ts', 'const notes = (services.repository as unknown as Record<string, unknown>).noteQueries;'],
     ['packages/renderer/src/view.vue', '<script setup lang="ts">\nconst r = repository as unknown as Repos;\n</script>'],
   ])('flags %s', (file, code) => {
@@ -1878,7 +1878,7 @@ describe('findRepositoryCasts', () => {
 
   it("checks every package's src/", () => {
     expect(packageSourceDirs()).toEqual(expect.arrayContaining([
-      'packages/abuddy-ears/src', 'packages/abuddy-sdk/src', 'packages/abuddy-host/src', 'packages/abuddy-testing/src',
+      'packages/apack-ears/src', 'packages/apack-sdk/src', 'packages/apack-host/src', 'packages/apack-testing/src',
       'packages/api/src', 'packages/default-setup/src', 'packages/renderer/src',
     ]));
     writeAt('packages/new-package/src/index.ts', 'export const x = (repository as unknown as Repos).x;');
@@ -1895,12 +1895,12 @@ describe('findRepositoryCasts', () => {
 /** A workspace package whose exports resolve source under the condition, and a consumer that imports it */
 function workspace(): void {
   writeAt('packages/lib/package.json', JSON.stringify({
-    name: '@abuddy/lib',
+    name: '@apack/lib',
     exports: { '.': { [SOURCE_CONDITION]: './src/index.ts', default: './dist/index.js' } },
   }));
   writeAt('packages/lib/src/index.ts', 'export const x = 1;');
   writeAt('packages/consumer/package.json', JSON.stringify({ name: '@app/consumer' }));
-  writeAt('packages/consumer/src/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+  writeAt('packages/consumer/src/app.ts', "import { x } from '@apack/lib';\nexport const y = x;\n");
 }
 
 /** A second package with code of its own, for the configs that reach across directories */
@@ -1952,10 +1952,10 @@ describe('findMissingSourceConditions', () => {
   beforeEach(workspace);
 
   it('lists the workspace packages whose exports resolve source under the condition', () => {
-    expect(sourceConditionPackages(root)).toEqual(['@abuddy/lib']);
-    // @abuddy/testing is not among them: its entries resolve its built bundle whoever loads them, so a
+    expect(sourceConditionPackages(root)).toEqual(['@apack/lib']);
+    // @apack/testing is not among them: its entries resolve its built bundle whoever loads them, so a
     // config importing it selects nothing and needs no condition
-    expect(sourceConditionPackages()).toEqual(['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui']);
+    expect(sourceConditionPackages()).toEqual(['@apack/ears', '@apack/sdk', '@apack/ui']);
   });
 
   // Every config-file name the check recognises, with the option each kind declares the condition in
@@ -1979,8 +1979,8 @@ describe('findMissingSourceConditions', () => {
   });
 
   it.each([
-    ['declared directly', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }'],
-    ['a vite config listing it', 'vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };"],
+    ['declared directly', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@apack/source"] } }'],
+    ['a vite config listing it', 'vite.config.ts', "export default { resolve: { conditions: ['@apack/source'] } };"],
     ['a list the file declares', 'vitest.config.ts', `const conditions = ['${SOURCE_CONDITION}', 'node'];\nexport default { resolve: { conditions } };\n`],
     ['a spread of a list the file declares', 'vitest.config.ts', `const base = ['${SOURCE_CONDITION}'];\nexport default { resolve: { conditions: [...base, 'node'] } };\n`],
     ['an option set by assignment', 'vitest.config.ts', `export default { esbuildOptions(o) { o.conditions = ['${SOURCE_CONDITION}', 'module']; } };\n`],
@@ -1990,10 +1990,10 @@ describe('findMissingSourceConditions', () => {
   });
 
   it('follows an extends chain and a config merged from another one', () => {
-    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@apack/source"] } }');
     // A comment and a trailing comma: tsconfigs are JSONC
     writeAt('packages/consumer/tsconfig.test.json', '{\n  // built on the package tsconfig\n  "extends": "./tsconfig.json",\n}');
-    writeAt('packages/consumer/vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };");
+    writeAt('packages/consumer/vite.config.ts', "export default { resolve: { conditions: ['@apack/source'] } };");
     writeAt('packages/consumer/vitest.config.ts', "import viteConfig from './vite.config';\nexport default mergeConfig(viteConfig, {});");
     expect(conditionProblems()).toEqual([]);
   });
@@ -2039,15 +2039,15 @@ describe('findMissingSourceConditions', () => {
     writeAt('packages/other/src/app.ts', "import { readFile } from 'node:fs/promises';\nexport const r = readFile;\n");
     writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
     writeAt('packages/consumer/tsconfig.json', '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }');
-    writeAt('packages/consumer/tsconfig.app.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    writeAt('packages/consumer/tsconfig.app.json', '{ "compilerOptions": { "customConditions": ["@apack/source"] } }');
     expect(conditionProblems()).toEqual([]);
   });
 
   it('ignores the package name in a comment or a string, and skips node_modules and dist', () => {
     writeAt('packages/plain/package.json', JSON.stringify({ name: '@app/plain' }));
-    writeAt('packages/plain/src/app.ts', "// import { x } from '@abuddy/lib';\nexport const hint = 'install @abuddy/lib first';\n");
-    writeAt('packages/plain/node_modules/dep/index.ts', "import { x } from '@abuddy/lib';\n");
-    writeAt('packages/plain/dist/index.js', "import { x } from '@abuddy/lib';\n");
+    writeAt('packages/plain/src/app.ts', "// import { x } from '@apack/lib';\nexport const hint = 'install @apack/lib first';\n");
+    writeAt('packages/plain/node_modules/dep/index.ts', "import { x } from '@apack/lib';\n");
+    writeAt('packages/plain/dist/index.js', "import { x } from '@apack/lib';\n");
     writeAt('packages/plain/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
     expect(conditionProblems()).toEqual([]);
   });
@@ -2073,9 +2073,9 @@ describe('findMissingSourceConditions', () => {
     expect(conditionProblems()).toEqual([expect.stringContaining(`${file}: needs `)]);
   });
 
-  it('reads the declarations a tsconfig compiles, which resolve @abuddy imports too', () => {
+  it('reads the declarations a tsconfig compiles, which resolve @apack imports too', () => {
     otherPackage();
-    writeAt('packages/other/api.d.ts', "import type { X } from '@abuddy/lib';\nexport type Y = X;\n");
+    writeAt('packages/other/api.d.ts', "import type { X } from '@apack/lib';\nexport type Y = X;\n");
     writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
     expect(conditionProblems()).toEqual([NEEDS('packages/other/tsconfig.json', TSCONFIG_OPTION)]);
   });
@@ -2111,7 +2111,7 @@ describe('findMissingSourceConditions', () => {
   });
 
   it('sees code reachable only through a symlinked directory, and ends on a symlink to an ancestor', () => {
-    writeAt('elsewhere/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+    writeAt('elsewhere/app.ts', "import { x } from '@apack/lib';\nexport const y = x;\n");
     writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
     writeAt('packages/other/vite.config.ts', 'export default { build: {} };\n');
     fs.symlinkSync(path.join(root, 'elsewhere'), path.join(root, 'packages/other/src'));
@@ -2134,7 +2134,7 @@ describe('findMissingSourceConditions', () => {
     ['the config declares the condition', 'tsconfig.json', 'it already declares the condition or compiles no such code'],
     ['the config is gone', 'gone.config.ts', 'the config is gone'],
   ])('reports an exception that no longer applies: %s', (_form, file, why) => {
-    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@apack/source"] } }');
     expect(conditionProblems(new Map([[`packages/consumer/${file}`, REASON]])))
       .toEqual([`packages/consumer/${file}: listed in RESOLVES_DIST_BY_DESIGN (${REASON}) but ${why}`]);
   });
@@ -2146,21 +2146,21 @@ describe('findMissingSourceConditions', () => {
 
   // The other half of the rule: a pack resolves what a pack author has, which is the published dist. A
   // pack config declaring the condition compiles against a layout that exists only in this checkout.
-  describe('a pack, which is any directory holding abuddy.json', () => {
+  describe('a pack, which is any directory holding apack.json', () => {
     const MUST_NOT = (file: string, option: string) =>
-      `${file}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`
+      `${file}: a pack resolves the @apack packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`
       + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there';
 
     /** A pack in the temp root, with the same importing source a host consumer has */
     function pack(dir = 'packages/my-pack'): string {
-      writeAt(`${dir}/abuddy.json`, JSON.stringify({ id: 'my-pack', version: '0.1.0' }));
+      writeAt(`${dir}/apack.json`, JSON.stringify({ id: 'my-pack', version: '0.1.0' }));
       writeAt(`${dir}/package.json`, JSON.stringify({ name: '@app/my-pack' }));
-      writeAt(`${dir}/src/app.ts`, "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+      writeAt(`${dir}/src/app.ts`, "import { x } from '@apack/lib';\nexport const y = x;\n");
       return dir;
     }
 
     it.each([
-      ['a tsconfig', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }', TSCONFIG_OPTION],
+      ['a tsconfig', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@apack/source"] } }', TSCONFIG_OPTION],
       ['a vitest config', 'vitest.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
       ['a vite config', 'vite.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
     ])('flags %s that declares the condition', (_form, file, content, option) => {

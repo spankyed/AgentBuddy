@@ -23,14 +23,14 @@ Finished when:
   `DependencyCommandSource`, `DependencyPlugin`, `DependencyPluginSource`, `_dependencyCommands` or
   `_dependencyPlugins` (`grep -r` finds them only in docs/archive).
 - One `_mergeProvenance` serves entities, relKinds, commands and plugins; no kind has its own reader.
-- A four-pack diamond (A → {B, C} → D) builds with the real `abuddy build`, and A's generated
+- A four-pack diamond (A → {B, C} → D) builds with the real `apack build`, and A's generated
   `EntityName` names D's entity once.
 - A build against a dependency whose facade lacks a required export fails, naming the missing export
   and the dependency, proven against a real built snapshot.
 - Mutations: dropping the own-manifest pass in `_mergeProvenance` fails the nearer-wins test; reverting
   `declaredBy` in mergeRegistries fails the diamond test while leaving the genuine-collision test
   passing; removing a name from REQUIRED_FACADE_EXPORTS fails the missing-export test.
-- npm run typecheck, npm run api:check, and npm test -w @abuddy/cli and -w @abuddy/sdk all pass.
+- npm run typecheck, npm run api:check, and npm test -w @apack/cli and -w @apack/sdk all pass.
 - npm run compile and npm run test:external-pack pass (both rebuild snapshots in the new shape).
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
@@ -39,12 +39,12 @@ Never:
   chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
   and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - keep a reader for the old snapshot fields, or a fallback for a snapshot without `provenance`.
 - add fixture packs under tests/fixtures/, or wire anything into tests/scripts/test-external-pack.sh
@@ -77,7 +77,7 @@ for (const [depId, snapshot] of snapshots) {
 `_dependencyPlugins` is that function with `name` renamed to `id`. `ownerOf` is that function written as
 `Object.assign` over records, in a different package, and additionally folding in the pack's own names.
 
-**The cost today:** 6 entries in `@abuddy/sdk/build`'s public API (`etc/build.api.md:219–253`), 5 field
+**The cost today:** 6 entries in `@apack/sdk/build`'s public API (`etc/build.api.md:219–253`), 5 field
 declarations in `manifest.ts`, 14 call sites across `build.ts`, `generate-entries.ts` and `index.ts`,
 and three test suites that each re-pin the same nearer-wins rule. The cost of the next kind that needs
 to travel — services, steps, artifacts — is another type pair, another reader, another suite.
@@ -87,7 +87,7 @@ to travel — services, steps, artifacts — is another type pair, another reade
 it only gets more expensive as more code reads it.
 
 **What this also closes.** `typeOwners` exists because `mergeRegistries`
-(`packages/abuddy-sdk/src/build/generate-entries.ts`) used to attribute an entity to the dependency it
+(`packages/apack-sdk/src/build/generate-entries.ts`) used to attribute an entity to the dependency it
 *arrived through* rather than the pack that *declares* it, so a dependent of two packs sharing an
 ancestor reported a collision that wasn't one. Every pack depends on the base pack, so that was every
 pack with two dependencies. The fix is guarded only by unit tests over hand-written snapshot objects;
@@ -95,7 +95,7 @@ nothing builds a real diamond, and nothing pins that a real build *writes* the o
 reads. `tests/fixtures/external-pack`'s built snapshot does carry it (`Thread → default-setup`), and no
 test asserts so.
 
-**The build harness that makes this cheap.** `packages/abuddy-cli/tests/build/facade-typing.spec.ts:291`
+**The build harness that makes this cheap.** `packages/apack-cli/tests/build/facade-typing.spec.ts:291`
 (`buildPacks`) already builds a two-pack chain in a temp dir by running the real CLI, with a
 `node_modules` symlink and sibling packs that resolve each other through `resolveFromWorkspace`. Its
 helpers are `write`, `run` (`:268`), `packageJson` and `tsconfig`; `BASE_PACK` is 46 lines, `APP_PACK`
@@ -131,7 +131,7 @@ Final.
    shape, no fallback, no deprecation window.
 
 4. **The diamond is a temp-dir build in the CLI suite, not fixture packs.** `test-external-pack.sh` runs
-   `abuddy validate`, `build`, `tsc`, vitest and then `abuddy test` — a Playwright E2E requiring a
+   `apack validate`, `build`, `tsc`, vitest and then `apack test` — a Playwright E2E requiring a
    `playwright.config.ts`. The defect is build-time codegen; an app launch covers none of it and costs
    minutes. Reuse `facade-typing.spec.ts`'s harness instead.
 
@@ -152,7 +152,7 @@ Final.
 ### Phase 1 — Introduce `provenance` and the single reader
 
 - Add `PackProvenance`, `ProvenanceKind`, `PROVENANCE_KINDS` and `_mergeProvenance` to
-  `packages/abuddy-sdk/src/build/manifest.ts`; export from `build/index.ts`.
+  `packages/apack-sdk/src/build/manifest.ts`; export from `build/index.ts`.
 - Unit-test `_mergeProvenance` directly: inherited-then-own ordering, nearer-wins across two
   dependencies, a snapshot with no `provenance`, and one kind per table entry.
 
@@ -174,8 +174,8 @@ command-collision, transitive-plugin and diamond unit tests pass unchanged in be
 ### Phase 3 — Prove it end to end on a real diamond
 
 - Extract `write`, `run`, `packageJson`, `tsconfig` and the CLI path from `facade-typing.spec.ts` into
-  `packages/abuddy-cli/tests/helpers/`, and have that spec import them (no behaviour change).
-- Add `packages/abuddy-cli/tests/build/dependency-graph.spec.ts`: build `base-pack` (D), `left-pack` and
+  `packages/apack-cli/tests/helpers/`, and have that spec import them (no behaviour change).
+- Add `packages/apack-cli/tests/build/dependency-graph.spec.ts`: build `base-pack` (D), `left-pack` and
   `right-pack` (B, C, both on D), then `app-pack` (A, on B and C). Assert A builds, its generated
   `EntityName` names D's entity exactly once, and B's snapshot attributes D's entity to `base-pack`.
 - Keep the collision that *is* real: two packs independently declaring the same entity still fail with
@@ -202,16 +202,16 @@ requirement fails the `sendsTo` case.
 
 All four phases landed on `AS/dependency-provenance`. The three fields and their readers are gone,
 replaced by `PackSnapshot.provenance` and one `_mergeProvenance`; a four-pack diamond and the facade
-check's failing direction are covered by real `abuddy build` runs. Everything in the Finished-when list
+check's failing direction are covered by real `apack build` runs. Everything in the Finished-when list
 passes. One Decision needed correcting in practice (below), and the new spec runs over the stated build
 budget.
 
 ### Per phase
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — `provenance` and the single reader | done | `packages/abuddy-sdk/tests/build/provenance.spec.ts`, 13 tests. Mutations: dropping the own-manifest pass, swapping the two loops, and writing empty kinds each fail their test |
+| 1 — `provenance` and the single reader | done | `packages/apack-sdk/tests/build/provenance.spec.ts`, 13 tests. Mutations: dropping the own-manifest pass, swapping the two loops, and writing empty kinds each fail their test |
 | 2 — consumers moved, old shapes deleted | done | `grep -r` finds the old names only in `docs/archive` and this doc; `etc/build.api.md` −6 entries +the provenance set; `npm run compile` leaves `default-setup/src/__generated__/ears.ts` byte-identical |
-| 3 — the real diamond | done | `packages/abuddy-cli/tests/build/dependency-graph.spec.ts` (8 tests, 26.1s); harness extracted to `tests/helpers/pack-builds.ts` with `facade-typing.spec.ts` unchanged at 20 tests. Mutations: `declaredBy → via` fails both diamond cases and leaves the genuine-collision case passing; misattributing the fixture snapshot's inherited entity fails the Decision 5 assertion in `snapshot-entity-names.spec.ts` |
+| 3 — the real diamond | done | `packages/apack-cli/tests/build/dependency-graph.spec.ts` (8 tests, 26.1s); harness extracted to `tests/helpers/pack-builds.ts` with `facade-typing.spec.ts` unchanged at 20 tests. Mutations: `declaredBy → via` fails both diamond cases and leaves the genuine-collision case passing; misattributing the fixture snapshot's inherited entity fails the Decision 5 assertion in `snapshot-entity-names.spec.ts` |
 | 4 — the facade check's failing direction | done | same spec, three cases. Mutations: dropping `'Repositories'` fails the missing-export case; dropping the `eventDeps` requirement fails the `sendsTo` case |
 
 ### Conventional choices
@@ -235,7 +235,7 @@ budget.
   Caught by the existing genuine-collision test, which failed on the merged version.
 
 ### Open items
-- **The new spec runs 9 `abuddy build` invocations against the stated budget of four**: four for the
+- **The new spec runs 9 `apack build` invocations against the stated budget of four**: four for the
   diamond (D, B, C, A), two for the genuine collision (a rival declaring the same entity, and a dependent
   of both), and three for Phase 4's dependents. The Phase 4 cases reuse the already-built ancestor by
   copying its `dist`, so none of the three rebuilds it. Reported rather than trimmed because every one of
@@ -248,8 +248,8 @@ budget.
 |---|---|
 | `npm run typecheck` | passes |
 | `npm run api:check` | passes (reports regenerated for the six removed and five added entries) |
-| `npm test -w @abuddy/sdk` | 439 passed |
-| `npm test -w @abuddy/cli` | 718 passed |
+| `npm test -w @apack/sdk` | 439 passed |
+| `npm test -w @apack/cli` | 718 passed |
 | `npm run compile` | passes; generated `ears.ts` byte-identical to before the change |
 | `npm run test:external-pack` | passes; fixture snapshots rewritten in the new shape |
 | `default-setup` snapshot | `provenance` with all four kinds, no `typeOwners`/`dependencyCommands`/`dependencyPlugins` |
@@ -272,7 +272,7 @@ budget.
 - No real data dirs; no broad `pkill`.
 - No bare `tsc` on `packages/preload`; no `npm install` in the example pack; no version or release
   metadata edits.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`). Phase 2 changes where
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`). Phase 2 changes where
   `mergeRegistries` reads ownership from, not what it decides; the generated `PackShapes` and
   `EntityName` must be byte-identical before and after for every in-repo pack. Check this by building
   default-setup on both sides and diffing `src/__generated__/ears.ts`.
@@ -280,5 +280,5 @@ budget.
   removes six public entries and must update `etc/build.api.md`.
 - `packages:build` before the CLI suite; the suite's `pretest` handles it.
 - Investigate a failing test rather than loosening it; mutation-check every new guard.
-- Four `abuddy build` invocations is the budget for the new spec. If it grows past that, say so in the
+- Four `apack build` invocations is the budget for the new spec. If it grows past that, say so in the
   summary rather than letting the CLI suite get slower quietly.

@@ -10,7 +10,7 @@
  * which is the other reason settings are not content: an import is the wrong place to offer one.
  */
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 import { services } from '#generated/services.ts'
 import { ref } from '#generated/ref.ts'
 

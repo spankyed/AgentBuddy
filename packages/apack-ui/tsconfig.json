@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    // Typechecking only, so the .tsbuildinfo is the whole point: a re-run with nothing changed reuses it
+    // instead of reparsing. `incremental` works with `noEmit`; `composite` does not, which is why this
+    // is not project references (docs/goals/goal-test-tiers.md).
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/apack-ui.tsbuildinfo",
+    // Workspace @apack/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@apack/source"],
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "verbatimModuleSyntax": true,
+    // Relative imports name the .ts source; tsdown resolves them. Not rewriteRelativeImportExtensions:
+    // vue-tsc only emits declarations, and reports TS2876 for .vue imports with it
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "scripts/**/*.ts", "tests/**/*.ts", "tsdown.config.ts"]
+}

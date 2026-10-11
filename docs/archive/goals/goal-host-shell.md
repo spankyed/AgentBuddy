@@ -1,4 +1,4 @@
-> **Done** (on `AS/designations-and-addressing`, `9d6721a0c`, `9875869e2`, `224291e0e` and `b368a26d5`). The text below is the plan as written; the Outcome records where the implementation differed. For the current layout, see `packages/abuddy-host/CLAUDE.md` (App shell) and `packages/renderer/CLAUDE.md` (App shell).
+> **Done** (on `AS/designations-and-addressing`, `9d6721a0c`, `9875869e2`, `224291e0e` and `b368a26d5`). The text below is the plan as written; the Outcome records where the implementation differed. For the current layout, see `packages/apack-host/CLAUDE.md` (App shell) and `packages/renderer/CLAUDE.md` (App shell).
 
 > **Written in session** `739e73df-2842-4e0f-9c86-4a88dd07ac62` (Claude Code, 2026-09-22). Resume it with `claude -r 739e73df-2842-4e0f-9c86-4a88dd07ac62`.
 
@@ -8,8 +8,8 @@
 Implement docs/goals/goal-host-shell.md on AS/designations-and-addressing, at or after 228228e88 — the base
 its Background was surveyed at.
 Before Phase 1, confirm the base: packages/renderer/src/core/actors/application.ts exports
-createApplicationState, `useApplicationActor` exists in packages/abuddy-sdk/src/fe/actor-system.ts, and
-`FeTransport` in packages/abuddy-sdk/src/runtime/fe-host.ts has only `sendIncoming`. If they don't, stop and
+createApplicationState, `useApplicationActor` exists in packages/apack-sdk/src/fe/actor-system.ts, and
+`FeTransport` in packages/apack-sdk/src/runtime/fe-host.ts has only `sendIncoming`. If they don't, stop and
 say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. Where a detail isn't specified, pick the conventional option, note it in the
@@ -20,13 +20,13 @@ is the exception: it moves with migrations.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- No pack source (default-setup, @abuddy/ui, tests/fixtures) reaches the shell's actor: `useApplicationActor`
-  is gone from @abuddy/sdk, and packs use `useShell()`, typed by the SDK's `HostShell` contract.
-- The shell's machine lives in @abuddy/host/fe as `createShellMachine`, takes its I/O as options, and has no
+- No pack source (default-setup, @apack/ui, tests/fixtures) reaches the shell's actor: `useApplicationActor`
+  is gone from @apack/sdk, and packs use `useShell()`, typed by the SDK's `HostShell` contract.
+- The shell's machine lives in @apack/host/fe as `createShellMachine`, takes its I/O as options, and has no
   import of tRPC, `window`, `localStorage`, the toast or the pack loader; the renderer composes it.
 - Outside the renderer's client implementation, no renderer module calls `trpc.bus.*` or `trpc.packs.loaded`.
-- The shell's specs run in @abuddy/host with fakes, and none of them mocks a module.
-- A fixture pack's unit test opens its plugin through the real shell in @abuddy/testing, and the link
+- The shell's specs run in @apack/host with fakes, and none of them mocks a module.
+- A fixture pack's unit test opens its plugin through the real shell in @apack/testing, and the link
   navigation case in tests/e2e/feature-addressing.spec.ts:52 is covered by a unit test on that harness.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack and
   npm run test:packaged-authoring pass; npm run api:check and facade:check pass with etc/ committed.
@@ -43,15 +43,15 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating. Keeping
   `useApplicationActor` exported "for external packs" is a shim.
-- import Vue, tRPC, `window`, `document` or `localStorage` in @abuddy/host (Decision 1).
+- import Vue, tRPC, `window`, `document` or `localStorage` in @apack/host (Decision 1).
 - change `window.applicationState` or the machine id `application` that `#application.*` targets use
   (Decision 6).
 ```
@@ -62,15 +62,15 @@ Never:
 
 The backend went through this move recently, in four commits:
 
-- **`df84b09b0`** (2026-09-14) moved the bus routing core into `@abuddy/host`. It created the injected shape as part of the move: `createBusMachine({ registry, listen, onOutgoing })` takes its I/O as options, and the API's bus composes it with the root event bus "so the pack test harness can run the same routing".
-- **`a35120c5f`** (the same day) was that consumer: `startApp` in `@abuddy/testing` runs a pack's systems on the app's bus core.
+- **`df84b09b0`** (2026-09-14) moved the bus routing core into `@apack/host`. It created the injected shape as part of the move: `createBusMachine({ registry, listen, onOutgoing })` takes its I/O as options, and the API's bus composes it with the root event bus "so the pack test harness can run the same routing".
+- **`a35120c5f`** (the same day) was that consumer: `startApp` in `@apack/testing` runs a pack's systems on the app's bus core.
 - **`28be3b60b`** and **`04be5db79`** (2026-09-16) finished the split. `createAppBus(registry)` composes the bus, and the API keeps only transport, boot and composition.
 
 The clean seams came from the move; they weren't there before it. The backend also stopped using a client of its own: SDK code sends over the bound `HostRuntime.transport`.
 
 ### The shell today
 
-`packages/renderer/src/core/actors/application.ts` (1,170 lines) is the application actor: the app shell. It is the frontend half of the host `application` feature, whose backend half is `packages/abuddy-host/src/bus/application-system.ts`. `packages/renderer/src/main.ts:116` creates it as `applicationState`.
+`packages/renderer/src/core/actors/application.ts` (1,170 lines) is the application actor: the app shell. It is the frontend half of the host `application` feature, whose backend half is `packages/apack-host/src/bus/application-system.ts`. `packages/renderer/src/main.ts:116` creates it as `applicationState`.
 
 It owns seven concerns in one machine:
 - plugins, spawning and selection
@@ -95,7 +95,7 @@ Its I/O is imported at module level:
 | `window.__showErrorPage` | `:1001`, `:1004`, `:1146`, `:1156` |
 | the pack loader's dynamic `pack://` imports (`loadPackFrontend`, `unloadPackFrontend`) | `:13`, `:327`, `:474` |
 
-It imports no Vue. `route-trailer.ts`, its other import, is plain XState, and `@abuddy/host` already depends on `xstate`.
+It imports no Vue. `route-trailer.ts`, its other import, is plain XState, and `@apack/host` already depends on `xstate`.
 
 Its four specs (`packages/renderer/src/core/actors/__tests__/application-{pack-plugins,shell-state,system-error,pack-loading}.spec.ts`) each `vi.mock('@/core/trpc')` to run it.
 
@@ -103,9 +103,9 @@ Its four specs (`packages/renderer/src/core/actors/__tests__/application-{pack-p
 
 The shell is a de facto public API, and it is untyped:
 
-- **`useApplicationActor(): AnyActorRef`** (`packages/abuddy-sdk/src/fe/actor-system.ts:9`) returns `inject('applicationActor')!`, which `main.ts:169` provides.
-- **The SDK port** is a second path to the same actor: `FeHostRuntime.application: AnyActorRef` (`packages/abuddy-sdk/src/runtime/fe-host.ts:33`).
-- **`openPlugin`** (`packages/abuddy-sdk/src/fe/navigation.ts`) reads `snapshot.context.plugins`, `activePlugin.id` and `defaultToggles.canvas` untyped, and sends `SELECT_PLUGIN` and `DEFAULT_TOGGLE`. It throws for a ref no plugin is registered at, so a link to an external pack's plugin clicked before that pack's frontend has loaded throws rather than opening once it loads (PR #196 review, item 11). The SDK can't tell a pack still loading from a mistyped ref; only the shell knows which pack frontends are still loading, and it already waits for a plugin that way for a popout and for the plugin last open (`pendingPluginId`).
+- **`useApplicationActor(): AnyActorRef`** (`packages/apack-sdk/src/fe/actor-system.ts:9`) returns `inject('applicationActor')!`, which `main.ts:169` provides.
+- **The SDK port** is a second path to the same actor: `FeHostRuntime.application: AnyActorRef` (`packages/apack-sdk/src/runtime/fe-host.ts:33`).
+- **`openPlugin`** (`packages/apack-sdk/src/fe/navigation.ts`) reads `snapshot.context.plugins`, `activePlugin.id` and `defaultToggles.canvas` untyped, and sends `SELECT_PLUGIN` and `DEFAULT_TOGGLE`. It throws for a ref no plugin is registered at, so a link to an external pack's plugin clicked before that pack's frontend has loaded throws rather than opening once it loads (PR #196 review, item 11). The SDK can't tell a pack still loading from a mistyped ref; only the shell knows which pack frontends are still loading, and it already waits for a plugin that way for a popout and for the plugin last open (`pendingPluginId`).
 - **`pluginActor`** (`actor-system.ts:27`) reads `application.system.get(ref)`.
 
 Pack call sites, all with `state: any` selectors and unchecked sends:
@@ -119,7 +119,7 @@ Pack call sites, all with `state: any` selectors and unchecked sends:
 | `default-setup/src/features/threads/fe/chat/chat.vue` | `hasTag('onboarding')`, `context.panelSizes.canvasHeight` | `RESIZE_PANEL` |
 | `default-setup/src/extensions/blocks/display/LinkBlock.vue` | | whatever a link's `data` holds, when `target === 'application'` |
 | `default-setup/src/extensions/app/Welcome.vue` | | `CLOSE_DEV_LETTER` |
-| `abuddy-ui/src/components/KeyboardShortcutInput.vue` | | `HOTKEYS_RECORDING_START`/`_END` |
+| `apack-ui/src/components/KeyboardShortcutInput.vue` | | `HOTKEYS_RECORDING_START`/`_END` |
 
 Nothing stops a pack sending the shell's internal events (`BUS_SUBSCRIBED`, `PACK_PLUGINS_UNLOADED`). This breaks the rule in the root CLAUDE.md that no pack code looks up another plugin's actor: a feature offers what others need as composables from its `fe/public.ts`. The host's own plugin is the one exception.
 
@@ -133,9 +133,9 @@ Nothing stops a pack sending the shell's internal events (`BUS_SUBSCRIBED`, `PAC
 
 ### Tests
 
-- **Pack frontend tests** bind `startFeTestRuntime` (`packages/abuddy-sdk/src/testing/fe-runtime.ts:36`), whose shell is `{} as never`. No pack test can exercise `openPlugin`, `navigateToPlugin`, `PluginScope`, or any of the call sites above.
+- **Pack frontend tests** bind `startFeTestRuntime` (`packages/apack-sdk/src/testing/fe-runtime.ts:36`), whose shell is `{} as never`. No pack test can exercise `openPlugin`, `navigateToPlugin`, `PluginScope`, or any of the call sites above.
 - **Environment:** default-setup's unit tests run in `environment: 'node'`, and the renderer's in `jsdom`.
-- **E2E:** 11 files under `tests/e2e` and `packages/abuddy-testing/src` read `window.applicationState` (`main.ts:130`).
+- **E2E:** 11 files under `tests/e2e` and `packages/apack-testing/src` read `window.applicationState` (`main.ts:130`).
 
 ## Why, and how we'll know
 
@@ -162,11 +162,11 @@ The user sees no change: no new behaviour and no speed target. The wins are safe
 Final.
 
 1. **The shell is host-owned app runtime.**
-   - `createShellMachine` lives in `@abuddy/host/fe`, as the frontend half of the host `application` feature.
+   - `createShellMachine` lives in `@apack/host/fe`, as the frontend half of the host `application` feature.
    - The renderer composes it (`createAppShell`, the counterpart of `createAppBus`) and binds it.
-   - `@abuddy/host` stays free of Vue, tRPC and browser globals. Everything else arrives as options (Decisions 3 and 4).
+   - `@apack/host` stays free of Vue, tRPC and browser globals. Everything else arrives as options (Decisions 3 and 4).
 2. **Packs reach the shell through a typed SDK contract, never its actor.**
-   - `@abuddy/sdk/fe` defines `HostShell`: the state packs may read (plugins, active plugin, plugin visibility, panel sizes, whether the app is onboarding) and the events they may send.
+   - `@apack/sdk/fe` defines `HostShell`: the state packs may read (plugins, active plugin, plugin visibility, panel sizes, whether the app is onboarding) and the events they may send.
    - `useShell()` exposes that state and named commands (`restoreChat()`, `resizeCanvas(size)`, `setPluginVisible(ref, visible)`, `startHotkeyRecording()`/`endHotkeyRecording()`, `closeDevLetter()`).
    - `useApplicationActor` and the `'applicationActor'` provide are deleted: one path to the shell, the bound port.
    - `FeHostRuntime.application` is typed against the contract, so `openPlugin`, `pluginActor` and `PluginScope` read it typed.
@@ -183,7 +183,7 @@ Final.
    - `storage`: saved panel sizes
    - `notify`: toasts and the error page
    - `target`: where the key and mouse listeners attach; with none, none attach
-5. **Split by concern as it moves.** Modules under `packages/abuddy-host/src/fe/shell/` for plugins and selection, history and breadcrumbs, layout, hotkeys, connection, and pack frontends. A concern that owns a listener or subscription is a child actor.
+5. **Split by concern as it moves.** Modules under `packages/apack-host/src/fe/shell/` for plugins and selection, history and breadcrumbs, layout, hotkeys, connection, and pack frontends. A concern that owns a listener or subscription is a child actor.
 6. **What stays in the renderer:**
    - the Vue components
    - the composition (`createAppShell`) and the port binding
@@ -191,7 +191,7 @@ Final.
    - the machine id `application`, which `#application.*` targets use
    - the Packs plugin's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
 7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`. No migration rewrites stored targets: the only code that made link blocks was removed before the first release, so no released data holds one.
-8. **`@abuddy/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
+8. **`@apack/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
 9. **Opening a plugin is the shell's command, and it waits for a pack still loading.**
    - `openPlugin(ref, event?)` sends the shell `OPEN_PLUGIN { plugin, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_PLUGIN` and `DEFAULT_TOGGLE` itself.
    - The shell opens a registered plugin and hands its actor the events, as `openPlugin` does today.
@@ -203,11 +203,11 @@ Final.
 
 ### Phase 1 — a typed shell contract (Decisions 2 and 7)
 
-- Add `HostShell` and `useShell()` to `@abuddy/sdk/fe`.
+- Add `HostShell` and `useShell()` to `@apack/sdk/fe`.
 - Type `FeHostRuntime.application`, `openPlugin` and `pluginActor` against the contract.
 - Migrate the 8 call sites in Background, and delete `useApplicationActor` and `main.ts:169`'s provide.
 - Delete `LinkBlock.vue`'s `'application'` branch.
-- With `useApplicationActor` gone, pack code has no path to the actor: `boundFeHost` is exported only from `@abuddy/sdk/runtime/internals`, which isn't published. Keep it that way; `etc/fe.api.md` and `etc/runtime.api.md` record it.
+- With `useApplicationActor` gone, pack code has no path to the actor: `boundFeHost` is exported only from `@apack/sdk/runtime/internals`, which isn't published. Keep it that way; `etc/fe.api.md` and `etc/runtime.api.md` record it.
 - Type-check the renderer's machine against `HostShell`.
 - Run `npm run api:update`.
 
@@ -235,15 +235,15 @@ Final.
 
 ### Phase 3 — move, inject and split (Decisions 1, 4, 5, 6 and 9), after Phase 2
 
-- Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/abuddy-host/src/fe/shell/`, split per Decision 5, and export it from `@abuddy/host/fe`.
+- Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/apack-host/src/fe/shell/`, split per Decision 5, and export it from `@apack/host/fe`.
 - The renderer's `createAppShell` composes it with the real implementations, and `main.ts` creates and binds it.
-- Move the four specs to `packages/abuddy-host/tests/fe/shell/`, running on fakes.
+- Move the four specs to `packages/apack-host/tests/fe/shell/`, running on fakes.
 - Opening a plugin moves into the shell (Decision 9): `OPEN_PLUGIN` joins `HostShell`, `openPlugin` sends it, and the shell parks a request for a plugin whose pack frontend is still loading. Specs, on the fake `packFrontends`: a request made while a pack loads opens its plugin with the events once it arrives; one for a ref no pack provides is refused through `notify` once loading settles; one whose pack unloads while it waits is dropped.
-- Update `packages/renderer/CLAUDE.md`, `packages/abuddy-host/CLAUDE.md` and the root CLAUDE.md's layer table.
+- Update `packages/renderer/CLAUDE.md`, `packages/apack-host/CLAUDE.md` and the root CLAUDE.md's layer table.
 
 **Done when:**
 - `packages/renderer/src/core/actors/application.ts` holds no machine.
-- `git grep -E "from ['\"](vue|@/)|window\.|localStorage" packages/abuddy-host/src/fe` matches nothing, with a boundary spec in `packages/abuddy-host/tests` enforcing it.
+- `git grep -E "from ['\"](vue|@/)|window\.|localStorage" packages/apack-host/src/fe` matches nothing, with a boundary spec in `packages/apack-host/tests` enforcing it.
 - The host shell specs pass with no `vi.mock`.
 - A link to an external pack's plugin clicked before that pack's frontend loads opens it once it loads (the host shell spec above, and the E2E link case with the pack's load delayed).
 - The full E2E suite passes.
@@ -252,10 +252,10 @@ Final.
 
 ### Phase 4 — the shell in pack tests (Decision 8), after Phase 3
 
-- `@abuddy/testing` gains a frontend harness that binds the real shell over the in-memory bus `startApp` runs, with the test pack's frontend registered.
+- `@apack/testing` gains a frontend harness that binds the real shell over the in-memory bus `startApp` runs, with the test pack's frontend registered.
 - `startFeTestRuntime` binds a working shell by default.
 - A fixture pack (`tests/fixtures`) adds a unit test that opens its plugin with `navigateToPlugin` and reads `useShell()` state.
-- `packages/abuddy-testing/CLAUDE.md` documents it.
+- `packages/apack-testing/CLAUDE.md` documents it.
 
 - Cover the link navigation case at `tests/e2e/feature-addressing.spec.ts:52` with a unit test on the harness: a link block's target opens the plugin and hands it the link's events. Keep the E2E case only if it checks something the unit test can't (rendering, the real window), and say which.
 
@@ -273,21 +273,21 @@ All four phases landed, each its own commit, with the full check list passing at
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@abuddy/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
-| 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@abuddy/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
-| 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/abuddy-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/abuddy-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_PLUGIN` parks requests (`open-plugin.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
-| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@abuddy/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
+| 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@apack/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
+| 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@apack/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
+| 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/apack-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/apack-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_PLUGIN` parks requests (`open-plugin.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
+| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@apack/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
 
 ### Conventional choices
 
 - **Phase 1:** `useShell()` gives the state as read-only refs kept current while the calling scope lives; `HostShellEvent` held `SELECT_PLUGIN` and `DEFAULT_TOGGLE` until Phase 3 replaced them with `OPEN_PLUGIN`, and `defaultToggles` left the readable state with them. `PluginEvent` moved into `shell.ts`, so the contract doesn't pull in `navigation.ts` (and its `window.electronAPI`) wherever the SDK port is typed.
-- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@abuddy/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
+- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@apack/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
 - **Phase 3:** the machine takes `packs` (the window's registry) for the plugins it starts with and its default, so its input keeps only `initialPluginId` and `ownsLastActivePlugin`. `OPEN_PLUGIN` delivers the plugin's events with a send to itself rather than a raise, so they arrive after the selection has settled, as `openPlugin`'s did. Once loading settles the shell refuses a parked request whether or not the read of the loaded packs succeeded. `app-extensions.ts` takes its component type from the SDK instead of `vue`, so `src/fe` names no Vue at all.
-- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@abuddy/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
+- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@apack/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
 
 ### Corrections to the Decisions
 
-- **Decision 8, "`startFeTestRuntime` binds a working shell by default":** `startFeTestRuntime` is `@abuddy/sdk/testing`'s, and the SDK can't import the host's shell. Its default is instead a stand-in that fails naming `startShell`, which binds the real shell (through `startFeTestRuntime`, with `application` passed).
+- **Decision 8, "`startFeTestRuntime` binds a working shell by default":** `startFeTestRuntime` is `@apack/sdk/testing`'s, and the SDK can't import the host's shell. Its default is instead a stand-in that fails naming `startShell`, which binds the real shell (through `startFeTestRuntime`, with `application` passed).
 - **Phase 1's "Done when" E2E specs:** the repo has no E2E spec for the commit, pull-request or welcome flows; the full suite passed, which is what exists for them.
 
 ### Open items
@@ -311,10 +311,10 @@ All four phases landed, each its own commit, with the full check list passing at
   - Check `git diff --cached` first, and commit with `git commit -- <paths>`.
   - Push, tag and open PRs only on request.
 - **Publishing:** no npm publishing, GitHub releases or triggered workflows.
-- **Data and processes:** no real data dirs; no broad pkill; E2E runs in the `abuddy-test` namespace.
-- **Standing rules:** preload, the example pack and release metadata keep their usual rules. The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- **Data and processes:** no real data dirs; no broad pkill; E2E runs in the `apack-test` namespace.
+- **Standing rules:** preload, the example pack and release metadata keep their usual rules. The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - **Published packages:**
-  - no `any` in `@abuddy/sdk`'s pack-facing surface, which `HostShell` and `useShell()` are
+  - no `any` in `@apack/sdk`'s pack-facing surface, which `HostShell` and `useShell()` are
   - the TypeScript 5.7 floor
   - `api:update` after export changes
   - `Object.hasOwn` and `Error.cause` broke the shared-source lib floor before, so run the full typecheck after touching `sdk` source

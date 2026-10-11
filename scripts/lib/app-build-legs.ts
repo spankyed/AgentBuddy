@@ -49,10 +49,10 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * already its own step. It costs the leg that sets this table's floor: the pair is 18.0s against the vite
  * build's 16.0s. Whoever runs `npm run build -w @app/renderer` directly still typechecks.
  *
- * **`@abuddy/sdk` is absent, and that is four facts rather than a speed choice.** Its `build` is
+ * **`@apack/sdk` is absent, and that is four facts rather than a speed choice.** Its `build` is
  * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no artifact to
  * a step whose product is `APP_OUTPUTS`; `typecheck:sdk` runs that identical compile; the `build:app`
- * step's `inputs` name `renderer, api, main, preload` and never `abuddy-sdk`, so dropping the leg makes
+ * step's `inputs` name `renderer, api, main, preload` and never `apack-sdk`, so dropping the leg makes
  * the declaration honest rather than narrower; and the step's key would not cover it — the four
  * workspaces' `package.json` files are declared inputs and the sdk's is not, so a leg building it would
  * depend on a script the step does not watch.

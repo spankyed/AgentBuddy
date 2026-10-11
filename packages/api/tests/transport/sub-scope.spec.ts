@@ -4,15 +4,15 @@
 // is, and what every backend send was before a return address existed. A message naming a connection is an answer
 // to something that connection asked, and must reach only it.
 //
-// The renderer's half of the reach question is `send-scope.spec.ts` (`@abuddy/host`), which pins that a backend
+// The renderer's half of the reach question is `send-scope.spec.ts` (`@apack/host`), which pins that a backend
 // send arrives in every window and an in-window send crosses none. It cannot cover this one: it has no API, and
 // it simulates the bus by calling each window's client directly. The filter is server-side on purpose, so the
 // window never sees a message that was not for it, and this is where that is checked.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Message } from '@abuddy/sdk/events';
+import type { Message } from '@apack/sdk/events';
 
 const listeners = new Set<(message: Message) => void>();
-vi.mock('@abuddy/host/bus', () => ({
+vi.mock('@apack/host/bus', () => ({
   receiveClientEvent: () => {},
   UnknownClientEventError: class extends Error {},
 }));

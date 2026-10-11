@@ -5,7 +5,7 @@ function toDTO(memo: MemoEntity): MemoDTO {
   return { id: memo.id, text: memo.text, createdAt: memo.createdAt };
 }
 
-// Declared in abuddy.json (features[].repositories); systems use them through #generated/repository
+// Declared in apack.json (features[].repositories); systems use them through #generated/repository
 export const memoQueries = {
   all: (): MemoDTO[] => findAll(EARS.Entity.Memo).map(toDTO),
 };

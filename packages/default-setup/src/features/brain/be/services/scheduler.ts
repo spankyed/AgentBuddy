@@ -1,6 +1,6 @@
 import { Cron } from 'croner';
-import { createLogger } from '@abuddy/sdk/logger';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { createLogger } from '@apack/sdk/logger';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('scheduler');
 

@@ -26,7 +26,7 @@ describe('registries/services — feature services assembly', () => {
 
 describe('core/content — appliers', () => {
   it("default-setup's registration carries all built-in appliers, which importCompiledContent runs for its compiled content", async () => {
-    const { importCompiledContent } = await import('@abuddy/sdk/utils');
+    const { importCompiledContent } = await import('@apack/sdk/utils');
     const fs = await import('fs');
     const os = await import('os');
     const path = await import('path');
@@ -49,7 +49,7 @@ describe('core/content — appliers', () => {
   });
 
   it('exports preview function', async () => {
-    const { previewPackContent } = await import('@abuddy/sdk/content');
+    const { previewPackContent } = await import('@apack/sdk/content');
 
     expect(typeof previewPackContent).toBe('function');
   });

@@ -1,5 +1,5 @@
 import { broadcastToPlugin } from '#generated/events.ts';
-import { defineHandlers } from '@abuddy/sdk/framework';
+import { defineHandlers } from '@apack/sdk/framework';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem.ts'

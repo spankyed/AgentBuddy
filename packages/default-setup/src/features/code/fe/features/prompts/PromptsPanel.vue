@@ -234,7 +234,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { openPlugin } from '#generated/fe.ts'
@@ -243,7 +243,7 @@ import { usePluginState } from '#generated/fe.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
-import type { PromptEntity } from '@abuddy/sdk'
+import type { PromptEntity } from '@apack/sdk'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -252,8 +252,8 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants.ts'
-import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
-import Button from '@abuddy/ui/design/button'
+import { useInfiniteScroll } from '@apack/ui/composables/useInfiniteScroll'
+import Button from '@apack/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
 import { codeChild } from '../children.ts';
 

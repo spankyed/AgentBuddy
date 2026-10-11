@@ -1,5 +1,5 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
-import { safeEvents } from '@abuddy/sdk/fe';
+import { safeEvents } from '@apack/sdk/fe';
 import { sendToSystem } from '#generated/events.ts';
 import type { LogsSettings } from '#generated/types.ts';
 import type { LogsContext } from './contract.ts';

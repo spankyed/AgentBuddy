@@ -80,13 +80,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { BrainState } from '#features/brain/fe/state.ts'
-import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
-import type { TrackTree } from '@abuddy/sdk/steps'
+import TNodeListItem from '@apack/ui/components/TNodeListItem'
+import type { TrackTree } from '@apack/sdk/steps'
 import { sendToSystem } from '#generated/events.ts'
 
 const brainActor: BrainState = usePlugin();

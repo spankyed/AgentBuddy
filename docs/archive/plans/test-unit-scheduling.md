@@ -11,7 +11,7 @@ ideal is `max(floor, work/cores)` ≈ 13s. The 3.4× gap is architectural, not s
 that closes it is already in the repo as dead code.
 
 Surveyed 2026-09-25 against `faee075fd`. Timings come from a full `test:unit` capture on an adjacent base;
-the per-suite floors below are unaffected by the fast/integration split, but the `@abuddy/cli` fast-suite
+the per-suite floors below are unaffected by the fast/integration split, but the `@apack/cli` fast-suite
 figures are derived by mapping file timings onto the tip's naming rather than measured on the tip. Test 1
 confirms the whole model in one run.
 
@@ -19,16 +19,16 @@ confirms the whole model in one run.
 
 | suite | work | **floor** (slowest single file) | files |
 |---|---|---|---|
-| `@abuddy/cli` fast | 30.8s | 7.4s | 38 |
-| `@abuddy/host` | 19.9s | 4.8s | 79 |
-| `@abuddy/sdk` | 18.9s | **13.0s** | 57 |
+| `@apack/cli` fast | 30.8s | 7.4s | 38 |
+| `@apack/host` | 19.9s | 4.8s | 79 |
+| `@apack/sdk` | 18.9s | **13.0s** | 57 |
 | `@app/default-setup` | 17.6s | 5.3s | 84 |
 | `@app/api` | 5.1s | 1.1s | 16 |
-| `@abuddy/ears` | 2.8s | 2.1s | 10 |
+| `@apack/ears` | 2.8s | 2.1s | 10 |
 | `@app/renderer` | 0.1s | 0.1s | 8 |
 
-For contrast, the split moved 229.1s of work and a 39.5s file out of `@abuddy/cli` into the integration
-half: 32 integration files vs 38 fast ones. `@abuddy/cli` is no longer the giant; `@abuddy/sdk`'s floor is.
+For contrast, the split moved 229.1s of work and a 39.5s file out of `@apack/cli` into the integration
+half: 32 integration files vs 38 fast ones. `@apack/cli` is no longer the giant; `@apack/sdk`'s floor is.
 
 ## Why more lanes do not pay
 
@@ -44,7 +44,7 @@ That is the ceiling, and no lane count removes it.
 ## Lever 1 — one vitest run over all packages
 
 **The mechanism already exists, unused.** The root `vitest.config.ts` declares
-`projects: ['packages/abuddy-sdk', 'packages/api', 'packages/default-setup', 'packages/renderer']` — four of
+`projects: ['packages/apack-sdk', 'packages/api', 'packages/default-setup', 'packages/renderer']` — four of
 eight, referenced by nothing. `scripts/spec.ts` deliberately runs each package's own `test` instead. Its last
 commit was `aa877a299 build(default-setup): switch to vitest workspace`, an unfinished migration.
 
@@ -73,11 +73,11 @@ front. `test-unit.ts` already does exactly that, for the same reason.
 
 ## Lever 2 — the floor file
 
-`packages/abuddy-sdk/tests/build/generate-entries.spec.ts`, 94 tests, 13.0s. **The cost is 3 tests, not 94.**
+`packages/apack-sdk/tests/build/generate-entries.spec.ts`, 94 tests, 13.0s. **The cost is 3 tests, not 94.**
 
 There are exactly three `typecheck()` call sites (L428, L444, L470), all inside the describe *"generated
-sends compile"*. Each runs a full `ts.createProgram` that resolves `@abuddy/sdk` under
-`customConditions: ['@abuddy/source']`, so it type-checks **165 files / ~17k lines** of SDK + ears
+sends compile"*. Each runs a full `ts.createProgram` that resolves `@apack/sdk` under
+`customConditions: ['@apack/source']`, so it type-checks **165 files / ~17k lines** of SDK + ears
 *source* — `skipLibCheck: true` skips `.d.ts`, and the SDK is `.ts`. The other 91 tests are string and AST
 assertions over generated code, together about 1s.
 
@@ -126,7 +126,7 @@ esbuild starts a child process — while `suite-split.spec.ts` reads the file as
 for `node:child_process` imports. This is a **pre-existing** second instance of the guard hole recorded in
 `cli-suite-spawns-rebase.md` §3.1, not one that branch creates, and it argues for making the predicate
 cost-based rather than mechanism-based. **Done** — `goal-one-job-pool.md` Phase 2 replaced the predicate
-with the measured cost in `packages/abuddy-cli/etc/spec-cost.json`, so all three instances below are closed.
+with the measured cost in `packages/apack-cli/etc/spec-cost.json`, so all three instances below are closed.
 
 A third instance, from `goal-test-tiers.md` Phase 7: `tests/cli/test-contract.integration.spec.ts` injects a
 fake runner and spawns nothing, in about 20ms, but imports `contractTest`, whose *default* runner is
@@ -177,7 +177,7 @@ anything.
 
 `@app/api`'s suite reads the built-in pack's `dist`, and no spec of its names that path: they boot the app
 runtime and host code resolves it. Declaring it independent let it run beside `compile` under three lanes,
-where it failed on a missing `settings.content.json` after passing serially forever. `@abuddy/host` is the
+where it failed on a missing `settings.content.json` after passing serially forever. `@apack/host` is the
 inverse — `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is absent, so it
 passes without the pack and would pass vacuously in a race.
 
@@ -207,7 +207,7 @@ them.
   finally be expressed. `generate-entries.spec.ts` is one of the files whose margin against vitest's 5s
   default caps lanes today — **not the only one**, so Lever 3 should not be credited with lifting that cap.
   Measured 2026-09-25 on a three-lane chain run: the failure was `findLmdbImports > holds for the repo` in
-  `@abuddy/cli` at 5220ms, a whole-repo scan that takes ~2s alone. Two thin-margin whole-repo scans in two
+  `@apack/cli` at 5220ms, a whole-repo scan that takes ~2s alone. Two thin-margin whole-repo scans in two
   different suites is the "class of thin margins, not one test" already recorded in `scripts/test-unit.ts`,
   where raising one suite's timeout moved the failure to another suite.
 - `cli-suite-spawns-rebase.md` is independent: its conversions live in the integration half, which

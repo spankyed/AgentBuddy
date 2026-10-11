@@ -1,4 +1,4 @@
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 
 export const meta: ActionMeta = {
   label: 'Set Instructions',

@@ -1,7 +1,7 @@
 // Where this window keeps what the shell saves: the panel sizes the user set, so the next window opens with them.
-import type { ShellStorage } from '@abuddy/host/fe';
+import type { ShellStorage } from '@apack/host/fe';
 
-const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
+const PANEL_SIZES_KEY = 'apack-panel-sizes';
 
 export const windowStorage: ShellStorage = {
   loadPanelSizes: () => {

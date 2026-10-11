@@ -1,11 +1,11 @@
 /**
- * What `abuddy build` says it read, per pack.
+ * What `apack build` says it read, per pack.
  *
  * The companion to `dep-files.ts` and the same kind of evidence: a tool reporting its own input set after
  * the fact, which is the only check in this repo that can catch a step declaring *too little*. The
- * typecheck legs are observed through TypeScript's `tsBuildInfoFile`; the two steps that run `abuddy build`
+ * typecheck legs are observed through TypeScript's `tsBuildInfoFile`; the two steps that run `apack build`
  * were observed by nothing until that command started recording its bundlers' module graphs
- * (`@abuddy/cli`'s `build/build-reads.ts`, which writes the file this reads).
+ * (`@apack/cli`'s `build/build-reads.ts`, which writes the file this reads).
  *
  * **A separate module rather than a shape inside `dep-files.ts`**, because that one is tsc-shaped
  * throughout: one hard-coded cache directory, a `.tsbuildinfo` suffix, a TypeScript version resolved per
@@ -22,8 +22,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { PACK_READS_FILE } from '@abuddy/host/build/pack-workdir';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { PACK_READS_FILE } from '@apack/host/build/pack-workdir';
 
 /** What a pack's record holds. Paths are relative to the pack directory. */
 export interface BuildReads {
@@ -49,7 +49,7 @@ const read = (packDir: string): BuildReads | undefined => {
 };
 
 /**
- * The version of a bundler that `abuddy build` would resolve — **the CLI's**, not the pack's.
+ * The version of a bundler that `apack build` would resolve — **the CLI's**, not the pack's.
  *
  * The pack declares none of these; the command that builds it does, and that is the copy that wrote the
  * record. Resolved rather than read out of a manifest, so a hoisted install and a nested one give the same
@@ -60,7 +60,7 @@ const installedVersion = (bundler: string): string | undefined => {
   if (versions.has(bundler)) return versions.get(bundler);
   let version: string | undefined;
   try {
-    const manifest = createRequire(path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'package.json'))
+    const manifest = createRequire(path.join(REPO_ROOT, 'packages', 'apack-cli', 'package.json'))
       .resolve(`${bundler}/package.json`);
     version = (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { version: string }).version;
   } catch {
@@ -76,7 +76,7 @@ const PACK_HOMES = ['packages', 'tests/packs'];
 /**
  * Every pack that has been built in this checkout, repo-relative — the population a check asks about.
  *
- * Derived from the packs themselves (an `abuddy.json` beside a record), never from a list: a third pack
+ * Derived from the packs themselves (an `apack.json` beside a record), never from a list: a third pack
  * directory arrives covered, and one that has not been built is simply absent, which is the state a fresh
  * clone is in and the state a check has to report rather than pass over.
  */
@@ -89,7 +89,7 @@ export function packsWithReads(): string[] {
         .filter((entry) => entry.isDirectory())
         .map((entry) => path.join(home, entry.name));
     })
-    .filter((packDir) => fs.existsSync(path.join(REPO_ROOT, packDir, 'abuddy.json'))
+    .filter((packDir) => fs.existsSync(path.join(REPO_ROOT, packDir, 'apack.json'))
       && fs.existsSync(path.join(REPO_ROOT, packDir, PACK_READS_FILE)))
     .sort();
 }
@@ -115,12 +115,12 @@ export function readsOf(packDir: string): BuildReads | undefined {
  * A bundler bump invalidates every record at once, and the message for that used to name the two versions
  * and stop there — true, diagnostic, and silent about the one action that resolves it.
  *
- * `abuddy build` for anything this cannot place, which is the honest answer and the general one: a refusal
+ * `apack build` for anything this cannot place, which is the honest answer and the general one: a refusal
  * is asked about a directory the caller named, which may hold no pack at all — the spec asks about
  * `packages/api` — so this cannot be the place that requires a manifest to be there.
  */
 /**
- * The packs this repo builds through a script of its own rather than by `abuddy build` in the pack's own
+ * The packs this repo builds through a script of its own rather than by `apack build` in the pack's own
  * directory. A path, because there is one kind of pack: nothing here asks a manifest what kind it is.
  */
 const SCRIPTED_PACK_BUILDS: Record<string, string> = {
@@ -129,7 +129,7 @@ const SCRIPTED_PACK_BUILDS: Record<string, string> = {
 
 export function rebuildCommand(packDir: string): string {
   if (packDir.startsWith('tests/packs/')) return 'npm run test:external-pack:contract';
-  return SCRIPTED_PACK_BUILDS[packDir] ?? 'abuddy build';
+  return SCRIPTED_PACK_BUILDS[packDir] ?? 'apack build';
 }
 
 /** Every file a pack's build read, across its phases, pack-relative and deduplicated */

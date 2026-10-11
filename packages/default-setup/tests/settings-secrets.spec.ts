@@ -2,7 +2,7 @@
 // (never with values) and starts the assistant's birth flow once a required provider has a key, CLI paths live in
 // the code plugin.
 import { describe, expect, it, vi } from 'vitest';
-import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
+import { addTestSecret, startApp, takeSystemErrors } from '@apack/testing/harness';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 

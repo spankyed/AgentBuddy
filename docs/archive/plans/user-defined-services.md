@@ -28,7 +28,7 @@ my-weather-service/
 ### Manifest (`buddy.config.ts`)
 
 ```typescript
-import type { ServiceConfig } from '@agentbuddy/service-sdk'; // or inline type
+import type { ServiceConfig } from '@apack/service-sdk'; // or inline type
 
 export default {
   key: 'weather',                    // → services.weather
@@ -109,7 +109,7 @@ The Settings UI renders both identically: list of services with enable/disable t
 User pastes GitHub URL
   │
   ▼
-1. Clone/download repo → ~/.agentbuddy/services/<key>/
+1. Clone/download repo → ~/.apack/services/<key>/
   │
   ▼
 2. Read buddy.config.ts → validate manifest
@@ -140,7 +140,7 @@ User pastes GitHub URL
 ```typescript
 // packages/api/src/services/user-services.ts
 
-const USER_SERVICES_DIR = path.join(os.homedir(), '.agentbuddy', 'services');
+const USER_SERVICES_DIR = path.join(os.homedir(), '.apack', 'services');
 
 function loadUserServices(builtinServices: BuiltinServices): Record<string, any> {
   const registry = settingsQueries.getServiceRegistry();
@@ -228,7 +228,7 @@ Each service dir has its own `package.json` and `node_modules/`. `npm install` r
 
 **Trade-off**: No cross-service deduplication. If two services both use `axios`, it's installed twice. Acceptable — disk space is cheap, and isolation prevents version conflicts.
 
-**Alternative (future)**: Hoist all service deps into a shared `~/.agentbuddy/services/node_modules/`. This is an optimization, not a requirement.
+**Alternative (future)**: Hoist all service deps into a shared `~/.apack/services/node_modules/`. This is an optimization, not a requirement.
 
 ### App deps vs service deps
 
@@ -255,7 +255,7 @@ Fully isolated. The app bundles its own `node_modules/` inside the Electron app.
 ## Implementation phases
 
 ### Phase 1: Infrastructure
-- Create `~/.agentbuddy/services/` directory structure
+- Create `~/.apack/services/` directory structure
 - Service registry in EARS (CRUD for `ServiceDefinition`)
 - Install flow: clone repo → npm install → esbuild compile → register
 - Runtime loading: dynamic `require()` + factory call → merge into services object
@@ -291,7 +291,7 @@ Fully isolated. The app bundles its own `node_modules/` inside the Electron app.
 
 ## Open questions
 
-1. **Service SDK package**: Should we publish an `@agentbuddy/service-sdk` npm package with types for `ServiceConfig`, `createService` signature, etc.? Or just inline types in the template repo?
+1. **Service SDK package**: Should we publish an `@apack/service-sdk` npm package with types for `ServiceConfig`, `createService` signature, etc.? Or just inline types in the template repo?
 
 2. **Service versioning**: When a user "updates" a service (re-clones from GitHub), how do we handle breaking changes? Semantic versioning in `buddy.config.ts`? Or just "latest from main branch"?
 

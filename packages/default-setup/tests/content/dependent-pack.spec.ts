@@ -11,12 +11,12 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   buildPackConfigFromManifest, compilePack, formatEntities, generatePackFiles, parseManifest, resolveContentSources,
   type PackManifest, type PackSnapshot, type ContentDependency,
-} from '@abuddy/sdk/build';
-import { createFormatApplier } from '@abuddy/sdk/content';
+} from '@apack/sdk/build';
+import { createFormatApplier } from '@apack/sdk/content';
 import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
 
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
-const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'abuddy.json'), 'utf-8')) as PackManifest;
+const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'apack.json'), 'utf-8')) as PackManifest;
 /** default-setup as a dependent's build sees it: its built snapshot and build dir */
 const depSnapshot = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist/types/snapshot.json'), 'utf-8')) as PackSnapshot;
 const dependencies = new Map<string, ContentDependency>([['default-setup', { manifest: depSnapshot.manifest, buildDir: path.join(PACK_DIR, 'dist/build') }]]);

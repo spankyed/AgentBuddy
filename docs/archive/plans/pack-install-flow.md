@@ -7,7 +7,7 @@ Design plan for the in-app pack install pipeline and related infrastructure.
 | Layer | Status |
 |---|---|
 | **CLI** (`pack-cli`) | `install` from local dir/zip, `uninstall`, `pack` (-> .tgz), `build`, `init`, `validate`, `list`, `dev` |
-| **Deep link** | `abuddy://install?pack=<slug>&source=<source>` -> renderer -> `INSTALL_PACK` event to settings system |
+| **Deep link** | `apack://install?pack=<slug>&source=<source>` -> renderer -> `INSTALL_PACK` event to settings system |
 | **Settings system** | `INSTALL_PACK` handler: stub (logs + emits `PACK_INSTALL_STARTED`). No success event. No `UNINSTALL_PACK`. |
 | **Boot loader** | Full pipeline: discover -> `reconcileExternalRegistry()` (syncs JSON, filters by `enabled`) -> load -> register. External packs run before hydration. |
 | **Pack registry** | External-only JSON file with `enabled` flag. Reconciled automatically at boot -- new packs added, missing packs pruned. |
@@ -17,7 +17,7 @@ Design plan for the in-app pack install pipeline and related infrastructure.
 
 The `INSTALL_PACK` handler is a stub. The CLI's `install` only takes local paths. What's missing:
 
-1. **In-app install pipeline** -- when `INSTALL_PACK` fires, download from a remote source and copy to `~/.agentbuddy/packs/`
+1. **In-app install pipeline** -- when `INSTALL_PACK` fires, download from a remote source and copy to `~/.apack/packs/`
 2. **Packs BE system** -- a dedicated backend system owning pack management (install, uninstall, enable/disable, list)
 3. **Packs FE plugin** -- a dedicated toolbar plugin for the pack management UI
 4. **Remote source resolution** -- GitHub release download (CLI only handles local dir/zip)
@@ -89,7 +89,7 @@ New module `packages/api/src/core/packs/pack-installer.ts`. Pure functions calle
 
 ### 4. Hot-reload vs restart
 
-Restart only for v1. The boot sequence is linear and assumes everything is known at startup. The `app:relaunch` IPC exists. Install writes files to `~/.agentbuddy/packs/`, registry reconciliation picks them up on next boot.
+Restart only for v1. The boot sequence is linear and assumes everything is known at startup. The `app:relaunch` IPC exists. Install writes files to `~/.apack/packs/`, registry reconciliation picks them up on next boot.
 
 ### 5. Enable/disable
 
@@ -97,7 +97,7 @@ The registry already has `enabled: boolean`. `reconcileExternalRegistry()` alrea
 
 ### 6. Publish
 
-For v1, publish stays manual -- `abuddy pack` creates the `.tgz`, author uploads to GitHub releases. A centralized pack registry/store is a later concern.
+For v1, publish stays manual -- `apack pack` creates the `.tgz`, author uploads to GitHub releases. A centralized pack registry/store is a later concern.
 
 ### 7. Packs FE plugin (internal toolbar plugin)
 
@@ -215,7 +215,7 @@ uninstallPack(packId: string): Promise<void>
 
 Where `InstallResult = { id: string; name: string; version: string; dir: string }`.
 
-**Core flow:** resolve source -> download to temp dir -> validate manifest (reuse CLI's checks: id format, required fields, dist/ exists) -> host version check -> copy to `~/.agentbuddy/packs/<id>/` (replace if exists) -> return result. Temp dir cleaned up in `finally`.
+**Core flow:** resolve source -> download to temp dir -> validate manifest (reuse CLI's checks: id format, required fields, dist/ exists) -> host version check -> copy to `~/.apack/packs/<id>/` (replace if exists) -> return result. Temp dir cleaned up in `finally`.
 
 **GitHub resolution:** `fetch('https://api.github.com/repos/{owner}/{repo}/releases/latest')` -> find asset matching `*.tgz` -> download -> extract with `tar` -> validate -> copy.
 

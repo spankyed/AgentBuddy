@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { callsHelper, declaresKey } from './_support/config-code.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -10,11 +10,11 @@ import { repoFiles } from './_support/repo-files.ts';
  *
  * The sibling of `pack-test-config.spec.ts`, and it exists because the vitest half of this question was
  * answered and the Playwright half was not. There were six of these: the repo's own E2E config, the one
- * `abuddy init-tests` scaffolds, both fixture packs', and the drive layer's two — and the repo's own had
+ * `apack init-tests` scaffolds, both fixture packs', and the drive layer's two — and the repo's own had
  * already drifted to a `use` block giving it screenshots and traces that the three packs' lacked. Nobody
  * decided that; it is what six copies do.
  *
- * One helper per kind of run (`@abuddy/testing/playwright`), because a setting means something different
+ * One helper per kind of run (`@apack/testing/playwright`), because a setting means something different
  * to each: an E2E suite has a budget to hold, a driving run has no timeout at all because someone is
  * watching it, and a serving session has four settings its HTTP handshake depends on.
  */
@@ -57,7 +57,7 @@ describe('a Playwright config calls its helper', () => {
       .filter((config) => !delegates(config))
       .filter((config) => !(config in ASSEMBLES_ITS_OWN));
 
-    expect(copies, 'these restate what @abuddy/testing/playwright holds, so a change there will not reach '
+    expect(copies, 'these restate what @apack/testing/playwright holds, so a change there will not reach '
       + 'them. Call the helper for their kind of run instead: what a config needs on top is an argument')
       .toEqual([]);
   });
@@ -92,7 +92,7 @@ describe('a Playwright config calls its helper', () => {
     ['pack/playwright.config.ts', 'definePackE2EConfig'],
     ['drive/playwright.config.ts', 'defineDriveConfig'],
   ])('is what the %s scaffold writes', (template, helper) => {
-    const source = read(path.join('packages', 'abuddy-cli', 'templates', template));
+    const source = read(path.join('packages', 'apack-cli', 'templates', template));
 
     expect(callsHelper(source, helper), `the ${template} template assembles its own`).toBe(true);
     for (const key of OWNED_KEYS) {

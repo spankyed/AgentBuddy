@@ -85,7 +85,7 @@
                     <input
                       v-model="exportPath"
                       type="text"
-                      placeholder="/Users/spankyed/Documents/AgentBuddy Backups"
+                      placeholder="/Users/spankyed/Documents/apack Backups"
                       class="w-full pl-10 pr-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                     />
                   </div>
@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin } from '@apack/sdk/fe'
 
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -308,7 +308,7 @@ import {
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state.ts';
 import { sendToSystem } from '#generated/events.ts';
-import ToastNotification from '@abuddy/ui/design/ToastNotification';
+import ToastNotification from '@apack/ui/design/ToastNotification';
 
 const actor: DatabaseState = usePlugin();
 
@@ -451,10 +451,10 @@ function handleImport(skipUnknownDatabases = false) {
   actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases });
 }
 
-/** A backup from a newer AgentBuddy: the user says whether to import it without what this one can't hold */
+/** A backup from a newer apack: the user says whether to import it without what this one can't hold */
 function askAboutUnknownDatabases(stores: string[]): void {
   const importAnyway = confirm(
-    `This backup was made by a newer AgentBuddy and also holds ${stores.join(', ')}, which this version doesn't have.\n\n` +
+    `This backup was made by a newer apack and also holds ${stores.join(', ')}, which this version doesn't have.\n\n` +
     'Nothing has been changed yet. Import it without those, replacing your current data with the rest?',
   );
   if (importAnyway) actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases: true });

@@ -25,7 +25,7 @@ Defect 1 is the one that matters: **a plan whose premise is a prediction is the 
 Re-measuring found the real vector, and it is not empty walks. **30 conditional skips across 22 spec files, and
 14 of them skip on `!PACKAGES_BUILT`** — nine of those thirteen files being the whole of `@app/publish-checks`.
 
-`packagesBuiltOrRefuse` (`packages/abuddy-host/src/build/packages-built.ts:629`) throws on unbuilt packages **only
+`packagesBuiltOrRefuse` (`packages/apack-host/src/build/packages-built.ts:629`) throws on unbuilt packages **only
 under `process.env.CI`**, and this repo's CI is off by design — `.github/workflows/ci.yml` has its triggers
 commented out. So locally it returns `false` and thirteen spec files quietly report nothing. That is not a
 hypothetical: CLAUDE.md already records the event, from the other direction, where it *was* caught —
@@ -41,7 +41,7 @@ with **no inverse**. Skipped becoming running is noticed. Running becoming skipp
 ### 1. A check may not silently skip itself
 
 `packagesBuiltOrRefuse` refuses whenever the packages are not built, not only under CI, naming the build command
-as it already does. An explicit `ABUDDY_ALLOW_UNBUILT=1` covers the deliberate case — running one spec without
+as it already does. An explicit `APACK_ALLOW_UNBUILT=1` covers the deliberate case — running one spec without
 paying for a build — so the escape is visible in the shell rather than implied by an unset variable.
 
 **The fourteen `describe.skipIf(!PACKAGES_BUILT)` sites stay.** The opt-out still yields `false`, so they remain
@@ -69,7 +69,7 @@ manifest object literal in `manifest-schema.spec.ts`, a compiled-content result 
 directory holding one `defaults.mjs`. **19 specs actually write a pack directory**, and the five variants
 collapsed here were still the load-bearing ones. The weak shape has already cost twice:
 
-- `abuddy-cli/tests/build/pack-rules.spec.ts` carries three shapes, one an `abuddy.json` written inline because
+- `apack-cli/tests/build/pack-rules.spec.ts` carries three shapes, one an `apack.json` written inline because
   neither of the other two could express a contract leaf.
 - `repo-checks/tests/import-specifiers.integration.spec.ts` records what it cost: *"there used to be two and the
   difference was invisible … `own-modules` and `contract-leaves` cannot fire there at all — measured. Half the
@@ -80,9 +80,9 @@ collapsed here were still the load-bearing ones. The weak shape has already cost
 packFixture({ at?: string; files?: Record<string, string>; manifest?: PackManifestish }): string
 ```
 
-Complete by default: a `package.json` with both subpath maps, an `abuddy.json` declaring one feature with **both**
+Complete by default: a `package.json` with both subpath maps, an `apack.json` declaring one feature with **both**
 halves' entries and contracts, and the files those paths name. `files` merges over the base, so a malformed-pack
-case writes `files: { 'abuddy.json': '{}' }`; `at` defaults to a fresh `mkdtemp`.
+case writes `files: { 'apack.json': '{}' }`; `at` defaults to a fresh `mkdtemp`.
 
 The five variants collapse: `packWithImports` and the inline-manifest case in `pack-rules.spec.ts`, and
 `packFixture` plus the contract-leaf describe's local `pack(files)` in `import-specifiers.integration.spec.ts`.
@@ -105,10 +105,10 @@ Two sites that look like floors are **not** migrated: `spec-plan.spec.ts:198` (`
 and `fe-bundler-ui-theme.spec.ts:64` (`used.get('primary')!.size > 0`) assert about one item the scan found, not
 that it found anything. Moving them would be churn, and would read as a population guard where none is meant.
 
-**Home: `packages/abuddy-host/src/testing/`**, beside `packFixture`, exported as two entries in host's
+**Home: `packages/apack-host/src/testing/`**, beside `packFixture`, exported as two entries in host's
 hand-written map. No new workspace: every one of those files is in a package that already depends on
-`@abuddy/host`. The one exception is `abuddy-sdk/tests/utils/import-is-the-verb.spec.ts`, which cannot import host
-— `findUpwardImports` reads each layer's `tests/` and refuses a non-permitted `@abuddy/*` in the manifest at all —
+`@apack/host`. The one exception is `apack-sdk/tests/utils/import-is-the-verb.spec.ts`, which cannot import host
+— `findUpwardImports` reads each layer's `tests/` and refuses a non-permitted `@apack/*` in the manifest at all —
 so it keeps its own three-line guard with a comment saying why. **One file duplicating three lines is cheaper than
 a workspace, its vitest project, its chain inputs and eleven devDependency lines**, which is what revision 1 spent
 to reach eight files.
@@ -133,14 +133,14 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
 
 | | |
 |---|---|
-| the skip is gone | clear `node_modules/.cache/abuddy-packages-build` and remove one `dist`, then run `npm test -w @app/publish-checks`: it must fail naming the build command, where today nine files report green |
-| the opt-out works | the same run with `ABUDDY_ALLOW_UNBUILT=1` skips as before |
+| the skip is gone | clear `node_modules/.cache/apack-packages-build` and remove one `dist`, then run `npm test -w @app/publish-checks`: it must fail naming the build command, where today nine files report green |
+| the opt-out works | the same run with `APACK_ALLOW_UNBUILT=1` skips as before |
 | nothing gated changed | `npm run chain` — `packages:ensure` precedes every step that reads a built package, so no step may newly refuse |
 | the fixture bites | delete the manifest from `packFixture`'s default: the `contract-leaves` cases must fail. Today two of the three shapes cannot make that rule speak at all |
 | ~~the floor is preserved~~ | **This row was unrunnable, and the floor it defends was the wrong shape. See "As shipped" below.** |
 | `population` bites | call it on `[]`: throws naming the subject |
 | the merged table bites | delete a key from the `Record`: a compile error, not a test failure |
-| nothing else moved | `npm test -w @abuddy/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
+| nothing else moved | `npm test -w @apack/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
 | the gate | `npm run check:specifiers`, `npm run typecheck`, `npm run chain` |
 
 ## Risks
@@ -157,9 +157,9 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
 
 ## Commit chunks
 
-1. `packagesBuiltOrRefuse` refuses unless `ABUDDY_ALLOW_UNBUILT`, and `published-packages.ts`' doc comment moves
+1. `packagesBuiltOrRefuse` refuses unless `APACK_ALLOW_UNBUILT`, and `published-packages.ts`' doc comment moves
    with it. The fourteen `skipIf` sites are untouched.
-2. `population` in `@abuddy/host/src/testing/`, the three private floors and `packaged-app-files`' helper onto it,
+2. `population` in `@apack/host/src/testing/`, the three private floors and `packaged-app-files`' helper onto it,
    the sdk spec's local copy commented.
 3. `packFixture` beside it, and the five variants in the two specs that collapse onto it.
 4. `pack-rules`' two firing tables merge into one `Record`.
@@ -228,9 +228,9 @@ dedicated case with its own message, which is the category §3 already lists as 
 was no duplication to explain.
 
 **Chunk 1 was one site wider than written.** The same hand-written CI-gated throw in
-`dependency-runtime.integration.spec.ts:12` moved to the same `ABUDDY_ALLOW_UNBUILT` escape.
+`dependency-runtime.integration.spec.ts:12` moved to the same `APACK_ALLOW_UNBUILT` escape.
 
-Two obligations the plan did not anticipate, both enforced by checks that already existed: a new `@abuddy/host`
+Two obligations the plan did not anticipate, both enforced by checks that already existed: a new `@apack/host`
 export must be bridged or recorded in `UNBRIDGED_BY_DESIGN` (`sdk-bridge-drift`), and a new spec file needs
 `npm run spec-cost:update -- --suite <dir>` — the no-argument form re-records every suite and rewrote 570 lines
 across twelve files.

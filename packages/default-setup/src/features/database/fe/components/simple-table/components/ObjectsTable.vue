@@ -104,8 +104,8 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
 } from 'reka-ui';
-import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup';
-import { isJsonLike } from '@abuddy/ui/utils/json-detection';
+import JsonHoverPopup from '@apack/ui/components/JsonHoverPopup';
+import { isJsonLike } from '@apack/ui/utils/json-detection';
 
 interface Props {
   headers: string[];

@@ -2,14 +2,14 @@ import {getChromeMajorVersion} from '@app/electron-versions';
 import {defaultServerConditions, defineConfig} from 'vite';
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
-  // Workspace @abuddy/* packages resolve to source, as they do for this package's tsconfig: a config reading
+  // Workspace @apack/* packages resolve to source, as they do for this package's tsconfig: a config reading
   // a different copy from the typecheck beside it is how a stale dist passes both.
   //
-  // No `noExternal` here, unlike main's: the only @abuddy import in this package is `import type`, which
+  // No `noExternal` here, unlike main's: the only @apack import in this package is `import type`, which
   // esbuild erases, so nothing from the SDK reaches the bundle. A runtime import would need it, because a
   // packaged build strips the .ts files this condition resolves to.
   ssr: {
-    resolve: {conditions: ['@abuddy/source', ...defaultServerConditions]},
+    resolve: {conditions: ['@apack/source', ...defaultServerConditions]},
   },
   build: {
     ssr: true,

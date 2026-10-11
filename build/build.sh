@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Production Build Script for AgentBuddy
+# Production Build Script for apack
 # ASAR disabled — API server runs as a separate child process and needs filesystem access
 
 set -e  # Exit on error
@@ -11,13 +11,13 @@ cd "$SCRIPT_DIR/.."
 
 # Channel detection (--beta flag)
 CHANNEL="production"
-# Every packaged build is stamped with its channel (baked into main as __ABUDDY_CHANNEL__);
+# Every packaged build is stamped with its channel (baked into main as __APACK_CHANNEL__);
 # an unstamped packaged app refuses to start rather than guessing
-export ABUDDY_ENV=production
+export APACK_ENV=production
 for arg in "$@"; do
   if [[ "$arg" == "--beta" ]]; then
     CHANNEL="beta"
-    export ABUDDY_ENV=beta
+    export APACK_ENV=beta
   fi
 done
 
@@ -42,14 +42,14 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 CHANNEL_LABEL="Production"
-APP_NAME="AgentBuddy"
+APP_NAME="apack"
 if [[ "$CHANNEL" == "beta" ]]; then
   CHANNEL_LABEL="Beta"
-  APP_NAME="AgentBuddy Beta"
+  APP_NAME="apack Beta"
 fi
 
 echo "=========================================="
-echo "🚀 AgentBuddy ${CHANNEL_LABEL} Build"
+echo "🚀 apack ${CHANNEL_LABEL} Build"
 echo "=========================================="
 echo ""
 
@@ -86,8 +86,8 @@ echo ""
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build
-# The CLI the app bundles (Resources/cli/abuddy runs it)
-npm run build:package -w @abuddy/cli
+# The CLI the app bundles (Resources/cli/apack runs it)
+npm run build:package -w @apack/cli
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 

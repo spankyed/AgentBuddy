@@ -1,7 +1,7 @@
 // The Codex flow's tracks, run on the brain: which actions each event reaches, with which inputs.
 // The Codex app server and the chat and threads services the actions drive are mocked.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockService, startApp, type FlowRun, type TestApp } from '@abuddy/testing/harness'
+import { mockService, startApp, type FlowRun, type TestApp } from '@apack/testing/harness'
 import type { Services } from '#generated/services.ts'
 import { actionLabel, writeDefaultFlows } from '../../../_support/flows.ts'
 

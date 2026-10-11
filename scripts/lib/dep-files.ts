@@ -20,8 +20,8 @@
  * removal, which are the cases that change resolution without changing a file anyone read, and which
  * `changedInputs` already reports apart from modifications. What it would buy, measured 2026-10-02 over
  * single-file edits: **one or two of the stale typecheck legs per edit**, not fifteen. An edit to
- * `abuddy-ears/src/edge-store.ts` makes 18 legs stale, and 11 of them genuinely compiled it — everything
- * resolves that source under the `@abuddy/source` condition — while 6 of the 18 have no dep file to prune
+ * `apack-ears/src/edge-store.ts` makes 18 legs stale, and 11 of them genuinely compiled it — everything
+ * resolves that source under the `@apack/source` condition — while 6 of the 18 have no dep file to prune
  * with at all. Against that: 52ms to parse all 16 of these on every chain invocation, a 6% tax on the 0.9s
  * warm floor, and a new stamp field to tie a dep file to the run that was stamped, since a dep file from a
  * failed run records a subset and would prune too much.
@@ -56,14 +56,14 @@
  *
  * Revisit if a leg lands on the critical path, or if the app-dependent steps stop dominating it.
  *
- * `build-reads.ts` is the same kind of evidence for the other tool this repo can ask: `abuddy build`,
+ * `build-reads.ts` is the same kind of evidence for the other tool this repo can ask: `apack build`,
  * whose bundlers report their module graphs. The two are kept apart because everything below is shaped by
  * TypeScript — one cache directory, one suffix, a compiler version per workspace, a dep file traced to the
  * tsconfig that named it — and a bundler's record answers none of those questions.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { PACKAGE_DIRS } from './workspace-deps.ts';
 
 /** Where the legs are configured to write them, which is the one place this looks */

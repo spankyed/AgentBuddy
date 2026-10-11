@@ -19,12 +19,12 @@ import type { GeneralSettings } from '#app-settings/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli.ts';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger } from '@apack/sdk/logger';
 
 const cliLogger = createLogger('code');
 import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
-import { defineSystem } from '@abuddy/sdk/framework'
+import { defineSystem } from '@apack/sdk/framework'
 import { GitRepository } from './services/git.ts'
 import { GitWatcherService } from './services/gitwatcher.ts'
 

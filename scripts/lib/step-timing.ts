@@ -221,7 +221,7 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
  *
  * The field feeds two things — the kill budget (four times it) and the critical path — and nothing kept it
  * honest, so it drifted both ways: `packages:ensure` said 1s for a step that takes 14s when it actually
- * builds, and `test:unit:abuddy-sdk` said 25s for one measured at 14s. A number nobody re-measures is a
+ * builds, and `test:unit:apack-sdk` said 25s for one measured at 14s. A number nobody re-measures is a
  * number that quietly stops meaning anything, so the chain says when its own table has gone stale, and
  * prints the value to record. Reported rather than enforced: a slow machine should not fail a run.
  *

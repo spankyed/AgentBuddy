@@ -3,10 +3,10 @@
 // electron-builder's dependency collector once dropped 112 of them (e.g. nanoid under
 // @ai-sdk/provider-utils) and the packaged API couldn't start; nothing failed at build time.
 //
-//   node build/prod/verify-node-modules.mjs "dist/mac-arm64/AgentBuddy.app/Contents/Resources/app" [workspace]
+//   node build/prod/verify-node-modules.mjs "dist/mac-arm64/apack.app/Contents/Resources/app" [workspace]
 //
 // Also checked: the published packages bundled in the app (packages/*/dist/package, e.g. the
-// CLI behind Resources/cli/abuddy), and optional dependencies the build workspace installed
+// CLI behind Resources/cli/apack), and optional dependencies the build workspace installed
 // for this platform (e.g. esbuild's native binary) but the app doesn't ship.
 import fs from 'node:fs';
 import path from 'node:path';

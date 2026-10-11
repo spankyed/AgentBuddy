@@ -3,12 +3,12 @@
 // settings. A feature with no system, or no plugin, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
-import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
-import { untypedTx } from '@abuddy/ears';
-import type { EARS } from '@abuddy/sdk';
+import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apack/testing/harness';
+import { untypedTx } from '@apack/ears';
+import type { EARS } from '@apack/sdk';
 
 import { services } from '#generated/services.ts';
-import { resolveName } from '@abuddy/sdk/ids';
+import { resolveName } from '@apack/sdk/ids';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
 const recorder = setup({ types: { context: {} as { heard: unknown[] } } }).createMachine({
@@ -396,7 +396,7 @@ describe('a change to a section', () => {
   });
 });
 
-// Help is a pack contribution (`abuddy.json` `help`), so which packs are installed decides what the Help tab shows.
+// Help is a pack contribution (`apack.json` `help`), so which packs are installed decides what the Help tab shows.
 // Sending it only with the settings a client asks for on connect left the tab showing the packs that were there when
 // the window opened, until it reconnected.
 describe('the help entries the Settings view shows', () => {

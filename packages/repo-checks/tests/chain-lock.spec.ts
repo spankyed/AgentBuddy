@@ -4,7 +4,7 @@
  * What is this module's own, and all these cases are about: where the lock file sits, what the refusal says,
  * and the `--wait` retry. The mechanism underneath — `wx` as the acquisition, taking over a lock whose holder
  * exited, counting an unreadable or foreign-machine lock as held, releasing on four interrupts — is
- * `@abuddy/host/exclusive-lock`'s, and `abuddy-host/tests/database/write-lock.spec.ts` covers it from above
+ * `@apack/host/exclusive-lock`'s, and `apack-host/tests/database/write-lock.spec.ts` covers it from above
  * with real processes. Re-testing it here would duplicate a 4-second suite to assert someone else's contract.
  *
  * **No case takes `CHAIN_LOCK` itself.** This spec runs inside `test:integration`, which the chain runs, so a

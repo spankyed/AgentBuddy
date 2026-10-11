@@ -1,7 +1,7 @@
 // The create and update steps write entities with the fields their mappings resolve, as a flow on the brain runs them
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@abuddy/testing/harness'
-import { startTestRuntime } from '@abuddy/sdk/testing'
+import { importFlows, startApp } from '@apack/testing/harness'
+import { startTestRuntime } from '@apack/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
 import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears.ts'
 import { createStepBuild } from '#extensions/steps/create/build.ts'

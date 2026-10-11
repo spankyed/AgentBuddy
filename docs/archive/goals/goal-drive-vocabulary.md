@@ -13,9 +13,9 @@
 
 Implement docs/goals/goal-drive-vocabulary.md on a branch cut from master, at or after `19ffed81a` — the
 base its Background was surveyed at.
-Before Phase 1, confirm the base: `packages/abuddy-testing/src/engine/server.ts`,
-`packages/abuddy-testing/src/index.ts`'s `driveEngineBody`, and `scaffold()` in
-`packages/abuddy-cli/src/commands/drive.ts` exist at HEAD, and that last file still writes the two engine
+Before Phase 1, confirm the base: `packages/apack-testing/src/engine/server.ts`,
+`packages/apack-testing/src/index.ts`'s `driveEngineBody`, and `scaffold()` in
+`packages/apack-cli/src/commands/drive.ts` exist at HEAD, and that last file still writes the two engine
 files unconditionally. If any of that has changed, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask.
@@ -27,7 +27,7 @@ test, fixture, template and doc in the same change, and fix forward. Nothing her
 Finished when:
 - Phases 1-4 are implemented and each meets its "Done when"; every new verb has a case against the
   session's fake page, and every new guard is mutation-checked.
-- `abuddy drive --serve` writes the engine scaffold only when it is absent, and a session file with a
+- `apack drive --serve` writes the engine scaffold only when it is absent, and a session file with a
   verb added to it survives the next run.
 - No POST path is a noun and no GET path is a verb; one concept has one field name across every request
   and response in the table. A spec derives both from `engineVerbs` and fails on a new violation.
@@ -50,17 +50,17 @@ Commit as you go:
 
 Never (the standing list — git, publishing, real data dirs, process kills, preload's tsc, release
 metadata, typed EARS, shims and loosened assertions — plus this goal's own):
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir. A drive session gets
-  an ephemeral instance; `abuddy drive` defaults to one, and `--instance` is the only way to keep state.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir. A drive session gets
+  an ephemeral instance; `apack drive` defaults to one, and `--instance` is the only way to keep state.
 - pkill/killall Electron or node. A session ends with POST /close, which is what runs the fixture's
   teardown; killing it skips the data-dir policy.
-- add a verb to @abuddy/testing that belongs to one app's vocabulary. The engine ships primitives; a
+- add a verb to @apack/testing that belongs to one app's vocabulary. The engine ships primitives; a
   domain verb goes in the scaffold, which is the point of Phase 1.
 ```
 
 ## Background (2026-10-05, at `19ffed81a`)
 
-`abuddy drive --serve` holds the app open and answers loopback HTTP, so an agent can ask many questions of
+`apack drive --serve` holds the app open and answers loopback HTTP, so an agent can ask many questions of
 one warm app instead of editing a closed script and relaunching for each. It has **15 verbs**. Three
 problems, all found by using it for a day.
 
@@ -75,7 +75,7 @@ fs.writeFileSync(path.join(dir, ENGINE_SESSION_FILE), ENGINE_SESSION);
 Eleven lines below, `scaffold()` writes every *other* generated file the right way — `if (!fs.existsSync(file))`.
 So the one file an agent would naturally extend is the one that cannot be. There is no extension point
 either: `driveEngineBody` takes the fixture's `{ app, appPage }` and nothing else, so a verb this app wants
-has to be added to `@abuddy/testing` and shipped to every pack, or not added at all.
+has to be added to `@apack/testing` and shipped to every pack, or not added at all.
 
 **The vocabulary is not guessable.** Taken from `engine/server.ts`:
 
@@ -94,13 +94,13 @@ plugin rejects that name.
 returns nothing. A thing called "drive" can send bus events and `eval`, and cannot press a button a user
 presses. Reading a plugin's state has no verb either: doing it takes a ~200-character `/eval` expression,
 which this session wrote out **four separate times** to answer one question about the Notes plugin. And the
-backend's own log has no verb, so `packages/abuddy-testing/CLAUDE.md` tells a reader to go and open
+backend's own log has no verb, so `packages/apack-testing/CLAUDE.md` tells a reader to go and open
 `drive/results/app-<n>.log` by hand.
 
 ## Decisions
 
-**D1. The engine ships primitives; the scaffold owns domain verbs.** `@abuddy/testing` gets verbs that are
-true of any AgentBuddy app. A verb built out of this app's nouns — "create a thread", "approve the pending
+**D1. The engine ships primitives; the scaffold owns domain verbs.** `@apack/testing` gets verbs that are
+true of any apack app. A verb built out of this app's nouns — "create a thread", "approve the pending
 tool call" — belongs in the session file, which its owner edits. That is what makes the scaffold worth
 keeping across runs, and what keeps the engine from growing one app's vocabulary.
 
@@ -160,7 +160,7 @@ verb answering and overriding a core one. Both mutation-checked.
 
 - Apply D4 and D5 across `engine/server.ts`, `engine/session.ts` and the `EngineSession` interface.
 - Rename in every caller: `docs/public-facing/cli.md`'s verb table, `drive/README.md`,
-  `packages/abuddy-testing/CLAUDE.md`, the root `CLAUDE.md`'s drive paragraph.
+  `packages/apack-testing/CLAUDE.md`, the root `CLAUDE.md`'s drive paragraph.
 - A spec in `@app/repo-checks` derived from `engineVerbs`: no POST path is a noun, no GET path is a verb,
   and no two verbs name one concept differently. The population is the table itself, asserted non-empty.
 
@@ -196,7 +196,7 @@ one `npm run drive:serve` session, with the output quoted.
 | `POST /secrets` | `{ provider, label }` | adds a key's metadata, so inference is reachable |
 | `POST /inference` | `{ reply }` | a fixed model answer for this session, so a flow is reproducible |
 
-These are the app's, not one pack's: every AgentBuddy app has settings, secrets and inference. A verb about
+These are the app's, not one pack's: every apack app has settings, secrets and inference. A verb about
 threads or the library is not here, and Phase 1 is where it goes.
 
 **Done when:** each has a case, and a session can add a secret, mock a reply and read a setting back.
@@ -235,7 +235,7 @@ threads or the library is not here, and Phase 1 is where it goes.
 
 | phase | | evidence |
 |---|---|---|
-| 1 — scaffold generated once, takes verbs | done | `writeEngineFiles` joins `scaffold()`'s write-if-absent loop; `driveEngineBody({ verbs })` returns the body. Three cases in `abuddy-cli/tests/commands/drive.spec.ts`, two in `server.spec.ts`. |
+| 1 — scaffold generated once, takes verbs | done | `writeEngineFiles` joins `scaffold()`'s write-if-absent loop; `driveEngineBody({ verbs })` returns the body. Three cases in `apack-cli/tests/commands/drive.spec.ts`, two in `server.spec.ts`. |
 | 2 — the vocabulary | done | `vocabulary.spec.ts` derives the population from `engineVerbs` and the field names from each verb's own protocol error. |
 | 3 — the missing verbs | done | `/plugin`, `/click`, `/fill`, `/press`, `/snapshot`, `/logs`, each with a case against the fake page and each exercised live. |
 | 4 — domain verbs | part | `/settings` and `/set-setting` landed. `/secrets` and `/inference` deferred, below. |
@@ -243,7 +243,7 @@ threads or the library is not here, and Phase 1 is where it goes.
 ### What the invariants are, and what holds them
 
 - **One field name per concept, and a GET never changes anything** — held by
-  `packages/abuddy-testing/tests/engine/vocabulary.spec.ts`. The population is `engineVerbs`' own keys and
+  `packages/apack-testing/tests/engine/vocabulary.spec.ts`. The population is `engineVerbs`' own keys and
   the field names come from asking each verb with an empty body, so neither half is a list that can go
   stale. It fired twice during the work it was written for: once when six verbs arrived unclassified, once
   when `/settings` wanted a second name (`path`) for what `/plugin` called `select`. They are both `path`.
@@ -257,7 +257,7 @@ threads or the library is not here, and Phase 1 is where it goes.
 
 Not time. `mockInference` replaces `services.inference` through `mockService` inside the harness's
 in-memory runtime; a real app's API process binds the real one in `createHostRuntime` at boot, and a search
-for an override (`ABUDDY_*INFERENCE`, `mockService` under `packages/api` or `packages/abuddy-host`) finds
+for an override (`APACK_*INFERENCE`, `mockService` under `packages/api` or `packages/apack-host`) finds
 none. So a mock cannot reach a running app without an app-side hook — a product decision outside this goal,
 and arguably one a shipped app should not carry. `/secrets` went with it: adding a real key while no mock
 exists would mean a drive session making real model calls, which is worse than not having the verb.

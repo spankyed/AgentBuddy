@@ -2,8 +2,8 @@
  * Restarts the API when its bundle is rebuilt, so a host, SDK or API edit costs a reload rather than a
  * manual build and a restarted app.
  *
- * `npm start` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@abuddy/host/src` or
- * `@abuddy/sdk/src` rewrites `dist/server.js`, and this asks `ApiServer` to replace the child. Measured
+ * `npm start` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@apack/host/src` or
+ * `@apack/sdk/src` rewrites `dist/server.js`, and this asks `ApiServer` to replace the child. Measured
  * 2026-10-10: ~95ms to rebuild, 545ms for the API to come back ready. The window never closes.
  *
  * **The bundle is the trigger because nothing else can be.** Main owns the API child, so the restart has
@@ -19,7 +19,7 @@ import { getAppContext } from '../../app-context.ts';
 import { logInfo, logError } from './logger.ts';
 
 /** The variable `npm start` sets on the Electron it spawns. */
-export const DEV_RELOAD_ENV = 'ABUDDY_DEV_RELOAD';
+export const DEV_RELOAD_ENV = 'APACK_DEV_RELOAD';
 
 /** A rebuild writes several files; without this the API restarts two or three times per edit. */
 const DEBOUNCE_MS = 300;
@@ -27,7 +27,7 @@ const DEBOUNCE_MS = 300;
 /**
  * Whether this app watches its API bundle — **the build and the launcher, and neither alone.**
  *
- * `development` is true of `abuddy dev` and of a bare `electron .` as well, so it cannot be the whole
+ * `development` is true of `apack dev` and of a bare `electron .` as well, so it cannot be the whole
  * condition: the loop belongs to the run that is building the bundle. And the variable cannot be either,
  * or a stray export would arm a watcher in a packaged app or a `test` run, whose API restarting underneath
  * it would be a strange thing to debug.
@@ -40,7 +40,7 @@ export function devReloadArmed(build: string, env: NodeJS.ProcessEnv): boolean {
  * Runs `work` after `delayMs` of quiet, and never drops a request that arrives while it is running.
  *
  * A busy flag that returned would lose that request, leaving the author looking at an app built from the
- * file before the one they saved with nothing reporting anything wrong. `@abuddy/cli` has this
+ * file before the one they saved with nothing reporting anything wrong. `@apack/cli` has this
  * (`build/watch.ts`'s `coalescingRunner`) and cannot be imported from: that package publishes no exports
  * map, being a bin.
  */

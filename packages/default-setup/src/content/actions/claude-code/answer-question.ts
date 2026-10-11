@@ -3,7 +3,7 @@
  * back to the CLI and resumes streaming.
  */
 
-import type { ActionMeta } from '@abuddy/sdk/build';
+import type { ActionMeta } from '@apack/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
 import { persistClaudeState, setRunning, updateChatState } from './_helpers/thread-context.ts';
 

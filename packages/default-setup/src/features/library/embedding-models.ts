@@ -1,7 +1,7 @@
 // The embedding models a library search index can use (plain data, shared by the backend and the index editor):
 // local models FastEmbed runs, and API models services.inference runs with the user's key for their provider.
 // The search index is dormant: see be/search-index/README.md.
-import type { EmbeddingModelId } from '@abuddy/sdk/models'
+import type { EmbeddingModelId } from '@apack/sdk/models'
 
 interface EmbeddingModelInfo {
   displayName: string

@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { covers, GUIDES_A_CHECK_READS, inputFiles, READS_MARKDOWN, REPO_ROOT, skipsFingerprint } from '@abuddy/host/build/packages-built';
+import { covers, GUIDES_A_CHECK_READS, inputFiles, READS_MARKDOWN, REPO_ROOT, skipsFingerprint } from '@apack/host/build/packages-built';
 import { CHAIN_STEPS, SUITE_READS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -33,10 +33,10 @@ const filesUnder = (input: string): readonly string[] => {
 /**
  * A guard whose subject is the repo has to be an input to the repo.
  *
- * These live inside one package's suite — `identity-guard` in `@abuddy/sdk`, six here — while what they
+ * These live inside one package's suite — `identity-guard` in `@apack/sdk`, six here — while what they
  * assert is every tracked file. The pool runs a project only when that project's own inputs moved, so each
- * was blind to the rest of the tree: `@abuddy/sdk`'s suite was an input to 241 of 1860 tracked code files.
- * It missed a forbidden path committed to `@abuddy/cli`, which is not one of its dependencies, and two full
+ * was blind to the rest of the tree: `@apack/sdk`'s suite was an input to 241 of 1860 tracked code files.
+ * It missed a forbidden path committed to `@apack/cli`, which is not one of its dependencies, and two full
  * chain runs passed over it. `SUITE_READS`' `repo` flag is the fix; this is what keeps it applied.
  *
  * The subject is derived from the specs themselves, through the AST: a spec that calls `repoFiles` is
@@ -170,14 +170,14 @@ describe('prose costs nothing', () => {
    */
   const CONTENT_IN_A_KEY: Record<string, string> = {
     // A hand-edited report is the one hole the deleted API stamp could not see, so `api:check` keys on them
-    'packages/abuddy-sdk/etc/index.api.md': 'api:check',
+    'packages/apack-sdk/etc/index.api.md': 'api:check',
     // The same hole in the pack's facade report, which the `facade:check` step compares against. `compile`
     // declares it too — the build reads it to warn — but the step that fails on it is the one named here
     'packages/default-setup/etc/pack-types.api.md': 'facade:check',
     // Content sources compile into the rows a user gets
     'packages/default-setup/src/content/notes/welcome.md': 'compile',
     // The CLI's scaffold, rendered into a new pack and read by the specifier rules
-    'packages/abuddy-cli/templates/pack/README.md': 'check:specifiers',
+    'packages/apack-cli/templates/pack/README.md': 'check:specifiers',
     // Test input, read by the content-parity goldens
     'packages/default-setup/tests/_support/fixtures/content-parity/v1/notes/welcome.md': 'test:unit:pack',
   };

@@ -1,4 +1,4 @@
-> **Done and closed.** A migration is declared under a version line in its pack's `abuddy.json` —
+> **Done and closed.** A migration is declared under a version line in its pack's `apack.json` —
 > `migrations.app` or `migrations.pack`, keyed by the version it targets — and the runners read one map
 > each (`packMigrationTargets(line)`), so neither asks where a pack came from. `shippedPacks()` keeps the
 > one consumer that is genuinely about shipping (`migrations/app/0.3.15.ts`'s `PluginOwners.shipped`).
@@ -24,11 +24,11 @@
 
 ## Context
 
-A pack declares `PackMigration { target, description, up }` (`abuddy-sdk/src/framework/pack-registration.ts:10`).
+A pack declares `PackMigration { target, description, up }` (`apack-sdk/src/framework/pack-registration.ts:10`).
 `target` is a bare version string and **says nothing about which version it is a version of** — so the
 *runner* decides, from the pack's provenance:
 
-- `runAppMigrations` (`abuddy-host/src/migrations/index.ts:65`) takes `registry.shippedPacks()`' migrations
+- `runAppMigrations` (`apack-host/src/migrations/index.ts:65`) takes `registry.shippedPacks()`' migrations
   and runs them against the **app's** version, recording `AppState.version`.
 - `runPackMigrations` (`:82-99`) takes an external pack's migrations and runs them against that **pack's**
   manifest version, recording `AppState.packVersions[id]`.
@@ -47,7 +47,7 @@ decorative: nothing compares anything to `0.1.0`.
 being able to say which of them it belongs to, instead of being told by where its pack came from.
 
 **Why this is worth writing down now rather than fixing now.** The pack-replacement work
-(`abuddy replace <id>`, a user's fork at a shipped id) makes provenance-based routing reach a third party:
+(`apack replace <id>`, a user's fork at a shipped id) makes provenance-based routing reach a third party:
 a fork at `default-setup`'s id is shipped *by id membership*, so a fork author's migrations would run
 against the **app's** version. Naming files after their own pack version, `1.0.0.ts` would never run
 (1.0.0 > app 0.3.x) and `0.2.0.ts` would run instantly. Silently wrong, and inherited rather than ours.
@@ -64,7 +64,7 @@ guessing from provenance at all.
 interface PackRegistration {
   /** Migrations on this pack's own version line (`manifest.version`) */
   migrations?: PackMigration[];
-  /** Migrations on the app's version line — for a pack whose data moves when AgentBuddy moves */
+  /** Migrations on the app's version line — for a pack whose data moves when apack moves */
   appMigrations?: PackMigration[];
 }
 ```
@@ -96,12 +96,12 @@ goes back to describing origin.
   `runPackMigrations`, both inside `startPacks()`. A pack splitting one logical change across both lines
   gets an ordering it probably did not intend. Worth a sentence in the pack-author docs rather than a check.
 - **`appMigrations` on an external pack is a real capability**, not a mistake to refuse: a pack whose data
-  shape follows AgentBuddy's rather than its own has a legitimate reason to use it. But it is also a way for
+  shape follows apack's rather than its own has a legitimate reason to use it. But it is also a way for
   a third party to put code on the app's version line, so it deserves a deliberate yes rather than arriving
   by default.
 - **default-setup's decorative version stays decorative** until it declares a `migrations` entry. That is
   the next question after this one, not part of it.
-- **The migrations guide** (`abuddy-host/src/migrations/CLAUDE.md`) tells default-setup authors to name a
+- **The migrations guide** (`apack-host/src/migrations/CLAUDE.md`) tells default-setup authors to name a
   file after "the next release version", meaning the app's. That advice becomes specific to `appMigrations`
   and needs its counterpart written.
 

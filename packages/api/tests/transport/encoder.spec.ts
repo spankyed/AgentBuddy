@@ -19,7 +19,7 @@ import {
   _SERIALISATION_MATRIX,
   _answer,
   type _SerialisationInput,
-} from '@abuddy/sdk/testing/serialisation-matrix';
+} from '@apack/sdk/testing/serialisation-matrix';
 import { jsonSafeEncoder } from '@/transport/encoder';
 
 /** What a subscriber is told to emit, set per case before it subscribes */
@@ -231,7 +231,7 @@ describe('an outgoing value JSON refuses', () => {
 });
 
 /**
- * The row this pass answers in the shared matrix (`@abuddy/sdk/testing/serialisation-matrix`).
+ * The row this pass answers in the shared matrix (`@apack/sdk/testing/serialisation-matrix`).
  *
  * The cases above say why each answer is what it is; this says that it still *is*. The matrix is the data behind
  * `docs/reference/value-serialisation.md`, declared once because no package can import all five passes, and

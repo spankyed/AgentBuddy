@@ -4,8 +4,8 @@ import { delimiter, dirname, resolve } from 'node:path'
 import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin, type Rollup, type ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { sharedFeModules } from '@abuddy/host/build/shared-deps'
-import { devPackFrontendsModule, discoverDevPackFrontends } from '@abuddy/host/build/discover'
+import { sharedFeModules } from '@apack/host/build/shared-deps'
+import { devPackFrontendsModule, discoverDevPackFrontends } from '@apack/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -18,7 +18,7 @@ const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
  * **Serving a pack's frontend from source is the whole of what a dev server adds**, and it is what makes a
  * `.vue` edit patch the component: the pack's modules are in the renderer's own graph, so Vite has an
  * accepting importer to stop the update at. A built app has no source to serve, so the map is empty there
- * and every pack's frontend is fetched over `pack://` from the bundle its own `abuddy build` wrote — which
+ * and every pack's frontend is fetched over `pack://` from the bundle its own `apack build` wrote — which
  * is the path a pack takes in production whatever directory it lives in.
  *
  * The map is keyed by pack id and says nothing about `builtIn`: a pack is in it because its source is on
@@ -27,13 +27,13 @@ const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
 function devPackFrontendsPlugin(serving: boolean): Plugin {
   const VIRTUAL_ID = 'virtual:dev-pack-frontends';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
-  const packs = serving ? discoverDevPackFrontends(packagesRoot, process.env.ABUDDY_DEV_PACK_DIRS, process.cwd()) : [];
+  const packs = serving ? discoverDevPackFrontends(packagesRoot, process.env.APACK_DEV_PACK_DIRS, process.cwd()) : [];
   const virtualContent = devPackFrontendsModule(packs);
   // Those packs' components are in this window's CSS too, and `tailwind.config.ts` is loaded by PostCSS
   // rather than from here, so this is how it is told. **A declaration, not an inference**: it must not read
   // `NODE_ENV` to work out whether a dev server is running (`identity-guard.spec.ts`), and nothing but a
   // serving config writes this.
-  process.env.ABUDDY_DEV_PACK_SOURCES = packs.map((pack) => dirname(dirname(dirname(pack.feEntry)))).join(delimiter);
+  process.env.APACK_DEV_PACK_SOURCES = packs.map((pack) => dirname(dirname(dirname(pack.feEntry)))).join(delimiter);
   if (serving) console.log(`[dev-pack-frontends] serving from source: ${packs.map((pack) => pack.id).join(', ') || 'none'}`);
 
   return {
@@ -223,10 +223,10 @@ export default defineConfig(({ command }) => ({
     vueDevTools(),
   ],
   resolve: {
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
-    conditions: ['@abuddy/source', ...defaultClientConditions],
+    // Workspace @apack/* packages resolve to source (see their package.json exports)
+    conditions: ['@apack/source', ...defaultClientConditions],
   },
-  ssr: { resolve: { conditions: ['@abuddy/source', ...defaultServerConditions] } },
+  ssr: { resolve: { conditions: ['@apack/source', ...defaultServerConditions] } },
   optimizeDeps: {
     include: [
       'monaco-editor',

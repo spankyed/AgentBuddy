@@ -3,16 +3,16 @@
  *
  * **The load-bearing claim is that `attw` never gets a directory.** `attw --pack <dir>` runs `npm pack` inside
  * the tree it is checking and deletes the tarball afterwards, which is a file appearing and vanishing under
- * every other step that reads there — the recorded `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`. Keeping other
+ * every other step that reads there — the recorded `ENOENT: open 'publish/apack-ui-0.1.0.tgz'`. Keeping other
  * steps away from it instead was a mutex against 29 of the chain's 30 steps.
  *
  * Asked of the plan rather than of a run, because a run is 2s a tree and 7.8s for all five (measured
  * 2026-10-08) and the step is checked by the chain anyway. What a tarball packed this way does to the tree it
- * came from is `@abuddy/host`'s `published-manifest.spec.ts`, over `packTree` itself.
+ * came from is `@apack/host`'s `published-manifest.spec.ts`, over `packTree` itself.
  */
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
+import { publishedTreeDirs } from '@apack/host/build/packages-built';
 import { checksFor, declaresTypes, type PublishedTree } from '../../../scripts/lib/packages-check-plan.ts';
 
 /** A packer a case can recognise the output of, so what reaches `attw` is unambiguous */
@@ -26,8 +26,8 @@ const TYPES_IN_EXPORTS = { exports: { '.': { types: './dist/index.d.ts', default
 
 describe('what each published tree is asked', () => {
   it('gives both tools the same tarball', () => {
-    const checks = checksFor([tree('abuddy-sdk', WITH_TYPES)], packInto);
-    expect(checks.map(({ label }) => label)).toEqual(['publint abuddy-sdk', 'attw abuddy-sdk']);
+    const checks = checksFor([tree('apack-sdk', WITH_TYPES)], packInto);
+    expect(checks.map(({ label }) => label)).toEqual(['publint apack-sdk', 'attw apack-sdk']);
     expect(checks[0]).toMatchObject({ tool: 'publint', args: ['--strict', '/tmp/packed/publish.tgz'] });
     expect(checks[1]).toMatchObject({ tool: 'attw', args: ['/tmp/packed/publish.tgz', '--profile', 'esm-only'] });
   });
@@ -37,7 +37,7 @@ describe('what each published tree is asked', () => {
    * argument that is a directory is `--pack` by another spelling, whether or not the flag is there.
    */
   it('never hands either tool a path inside the tree it is checking', () => {
-    const trees = [tree('abuddy-ears', WITH_TYPES), tree('abuddy-sdk', TYPES_IN_EXPORTS), tree('abuddy-ui', WITH_TYPES)];
+    const trees = [tree('apack-ears', WITH_TYPES), tree('apack-sdk', TYPES_IN_EXPORTS), tree('apack-ui', WITH_TYPES)];
     const checks = checksFor(trees, packInto);
     expect(checks).toHaveLength(6);
     for (const { label, args } of checks) {
@@ -49,8 +49,8 @@ describe('what each published tree is asked', () => {
   });
 
   it('asks publint alone of a tree that publishes no declarations', () => {
-    const checks = checksFor([tree('abuddy-cli', { bin: { abuddy: './bin/abuddy.mjs' } })], packInto);
-    expect(checks.map(({ label }) => label)).toEqual(['publint abuddy-cli']);
+    const checks = checksFor([tree('apack-cli', { bin: { apack: './bin/apack.mjs' } })], packInto);
+    expect(checks.map(({ label }) => label)).toEqual(['publint apack-cli']);
     // It still gets a tarball: what attw has nothing to say about is the declarations, not the artifact
     expect(checks[0]!.args).toEqual(['--strict', '/tmp/packed/publish.tgz']);
   });
@@ -58,8 +58,8 @@ describe('what each published tree is asked', () => {
   /** One tarball per tree, so the two tools cannot be looking at different bytes of the same tree */
   it('packs each tree once, however many tools read it', () => {
     const packed: string[] = [];
-    checksFor([tree('abuddy-sdk', WITH_TYPES)], (dir) => { packed.push(dir); return packInto(dir); });
-    expect(packed).toEqual(['/repo/packages/abuddy-sdk/publish']);
+    checksFor([tree('apack-sdk', WITH_TYPES)], (dir) => { packed.push(dir); return packInto(dir); });
+    expect(packed).toEqual(['/repo/packages/apack-sdk/publish']);
   });
 
   it('finds types wherever the manifest puts them', () => {
@@ -83,9 +83,9 @@ describe('the trees it is asked of', () => {
       pkg, dir, manifest: JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf-8')) as Record<string, unknown>,
     }));
     expect(trees.map(({ pkg }) => pkg)).toEqual(
-      ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-testing', 'abuddy-cli']);
-    // Four of the five: `@abuddy/cli` publishes a bundle and no declarations
+      ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing', 'apack-cli']);
+    // Four of the five: `@apack/cli` publishes a bundle and no declarations
     expect(trees.filter(({ manifest }) => declaresTypes(manifest)).map(({ pkg }) => pkg))
-      .toEqual(['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-testing']);
+      .toEqual(['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing']);
   });
 });

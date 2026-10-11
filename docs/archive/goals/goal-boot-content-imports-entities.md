@@ -13,9 +13,9 @@
 Implement docs/goals/goal-boot-content-imports-entities.md on master, at or after 514a9f566 — the base its
 Background was surveyed at.
 Before Phase 1, confirm the base: PackContentManifest and skipAfterOnboarding in
-packages/abuddy-sdk/src/framework/pack-registration.ts, skipAtBoot in packages/default-setup/abuddy.json,
-the findWhere(CONTENT_KEY) lookup in packages/abuddy-sdk/src/content/applier.ts, bootApplyPacks in
-packages/abuddy-host/src/migrations/app/0.3.15.ts, and getBaseSettings in
+packages/apack-sdk/src/framework/pack-registration.ts, skipAtBoot in packages/default-setup/apack.json,
+the findWhere(CONTENT_KEY) lookup in packages/apack-sdk/src/content/applier.ts, bootApplyPacks in
+packages/apack-host/src/migrations/app/0.3.15.ts, and getBaseSettings in
 packages/default-setup/src/app-settings/index.ts all exist at HEAD. If they don't, stop and say so —
 the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -33,14 +33,14 @@ Finished when:
 - Phases 1-3 are implemented and each meets its "Done when"; every new guard and test is
   mutation-checked.
 - A written row the user deleted is not recreated: the applier treats a soft-deleted row carrying its
-  contentKey as the user's, and `boot.contentPolicy` no longer exists in packages/default-setup/abuddy.json.
+  contentKey as the user's, and `boot.contentPolicy` no longer exists in packages/default-setup/apack.json.
 - `settings` is not a `content.sources` entry, packages/default-setup/src/content/settings/applier.ts is gone,
   and the user can reset one feature's or one section's settings from the app's Settings view.
 - `PackContentManifest`, `boot.contentManifest` and `contentPolicy` appear nowhere in packages/ or scripts/
   (`grep -rn "contentManifest\|PackContentManifest\|contentPolicy" packages scripts --include='*.ts'` is empty
   apart from archived docs).
 - npm run typecheck, npm run spec over the touched packages, and npm run chain pass; api:update was run
-  for the @abuddy/sdk surface change in Phase 3 and etc/framework.api.md is committed.
+  for the @apack/sdk surface change in Phase 3 and etc/framework.api.md is committed.
 - npm run compile and npm run test:external-pack pass (the content pipeline and a dependent pack's content).
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
 - The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
@@ -61,14 +61,14 @@ ledger (Deferred 1).
 ## Background (2026-10-08, at 514a9f566 on master)
 
 **Applying runs when a pack's compiled content change, not every boot.** `applyPacks`
-(`packages/abuddy-host/src/packs/runtime/apply.ts:99`) hashes every file under the pack's
+(`packages/apack-host/src/packs/runtime/apply.ts:99`) hashes every file under the pack's
 `dist/runtime/content`, records it in `AppState.packContentRevisions`, and skips a pack whose hash and dependency
 state are unchanged. So the question a policy answers is: *when applying does run, which keys should be left
 out?*
 
-**`boot.contentPolicy` is the answer, and it holds two unrelated statements.** Declared in `abuddy.json`
+**`boot.contentPolicy` is the answer, and it holds two unrelated statements.** Declared in `apack.json`
 (`manifest-schema.ts:122`), carried on the registration as `PackContentManifest.contentPolicy`
-(`packages/abuddy-sdk/src/framework/pack-registration.ts`), read by `evaluateContentPolicy`
+(`packages/apack-sdk/src/framework/pack-registration.ts`), read by `evaluateContentPolicy`
 (`apply.ts:161`), which turns each named key into an empty include-set. Only `packages/default-setup`
 declares one: `{ skipAtBoot: ["settings"], skipAfterOnboarding: ["notes"] }`.
 
@@ -81,12 +81,12 @@ keys. A renamed content key silently stops being skipped.
 default-setup content demo notes. Without the skip, an apply-hash change (any edit under its content directory)
 re-imports them — including ones the user deleted. Traced:
 
-1. Notes delete **softly**: `trash.move` (`@abuddy/sdk/repositories`' `trash.ts`) sets `deleted: true` and
+1. Notes delete **softly**: `trash.move` (`@apack/sdk/repositories`' `trash.ts`) sets `deleted: true` and
    `deletedAt`, and keeps the row's `contentKey`.
 2. The applier looks for its own row with `ears().findWhere(entity, CONTENT_KEY, contentKey)`
-   (`packages/abuddy-sdk/src/content/applier.ts:137`).
+   (`packages/apack-sdk/src/content/applier.ts:137`).
 3. `findWhere` filters soft-deleted rows out —
-   `packages/abuddy-ears/src/query-helpers.ts:27`, `.filter(entity => !isDeleted(entity))`.
+   `packages/apack-ears/src/query-helpers.ts:27`, `.filter(entity => !isDeleted(entity))`.
 4. So the trashed note is invisible, `findByIdentity` (same filter) finds nothing, and the applier
    **creates a new one**. The user ends with a fresh demo note and the deleted one still in the trash.
 
@@ -102,15 +102,15 @@ The `settings` entry in `content.sources` is three unrelated things in one manif
    `packages/default-setup/src/content/default-settings.ts` is plain TypeScript in the pack. The `settings`
    format (`src/content/_compilers/settings.ts`) compiles it to `settings.content.json`, and
    `getBaseSettings()` (`src/app-settings/index.ts:15`) reads that file off disk with `readFileSync` +
-   `JSON.parse` to produce `settingsSections()` — the sections `abuddy.json` `settingsSections` declares.
+   `JSON.parse` to produce `settingsSections()` — the sections `apack.json` `settingsSections` declares.
    The detour has its own error for when it has not been paid: *"Run `npm run compile` before starting the
    backend."*
 2. **A reset command.** `src/content/settings/applier.ts` ignores its own record and calls
    `services.settings.reset()`. Nothing ever writes the compiled settings into the database.
 3. **A policy to stop (2) firing at boot** — `skipAtBoot`.
 
-It is pre-0.3.15 shape. Settings are now the host's (`packages/abuddy-host/src/features/settings/`,
-`@abuddy/host/settings`): **the row holds only what the user changed**, and the store composes the
+It is pre-0.3.15 shape. Settings are now the host's (`packages/apack-host/src/features/settings/`,
+`@apack/host/settings`): **the row holds only what the user changed**, and the store composes the
 registration's defaults underneath it, keyed by feature ref (`plugins['default-setup/threads']`). So there
 is nothing to write at boot, and `services.settings.reset()` is all-or-nothing where the document's shape
 would support per-feature.
@@ -126,8 +126,8 @@ would support per-feature.
 | `packs/registry.ts:623` | its **presence**, as a `bootHooks` string in `getPackExtensions` (the Packs view) |
 | `migrations/app/0.3.15.ts:46` (`bootApplyPacks`) | its **presence**, to list the shipped packs a pre-0.3.15 single `contentRevision` stood for. That migration's own comment says to *"delete it with the other migrations once 0.3.15 is below the oldest version upgrades are supported from"* |
 
-`PackContentManifest` is exported from `@abuddy/sdk/framework` and reported in
-`packages/abuddy-sdk/etc/framework.api.md`.
+`PackContentManifest` is exported from `@apack/sdk/framework` and reported in
+`packages/apack-sdk/etc/framework.api.md`.
 
 ## Decisions
 
@@ -171,12 +171,12 @@ Final.
 
 Independent of Phase 2; land it first because Phase 3 needs both.
 
-- `packages/abuddy-sdk/src/content/applier.ts`: the `contentKey` lookup (`:137`) sees soft-deleted rows. Use a
+- `packages/apack-sdk/src/content/applier.ts`: the `contentKey` lookup (`:137`) sees soft-deleted rows. Use a
   raw read rather than `findWhere` (`findByIdRaw`-shaped, or `qx` without the deleted filter), and return
   a match that says the row is deleted.
 - Add the fourth outcome in the outcome branch: a deleted match is skipped, counted as skipped, and its
   subtree is not descended (a deleted parent's children are the user's too).
-- `packages/default-setup/abuddy.json`: drop `skipAfterOnboarding` from `boot.contentPolicy`.
+- `packages/default-setup/apack.json`: drop `skipAfterOnboarding` from `boot.contentPolicy`.
 - `evaluateContentPolicy` (`apply.ts:161`) keeps its `skipAtBoot` arm until Phase 2.
 - `docs/public-facing/content.md`: the re-apply rules gain the deletion outcome, beside "edited" and
   "user-created".
@@ -197,20 +197,20 @@ Independent of Phase 2; land it first because Phase 3 needs both.
 
 Independent of Phase 1.
 
-- **The capability.** `@abuddy/host/settings`' store and `services.settings` gain a reset narrower than
+- **The capability.** `@apack/host/settings`' store and `services.settings` gain a reset narrower than
   today's: one feature's slice by ref, or one section by name (Decision 5). Removing the user's slice is
   the whole of it — the defaults come from registration on the next read.
 - **The UI.** The app's Settings view (`packages/renderer/src/views/settings/`) offers it per feature and
   per section, as a destructive action with a confirmation. The host's settings system
-  (`packages/abuddy-host/src/features/settings/be/`) answers the sender as it does any other write
+  (`packages/apack-host/src/features/settings/be/`) answers the sender as it does any other write
   (`SETTINGS_SAVED` / `SETTINGS_REFUSED`, `be/answer.ts`).
-- **The content entry goes.** Remove the `settings` entry from `packages/default-setup/abuddy.json`
+- **The content entry goes.** Remove the `settings` entry from `packages/default-setup/apack.json`
   `content.sources`, the `settings` entry from `content.formats`, `src/content/settings/applier.ts`, and
   `src/content/_compilers/settings.ts`.
 - **The defaults become an import.** `getBaseSettings()` (`src/app-settings/index.ts`) imports
   `../content/default-settings.ts`; the `readFileSync`/`JSON.parse` and the "run `npm run compile`" error go
   with it. Move the compiler's base-file check to an assertion where the base is read (Decision 4).
-- **The policy goes.** Drop `boot.contentPolicy` from `abuddy.json`, and `evaluateContentPolicy` and
+- **The policy goes.** Drop `boot.contentPolicy` from `apack.json`, and `evaluateContentPolicy` and
   `PackContentTarget.contentPolicy` from `apply.ts`.
 - Before deleting the format, confirm no pack names `default-setup:settings`
   (`grep -rn "default-setup:settings" packages tests`). If one does, stop and report it.
@@ -218,7 +218,7 @@ Independent of Phase 1.
   `docs/public-facing/content.md`, and the rule from Decision 8.
 
 **Done when:**
-- `boot.contentPolicy` and the `settings` content entry are gone from `packages/default-setup/abuddy.json`.
+- `boot.contentPolicy` and the `settings` content entry are gone from `packages/default-setup/apack.json`.
 - A spec covers the narrow reset: a feature's changed setting, reset, reads back as the registration's
   default, and the other features' settings are untouched. Mutation: resetting the whole document fails
   the "untouched" half.
@@ -233,27 +233,27 @@ Independent of Phase 1.
 
 After Phases 1 and 2.
 
-- `packages/abuddy-sdk/src/framework/pack-registration.ts`: delete `PackContentManifest` and
+- `packages/apack-sdk/src/framework/pack-registration.ts`: delete `PackContentManifest` and
   `PackBootHooks.contentManifest`.
-- `packages/abuddy-sdk/src/build/generate-entries.ts`: stop emitting `contentManifest` in the pack entry;
+- `packages/apack-sdk/src/build/generate-entries.ts`: stop emitting `contentManifest` in the pack entry;
   drop the now-unused `contentPolicy` lines.
-- `packages/abuddy-host/src/packs/registry.ts`: drop the `contentPolicy` read (`:612`) and the
+- `packages/apack-host/src/packs/registry.ts`: drop the `contentPolicy` read (`:612`) and the
   `bootHooks.push('contentManifest')` (`:623`).
-- `packages/abuddy-host/src/migrations/app/0.3.15.ts`: `bootApplyPacks` reads each shipped pack's manifest
+- `packages/apack-host/src/migrations/app/0.3.15.ts`: `bootApplyPacks` reads each shipped pack's manifest
   `content.sources` (Decision 7). The migration's behaviour must not change — the same pack ids for the same
   data.
 - Migrate the fixtures that construct a `contentManifest` (host's `tests/packs/registration.spec.ts`,
   `tests/packs/runtime/{loader,reload}.spec.ts`, `tests/services/host-runtime.spec.ts`,
   `tests/migrations/app-state-0.3.15.spec.ts`) and the codegen specs that assert the emitted block.
-- `npm run api:update -w @abuddy/sdk`; commit `etc/framework.api.md`.
+- `npm run api:update -w @apack/sdk`; commit `etc/framework.api.md`.
 - Regenerate default-setup (`npm run compile`) so `src/__generated__/pack-entry.ts` loses the block.
-- Docs: `packages/default-setup/CLAUDE.md`'s boot-hooks list, `packages/abuddy-host/src/packs/runtime/CLAUDE.md`'s
+- Docs: `packages/default-setup/CLAUDE.md`'s boot-hooks list, `packages/apack-host/src/packs/runtime/CLAUDE.md`'s
   pack-entry contract and content row, `docs/public-facing/manifest.md` and `content.md`.
 
 **Done when:**
 - `grep -rn "contentManifest\|PackContentManifest\|contentPolicy" packages scripts --include='*.ts' --include='*.json'`
   returns nothing outside `docs/archive/`.
-- `packages/abuddy-host/tests/migrations/app-state-0.3.15.spec.ts` passes unchanged in what it asserts
+- `packages/apack-host/tests/migrations/app-state-0.3.15.spec.ts` passes unchanged in what it asserts
   about which packs are migrated — the fixture moves to a manifest, the expectations do not.
 - `etc/framework.api.md` records only the removal.
 - `npm run typecheck`, `npm run spec` over the touched packages, `npm run compile`,
@@ -281,17 +281,17 @@ After Phases 1 and 2.
   another session stages files in this checkout, so commit by pathspec. Pushing, tagging and PRs are on
   request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad `pkill`, E2E and drive runs in the `abuddy-test` namespace or an
-  isolated `ABUDDY_USER_DATA_DIR`.
+- No real data dirs, no broad `pkill`, E2E and drive runs in the `apack-test` namespace or an
+  isolated `APACK_USER_DATA_DIR`.
 - No bare `tsc` in `packages/preload`; no `npm install` in the example pack; no version or release
   metadata edits.
-- The typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`): fix a call site, not
+- The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`): fix a call site, not
   the types.
 - Published packages: no `any` in the pack-facing surface, the TypeScript floor holds, and
   `npm run api:update` after an export change — with the diff reported, not just recorded.
 - Build order: `packages:build` before the CLI suite, default-setup's runtime before the api suites and
   E2E. `npm run packages:ensure` covers both.
-- Migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`. Phase 3 changes how a migration picks
+- Migrations follow `packages/apack-host/src/migrations/CLAUDE.md`. Phase 3 changes how a migration picks
   its packs, not what it writes: prove the behaviour is identical rather than asserting it.
 - Investigate a failing test rather than loosening it; mutation-check every new guard.
 - External packs are first-class: `test:external-pack` and `test:packaged-authoring` keep passing, and a

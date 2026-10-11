@@ -45,10 +45,10 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$TAG_VERSION" == *-beta* ]] || [[ "${{ inputs.channel }}" == "beta" ]]; then
             echo "is_beta=true" >> "$GITHUB_OUTPUT"
-            echo "product_name=AgentBuddy Beta" >> "$GITHUB_OUTPUT"
+            echo "product_name=apack Beta" >> "$GITHUB_OUTPUT"
           else
             echo "is_beta=false" >> "$GITHUB_OUTPUT"
-            echo "product_name=AgentBuddy" >> "$GITHUB_OUTPUT"
+            echo "product_name=apack" >> "$GITHUB_OUTPUT"
           fi
           echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
 

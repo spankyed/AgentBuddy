@@ -9,7 +9,7 @@
 
 Implement docs/goals/goal-reproducible-builds.md on master, at or after 7617ba990 — the base its Spike
 results were measured at.
-Before Phase 1, confirm the base: BUILD_UNITS is exported from @abuddy/host/build/packages-built,
+Before Phase 1, confirm the base: BUILD_UNITS is exported from @apack/host/build/packages-built,
 PACK_OUTPUTS is in scripts/lib/chain-steps.ts, and packages/default-setup/dev-build.mjs exists. If any
 is false, stop and say so — the plan was surveyed somewhere else.
 Read Background, Spike results, Decisions, Phases and Constraints first. Decisions are final:
@@ -53,7 +53,7 @@ Never:
 `docs/archive/plans/pack-runtime-nondeterminism.md` recorded that `packages/default-setup/dist/runtime/index.cjs`
 differs between builds of identical input. Three bytes, in whether esbuild emits its interop helper's
 `isNodeMode` argument — `__toESM(require("https"))` against `__toESM(require("https"), 1)`. Measured
-2026-09-25: four runs, four distinct hashes. `dev-build.mjs` is the only producer, since `abuddy build` stops
+2026-09-25: four runs, four distinct hashes. `dev-build.mjs` is the only producer, since `apack build` stops
 before `bundlePackRuntime` for a built-in pack. The doc ruled out codegen output, a missing tsconfig,
 `packages: 'external'` and sourcemaps, three runs each, and found `bundlePackSource` deterministic.
 
@@ -70,7 +70,7 @@ onto its own 0.25.x rather than move it.
 
 **One artifact was measured; three families feed the chain's cache.** Beside `PACK_OUTPUTS` there are
 `PACKAGE_BUILD_OUTPUTS` (derived from `BUILD_UNITS`, `chain-steps.ts:224`) and `APP_OUTPUTS`. The CLI and
-`@abuddy/testing` bundles come off the same esbuild. Whether those are reproducible has never been measured.
+`@apack/testing` bundles come off the same esbuild. Whether those are reproducible has never been measured.
 
 **Prior art for the check.** `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*` are the
 `<artifact>:check` / `<artifact>:update` shape this repo uses for something recorded that can go stale.
@@ -160,8 +160,8 @@ from numbers rather than from the plan doc's guess.
 | build time | no difference — 0.18s wall either way, esbuild's own phase 29–31ms |
 | output | +423 bytes, and `__esm` gains error caching: a module whose initializer throws stays errored instead of re-running on the next access, which is what ESM semantics say. Real, and narrow — it bites only where a module throws during evaluation |
 
-*What it would touch:* four manifests (`abuddy-sdk`, `abuddy-cli`, `api`, `default-setup`) and three direct
-importers (`dev-build.mjs`, `abuddy-sdk/src/build/compile-utils.ts`, `scripts/bundle-package.ts`). Not Vite,
+*What it would touch:* four manifests (`apack-sdk`, `apack-cli`, `api`, `default-setup`) and three direct
+importers (`dev-build.mjs`, `apack-sdk/src/build/compile-utils.ts`, `scripts/bundle-package.ts`). Not Vite,
 tsup or tsx, which vendor their own copies.
 
 *One thing that runs against the usual instinct:* consolidating versions is not on offer. Vite currently
@@ -180,10 +180,10 @@ Verify with `check:repro`, `packages:check` and `test:packaged-authoring` if it 
 - Commit the phase as it finishes, no attribution lines, `git diff --cached` first; pushing, tagging and PRs
   on request only.
 - No publishing, releases or triggered workflows (dry runs only).
-- No real data dirs; no broad pkill/killall; E2E in the `abuddy-test` namespace.
+- No real data dirs; no broad pkill/killall; E2E in the `apack-test` namespace.
 - No bare `tsc` in `packages/preload`; no `npm install` in the example pack; no edits to version or release
   metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any` in the pack-facing SDK, the TypeScript floor holds, `api:update` after export
   changes.
 - Build order: `packages:build` before the CLI suite; default-setup's runtime before the api suites and E2E.
@@ -231,8 +231,8 @@ into dead text.
 
 ### The trap worth knowing about
 
-`abuddy build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early on a
-matching `.inputs-hash`. A check that left codegen to `abuddy build` would re-hash `src/__generated__` without
+`apack build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early on a
+matching `.inputs-hash`. A check that left codegen to `apack build` would re-hash `src/__generated__` without
 regenerating it and report it identical — half of `PACK_OUTPUTS` passing for having been looked at. The script
 runs `generate:entries -- --force` itself, and a spec pins the flag.
 

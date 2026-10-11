@@ -52,8 +52,8 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 - The bus's drop path is well-behaved and is what enforcement would reuse: `reportDrop`
   (`bus/machine.ts:154`) reports a `diagnostic` — logged, recorded, failing any pack test that leaves one, no
   user toast — dedupes per pair, and stays quiet while a pack is mid-replacement (`isPluginReplacing`), so
-  `abuddy dev` rebuild cycles don't spam.
-- Third-party pack distribution does not exist: `resolveFromRemoteRegistry` (`abuddy-cli/src/commands/install.ts:17`)
+  `apack dev` rebuild cycles don't spam.
+- Third-party pack distribution does not exist: `resolveFromRemoteRegistry` (`apack-cli/src/commands/install.ts:17`)
   always throws. Every pack that exists is in this repo, where types already cover every send.
 
 ### The correction that reopened the question
@@ -81,7 +81,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 
    It read: there are 61 raw `broadcastToPlugin`/`sendToSystem`/`sendToPlugin` call sites across host, api and
    renderer, none with a pack id in scope, so rejecting unstamped messages breaks the host. That is no longer
-   true — those sends go through `@abuddy/host/src/events.ts` and stamp `from: 'host'` (`e5580d6b4`).
+   true — those sends go through `@apack/host/src/events.ts` and stamp `from: 'host'` (`e5580d6b4`).
 
    Its second half is untouched: trust unstamped messages and the rule is advisory, because anything that wants
    around it simply doesn't stamp, including the untyped SDK sends that `check:specifiers` only blocks *in pack
@@ -100,7 +100,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
    guesswork: may a pack forward an event it received? Re-emit on behalf of another feature? The first real
    external pack answers that. Picking now means picking twice.
 
-5. **A third delivery path would not have the check.** `testRootEvents` has no bus actor — `@abuddy/testing`'s
+5. **A third delivery path would not have the check.** `testRootEvents` has no bus actor — `@apack/testing`'s
    `startApp` delivers plugin sends itself. So either the harness gets the same check, and every pack test that
    sends cross-pack needs its fixtures made audience-correct, or pack tests pass on sends the running app rejects.
    Green locally and a diagnostic in the app is the worst of the available failure modes.

@@ -25,7 +25,7 @@ Finished when:
 - `Context` names an XState machine's context and nothing else, and no module exports a bare `Context`.
 - No exported type ends in `Info`, `Manager`, `Helper` or `Util`. `Data` ends only the payload types of a
   plugin's CLIENT_CONNECTED event, and every plugin that sends one uses it.
-- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @abuddy/sdk`, `npm run api:update`
+- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apack/sdk`, `npm run api:update`
   (and the committed `etc/`), `npm run facade:check -w @app/default-setup`, `npm run build`,
   `npm run test:external-pack`, `npm run test:packaged-authoring`.
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
@@ -41,16 +41,16 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - write a check that bans a retired word. Every check here is an invariant over new code (a `get*` that
   can return nothing, a bare exported `Context`), never a list of names nobody may type. The pack-naming
   goal's ban-list guards were deleted for that reason.
-- rename `qx`, `tx`, `EARS`, `fe`/`be`, `sourceHandle` (Vue Flow's own term) or the `@abuddy/source`
+- rename `qx`, `tx`, `EARS`, `fe`/`be`, `sourceHandle` (Vue Flow's own term) or the `@apack/source`
   condition. See Deferred.
 ```
 
@@ -73,28 +73,28 @@ what to run after a change, and none for naming.
 **The retrieval verbs do not encode their contract.** Exported functions by prefix: `get` 75, `resolve` 19,
 `load` 18, `read` 12, `find` 11, `fetch` 4, `list` 4. Of those with annotated return types, **16 of 68
 `get*` return `null` or `undefined`** — for example `getDslTypeFromPath`
-(`packages/abuddy-ui/src/components/monaco-config.ts:249`), `getFlowActor`
+(`packages/apack-ui/src/components/monaco-config.ts:249`), `getFlowActor`
 (`packages/default-setup/src/features/brain/be/flow-system.ts:30`) and two different `getHandle`s
 (`.../claude-code/handle-store.ts:25`, `.../codex/handle-store.ts:29`). A caller cannot tell from `get`
 whether to null-check, which is the one thing the verb could have told them.
 
 **A name that hides what absence costs shipped this month.** `readInstalledPacks` returns `[]` for a
 missing or unparseable record; `readInstalledPacksRecord` returns `null`
-(`packages/abuddy-host/src/packs/installed-packs.ts:53,69`). Using the first where deletion follows
+(`packages/apack-host/src/packs/installed-packs.ts:53,69`). Using the first where deletion follows
 destroys an interrupted install's only copy, which is the bug fixed in `e007d8021`. The dangerous one has
 the shorter name and is what autocomplete offers first. `_processIsRunning` and `_writerIsRunning`
-(`packages/abuddy-sdk/src/env/process-liveness.ts`, as it stood) had the same shape: picking wrong meant
+(`packages/apack-sdk/src/env/process-liveness.ts`, as it stood) had the same shape: picking wrong meant
 either two writers on the database or a refused boot, and neither name said so. Phase 2's note below
 records where that one landed.
 
 **`Context` names at least three unrelated concepts.** 36 exported `*Context` types. An XState machine's
 context (`FlowsContext`, `BrainContext`, `ThreadsContext`, …), a bundle of arguments passed to a function
-(`ContentCompileContext` `abuddy-sdk/src/build/content/items.ts:33`, `StepCompileContext` and
-`StepValidationContext` `abuddy-sdk/src/steps/types.ts:14,37`, `ApplyContext`
-`abuddy-sdk/src/utils/apply.ts:18`, `CompilationContext` `abuddy-sdk/src/build/content-compiler.ts:20`,
-`ExecutionContext` `abuddy-sdk/src/steps/types.ts:142`, `DescriptorContext`
-`abuddy-ui/src/components/node-dimensions.ts:27`, `DbScriptContext`
-`abuddy-cli/src/commands/db/script.ts:44`, two `ConsumerContext`s), the app's environment (`AppContext`,
+(`ContentCompileContext` `apack-sdk/src/build/content/items.ts:33`, `StepCompileContext` and
+`StepValidationContext` `apack-sdk/src/steps/types.ts:14,37`, `ApplyContext`
+`apack-sdk/src/utils/apply.ts:18`, `CompilationContext` `apack-sdk/src/build/content-compiler.ts:20`,
+`ExecutionContext` `apack-sdk/src/steps/types.ts:142`, `DescriptorContext`
+`apack-ui/src/components/node-dimensions.ts:27`, `DbScriptContext`
+`apack-cli/src/commands/db/script.ts:44`, two `ConsumerContext`s), the app's environment (`AppContext`,
 from `resolveAppContext`), and Playwright's `BrowserContext`.
 
 **`Context` is exported bare from 15 modules** — 14 in default-setup's `code` feature (`be/system.ts:67`,
@@ -111,20 +111,20 @@ is a real pattern for the payload of a plugin's `CLIENT_CONNECTED` — `ThreadCo
 six times in ten is unreliable in both directions.
 
 **Four types describe a pack at four lifecycle stages and three of them say `Info`.**
-`BuiltInPackBuildInfo` (`abuddy-host/src/build/discover.ts:4`), `BuiltInPackInfo`
-(`abuddy-host/src/packs/pack-discovery.ts:14`), `PackInfo`
-(`abuddy-host/src/packs/pack-registration.ts:63`) and `LoadedPack`
-(`abuddy-host/src/packs/runtime/loader.ts`). The stages are real and useful; the names hide them
+`BuiltInPackBuildInfo` (`apack-host/src/build/discover.ts:4`), `BuiltInPackInfo`
+(`apack-host/src/packs/pack-discovery.ts:14`), `PackInfo`
+(`apack-host/src/packs/pack-registration.ts:63`) and `LoadedPack`
+(`apack-host/src/packs/runtime/loader.ts`). The stages are real and useful; the names hide them
 behind a filler word, and only the last one names its stage. `PackOrigin`
-(`abuddy-host/src/packs/pack-registration.ts`) has since joined them, naming its own stage.
+(`apack-host/src/packs/pack-registration.ts`) has since joined them, naming its own stage.
 
 **`source` is one sense in compounds and three senses bare.** ~707 occurrences. The compounds are
 consistent — `sourceHandle` (146, Vue Flow's edge endpoint), `sourceId` (56, an EARS relation's origin),
 `sourceEntity` (49), `contentHash` (93, the text an apply record compiled from), `sourcePath` (42, a backup
 copy's origin), `sourceTab` (70), `sourceThreadId` (34) — each naming the origin of the thing the compound
 names. The bare fields are not: in the pack install path alone, `installPack(slug, source?)`
-(`abuddy-host/src/packs/pack-installer.ts:324`) takes a kind, `installPackFromLocal(source)`
-(`:228`) takes a path, and `PackIntegrity.source` (`abuddy-host/src/packs/pack-layout.ts:49`) is git
+(`apack-host/src/packs/pack-installer.ts:324`) takes a kind, `installPackFromLocal(source)`
+(`:228`) takes a path, and `PackIntegrity.source` (`apack-host/src/packs/pack-layout.ts:49`) is git
 provenance. The pack-naming goal's Open items recorded the last two as senses it did not reach.
 
 ## Decisions
@@ -163,7 +163,7 @@ Final.
 
 8. **Pack-facing types are renamed like everything else.** `StepCompileContext`, `StepValidationContext`,
    `StepDecompileContext`, `ExecutionContext`, `ContentWriteContext`, `ApplyContext` and `CompilationContext`
-   are exported from `@abuddy/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
+   are exported from `@apack/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
    shipped them to anyone, so there is no surface to preserve: rename them, run `api:update` and
    `facade:update`, and follow the rename into the CLI's scaffold templates and the fixture packs. Carving
    out the published surface would leave `Context` meaning two things, which is the defect this goal
@@ -212,20 +212,20 @@ unchanged. No code moves in this phase.
 > to do.
 
 - Collapse `readInstalledPacks` / `readInstalledPacksRecord`
-  (`packages/abuddy-host/src/packs/installed-packs.ts`) into one function returning a result that
+  (`packages/apack-host/src/packs/installed-packs.ts`) into one function returning a result that
   distinguishes "no readable record" from "the record lists nothing" (Decision 2). Migrate every caller;
   `packs/staging.ts` and `packs/pack-discovery.ts` are the two that must not conflate them.
 - Do the same for `_processIsRunning` / `_writerIsRunning`
-  (`packages/abuddy-sdk/src/env/process-liveness.ts`): one call whose argument names the policy, so the
+  (`packages/apack-sdk/src/env/process-liveness.ts`): one call whose argument names the policy, so the
   call site states which failure it is choosing rather than encoding it in which of two similar names was
   typed. Migrate `write-lock.ts`, `running.ts`, `staging.ts` and `readApiEndpoint`.
-- `recoverStagingDirs(dir, installedIds?)` (`packages/abuddy-host/src/packs/staging.ts:54`) takes an
+- `recoverStagingDirs(dir, installedIds?)` (`packages/apack-host/src/packs/staging.ts:54`) takes an
   explicit "known / not known" argument instead of an optional set, so an empty collection can no longer
   mean "nothing is installed" by accident. That optional parameter is the shape of the bug fixed in
   `e007d8021`, and it is still expressible.
 
-**Done when:** no two exported functions in `packages/abuddy-host` or `packages/abuddy-sdk` differ only in
-their absent-case behaviour; `packages/abuddy-host/tests/packs/staging.spec.ts`,
+**Done when:** no two exported functions in `packages/apack-host` or `packages/apack-sdk` differ only in
+their absent-case behaviour; `packages/apack-host/tests/packs/staging.spec.ts`,
 `tests/database/write-lock.spec.ts`, `tests/database/running-app.spec.ts` and
 `packages/api/tests/runtime/boot-recovery.spec.ts` pass; `npm run api:update` committed. Mutation: making the
 new staging argument default to "known, empty" fails the two `boot-recovery` tests.
@@ -234,7 +234,7 @@ new staging argument default to "known, empty" fails the two `boot-recovery` tes
 
 - Rename every exported `get*` whose return type includes `null` or `undefined` to `find*` (Decision 1),
   starting from the 16 the survey found, and migrate callers.
-- Add the invariant to an existing shape suite (`packages/abuddy-host/tests/boundaries.spec.ts` or a
+- Add the invariant to an existing shape suite (`packages/apack-host/tests/boundaries.spec.ts` or a
   sibling in the SDK): no exported function named `get*` has a nullable annotated return type, across
   `packages/*/src`.
 
@@ -274,13 +274,13 @@ Mutation: adding an `export interface FooInfo` anywhere under `packages/*/src` f
 ### Phase 7 — the bare `source` fields in the pack install path
 
 - Name the three bare `source` fields per Decision 9, leaving every compound alone:
-  - `installPack(packSlug, source?)` (`packages/abuddy-host/src/packs/pack-installer.ts:324`) and
-    `INSTALL_PACK`'s `source` (`packages/abuddy-host/src/packs/runtime/packs-system.ts:20`) take a kind,
+  - `installPack(packSlug, source?)` (`packages/apack-host/src/packs/pack-installer.ts:324`) and
+    `INSTALL_PACK`'s `source` (`packages/apack-host/src/packs/runtime/packs-system.ts:20`) take a kind,
     not a location;
   - `installPackFromLocal(source, …)` (`pack-installer.ts:228`) takes a path or an archive;
-  - `PackIntegrity.source` (`packages/abuddy-host/src/packs/pack-layout.ts:49`) is the git provenance
-    `abuddy release` records, and is written into every pack's `integrity.json`.
-- `PackIntegrity` is read by the installer, the updater and `abuddy release`; the field appears in the
+  - `PackIntegrity.source` (`packages/apack-host/src/packs/pack-layout.ts:49`) is the git provenance
+    `apack release` records, and is written into every pack's `integrity.json`.
+- `PackIntegrity` is read by the installer, the updater and `apack release`; the field appears in the
   `.integrity.json` release asset, so rename it in the writer and every reader in the same change.
 - Add the invariant: no exported interface has a field named exactly `source`.
 
@@ -295,7 +295,7 @@ exported interface fails the spec.
   changing them is every file and every pack author's memory, against no ambiguity.
 - **`sourceHandle`.** Vue Flow's own API term. Renaming it would make our code disagree with the library's
   documentation.
-- **The `@abuddy/source` condition.** A resolution contract named in every host config, in `package.json`
+- **The `@apack/source` condition.** A resolution contract named in every host config, in `package.json`
   exports maps, in `node --conditions` flags and in the CLI's resolve hooks. Out of scope here and recorded
   as deferred by the pack-naming goal.
 - **Replacing the database write lock with an OS advisory lock.** A design change, not a naming one, and
@@ -306,9 +306,9 @@ exported interface fails the spec.
 - Commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request.
 - No publishing, releases or triggered workflows.
-- No real data dirs, no broad pkill, E2E in the `abuddy-test` namespace.
+- No real data dirs, no broad pkill, E2E in the `apack-test` namespace.
 - Preload, example pack and release metadata rules.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`).
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes, and
   `facade:update` when default-setup's facade moves.
 - Build order: `packages:build` before the CLI suite, default-setup's runtime before the api suites and

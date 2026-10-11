@@ -7,15 +7,15 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-dev-reload-'));
-process.env.ABUDDY_ENV = 'test';
-process.env.ABUDDY_USER_DATA_DIR = dataDir;
-process.env.ABUDDY_API_TOKEN = 'the-run-token';
+process.env.APACK_ENV = 'test';
+process.env.APACK_USER_DATA_DIR = dataDir;
+process.env.APACK_API_TOKEN = 'the-run-token';
 const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/transport/websocket');
-const { API_HOST } = await import('@abuddy/sdk/utils/pure');
+const { API_HOST } = await import('@apack/sdk/utils/pure');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/boot/config');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
-const { readApiEndpoint } = await import('@abuddy/host/process-liveness');
-const { API_TOKEN_HEADER } = await import('@abuddy/sdk/utils/pure');
+const { resolveAppContext } = await import('@apack/sdk/env');
+const { readApiEndpoint } = await import('@apack/host/process-liveness');
+const { API_TOKEN_HEADER } = await import('@apack/sdk/utils/pure');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 const TOKEN = 'the-run-token';
@@ -28,16 +28,16 @@ describe('the API token', () => {
   });
 
   it('is made up, random and kept, for an API started without one', () => {
-    delete process.env.ABUDDY_API_TOKEN;
+    delete process.env.APACK_API_TOKEN;
     try {
       const own = apiToken();
       expect(apiTokenIsOwn()).toBe(true);
       expect(own).toMatch(/^[\w-]{43}$/);
       expect(apiToken()).toBe(own);
-      expect(acceptsConnection('abuddy', own)).toBe(false);
-      expect(acceptsConnection(`abuddy, abuddy-token.${own}`)).toBe(true);
+      expect(acceptsConnection('apack', own)).toBe(false);
+      expect(acceptsConnection(`apack, apack-token.${own}`)).toBe(true);
     } finally {
-      process.env.ABUDDY_API_TOKEN = TOKEN;
+      process.env.APACK_API_TOKEN = TOKEN;
     }
   });
 
@@ -52,16 +52,16 @@ describe('the API token', () => {
 
 describe('WebSocket connections', () => {
   it('open with the token among the offered subprotocols', () => {
-    expect(acceptsConnection(`abuddy, abuddy-token.${TOKEN}`, TOKEN)).toBe(true);
-    expect(acceptsConnection(`abuddy-token.${TOKEN}`, TOKEN)).toBe(true);
-    expect(API_PROTOCOL).toBe('abuddy');
+    expect(acceptsConnection(`apack, apack-token.${TOKEN}`, TOKEN)).toBe(true);
+    expect(acceptsConnection(`apack-token.${TOKEN}`, TOKEN)).toBe(true);
+    expect(API_PROTOCOL).toBe('apack');
   });
 
   it('are refused without it, with another, or with anything malformed', () => {
     expect(acceptsConnection(undefined, TOKEN)).toBe(false);
-    expect(acceptsConnection('abuddy', TOKEN)).toBe(false);
-    expect(acceptsConnection('abuddy, abuddy-token.guess', TOKEN)).toBe(false);
-    expect(acceptsConnection('abuddy, abuddy-token.', TOKEN)).toBe(false);
+    expect(acceptsConnection('apack', TOKEN)).toBe(false);
+    expect(acceptsConnection('apack, apack-token.guess', TOKEN)).toBe(false);
+    expect(acceptsConnection('apack, apack-token.', TOKEN)).toBe(false);
     expect(acceptsConnection(TOKEN, TOKEN)).toBe(false);
     expect(acceptsConnection('//[, ,,', TOKEN)).toBe(false);
   });
@@ -101,7 +101,7 @@ describe('the files the API publishes', () => {
     fs.writeFileSync(apiPortFile, '1111', { mode: 0o644 });
     // A packaged app: not development, and main gave it the run's token
     delete process.env.NODE_ENV;
-    process.env.ABUDDY_API_TOKEN = TOKEN;
+    process.env.APACK_API_TOKEN = TOKEN;
     publishApiFiles(4321, TOKEN);
 
     expect(JSON.parse(fs.readFileSync(apiPortFile, 'utf-8'))).toEqual({ port: 4321, pid: process.pid });
@@ -122,13 +122,13 @@ describe('the files the API publishes', () => {
 
     clear();
     delete process.env.NODE_ENV;
-    delete process.env.ABUDDY_API_TOKEN;
+    delete process.env.APACK_API_TOKEN;
     try {
       const own = apiToken();
       publishApiFiles(4323, own);
       expect(fs.readFileSync(apiTokenFile, 'utf-8')).toBe(own);
     } finally {
-      process.env.ABUDDY_API_TOKEN = TOKEN;
+      process.env.APACK_API_TOKEN = TOKEN;
     }
   });
 });

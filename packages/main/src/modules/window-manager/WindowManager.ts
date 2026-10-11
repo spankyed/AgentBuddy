@@ -12,7 +12,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import {getMediaBasePath} from '../media-protocol/paths.ts';
 import {logRenderer, logRendererFatal} from '../api-server/logger.ts';
-import {splitRef} from '@abuddy/sdk/ids';
+import {splitRef} from '@apack/sdk/ids';
 import {openExternalUrl, openFilePath} from '../shell-access.ts';
 
 class WindowManager implements AppModule {

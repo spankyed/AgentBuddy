@@ -23,16 +23,16 @@ contract; that is done. Instead it has to *restore* early start, host-side — s
 
 ## Where each file goes
 
-Host features are `be/` + `fe/` in `@abuddy/host` with their Vue in the renderer — the shape `host/settings`
+Host features are `be/` + `fe/` in `@apack/host` with their Vue in the renderer — the shape `host/settings`
 has, whose machine is `features/settings/fe/machine.ts` and whose components live in
 `renderer/src/views/settings/`.
 
 | from `default-setup/src/features/logs/` | to |
 |---|---|
-| `be/{contract,types,utils,system}.ts` | `abuddy-host/src/features/logs/be/` |
-| `fe/state.ts` | `abuddy-host/src/features/logs/fe/machine.ts` — the name all three host features use |
-| `fe/{contract,search}.ts` | `abuddy-host/src/features/logs/fe/` |
-| `settings.ts` | `abuddy-host/src/features/logs/settings.ts`, **verbatim** |
+| `be/{contract,types,utils,system}.ts` | `apack-host/src/features/logs/be/` |
+| `fe/state.ts` | `apack-host/src/features/logs/fe/machine.ts` — the name all three host features use |
+| `fe/{contract,search}.ts` | `apack-host/src/features/logs/fe/` |
+| `settings.ts` | `apack-host/src/features/logs/settings.ts`, **verbatim** |
 | `fe/plugin.ts`, `fe/canvas.vue`, `fe/settings.vue` | `renderer/src/views/logs/` |
 
 The defaults file moves unchanged: it is already a plain `FeatureSettings`
@@ -44,8 +44,8 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 
 | in the feature | becomes |
 |---|---|
-| `services` from `#generated/services.ts` | `@abuddy/sdk/services`, as `features/settings/be/system.ts` does |
-| `broadcastToPlugin` / `sendToSystem` from `#generated/events.ts` | `abuddy-host/src/events.ts`, both halves |
+| `services` from `#generated/services.ts` | `@apack/sdk/services`, as `features/settings/be/system.ts` does |
+| `broadcastToPlugin` / `sendToSystem` from `#generated/events.ts` | `apack-host/src/events.ts`, both halves |
 | `ref('logs')` from `#generated/ref.ts` | `HOST.logs` |
 | `LogsSettings` from `#generated/types.ts` | a relative import — that generated file is only `export type * from '../features/logs/be/types.ts'` |
 | `OutgoingLogsEvents` from `#features/logs/be/types.ts` | `../be/types.ts` |
@@ -61,7 +61,7 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 3. **`src/events.ts`** — `host/logs` into `HostPlugins` (the system broadcasts to it) and `HostSystems` (the
    frontend sends `CLEAR_LOGS` / `REQUEST_LOGS_UPDATE`). Its own comment says these maps are
    `registration.ts`'s `receives` expressions as types, and to keep them together.
-4. **`@abuddy/sdk`'s `events/index.ts`** — `'host/logs'` into `HostPluginEvents` and
+4. **`@apack/sdk`'s `events/index.ts`** — `'host/logs'` into `HostPluginEvents` and
    `HOST_PLUGIN_EVENT_TYPES`. **Load-bearing, not bookkeeping:** that record is the only source of host
    names in pack codegen (`generate-entries.ts:830`), so without it no pack can name `host/logs` and the
    fixture's send cannot compile.
@@ -98,7 +98,7 @@ goal's phase said:
 - **stored message link blocks**, which carry a plugin ref as `event.target`.
 
 The first three go in the unreleased `0.3.15` app migration
-(`abuddy-host/src/migrations/app/0.3.15.ts`), which already moves plugin settings onto refs and has
+(`apack-host/src/migrations/app/0.3.15.ts`), which already moves plugin settings onto refs and has
 `addressPluginKeys` and the `RENAMED_STATE_RECORDS` idiom to copy. A `RENAMED_PLUGIN_REFS` constant and a
 `renamePluginRefs()` step **after `moveShellState` and `movePluginSettings`** — those two produce
 `default-setup/logs` from pre-0.3.15 data, so the rename runs on their output. Idempotent by the file's own
@@ -129,13 +129,13 @@ changed.
 
 ## Specs
 
-**Four move** to `abuddy-host/tests/features/logs/{be,fe}/`. `be/excluded-sources.spec.ts` and
+**Four move** to `apack-host/tests/features/logs/{be,fe}/`. `be/excluded-sources.spec.ts` and
 `fe/search.spec.ts` are pure and move with import paths only. `be/system.spec.ts` re-points its ref
 literals and aims its registration assertion at `hostRegistration()`. `fe/link-navigation.spec.ts` belongs
 on the host side anyway — its own comment names `features/settings/fe/plugin-select.spec.ts` as the
 counterpart.
 
-**The ref literal changes** in `abuddy-host/tests/bus/outgoing-events.spec.ts:261-265`,
+**The ref literal changes** in `apack-host/tests/bus/outgoing-events.spec.ts:261-265`,
 `features/application/fe/open-plugin.spec.ts` (4 sites), `features/application/system.spec.ts:40,49`,
 `features/settings/fe/plugin-select.spec.ts:28,32`,
 `api/tests/runtime/upgrade-from-0.3.14.spec.ts:93`,
@@ -151,12 +151,12 @@ behaviour over historical data — but the rename's end state wants asserting, t
 
 `docs/public-facing/{features.md:140, architecture.md:81}`,
 `packages/default-setup/CLAUDE.md:60,75,239`,
-`packages/abuddy-host/CLAUDE.md:79`, `packages/api/CLAUDE.md:76`,
-`packages/abuddy-testing/CLAUDE.md:178`, `tests/e2e/CLAUDE.md:127`.
+`packages/apack-host/CLAUDE.md:79`, `packages/api/CLAUDE.md:76`,
+`packages/apack-testing/CLAUDE.md:178`, `tests/e2e/CLAUDE.md:127`.
 
 ## Recorded, not changed
 
-`@abuddy/host/logs` is already an export subpath, for `src/logs.ts` — the capped log-**file** appender the
+`@apack/host/logs` is already an export subpath, for `src/logs.ts` — the capped log-**file** appender the
 api, main and renderer loggers use. A different concern from the viewer, and the feature needs no subpath
 of its own, so both stay. The collision is only in grepping, and this paragraph is the warning.
 
@@ -165,7 +165,7 @@ of its own, so both stay. The collision is only in grepping, and this paragraph 
 ```
 npm run generate:entries -w @app/default-setup    # the pack's __generated__ loses logs
 npm run api:update
-npx tsc --noEmit -p packages/abuddy-host/tsconfig.json   # then sdk, renderer, pack, cli
+npx tsc --noEmit -p packages/apack-host/tsconfig.json   # then sdk, renderer, pack, cli
 npm run spec -- logs && npm run spec -- typed-sends
 npm run chain
 ```

@@ -6,8 +6,8 @@
     // to what the compiler reported reading. `incremental` works with `noEmit`; `composite` does not.
     "incremental": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/main.tsbuildinfo",
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
-    "customConditions": ["@abuddy/source"],
+    // Workspace @apack/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@apack/source"],
     // Their relative imports name .ts sources
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,

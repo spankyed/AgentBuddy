@@ -2,7 +2,7 @@
 import type { Contract } from './contract.ts';
 import { services } from '#generated/services.ts';
 import { setup } from 'xstate'
-import { defineSystem } from '@abuddy/sdk/framework'
+import { defineSystem } from '@apack/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts'
@@ -13,7 +13,7 @@ import * as fs from 'fs/promises'
 import { libraryService } from './services/library.ts'
 import * as symlink from './repository/symlink.ts'
 // [SEARCH_INDEX_FF] import { DEFAULT_EMBEDDING_MODEL } from '#features/library/embedding-models.ts'
-import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
+import { toMap, toIdentifierSet, mapArray } from '@apack/sdk/utils'
 import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
 import type { CommandItem } from '#generated/types.ts';
@@ -28,9 +28,9 @@ import { ref } from '#generated/ref.ts';
  */
 const answer = (reply: Reply<OutgoingLibraryEvents> | undefined, event: OutgoingLibraryEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('library', event));
-import type { Reply } from '@abuddy/sdk/events';
+import type { Reply } from '@apack/sdk/events';
 import type { OutgoingLibraryEvents } from './types.ts';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 export const librarySpec = defineSystem<Contract>();
 

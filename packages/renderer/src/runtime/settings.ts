@@ -1,9 +1,9 @@
 // The renderer's side of the SDK's settings port: what frontend code reads and changes of the app's settings,
 // over the Settings view the app draws (`views/settings/`).
-import type { SettingsPort, SettingsSaveStatus, SettingsTarget } from '@abuddy/sdk/fe';
-import type { FeatureRef } from '@abuddy/sdk/ids';
-import { boundFeHost } from '@abuddy/sdk/runtime/internals';
-import { HOST } from '@abuddy/host/fe';
+import type { SettingsPort, SettingsSaveStatus, SettingsTarget } from '@apack/sdk/fe';
+import type { FeatureRef } from '@apack/sdk/ids';
+import { boundFeHost } from '@apack/sdk/runtime/internals';
+import { HOST } from '@apack/host/fe';
 
 /** The settings view's actor, or undefined before its plugin is spawned (the window is still starting) */
 function view() {

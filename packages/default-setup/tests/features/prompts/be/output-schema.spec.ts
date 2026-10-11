@@ -1,7 +1,7 @@
 // The prompts plugin's form sends a prompt's output schema with its other fields: the prompts system stores it
 // when the prompt is created, updated or imported
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@abuddy/testing/harness'
+import { startApp } from '@apack/testing/harness'
 import { repository } from '#generated/repository.ts'
 import type { EARS } from '#generated/ears.ts'
 

@@ -46,7 +46,7 @@ Each test gets a verdict and, where it is not `KEEP`, the cause.
 
 ## Added tests
 
-### `abuddy-sdk/tests/build/provenance.spec.ts` (+4, `3bc532c2a`)
+### `apack-sdk/tests/build/provenance.spec.ts` (+4, `3bc532c2a`)
 
 Declared names are user input: the manifest schema lets a pack call a command `constructor`, and
 `entities`/`relKinds` are unrestricted strings. A provenance record indexed by them has to be a null
@@ -64,9 +64,9 @@ All four cover a bug found in review, each a distinct failure. The fourth is the
 where the loss actually happened. The `describe` block states why the names are reachable — a model for
 what a guard's rationale should look like.
 
-### `abuddy-sdk/tests/build/generate-entries.spec.ts` (+4, `3bc532c2a`)
+### `apack-sdk/tests/build/generate-entries.spec.ts` (+4, `3bc532c2a`)
 
-The same family through a real `abuddy build` instead of the unit function.
+The same family through a real `apack build` instead of the unit function.
 
 | Test | Verdict |
 |---|---|
@@ -86,13 +86,13 @@ stops the fix from being "make every collision pass".
 | starts on a lock whose holder is gone | `KEEP` |
 | restores an interrupted install's only copy, with no record | `KEEP` |
 
-Deliberate duplication with the `@abuddy/host` unit tests, and the file says so: *"The unit tests for
-these live in @abuddy/host. This one boots the real composition, because what both regressions broke was
+Deliberate duplication with the `@apack/host` unit tests, and the file says so: *"The unit tests for
+these live in @apack/host. This one boots the real composition, because what both regressions broke was
 the boot: one refused to start at all, the other deleted a pack on the way up."* That sentence is what
 makes duplication defensible — it names the level and the reason. **Treat it as the template for any
 integration test that repeats a unit test.**
 
-### `abuddy-host/tests/packs/staging.spec.ts` (+2)
+### `apack-host/tests/packs/staging.spec.ts` (+2)
 
 | Test | Verdict |
 |---|---|
@@ -102,7 +102,7 @@ integration test that repeats a unit test.**
 The two differ only in how the record is unreadable (absent vs unparseable), and the code path is one
 branch — `readInstalledPacksRecord()` returning `null`. One test with both inputs says the same thing.
 
-### `abuddy-host/tests/packs/discovery.spec.ts` (+2)
+### `apack-host/tests/packs/discovery.spec.ts` (+2)
 
 | Test | Verdict | Cause |
 |---|---|---|
@@ -120,7 +120,7 @@ the actionable part — and drop the sentence pins.
 
 This is the clearest instance in the PR of the pathology the goal exists for, and it is one I wrote.
 
-### `abuddy-sdk/tests/env/app-context.spec.ts` (+1), `abuddy-host/tests/database/running-app.spec.ts` (+1 net), `abuddy-host/tests/database/write-lock.spec.ts` (+1 net)
+### `apack-sdk/tests/env/app-context.spec.ts` (+1), `apack-host/tests/database/running-app.spec.ts` (+1 net), `apack-host/tests/database/write-lock.spec.ts` (+1 net)
 
 | Test | Verdict |
 |---|---|
@@ -142,10 +142,10 @@ outcome the "old-spec" category is meant to prevent.
 
 | File | Tests | Verdict | Cause |
 |---|---|---|---|
-| `abuddy-host/tests/removed-names-in-docs.spec.ts` | 2 | `DELETE` ✓ | `scaffold` |
-| `abuddy-sdk/tests/runtime/no-host-modules.spec.ts` | 1 | `DELETE` ✓ | `scaffold` |
-| `abuddy-host/tests/boundaries.spec.ts` (2 of 7) | 2 | `DELETE` ✓ | `duplicate` |
-| `abuddy-host/tests/packs/runtime/content.spec.ts` | 2 | `DELETE` ✓ | `old-spec` |
+| `apack-host/tests/removed-names-in-docs.spec.ts` | 2 | `DELETE` ✓ | `scaffold` |
+| `apack-sdk/tests/runtime/no-host-modules.spec.ts` | 1 | `DELETE` ✓ | `scaffold` |
+| `apack-host/tests/boundaries.spec.ts` (2 of 7) | 2 | `DELETE` ✓ | `duplicate` |
+| `apack-host/tests/packs/runtime/content.spec.ts` | 2 | `DELETE` ✓ | `old-spec` |
 
 All four were correct. The last is worth naming: `content.spec.ts` asserted that a pack whose content manifest
 predates `contentKeys` is told to rebuild. The goal's Open decision 2 removed that guard, so the spec went
@@ -158,7 +158,7 @@ compares every file under `packages/api/src` against an allowlist, so it already
 ## What this changes about the goal
 
 1. **`AS/pack-naming-convention` needs no phase of its own.** 15 of 17 added tests are `KEEP`. The two
-   exceptions are one `MERGE` and one `TRIM`, both in `@abuddy/host`, both mine, and both small enough
+   exceptions are one `MERGE` and one `TRIM`, both in `@apack/host`, both mine, and both small enough
    to fold into Phase 2.
 2. **The added tests are mostly the good kind**, and the reason is visible: each came from a bug found
    in review — a prototype-chain fault, a boot that refused to start, a pack deleted on the way up.

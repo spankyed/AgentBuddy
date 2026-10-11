@@ -9,8 +9,8 @@
 
 Implement docs/goals/goal-addressable-participants.md on master, at or after f2a8df5fe — the base its
 Background was surveyed at.
-Before Phase 1, confirm the base: packages/api/src/transport/context.ts, packages/abuddy-host/src/refs.ts,
-packages/abuddy-host/src/bus/machine.ts and packages/abuddy-testing/src/engine/session.ts exist at HEAD,
+Before Phase 1, confirm the base: packages/api/src/transport/context.ts, packages/apack-host/src/refs.ts,
+packages/apack-host/src/bus/machine.ts and packages/apack-testing/src/engine/session.ts exist at HEAD,
 and `createContext` in that first file is still the empty `() => ({})`. If any differs, stop and say so —
 the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -27,14 +27,14 @@ Finished when:
 - A backend system can answer only the connection that asked it: `Message` carries an optional `client`,
   absent still means every window, and `send-scope.spec.ts` holds both halves.
 - Pack code never names a connection: a handler replies with `replyTo(incoming)` from
-  `@abuddy/sdk/events` and no pack source mentions `_origin` or a client id.
-- `host/drive` resolves as a participant, and `packages/abuddy-testing/src/engine/session.ts` contains no
+  `@apack/sdk/events` and no pack source mentions `_origin` or a client id.
+- `host/drive` resolves as a participant, and `packages/apack-testing/src/engine/session.ts` contains no
   request-id minting, no reply-id matching and no seen-events buffer.
 - Checks: `npm run typecheck`; `npm run spec -- bus` and `npm run spec -- transport`; `npm run compile`;
   `npm run packages:build` then `npm run packages:check`; `npm run chain` at the end of each phase.
-- `npm run api:update` for `@abuddy/sdk` once `replyTo` exists, with `etc/` committed. Report what moved
+- `npm run api:update` for `@apack/sdk` once `replyTo` exists, with `etc/` committed. Report what moved
   in the public surface rather than rewriting a recorded artifact to make a check pass.
-- Phase 5 is driven, not only unit-tested: `abuddy drive --serve` with three concurrent `/qx` calls
+- Phase 5 is driven, not only unit-tested: `apack drive --serve` with three concurrent `/qx` calls
   returning three correct answers.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 - The doc is in `docs/archive/goals/`, with its status blockquote and an Outcome section, committed.
@@ -61,7 +61,7 @@ Never:
 
 ## Background (2026-10-04, at f2a8df5fe on master)
 
-The drive engine (`packages/abuddy-testing/src/engine/`) lets an agent hold one warm app session and ask
+The drive engine (`packages/apack-testing/src/engine/`) lets an agent hold one warm app session and ask
 it many questions. Every answer arrives on a firehose, so the engine mints a `requestId`, keeps a buffer
 of seen events (`MAX_SEEN_EVENTS`) and matches replies by hand. Two rounds of fixes went into making that
 reconstruction correct: a pending field per request site, a guard per reader, and a proposed 221-row
@@ -107,13 +107,13 @@ context avoids introducing a mechanism with no precedent here.
 
 | site | note |
 |---|---|
-| `abuddy-host/src/bus/machine.ts:184` | the main outgoing path |
-| `abuddy-host/src/bus/app.ts:76` | `startEarlySystems` routes **outside** the bus machine; backend-only, so it carries no client, but it must be read to know that |
-| `abuddy-host/src/features/application/fe/connection.ts:16` | the renderer's inbound tap |
-| `abuddy-host/src/secrets/index.ts:80` | an emit, not a route |
+| `apack-host/src/bus/machine.ts:184` | the main outgoing path |
+| `apack-host/src/bus/app.ts:76` | `startEarlySystems` routes **outside** the bus machine; backend-only, so it carries no client, but it must be read to know that |
+| `apack-host/src/features/application/fe/connection.ts:16` | the renderer's inbound tap |
+| `apack-host/src/secrets/index.ts:80` | an emit, not a route |
 
 Also `MessageSender = Pick<Message, 'from' | 'via'>`
-(`abuddy-host/src/features/application/fe/types.ts:46`), hand-rebuilt field by field at
+(`apack-host/src/features/application/fe/types.ts:46`), hand-rebuilt field by field at
 `features/application/fe/machine.ts:304` as `sender: { from, via }`. A `Pick` plus a hand rebuild drops a
 new field with no compile error. `client` is routing rather than sender identity and should **not** join
 `MessageSender`; it is recorded here because this is where the next reader will assume it did.
@@ -121,7 +121,7 @@ new field with no compile error. `client` is routing rather than sender identity
 Measured precedent for cost: adding `via` touched 26 files and `from` 15, both **additive and
 non-routing**. This field routes.
 
-**`host` already has a participant that is not a feature.** `packages/abuddy-host/src/refs.ts` holds
+**`host` already has a participant that is not a feature.** `packages/apack-host/src/refs.ts` holds
 `bus: resolveName('bus', HOST_PACK_ID)` with the comment *"not a feature, but spelled as one"*, beside
 `application`, `packs` and `settings`.
 
@@ -134,7 +134,7 @@ stays tracked where it is.
 Final.
 
 1. **The client id is minted server-side, once per connection.** `createContext` keeps the adapter's
-   argument and mints `client` with `randomId` (`@abuddy/sdk/utils/random-id.ts`). `bus.sub` reads
+   argument and mints `client` with `randomId` (`@apack/sdk/utils/random-id.ts`). `bus.sub` reads
    `ctx.client`; it gains **no input**. `bus.send` stamps `ctx.client` onto what it passes
    `receiveClientEvent`, and the zod input schema does **not** accept it — so a return address cannot be
    forged, and the id dies with the socket, which is why the absent disconnect signal does not matter.
@@ -157,7 +157,7 @@ Final.
    system, under a framework-reserved `_origin`, overwriting whatever was there. It does **not** stamp
    outbound events, which is what keeps `outgoing-events.spec.ts:58` intact. A plugin replying to a driver
    is therefore out of scope; the driver talks to systems and systems answer.
-5. **`replyTo(incoming)` is the pack-facing API**, exported from `@abuddy/sdk/events`, returning a send
+5. **`replyTo(incoming)` is the pack-facing API**, exported from `@apack/sdk/events`, returning a send
    bound to that message's origin. Pack code never names an address, never reads `_origin`, and keeps
    working unchanged if it does not reply. `_origin` takes the `_` prefix that is already this repo's mark
    for a host-stamped internal (`_rootEvents`, `_sendToLocalPlugin`), so `check:specifiers` can keep packs
@@ -186,7 +186,7 @@ zod input and send a forged one — the stamped-from-context case fails.
 
 ### Phase 2 — An envelope may name one connection
 
-- `Message` gains `client?: string` (Decision 2) wherever it is declared in `@abuddy/sdk/events`.
+- `Message` gains `client?: string` (Decision 2) wherever it is declared in `@apack/sdk/events`.
 - Carry it through `bus/machine.ts:184`. Read `bus/app.ts:76` and confirm it needs nothing, since early
   systems are backend-only; leave a comment saying so only if the code does not already make it obvious.
 - Name `client` in `bus.send`'s **outgoing** path, not its input schema.
@@ -202,11 +202,11 @@ every-window still passes. Invert the absent-means-all branch — every-window f
 
 - The bus stamps `_origin` on the event delivered to a system, overwriting any incoming value
   (Decisions 4, 5).
-- `replyTo(incoming)` in `@abuddy/sdk/events` returns a send that sets `client` from `_origin`. A reply
+- `replyTo(incoming)` in `@apack/sdk/events` returns a send that sets `client` from `_origin`. A reply
   sent for a message with no origin (a backend-to-backend send) must behave as today's broadcast rather
   than throw.
 - `check:specifiers` gains `_origin` to the host-only list it already enforces by underscore.
-- `npm run api:update` for `@abuddy/sdk`; commit `etc/`. Report what moved.
+- `npm run api:update` for `@apack/sdk`; commit `etc/`. Report what moved.
 
 **Done when:** a system handler calling `replyTo(event)({ type: 'X' })` reaches only the asking
 connection; a pack source importing `_origin` fails `check:specifiers`;
@@ -216,7 +216,7 @@ connection; a pack source importing `_origin` fails `check:specifiers`;
 
 ### Phase 4 — `host/drive` is a participant
 
-- `drive` joins `HOST` in `packages/abuddy-host/src/refs.ts` with a doc comment in the shape of `bus`'s.
+- `drive` joins `HOST` in `packages/apack-host/src/refs.ts` with a doc comment in the shape of `bus`'s.
 - A connection claims the name; resolution gains the one branch in Decision 6.
 - An unclaimed `host/drive` must still `reportDrop` with a message naming it, in the shape of the existing
   drop messages at `bus/machine.ts:173-177`.
@@ -228,16 +228,16 @@ rather than silently taking it over.
 
 ### Phase 5 — The drive engine stops reconstructing
 
-- `/qx` and `/tx` in `packages/abuddy-testing/src/engine/` become a `sendToSystem` plus a reply, over the
+- `/qx` and `/tx` in `packages/apack-testing/src/engine/` become a `sendToSystem` plus a reply, over the
   `host/drive` claim from Phase 4.
 - Delete the request-id minting, the reply-id match in `nextReply`, `MAX_SEEN_EVENTS` and the seen-events
   buffer from `engine/session.ts`. Keep the round-trip timeout: a reply can still not arrive.
-- Update `packages/abuddy-testing/CLAUDE.md` and `docs/public-facing/cli.md` where they describe how the
+- Update `packages/apack-testing/CLAUDE.md` and `docs/public-facing/cli.md` where they describe how the
   engine correlates answers.
 
-**Done when:** `abuddy drive --serve` with three concurrent `/qx` calls returns three correct answers;
+**Done when:** `apack drive --serve` with three concurrent `/qx` calls returns three correct answers;
 `engine/session.ts` contains no id matching; the engine's own specs
-(`packages/abuddy-testing/tests/engine/`) pass.
+(`packages/apack-testing/tests/engine/`) pass.
 
 ## Outcome (2026-10-04)
 
@@ -254,8 +254,8 @@ is built and guarded. What is missing is its first consumer.
 |---|---|---|
 | 1 — a connection has a name | done | `createContext` mints per connection; `bus.send` stamps from context. `tests/transport/context.spec.ts`, `bus-send-sender.spec.ts`. Mutations: a constant minter fails the two-connections case; accepting `client` in the schema *and* reversing the stamp's spread fails the forgery case (either alone does not — see below) |
 | 2 — an envelope may name one connection | done | `Message.client`, subscription filters server-side. `packages/api/tests/transport/sub-scope.spec.ts`. Mutations: removing the filter fails the 3 addressed cases and no broadcast case; dropping the absent-means-all guard fails the 2 broadcast cases and no addressed case |
-| 3 — `reply()` | done | Ambient delivery scope; `Message.sender` stamped at delivery. `packages/abuddy-host/tests/bus/reply.spec.ts` (8 cases). Mutations: not installing the async reader fails all 3 reply cases and none of the 3 refusal cases; removing `createSends`' stamp fails exactly 1 |
-| 4 — `host/drive` is a participant | done | `HOST.drive`, `createParticipantClaims`, the bus's claimed-participant branch. `packages/abuddy-host/tests/bus/participants.spec.ts` (8 cases). Mutation: removing the branch fails the 3 routing cases and neither the drop case nor the 4 registry cases |
+| 3 — `reply()` | done | Ambient delivery scope; `Message.sender` stamped at delivery. `packages/apack-host/tests/bus/reply.spec.ts` (8 cases). Mutations: not installing the async reader fails all 3 reply cases and none of the 3 refusal cases; removing `createSends`' stamp fails exactly 1 |
+| 4 — `host/drive` is a participant | done | `HOST.drive`, `createParticipantClaims`, the bus's claimed-participant branch. `packages/apack-host/tests/bus/participants.spec.ts` (8 cases). Mutation: removing the branch fails the 3 routing cases and neither the drop case nor the 4 registry cases |
 | 5 — the drive engine stops reconstructing | **deferred** | Not attempted; its criteria cannot both hold |
 
 ### Corrections to the Decisions
@@ -270,7 +270,7 @@ is no `_origin`.
 `Message.sender` rather than from the handler naming a plugin. Both were settled with the user mid-implementation
 after the original shape was found to need something the envelope does not carry. The mechanism is
 `AsyncLocalStorage` on the backend and a synchronous holder in the renderer, behind one SDK interface
-(`events/delivery.ts`), because `@abuddy/sdk/events` is bundled into pack frontends and a browser has no
+(`events/delivery.ts`), because `@apack/sdk/events` is bundled into pack frontends and a browser has no
 equivalent.
 
 **`sender` is accepted from the wire; `client` is not.** This looks like an inconsistency and is not. Every caller
@@ -304,7 +304,7 @@ also invalidates Phase 5's own criteria.
 **Two further obstacles, found by reading the engine rather than by reasoning about it:**
 
 - **The driver is not a bus client.** `/qx` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
-  the send comes from the window. Making the driver a participant in its own right means giving `@abuddy/testing`
+  the send comes from the window. Making the driver a participant in its own right means giving `@apack/testing`
   a tRPC/ws client — new dependency surface in a package every pack's tests load.
 - **A plugin's own sends are not stamped.** `deliverPluginEvents` wraps only what the *shell* routes. A UI-triggered
   send (`usePlugin().send(…)` → an action → `sendToSystem`) runs outside any delivery, so it carries no `sender`
@@ -317,26 +317,26 @@ also invalidates Phase 5's own criteria.
    replies arrive *addressed*, so a person using the Database plugin no longer collides with a driving session and
    the engine stops reading a firehose of unrelated events. Worth doing; needs the criterion rewritten first.
 
-   **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@abuddy/sdk/events`
+   **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@apack/sdk/events`
    is shared to the page wholesale (`SDK_FE_MODULES`, `globalKey: 'sdkEvents'`), so `reply`, `_runDelivery` and
-   `_currentDelivery` are all reachable at `window.__abuddy.sdkEvents`. A driving script can therefore stamp a
+   `_currentDelivery` are all reachable at `window.__apack.sdkEvents`. A driving script can therefore stamp a
    sender today, with no new dependency, by wrapping its send:
 
    ```js
-   window.__abuddy.sdkEvents._runDelivery({ receiver: 'host/drive' }, () =>
-     window.__abuddy.sdkEvents.untypedSendToSystem('default-setup/database', { type: 'EXECUTE_QUERY', code }))
+   window.__apack.sdkEvents._runDelivery({ receiver: 'host/drive' }, () =>
+     window.__apack.sdkEvents.untypedSendToSystem('default-setup/database', { type: 'EXECUTE_QUERY', code }))
    ```
 
    That message carries `sender: 'host/drive'`, so the system's `reply` addresses its answer there. What is still
    missing is the **claim**: with nothing holding `host/drive`, `notify` drops the answer, because no pack declares
    it as a plugin. `bus.claim` is a tRPC procedure over the WebSocket, and the driver has no client — it drives the
-   page. So Phase 5 needs either a ws client in `@abuddy/testing` (a new dependency in a package every pack's tests
+   page. So Phase 5 needs either a ws client in `@apack/testing` (a new dependency in a package every pack's tests
    load) or the claim made from the page, which needs the window's client reachable there and today it is not.
 
    **And the connection costs no dependency**, which was asserted the other way here first and then measured.
    Node has had a global `WebSocket` since 22 and this repo requires 23;
    `tests/e2e/app-integration/api-access.spec.ts:11` already opens an authenticated socket with
-   `new WebSocket(url, ['abuddy', 'abuddy-token.<token>'])` and imports nothing. So a driver needs tRPC's
+   `new WebSocket(url, ['apack', 'apack-token.<token>'])` and imports nothing. So a driver needs tRPC's
    JSON-RPC frames over a socket the repo already opens — roughly a hundred lines — rather than `@trpc/client`
    (1.0M, 146 files, and a `@trpc/server` peer) or `ws` (192K, redundant on Node 23).
 
@@ -344,7 +344,7 @@ also invalidates Phase 5's own criteria.
    connection is free, and the one thing addressing still cannot do is tell two concurrent requests apart — so a
    request id stays.
 2. ~~**Stamp a plugin's own sends**~~ — **done**, after this Outcome was first written. `usePlugin` hands back the
-   actor with its `send` run inside a delivery naming that plugin (`abuddy-sdk/src/fe/plugin-send-scope.spec.ts`),
+   actor with its `send` run inside a delivery naming that plugin (`apack-sdk/src/fe/plugin-send-scope.spec.ts`),
    so a component's send stamps `Message.sender` and `reply` answers it. The risk recorded against this — that a
    Proxy over the actor would break `@xstate/vue`'s reactivity — was **asserted and then measured false**:
    `useSelector` follows a change through the wrapper, `subscribe` and `getSnapshot` are unaffected, and the one
@@ -378,7 +378,7 @@ also invalidates Phase 5's own criteria.
 | `npm run spec -- bus`, `-- transport` | passed |
 | `npm run compile` | passed (`facade:check` included) |
 | `npm run packages:build` + `packages:check` | passed |
-| `npm run api:update` (`@abuddy/sdk`, `@abuddy/ui`) | `etc/` committed; the published surface gained `reply`, `Message.sender`, `Message.client` and four `@internal` `_`-prefixed delivery members, and nothing else |
+| `npm run api:update` (`@apack/sdk`, `@apack/ui`) | `etc/` committed; the published surface gained `reply`, `Message.sender`, `Message.client` and four `@internal` `_`-prefixed delivery members, and nothing else |
 | `send-scope.spec.ts`, `outgoing-events.spec.ts` | pass **unmodified** — neither was loosened, and `outgoing-events` needed no new case |
 | `npm run spec-cost:update` | 11 specs recorded, 4 of them this goal's |
 
@@ -408,13 +408,13 @@ outgoing path has no schema, the subscription emits the object directly.
 - Commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
   pushing, tagging and PRs are on request only.
 - No publishing, releases or triggered workflows; dry runs only.
-- No real data dirs: never open, copy or modify `~/Library/Application Support/abuddy*`. E2E stays in the
-  `abuddy-test` namespace, and the app is never launched outside the test env without an isolated
-  `ABUDDY_USER_DATA_DIR`.
+- No real data dirs: never open, copy or modify `~/Library/Application Support/apack*`. E2E stays in the
+  `apack-test` namespace, and the app is never launched outside the test env without an isolated
+  `APACK_USER_DATA_DIR`.
 - Never kill processes by pattern. Only a PID captured at spawn or read from a pid file.
 - No bare `tsc` in `packages/preload` (`packages/preload/CLAUDE.md`); no `npm install` in the example
   pack; no edits to version or release metadata.
-- Typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`): don't widen or rewrap them
+- Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`): don't widen or rewrap them
   to make a call site compile.
 - Published packages: no `any` in the pack-facing SDK, respect the TypeScript floor, `api:update` after an
   export change and commit `etc/`. Never rewrite a recorded artifact to make a check pass — a red

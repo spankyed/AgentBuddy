@@ -7,7 +7,7 @@
 // happens to spawn: the halves are about cost, and this case is cheap enough for either.
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { planTargets } from '../../../scripts/lib/spec-plan.ts';
 import { collectFor } from '../../../scripts/lib/spec-dry.ts';
 

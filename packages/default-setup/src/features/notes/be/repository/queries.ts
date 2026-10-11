@@ -1,6 +1,6 @@
 import { findById, findAll, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { trash } from '@abuddy/sdk/repositories';
+import { trash } from '@apack/sdk/repositories';
 
 import type { NoteDTO } from '../types.ts';
 import { REFERENCES } from '../types.ts';

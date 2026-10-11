@@ -44,9 +44,9 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - delete, merge, rename or loosen a test. This goal moves files and changes nothing inside them beyond
   imports and the paths in their own comments.
@@ -60,11 +60,11 @@ nobody wrote it down.
 
 | Package | `tests/` top level | Scheme |
 |---|---|---|
-| `@abuddy/sdk` | build, database-console, env, events, fe, framework, ids, logger, repositories, runtime, content, services, steps, testing, utils | **mirrors `src/`** |
-| `@abuddy/host` | build, bus, database, fe, features, logs, migrations, packs, secrets, services | **mirrors `src/`** |
+| `@apack/sdk` | build, database-console, env, events, fe, framework, ids, logger, repositories, runtime, content, services, steps, testing, utils | **mirrors `src/`** |
+| `@apack/host` | build, bus, database, fe, features, logs, migrations, packs, secrets, services | **mirrors `src/`** |
 | `@app/renderer` | adapters, boot, runtime, transport, views | **mirrors `src/`** |
-| `@abuddy/cli` | app, build, cli, harness, packs, helpers | mostly mirrors (`cli` ↔ `src/commands`) |
-| `@abuddy/ears` | contract, lmdb, + 3 flat | partial |
+| `@apack/cli` | app, build, cli, harness, packs, helpers | mostly mirrors (`cli` ↔ `src/commands`) |
+| `@apack/ears` | contract, lmdb, + 3 flat | partial |
 | `@app/repo-checks` | flat (18) | flat, like the `scripts/` it covers |
 | **`@app/api`** | **runtime, unit** | **by level** |
 | **`@app/default-setup`** | **unit, integration, fixtures** | **by level** |
@@ -109,8 +109,8 @@ is already a tree: `src/features/<name>/{be,fe}`.
 
 ### The layout is also a published contract
 
-`abuddy-cli/src/commands/init.ts:135` scaffolds `include: ['tests/unit/**/*.spec.ts']` into every pack a
-third party creates with `abuddy init-tests`. So the built-in pack's layout is not a private matter: change
+`apack-cli/src/commands/init.ts:135` scaffolds `include: ['tests/unit/**/*.spec.ts']` into every pack a
+third party creates with `apack init-tests`. So the built-in pack's layout is not a private matter: change
 it and the reference pack stops looking like what the tool generates, unless the scaffold changes with it.
 That is the Open decision below.
 
@@ -148,18 +148,18 @@ Final.
 6. **A spec that covers several modules mirrors the entry point it drives.** `export-round-trip.spec.ts`
    drives `exportActions` and `exportPrompts`; it goes under the feature whose repository it calls, not into
    a new directory for things that span two.
-7. **`@abuddy/ears` and `@abuddy/cli` are in scope only where they already deviate**, and `@app/repo-checks`
+7. **`@apack/ears` and `@apack/cli` are in scope only where they already deviate**, and `@app/repo-checks`
    stays flat: its 18 specs cover `scripts/`, which is flat, so flat mirrors it.
 
 ## Open decision — **settled 2026-09-25: the scaffold changes with the rule**
 
-`abuddy init-tests` scaffolds the same layout the built-in pack uses, so the reference pack is what the tool
+`apack init-tests` scaffolds the same layout the built-in pack uses, so the reference pack is what the tool
 generates. The CLI's own scaffold specs and the fixture packs move with it. Nothing breaks downstream: no
 pack exists outside this repo (root `CLAUDE.md`, *Backward compatibility*).
 
 The reasoning, kept:
 
-**Does `abuddy init-tests`' scaffold change with it?** `init.ts:135` writes `tests/unit/**/*.spec.ts` into
+**Does `apack init-tests`' scaffold change with it?** `init.ts:135` writes `tests/unit/**/*.spec.ts` into
 every pack created by the CLI.
 
 - **Change it**, so a scaffolded pack gets the same rule as the built-in one and the reference pack is what
@@ -211,10 +211,10 @@ exception with its reason.
 
 **Done when:** no `unit/` directory; 15 files and 70 tests, unchanged; re-recorded.
 
-### Phase 5 — `@abuddy/ears` and `@abuddy/cli`
+### Phase 5 — `@apack/ears` and `@apack/cli`
 
-The two partial cases, and the smallest. `@abuddy/ears` has three flat specs beside `contract/` and `lmdb/`;
-`@abuddy/cli` has `cli/` where the source is `src/commands/`, plus `harness/`, `packs/` and `helpers/`.
+The two partial cases, and the smallest. `@apack/ears` has three flat specs beside `contract/` and `lmdb/`;
+`@apack/cli` has `cli/` where the source is `src/commands/`, plus `harness/`, `packs/` and `helpers/`.
 Rename or record each, then delete the matching exceptions Phase 2 left.
 
 **Done when:** Phase 2's exception list holds only entries whose reason is a property of the package rather
@@ -248,18 +248,18 @@ than work not yet done.
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — the rule, written where it is read | **done** | `731d1e2d9`. `default-setup/CLAUDE.md` (new `## Tests`), `docs/reference/test-inventory.md`, root `CLAUDE.md` beside the spec commands |
-| 2 — the guard | **done** | `6af519dd3`. `spec-placement.spec.ts`, landed with nine entries so it was green before anything moved; mutation-checked again at the end (a planted `abuddy-ears/tests/nonsense/` is named) |
+| 2 — the guard | **done** | `6af519dd3`. `spec-placement.spec.ts`, landed with nine entries so it was green before anything moved; mutation-checked again at the end (a planted `apack-ears/tests/nonsense/` is named) |
 | 3 — `@app/default-setup` | **done** | `811d76e38`, with its 141 renames in `e27338c6d`. 87 files / 720 tests unchanged |
 | 4 — `@app/api` | **done** | `ac5b4cd10`. No `unit/`; 15 files / 70 tests unchanged |
-| 5 — `@abuddy/ears` and `@abuddy/cli` | **done** | `c9d48ba3a` (9 / 116), `6b6649e65` (38 / 310 and 15 / 187), `64ba820c5` (the scaffold and the fixture pack, 10 / 32) |
+| 5 — `@apack/ears` and `@apack/cli` | **done** | `c9d48ba3a` (9 / 116), `6b6649e65` (38 / 310 and 15 / 187), `64ba820c5` (the scaffold and the fixture pack, 10 / 32) |
 
 Every count is before and after the moves, and none of them changed.
 
 ### What the exception list is for now
 
 It began as nine entries, each one work not yet done, and ended as two — and the two are a different kind,
-which is recorded on the list itself. `abuddy-cli/harness` and `abuddy-cli/packs` name a module of a package
-`@abuddy/cli` *depends on* (`@abuddy/testing`'s harness, `@abuddy/host/packs`), which its own `src/` has no
+which is recorded on the list itself. `apack-cli/harness` and `apack-cli/packs` name a module of a package
+`@apack/cli` *depends on* (`@apack/testing`'s harness, `@apack/host/packs`), which its own `src/` has no
 counterpart for and should not grow one. The bar for a new entry is written down beside them: not "this spans
 two modules", which Decision 6 already places at the entry point it drives, but "what it covers is another
 package's, and this package holds it on purpose".
@@ -283,7 +283,7 @@ package's, and this package holds it on purpose".
   specs — 18 files and 4.1s. There is no directory holding exactly the five any more, and a listed set of
   five filenames is a list that goes stale silently.
 - **`tests/e2e/**` is excluded from a pack's vitest include**, in the scaffold and in the fixture pack. It is
-  Playwright's, run by `abuddy test`: a different runner, which is not the level a directory may not denote.
+  Playwright's, run by `apack test`: a different runner, which is not the level a directory may not denote.
 - **`_hybrid/README.md` was deleted** rather than moved. Its subject was the directory, and what it recorded
   beyond that — which spec covers what — is what the paths now say.
 

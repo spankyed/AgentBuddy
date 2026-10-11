@@ -11,10 +11,10 @@ Four notes were dropped as already fixed, and are recorded here so they are not 
 | Built-in snapshots carry no type defs | `dist/snapshot.json` has `defs: { 'pack-types': … }` (161 KB). `DEFS_DIR` now only clears build output; the snapshot's facades come from `bundlePackTypes()` directly |
 | An empty `.sha256` installs unverified | `pack-installer.ts:308` requires `/^[0-9a-f]{64}$/i` |
 | Node floor `>=20.6` vs `import.meta.dirname` | Both CLI and testing are `engines: >=22` |
-| `@abuddy/sdk/build` re-exports host-only `discover`/`shared-deps` | Moved to `@abuddy/host` |
-| `verify-node-modules.mjs` passes when the bundled CLI directory is missing | Settled by reading it: it moved to `build/prod/`, and `abuddy-cli/tests/build/verify-node-modules.spec.ts:29` asserts it fails when the bundled CLI's dependencies or a platform binary are missing |
+| `@apack/sdk/build` re-exports host-only `discover`/`shared-deps` | Moved to `@apack/host` |
+| `verify-node-modules.mjs` passes when the bundled CLI directory is missing | Settled by reading it: it moved to `build/prod/`, and `apack-cli/tests/build/verify-node-modules.spec.ts:29` asserts it fails when the bundled CLI's dependencies or a platform binary are missing |
 
-`lookupRegistry` (`fetch-deps.ts:264`) is a deliberate placeholder until `api.abuddy.com` exists, not a task.
+`lookupRegistry` (`fetch-deps.ts:264`) is a deliberate placeholder until `api.apack.dev` exists, not a task.
 
 ---
 
@@ -27,7 +27,7 @@ code; this is the index from item to commit.
 |---|---|
 | 1, 2 — release packs a dev build; `--app beta` resolved deps against the wrong app | `c5a16033b` |
 | 3 — tear down an active pack before installing over it | `e5d71b849` |
-| 4, 5 — `test()` exiting on the release path; a resumable `abuddy release` | `6efd8f48c` |
+| 4, 5 — `test()` exiting on the release path; a resumable `apack release` | `6efd8f48c` |
 | 6, 7, 8 — delete `emitDepTypes`, drop the deps glob, use the scaffolded tsconfig | `7d018e0e5`, `df90afeae` |
 | 9 — one installed-packs reader, "no record" in its type | `1d6cf3226` |
 | 10 — `recoverStagingDirs` takes known/not-known, not an optional Set | `d78131150` |
@@ -42,9 +42,9 @@ code; this is the index from item to commit.
 
 One thing outside the list was fixed on the way, because it was failing the E2E suite: the secrets test
 read every file under the data and logs directories with `readFileSync`, and the shared
-`~/Library/Logs/abuddy-test/app-events.log` had reached 24 GB, which `readFileSync` refuses outright
+`~/Library/Logs/apack-test/app-events.log` had reached 24 GB, which `readFileSync` refuses outright
 (`dbb14383d`). The unbounded growth this flagged is closed since: `appendCappedLine`
-(`abuddy-host/src/logs.ts:25`) renames the file to `.old` at `LOG_FILE_MAX_BYTES`, so a run keeps one
+(`apack-host/src/logs.ts:25`) renames the file to `.old` at `LOG_FILE_MAX_BYTES`, so a run keeps one
 previous generation and no more. The 24 GB file is gone from this machine.
 
 ---
@@ -103,7 +103,7 @@ not*, and its counterpart, that a cached build the range rejects still falls thr
 ## Blocked on you
 
 **Delete `packages/api/scripts/db/fix-prod-upgrade.ts`** once you have run it. Its header and
-`goal-abuddy-db-cli`'s Decision 8 both say to, and it is the last unconsolidated copy of `findRunningApp`.
+`goal-apack-db-cli`'s Decision 8 both say to, and it is the last unconsolidated copy of `findRunningApp`.
 
 ## Unverified — needs reading, not grepping
 

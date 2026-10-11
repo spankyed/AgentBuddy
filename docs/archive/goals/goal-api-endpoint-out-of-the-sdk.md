@@ -1,7 +1,7 @@
 > **Done** (`2a5854631`..`b1eaa70f4` on `AS/external-pack-authoring`). The text below is the plan as
-> written. `@abuddy/sdk/env` no longer exports `readApiEndpoint`, `ApiEndpoint`, `lockIsHeld` or
-> `recordIsStale`; they live in `@abuddy/host/process-liveness`. For the current layout, see
-> `packages/abuddy-host/CLAUDE.md`.
+> written. `@apack/sdk/env` no longer exports `readApiEndpoint`, `ApiEndpoint`, `lockIsHeld` or
+> `recordIsStale`; they live in `@apack/host/process-liveness`. For the current layout, see
+> `packages/apack-host/CLAUDE.md`.
 
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
@@ -10,7 +10,7 @@
 
 Implement docs/archive/goals/goal-api-endpoint-out-of-the-sdk.md on AS/external-pack-authoring, at or after
 ef358680f — the base its Background was surveyed at.
-Before Phase 1, confirm the base: `packages/abuddy-sdk/src/env/index.ts` exports `readApiEndpoint` and
+Before Phase 1, confirm the base: `packages/apack-sdk/src/env/index.ts` exports `readApiEndpoint` and
 re-exports `_lockIsHeld`/`_recordIsStale` from `./process-liveness.ts`, and
 `packages/default-setup/dev-build.mjs` imports `readApiEndpoint`. If they don't, stop and say so — the
 plan was surveyed somewhere else.
@@ -24,7 +24,7 @@ it moves with migrations.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- `@abuddy/sdk/env` exports neither `readApiEndpoint`, `ApiEndpoint`, `_lockIsHeld` nor `_recordIsStale`,
+- `@apack/sdk/env` exports neither `readApiEndpoint`, `ApiEndpoint`, `_lockIsHeld` nor `_recordIsStale`,
   and `git grep` finds no pack source importing them.
 - `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test`, `npm run test:external-pack`
   all pass, and `npm run api:update` has been run with `etc/` committed.
@@ -41,28 +41,28 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
   metadata.
-- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - move `resolveAppContext`, `getAppVersion` or `AppContext` out of the SDK. Packs resolve their
   environment through them, and `apiPortFile` stays on `AppContext` (Decision 1).
-- give `default-setup` a dependency on `@abuddy/host` or `@abuddy/cli` to unblock this (Decision 2).
+- give `default-setup` a dependency on `@apack/host` or `@apack/cli` to unblock this (Decision 2).
 ```
 
 ## Background
 
 Surveyed at `ef358680f` on `AS/external-pack-authoring`.
 
-`@abuddy/sdk/env` carries three things that are the app's plumbing, not the pack contract:
+`@apack/sdk/env` carries three things that are the app's plumbing, not the pack contract:
 `readApiEndpoint` (and its `ApiEndpoint` type), and the two liveness predicates `_lockIsHeld` and
 `_recordIsStale` re-exported from `env/process-liveness.ts`. The module says so itself:
 
 > `@internal`: this is app plumbing, not part of the pack contract. It lives here because `readApiEndpoint`
-> does, and that is reachable from a pack's build script, which cannot import `@abuddy/host`.
+> does, and that is reachable from a pack's build script, which cannot import `@apack/host`.
 
 **The liveness predicates have no pack-side consumer at all.** All four callers are host:
 `database/write-lock.ts`, `database/running.ts`, `packs/staging.ts`, `packs/dev-server.ts`. They are in
@@ -84,7 +84,7 @@ nothing at this call site, and cannot: the API may exit between the check and th
 reads the token file with its own two-line `readDevFile`; reading a port the same way is no more
 duplication than it already has, and duplicates no rule, because it applies none.
 
-Every other caller is host or above: `database/running.ts` (host), `abuddy-cli/src/commands/dev.ts` (the
+Every other caller is host or above: `database/running.ts` (host), `apack-cli/src/commands/dev.ts` (the
 CLI, which inlines host), `api/tests/unit/dev-reload-access.spec.ts` (the API, which depends on host). The
 `ApiEndpoint` type's only writer is `api/src/setup/websocket.ts`, which publishes the file.
 
@@ -99,7 +99,7 @@ need to discover the API. It needs a port number.
    reading of what a running process wrote there.
 
 2. **`default-setup` gains no new dependency.** It is a pack, built and tested the way every pack is, and
-   a dependency on `@abuddy/host` or `@abuddy/cli` to make one dev script work is the failure
+   a dependency on `@apack/host` or `@apack/cli` to make one dev script work is the failure
    `check:specifiers` exists to prevent. `dev-build.mjs` parses the port file itself.
 
 3. **One module in host: `src/process-liveness.ts`, exported as `./process-liveness`.** It holds both
@@ -108,7 +108,7 @@ need to discover the API. It needs a port number.
    files that needs the bound. `./logs` is the precedent for a top-level single-file export.
 
 4. **The predicates lose their `_` prefix and `@internal` tags.** In a published package the underscore is
-   what makes the boundary checkable — `check:specifiers` rejects a pack importing `_x`. `@abuddy/host` is
+   what makes the boundary checkable — `check:specifiers` rejects a pack importing `_x`. `@apack/host` is
    private and packs cannot import it at all, so in host the prefix marks nothing and the tag is noise.
    They become `lockIsHeld` and `recordIsStale`.
 
@@ -123,7 +123,7 @@ need to discover the API. It needs a port number.
 It reads the port out of the port file with the helper it already has for the token, and lets the existing
 catch handle a port nothing is listening on.
 
-**Done when:** `packages/default-setup/dev-build.mjs` imports nothing from `@abuddy/sdk/env` but
+**Done when:** `packages/default-setup/dev-build.mjs` imports nothing from `@apack/sdk/env` but
 `resolveAppContext`, and `npm start` still reloads the built-in pack on a rebuild.
 **Mutation:** pointing the port file at a closed port leaves the watcher running and silent, as it does
 today.
@@ -131,19 +131,19 @@ today.
 ### Phase 2 — the module moves to host
 
 `env/process-liveness.ts` and `readApiEndpoint`/`ApiEndpoint` move to
-`packages/abuddy-host/src/process-liveness.ts`, exported as `./process-liveness`. The predicates are
+`packages/apack-host/src/process-liveness.ts`, exported as `./process-liveness`. The predicates are
 renamed (Decision 4). Callers move with them: `database/running.ts`, `database/write-lock.ts`,
-`packs/staging.ts`, `packs/dev-server.ts`, `abuddy-cli/src/commands/dev.ts`,
+`packs/staging.ts`, `packs/dev-server.ts`, `apack-cli/src/commands/dev.ts`,
 `api/src/setup/websocket.ts` (the type), `api/tests/unit/dev-reload-access.spec.ts`.
 
-**Done when:** `@abuddy/sdk/env` exports none of the four names and the full typecheck passes.
+**Done when:** `@apack/sdk/env` exports none of the four names and the full typecheck passes.
 **Mutation:** re-exporting one of them from the SDK and importing it in a pack source fails
 `check:specifiers`.
 
 ### Phase 3 — the tests move
 
-`abuddy-sdk/tests/env/process-liveness.spec.ts` moves to `abuddy-host/tests/`, and the `readApiEndpoint`
-cases move out of `abuddy-sdk/tests/env/app-context.spec.ts` with it.
+`apack-sdk/tests/env/process-liveness.spec.ts` moves to `apack-host/tests/`, and the `readApiEndpoint`
+cases move out of `apack-sdk/tests/env/app-context.spec.ts` with it.
 
 **Done when:** both suites pass and no SDK test imports a moved name.
 **Mutation:** the five liveness mutations recorded in `goal-loaded-packs-on-the-registry.md`'s outcome
@@ -151,9 +151,9 @@ still each fail the right test from their new home.
 
 ### Phase 4 — the reports and the docs
 
-`npm run api:update` (the SDK loses four exported names; `@abuddy/ui`'s stamp follows). Then the root
-`CLAUDE.md` (`@abuddy/sdk/env`'s one-line role), `abuddy-host/CLAUDE.md` (its "Process liveness
-(`@abuddy/sdk/env`)" section and module map), `abuddy-sdk/CLAUDE.md` (the `env/` bullet), and
+`npm run api:update` (the SDK loses four exported names; `@apack/ui`'s stamp follows). Then the root
+`CLAUDE.md` (`@apack/sdk/env`'s one-line role), `apack-host/CLAUDE.md` (its "Process liveness
+(`@apack/sdk/env`)" section and module map), `apack-sdk/CLAUDE.md` (the `env/` bullet), and
 `docs/plans/external-pack-authoring-followups.md`, whose deferred entry this closes.
 
 **Done when:** `npm run api:check` passes and no doc places these names in the SDK.
@@ -168,9 +168,9 @@ still each fail the right test from their new home.
 
 - `api/src/setup/websocket.ts` writes the port file and must keep writing the same shape; the type moving
   is not licence to change it.
-- The CLI inlines `@abuddy/host` when bundling, so `abuddy dev` importing from host costs nothing at
+- The CLI inlines `@apack/host` when bundling, so `apack dev` importing from host costs nothing at
   publish time — but check `npm run packages:check` all the same.
-- `@abuddy/testing`'s bundle must not gain a repo-root path from the move (the reason
+- `@apack/testing`'s bundle must not gain a repo-root path from the move (the reason
   `build/packages-built.ts` lives where it does).
 
 ## Outcome (2026-09-20)
@@ -180,8 +180,8 @@ All four phases done, on `AS/external-pack-authoring`.
 ### Per phase
 
 - **Phase 1 — `dev-build.mjs` stops discovering the API** (`2a5854631`). A `readDevPort` beside the
-  `readDevFile` it already had. `resolveAppContext` is now its only import from `@abuddy/sdk/env`.
-- **Phases 2 and 3 — the move and the tests** (`c28c9ca05`). `@abuddy/host/process-liveness` holds
+  `readDevFile` it already had. `resolveAppContext` is now its only import from `@apack/sdk/env`.
+- **Phases 2 and 3 — the move and the tests** (`c28c9ca05`). `@apack/host/process-liveness` holds
   `lockIsHeld`, `recordIsStale`, `readApiEndpoint` and `ApiEndpoint`. Seven call sites moved; the
   predicates lost their `_` prefix and `@internal` tags (Decision 4).
 - **Phase 4 — the reports and the docs.** `etc/env.api.md` lost all four names.
@@ -190,8 +190,8 @@ All four phases done, on `AS/external-pack-authoring`.
 
 - The export is listed in `sdk-bridge-drift.spec.ts`'s `UNBRIDGED_BY_DESIGN`, which is what caught the new
   subpath: a pack reaches a running API through the app, never by reading its port file.
-- The root `CLAUDE.md` gained a line for the subpath beside the other `@abuddy/host/*` entries; its
-  `@abuddy/sdk/env` line already said only `resolveAppContext`, `getAppVersion` and needed no change.
+- The root `CLAUDE.md` gained a line for the subpath beside the other `@apack/host/*` entries; its
+  `@apack/sdk/env` line already said only `resolveAppContext`, `getAppVersion` and needed no change.
 
 ### Corrections to the Phases
 

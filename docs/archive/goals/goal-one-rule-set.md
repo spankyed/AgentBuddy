@@ -2,9 +2,9 @@
 
 > **Done** (`1b2bc6761`..`437bdf35d` on `AS/alias-simplification`). The text below is the plan as written; four
 > things it did not foresee are in the Outcome, the largest being that `.d.ts` and `.md` templates cannot reach
-> the packaged app at all. For the rules now, see `packages/abuddy-cli/src/build/pack-rules.ts` and
+> the packaged app at all. For the rules now, see `packages/apack-cli/src/build/pack-rules.ts` and
 > `docs/public-facing/cli.md` § Validation; for the scaffold's templates,
-> `packages/abuddy-cli/src/templates.ts`.
+> `packages/apack-cli/src/templates.ts`.
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
@@ -14,7 +14,7 @@
 Implement docs/goals/goal-one-rule-set.md on AS/alias-simplification, at or after ed84beced — the base
 its Background was surveyed at.
 Before Phase 1, confirm the base: scripts/check-import-specifiers.ts has 19 CHECKS entries,
-packages/abuddy-cli/src/build/pack-sources.ts exists, packages/abuddy-cli/src/commands/add/templates.ts
+packages/apack-cli/src/build/pack-sources.ts exists, packages/apack-cli/src/commands/add/templates.ts
 still holds the scaffold's template literals, and scripts/lib/step-timing.ts exports driftedSteps with
 two parameters. If any of those is false, stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -28,13 +28,13 @@ moves with migrations.
 Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- The scaffold's pack code is files under packages/abuddy-cli/templates/, and CLI_TEMPLATE_SOURCES,
+- The scaffold's pack code is files under packages/apack-cli/templates/, and CLI_TEMPLATE_SOURCES,
   CLI_COMMAND_SOURCES, templateCode, templateProblems, findInFiles' isTemplateSource branch and
   findUnlistedPackTemplates are gone.
 - One reader parses each file once: the instrumented parse count is under 2,000, down from 9,698 over
   1,608 files, and a spec asserts no file is read twice.
-- The pack-code rules are one implementation each, run by `abuddy validate`, `abuddy build` and
-  `abuddy test` for every pack, with the switchable ones silenced by `abuddy.checks.json`.
+- The pack-code rules are one implementation each, run by `apack validate`, `apack build` and
+  `apack test` for every pack, with the switchable ones silenced by `apack.checks.json`.
 - `scripts/check-import-specifiers.ts` runs every rule (no exit inside the loop), takes paths and
   --rule and --list, and its scopes come from scripts/lib/repo-census.ts rather than six constants.
 - `npm run chain` prints no drift advisory on an incremental run, and still reports one under --all.
@@ -54,9 +54,9 @@ Commit as you go:
 Never:
 - push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
-  ABUDDY_USER_DATA_DIR.
+  APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload (build it with npm run build -w @app/preload), npm install in the
   example pack, or edit version/release metadata.
 - delete or loosen a test to make a number move. A template that cannot be made byte-identical stays
@@ -75,7 +75,7 @@ Measured on this checkout:
 |---|---|
 | `npm run check:specifiers` | 4.4s, and **9,698 parses over 1,608 distinct files** — six parses per file (instrumented `parse()` with a counter) |
 | scope constants | `CHECKED_DIRS` (:14), `PACK_SOURCE_DIRS` (:112), `PACK_TEST_DIRS` (:302), `PACK_SRC_ROOTS` (:611), `CLI_TEMPLATE_SOURCES` (:109), `CLI_COMMAND_SOURCES` (:413) — 17 references |
-| scaffold templates | **561 lines of pack code inside template literals**, across 10 files under `packages/abuddy-cli/src/commands/` |
+| scaffold templates | **561 lines of pack code inside template literals**, across 10 files under `packages/apack-cli/src/commands/` |
 | rules an external pack gets | **2 of 19** (`internal-imports-gate.ts`, `own-module-specifiers-gate.ts`) |
 | `findJsSpecifiers`' scope | 5 of 15 packages; pointed at every package's `src`/`tests`/`scripts` it reports **87 findings — 85 in `packages/main`, 2 in `packages/preload`**, and zero elsewhere |
 
@@ -88,11 +88,11 @@ The four loose ends, and what each rests on:
    `POOL_SECONDS[kind]` to `budgetFor` for the pool's own inner vitest spawn, and `chain.ts` uses it for the
    step's kill deadline at 4×.
 2. **Two walks with different skip policies.** `sourceFiles` in the script (:27) skips nothing — not
-   `node_modules`, not `dist`; `packages/abuddy-cli/src/build/pack-sources.ts:23` skips `node_modules` and
+   `node_modules`, not `dist`; `packages/apack-cli/src/build/pack-sources.ts:23` skips `node_modules` and
    takes a `skip` predicate; `walkTree` (:924, inside `findMissingSourceConditions`) skips `SKIPPED_DIRS` and
    is the only walk that follows symlinks safely.
 3. **Two CLI files police what no other CLI source does.** `PACK_SOURCE_DIRS` (:112) folds in
-   `CLI_TEMPLATE_SOURCES`, so `findJsSpecifiers` covers `packages/abuddy-cli/src/commands/add` and `init.ts`
+   `CLI_TEMPLATE_SOURCES`, so `findJsSpecifiers` covers `packages/apack-cli/src/commands/add` and `init.ts`
    and no other file in that package.
 4. **One offence, two rules.** A relative `.js` in pack code is reported by both `findJsSpecifiers` and
    `findExtensionlessOwnModules`; only the first shows, because the runner `process.exit(1)`s inside its loop
@@ -106,20 +106,20 @@ check that a two-entry list is complete.
 
 Facts that constrain the design:
 
-- `@abuddy/host` declares neither `typescript` nor `vue`; `packages/api` imports host, so the Vue compiler must
-  not enter the backend's tree. `@abuddy/cli` has both as hard dependencies and is `private` with no `exports`
-  map. `@abuddy/sdk` has `vue` as a peer and `typescript` as an optional one, but its published `./build`
+- `@apack/host` declares neither `typescript` nor `vue`; `packages/api` imports host, so the Vue compiler must
+  not enter the backend's tree. `@apack/cli` has both as hard dependencies and is `private` with no `exports`
+  map. `@apack/sdk` has `vue` as a peer and `typescript` as an optional one, but its published `./build`
   declarations are typechecked standalone by `packages/publish-checks`.
 - A repo script importing a package's internals by relative path is already the pattern:
-  `scripts/build-ui-package.ts:18` imports `../packages/abuddy-ui/scripts/exports.ts`, and
+  `scripts/build-ui-package.ts:18` imports `../packages/apack-ui/scripts/exports.ts`, and
   `scripts/tsconfig.json` sets `allowImportingTsExtensions`. `findPackageScriptImports` governs a *package's*
   `scripts/`, not the repo's.
 - `packages/main` bundles: `vite.config.js` uses `build.lib` with one `src/index.ts` entry and `dist/` holds
   one `index.js`. It is `moduleResolution: NodeNext` **with** `allowImportingTsExtensions: true` — the same
-  combination `@abuddy/ears`, `/sdk`, `/host` and `/ui` use while naming `.ts`. `packages/preload` is NodeNext
+  combination `@apack/ears`, `/sdk`, `/host` and `/ui` use while naming `.ts`. `packages/preload` is NodeNext
   with `noEmit: true` and without that flag.
 - `electron-builder.mjs`'s `files` array excludes `'!**/*.md'` (:125) and `'!**/*.ts'` (:130), so a `.ts` or
-  `.md` file inside `packages/abuddy-cli/dist/package/` is stripped from the packaged app — the CLI the app
+  `.md` file inside `packages/apack-cli/dist/package/` is stripped from the packaged app — the CLI the app
   installs through `bin/app-launcher.sh`. Nothing tests that path.
 - `scripts/bundle-package.ts`'s `copy` is `fs.copyFileSync` on single files (:194-198, throws `EISDIR` on a
   directory), and `assertPublishedPathsExist` (:73-81) checks each entry exists — which is true of an empty
@@ -127,7 +127,7 @@ Facts that constrain the design:
 - `scripts/lib/spec-cost.ts:117` walks a package for `*.spec.ts` with `IGNORED = ['node_modules','dist','etc','coverage']`.
 - The fixture packs (`tests/fixtures/external-pack`, `tests/fixtures/bundled-ui-pack`) are **not** npm
   workspaces (root `workspaces` is `["packages/*"]`), so `npm run lint:check -ws` cannot reach them — but
-  `tests/scripts/test-external-pack-contract.sh:21` runs `abuddy validate` on each.
+  `tests/scripts/test-external-pack-contract.sh:21` runs `apack validate` on each.
 - oxlint 1.8.0 supports config `overrides` (per-path `files` globs), has `no-console` in the `restriction`
   category (not enabled by `-D correctness`), hosts **no** custom rule from the CLI (no `--js-plugins`, no
   `jsPlugins` schema key) and has **no `no-restricted-syntax`**. eslint runs only over `packages/renderer`.
@@ -140,26 +140,26 @@ Facts that constrain the design:
 
 Final.
 
-1. **Pack-code rules are one implementation each, in `packages/abuddy-cli/src/build/pack-rules.ts`**, run by
-   `abuddy validate`, `abuddy build` and `abuddy test` for every pack, and by `check:specifiers` for this
+1. **Pack-code rules are one implementation each, in `packages/apack-cli/src/build/pack-rules.ts`**, run by
+   `apack validate`, `apack build` and `apack test` for every pack, and by `check:specifiers` for this
    repo's. `internal-imports-gate.ts` is deleted: its rule and the script's `internalImport` are the same rule
    written twice.
-2. **The reader stays in `@abuddy/cli`** (`src/build/pack-sources.ts`) and the repo script imports it by
+2. **The reader stays in `@apack/cli`** (`src/build/pack-sources.ts`) and the repo script imports it by
    relative path. Not host (no `typescript`/`vue`, and the API imports it), not the SDK (pack sources import
    it, and its published declarations are typechecked standalone).
 3. **A pack rule is switchable only when a violation has no runtime effect.** Not switchable:
    `own-modules`, `js-specifiers`, `pack-own-aliases`, `internal-package-imports`, `host-imports`,
    `lmdb-imports`, `contract-leaves`, `pack-source-condition`. Switchable: `untyped-sends`, `raw-transport`,
    `backend-console`, `cross-feature-imports`.
-4. **The opt-out is `abuddy.checks.json`** at the pack root — `{ "allow": ["backend-console"] }` — read at
-   build time and never by the app, so `abuddy.json` stays what the app loads. An unknown name, or a rule that
+4. **The opt-out is `apack.checks.json`** at the pack root — `{ "allow": ["backend-console"] }` — read at
+   build time and never by the app, so `apack.json` stays what the app loads. An unknown name, or a rule that
    is not switchable, is an error listing the switchable set. `ManifestSchema` is untouched.
 5. **Scope is derived.** `scripts/lib/repo-census.ts` derives packages from the root `workspaces`, packs from
-   any directory holding `abuddy.json`, and each pack's `src`/`tests` — replacing the six scope constants and
+   any directory holding `apack.json`, and each pack's `src`/`tests` — replacing the six scope constants and
    three more copies of the packages derivation (`workspace-deps.ts`, `chain-steps.ts:167`,
-   `packageSourceDirs()`). `packages/abuddy-host/src` and `templates/pack` are two declared additions to
+   `packageSourceDirs()`). `packages/apack-host/src` and `templates/pack` are two declared additions to
    `packSrcRoots`, each with its reason, since neither has a manifest.
-6. **The scaffold's pack code becomes files** under `packages/abuddy-cli/templates/pack/`, mirroring a
+6. **The scaffold's pack code becomes files** under `packages/apack-cli/templates/pack/`, mirroring a
    scaffolded pack so relative specifiers resolve against real siblings. Placeholders are `__UPPER_SNAKE__`
    (no `$`, `{` or `}`, so every real `${…}` survives unescaped; a legal identifier, so a template still
    parses). A placeholder never occupies a statement slot — multi-statement variation is a two-file split.
@@ -227,11 +227,11 @@ Decisions 6 and 7. Each step ends with the byte-identity diff below.
    `repoPacks` (:328), and `writeTemplateSource` with its three call sites. Rename
    `add/templates.ts` → `add/write.ts` (9 import sites).
 
-**Done when:** `abuddy init` + every `add` command, driven from the CLI into a fresh directory, is
-byte-identical to a golden tree captured at `ed84beced` (`diff -r -x __generated__ -x .abuddy -x node_modules`,
-empty output) at **every** step; `npm test -w @abuddy/cli` and its integration half pass;
+**Done when:** `apack init` + every `add` command, driven from the CLI into a fresh directory, is
+byte-identical to a golden tree captured at `ed84beced` (`diff -r -x __generated__ -x .apack -x node_modules`,
+empty output) at **every** step; `npm test -w @apack/cli` and its integration half pass;
 `npm run test:packaged-authoring` and `npm run test:external-pack` pass; a `--dir` electron package lists
-`Resources/app/packages/abuddy-cli/dist/package/templates/`; the completeness spec fails when a template file
+`Resources/app/packages/apack-cli/dist/package/templates/`; the completeness spec fails when a template file
 is unreferenced and when a `renderTemplate` literal names a missing file.
 
 ### Phase 3 — one reader, and the pack rule set
@@ -242,10 +242,10 @@ Decisions 1, 2, 3, 4.
   `start`/`end` inside the quotes and a `.vue` block's `offset`; every existing signature keeps working.
 - `pack-rules.ts` holds the twelve pack rules; `internal-imports-gate.ts` is deleted;
   `own-module-specifiers-gate.ts` delegates.
-- `loadPackChecks(packDir)` reads `abuddy.checks.json`; `abuddy validate`, `build` and `test` run the set.
+- `loadPackChecks(packDir)` reads `apack.checks.json`; `apack validate`, `build` and `test` run the set.
 - `docs/public-facing/cli.md` § Validation documents the rules and the file.
 
-**Done when:** `npm run typecheck`; a fixture pack with `abuddy.checks.json` allowing a switchable rule
+**Done when:** `npm run typecheck`; a fixture pack with `apack.checks.json` allowing a switchable rule
 builds, and one naming a non-switchable rule fails with a message listing the switchable set;
 `npm run test:external-pack:contract` and `npm run compile` pass; a spec asserts
 `block.content[i] === fileText[offset + i]` for a `.vue` with two script blocks, and that every specifier's
@@ -335,12 +335,12 @@ deleted; `npm run test:external-pack:contract` passes.
 |---|---|---|
 | 1 — the chain stops nagging | **done** | `240c78cc3`. `driftedSteps` skips a step that keeps its own cache unless `--all` forced it; four cases, one mutation; two chain runs silent, a written drift still reported |
 | 2 — templates become files | **done** | `c4ea43aec`, `226819ac4`, `753833c29`, `9d00f67ed`, `eaf89af1f`, `2725f14ad`, `0ca955577`. 34 template files; the golden scaffold diff empty at every step; 176 lines of extraction machinery and one rule deleted |
-| 3 — one reader, one rule set | **done** | `65021e770`, `2e51b133f`. `readSource` with positions; nine pack rules in `build/pack-rules.ts`; `internal-imports-gate.ts` deleted; `abuddy.checks.json` |
+| 3 — one reader, one rule set | **done** | `65021e770`, `2e51b133f`. `readSource` with positions; nine pack rules in `build/pack-rules.ts`; `internal-imports-gate.ts` deleted; `apack.checks.json` |
 | 4 — census, one pass, per-file flag | **done** | `6c8eee988`, `1c40e6dca`, `a3e3be850`. **1,735 parses over 1,735 files, 2.67s — from 9,698 parses and 4.4s**; pack dirs derived from where a manifest is; `<paths…>`, `--rule`, `--list`; collect-all |
 | 5 — `specifiers:fix` | **done** | `6c8eee988`. Its first subject was real: the 87 specifiers the widened rule found |
 | 6 — `backend-console` moves, the cast rule stays | **done** | `437bdf35d`, and the rule itself in Phase 3 |
 
-**Counts**: `@abuddy/cli` 350 tests (was 305 + 21 in the integration half), `@app/repo-checks` 239,
+**Counts**: `@apack/cli` 350 tests (was 305 + 21 in the integration half), `@app/repo-checks` 239,
 `@app/default-setup` 720 unchanged, the fixture pack 32 unchanged, E2E 21 unchanged, `npm run chain` green in
 183s. 15 commits.
 
@@ -350,7 +350,7 @@ deleted; `npm run test:external-pack:contract` passes.
   strips every `.d.ts` from the packaged app whatever its `files` array says — measured on a `--dir` build:
   zero remain in `app.asar` — and excludes `'!**/*.md'` outright. So `env.d.ts` and the example content row stay
   strings in `init.ts`, with the reason recorded there and in `src/templates.ts`, and a spec refuses a `.d.ts`
-  template. Without the `--dir` build in Phase 2's step 1 this would have shipped: `abuddy init` from the CLI
+  template. Without the `--dir` build in Phase 2's step 1 this would have shipped: `apack init` from the CLI
   the app installs would have scaffolded a pack with no `env.d.ts`, and no test covers that path.
 - **Decision 3 listed `js-specifiers` as a pack rule; it is not one.** Both it and `own-modules` report a
   relative `.js`, and `own-modules` gives the better message because it resolves the specifier and names the
@@ -366,8 +366,8 @@ deleted; `npm run test:external-pack:contract` passes.
 - **`add action`, `add prompt` and `add flow` had no test that read their output**, only their exit code. Each
   has one now; the flow case writes the generated `flow-helpers.ts` the command reads to decide whether the
   pack has steps.
-- **One `renderTemplate` may have two callers.** `steps/register.ts` is written by `abuddy init` and again by
-  `abuddy add step` when a pack has no step list, so the completeness spec asserts every template is rendered
+- **One `renderTemplate` may have two callers.** `steps/register.ts` is written by `apack init` and again by
+  `apack add step` when a pack has no step list, so the completeness spec asserts every template is rendered
   *somewhere* rather than exactly once.
 
 ### Found after archiving (2026-09-26, 2026-09-27)
@@ -376,7 +376,7 @@ Three defects in what the phases shipped, each found by checking rather than by 
 
 - **The script's walk never skipped `node_modules` or `dist`**, while the CLI's did — so the one reader the
   goal was about was reading two trees it had no business in. One walker now skips both (`f2156fd70`).
-- **Three rules reported one import three times.** `import { _rootEvents } from '@abuddy/host/bus'` breaks
+- **Three rules reported one import three times.** `import { _rootEvents } from '@apack/host/bus'` breaks
   `host-imports`, `internal-package-imports` and `raw-transport`, and a pack author deleting one line was told
   three times in three blocks. A finding now carries the span of the code it is about, and one overlapping a
   span an earlier rule claimed stands down; `PACK_RULES`' order *is* that precedence. Overlap rather than
@@ -386,7 +386,7 @@ Three defects in what the phases shipped, each found by checking rather than by 
 - **Decision 4's paste-able `allow` line was not paste-able.** The failure printed
   `add "checks": { "allow": [...] }`, and `loadPackChecks` reads `allow` at the top level and knows no `checks`
   key — so following the advice allowed nothing and the rule kept firing. It now prints the file's whole
-  contents, and the spec pastes the printed line into `abuddy.checks.json` rather than matching its text, which
+  contents, and the spec pastes the printed line into `apack.checks.json` rather than matching its text, which
   is what stops the reader and the advice drifting apart again.
 
 ### Open items — closed 2026-09-27, and what closing them corrected
@@ -411,7 +411,7 @@ longer be the only place that knows.
 
 - **`cross-feature-imports`' stated blocker was real and was cleared.** It was 71 lines of which 33 were the
   rule, the rest the script's last regex pair; porting it to the shared reader (`9ea3558ef`) removed them, and
-  the rule moved with `publishedEntryPoints` and `doorSpans` into `abuddy-cli/src/build/pack-features.ts`.
+  the rule moved with `publishedEntryPoints` and `doorSpans` into `apack-cli/src/build/pack-features.ts`.
   Switchable, as this predicted.
 - **`contract-leaves` had no demonstrated consequence, and now it has two.** The earlier note was right that
   two mutations built clean and wrong to conclude the rule could not fire: both left the contract's type
@@ -432,7 +432,7 @@ seven rule bodies" and left seven dead declarations. It moved **two** — `untyp
 the other five were already delegating — and the dead declarations predated it. They accumulated because the
 repo's `scripts/` was linted by nothing: two of fifteen workspaces have a lint script, and `npm run lint:check
 -ws --if-present` reaches only those. `f91b66b49` closes `scripts/` and `tests/` with `oxlint … -D correctness`
-and leaves 111 findings measured in nine package trees, led by `abuddy-host` at 49.
+and leaves 111 findings measured in nine package trees, led by `apack-host` at 49.
 
 **What the migration is finding-preserving on, which nothing had checked.** Running the pre-collapse
 implementations against the delegations over each rule's own offending fixture agrees 7/7, and an independent
@@ -444,14 +444,14 @@ The third, the pack half of the source-condition check, **shipped on 2026-09-27*
   140-line figure that made it look like a phase of its own was the *repo's* rule: 39 of those lines walk
   Vite/Vitest config expressions, which exist because the repo's own configs may compute or spread
   `conditions`. A pack needed none of that. `source-resolution`
-  (`abuddy-cli/src/build/pack-resolution.ts`) asks `ts.resolveModuleName` where the pack's own compiler lands
+  (`apack-cli/src/build/pack-resolution.ts`) asks `ts.resolveModuleName` where the pack's own compiler lands
   and tests whether the answer is under `src/` — about ten lines of resolution, which catches an `extends`
   chain and a `paths` entry as well as `customConditions`, and names the file it resolved. Beside it, the
   published manifests became derived (`stagePublishTree`), so a pack installed from the registry that enables
   the condition now resolves `dist` and the trap only survives for a pack linked to a checkout.
 
-  It found a real defect on its first run: every test pack in `abuddy-cli/tests/_support/pack-builds.ts` had
-  been typechecking against workspace `src/` while `abuddy build` bundled it from `dist`, because esbuild has
+  It found a real defect on its first run: every test pack in `apack-cli/tests/_support/pack-builds.ts` had
+  been typechecking against workspace `src/` while `apack build` bundled it from `dist`, because esbuild has
   no notion of the condition. That was the one place in the repo where a pack compiled unlike every pack
   author's, and a rule written for external packs is what found it.
 

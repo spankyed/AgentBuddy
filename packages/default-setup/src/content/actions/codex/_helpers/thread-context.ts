@@ -30,7 +30,7 @@ export interface CodexThreadState {
   threadId?: string;
   /** Active turn ID — for interrupt. */
   turnId?: string;
-  /** Current AgentBuddy assistant message receiving Codex stream updates. */
+  /** Current apack assistant message receiving Codex stream updates. */
   activeMessageId?: string;
   lastTurnAt?: number;
   cwd?: string;

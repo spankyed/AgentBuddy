@@ -2,15 +2,15 @@ import type { PromptsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
-import type { Reply } from '@abuddy/sdk/events';
+import type { Reply } from '@apack/sdk/events';
 import type { OutgoingPromptEvents } from './types.ts';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem } from '@apack/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
 import type { Contract } from './contract.ts';
 import { repository } from '#generated/repository.ts';
-import { createLogger } from '@abuddy/sdk/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
+import { createLogger } from '@apack/sdk/logger';
+import { toMap, toIdentifierSet, mapScalar } from '@apack/sdk/utils';
 import { exportPrompts } from './repository/export-prompts.ts';
 import { ref } from '#generated/ref.ts';
 
@@ -23,7 +23,7 @@ import { ref } from '#generated/ref.ts';
  */
 const answer = (reply: Reply<OutgoingPromptEvents> | undefined, event: OutgoingPromptEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('prompts', event));
-import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@apack/sdk/utils/pure';
 
 const logger = createLogger('prompts');
 

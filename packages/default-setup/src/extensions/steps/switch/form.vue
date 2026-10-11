@@ -201,12 +201,12 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { Plus, Trash2, Code } from 'lucide-vue-next'
-import BaseForm from '@abuddy/ui/components/BaseForm'
-import TipSection from '@abuddy/ui/components/TipSection'
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import BaseForm from '@apack/ui/components/BaseForm'
+import TipSection from '@apack/ui/components/TipSection'
+import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor'
 import type { NodeEntity } from '#generated/types.ts'
 import type { SwitchNode, Condition, Predicate } from '#extensions/steps/switch/types.ts'
-import type { BinaryOperator } from '@abuddy/sdk/utils'
+import type { BinaryOperator } from '@apack/sdk/utils'
 
 // Type guard and accessor for object predicates (vs function predicates)
 function getPredicateObject(predicate?: Predicate): { key: string; operator: BinaryOperator; value?: any } | undefined {

@@ -7,10 +7,10 @@
 
 import { qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts'
-import { createExportDir } from '@abuddy/sdk/utils'
-import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
-import { writeExportJson } from '@abuddy/sdk/utils'
-import type { MediaRef } from '@abuddy/sdk/utils'
+import { createExportDir } from '@apack/sdk/utils'
+import { extractMediaRefs, copyMediaByRef } from '@apack/sdk/utils'
+import { writeExportJson } from '@apack/sdk/utils'
+import type { MediaRef } from '@apack/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink, ExportedArtifact } from './export-types.ts'
 import type { MessageEntity } from './types.ts'

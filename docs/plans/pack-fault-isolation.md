@@ -27,7 +27,7 @@ than security: a wedged or crashing extension must not take the window down.
 ## The trigger
 
 **Packs this repo did not write, installed by users.** Today `resolveFromRemoteRegistry`
-(`abuddy-cli/src/commands/install.ts:17`) throws for every name, so every pack in existence is in this tree
+(`apack-cli/src/commands/install.ts:17`) throws for every name, so every pack in existence is in this tree
 and a crash is a bug to fix rather than a hazard to contain. When third-party distribution is real, so is
 this plan — and `declared-capabilities.md` becomes its prerequisite rather than its sibling, because
 containment without a declared surface is containment of nothing in particular.

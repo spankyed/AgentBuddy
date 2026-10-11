@@ -9,11 +9,11 @@
  * once is strictly better than handing it one suite at a time.
  *
  * **There are two pools and not one, and the boundary is forced.** Host suites resolve the workspace
- * `@abuddy` packages to source under the `@abuddy/source` condition; the pack suite must resolve the
+ * `@apack` packages to source under the `@apack/source` condition; the pack suite must resolve the
  * published `dist`, which is the only layout a pack author ever has. Node conditions are per process and
  * vitest shares its worker pool across projects — per-project `poolOptions.execArgv` is ignored, measured —
  * so one process cannot give each kind its own. Probed 2026-09-25: under a pooled process carrying the
- * condition, a `default-setup` spec resolves `@abuddy/sdk` to `src` where it resolves `dist` today. One
+ * condition, a `default-setup` spec resolves `@apack/sdk` to `src` where it resolves `dist` today. One
  * pool would not have failed; it would have quietly tested something else.
  *
  * `packages:ensure` is not run here: each pool run does it, for the reason npm `pretest` hooks do not fire

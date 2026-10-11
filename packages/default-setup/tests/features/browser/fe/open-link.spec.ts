@@ -3,7 +3,7 @@
 // settings stopped reaching its plugin — so the assertion is which of the two the plugin reached for.
 import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import { startFeTestRuntime } from '@abuddy/sdk/testing'
+import { startFeTestRuntime } from '@apack/sdk/testing'
 import browserState from '#features/browser/fe/state.ts'
 
 vi.hoisted(() => { (globalThis as { addEventListener?: unknown }).addEventListener ??= () => {} })

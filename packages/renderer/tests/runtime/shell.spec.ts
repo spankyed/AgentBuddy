@@ -17,14 +17,14 @@ vi.mock('@/adapters/pack-frontends', () => ({ packFrontendIO: { importModule: vi
 
 const { createAppShell } = await import('@/runtime/shell');
 const { fePacks } = await import('@/runtime/packs');
-const { HOST } = await import('@abuddy/host/fe');
+const { HOST } = await import('@apack/host/fe');
 
 fePacks.registerPackFE({
   id: 'memo-pack',
   features: { memos: { plugin: { label: 'Memos', icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as never, default: true } },
 });
 
-const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
+const PANEL_SIZES_KEY = 'apack-panel-sizes';
 
 afterEach(() => localStorage.removeItem(PANEL_SIZES_KEY));
 

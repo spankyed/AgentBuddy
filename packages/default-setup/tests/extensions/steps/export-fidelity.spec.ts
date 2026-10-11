@@ -1,16 +1,16 @@
 // Exporting a flow and importing it back must give the same graph. Nothing asserted this: the 35 round-trip
-// cases in @abuddy/sdk check selected fields of the exported DSL, so a step whose decompile stopped carrying a
+// cases in @apack/sdk check selected fields of the exported DSL, so a step whose decompile stopped carrying a
 // field would keep them green. This compares the entities on both sides instead, which is what a user loses.
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { compileFlowDSL, exportFlowsToDSL } from '@abuddy/sdk/build'
-import { EARS, ROOT_FLOW_ROLE } from '@abuddy/sdk'
-import { untypedQx } from '@abuddy/ears'
-import { importFlows } from '@abuddy/testing/harness'
+import { compileFlowDSL, exportFlowsToDSL } from '@apack/sdk/build'
+import { EARS, ROOT_FLOW_ROLE } from '@apack/sdk'
+import { untypedQx } from '@apack/ears'
+import { importFlows } from '@apack/testing/harness'
 import { repository } from '#generated/repository.ts'
-import { startTestRuntime } from '@abuddy/sdk/testing'
+import { startTestRuntime } from '@apack/sdk/testing'
 import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
 
 startTestRuntime()

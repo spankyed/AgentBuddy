@@ -1,7 +1,7 @@
 import type { GitRepository } from './services/git.ts';
 import type { GitWatcherService } from './services/gitwatcher.ts';
 import { EARS } from '#generated/ears.ts'
-import type { KeyboardShortcut } from '@abuddy/sdk/types'
+import type { KeyboardShortcut } from '@apack/sdk/types'
 
 export interface FileInfo {
   name: string

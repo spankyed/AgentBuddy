@@ -2,9 +2,9 @@
 //
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
-// `abuddy.json` names it at `features[].plugin.contract`.
-import type { PluginInbox } from '@abuddy/sdk/fe'
-import type { PromptEntity, TemplateInput } from '@abuddy/sdk'
+// `apack.json` names it at `features[].plugin.contract`.
+import type { PluginInbox } from '@apack/sdk/fe'
+import type { PromptEntity, TemplateInput } from '@apack/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { Category } from '#generated/types.ts'
 

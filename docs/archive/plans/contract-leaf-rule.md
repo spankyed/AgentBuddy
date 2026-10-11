@@ -7,7 +7,7 @@ exists mostly so the third does not repeat them.
 
 **Done, 2026-09-27.** The gap below is closed (`27a532ed5`: the walk resolves a pack's own `#` subpaths through
 `mappedPathFor`), the rule reads the shared AST reader rather than a regex, and the division of labour with codegen's
-own refusal is recorded on the rule and measured by `abuddy-sdk/tests/build/declared-type-of.spec.ts`. What is worth
+own refusal is recorded on the rule and measured by `apack-sdk/tests/build/declared-type-of.spec.ts`. What is worth
 keeping here is the background: the two refuted arguments for deleting the rule, and the position table below.
 
 ---
@@ -31,7 +31,7 @@ Two properties, not one:
 cycle actually does"* below: three separate statements of this rule's harm have now been wrong, and the measured
 one is the published facade.
 
-Three places assert the invariant to readers and pack authors: `packages/abuddy-sdk/CLAUDE.md:61` (which names
+Three places assert the invariant to readers and pack authors: `packages/apack-sdk/CLAUDE.md:61` (which names
 this rule as the guard), and `manifest-schema.ts:130` and `:138` (the `.describe()` strings a pack author sees).
 `docs/goals/README.md:218-230` is the repo's own policy that an invariant with a criterion has a guard.
 
@@ -63,7 +63,7 @@ retired this week.
   exist (`:184` `outgoing`, `:196` `inbox`, `:213` each event member) — a collapsed `context`/`state` is caught
   by none.
 - It only fires in a **cold tree**. With `src/__generated__/` present from an earlier run — every tree
-  `abuddy build` sees after the first — the imports resolve and nothing throws.
+  `apack build` sees after the first — the imports resolve and nothing throws.
 - A **value** import of `#generated/events` never affects the declared type, so it never collapses one. That is
   the rule's own fixture shape (`import { untypedBroadcastToPlugin } from '#generated/events'`).
 
@@ -93,7 +93,7 @@ reported** — and the closure walk stops there too, so claims 2, 4 and 5 are by
 hop. No contract leaf uses `#features/` today, so nothing is missed *now*; the rule is one ordinary import away
 from being silent about the thing it exists for.
 
-`readSubpathImports` (`@abuddy/host/build/subpath-imports.ts:25`) is the resolver for a pack's own `imports` map,
+`readSubpathImports` (`@apack/host/build/subpath-imports.ts:25`) is the resolver for a pack's own `imports` map,
 and `pack-rules.ts:272` already uses it for exactly this. That is the fix, not a new resolver.
 
 ---
@@ -126,7 +126,7 @@ first build of a fresh checkout impossible.
 
 That is the whole overlap, and it is why four of the five claims have no second guard anywhere.
 
-`abuddy-sdk/tests/build/declared-type-of.spec.ts` holds both halves: a case for the collapse through a hop, and two
+`apack-sdk/tests/build/declared-type-of.spec.ts` holds both halves: a case for the collapse through a hop, and two
 for the positions nothing reads. Two earlier notes in this doc were wrong and are corrected here — the spec's header
 said *"the four shapes that reach the readers"* over five cases, which was the four refusal shapes plus a control and
 so already right; and the reader's refusal is not "a slice of claim 2 in a cold tree" but the position table above.
@@ -138,7 +138,7 @@ The rule still matches `ANY_SPECIFIER` over file text, so it inherits the shapes
 `.vue` `<template>` or `<style>`, all reported; a module path in a `vi.mock` missed. Contract leaves are `.ts`, so
 the `.vue` shapes do not apply, but the comment and template-literal ones do.
 
-The reader is `abuddy-cli/src/build/pack-sources.ts`; `readSource(file).specifiers` gives every specifier with its
+The reader is `apack-cli/src/build/pack-sources.ts`; `readSource(file).specifiers` gives every specifier with its
 line, and the script already imports it. The closure walk needs no byte offsets — `goal-one-rule-set.md:305`
 claims it does, which is wrong twice: it also says this rule *"takes `view.code` from the reader"*, where the code
 calls `fs.readFileSync` directly.
@@ -172,8 +172,8 @@ MemosContext`. Because a dependent's facade inlines its dependencies' verbatim (
 
 **And the third wrong harm, for the record.** The first was "codegen refuses it anyway" (refuted above); the second
 "a contract that reads as `any`" (refuted by the two mutations); the third was mine — *"the facade gains a
-third-party import its dependents may not have."* `abuddy-cli/src/build/facade-gate.ts:14-25` already allows a
-facade to import `@abuddy/*`, Node built-ins and `@abuddy/sdk`'s peers, which include **`xstate`** and `zod`,
+third-party import its dependents may not have."* `apack-cli/src/build/facade-gate.ts:14-25` already allows a
+facade to import `@apack/*`, Node built-ins and `@apack/sdk`'s peers, which include **`xstate`** and `zod`,
 under *"Packages a facade may import: every dependent has them"* — with a passing gate case whose facade imports
 both. `zod` travels that route today into a fixture that uses no zod. The leak is size and coupling, not
 resolution.
@@ -201,11 +201,11 @@ signal is an external pack author, and no check here runs for them — that is t
 ## Verification
 
 Per phase above, plus: `npm run typecheck`; `npm run test:integration -w @app/repo-checks` (the 61-case
-`import-specifiers.integration.spec.ts`, 9 of them this rule's); `npx vitest run --root packages/abuddy-sdk
+`import-specifiers.integration.spec.ts`, 9 of them this rule's); `npx vitest run --root packages/apack-sdk
 tests/build/declared-type-of.spec.ts`; `npm run test:external-pack:contract`; `npm run chain`.
 
 `spec-cost` bookkeeping if a spec's cost crosses 1.5s/2.5s: `npm run spec-cost:update -- --suite repo-checks` or
-`-- --suite abuddy-sdk`, on an idle machine.
+`-- --suite apack-sdk`, on an idle machine.
 
 ## What was verified, and what was not
 

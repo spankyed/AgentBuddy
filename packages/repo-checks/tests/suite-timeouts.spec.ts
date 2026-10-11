@@ -14,7 +14,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT } from '@apack/host/build/packages-built';
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { SIZE_MS, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
 import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
@@ -67,8 +67,8 @@ const TIMEOUT_KEYS = ['testTimeout', 'hookTimeout', 'teardownTimeout', 'timeout'
  * its budget` and a failing `declares its budget`, so it fails loudly rather than quietly.
  */
 const DELEGATES: Record<string, string> = {
-  definePackTestConfig: path.join('packages', 'abuddy-testing', 'src', 'vitest.ts'),
-  definePackE2EConfig: path.join('packages', 'abuddy-testing', 'src', 'playwright.ts'),
+  definePackTestConfig: path.join('packages', 'apack-testing', 'src', 'vitest.ts'),
+  definePackE2EConfig: path.join('packages', 'apack-testing', 'src', 'playwright.ts'),
 };
 
 /**
@@ -146,8 +146,8 @@ describe('a suite times a test out at its size budget', () => {
    * A ceiling was only half the rule, and the missing half is the one that bit. Vitest defaults to 5s for a
    * test and 10s for a hook — both *tighter* than a small target's 15s — so a config that declares nothing
    * is not safely inside its size, it is running on a third number nobody chose. Under the chain's three
-   * lanes a 5.8s typecheck in `@abuddy/sdk` crossed the 5s default and was reported as a hang, in a suite
-   * allowed 15s; the next in line was a 4.1s lock test in `@abuddy/host` at 82% of the same default. Five
+   * lanes a 5.8s typecheck in `@apack/sdk` crossed the 5s default and was reported as a hang, in a suite
+   * allowed 15s; the next in line was a 4.1s lock test in `@apack/host` at 82% of the same default. Five
    * of the thirteen configs were in that state, which is also why the three-lane default is safer than it
    * was: `CLAUDE.md` credits these budgets with removing the 5s cap, and they had only reached eight configs.
    *

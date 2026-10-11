@@ -260,7 +260,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
-import type { ArtifactItem } from '@abuddy/sdk/artifacts'
+import type { ArtifactItem } from '@apack/sdk/artifacts'
 import { usePluginState } from '#generated/fe.ts'
 import { openPlugin } from '#generated/fe.ts'
 import { sendToSystem } from '#generated/events.ts'

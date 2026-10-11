@@ -1,9 +1,9 @@
-// The API's log output: every log event on the root event bus (from @abuddy/sdk/logger, error reports and captured
+// The API's log output: every log event on the root event bus (from @apack/sdk/logger, error reports and captured
 // console calls) is printed once to the original console, and streamed to the client by the logs system
 import { formatWithOptions, type InspectOptions } from 'node:util';
-import type { LogEvent, LogLevel } from '@abuddy/sdk/logger';
+import type { LogEvent, LogLevel } from '@apack/sdk/logger';
 import { rootEvents } from '@/transport/emitter';
-import { errorMessage, redactSecretText } from '@abuddy/sdk/utils/pure';
+import { errorMessage, redactSecretText } from '@apack/sdk/utils/pure';
 
 // Store original console methods
 export const originalConsole = {

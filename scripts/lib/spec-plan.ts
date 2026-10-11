@@ -9,12 +9,12 @@
  * **The rule.** A spec path, a directory or a name names specs directly, so those run in the package that
  * holds them — that is what you asked for. A **source file** is a different question: after an edit you
  * want *what could this break*, and the answer is every spec that imports it, transitively, wherever it
- * lives. That question used to be answered with the file's own package, which for `@abuddy/sdk` meant one
+ * lives. That question used to be answered with the file's own package, which for `@apack/sdk` meant one
  * of the seven suites covering it, reported green.
  *
  * Vitest already answers it properly: the root `vitest.config.ts` lists every host project and `related`
  * resolves the module graph across all of them **in one process**. So a source file plans one root run.
- * Measured 2026-09-26: `packages/abuddy-sdk/src/types/sdk-entities.ts` reaches 104 files, and
+ * Measured 2026-09-26: `packages/apack-sdk/src/types/sdk-entities.ts` reaches 104 files, and
  * `scripts/lib/chain-steps.ts` 4 where the old route found 3 — it is both wider and transitive.
  */
 import * as fs from 'node:fs';
@@ -83,7 +83,7 @@ export interface Run {
 
 /**
  * Specs that cover a target and that no walk of the module graph will reach, because a build stands between
- * them: `src` -> `abuddy build` -> an artifact -> the spec that reads it.
+ * them: `src` -> `apack build` -> an artifact -> the spec that reads it.
  *
  * **Beside a run, never instead of one.** An apply *helper* is imported by specs directly — measured,
  * `src/content/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/content/**`
@@ -223,7 +223,7 @@ export const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.
  *
  * Which is why this is derived from the *declared* graph (`workspaceDeps`) rather than the import graph, and
  * from the same function the chain keys its cache on. Not every package reaches a pack suite, and the ones
- * that do are not only the ones a pack names: `@abuddy/host` arrives transitively through `@abuddy/testing`,
+ * that do are not only the ones a pack names: `@apack/host` arrives transitively through `@apack/testing`,
  * whose bundle inlines it. No count is written here on purpose — `spec-plan.spec.ts` partitions every
  * package under `packages/` into those that reach one and those that do not, which is the only form of that
  * claim that cannot quietly go stale. A hand-written "four of twelve" was wrong the day it was written.
@@ -249,9 +249,9 @@ const PACK_SUITES = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
  * reason — it is a second vitest config, and the root projects `exclude` its specs — but the consequence is
  * the same and was worse, because nothing said so: `npm run spec -- <a source file>` printed *"every spec
  * covering X"* over a run that had skipped every integration spec covering X. Measured, 22 modules in
- * `@abuddy/cli` alone are imported directly by one.
+ * `@apack/cli` alone are imported directly by one.
  *
- * Which is also why the sentence must not say "through a build": these specs resolve `@abuddy/source` like
+ * Which is also why the sentence must not say "through a build": these specs resolve `@apack/source` like
  * any host project, so `spec:full` reaches them without building anything.
  */
 export function affectedIntegrationSuites(editedPackages: readonly (string | null)[], root?: string): string[] {
@@ -318,16 +318,16 @@ const CONTENT_SPECS = 'tests/content';
 /**
  * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
  *
- * `abuddy.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
+ * `apack.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
  * generated specifiers resolve by — 76 of default-setup's 95 specs go through it — and the `prepare` that
  * runs the codegen; `tsconfig.json` is what the build compiles with.
  */
-const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfig.json'];
+const BUILD_INPUTS: readonly string[] = ['apack.json', 'package.json', 'tsconfig.json'];
 
 /**
  * Which of a pack's files reach their specs only through a build, and what runs them.
  *
- * Two edges, both of the shape `src` -> `abuddy build` -> an artifact -> a spec that reads it, and neither
+ * Two edges, both of the shape `src` -> `apack build` -> an artifact -> a spec that reads it, and neither
  * visible to any module graph — the spec imports the built output, so a *regenerated* tree is covered while
  * editing the source that generates it reaches nothing.
  *
@@ -583,7 +583,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
       // correctly finds nothing for it. What it must not do is say it covered the file: that is the claim, and
       // making it for a `.md` would fail the first entry in the root CLAUDE.md's list of time-wasters.
       // A build edge *is* that claim, made directly and about a named spec directory, so it carries one
-      // whatever the extension — `abuddy.json` is not code and is covered all the same.
+      // whatever the extension — `apack.json` is not code and is covered all the same.
       const coverable = couldBeCovered(rel) || edge !== undefined ? rel : undefined;
       const own = ownSuiteFor(rel);
       if (edge !== undefined && full) {
@@ -659,7 +659,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // The claim is over the part of the change set a spec could cover. A doc-only change set has none — which
   // is also why this takes the paths: a package name cannot say whether what changed inside it was code.
   const coverable = changedPaths.filter(couldBeCovered);
-  // And a pack's build edges are covered without being coverable: `abuddy.json` is a `.json` and a content source
+  // And a pack's build edges are covered without being coverable: `apack.json` is a `.json` and a content source
   // may be a `.md`, and both have specs that read what building them produces. Naming one as a *target* says
   // so, so a change set holding one must not answer "nothing a spec could cover" — the two routes would
   // contradict each other about the same file, which is how this was found
@@ -685,7 +685,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
   }
-  // What the runs above do not already cover: changing `@abuddy/sdk` *and* the pack code that uses it is one
+  // What the runs above do not already cover: changing `@apack/sdk` *and* the pack code that uses it is one
   // edit under this repo's no-backward-compatibility rule, and planned the pack's 87 specs twice
   const toRun = notYetCovered(affected, runs);
   if (full && toRun.length > 0) runs.push(packSuiteRun(root, toRun));

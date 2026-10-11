@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sourceFiles } from '../../packages/abuddy-cli/src/build/pack-sources.ts';
+import { sourceFiles } from '../../packages/apack-cli/src/build/pack-sources.ts';
 
 export const repoRoot = path.resolve(import.meta.dirname, '..', '..');
 
@@ -31,7 +31,7 @@ export const repoRelative = (from: string, to: string): string => path.relative(
  */
 export const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|results|test-results|\..+)$/;
 
-export const CLI_TEMPLATE_PACK = 'packages/abuddy-cli/templates/pack';
+export const CLI_TEMPLATE_PACK = 'packages/apack-cli/templates/pack';
 
 /** A JSON file's contents, named in the error when it doesn't parse (one bad manifest shouldn't sink the run) */
 export function readJsonFile<T>(file: string): T {
@@ -65,13 +65,13 @@ export function readJsonFile<T>(file: string): T {
 let packsInRepo: string[] | undefined;
 
 /**
- * Every pack in this checkout: a directory holding `abuddy.json`, which is already how the source-condition
+ * Every pack in this checkout: a directory holding `apack.json`, which is already how the source-condition
  * rule defines one, plus the scaffold's templates — the pack every pack author starts from, which has no
- * manifest because `abuddy.json` is the one thing the scaffold still builds in code.
+ * manifest because `apack.json` is the one thing the scaffold still builds in code.
  *
  * Derived rather than listed, so a fixture pack added tomorrow is covered by every rule here on the day it
  * lands. `dist`, `node_modules` and dot-directories are skipped, which is what keeps a *built* pack's copy of
- * itself out (`tests/packs/external-pack/.abuddy/bundle/…` is the same pack, built).
+ * itself out (`tests/packs/external-pack/.apack/bundle/…` is the same pack, built).
  */
 export function packDirs(root = repoRoot): string[] {
   const memo = root === repoRoot ? packsInRepo : undefined;
@@ -81,7 +81,7 @@ export function packDirs(root = repoRoot): string[] {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         if (!SKIPPED_DIRS.test(entry.name)) walk(path.join(dir, entry.name));
-      } else if (entry.name === 'abuddy.json') {
+      } else if (entry.name === 'apack.json') {
         found.push(repoRelative(root, dir));
       }
     }
@@ -99,7 +99,7 @@ export const PACK_SOURCE_DIRS = packHalves('src');
 
 /**
  * A pack's own code, tests included: the population for a rule about a specifier a pack may not write, wherever
- * it writes it. `abuddy test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
+ * it writes it. `apack test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
  * TEST_DIRS)`), so a rule that reads only `src` here is narrower in this repo than the same rule is for a pack.
  */
 export const PACK_TEST_DIRS = packHalves('tests');
@@ -136,7 +136,7 @@ export function packageSourceDirs(root = repoRoot): string[] {
  * Where the feature-topology rules look. The app is the pack `host` (`features/` is its features), and it has
  * no manifest to be found by, so it is named rather than derived.
  */
-export const PACK_SRC_ROOTS = [...PACK_SOURCE_DIRS, 'packages/abuddy-host/src'];
+export const PACK_SRC_ROOTS = [...PACK_SOURCE_DIRS, 'packages/apack-host/src'];
 
 /** Emitted extension → the source extensions that compile to it */
 export const SOURCE_EXTENSIONS: Record<string, string[]> = { '.js': ['.ts', '.tsx'], '.mjs': ['.mts'], '.cjs': ['.cts'] };
@@ -150,8 +150,8 @@ export const SOURCE_EXTENSIONS: Record<string, string[]> = { '.js': ['.ts', '.ts
  */
 export function packRootOf(from: string, root: string): string {
   // A directory this repo already calls a pack wins over the walk below. The CLI's scaffold is one and has no
-  // manifest to be found by — `abuddy.json` is built in code, from computed keys — so the walk climbed past it
-  // to `packages/abuddy-cli` and handed every rule that package as the pack. Measured: `contract-leaves`,
+  // manifest to be found by — `apack.json` is built in code, from computed keys — so the walk climbed past it
+  // to `packages/apack-cli` and handed every rule that package as the pack. Measured: `contract-leaves`,
   // `cross-feature-imports` and `own-modules` all reported nothing over the scaffold, each for a different
   // reason and none of them "it is clean".
   const inside = (pack: string) => from === pack || from.startsWith(pack + path.sep);
@@ -159,7 +159,7 @@ export function packRootOf(from: string, root: string): string {
   if (known !== undefined) return known;
   let dir = fs.statSync(from).isFile() ? path.dirname(from) : from;
   while (dir.startsWith(root) && dir !== root) {
-    if (fs.existsSync(path.join(dir, 'abuddy.json')) || fs.existsSync(path.join(dir, 'package.json'))) return dir;
+    if (fs.existsSync(path.join(dir, 'apack.json')) || fs.existsSync(path.join(dir, 'package.json'))) return dir;
     dir = path.dirname(dir);
   }
   return path.dirname(fs.statSync(from).isFile() ? path.dirname(from) : from);

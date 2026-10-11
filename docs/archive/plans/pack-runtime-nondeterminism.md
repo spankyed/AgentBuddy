@@ -33,11 +33,11 @@ doing `import * as fs from 'fs/promises'`). Measured: **four runs, four distinct
 
 ## Who builds it
 
-`dev-build.mjs`, and only `dev-build.mjs`. `abuddy build` stops before `bundlePackRuntime` for a built-in
-pack, so the pack's `build` script — `abuddy build && node ... dev-build.mjs` — has exactly one producer
+`dev-build.mjs`, and only `dev-build.mjs`. `apack build` stops before `bundlePackRuntime` for a built-in
+pack, so the pack's `build` script — `apack build && node ... dev-build.mjs` — has exactly one producer
 for this file.
 
-Worth stating because the obvious reading is wrong, and was read wrong once: running `abuddy build` alone
+Worth stating because the obvious reading is wrong, and was read wrong once: running `apack build` alone
 repeatedly leaves the file byte-identical, which looks like determinism and is actually the file not being
 written at all.
 
@@ -67,15 +67,15 @@ Ruled out by measurement, three runs each:
 ## The fix
 
 esbuild is 0.25.12 against 0.28.2. An upgrade is the candidate, and it is not a one-line change: esbuild
-builds the pack runtime, the content runtime, the step build, the FE bundle, `@abuddy/cli`'s and
-`@abuddy/testing`'s published bundles, and the API through tsup. It wants its own goal, with the published
+builds the pack runtime, the content runtime, the step build, the FE bundle, `@apack/cli`'s and
+`@apack/testing`'s published bundles, and the API through tsup. It wants its own goal, with the published
 bundles re-checked.
 
 Reproduction, which takes about a minute:
 
 ```bash
 for i in 1 2 3 4; do
-  node --import tsx --conditions=@abuddy/source packages/default-setup/dev-build.mjs >/dev/null 2>&1
+  node --import tsx --conditions=@apack/source packages/default-setup/dev-build.mjs >/dev/null 2>&1
   shasum -a 256 packages/default-setup/dist/runtime/index.cjs | cut -c1-12
 done
 ```

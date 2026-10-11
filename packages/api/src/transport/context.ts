@@ -7,7 +7,7 @@
 // not derived from the socket, only from when this runs. Two properties follow, and both are load-bearing:
 // it is never read from the wire, so a return address cannot be forged, and it dies with the socket, so
 // nothing has to observe a disconnect to retire it.
-import { randomId } from '@abuddy/sdk/utils/pure';
+import { randomId } from '@apack/sdk/utils/pure';
 
 /**
  * What the WebSocket adapter hands this, narrowed to the one member used.

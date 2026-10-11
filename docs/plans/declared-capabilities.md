@@ -5,12 +5,12 @@ Compiled 2026-10-08 on `AS/one-action-cache`, from reading how a pack reaches th
 
 **This is the one item on the extension-host list whose cost grows with delay.** Retrofitting permissions
 onto packs that assume ambient access is painful, and right now there is **one pack** to migrate and no
-third-party pack to break — `resolveFromRemoteRegistry` (`abuddy-cli/src/commands/install.ts:17`) still
+third-party pack to break — `resolveFromRemoteRegistry` (`apack-cli/src/commands/install.ts:17`) still
 throws for every name.
 
 ## Context
 
-`features[].services` in `abuddy.json` declares the services a feature **provides**
+`features[].services` in `apack.json` declares the services a feature **provides**
 (`pack-registration.ts:57-58`: *"The keys of the services the feature provides"*). **Nothing declares what
 a feature consumes.** Every pack reaches all nine host services — `logger`, `emitter`, `repository`,
 `appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings` (`packs/registry.ts:31`) —
@@ -25,7 +25,7 @@ review asks, and an incident asks.
 
 ## The enforcement point already exists
 
-`#generated/services.ts` is generated per pack from `abuddy.json` and is what pack code imports. Its last
+`#generated/services.ts` is generated per pack from `apack.json` and is what pack code imports. Its last
 line is the whole of the gap:
 
 ```ts
@@ -37,10 +37,10 @@ manifest has no bearing on what is reachable. Making it a *constructed* object c
 host services is a content change to codegen, not a new mechanism.
 
 **The ambient path has to close with it.** Pack sources also import `services` straight from
-`@abuddy/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
+`@apack/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
 not exclusive. `check:specifiers` already rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem`
 imports in pack sources for exactly this reason; this is the same rule for the same kind of escape hatch,
-and `abuddy validate`/`abuddy build` are where it binds for an external pack.
+and `apack validate`/`apack build` are where it binds for an external pack.
 
 ## The design
 
@@ -75,16 +75,16 @@ looks like a service:
 
 1. **`services.repository`** — the typed repositories, which an earlier draft of this plan called "the
    floor". It is not; it is data access.
-2. **`untypedQx` / `untypedTx` from `@abuddy/ears`** — and this one is *documented as a pack affordance*:
+2. **`untypedQx` / `untypedTx` from `@apack/ears`** — and this one is *documented as a pack affordance*:
    the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
    open locks the front door and leaves the side door in the manual.
 3. **Content**, which touch `services` not at all. An applier calls
-   `createEntityWithDefaults(record.entity, …)` (`abuddy-sdk/src/content/format-applier.ts:164`) with the entity name
+   `createEntityWithDefaults(record.entity, …)` (`apack-sdk/src/content/format-applier.ts:164`) with the entity name
    taken from the pack's compiled content data.
 
 **What is enforced today is declaration, not use.** The registry refuses a pack that *declares* a reserved
 entity type or one another pack already declared (`packs/registry.ts:37`, `:324`). The engine's
-`isEntityType` (`abuddy-ears/src/transaction.ts:28`) asks whether a name is a known entity type, never
+`isEntityType` (`apack-ears/src/transaction.ts:28`) asks whether a name is a known entity type, never
 whose it is — it has no concept of packs. So a pack may read every row in the app, and write rows of any
 declared type, including another pack's.
 
@@ -102,10 +102,10 @@ Restricting the data layer contradicts a documented affordance. Either:
 ### The cheap piece worth doing either way
 
 **A pack's compiled content may only create entity types the pack declares** — derivable at build time from
-`abuddy.json`'s `ears.entities` against the `record.entity` values in the compiled content data, and refused by
-`abuddy validate` and `abuddy build`. It closes the content path without touching runtime queries or the
+`apack.json`'s `ears.entities` against the `record.entity` values in the compiled content data, and refused by
+`apack validate` and `apack build`. It closes the content path without touching runtime queries or the
 untyped affordance, and it is the same shape as the externals subset check `goal-one-kind-of-pack` landed
-(`abuddy-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
+(`apack-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
 refusal.
 
 It is worth doing whichever way the decision above goes, because a pack applying another pack's entity types
@@ -125,7 +125,7 @@ is a bug under either model.
 
 - A fixture pack declaring no capabilities and calling `services.secrets` fails: at compile time through the
   facade, and at runtime through the registry. **Both**, since each is a different reader's gate.
-- `npm run chain`. The capability list reaching `abuddy.schema.json` needs `schema:update`, and the manifest
+- `npm run chain`. The capability list reaching `apack.schema.json` needs `schema:update`, and the manifest
   type reaching the published surface needs `api:update`.
 - default-setup's declared set is exactly what it uses: derive it by removing a capability and watching the
   typecheck name the call sites, rather than reading the list and believing it.
