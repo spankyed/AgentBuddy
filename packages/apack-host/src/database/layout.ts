@@ -1,8 +1,8 @@
-// Where a data dir keeps the app's stores: inside `appDir`, the one directory the app owns (@apack/sdk/env).
+// Where a data dir keeps the app's stores: inside `appDir`, the one directory the app owns (@apackdev/sdk/env).
 // Until 2026-10-01 there were two layouts — the data dir's root for a packaged app, `.data/` for a source run,
 // chosen by NODE_ENV — and this module's job was to work out which. There is one, so there is nothing to work out.
 import * as fs from 'node:fs';
-import { _appDataPaths, type _AppDataPaths } from '@apack/sdk/utils';
+import { _appDataPaths, type _AppDataPaths } from '@apackdev/sdk/utils';
 
 /**
  * The stores of the database in `userDataDir`. Throws when the data dir holds no database, or only part of one:

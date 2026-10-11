@@ -9,8 +9,8 @@
 // This file is what keeps the limit honest. Without it the next person to make a handler `await` before
 // sending would find the sender missing and read it as a bug rather than as the shape.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { startTestRuntime, testRootEvents } from '@apack/sdk/testing';
-import { _currentDelivery, untypedSendToSystem } from '@apack/sdk/events';
+import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
+import { _currentDelivery, untypedSendToSystem } from '@apackdev/sdk/events';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { deliverAs } from '../../src/bus/delivery.ts';

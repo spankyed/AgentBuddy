@@ -1,9 +1,9 @@
 // The app's own features, registered as the pack `host` like any pack: so every registry lookup, validation map and
 // sort treats them as it treats a pack's, with no side channel. The plugins are always there; the systems only where
 // the caller runs them (the app does; the test harness runs no Packs system).
-import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@apack/sdk/events';
-import type { PackFeatureSystem, PackRegistration } from '@apack/sdk/framework';
-import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apack/sdk/ids';
+import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import type { PackFeatureSystem, PackRegistration } from '@apackdev/sdk/framework';
+import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST } from '../refs.ts';
 import type { PackInfo } from '../packs/registry.ts';
 import { SETTINGS_PLUGIN_EVENT_TYPES } from './settings/be/system.ts';

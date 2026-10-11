@@ -2,10 +2,10 @@ import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, SHARED_INSTANCE_
 import { keepHostModulesResolvable, withModuleBridge } from '../module-bridge.ts';
 import { SHARED_INSTANCE_MODULES } from './sdk-modules.ts';
 
-// The SDK bridge: pack runtime code shares the loader's shared-instance packages (@apack/sdk,
-// @apack/ears); it never requires @apack/host (check:specifiers and apack build reject it).
+// The SDK bridge: pack runtime code shares the loader's shared-instance packages (@apackdev/sdk,
+// @apackdev/ears); it never requires @apackdev/host (check:specifiers and apack build reject it).
 // The API bundle inlines them (tsup bundles them). Any CJS code loaded at runtime (external packs,
-// built-in dev entry) that does require('@apack/ears') would otherwise get a SEPARATE module
+// built-in dev entry) that does require('@apackdev/ears') would otherwise get a SEPARATE module
 // instance, with no bound app and no installed engine.
 // sdk-modules.ts imports every export statically, so they resolve to the BUNDLED instances, the
 // ones with hydrated data; withHostResolution injects them into the require cache so dynamically
@@ -18,7 +18,7 @@ const SDK_BRIDGE: Record<string, unknown> = SHARED_INSTANCE_MODULES;
  * Exported for the drift guard in tests/packs/runtime/sdk-bridge-drift.spec.ts. A pack
  * importing a shared-instance subpath that is missing here fails loudly, and
  * says what to do: `withModuleBridge` throws "isn't provided by this
- * apack: rebuild the pack with the current @apack/cli" for any specifier
+ * apack: rebuild the pack with the current @apackdev/cli" for any specifier
  * under a bridged package it has no entry for.
  *
  * **It throws rather than falling through**, which is the whole of what this list buys. Real Node
@@ -34,7 +34,7 @@ export function getBridgedSdkSpecifiers(): readonly string[] {
 /**
  * The packages the loader resolves from itself for a pack, rather than bridging a module of.
  *
- * Exported for the guard in `@apack/cli`'s `tests/build/pack-externals.spec.ts`, the one place that sees
+ * Exported for the guard in `@apackdev/cli`'s `tests/build/pack-externals.spec.ts`, the one place that sees
  * both this and the externals a pack bundle is built with.
  */
 export function getHostProvidedPackages(): readonly string[] {
@@ -51,11 +51,11 @@ export function getHostProvidedPackages(): readonly string[] {
  * and must still resolve. The host is the only place it can come from: an installed pack has no
  * `node_modules` (`stagePack` copies `dist/{runtime,build,types}` and nothing else). A checkout's workspace
  * one sits above the pack and answers anyway, which is what hides a gap here until a pack is installed —
- * `@apack/cli`'s `tests/build/pack-externals.spec.ts` is what closes it, holding this against the externals
+ * `@apackdev/cli`'s `tests/build/pack-externals.spec.ts` is what closes it, holding this against the externals
  * a pack bundle is built with.
  *
  * This is not `getSharedBeDeps()` widened: that list is the modules a backend shares an *instance* of, which
- * `@apack/testing`'s dependency runtime imports eagerly, and a frontend package belongs in neither.
+ * `@apackdev/testing`'s dependency runtime imports eagerly, and a frontend package belongs in neither.
  */
 const HOST_PROVIDED_PACKAGES = [...Object.keys(SHARED_DEPS), ...HOST_RESOLVED_BINARIES];
 

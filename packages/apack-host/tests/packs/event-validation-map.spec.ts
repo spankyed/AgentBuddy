@@ -1,10 +1,10 @@
 // What bus.send accepts: each registered system's incoming events, kept current by registration itself.
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import type { PackFeature } from '@apack/sdk/framework';
+import type { PackFeature } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/registration.ts';
-import { PLUGIN_EVENT_TYPES } from '@apack/sdk/events';
+import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);

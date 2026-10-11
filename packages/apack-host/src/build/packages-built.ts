@@ -1,7 +1,7 @@
 /**
  * Whether the publishable packages' build output still matches the sources it was built from, and the
  * build that refreshes it. `scripts/ensure-packages-built.ts` is the command over this module, run as
- * `npm run packages:ensure` and as `@apack/cli`'s `pretest`, whose `published-*` specs read that output.
+ * `npm run packages:ensure` and as `@apackdev/cli`'s `pretest`, whose `published-*` specs read that output.
  *
  * Freshness is a success stamp, not a timestamp. A build removes its output first and neither tsc nor
  * tsdown nor esbuild is transactional, so a failed or interrupted one leaves a complete-looking tree
@@ -37,7 +37,7 @@ export const CHECKOUT_MARKER = path.join('packages', 'apack-host', 'src', 'build
 
 /**
  * The checkout this file belongs to, found by walking up from wherever it runs. Bundlers inline this
- * module into packages that ship elsewhere (@apack/testing's harness, @apack/cli), so a root derived
+ * module into packages that ship elsewhere (@apackdev/testing's harness, @apackdev/cli), so a root derived
  * from this file's own location would point inside that bundle; walking up finds the checkout when
  * there is one. With no checkout above it there is nothing to be stale against, and the only caller
  * that runs there (`assertCheckoutPackagesFresh`) tests for the marker below before reading anything.
@@ -113,11 +113,11 @@ export interface BuildUnit {
   readonly command?: string;
 }
 
-/** A package compiled to its own `dist/` by `scripts/build-package.ts` (or, for @apack/ui, build-ui-package.ts) */
+/** A package compiled to its own `dist/` by `scripts/build-package.ts` (or, for @apackdev/ui, build-ui-package.ts) */
 function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
   return {
     // The build scripts live in the repo's scripts/, not the package's: a package's own scripts are its
-    // other tooling (the SDK's schema generator) and no input of this build, bar @apack/ui's exports
+    // other tooling (the SDK's schema generator) and no input of this build, bar @apackdev/ui's exports
     //
     // The `apack-host/src/build` modules the build script's imports lead to and that decide what it *emits*:
     // `stagePublishTree`, which derives the staged manifest, and what it reaches in turn. All were missing until
@@ -146,17 +146,17 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
  * Each workspace whose source a bundle **inlines**, as a directory name.
  *
  * Derived from the list of what is inlined rather than written out, so a third shared-instance package arrives
- * declared. The naming is the repo's own and holds for all of them: `@apack/x` lives in `packages/apack-x`.
+ * declared. The naming is the repo's own and holds for all of them: `@apackdev/x` lives in `packages/apack-x`.
  */
-const INLINED_SOURCE_DIRS = SHARED_INSTANCE_PACKAGES.map((name) => name.replace('@apack/', 'apack-'));
+const INLINED_SOURCE_DIRS = SHARED_INSTANCE_PACKAGES.map((name) => name.replace('@apackdev/', 'apack-'));
 
 /**
- * A package esbuild bundles into `dist/package/`, inlining @apack/host and the shared-instance packages from
+ * A package esbuild bundles into `dist/package/`, inlining @apackdev/host and the shared-instance packages from
  * source (scripts/bundle-package.ts).
  *
  * **It declares every source it inlines, which is the whole of what it reads.** `apack-host/src` was there
- * and the shared-instance packages' were not, so an edit to `@apack/sdk/src` left the `@apack/cli` and
- * `@apack/testing` bundles stale with their stamps reading fresh — silent, and the way it surfaced was a
+ * and the shared-instance packages' were not, so an edit to `@apackdev/sdk/src` left the `@apackdev/cli` and
+ * `@apackdev/testing` bundles stale with their stamps reading fresh — silent, and the way it surfaced was a
  * packaged-authoring run type-checking a generated file against an SDK whose type no longer matched the CLI
  * that emitted it. `chain-inputs.spec.ts` walks a build script's own imports, which these are not: the
  * bundler reaches them through the package being bundled.
@@ -174,12 +174,12 @@ function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
 
 /** The workspaces `npm run packages:build` builds. `tests/build/package-freshness.spec.ts` pins this list against it. */
 export const BUILD_UNITS: Record<string, BuildUnit> = {
-  '@apack/ears': compiled('apack-ears'),
-  '@apack/sdk': compiled('apack-sdk'),
-  '@apack/ui': compiled('apack-ui', pkgFile('apack-ui', 'tsdown.config.ts'), repoFile('scripts', 'build-ui-package.ts'),
+  '@apackdev/ears': compiled('apack-ears'),
+  '@apackdev/sdk': compiled('apack-sdk'),
+  '@apackdev/ui': compiled('apack-ui', pkgFile('apack-ui', 'tsdown.config.ts'), repoFile('scripts', 'build-ui-package.ts'),
     pkgFile('apack-ui', 'scripts', 'exports.ts')),
-  '@apack/testing': bundled('apack-testing'),
-  '@apack/cli': bundled('apack-cli', pkgFile('apack-cli', 'bin')),
+  '@apackdev/testing': bundled('apack-testing'),
+  '@apackdev/cli': bundled('apack-cli', pkgFile('apack-cli', 'bin')),
 };
 
 /**
@@ -235,13 +235,13 @@ export const NOT_A_BUILD_INPUT: Record<string, string> = {
 
 /**
  * Package directory → the directory inside it that npm publishes, in publish order (a dependency before its
- * dependents). None of the five publishes its workspace `package.json`: `@apack/ears`, `/sdk` and `/ui` stage a
- * derived one under `publish/` (`stagePublishTree`), and `@apack/cli` and `@apack/testing` a generated one
+ * dependents). None of the five publishes its workspace `package.json`: `@apackdev/ears`, `/sdk` and `/ui` stage a
+ * derived one under `publish/` (`stagePublishTree`), and `@apackdev/cli` and `@apackdev/testing` a generated one
  * under `dist/package`.
  *
  * Here rather than in `scripts/publish-packages.ts` because two callers need it and neither may import the
  * other: that script is the command over this, and `@app/publish-checks` checks what it would publish. It is
- * not `BUILD_UNITS` above — that is what a build reads to decide freshness, `@apack/host` included, which
+ * not `BUILD_UNITS` above — that is what a build reads to decide freshness, `@apackdev/host` included, which
  * nothing publishes.
  */
 export const PUBLISHED_TREES: Record<string, string> = {
@@ -275,8 +275,8 @@ export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${
  * **An observation, never a cache key.** A unit's `inputs` stay a declaration, because a record of the last
  * run's reads cannot invalidate on a file that was not read last time: a newly imported module would be
  * absent from it, so an edit to that module would change nothing and the unit would read fresh over a stale
- * bundle. That is exactly the failure this is here to *catch* — the `@apack/cli` and `@apack/testing`
- * bundles inline `@apack/sdk` and `@apack/ears` from source and declared neither, which no check could see,
+ * bundle. That is exactly the failure this is here to *catch* — the `@apackdev/cli` and `@apackdev/testing`
+ * bundles inline `@apackdev/sdk` and `@apackdev/ears` from source and declared neither, which no check could see,
  * because every other input check compares one declaration against another.
  *
  * In a `reads/` subdirectory so it can never be taken for a stamp: `stampFile` names its files in this
@@ -654,7 +654,7 @@ export function changedInputs(unit: BuildUnit, recorded: { files: Record<string,
  * twelve stale steps, and `staleMessage`, whose five call sites are each a person stopped. Both printed the
  * same sentence for every unit before this, which is the only verdict a healthy one can have.
  *
- * Here rather than in `scripts/lib/` because `@apack/host` may not import the repo's scripts
+ * Here rather than in `scripts/lib/` because `@apackdev/host` may not import the repo's scripts
  * (`check:specifiers`' `findPackageScriptImports`), and it belongs beside `changedInputs`, whose answer it
  * summarises.
  *
@@ -930,7 +930,7 @@ interface LockHolder { pid: number; label: string; startedAt: string }
 /**
  * Whether the build that took the lock is still running: its pid exists, and it started in this boot.
  *
- * The same rule as `recordIsStale` in `@apack/host/process-liveness`, deliberately not that function. This module is
+ * The same rule as `recordIsStale` in `@apackdev/host/process-liveness`, deliberately not that function. This module is
  * the freshness rule the package builds themselves run through, so it resolves the packages' published
  * `dist` — which, while they are being built, is the stale copy that has yet to export anything new. It
  * bounds by the lock's own `startedAt` rather than a file's mtime, which is the better of the two rules:
@@ -1306,7 +1306,7 @@ export async function stampedRun(
 /** Every `build:package` script wraps its work in this */
 export async function runPackageBuild(workspace: string, build: () => void | Promise<void>): Promise<void> {
   const unit = BUILD_UNITS[workspace];
-  if (!unit) throw new Error(`No build unit for ${workspace} in BUILD_UNITS (@apack/host/build/packages-built)`);
+  if (!unit) throw new Error(`No build unit for ${workspace} in BUILD_UNITS (@apackdev/host/build/packages-built)`);
   await stampedBuild(workspace, unit, stampFile(workspace), build);
 }
 

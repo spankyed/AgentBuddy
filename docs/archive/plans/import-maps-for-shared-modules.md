@@ -27,8 +27,8 @@
 >
 > Verified: 122/122 map targets resolvable in both halves, the dev map's `vue` byte-identical to the URL the
 > renderer's own entry imports, smoke 4/4 and app-integration 11/11 against a built app, and both fixture
-> packs' suites — including the host's `@apack/ui` editor rendering inside a pack, a pack writing through
-> `@apack/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
+> packs' suites — including the host's `@apackdev/ui` editor rendering inside a pack, a pack writing through
+> `@apackdev/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
 >
 > The text below is the plan as written.
 
@@ -42,7 +42,7 @@ has to carry. Every location, count and measurement was checked against the tree
 
 ## Context
 
-A pack's frontend must use **the host's instance** of Vue, `@apack/sdk`, `@apack/ears` and `@apack/ui` —
+A pack's frontend must use **the host's instance** of Vue, `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui` —
 two Vue instances fail at runtime, and an unbound second SDK copy throws "No host is bound". Today that is
 done with a global and a generated proxy:
 
@@ -71,7 +71,7 @@ And its failure mode is a `console.warn` plus an `undefined` (`warnMissing`), wh
 time naming the export.
 
 **The alternative is a web standard.** An import map lets the pack keep `import { usePlugin } from
-'@apack/sdk/fe'` **as written and external**, and the browser resolves it to the host's module. Nothing
+'@apackdev/sdk/fe'` **as written and external**, and the browser resolves it to the host's module. Nothing
 needs to know the names, because `export * from` does not.
 
 ## Why this app can use it unconditionally
@@ -107,9 +107,9 @@ So this saving is paid when the bundle is actually made. Not the reason to do th
 step's 13s → 31s growth either, which is the frontend bundle existing at all now.
 
 **The larger prize is next to it, and the phase cache is what exposed it.** `feInputsHash`
-(`apack-cli/src/build/phase-cache.ts:164`) hashes the `@apack` packages' `dist` into the frontend phase's
+(`apack-cli/src/build/phase-cache.ts:164`) hashes the `@apackdev` packages' `dist` into the frontend phase's
 scope, and its doc says why: *"the frontend phase read 329 files under the pack's `src/` and 84 in the
-`@apack` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
+`@apackdev` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
 the frontend phase's scope narrows to the pack's own sources — so rebuilding the SDK stops invalidating every
 pack's frontend bundle. That is a cache hit across a whole class of change, which is worth more than the
 1.59s, and it is why narrowing that scope is part of step 2 rather than a follow-up.
@@ -117,7 +117,7 @@ pack's frontend bundle. That is a cache hit across a whole class of change, whic
 ## The design
 
 **One route shape, generated from the lists that already exist** (`getSharedFeDeps`, `getSdkFeModules`,
-`getUiFeModules` in `@apack/host/build/shared-deps` — 8 SDK frontend modules, 68 `@apack/ui` modules, plus
+`getUiFeModules` in `@apackdev/host/build/shared-deps` — 8 SDK frontend modules, 68 `@apackdev/ui` modules, plus
 the third-party shared deps).
 
 **1. The host serves each shared specifier as a module.** A generated shim per specifier, `export * from
@@ -136,13 +136,13 @@ production, which `transformIndexHtml` can read from `ctx.bundle` at build time.
 
 ### The one piece of discovery that survives
 
-`export *` does **not** re-export `default`, and most `@apack/ui` entries are a component's default export.
+`export *` does **not** re-export `default`, and most `@apackdev/ui` entries are a component's default export.
 So a shim needs `export { default } from '<specifier>'` as well — and that is a build error for a module
 without one. So the generator needs one bit per specifier, *does it have a default*, which is far less than
 a name list and is available where it is needed: the host's build is always a build, where Rollup's
 `ModuleInfo.exports` answers it.
 
-There is precedent for the shape: `@apack/ui`'s own public entries are already generated shims that read
+There is precedent for the shape: `@apackdev/ui`'s own public entries are already generated shims that read
 `export { default } from './x.vue'; export * from './x.vue';` (`exports:update`).
 
 ## The backend already did this
@@ -151,7 +151,7 @@ There is precedent for the shape: `@apack/ui`'s own public entries are already g
 example rather than a second problem. Its bug:
 
 > A lazy require outlived its resolution. esbuild defers a module body into an `__init`, so the action step
-> required `@apack/sdk/logger` when a step first ran — long after the scoped patch was gone, and the require
+> required `@apackdev/sdk/logger` when a step first ran — long after the scoped patch was gone, and the require
 > cache cannot help because Node resolves first.
 
 **The fix was to stop scoping the resolution.** `keepHostModulesResolvable` (`packs/module-bridge.ts:104`)
@@ -180,7 +180,7 @@ platform implements. The frontend gets the better of the two mechanisms for free
 **One asymmetry still worth closing, and it is small:** the backend now checks at build time that every
 external its bundle emits is provided (`pack-externals.spec.ts`). The frontend has no equivalent — it warns
 at *runtime* instead (`generateGlobalProxy`'s `warnMissing`), which is why `DEBUG_E2E=1 npm test -- smoke`
-could pass its four cases while the app logged `Cannot find module '@apack/sdk/logger'` for every action
+could pass its four cases while the app logged `Cannot find module '@apackdev/sdk/logger'` for every action
 step. Under an import map the same question becomes "does the map name every specifier the pack imports",
 answerable at build time from two declarations — which is the case listed under *Verification*.
 
@@ -190,8 +190,8 @@ answerable at build time from two declarations — which is the case listed unde
 (`renderer/vite.config.ts:85`) is a plain enumerable global: any code in the renderer, a pack's frontend
 included, can read it and ignore the proxies. The proxies are module resolution, not containment. What
 actually holds the line is **build time** — `check:specifiers` for this repo's packs and `apack build` for
-external ones, refusing `@apack/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
-(`@apack/ears/lmdb`, *"the app's LMDB store"*).
+external ones, refusing `@apackdev/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
+(`@apackdev/ears/lmdb`, *"the app's LMDB store"*).
 
 An import map leaves that boundary where it was: the pack's source still names the specifier, so the same
 build-time checks see the same thing. In one respect it is tighter — a bare specifier absent from the map
@@ -201,7 +201,7 @@ does not resolve at all, where today the global is open to whatever the host put
 
 **`/@host/<specifier>` must serve only the specifiers the map contains, and 404 everything else.** A route
 that builds a shim from whatever specifier was requested is an arbitrary-module re-export endpoint: a pack
-could ask for `/@host/@apack/host/secrets` or `/@host/@apack/ears/lmdb` at runtime and be handed a module
+could ask for `/@host/@apackdev/host/secrets` or `/@host/@apackdev/ears/lmdb` at runtime and be handed a module
 the build-time rules exist to forbid. Those rules never run at runtime, so nothing else would stop it.
 
 Two things bound the exposure, and they are the reason this is a requirement rather than a reason not to
@@ -215,7 +215,7 @@ proceed:
   reaches those today either way.
 
 **It needs a firing case**, because its subject is input: ask the route for a host-only specifier — one from
-`APP_ONLY_EXPORTS` and one under `@apack/host` — and assert it is refused rather than served. A gate with
+`APP_ONLY_EXPORTS` and one under `@apackdev/host` — and assert it is refused rather than served. A gate with
 no case is a gate nothing has watched fail, and this one is the only runtime check in the design.
 
 ### Three smaller points
@@ -241,7 +241,7 @@ frame, and a far larger piece of work than this plan.
 
 ### 0. The spike, before anything else
 
-One specifier end to end: pick `@apack/sdk/fe`, emit it as an extra renderer entry, inject a one-entry
+One specifier end to end: pick `@apackdev/sdk/fe`, emit it as an extra renderer entry, inject a one-entry
 import map, and externalise that specifier in `packExternalsPlugin` instead of proxying it. Then load the
 `external-pack` fixture's frontend and check three things:
 
@@ -268,12 +268,12 @@ while both exist.
 says in its commit message which it was: subject gone, or awkward.
 
 **`resolveId` has to say `external`, and that is not the same as declining to claim.** `bundlePackFE` sets no
-`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@apack/sdk` and
-`@apack/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
+`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@apackdev/sdk` and
+`@apackdev/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
 Both have to change. The `generateBundle` guard that fails a build when an inlined SDK module reaches a host
 binding stays exactly as it is — it is the check that catches this step going wrong.
 
-**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@apack` packages'
+**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@apackdev` packages'
 `dist`, a scope that still hashes it is a declaration claiming reads nobody makes — and it costs a frontend
 rebuild on every SDK change. The reads record (`build-reads.ts`) is how that scope was checked against
 reality in the first place, so re-read it after the change rather than reasoning about it: the phase's
@@ -301,7 +301,7 @@ name), so delete it in the same change.
   derivable: the specifiers a pack's bundle leaves external against the specifiers the map carries.
 - **One Vue instance, asserted rather than assumed**: the fixture pack renders a component that reads the
   host's Vue — if the map ever resolves to a second copy, that breaks loudly. `tests/packs/bundled-ui-pack`
-  is the existing subject for the opposite case (a pack that deliberately carries its own `@apack/ui`), and
+  is the existing subject for the opposite case (a pack that deliberately carries its own `@apackdev/ui`), and
   it must keep working: `fe.bundleUi` means *do not* map those specifiers.
 - **A missing export fails at link time**, which is the new failure mode: build a pack against a name the
   host does not have and confirm the error names the export, rather than warning and handing back
@@ -320,7 +320,7 @@ why the design serves shims at a stable `/@host/<specifier>` route rather than m
 gets `undefined`; afterwards its frontend fails to load. That is better — it is loud, early and specific —
 but it is a behaviour change, and `hostVersion` ranges are what should be catching the case first.
 
-**`fe.bundleUi` must keep opting out.** A pack that bundles its own `@apack/ui` must not have those
+**`fe.bundleUi` must keep opting out.** A pack that bundles its own `@apackdev/ui` must not have those
 specifiers mapped, or it gets the host's copy anyway. `bundlesUi(packDir)` already gates the proxy list and
 must gate the map the same way — with a case, since this is the one path where mapping *more* is wrong.
 

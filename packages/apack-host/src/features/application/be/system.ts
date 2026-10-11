@@ -1,12 +1,12 @@
 // The host's `application` feature on the backend: the app shell's own state, which plugins' sidebar tabs show and
 // the plugin the user last had open. It lives in AppState because no pack owns the shell; the renderer's
 // application actor is its plugin.
-import { defineHandlers } from '@apack/sdk/framework';
+import { defineHandlers } from '@apackdev/sdk/framework';
 import type { MachineContext } from 'xstate';
 import { setup } from 'xstate';
-import { eventTypes } from '@apack/sdk/events';
+import { eventTypes } from '@apackdev/sdk/events';
 import { broadcastToPlugin } from '../../../events.ts';
-import { splitRef } from '@apack/sdk/ids';
+import { splitRef } from '@apackdev/sdk/ids';
 import { appState } from '../../../app-state/index.ts';
 import type { PackRegistry } from '../../../packs/registry.ts';
 

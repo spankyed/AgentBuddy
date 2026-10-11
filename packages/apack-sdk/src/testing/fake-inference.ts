@@ -1,6 +1,6 @@
 // A scripted `services.inference` for unit tests: the AI SDK's real calls on its test models, so results, steps,
 // `output` parsing, tool execution, agents and stream parts behave as in the app. `ai` loads on the first call, so
-// @apack/sdk/testing loads in packs that don't install it.
+// @apackdev/sdk/testing loads in packs that don't install it.
 import { _createInferenceService, type InferenceService, type _ResolveModel } from '../services/inference.ts';
 import { parseModelId, type EmbeddingModelId, type ImageModelId, type ModelId, type ModelKind, type RerankingModelId, type SpeechModelId, type TranscriptionModelId } from '../services/models.ts';
 
@@ -92,7 +92,7 @@ function toCall(model: ModelId, options: CallOptions, stream: boolean): FakeText
 /**
  * A `services.inference` whose language model answers every call with `reply` (or what `reply` returns for the
  * call), and whose other models answer with `replies`. Tests mock `services.inference` with it through
- * `mockInference` (@apack/testing/harness).
+ * `mockInference` (@apackdev/testing/harness).
  */
 export function fakeInference(
   reply: FakeInferenceReply | ((call: FakeTextCall) => FakeInferenceReply),

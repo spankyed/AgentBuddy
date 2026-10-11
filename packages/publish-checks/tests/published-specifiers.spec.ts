@@ -2,15 +2,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
 const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /**
  * Sources import `./x.ts`; the published JS must name the emitted `./x.js` (tsc's
- * rewriteRelativeImportExtensions for @apack/sdk, tsdown for @apack/ui, esbuild for the CLI
- * and testing bundles that inline @apack/host).
+ * rewriteRelativeImportExtensions for @apackdev/sdk, tsdown for @apackdev/ui, esbuild for the CLI
+ * and testing bundles that inline @apackdev/host).
  */
 const OUTPUTS = ['packages/apack-sdk/dist', 'packages/apack-ui/dist', 'packages/apack-cli/dist/package/dist', 'packages/apack-testing/dist/package/dist'];
 

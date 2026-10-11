@@ -218,8 +218,8 @@ with `#` subpath imports now.
 uses (`apack-cli/src/commands/run.ts:325-360`):
 
 - `@vitejs/plugin-vue` — genuine SFC HMR rather than a reload.
-- `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@apack/sdk` and
-  `@apack/ui` resolve to the host's copies, so **one Vue instance**.
+- `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@apackdev/sdk` and
+  `@apackdev/ui` resolve to the host's copies, so **one Vue instance**.
 - `hmr: { protocol: 'ws', host: 'localhost' }`, `cors: true`.
 - The backend watcher **skips `.vue` and `.css`** (`run.ts:394`), which is the author saying Vite owns them.
 - The proxy is a full mirror, not a whitelist: `devServerUrl` returns `http://localhost:${port}${filePath}`
@@ -236,7 +236,7 @@ step 3's dev source import is load-bearing rather than a convenience. Getting th
 `compiledSource` read `ctx.load().code`, which throws in a dev server, so the loop did nothing at all while
 `apack run` printed that it was hot-reloading.
 
-**Type resolution improves.** `packages/default-setup/tsconfig.json` declares no `@apack/source` condition,
+**Type resolution improves.** `packages/default-setup/tsconfig.json` declares no `@apackdev/source` condition,
 so the editor already type-checks it against `dist` — the pack-author layout. The fork today is that the
 renderer's Vite compiles its frontend from source with the condition, so the editor and the running dev app
 resolve differently.
@@ -515,7 +515,7 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
 of `resources/` — measured 2026-10-07 by building the api bundle with `runtimeEntry` defaulted to `'only'`,
 so no bundled loader existed to fall back to, and booting it: *"Loaded built-in pack (dev): default-setup"*,
 then the server up. The other half cannot be tested in a checkout at all — `source-resolution.ts:73` refuses
-any process that resolves `@apack/*` to `dist` while a `src/` sits beside it, which is every checkout and no
+any process that resolves `@apackdev/*` to `dist` while a `src/` sits beside it, which is every checkout and no
 packaged build — and needs no test, being what every installed external pack already does in production
 through the same `withHostResolution`.
 
@@ -575,7 +575,7 @@ the manifest field (`manifest-schema.ts:173`) and the whole `if (!manifest.built
 message; the codegen branch that turns it into `packSystem(…, { early: true })`
 (`generate-entries.ts:578`); the strip in `loadSingleExternalPack` (`loader.ts:235-243`) and its case
 (`loader.spec.ts:92-95`); the declaration in `packages/default-setup/apack.json:238`. Then
-`npm run schema:update -w @apack/sdk` for `apack.schema.json:179-182` and `npm run api:update`.
+`npm run schema:update -w @apackdev/sdk` for `apack.schema.json:179-182` and `npm run api:update`.
 Three specs assert the field and move with it: `manifest-schema.spec.ts:148-150` (the refusal — delete),
 `entries.spec.ts:116-126` (drop it from the fixture and drop the `early: true` expectation), and
 `modules.spec.ts:339,401`, whose exhaustive field lists fail by design when a field goes.
@@ -729,7 +729,7 @@ ship a broken app.
 
 - Not making packs installable from a registry: `resolveFromRemoteRegistry` still throws for every name.
 - Not a performance change. The win is four build paths becoming one and two load paths becoming one.
-- Not a change to `@apack/sdk`'s published surface, except that `partitionPolicy` leaves the manifest schema
+- Not a change to `@apackdev/sdk`'s published surface, except that `partitionPolicy` leaves the manifest schema
   in step 2 (and `earlySystem` would in open-question step A), which needs `schema:update` and `api:update`.
 
 ## Constraints
@@ -792,14 +792,14 @@ installed pack has none. So:
   `shared-deps.ts`, where the bundler's externals and the loader's `hostPackages` both read it, and
   `hostPackages` now covers every external. `pack-externals.spec.ts` holds the two halves together.
 - **A lazy `require` outlived the resolution that served it.** esbuild defers a module body into an
-  `__init` the bundle calls on first use, so default-setup's action step required `@apack/sdk/logger`
+  `__init` the bundle calls on first use, so default-setup's action step required `@apackdev/sdk/logger`
   when a step first ran, long after `withHostResolution` had restored the resolver. Applying the require
   cache cannot cover it, Node resolving before it reads the cache. `keepHostModulesResolvable` installs
   resolution for the process and never throws; `withModuleBridge`'s refusals stay scoped to the load they
   diagnose, which is where a *rebuild this pack* message belongs.
 
 Both would have shipped: `DEBUG_E2E=1 npm test -- smoke` passed its four cases while the app logged
-`Cannot find module '@apack/sdk/logger'` for every action step. **A green suite beside a failing app is
+`Cannot find module '@apackdev/sdk/logger'` for every action step. **A green suite beside a failing app is
 what that flag is for.**
 
 **Three premises in this plan were wrong**, corrected in place where they are stated: `dev-build.mjs`'s

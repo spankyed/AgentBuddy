@@ -1,5 +1,5 @@
 // services.secrets: the user's API keys as metadata (values stay in the host store; see ../secrets)
-import type { SecretsService } from '@apack/sdk/services';
+import type { SecretsService } from '@apackdev/sdk/services';
 import { secretsStore } from '../secrets/index.ts';
 
 export const secrets: SecretsService = {

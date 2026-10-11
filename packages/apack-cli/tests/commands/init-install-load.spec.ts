@@ -3,13 +3,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { startTestRuntime } from '@apack/sdk/testing';
-import { installPackFromLocal } from '@apack/host/packs';
-import { loadExternalPacks } from '@apack/host/packs/runtime';
+import { startTestRuntime } from '@apackdev/sdk/testing';
+import { installPackFromLocal } from '@apackdev/host/packs';
+import { loadExternalPacks } from '@apackdev/host/packs/runtime';
 import { init } from '../../src/commands/init';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 // The loader checks each pack's hostVersion against the app version
 startTestRuntime({ appVersion: '1.0.0' });

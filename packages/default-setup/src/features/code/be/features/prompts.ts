@@ -1,10 +1,10 @@
 import { broadcastToPlugin } from '#generated/events.ts';
-import { defineHandlers } from '@apack/sdk/framework';
+import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup } from 'xstate'
 
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
-import type { PromptEntity } from '@apack/sdk'
+import type { PromptEntity } from '@apackdev/sdk'
 
 const pluginId = 'code' as const
 

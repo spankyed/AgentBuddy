@@ -16,7 +16,7 @@
 // it asserts, not an implementation detail of the fixture.
 import { describe, expect, it } from 'vitest';
 import { createActor, setup } from 'xstate';
-import { _currentDelivery, _runDelivery, type _Delivery } from '@apack/sdk/events';
+import { _currentDelivery, _runDelivery, type _Delivery } from '@apackdev/sdk/events';
 import { notifyPluginActor, sendToPluginActor } from '../../src/fe/plugin-delivery.ts';
 
 /** An actor that records what was being handled each time it is given an event */

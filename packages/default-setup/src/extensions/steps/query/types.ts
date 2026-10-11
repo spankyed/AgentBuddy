@@ -1,6 +1,6 @@
-import type { NodeBase } from '@apack/sdk';
-import type { DSLNodeBase } from '@apack/sdk/build';
-import type { ModelId } from '@apack/sdk/models';
+import type { NodeBase } from '@apackdev/sdk';
+import type { DSLNodeBase } from '@apackdev/sdk/build';
+import type { ModelId } from '@apackdev/sdk/models';
 
 export interface DSLQueryNode extends DSLNodeBase {
   type: 'query';

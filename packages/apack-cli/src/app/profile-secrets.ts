@@ -28,9 +28,9 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { appDataDirFor, resolveAppContext, type AppEnv } from '@apack/sdk/env';
-import { _appDataPaths } from '@apack/sdk/utils';
-import { dataKeyAccount, dataKeyFile, fileKeyVault, osKeyVault, type KeyVault } from '@apack/host/secrets';
+import { appDataDirFor, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { _appDataPaths } from '@apackdev/sdk/utils';
+import { dataKeyAccount, dataKeyFile, fileKeyVault, osKeyVault, type KeyVault } from '@apackdev/host/secrets';
 import type { OpenedProfile } from './profiles.ts';
 
 /** What a secrets file records about itself. Only the fields this needs; the store owns the rest. */

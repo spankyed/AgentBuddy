@@ -38,9 +38,9 @@ Never, regardless of the spec:
 
 - `docs/archive/issues/postmortem-external-pack-calendar-extraction.md` — status of every item, N1–N4, the secondary review table.
 - `~/.claude/plans/fix-4-ticklish-crown.md` — secondary findings F4–F11.
-- `CLAUDE.md` "App environment": environment identity and data paths come from `@apack/sdk/env` (`resolveAppContext`). Never read `NODE_ENV`/`PLAYWRIGHT_TEST` or platform paths to pick a data dir; `packages/apack-sdk/tests/env/identity-guard.spec.ts` enforces this.
+- `CLAUDE.md` "App environment": environment identity and data paths come from `@apackdev/sdk/env` (`resolveAppContext`). Never read `NODE_ENV`/`PLAYWRIGHT_TEST` or platform paths to pick a data dir; `packages/apack-sdk/tests/env/identity-guard.spec.ts` enforces this.
 - In-repo external pack: `tests/fixtures/external-pack`, run with `npm run test:external-pack` (`tests/scripts/test-external-pack.sh`).
-- Real external pack: `/Users/spankyed/Develop/Projects/apack-external/example-pack` (not a git repo; links `@apack/sdk` from the monorepo via npm link).
+- Real external pack: `/Users/spankyed/Develop/Projects/apack-external/example-pack` (not a git repo; links `@apackdev/sdk` from the monorepo via npm link).
 - CLI bin today: `packages/apack-sdk/bin/apack.mjs` (node launcher registering tsx).
 - Already done, don't redo: CLI no longer needs tsx on PATH (item 2); `apack open`; single environment resolver (F3) and `pack-e2e.spec` isolation (F2); month-grid overflow (N5); packaged apps already use the `apack` / `apack-beta` / `apack-test` data dir names.
 
@@ -71,16 +71,16 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 - `build/release/release.sh` enforces: a production release must have a beta tag for the same version, or it also publishes that build as the current beta.
 
 **D5 — Packages published to npm.** (Updated by `docs/archive/goals/goal-sdk-types-architecture.md`.)
-- `@apack/sdk`: pack-facing platform API and types (no bin). ESM, per-file `.d.ts` and declaration maps emitted by `tsc` from sources with explicit `.js` specifiers. Host-only modules (pack registry, installer, persistence, backups, FE registration, build-time discovery) live in the private workspace package `@apack/host`, which the app, CLI and testing bundles inline; the published SDK neither ships nor exports them.
-- Pack typing comes from facades each pack generates (`#generated/ears`, `#generated/events`, `#generated/services`, `#generated/types`), typed against the pack's and its dependencies' entity shapes, events and services. There is no module augmentation of `@apack/sdk`.
-- `@apack/ui`: the Vue component library (design components, tiptap and Monaco editors, UI composables) with vue-tsc declarations (`X.d.vue.ts`) and an explicit exports map. Its editor libraries are its own dependencies, so backend-only packs don't install them.
-- `@apack/cli`: the only `apack` bin, the build toolchain (vite, esbuild, tailwind, codegen) and commands; depends on `@apack/sdk`. Packs pin it as a devDependency. A globally installed, Homebrew or app-bundled `apack` hands off to the project's pinned `@apack/cli` when run inside a pack.
-- `@apack/testing`: the Playwright fixture, with `@playwright/test` as a peer.
+- `@apackdev/sdk`: pack-facing platform API and types (no bin). ESM, per-file `.d.ts` and declaration maps emitted by `tsc` from sources with explicit `.js` specifiers. Host-only modules (pack registry, installer, persistence, backups, FE registration, build-time discovery) live in the private workspace package `@apackdev/host`, which the app, CLI and testing bundles inline; the published SDK neither ships nor exports them.
+- Pack typing comes from facades each pack generates (`#generated/ears`, `#generated/events`, `#generated/services`, `#generated/types`), typed against the pack's and its dependencies' entity shapes, events and services. There is no module augmentation of `@apackdev/sdk`.
+- `@apackdev/ui`: the Vue component library (design components, tiptap and Monaco editors, UI composables) with vue-tsc declarations (`X.d.vue.ts`) and an explicit exports map. Its editor libraries are its own dependencies, so backend-only packs don't install them.
+- `@apackdev/cli`: the only `apack` bin, the build toolchain (vite, esbuild, tailwind, codegen) and commands; depends on `@apackdev/sdk`. Packs pin it as a devDependency. A globally installed, Homebrew or app-bundled `apack` hands off to the project's pinned `@apackdev/cli` when run inside a pack.
+- `@apackdev/testing`: the Playwright fixture, with `@playwright/test` as a peer.
 - Host-shared libraries (xstate, vue, @xstate/vue, lucide-vue-next, reka-ui, zod, tiptap) are peerDependencies with host ranges.
 - Versioned together with Changesets; published from CI with `npm publish --provenance`.
-- `@apack/sdk` and `@apack/ui` publish their workspace `package.json` as is. Each export resolves source under the `@apack/source` condition, which monorepo tooling sets, and `dist/` otherwise, so dev needs no build step. CI runs publint, arethetypeswrong, API Extractor reports for every entry and a consumer typecheck matrix (bundler and node16) against the packed packages.
+- `@apackdev/sdk` and `@apackdev/ui` publish their workspace `package.json` as is. Each export resolves source under the `@apackdev/source` condition, which monorepo tooling sets, and `dist/` otherwise, so dev needs no build step. CI runs publint, arethetypeswrong, API Extractor reports for every entry and a consumer typecheck matrix (bundler and node16) against the packed packages.
 
-**D6 — CLI distribution.** The installed app bundles `@apack/cli` and puts it on PATH only through an explicit app action ("Install 'apack' command in PATH", like VS Code). Also installable via `npm i -g @apack/cli` and a Homebrew formula.
+**D6 — CLI distribution.** The installed app bundles `@apackdev/cli` and puts it on PATH only through an explicit app action ("Install 'apack' command in PATH", like VS Code). Also installable via `npm i -g @apackdev/cli` and a Homebrew formula.
 
 **D7 — IDs.** Feature IDs must be identifiers (`^[a-z][a-zA-Z0-9]*$`); pack IDs stay kebab-case.
 
@@ -110,7 +110,7 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 
 Proven by a script in a temp dir outside the monorepo, and added to CI:
 
-1. Install `@apack/cli` + `@apack/sdk` from locally packed tarballs (`npm pack`).
+1. Install `@apackdev/cli` + `@apackdev/sdk` from locally packed tarballs (`npm pack`).
 2. `apack init` → `add feature` → a flow using keepAlive from default-setup.
 3. `apack build` → `apack release --local --dry-run` produces a verified bundle.
 4. Install that bundle into an isolated test data dir.

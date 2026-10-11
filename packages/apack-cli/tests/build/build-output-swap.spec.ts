@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /**
  * **`apack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
@@ -14,7 +14,7 @@ import { PACK_LAYOUT } from '@apack/host/packs';
  *
  * So the cases here are the inverse of the ones they replace: a failed build leaves the **previous build
  * intact** rather than leaving nothing. What is not asked here is that the swap replaces the tree whole — that
- * is `replaceDir`'s, in `@apack/host`'s `tests/replace-dir.spec.ts`, and asking it again would cost a
+ * is `replaceDir`'s, in `@apackdev/host`'s `tests/replace-dir.spec.ts`, and asking it again would cost a
  * successful build of a fixture pack to re-establish what one rename already guarantees.
  */
 let dist: string;

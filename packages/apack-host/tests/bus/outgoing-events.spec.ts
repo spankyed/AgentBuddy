@@ -3,9 +3,9 @@
 // as a system error and dropped, rather than thrown — the caller is a running system.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
-import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
-import { onLog } from '@apack/sdk/logger';
-import type { Message } from '@apack/sdk/events';
+import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { onLog } from '@apackdev/sdk/logger';
+import type { Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -64,7 +64,7 @@ afterEach(() => {
  *
  * **`answering` is its own field on the report, not a third `operation` value.** `operation` says which verb,
  * and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts`'s helper, and
- * `@apack/testing`'s fixture, which collects these to fail a test on a dropped send. The first attempt made
+ * `@apackdev/testing`'s fixture, which collects these to fail a test on a dropped send. The first attempt made
  * it `answering ? 'reply' : 'broadcastToPlugin'` and shipped a regression — the fixture went on filtering for
  * one value while this sent two, so a dropped answer stopped failing any Playwright test, silently, there
  * being no case over the fixture. The case below that asserts `operation` is unchanged is what holds it.

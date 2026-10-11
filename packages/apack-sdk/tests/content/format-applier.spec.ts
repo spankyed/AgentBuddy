@@ -1,6 +1,6 @@
 // The generic writer's merge at its edges: an entity we wrote with no recorded parts, items two packs' content
 // both identifies, content the pack has dropped, and an update hook that fails part way.
-import { installedEngine as ears, untypedTx } from '@apack/ears';
+import { installedEngine as ears, untypedTx } from '@apackdev/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -68,7 +68,7 @@ const applyOffering = (dir: string, record?: ApplyRecord, mode: ImportMode = 're
  * The record the next apply reads, from what the last one left: its entries with what the run wrote over
  * them and what it removed taken out.
  *
- * **This mirrors `appliedContent.record`** (`@apack/host/app-state`), which is the real merge and is covered
+ * **This mirrors `appliedContent.record`** (`@apackdev/host/app-state`), which is the real merge and is covered
  * where it lives (`apack-host/tests/packs/runtime/loader.spec.ts`). Here it is a fixture, so that a case can
  * say "and then the next apply" without an app.
  */

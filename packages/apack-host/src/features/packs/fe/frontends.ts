@@ -1,7 +1,7 @@
 // External packs' frontends: which URL a pack's files are at, what counts as a registration one exports, and what
 // unloading takes back. The two things only a window can do — import a module and add a stylesheet — arrive as
 // `PackFrontendIO`, so the rules hold wherever this runs and the browser's part stays the renderer's.
-import type { PackFERegistration, Plugin } from '@apack/sdk/fe';
+import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';

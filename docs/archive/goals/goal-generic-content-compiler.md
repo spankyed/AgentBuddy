@@ -57,7 +57,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Status (2026-09-14, at `15553c837`).** Phases 1–5 are done (`7ea8bb8cf`…`15553c837`). Content entries carry their format settings inline (`format`, `fields`, `identity`, `tree`, `media`, `compiler` on each `content.sources` entry), so a pack that depends on default-setup repeats default-setup's whole notes field map to apply a Note, and can't content library documents without copying its compiler module. Default-setup's compiler modules live in `src/content/compilers/`; its content hooks are still in the features (`features/notes/be/content-hooks.ts`, `features/library/be/content-hooks.ts`). Phase 6 replaces inline settings with named formats (Decisions 1, 6, 11 and 12 describe the result).
 
-**The problem.** Every written entity type is hardcoded in the SDK. Adding one (a pack's own markdown-written type, or a new built-in) means a new compiler, a new applier, a generator entry and usually entity names or shapes in `@apack/sdk`. `706dc987e` went further in the same direction: it moved Document, Collection and Note into `SDK_ENTITIES` so the SDK's appliers could type them, and added `libraryCommands`/`noteCommands` to `BuiltinRepositories`. This goal takes the other direction: the SDK owns a generic mechanism, and packs describe their content in `apack.json`.
+**The problem.** Every written entity type is hardcoded in the SDK. Adding one (a pack's own markdown-written type, or a new built-in) means a new compiler, a new applier, a generator entry and usually entity names or shapes in `@apackdev/sdk`. `706dc987e` went further in the same direction: it moved Document, Collection and Note into `SDK_ENTITIES` so the SDK's appliers could type them, and added `libraryCommands`/`noteCommands` to `BuiltinRepositories`. This goal takes the other direction: the SDK owns a generic mechanism, and packs describe their content in `apack.json`.
 
 **Compile stage.**
 - `compilePack` (`apack-sdk/src/build/content-compiler.ts`) iterates the `STANDARD_COMPILERS` map (`compilers/standard.ts`: actions, prompts, flows, library, notes, faqs, settings), not the manifest's keys. A manifest key with no compiler, or whose value isn't a string, is skipped silently.
@@ -93,7 +93,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Preview.** `content/preview.ts` special-cases library and notes items to build the import dialog's tree.
 
-**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings register as defaults with the pack (`@apack/sdk/framework` `packSettingsRegistry`); only built-in packs have a settings content.
+**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings register as defaults with the pack (`@apackdev/sdk/framework` `packSettingsRegistry`); only built-in packs have a settings content.
 
 ## Decisions
 

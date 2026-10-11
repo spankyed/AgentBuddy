@@ -90,12 +90,12 @@ Re-measured 2026-09-25 at `1c272123c`, each suite run alone and serially, nothin
 
 | suite | work | **floor** | files | floor file |
 |---|---|---|---|---|
-| `@apack/cli` fast | **41.1s** | 7.4s | 46 | `tests/build/facade-gate.spec.ts` |
-| `@apack/host` | 19.1s | 4.8s | 77 | `tests/database/write-lock.spec.ts` |
-| `@apack/sdk` | 16.1s | **11.4s** | 56 | `tests/build/generate-entries.spec.ts` |
+| `@apackdev/cli` fast | **41.1s** | 7.4s | 46 | `tests/build/facade-gate.spec.ts` |
+| `@apackdev/host` | 19.1s | 4.8s | 77 | `tests/database/write-lock.spec.ts` |
+| `@apackdev/sdk` | 16.1s | **11.4s** | 56 | `tests/build/generate-entries.spec.ts` |
 | `@app/default-setup` | 14.5s | 4.3s | 86 | `tests/unit/harness-app-stop.spec.ts` |
 | `@app/api` | 5.0s | 1.1s | 15 | `tests/unit/secrets.spec.ts` |
-| `@apack/ears` | 2.6s | 2.0s | 9 | `tests/lmdb/store.spec.ts` |
+| `@apackdev/ears` | 2.6s | 2.0s | 9 | `tests/lmdb/store.spec.ts` |
 | `@app/main` | 0.1s | 0.1s | 2 | `tests/app-context.spec.ts` |
 | `@app/renderer` | 0.1s | 0.1s | 8 | `tests/transport/client.spec.ts` |
 
@@ -103,9 +103,9 @@ Re-measured 2026-09-25 at `1c272123c`, each suite run alone and serially, nothin
 `max(11.4, 9.9)` = **11.4s** and the gap is 3.6×, which is the same shape the plan found and not the same
 numbers. Three corrections to what it inherited:
 
-- **`@apack/cli`'s fast half is 41.1s over 46 files, not 30.8s over 38.** That plan said its figures were
+- **`@apackdev/cli`'s fast half is 41.1s over 46 files, not 30.8s over 38.** That plan said its figures were
   "derived by mapping file timings onto the tip's naming rather than measured on the tip", and they were
-  low. It is 42% of all the work, so its claim that `@apack/cli` "is no longer the giant" does not hold —
+  low. It is 42% of all the work, so its claim that `@apackdev/cli` "is no longer the giant" does not hold —
   by work it still is. Its *floor* is 7.4s, which is the part that was right.
 - **The floor is 11.4s, not 13.0s**, still `generate-entries.spec.ts`. The ideal moves with it.
 - **`@app/main` was missing from the table** and is 0.1s, which changes nothing but completes it.
@@ -114,8 +114,8 @@ The recorded lane table is 1: 69.8s, 2: 44.3s, 3: 47.7s, 8: 63.1s. A suite uses 
 which is why two lanes help and eight only add contention.
 
 The floor is one file, `apack-sdk/tests/build/generate-entries.spec.ts`, 94 tests — of which **the cost is
-3 tests**. Three `typecheck()` call sites each run a full `ts.createProgram` resolving `@apack/sdk` under
-`customConditions: ['@apack/source']`, so each type-checks ~165 files of SDK and ears *source*
+3 tests**. Three `typecheck()` call sites each run a full `ts.createProgram` resolving `@apackdev/sdk` under
+`customConditions: ['@apackdev/source']`, so each type-checks ~165 files of SDK and ears *source*
 (`skipLibCheck` skips `.d.ts`, and the SDK is `.ts`). The other 91 are string and AST assertions, about 1s
 together. Splitting by topic buys nothing; the three programs re-parse an identical graph.
 
@@ -174,7 +174,7 @@ stamps under one step is an extension. Do not buy the pool by giving up the cach
 per-test timeouts the tier budget covers; keep the ones genuinely about one test.
 
 **5. Reaping widens past `tests/scripts/`** — any long-running `apack` invocation, or an `apack doctor`
-that reaps what `@apack/host/process-liveness` already identifies (`lockIsHeld`, `recordIsStale`).
+that reaps what `@apackdev/host/process-liveness` already identifies (`lockIsHeld`, `recordIsStale`).
 
 ## Phases
 
@@ -281,7 +281,7 @@ outcome, as it was for lanes.
 | `npm run chain --all` | — | **163.4s, exit 0** |
 
 Two of those want reading rather than skimming. The suites' total work fell 31%, but most of
-`@apack/cli`'s share of that — 41.1s to 14.6s — is Phase 2 **moving** 25 expensive specs into the
+`@apackdev/cli`'s share of that — 41.1s to 14.6s — is Phase 2 **moving** 25 expensive specs into the
 integration half, not work disappearing. And `test:integration` looks barely changed at 39.6s against 42.0s
 until you notice it is carrying 408 tests where it carried 328: the same wall for 24% more work.
 
@@ -289,7 +289,7 @@ until you notice it is carrying 408 tests where it carried 328: the same wall fo
 
 - **One root vitest over all eight is not possible.** Host suites resolve workspace source, the pack suite
   must resolve the published `dist`, Node conditions are per process, and vitest ignores per-project
-  `poolOptions.execArgv`. Probed: under one pooled process a `default-setup` spec resolves `@apack/sdk` to
+  `poolOptions.execArgv`. Probed: under one pooled process a `default-setup` spec resolves `@apackdev/sdk` to
   `src` where it resolves `dist` today. It would not have failed; it would have tested something else.
 - **`max(floor, work/cores)` was never the model.** It predicted 44.3s -> ~13s. The host pool does ~136s of
   worker time in 21.1s of wall, so the suites were never serialised the way that arithmetic assumes.
@@ -314,7 +314,7 @@ until you notice it is carrying 408 tests where it carried 328: the same wall fo
 ### Deferred, each with the measurement
 
 - **The 3 compiling tests are not split out.** The floor is not binding (21.1s pool wall against a 9.4s
-  floor) and there is no tier for them to move into, since that split exists only in `@apack/cli`. Against
+  floor) and there is no tier for them to move into, since that split exists only in `@apackdev/cli`. Against
   ~0 gain it means extracting ~125 lines of helpers from a 1329-line file. Attempted, then reverted.
 - **Decision 5's `apack doctor` half is not built.** `process-liveness` identifies records left behind, not
   live processes, and `withBuildLock` already self-heals a stale lock; such a check would report something
@@ -440,14 +440,14 @@ carried.
 
 #### One pool over all eight is not achievable, and the reason is load-bearing
 
-Host suites resolve the workspace `@apack` packages to source under the `@apack/source` condition; the
+Host suites resolve the workspace `@apackdev` packages to source under the `@apackdev/source` condition; the
 pack suite must resolve the published `dist`, the only layout a pack author ever has — which is why
 `check:specifiers` fails a pack config that declares that condition. **Node conditions are per process**,
 and vitest shares its worker pool across projects: per-project `poolOptions.execArgv` is ignored, measured
 on `@app/api`.
 
 Probed rather than argued. A `default-setup` spec asking `createRequire(import.meta.url).resolve` for
-`@apack/sdk`:
+`@apackdev/sdk`:
 
     without the condition   dist     ../apack-sdk/dist/index.js      <- how the pack suite runs today
     with the condition      SOURCE   packages/apack-sdk/src/index.ts <- what one pool would do
@@ -504,7 +504,7 @@ guard on. What that looked like was not an error: the pool reported **1752 tests
 because twelve files failed at the guard before collecting anything, and a run that "only" has twelve failing
 files is easy to read as flaky rather than as 162 tests never having run. The trigger was editing this
 repo's own `package.json` — removing the eight scripts this phase replaced — which is enough to make
-`@apack/cli`'s bundle stale. Both pool commands now run `packages:ensure` first, which is a stat and a
+`@apackdev/cli`'s bundle stale. Both pool commands now run `packages:ensure` first, which is a stat and a
 return when nothing is stale.
 
 #### Two guards, one of which caught this phase's own mistake
@@ -521,7 +521,7 @@ six fewer steps. The file count is 224 either way, so no spec was lost.
 
 #### The root config lists its projects literally, and that is the safe answer
 
-`check:specifiers` reads configs as text to decide whether one that compiles `@apack` imports declares the
+`check:specifiers` reads configs as text to decide whether one that compiles `@apackdev` imports declares the
 source condition, and it cannot read a computed list — deriving `projects` from `UNIT_SUITES` failed it.
 Of the three ways out it offers, **declaring the condition at the root is the one that would have been
 wrong by accident and right by luck**: a root setting reaches the projects under it, and it is safe here
@@ -566,14 +566,14 @@ what a test writes.
 The phase asks for the 3 compiling tests in their own file as "a real tier boundary". Two things measured
 against it. The floor is not binding: the host pool is 21.1s of wall against a 9.4s floor, so splitting the
 floor file changes the pool's time by about nothing. And there is no tier for those tests to move into —
-Phase 2 established that a spec's half is its measured cost, and that split exists only in `@apack/cli`,
-while this file is in `@apack/sdk`, which runs one suite. Against that, the split means extracting ~125
+Phase 2 established that a spec's half is its measured cost, and that split exists only in `@apackdev/cli`,
+while this file is in `@apackdev/sdk`, which runs one suite. Against that, the split means extracting ~125
 lines of helpers that close over a per-test `root` out of a 1329-line file used by 94 tests. Attempted,
 then reverted when the measurement said it bought nothing: a number that did not move is a result.
 
 #### 97 per-test timeouts existed because the configs sat at 5s
 
-Both `@apack/cli` configs ran at vitest's 5s default, which is why 97 per-test and per-hook timeouts of 30s
+Both `@apackdev/cli` configs ran at vitest's 5s default, which is why 97 per-test and per-hook timeouts of 30s
 to 240s had been written — in fast-half files that run in about a second, and integration files whose
 slowest single test is about 5s. The budget belongs to the tier: `testTimeout` and `hookTimeout` are now
 15s in the fast config and 60s in the integration one, which is `TIER_TIMEOUT_MS` for tiers 1 and 2, and all
@@ -618,7 +618,7 @@ parent dies — landed in `59dec5165` with its own spec (`orchestrator-exit.spec
 `scripts/` spawns asynchronously without a bound. The synchronous `execFileSync` callers cannot orphan,
 because the parent blocks.
 
-The other half — "an `apack doctor` that reaps what `@apack/host/process-liveness` can already identify" —
+The other half — "an `apack doctor` that reaps what `@apackdev/host/process-liveness` can already identify" —
 was not built, because that is not what `process-liveness` does. `lockIsHeld`, `recordIsStale` and
 `readApiEndpoint` identify **records left behind**, not live processes, and `withBuildLock` already takes
 over a stale lock on its own. A `doctor` check there would report something that is already self-healing and

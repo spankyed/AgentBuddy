@@ -85,12 +85,12 @@ import {
 } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
-import type { TrackTree } from '@apack/sdk/steps';
-import BaseNode from '@apack/ui/components/BaseNode';
+import type { TrackTree } from '@apackdev/sdk/steps';
+import BaseNode from '@apackdev/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport.ts';
-import { cronToHuman } from '@apack/sdk/cron';
-import { stepRegistry } from '@apack/sdk/steps';
+import { cronToHuman } from '@apackdev/sdk/cron';
+import { stepRegistry } from '@apackdev/sdk/steps';
 
 interface Props {
   tnodeTree?: TrackTree[];

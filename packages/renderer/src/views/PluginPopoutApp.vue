@@ -48,13 +48,13 @@ import { useSelector } from '@xstate/vue'
 import { PanelRight } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
-import PanelResizer from '@apack/ui/layout/panel-resizer'
+import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import PopoutTitlebar from '@/views/layout/PopoutTitlebar.vue'
 import Router from '@/views/layout/PluginRouter.vue'
-import ToastNotification from '@apack/ui/design/ToastNotification'
+import ToastNotification from '@apackdev/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/adapters/toast'
-import { PluginScope, type ContextMenuItem } from '@apack/sdk/fe'
-import { notifyPluginActor } from '@apack/host/fe'
+import { PluginScope, type ContextMenuItem } from '@apackdev/sdk/fe'
+import { notifyPluginActor } from '@apackdev/host/fe'
 
 const send = applicationState.send
 const toast = ref<InstanceType<typeof ToastNotification> | null>(null)

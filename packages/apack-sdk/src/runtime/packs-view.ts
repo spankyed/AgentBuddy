@@ -71,6 +71,6 @@ export function _boundPackExtensions(): PackExtensionsView {
   if (_isHostBound()) return boundHost().packs;
   throw new Error(
     'No host is bound, so no registered packs to look up: the app binds one at boot with bindHost(runtime) from '
-    + '@apack/sdk/runtime (the renderer with bindFeHost(runtime)), and unit tests with startTestRuntime() from @apack/sdk/testing',
+    + '@apackdev/sdk/runtime (the renderer with bindFeHost(runtime)), and unit tests with startTestRuntime() from @apackdev/sdk/testing',
   );
 }

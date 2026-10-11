@@ -1,5 +1,5 @@
 // The pack runtime the app runs: loading, lifecycle, reload, applying content and the host packs system.
-// The @apack/host/packs barrel (which the CLI imports) never imports this.
+// The @apackdev/host/packs barrel (which the CLI imports) never imports this.
 export {
   loadAppPacks, loadExternalPacks, loadSingleExternalPack, registerExternalPacks, clearPackRequireCache,
 } from './loader.ts';

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import {
   affectedIntegrationSuites, affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
   OWN_FLAGS, splitArgs, specsUnder, verdictOf,
@@ -10,7 +10,7 @@ import {
 import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
-import { population } from '@apack/sdk/testing';
+import { population } from '@apackdev/sdk/testing';
 import { checkedSpecs, needsAppForRun, pricedSpecs, specsOfSuites } from '../../../scripts/lib/spec-dry.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
@@ -19,7 +19,7 @@ import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
  * What `npm run spec` decides to run, asserted without running any of it.
  *
  * The routing is the whole value of that command, and it was wrong for a year in a way nothing could catch:
- * a source file ran its own package's specs, so editing `@apack/sdk` ran one of the seven suites covering
+ * a source file ran its own package's specs, so editing `@apackdev/sdk` ran one of the seven suites covering
  * it and reported green. A plan that is data rather than a loop is what makes the decision checkable, which
  * is why `scripts/lib/spec-plan.ts` exists separately from the command over it.
  */
@@ -85,7 +85,7 @@ describe('what a target plans', () => {
    * Every package, partitioned — not a sample.
    *
    * The first version of this listed nine of the twelve by hand, looked exhaustive, and was missing
-   * `apack-host`, which reaches `@app/default-setup` transitively through `@apack/testing` (whose bundle
+   * `apack-host`, which reaches `@app/default-setup` transitively through `@apackdev/testing` (whose bundle
    * inlines it). Three doc comments said "four dependencies, so eight cannot reach it" on the strength of
    * that sample. Reading the list from disk is what makes a new package, or a new dependency edge, fail here
    * rather than quietly widen what `--full` runs.
@@ -136,7 +136,7 @@ describe('what --full adds', () => {
 
   it('runs the pack suites a rebuilt dist would reach, after the root run', () => {
     const runs = full('packages/apack-sdk/src/types/sdk-entities.ts');
-    // Both seams, because every integration half declares `@apack/sdk` too: a rebuilt dist for the pack
+    // Both seams, because every integration half declares `@apackdev/sdk` too: a rebuilt dist for the pack
     // suite, a second config for the integration halves, and the root run reaching neither
     expect(runs.map((r) => r.label)).toEqual([
       ENSURE_LABEL,
@@ -830,7 +830,7 @@ describe('pricedSpecs', () => {
  * is a second vitest config whose specs the root projects `exclude`. The consequence is identical and the
  * silence was worse: `npm run spec -- packages/apack-cli/src/build/pack-rules.ts` printed *"every spec
  * covering pack-rules.ts"*, ran nine specs and exited 0, with `add-extensions.integration.spec.ts` — which
- * imports that module directly — among the ones it skipped. 22 modules in `@apack/cli` are imported
+ * imports that module directly — among the ones it skipped. 22 modules in `@apackdev/cli` are imported
  * directly by an integration spec.
  *
  * `Half` reached `packageRun` when a named integration spec was fixed, and stopped there. The two routes
@@ -855,8 +855,8 @@ describe('a source file whose specs sit behind a second config', () => {
   it('says so on a target whose integration half covers it', () => {
     const [, related] = planTargets([COVERED], [], REPO_ROOT).runs;
     expect(related!.notes?.join(' '), 'the run claims to cover it and reaches none of those specs')
-      .toContain('@apack/cli');
-    // Not "through a build": these specs resolve @apack/source like any host project, and spec:full
+      .toContain('@apackdev/cli');
+    // Not "through a build": these specs resolve @apackdev/source like any host project, and spec:full
     // reaches them without building anything
     expect(related!.notes?.join(' ')).toContain('second config');
   });

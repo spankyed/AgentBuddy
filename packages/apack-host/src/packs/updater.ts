@@ -1,11 +1,11 @@
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 import { recordUpdateCheck, type PackRecord } from './installed.ts';
 import { installedPacks } from './discovery.ts';
 import * as semver from 'semver';
-import { resolveAppContext } from '@apack/sdk/env';
+import { resolveAppContext } from '@apackdev/sdk/env';
 import { isHostCompatible } from './installer.ts';
 import { fetchReleaseAsset, fetchRepoFile, githubFetch, type GitHubReleaseAsset } from './github.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-updater');
 

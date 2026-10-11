@@ -1,8 +1,8 @@
 import { repository } from '#generated/repository.ts';
-import type { ActionEntity } from '@apack/sdk';
-import { services as appServices } from '@apack/sdk/services';
+import type { ActionEntity } from '@apackdev/sdk';
+import { services as appServices } from '@apackdev/sdk/services';
 import { runActionCode } from '#extensions/steps/action/sandbox.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export class ActionService {
   getByLabel(label: string) {

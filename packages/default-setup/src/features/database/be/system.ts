@@ -4,18 +4,18 @@ import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 // stays deferred. `onConnected`/`onIncoming` come from here for the same reason.
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
-import { defineSystem } from '@apack/sdk/framework';
-import { UnknownBackupDatabasesError } from '@apack/sdk/services';
+import { defineSystem } from '@apackdev/sdk/framework';
+import { UnknownBackupDatabasesError } from '@apackdev/sdk/services';
 import type { Contract } from './contract.ts';
 import { executeQuery } from './execute/query.ts';
 import { executeTransaction } from './execute/transaction.ts';
 import { generateSchemaInfo } from './repository/schema.ts';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query.ts';
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import { ref } from '#generated/ref.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('database');
 

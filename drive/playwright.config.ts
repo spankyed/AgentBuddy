@@ -1,4 +1,4 @@
-import { defineDriveConfig } from '@apack/testing/playwright';
+import { defineDriveConfig } from '@apackdev/testing/playwright';
 
 /**
  * Driving, not testing. Playwright is only the thing that can hold a page open and talk to Electron:

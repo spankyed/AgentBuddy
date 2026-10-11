@@ -5,7 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { terminalEventBus } from './terminal-events.ts'
-import { openLink } from '@apack/sdk/fe'
+import { openLink } from '@apackdev/sdk/fe'
 import type { TerminalInfo } from '../features/terminal/state.ts'
 import '@xterm/xterm/css/xterm.css'
 

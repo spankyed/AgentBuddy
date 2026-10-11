@@ -11,7 +11,7 @@
  * preset and the FE bundler applies it to a `build.bundleUi` pack's config, which makes one definition
  * serve both and keeps them from drifting.
  *
- * Keep this to what this package's own templates use — it is a floor for @apack/ui, not the app's
+ * Keep this to what this package's own templates use — it is a floor for @apackdev/ui, not the app's
  * whole theme. `tests/build/fe-bundler-ui-theme.spec.ts` checks the classes here against the ones the
  * components actually name, so a new one fails until it is added.
  */

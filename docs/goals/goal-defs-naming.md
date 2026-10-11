@@ -19,7 +19,7 @@ Finished when:
   The facade bundle is `facades` everywhere — the snapshot field, the cache directory, the constant.
 - A dependency built before the rename fails a dependent's build with a message naming the remedy, and is
   never silently read as an untyped dependency.
-- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apack/sdk`, `npm run api:update` (and
+- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apackdev/sdk`, `npm run api:update` (and
   the committed `etc/`), `npm run build`, `npm run test:external-pack`, `npm run test:packaged-authoring`.
 - A final summary: phase -> done, evidence, the conventional choices made.
 

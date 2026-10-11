@@ -1,16 +1,16 @@
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb from '@apack/sdk/fe'
-import { safeEvents } from '@apack/sdk/fe'
-import { type TrailClickEvent } from '@apack/sdk/fe'
+import breadcrumb from '@apackdev/sdk/fe'
+import { safeEvents } from '@apackdev/sdk/fe'
+import { type TrailClickEvent } from '@apackdev/sdk/fe'
 import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
-import type { SecretInfo, SecretsStatus } from '@apack/sdk/services'
+import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services'
 import { sendToSystem } from '../../../events.ts'
-import type { PackContentPreview } from '@apack/sdk/build'
-import type { HelpEntry } from '@apack/sdk/framework';
-import type { FeatureRef } from '@apack/sdk/ids';
+import type { PackContentPreview } from '@apackdev/sdk/build'
+import type { HelpEntry } from '@apackdev/sdk/framework';
+import type { FeatureRef } from '@apackdev/sdk/ids';
 
-import { splitRef } from '@apack/sdk/ids';
+import { splitRef } from '@apackdev/sdk/ids';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

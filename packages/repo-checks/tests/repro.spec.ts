@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
+import { BUILD_UNITS, REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
 import { PACK_OUTPUTS } from '../../../scripts/lib/chain-steps.ts';
 import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from '../../../scripts/lib/repro.ts';
 

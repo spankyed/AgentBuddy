@@ -9,18 +9,18 @@ import { appBridgedSpecifiers } from '../../src/build/render-sdk-modules.ts';
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 
 describe('APP_ONLY_EXPORTS', () => {
-  it('names exports @apack/ears has', () => {
-    const exported = sharedInstanceExports('@apack/ears', import.meta.filename);
+  it('names exports @apackdev/ears has', () => {
+    const exported = sharedInstanceExports('@apackdev/ears', import.meta.filename);
     for (const specifier of Object.keys(APP_ONLY_EXPORTS)) {
-      expect(Object.keys(exported)).toContain(`.${specifier.replace('@apack/ears', '')}`);
+      expect(Object.keys(exported)).toContain(`.${specifier.replace('@apackdev/ears', '')}`);
     }
   });
 
   it('leaves them out of the shared specifiers the harness bridges and the app bridge', () => {
-    const specifiers = sharedInstanceSpecifiers('@apack/ears', sharedInstanceExports('@apack/ears', import.meta.filename));
-    expect(specifiers).toContain('@apack/ears');
-    expect(specifiers).not.toContain('@apack/ears/lmdb');
-    expect(appBridgedSpecifiers(import.meta.filename)).not.toContain('@apack/ears/lmdb');
+    const specifiers = sharedInstanceSpecifiers('@apackdev/ears', sharedInstanceExports('@apackdev/ears', import.meta.filename));
+    expect(specifiers).toContain('@apackdev/ears');
+    expect(specifiers).not.toContain('@apackdev/ears/lmdb');
+    expect(appBridgedSpecifiers(import.meta.filename)).not.toContain('@apackdev/ears/lmdb');
   });
 });
 
@@ -106,8 +106,8 @@ describe('sharedFeModules', () => {
 
     expect(modules['vue']).toBe('vue');
     expect(modules['@xstate/vue']).toBe('@xstate/vue');
-    expect(modules['@apack/sdk/fe']).toBe('@apack/sdk/fe');
-    expect(modules['@apack/ui/design/button']).toBe('@apack/ui/design/button');
+    expect(modules['@apackdev/sdk/fe']).toBe('@apackdev/sdk/fe');
+    expect(modules['@apackdev/ui/design/button']).toBe('@apackdev/ui/design/button');
   });
 
   // The mutation: from a directory with none of the packages installed, the subpaths resolve to nothing, so
@@ -120,7 +120,7 @@ describe('sharedFeModules', () => {
 
       expect(modules).not.toHaveProperty(['prosemirror-model']);
       expect(modules).not.toHaveProperty(['@tiptap/pm/model']);
-      expect(modules).not.toHaveProperty(['@apack/ui/design/button']);
+      expect(modules).not.toHaveProperty(['@apackdev/ui/design/button']);
       // What survives is the list that needs no install to be read
       expect(modules['vue']).toBe('vue');
     } finally {

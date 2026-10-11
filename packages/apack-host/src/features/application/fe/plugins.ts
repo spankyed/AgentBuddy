@@ -1,6 +1,6 @@
 // The shell's plugins: their order, which show, spawning each one's actor, and moving between them.
-import type { Plugin } from '@apack/sdk/fe';
-import { HOST_PACK_ID, splitRef } from '@apack/sdk/ids';
+import type { Plugin } from '@apackdev/sdk/fe';
+import { HOST_PACK_ID, splitRef } from '@apackdev/sdk/ids';
 import type { ShellContext } from './types.ts';
 
 /** `plugins` with the app's own (the host's: the Packs tab) after every pack's, each group in its order */

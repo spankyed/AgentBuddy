@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { isolatedDataDir } from '@apack/testing/vitest';
+import { isolatedDataDir } from '@apackdev/testing/vitest';
 
 const PREFIX = `isolated-data-dir-spec-${process.pid}-`;
 const created: string[] = [];

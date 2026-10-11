@@ -1,7 +1,7 @@
 // The window's client to the API as the app shell uses it: the SDK's part (sending to backend systems) and what only
 // the shell reads. The renderer implements it over its API client; tests pass a fake.
-import type { Message } from '@apack/sdk/events';
-import type { FeClient } from '@apack/sdk/runtime';
+import type { Message } from '@apackdev/sdk/events';
+import type { FeClient } from '@apackdev/sdk/runtime';
 import type { LoadedPackEntry } from '../packs/layout.ts';
 
 /**

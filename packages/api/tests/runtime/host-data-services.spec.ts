@@ -1,4 +1,4 @@
-// The pack-facing replacements for @apack/host in pack code: relation reads in @apack/ears,
+// The pack-facing replacements for @apackdev/host in pack code: relation reads in @apackdev/ears,
 // and the host-implemented services.appData and services.traceStore, as the API's host init registers them.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -7,8 +7,8 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 
 /** The app version the migrations read, when a test sets one; the bound app's otherwise */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
-vi.mock('@apack/sdk/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/sdk/env')>();
+vi.mock('@apackdev/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/sdk/env')>();
   return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
 });
 
@@ -18,8 +18,8 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { untypedQx, untypedTx } = await import('@apack/ears');
-const { services } = await import('@apack/sdk/services');
+const { untypedQx, untypedTx } = await import('@apackdev/ears');
+const { services } = await import('@apackdev/sdk/services');
 
 afterAll(() => {
   store.close();
@@ -120,7 +120,7 @@ describe('services.appData', () => {
   });
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
-    const { appState } = await import('@apack/host/app-state');
+    const { appState } = await import('@apackdev/host/app-state');
     // The release that moves it
     version.current = '0.4.0';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));

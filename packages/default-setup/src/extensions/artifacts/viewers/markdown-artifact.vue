@@ -31,9 +31,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { BookText } from 'lucide-vue-next'
-import type { ArtifactItem } from '@apack/sdk/artifacts'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import CopyButton from '@apack/ui/design/CopyButton'
+import type { ArtifactItem } from '@apackdev/sdk/artifacts'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@apackdev/ui/design/CopyButton'
 
 const props = defineProps<{
   artifact: ArtifactItem<string | { notes?: string }>

@@ -20,13 +20,13 @@ is the exception: it moves with migrations.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- No pack source (default-setup, @apack/ui, tests/fixtures) reaches the shell's actor: `useApplicationActor`
-  is gone from @apack/sdk, and packs use `useShell()`, typed by the SDK's `HostShell` contract.
-- The shell's machine lives in @apack/host/fe as `createShellMachine`, takes its I/O as options, and has no
+- No pack source (default-setup, @apackdev/ui, tests/fixtures) reaches the shell's actor: `useApplicationActor`
+  is gone from @apackdev/sdk, and packs use `useShell()`, typed by the SDK's `HostShell` contract.
+- The shell's machine lives in @apackdev/host/fe as `createShellMachine`, takes its I/O as options, and has no
   import of tRPC, `window`, `localStorage`, the toast or the pack loader; the renderer composes it.
 - Outside the renderer's client implementation, no renderer module calls `trpc.bus.*` or `trpc.packs.loaded`.
-- The shell's specs run in @apack/host with fakes, and none of them mocks a module.
-- A fixture pack's unit test opens its plugin through the real shell in @apack/testing, and the link
+- The shell's specs run in @apackdev/host with fakes, and none of them mocks a module.
+- A fixture pack's unit test opens its plugin through the real shell in @apackdev/testing, and the link
   navigation case in tests/e2e/feature-addressing.spec.ts:52 is covered by a unit test on that harness.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack and
   npm run test:packaged-authoring pass; npm run api:check and facade:check pass with etc/ committed.
@@ -51,7 +51,7 @@ Never:
 - change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating. Keeping
   `useApplicationActor` exported "for external packs" is a shim.
-- import Vue, tRPC, `window`, `document` or `localStorage` in @apack/host (Decision 1).
+- import Vue, tRPC, `window`, `document` or `localStorage` in @apackdev/host (Decision 1).
 - change `window.applicationState` or the machine id `application` that `#application.*` targets use
   (Decision 6).
 ```
@@ -62,8 +62,8 @@ Never:
 
 The backend went through this move recently, in four commits:
 
-- **`df84b09b0`** (2026-09-14) moved the bus routing core into `@apack/host`. It created the injected shape as part of the move: `createBusMachine({ registry, listen, onOutgoing })` takes its I/O as options, and the API's bus composes it with the root event bus "so the pack test harness can run the same routing".
-- **`a35120c5f`** (the same day) was that consumer: `startApp` in `@apack/testing` runs a pack's systems on the app's bus core.
+- **`df84b09b0`** (2026-09-14) moved the bus routing core into `@apackdev/host`. It created the injected shape as part of the move: `createBusMachine({ registry, listen, onOutgoing })` takes its I/O as options, and the API's bus composes it with the root event bus "so the pack test harness can run the same routing".
+- **`a35120c5f`** (the same day) was that consumer: `startApp` in `@apackdev/testing` runs a pack's systems on the app's bus core.
 - **`28be3b60b`** and **`04be5db79`** (2026-09-16) finished the split. `createAppBus(registry)` composes the bus, and the API keeps only transport, boot and composition.
 
 The clean seams came from the move; they weren't there before it. The backend also stopped using a client of its own: SDK code sends over the bound `HostRuntime.transport`.
@@ -95,7 +95,7 @@ Its I/O is imported at module level:
 | `window.__showErrorPage` | `:1001`, `:1004`, `:1146`, `:1156` |
 | the pack loader's dynamic `pack://` imports (`loadPackFrontend`, `unloadPackFrontend`) | `:13`, `:327`, `:474` |
 
-It imports no Vue. `route-trailer.ts`, its other import, is plain XState, and `@apack/host` already depends on `xstate`.
+It imports no Vue. `route-trailer.ts`, its other import, is plain XState, and `@apackdev/host` already depends on `xstate`.
 
 Its four specs (`packages/renderer/src/core/actors/__tests__/application-{pack-plugins,shell-state,system-error,pack-loading}.spec.ts`) each `vi.mock('@/core/trpc')` to run it.
 
@@ -162,11 +162,11 @@ The user sees no change: no new behaviour and no speed target. The wins are safe
 Final.
 
 1. **The shell is host-owned app runtime.**
-   - `createShellMachine` lives in `@apack/host/fe`, as the frontend half of the host `application` feature.
+   - `createShellMachine` lives in `@apackdev/host/fe`, as the frontend half of the host `application` feature.
    - The renderer composes it (`createAppShell`, the counterpart of `createAppBus`) and binds it.
-   - `@apack/host` stays free of Vue, tRPC and browser globals. Everything else arrives as options (Decisions 3 and 4).
+   - `@apackdev/host` stays free of Vue, tRPC and browser globals. Everything else arrives as options (Decisions 3 and 4).
 2. **Packs reach the shell through a typed SDK contract, never its actor.**
-   - `@apack/sdk/fe` defines `HostShell`: the state packs may read (plugins, active plugin, plugin visibility, panel sizes, whether the app is onboarding) and the events they may send.
+   - `@apackdev/sdk/fe` defines `HostShell`: the state packs may read (plugins, active plugin, plugin visibility, panel sizes, whether the app is onboarding) and the events they may send.
    - `useShell()` exposes that state and named commands (`restoreChat()`, `resizeCanvas(size)`, `setPluginVisible(ref, visible)`, `startHotkeyRecording()`/`endHotkeyRecording()`, `closeDevLetter()`).
    - `useApplicationActor` and the `'applicationActor'` provide are deleted: one path to the shell, the bound port.
    - `FeHostRuntime.application` is typed against the contract, so `openPlugin`, `pluginActor` and `PluginScope` read it typed.
@@ -191,7 +191,7 @@ Final.
    - the machine id `application`, which `#application.*` targets use
    - the Packs plugin's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
 7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`. No migration rewrites stored targets: the only code that made link blocks was removed before the first release, so no released data holds one.
-8. **`@apack/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
+8. **`@apackdev/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
 9. **Opening a plugin is the shell's command, and it waits for a pack still loading.**
    - `openPlugin(ref, event?)` sends the shell `OPEN_PLUGIN { plugin, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_PLUGIN` and `DEFAULT_TOGGLE` itself.
    - The shell opens a registered plugin and hands its actor the events, as `openPlugin` does today.
@@ -203,11 +203,11 @@ Final.
 
 ### Phase 1 — a typed shell contract (Decisions 2 and 7)
 
-- Add `HostShell` and `useShell()` to `@apack/sdk/fe`.
+- Add `HostShell` and `useShell()` to `@apackdev/sdk/fe`.
 - Type `FeHostRuntime.application`, `openPlugin` and `pluginActor` against the contract.
 - Migrate the 8 call sites in Background, and delete `useApplicationActor` and `main.ts:169`'s provide.
 - Delete `LinkBlock.vue`'s `'application'` branch.
-- With `useApplicationActor` gone, pack code has no path to the actor: `boundFeHost` is exported only from `@apack/sdk/runtime/internals`, which isn't published. Keep it that way; `etc/fe.api.md` and `etc/runtime.api.md` record it.
+- With `useApplicationActor` gone, pack code has no path to the actor: `boundFeHost` is exported only from `@apackdev/sdk/runtime/internals`, which isn't published. Keep it that way; `etc/fe.api.md` and `etc/runtime.api.md` record it.
 - Type-check the renderer's machine against `HostShell`.
 - Run `npm run api:update`.
 
@@ -235,7 +235,7 @@ Final.
 
 ### Phase 3 — move, inject and split (Decisions 1, 4, 5, 6 and 9), after Phase 2
 
-- Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/apack-host/src/fe/shell/`, split per Decision 5, and export it from `@apack/host/fe`.
+- Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/apack-host/src/fe/shell/`, split per Decision 5, and export it from `@apackdev/host/fe`.
 - The renderer's `createAppShell` composes it with the real implementations, and `main.ts` creates and binds it.
 - Move the four specs to `packages/apack-host/tests/fe/shell/`, running on fakes.
 - Opening a plugin moves into the shell (Decision 9): `OPEN_PLUGIN` joins `HostShell`, `openPlugin` sends it, and the shell parks a request for a plugin whose pack frontend is still loading. Specs, on the fake `packFrontends`: a request made while a pack loads opens its plugin with the events once it arrives; one for a ref no pack provides is refused through `notify` once loading settles; one whose pack unloads while it waits is dropped.
@@ -252,7 +252,7 @@ Final.
 
 ### Phase 4 — the shell in pack tests (Decision 8), after Phase 3
 
-- `@apack/testing` gains a frontend harness that binds the real shell over the in-memory bus `startApp` runs, with the test pack's frontend registered.
+- `@apackdev/testing` gains a frontend harness that binds the real shell over the in-memory bus `startApp` runs, with the test pack's frontend registered.
 - `startFeTestRuntime` binds a working shell by default.
 - A fixture pack (`tests/fixtures`) adds a unit test that opens its plugin with `navigateToPlugin` and reads `useShell()` state.
 - `packages/apack-testing/CLAUDE.md` documents it.
@@ -273,21 +273,21 @@ All four phases landed, each its own commit, with the full check list passing at
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@apack/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
-| 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@apack/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
+| 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@apackdev/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
+| 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@apackdev/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
 | 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/apack-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/apack-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_PLUGIN` parks requests (`open-plugin.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
-| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@apack/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
+| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@apackdev/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
 
 ### Conventional choices
 
 - **Phase 1:** `useShell()` gives the state as read-only refs kept current while the calling scope lives; `HostShellEvent` held `SELECT_PLUGIN` and `DEFAULT_TOGGLE` until Phase 3 replaced them with `OPEN_PLUGIN`, and `defaultToggles` left the readable state with them. `PluginEvent` moved into `shell.ts`, so the contract doesn't pull in `navigation.ts` (and its `window.electronAPI`) wherever the SDK port is typed.
-- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@apack/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
+- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@apackdev/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
 - **Phase 3:** the machine takes `packs` (the window's registry) for the plugins it starts with and its default, so its input keeps only `initialPluginId` and `ownsLastActivePlugin`. `OPEN_PLUGIN` delivers the plugin's events with a send to itself rather than a raise, so they arrive after the selection has settled, as `openPlugin`'s did. Once loading settles the shell refuses a parked request whether or not the read of the loaded packs succeeded. `app-extensions.ts` takes its component type from the SDK instead of `vue`, so `src/fe` names no Vue at all.
-- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@apack/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
+- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@apackdev/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
 
 ### Corrections to the Decisions
 
-- **Decision 8, "`startFeTestRuntime` binds a working shell by default":** `startFeTestRuntime` is `@apack/sdk/testing`'s, and the SDK can't import the host's shell. Its default is instead a stand-in that fails naming `startShell`, which binds the real shell (through `startFeTestRuntime`, with `application` passed).
+- **Decision 8, "`startFeTestRuntime` binds a working shell by default":** `startFeTestRuntime` is `@apackdev/sdk/testing`'s, and the SDK can't import the host's shell. Its default is instead a stand-in that fails naming `startShell`, which binds the real shell (through `startFeTestRuntime`, with `application` passed).
 - **Phase 1's "Done when" E2E specs:** the repo has no E2E spec for the commit, pull-request or welcome flows; the full suite passed, which is what exists for them.
 
 ### Open items
@@ -314,7 +314,7 @@ All four phases landed, each its own commit, with the full check list passing at
 - **Data and processes:** no real data dirs; no broad pkill; E2E runs in the `apack-test` namespace.
 - **Standing rules:** preload, the example pack and release metadata keep their usual rules. The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - **Published packages:**
-  - no `any` in `@apack/sdk`'s pack-facing surface, which `HostShell` and `useShell()` are
+  - no `any` in `@apackdev/sdk`'s pack-facing surface, which `HostShell` and `useShell()` are
   - the TypeScript 5.7 floor
   - `api:update` after export changes
   - `Object.hasOwn` and `Error.cause` broke the shared-source lib floor before, so run the full typecheck after touching `sdk` source

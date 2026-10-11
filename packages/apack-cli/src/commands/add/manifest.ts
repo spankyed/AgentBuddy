@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine } from '@apack/sdk/build';
+import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine } from '@apackdev/sdk/build';
 
 export { readManifest } from '../../utils';
 

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { generateEntries } from '../../src/commands/generate-entries';
-import { PACK_SNAPSHOT_FORMAT, type PackSnapshot, type PackTypeManifest } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, type PackSnapshot, type PackTypeManifest } from '@apackdev/sdk/build';
 
 let tmpDir: string;
 

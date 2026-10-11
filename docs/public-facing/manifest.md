@@ -81,8 +81,8 @@ unrepresentable.
 
 | `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`apack validate` checks it) |
 | `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
-| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apack/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
-| `plugin` | `{ entry, contract?, default? }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned`. `contract` is `"path#exportName"` of the plugin's contract — a declared type holding the state it publishes and the inbox others may send to (`PluginInbox`, `@apack/sdk/fe`). Put it in a leaf module your plugin's machine doesn't import, so codegen can read it without resolving the machine; omit it for a plugin that publishes nothing, which still receives its own feature's system events. `default: true` opens this plugin when the app starts — at most one of your features may claim it, and across the app the first pack to register one wins. Without a claim, your pack's first plugin feature is its default |
+| `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
+| `plugin` | `{ entry, contract?, default? }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned`. `contract` is `"path#exportName"` of the plugin's contract — a declared type holding the state it publishes and the inbox others may send to (`PluginInbox`, `@apackdev/sdk/fe`). Put it in a leaf module your plugin's machine doesn't import, so codegen can read it without resolving the machine; omit it for a plugin that publishes nothing, which still receives its own feature's system events. `default: true` opens this plugin when the app starts — at most one of your features may claim it, and across the app the first pack to register one wins. Without a claim, your pack's first plugin feature is its default |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
@@ -258,7 +258,7 @@ release, so `0.3.16-beta.2` would match nothing.
 The version is the key, so the module states only what it does:
 
 ```ts
-import type { DeclaredMigration } from '@apack/sdk/framework';
+import type { DeclaredMigration } from '@apackdev/sdk/framework';
 
 export const migration: DeclaredMigration = {
   description: 'Give every memo a colour',
@@ -291,7 +291,7 @@ order you probably did not intend — keep one change on one line.
 | `tiptapPlugins` | `string` | Tiptap plugin registration module |
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
 
-Carrying your own copy of `@apack/ui` is `build.bundleUi`, not one of these: it changes what the build
+Carrying your own copy of `@apackdev/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.
 
 The frontend entry itself isn't declared here: `apack build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
@@ -310,7 +310,7 @@ The frontend entry itself isn't declared here: `apack build` bundles `src/pack-e
 | Field | Type | Description |
 |---|---|---|
 | `opaqueDeps` | `string[]` | Dependencies the frontend bundle includes whole instead of tree-shaking, by package name |
-| `bundleUi` | `boolean` | Bundle a copy of `@apack/ui` into the pack instead of using the app's (default `false`). All of `@apack/ui` is bundled, so the pack never mixes the two |
+| `bundleUi` | `boolean` | Bundle a copy of `@apackdev/ui` into the pack instead of using the app's (default `false`). All of `@apackdev/ui` is bundled, so the pack never mixes the two |
 
 Everything under `build` changes what `apack build` produces, or how long it takes, and nothing the app
 loads — which is what separates it from the sections above.
@@ -389,7 +389,7 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
 | `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
-| `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apack/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
+| `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apackdev/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
 | `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
 
 For each entry with a `monaco` target, `apack build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.

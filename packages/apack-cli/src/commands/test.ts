@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { appLabel, parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
 import { resolvePlaywrightCli } from '../app/playwright';
-import { withoutSourceCondition } from '@apack/host/build/source-resolution';
+import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { cliBin, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
@@ -28,8 +28,8 @@ rather than being tested quietly.
 output, generated types and the harness. Nothing to download, nothing to build but the pack.`;
 
 /**
- * Env the @apack/testing fixture reads to launch the app and install the pack. The runner gets
- * the @apack/source condition only when @apack/testing is a checkout's source.
+ * Env the @apackdev/testing fixture reads to launch the app and install the pack. The runner gets
+ * the @apackdev/source condition only when @apackdev/testing is a checkout's source.
  */
 export function fixtureEnv(
   app: AppTarget,

@@ -1,9 +1,9 @@
 // The user's secrets, host-internal: the host and the API read and write them here. Packs reach only the metadata,
 // through `services.secrets`, and never import this module.
-import { resolveAppContext, type AppEnv } from '@apack/sdk/env';
-import { _rootEvents } from '@apack/sdk/runtime';
-import { _getSecretsFilePath } from '@apack/sdk/utils';
-import type { SecretsSnapshot } from '@apack/sdk/services';
+import { resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { _rootEvents } from '@apackdev/sdk/runtime';
+import { _getSecretsFilePath } from '@apackdev/sdk/utils';
+import type { SecretsSnapshot } from '@apackdev/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { dataKeyFile, fileKeyVault, osKeyVault } from './vault.ts';
 import type { PackRegistry } from '../packs/registry.ts';

@@ -11,7 +11,7 @@ import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/install
 const recordedPacks = () => readInstalledPacks();
 
 import { readHostInfo } from '../../src/packs/host-info.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 
 let root: string;

@@ -1,9 +1,9 @@
-import type { KeyboardShortcut } from '@apack/sdk/types';
+import type { KeyboardShortcut } from '@apackdev/sdk/types';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
 
-import type { ArtifactItem } from '@apack/sdk/artifacts';
+import type { ArtifactItem } from '@apackdev/sdk/artifacts';
 
 // Block-based interaction system (composable architecture)
 export type BlockType = string;

@@ -220,7 +220,7 @@ finds nothing outside `docs/archive`.
 - Keep the standing warning in `CLAUDE.md` about the transport stamping this field, under its new name:
   never use `surfaceId` as a field inside an event payload sent via `sendToSurface`.
 
-**Done when:** `npm test -w @apack/host` passes, including `tests/bus/outgoing-events.spec.ts` and
+**Done when:** `npm test -w @apackdev/host` passes, including `tests/bus/outgoing-events.spec.ts` and
 `tests/packs/event-validation-map.spec.ts`; `npm run test:unit` and `npm test` pass. Mutation: leaving
 one `pluginId` behind in the renderer's routing fails an event-validation or E2E spec rather than
 passing silently — if it doesn't, add the spec that catches it.
@@ -238,7 +238,7 @@ passing silently — if it doesn't, add the spec that catches it.
 - Spec it the way `tests/migrations/app-state-0.4.0.spec.ts` specs the earlier move: a row in the old
   shape, migrated, then migrated again to prove idempotence.
 
-**Done when:** the migration spec passes, including the second run; `npm test -w @apack/host` and
+**Done when:** the migration spec passes, including the second run; `npm test -w @apackdev/host` and
 `npm test -w @app/api` pass. Mutation: dropping the guard that skips an already-migrated row fails the
 idempotence case.
 

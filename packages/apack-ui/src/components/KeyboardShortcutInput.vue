@@ -59,10 +59,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Keyboard, Eraser } from 'lucide-vue-next'
-import { useShell } from '@apack/sdk/fe'
+import { useShell } from '@apackdev/sdk/fe'
 
 const shell = useShell()
-import type { KeyboardShortcut } from '@apack/sdk/types'
+import type { KeyboardShortcut } from '@apackdev/sdk/types'
 
 interface Props {
   modelValue?: KeyboardShortcut | null

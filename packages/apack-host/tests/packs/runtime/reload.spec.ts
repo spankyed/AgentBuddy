@@ -5,17 +5,17 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
 const { loadAppPacks } = await import('../../../src/packs/runtime/loader.ts');
 const { applyPacks } = await import('../../../src/packs/runtime/apply.ts');
-const { resolveAppContext } = await import('@apack/sdk/env');
+const { resolveAppContext } = await import('@apackdev/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
-const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@apack/sdk/testing');
+const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@apackdev/sdk/testing');
 const { appliedContent, appState } = await import('../../../src/app-state/index.ts');
 const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 

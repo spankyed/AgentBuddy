@@ -32,13 +32,13 @@ Settings view (`settings-help`), a panel a plugin lends another actually drawing
 
 **The shape that fails the second half is worth recognising, because it reads like a UI test.** A spec
 that sends a plugin an event and then asserts *shell state* — which plugin is open, what the context holds
-— needs no window: the shell's side of that is covered on fakes (`@apack/host`'s
+— needs no window: the shell's side of that is covered on fakes (`@apackdev/host`'s
 `tests/features/application/fe/`) and the pack's side is `setupPackTests` with `startFeTestRuntime`, in
 milliseconds. `packages/default-setup/tests/features/browser/fe/open-link.spec.ts` is one written that
 way, and being cheap is what lets it assert both branches of the setting it reads rather than the default
 alone.
 
-**If it needs neither, it is a harness test.** `setupPackTests` (`@apack/testing`) runs a pack's code in
+**If it needs neither, it is a harness test.** `setupPackTests` (`@apackdev/testing`) runs a pack's code in
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
 boundary pays a full Electron launch for nothing.
 
@@ -77,20 +77,20 @@ DEBUG_E2E=1 npm run test:e2e                  # Electron process output to termi
 
 ## How the fixture works
 
-The test infrastructure lives in `@apack/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack init-tests` scaffolds.
+The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack init-tests` scaffolds.
 
 ### Startup lifecycle
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detection, walking up from the `@apack/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
+1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detection, walking up from the `@apackdev/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
-   - Always rebuild the pack with `node <apack bin> build` (the bin is `APACK_CLI`, else the `@apack/cli` the pack resolves, else the checkout's)
+   - Always rebuild the pack with `node <apack bin> build` (the bin is `APACK_CLI`, else the `@apackdev/cli` the pack resolves, else the checkout's)
    - Install it into the worker's temp data dir with the pack installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
 
-3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `apack`, it would start Electron as plain Node) and minus the `@apack/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `APACK_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
+3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `apack`, it would start Electron as plain Node) and minus the `@apackdev/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `APACK_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
 
 4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s. The viewport is then pinned to 1400×900, since the window's default size differs between dev and production builds of main.
 
@@ -147,7 +147,7 @@ Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`,
 Import from the local fixtures, not from `@playwright/test`:
 
 ```ts
-import { test, expect } from '@apack/testing';
+import { test, expect } from '@apackdev/testing';
 
 test('verify my change', async ({ app, appPage }) => {
   await app.navigate('code');
@@ -162,7 +162,7 @@ config, and outside every test glob:
 
 ```ts
 // drive/notes.ts
-import { drive } from '@apack/testing';
+import { drive } from '@apackdev/testing';
 
 drive('check something', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -259,11 +259,11 @@ There are two ways to test external packs:
 
 ### 1. From the pack's own repo (preferred for pack developers)
 
-Pack developers can write and run E2E tests without the apack repo. The fixture is `@apack/testing`. See `packages/apack-testing/CLAUDE.md` for the full guide.
+Pack developers can write and run E2E tests without the apack repo. The fixture is `@apackdev/testing`. See `packages/apack-testing/CLAUDE.md` for the full guide.
 
 ```bash
 cd /path/to/my-pack
-apack init-tests          # scaffold config + sample test, add @apack/testing + @playwright/test
+apack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
 npm install
 apack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
 apack test --build beta   # CI: never prompts; --build <path> for a checkout

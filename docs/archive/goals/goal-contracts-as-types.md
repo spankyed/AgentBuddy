@@ -269,7 +269,7 @@ reader gives the same answer as the old one did, which is the only version of th
   leaves already obey it (Background).
 - The guard from Decision 6.
 
-**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apack/sdk`,
+**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apackdev/sdk`,
 `npm test -w @app/default-setup`, `test:external-pack` pass; `git grep "satisfies SystemEntry"` and
 `git grep "_outgoing"` return nothing outside `docs/archive/`; `api:update` run and `etc/` committed. The
 check that carries the phase: the generated event maps are **byte-identical** to before it

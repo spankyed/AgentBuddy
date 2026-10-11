@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
-import type { PackManifest } from '@apack/sdk/build';
+import type { PackManifest } from '@apackdev/sdk/build';
 import type { RecordReads } from './build-reads';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
 
@@ -50,7 +50,7 @@ export function monacoDefsFile(name: string): string {
  * `monaco` target, wrapped as the `@app/defs/<name>` module Monaco loads.
  *
  * Monaco has no node_modules, so a declaration it can't resolve is a silently missing completion: the
- * pack's own modules and every `@apack/*` package are inlined, and `inline` adds further packages
+ * pack's own modules and every `@apackdev/*` package are inlined, and `inline` adds further packages
  * (the AI SDK's, for `services.inference`). Everything else stays an import.
  */
 export async function bundleDslDefs(
@@ -69,7 +69,7 @@ export async function bundleDslDefs(
     const result = await bundleDeclarations(packDir, path.join(packDir, def.entry), outFile, {
       isExternal: (id) =>
         builtinModules.includes(id) || id.startsWith('node:')
-        || (isPackageSpecifier(id) && !id.startsWith('@apack/') && !inlined(id)),
+        || (isPackageSpecifier(id) && !id.startsWith('@apackdev/') && !inlined(id)),
       // Monaco reads the file as the module the DSL editor's code is compiled against
       intro: `declare module "@app/defs/${name}" {`,
       outro: '}',

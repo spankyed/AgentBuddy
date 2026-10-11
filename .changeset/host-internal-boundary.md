@@ -1,6 +1,6 @@
 ---
-'@apack/sdk': minor
-'@apack/testing': minor
+'@apackdev/sdk': minor
+'@apackdev/testing': minor
 ---
 
 Host-only exports are the app's alone, and a pack can no longer name one.
@@ -10,10 +10,10 @@ the database, the run history, the user's encrypted API keys, the media store �
 paths the `_`-prefixed accessors over it were meant to keep host-only.
 
 **A pack keeps its own data under `getDataDirPath(name)`, which has moved to `#generated/paths`.** It
-is no longer exported from `@apack/sdk/utils`:
+is no longer exported from `@apackdev/sdk/utils`:
 
 ```diff
--import { getDataDirPath } from '@apack/sdk/utils';
+-import { getDataDirPath } from '@apackdev/sdk/utils';
 +import { getDataDirPath } from '#generated/paths.ts';
 ```
 
@@ -23,7 +23,7 @@ other pack. `name` must be one directory — letters, digits, dot, dash and unde
 characters, and not a name the filesystem reserves — so `getDataDirPath('Cache')` and
 `getDataDirPath('../..')` now throw instead of resolving somewhere that was never the pack's.
 
-`@apack/testing/harness` gains `testMediaPath(entityId?)`, the supported way for a pack's tests to
+`@apackdev/testing/harness` gains `testMediaPath(entityId?)`, the supported way for a pack's tests to
 find the media an apply wrote, and its `resetTestData()` now clears that store along with the database
 and the secrets — what the testing docs already promised per test.
 

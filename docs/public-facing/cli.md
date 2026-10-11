@@ -5,10 +5,10 @@ The `apack` CLI manages the full pack lifecycle: scaffolding, code generation, b
 ## Installing
 
 - From the app (macOS): **apack → Install 'apack' command in PATH**. It links `/usr/local/bin/apack` (`apack-beta` for apack Beta) to the CLI bundled with the app, which runs on the app's own Node runtime.
-- `npm i -g @apack/cli`
+- `npm i -g @apackdev/cli`
 - Homebrew: `build/homebrew/apack.rb`
 
-Packs pin `@apack/cli` in `devDependencies`. Any `apack` run inside a pack hands off to that pinned version.
+Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack hands off to that pinned version.
 
 ## Commands
 
@@ -25,10 +25,10 @@ apack init my-pack
 Creates no feature (add one with `apack add feature`). It writes:
 
 - `apack.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`). No `extensions` section: `apack add step|artifact|block` each declare their own entry under it
-- `package.json` (depends on `@apack/sdk`; pins `@apack/cli`, `@apack/testing`, `vitest`, `typescript`), `tsconfig.json`, `.gitignore`, `src/env.d.ts`
+- `package.json` (depends on `@apackdev/sdk`; pins `@apackdev/cli`, `@apackdev/testing`, `vitest`, `typescript`), `tsconfig.json`, `.gitignore`, `src/env.d.ts`
 - `.github/workflows/release.yml`: publishes the GitHub release when `apack release` pushes a `v*` tag
 - `src/content/actions/`, `src/content/flows/`, `src/content/examples/hello.md`
-- `vitest.config.ts`, `tests/setup.ts` (the `@apack/testing/harness` setup) and `tests/<name>.spec.ts`
+- `vitest.config.ts`, `tests/setup.ts` (the `@apackdev/testing/harness` setup) and `tests/<name>.spec.ts`
 
 Then runs `generate` and `generate-entries`.
 
@@ -48,7 +48,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Service | `apack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `apack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
-`add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apack/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
+`add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, must equal the name. It creates:
 
@@ -104,18 +104,18 @@ Steps:
 4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
-7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apack/*` packages, `@apack/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack facade-report`)
+7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
-9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apack/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apack/sdk`'s optional peers
+9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apackdev/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apackdev/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
-11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@apack/*` and the entry's `inline` packages
+11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@apackdev/*` and the entry's `inline` packages
 12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
 A build also writes `.apack/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `APACK_NO_BUILD_READS=1` turns it off, for a read-only tree.
 
-A build resolves the pack's `@apack` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an apack checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `apack test` and `apack dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
+A build resolves the pack's `@apackdev` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an apack checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `apack test` and `apack dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
 
 #### `apack pack [--out <dir>]`
 
@@ -127,7 +127,7 @@ Launch apack with your pack installed and keep it in step with your edits.
 
 It picks an app the way you tell it to — `--build <path>` for a local apack checkout, `--build beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the apack checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
 
-Deriving the checkout is the right pairing rather than a convenience: a pack whose `@apack/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
+Deriving the checkout is the right pairing rather than a convenience: a pack whose `@apackdev/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
 
 `apack test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
@@ -163,7 +163,7 @@ Launch apack and drive it from a script: navigate, send events, read state, take
 
 ```ts
 // drive/notes.ts
-import { drive } from '@apack/testing';
+import { drive } from '@apackdev/testing';
 
 drive('open notes and look at it', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -370,19 +370,19 @@ Checks:
 | Rule | What it refuses | Switchable? |
 |---|---|---|
 | `contract-leaves` | a contract that reaches its own machine (`./state.ts`, `./system.ts`), another feature, or generated code beyond `#generated/types` and `#generated/ears`. Codegen reads a contract as a declared type before it writes anything, so a contract whose read positions resolve through the machine collapses to `any` and the build fails for good — and one that resolves anyway ships the machine's whole declaration in your published facade | no |
-| `source-resolution` | a `tsconfig.json` or Vitest config of yours that resolves a checkout's `@apack` source instead of the published `dist` — esbuild and the pack bundler read `dist` either way, so such a pack typechecks against one thing and ships another | no |
+| `source-resolution` | a `tsconfig.json` or Vitest config of yours that resolves a checkout's `@apackdev` source instead of the published `dist` — esbuild and the pack bundler read `dist` either way, so such a pack typechecks against one thing and ships another | no |
 | `own-modules` | a specifier that names no file: `#generated/events` or `#generated/events.js` where the file is `events.ts`, and a relative `./x.js` whose source sibling is `./x.ts`. No runtime resolves an extensionless specifier in ESM, and a pack ships one bundle rather than a module per source | no |
 | `pack-own-aliases` | `@/…`, a TypeScript-only `paths` mapping no runtime reads. Name your own modules with `#` subpath imports from your `package.json` | no |
-| `internal-package-imports` | an `@apack` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it | no |
-| `host-imports` | `@apack/host`, which is not installed for a pack | no |
-| `lmdb-imports` | `lmdb` or `@apack/ears/lmdb`: your data comes through the engine the app installs | no |
+| `internal-package-imports` | an `@apackdev` export named `_x`: it is `@internal`, the app's own, and an app update is free to rename it | no |
+| `host-imports` | `@apackdev/host`, which is not installed for a pack | no |
+| `lmdb-imports` | `lmdb` or `@apackdev/ears/lmdb`: your data comes through the engine the app installs | no |
 | `untyped-sends` | `untypedBroadcastToPlugin`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` | yes |
-| `raw-transport` | `_rootEvents`, `trpc.bus`, `@apack/sdk/rpc` | yes |
-| `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@apack/sdk/logger` | yes |
+| `raw-transport` | `_rootEvents`, `trpc.bus`, `@apackdev/sdk/rpc` | yes |
+| `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@apackdev/sdk/logger` | yes |
 | `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered in no plugin scope and by no single plugin, so it addresses a plugin by ref and `sendToPlugin` is that route's send | no |
 | `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` | yes |
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
-| `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@apack/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@apack/sdk/testing`, and rename a field of your own that collides | no |
+| `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@apackdev/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@apackdev/sdk/testing`, and rename a field of your own that collides | no |
 
 A rule marked switchable has no effect at run time, so a pack may switch it off in **`apack.checks.json`**
 at its root:
@@ -432,7 +432,7 @@ Print a summary of the current pack: id, version, host version, feature count, s
 
 #### `apack init-tests`
 
-Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apack/testing` and `@playwright/test` devDependencies. Existing files are kept.
+Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
 #### `apack test [--build <name|path>] [--prebuilt] [playwright args...]`
 
@@ -598,7 +598,7 @@ apack db script ./cleanup.ts -d -- --older-than 30
 | `args` | whatever follows `--` |
 | `log` | prints a line, like the script's own output |
 
-The database is handed to the script rather than left for it to open: the published CLI carries its own copy of the engine, so a script importing `@apack/ears` itself would get a second one, with no data in it. `--read-only` opens the database without writing, so a reporting script can run while apack is open.
+The database is handed to the script rather than left for it to open: the published CLI carries its own copy of the engine, so a script importing `@apackdev/ears` itself would get a second one, with no data in it. `--read-only` opens the database without writing, so a reporting script can run while apack is open.
 
 #### `apack db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing]`
 

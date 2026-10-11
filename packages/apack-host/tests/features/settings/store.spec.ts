@@ -2,10 +2,10 @@
 // the settings in effect are the defaults with those over them, every write is checked once, and the listeners hear
 // each change in the order it happened — including the two that bracket a wholesale replacement.
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { untypedQx } from '@apack/ears';
-import { resetTestData } from '@apack/sdk/testing';
-import type { EARS } from '@apack/sdk';
-import type { PackRegistration } from '@apack/sdk/framework';
+import { untypedQx } from '@apackdev/ears';
+import { resetTestData } from '@apackdev/sdk/testing';
+import type { EARS } from '@apackdev/sdk';
+import type { PackRegistration } from '@apackdev/sdk/framework';
 import { registry } from '../../packs/runtime/test-host.ts';
 import { PLUGINS_SECTION, SettingsRefusedError } from '../../../src/features/settings/be/document.ts';
 import { createSettingsStore, SETTINGS_ENTITY, type SettingsDocument } from '../../../src/features/settings/be/store.ts';

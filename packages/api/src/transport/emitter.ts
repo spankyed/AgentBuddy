@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import { appendCappedLine } from '@apack/host/logs';
+import { appendCappedLine } from '@apackdev/host/logs';
 import { encodeJsonSafely } from '@/transport/encoder';
-import type { Message } from '@apack/sdk/events';
-import type { LogEvent } from '@apack/sdk/logger';
-import type { RootEvents } from '@apack/sdk/runtime';
+import type { Message } from '@apackdev/sdk/events';
+import type { LogEvent } from '@apackdev/sdk/logger';
+import type { RootEvents } from '@apackdev/sdk/runtime';
 
 /**
  * Writes one log event to `app-events.log`, and cannot fail the call that logged it.

@@ -18,11 +18,11 @@ function run(cwd: string, args: string[]): string {
 }
 
 describe('apack bin hand-off', () => {
-  it('runs the @apack/cli the project pins instead of itself', () => {
+  it('runs the @apackdev/cli the project pins instead of itself', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-handoff-'));
-    const projectCli = path.join(tmp, 'node_modules', '@apack', 'cli');
+    const projectCli = path.join(tmp, 'node_modules', '@apackdev', 'cli');
     fs.mkdirSync(path.join(projectCli, 'bin'), { recursive: true });
-    fs.writeFileSync(path.join(projectCli, 'package.json'), JSON.stringify({ name: '@apack/cli', version: '9.9.9' }));
+    fs.writeFileSync(path.join(projectCli, 'package.json'), JSON.stringify({ name: '@apackdev/cli', version: '9.9.9' }));
     fs.writeFileSync(
       path.join(projectCli, 'bin', 'apack.mjs'),
       "console.log('project cli ' + process.argv.slice(2).join(' '));\n",
@@ -33,14 +33,14 @@ describe('apack bin hand-off', () => {
     expect(run(nested, ['--version']).trim()).toBe('project cli --version');
   });
 
-  it('runs itself when the project resolves @apack/cli to this CLI', () => {
-    // The monorepo links node_modules/@apack/cli to this package
+  it('runs itself when the project resolves @apackdev/cli to this CLI', () => {
+    // The monorepo links node_modules/@apackdev/cli to this package
     const own = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf-8'));
 
     expect(run(path.resolve(__dirname, '..'), ['--version']).trim()).toBe(own.version);
   });
 
-  it('runs itself when the project has no @apack/cli', () => {
+  it('runs itself when the project has no @apackdev/cli', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-handoff-'));
     const own = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf-8'));
 

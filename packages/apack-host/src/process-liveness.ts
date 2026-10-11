@@ -18,7 +18,7 @@
  * advisory lock (`flock`/`LockFileEx`), which the kernel releases on process death. Reach for those if a
  * record's staleness ever has to be settled rather than estimated. A cheaper half-step, for the records
  * this app writes itself, is to record the writer's own start time in the record and bound by that instead
- * of the file's mtime, as `@apack/host/build/packages-built` does with its lock's `startedAt`: an mtime is
+ * of the file's mtime, as `@apackdev/host/build/packages-built` does with its lock's `startedAt`: an mtime is
  * whatever last touched the file, a recorded `startedAt` is the writer saying when it began. It doesn't
  * reach every caller — Chromium writes the instance lock, and a staging dir carries its pid in its name —
  * so it would shrink this problem rather than end it.

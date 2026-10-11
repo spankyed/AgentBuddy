@@ -59,8 +59,8 @@
 import { computed } from 'vue';
 import type { EventListenerEntity } from '#generated/types.ts';
 import { Radio } from 'lucide-vue-next';
-import { cronToHuman } from '@apack/sdk/cron';
-import { stepRegistry } from '@apack/sdk/steps';
+import { cronToHuman } from '@apackdev/sdk/cron';
+import { stepRegistry } from '@apackdev/sdk/steps';
 
 interface Props {
   events: EventListenerEntity[];

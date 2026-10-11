@@ -1,16 +1,16 @@
 import { tx, qx, findById } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
-import { findRelations, untypedQx } from '@apack/ears';
+import { findRelations, untypedQx } from '@apackdev/ears';
 import type { FlowTNodeData, EventListenerEntity } from '../types.ts';
 import type { NodeEntity } from '#generated/types.ts';
 import type { FlowNode } from '#extensions/steps/subflow/types.ts';
-import { stepRegistry } from '@apack/sdk/steps';
+import { stepRegistry } from '@apackdev/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers.ts';
-import { truncateResult } from '@apack/sdk/steps';
-import { tnodeRepository } from '@apack/sdk/repositories';
+import { truncateResult } from '@apackdev/sdk/steps';
+import { tnodeRepository } from '@apackdev/sdk/repositories';
 import { brainLogger } from '../utils/brain-inspect.ts';
-import type { TNodeEntity, TrackTree, ExecutionContext } from '@apack/sdk/steps';
-import { ROOT_FLOW_ROLE, type FlowEntity } from '@apack/sdk';
+import type { TNodeEntity, TrackTree, ExecutionContext } from '@apackdev/sdk/steps';
+import { ROOT_FLOW_ROLE, type FlowEntity } from '@apackdev/sdk';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context

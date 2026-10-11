@@ -127,7 +127,7 @@ installed packs it depends on, with a cycle reported and its packs still returne
 its result.
 
 **Done when:** a spec covers a chain, a diamond, an edge to a pack that isn't installed, a cycle (every
-pack still returned, once, and the cycle logged), and a stable order for packs with no edges between them. `npm test -w @apack/host` passes.
+pack still returned, once, and the cycle logged), and a stable order for packs with no edges between them. `npm test -w @apackdev/host` passes.
 **Mutation:** returning the input unsorted fails the chain case.
 
 ### Phase 2 — the record of what a failed attempt faced

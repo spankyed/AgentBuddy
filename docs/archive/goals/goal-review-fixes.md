@@ -1,5 +1,5 @@
 ```
-# Goal: fix the review findings for typed facades, @apack/ui, @apack/host and packaging
+# Goal: fix the review findings for typed facades, @apackdev/ui, @apackdev/host and packaging
 
 Implement docs/archive/goals/goal-review-fixes.md on branch AS/pack-type-facades: Background,
 Decisions, Phases, Constraints. Read it first. Decisions are final: implement them, don't
@@ -32,30 +32,30 @@ Never:
 
 ## Background
 
-A review of `5bd22a445..HEAD` (the typed facades, `@apack/host`, compiled host-shared `@apack/ui` and `.ts` specifier work) found these problems. IDs are referenced by the phases.
+A review of `5bd22a445..HEAD` (the typed facades, `@apackdev/host`, compiled host-shared `@apackdev/ui` and `.ts` specifier work) found these problems. IDs are referenced by the phases.
 
 **Release configuration**
-- R1 (high). `@apack/ui` peers on `@apack/sdk ^0.1.0`. Changesets bumps a peer dependent major whenever the peer bumps minor, and the `fixed` group carries it to all four packages: a minor SDK changeset yields 1.0.0 everywhere (reproduced with `changeset status`; `@changesets/assemble-release-plan` ~line 340).
+- R1 (high). `@apackdev/ui` peers on `@apackdev/sdk ^0.1.0`. Changesets bumps a peer dependent major whenever the peer bumps minor, and the `fixed` group carries it to all four packages: a minor SDK changeset yields 1.0.0 everywhere (reproduced with `changeset status`; `@changesets/assemble-release-plan` ~line 340).
 - R2 (medium). No declared TypeScript floor. Published SDK declarations need TS ≥ 5.0 (TS 4.9 reports TS2691, or turns every import `any` with `skipLibCheck`); 46 UI declarations use `import("vue", { with: { "resolution-mode": "import" } })`, which needs TS ≥ 5.3.
-- R3 (medium). `packages/apack-sdk/src/fe/index.ts:1` `/// <reference path="./electron-api.d.ts" />` is dropped from emitted declarations (TS ≥ 5.5 needs `preserve="true"`), so published `@apack/sdk/fe` no longer declares `window.electronAPI`.
-- R4 (low). `@apack/ui` tiptap peer floors (`^3.20.1`) are below what its own extensions need (`^3.22.x`); `@tiptap/extension-text-style` (peer of `extension-color`) is undeclared. `typescript` and `esbuild` are runtime `dependencies` of the SDK. SDK source and declaration maps point at unshipped `../src`. `changeset version` doesn't update `package-lock.json`.
+- R3 (medium). `packages/apack-sdk/src/fe/index.ts:1` `/// <reference path="./electron-api.d.ts" />` is dropped from emitted declarations (TS ≥ 5.5 needs `preserve="true"`), so published `@apackdev/sdk/fe` no longer declares `window.electronAPI`.
+- R4 (low). `@apackdev/ui` tiptap peer floors (`^3.20.1`) are below what its own extensions need (`^3.22.x`); `@tiptap/extension-text-style` (peer of `extension-color`) is undeclared. `typescript` and `esbuild` are runtime `dependencies` of the SDK. SDK source and declaration maps point at unshipped `../src`. `changeset version` doesn't update `package-lock.json`.
 - R5 (medium). The UI build's undeclared-import guard can't fire: tsdown bundles any resolvable package that isn't external, so an undeclared import ships a second copy instead of failing.
 - R6. `ci.yml` and `publish-packages.yml` run only on `workflow_dispatch`; none of the checks run on PRs.
 
 **Source condition and tooling**
 - S1 (medium). Root `.npmrc` `node-options` replaces a user's `NODE_OPTIONS` instead of appending (`NODE_OPTIONS=--max-old-space-size=4096 npm run x` loses the flag). `${NODE_OPTIONS}` expansion isn't usable: npm leaves the literal text when it's unset.
-- S2 (medium). `packages/apack-cli/bin/apack.mjs` source mode adds `@apack/source` to every resolution in the CLI (including installed `@apack/sdk` copies, which don't ship `src`) and exports it through `NODE_OPTIONS` to every child process (Playwright, npm, launched apps). `test-packaged-authoring.sh` works around it.
-- S3 (medium). Processes without the condition (plain `node`/`tsx`, IDE Playwright runners, editors on `tests/e2e`) silently resolve `@apack/sdk`/`@apack/ui` to a stale `packages/*/dist`; TypeScript falls back to `dist` declarations when a source target doesn't resolve. This hid the component-types bug once already.
-- S4 (medium/low). The scaffold tsconfig (`packages/apack-cli/src/commands/init.ts:31-46`) lacks `allowImportingTsExtensions`, so a pack linked to a checkout gets TS5097 from `@apack/host`/`@apack/testing` source; `tests/cli/scaffold.spec.ts:18` now passes flags on the command line instead of testing the generated tsconfig.
-- S5 (low). `packages/api/tsconfig.json` sets `allowImportingTsExtensions` twice (the later `false` wins) and still uses node10 `paths` instead of `customConditions` (hence `// @ts-expect-error` on `@apack/sdk/inference` in `pack-loader.ts`). `packages/main/tsconfig.json`, `packages/renderer/tsconfig.node.json` and `packages/default-setup/tsconfig.defs.json` lack the flag and pass only because the files they reach have no relative imports. `packages/apack-sdk/tests`, `packages/*/scripts`, `packages/apack-ui/tsdown.config.ts` and root `scripts/` are never typechecked.
+- S2 (medium). `packages/apack-cli/bin/apack.mjs` source mode adds `@apackdev/source` to every resolution in the CLI (including installed `@apackdev/sdk` copies, which don't ship `src`) and exports it through `NODE_OPTIONS` to every child process (Playwright, npm, launched apps). `test-packaged-authoring.sh` works around it.
+- S3 (medium). Processes without the condition (plain `node`/`tsx`, IDE Playwright runners, editors on `tests/e2e`) silently resolve `@apackdev/sdk`/`@apackdev/ui` to a stale `packages/*/dist`; TypeScript falls back to `dist` declarations when a source target doesn't resolve. This hid the component-types bug once already.
+- S4 (medium/low). The scaffold tsconfig (`packages/apack-cli/src/commands/init.ts:31-46`) lacks `allowImportingTsExtensions`, so a pack linked to a checkout gets TS5097 from `@apackdev/host`/`@apackdev/testing` source; `tests/cli/scaffold.spec.ts:18` now passes flags on the command line instead of testing the generated tsconfig.
+- S5 (low). `packages/api/tsconfig.json` sets `allowImportingTsExtensions` twice (the later `false` wins) and still uses node10 `paths` instead of `customConditions` (hence `// @ts-expect-error` on `@apackdev/sdk/inference` in `pack-loader.ts`). `packages/main/tsconfig.json`, `packages/renderer/tsconfig.node.json` and `packages/default-setup/tsconfig.defs.json` lack the flag and pass only because the files they reach have no relative imports. `packages/apack-sdk/tests`, `packages/*/scripts`, `packages/apack-ui/tsdown.config.ts` and root `scripts/` are never typechecked.
 - S6 (low). `scripts/check-import-specifiers.ts` misses `require('./x.js')`, `import x = require()`, `vi.mock('./x.js')`, `.mts`/`.cts`/`.tsx` targets and files, and exits 0 silently when run through a symlinked path. It has no spec. `published-specifiers.spec.ts` only scans `.js`/`.mjs`.
 - S7 (low). `api:build` never clears `.temp/api-types`. `published-*` specs skip silently without `dist` and pass against a stale one (`PACKAGES_BUILT` checks existence only).
 
-**`@apack/ui` contract**
+**`@apackdev/ui` contract**
 - U1 (high). Component API reports contain only `const _default: typeof __VLS_export`: props, emits, slots and exposed members aren't in `etc/*.api.md`, so `api:check` doesn't catch a breaking component change (it only caught `SimpleMonacoEditor` because that one exports a named props interface). The host-shared semver contract isn't enforced.
 - U2 (medium). A pack whose host lacks a UI module crashes its whole FE entry (`Cannot read properties of undefined`); a missing named export is silently `undefined`. `fe-bundler-shared-ui.spec.ts:35` stubs missing keys with `?? {}`.
 - U3 (medium). With `fe.bundleUi`, only the exact `@tiptap/core`, `@tiptap/vue-3`, `@tiptap/starter-kit` specifiers are host-shared, so the pack inlines `prosemirror-*`/`@tiptap/pm/*` and `@tiptap/vue-3/menus` next to the host's core: two ProseMirror instances.
-- U4 (medium). `fe.bundleUi` packs don't scan `@apack/ui` for Tailwind classes (`fe-bundler.ts:258`); it only works because the host CSS has the same classes.
+- U4 (medium). `fe.bundleUi` packs don't scan `@apackdev/ui` for Tailwind classes (`fe-bundler.ts:258`); it only works because the host CSS has the same classes.
 - U5 (low). Proxy export discovery (`parseNamedExports`, `discoverSourceExports`) is regex-based. It matches es-module-lexer on today's 67 entries, but misses `export * from './x.ts'`, `export * as`, `export enum`, destructured exports, and names in comments, with nothing guarding it.
 - U6 (low). `computeEntries` publishes every `.ts` under `src` (a future helper or `*.spec.ts` becomes public). `findComponentsWithoutEntry` runs only in `exports:update` and isn't mutation-checked by a spec.
 - U7 (low). The UI build emits no source maps. `virtual:host-deps` loads every UI module at boot, so module side effects (e.g. `UnifiedMonacoEditor.vue`'s window error listeners) always install.
@@ -63,12 +63,12 @@ A review of `5bd22a445..HEAD` (the typed facades, `@apack/host`, compiled host-s
 **Type contract**
 - T1 (high). Dependency entity shapes never resolve in real packs: `apack build` reads `snapshot.defs` from `<pack>/defs`, which nothing writes (default-setup's snapshot has 0 defs); `entityShapeEntries` only matches `export interface|type X`, not rollup's `export type { X }`; unmatched shapes are skipped silently. `facade-typing.spec.ts` hand-writes a defs file, so it passes.
 - T2 (high). Own and dependency (or two dependency) shapes with the same type name generate duplicate `import type` lines (`TS2300 Duplicate identifier`).
-- T3 (high). `any` reaches packs from `@apack/sdk/ears` and `@apack/sdk/services`: `repository: any`; `tx()` has no return annotation, so its chain methods are `any` in `dist`; `getAttr` returns `any`; `createEntityWithDefaults`/`updateEntity` use `Record<string, any>`; `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole` stay pack-facing with caller-chosen `T`; `services: HostServices & Record<string, any>`; `AttributeValue` includes `any`.
+- T3 (high). `any` reaches packs from `@apackdev/sdk/ears` and `@apackdev/sdk/services`: `repository: any`; `tx()` has no return annotation, so its chain methods are `any` in `dist`; `getAttr` returns `any`; `createEntityWithDefaults`/`updateEntity` use `Record<string, any>`; `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole` stay pack-facing with caller-chosen `T`; `services: HostServices & Record<string, any>`; `AttributeValue` includes `any`.
 - T4 (high). `packages/default-setup/tests/unit/sdk-type-safety.spec.ts`, `typed-event-channels.spec.ts` and `entity-shape-registry.spec.ts` use assertions that pass on `any`/`Record<string, unknown>` (`toHaveProperty`, `toMatchTypeOf`), so they don't catch a facade regression. Comments still describe augmentation.
 - T5 (medium). `PackEvents` maps a feature's plugin id to only that feature system's `Outgoing` events. Legitimate sends can't be typed (actions → flows, settings → host `application`, sends to dependency plugins), so default-setup falls back to raw `emit` in `actions/be/system.ts`, `settings/be/system.ts`, `code/be/features/terminal.ts`. Features with a plugin but no system get no entry.
 - T6 (medium). Generated `Services` omits dependency services (`services.llm` is a compile error in a pack depending on default-setup, though present at runtime). At runtime the proxy merges every pack's services into one object: same-named services shadow each other, and a pack service named `logger` replaces the host logger.
-- T7 (medium). `packages/default-setup/dist/defs/monaco/database-defs.d.ts` re-exports `getAllEntities`, `queryEntitiesBy*` from `@apack/host/ears`, which Monaco can't resolve (`tsconfig.defs.json` has no host path).
-- T8 (medium). `docs/public-facing/services-and-data.md` says `pick`/`pickOne`/`linksPick` aren't narrowed (they are), that id-written builders can't know the entity (branded ids do), and that `@apack/sdk/ears` has no untyped helpers (see T3). The services section doesn't mention `#generated/services`.
+- T7 (medium). `packages/default-setup/dist/defs/monaco/database-defs.d.ts` re-exports `getAllEntities`, `queryEntitiesBy*` from `@apackdev/host/ears`, which Monaco can't resolve (`tsconfig.defs.json` has no host path).
+- T8 (medium). `docs/public-facing/services-and-data.md` says `pick`/`pickOne`/`linksPick` aren't narrowed (they are), that id-written builders can't know the entity (branded ids do), and that `@apackdev/sdk/ears` has no untyped helpers (see T3). The services section doesn't mention `#generated/services`.
 - T9 (medium). Node16 facade coverage is nominal: `facade-typing.spec.ts` only includes `ears.ts`. Generated `pack-entry.ts`/`pack-entry-fe.ts` emit extensionless side-effect imports (`import './appliers'`, `import './dsl-register-fe'`, `generate-entries.ts:351,450`).
 - T10 (low). Codegen: dotted extensionless manifest entries (`src/x/memo.types`) get no `.js`; backslash paths aren't normalized; a namespace service named `services` collides with the generated export; `apack-cli/src/commands/generate-entries.ts:14` looks for `build/generate-entries.js` but the published SDK ships `dist/build/generate-entries.js`; a pack `TNode` shape silently intersects the SDK's.
 
@@ -78,7 +78,7 @@ A review of `5bd22a445..HEAD` (the typed facades, `@apack/host`, compiled host-s
 - L3 (medium). `findLatestRelease` walks every candidate including versions at or below the installed one: up to 100 sequential raw fetches per pack per check, no timeout.
 - L4 (low). The updater reads `apack.json` only from the repo root at the tag (subdirectory packs, private repos and rate limits silently skip the filter). Cached `availableVersion` within the check interval bypasses the host check and survives app upgrades/downgrades.
 - L5 (low). Sweep, `recordHostVersion` and stat errors (ENOENT race, Windows EBUSY) can reject `setupBackend`; `host.json` isn't written atomically; `.previous-${process.pid}` has no random suffix, so PID reuse after a crash makes the next install fail with ENOTEMPTY.
-- L6 (low). `apack dev` (`commands/dev.ts`) installs without `hostVersion`. `@apack/sdk/cron` and `@apack/sdk/utils/compare-versions` aren't bridged; in the packaged app an external pack has no `node_modules`, so requiring them fails. Root `test:unit` doesn't run `@apack/host`.
+- L6 (low). `apack dev` (`commands/dev.ts`) installs without `hostVersion`. `@apackdev/sdk/cron` and `@apackdev/sdk/utils/compare-versions` aren't bridged; in the packaged app an external pack has no `node_modules`, so requiring them fails. Root `test:unit` doesn't run `@apackdev/host`.
 
 **Shipping follow-ups**
 - F1. The example pack (`/Users/spankyed/Develop/Projects/apack-external/example-pack`) isn't a git repo; its migration exists only on disk.
@@ -90,24 +90,24 @@ A review of `5bd22a445..HEAD` (the typed facades, `@apack/host`, compiled host-s
 
 Final.
 
-1. **Changesets.** `@apack/ui` peers on `@apack/sdk` with `">=0.1.0 <1.0.0"` (widen it only when the fixed group's major changes), and `.changeset/config.json` sets `___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.onlyUpdatePeerDependentsWhenOutOfRange: true`. The publish workflow's version step runs `npx changeset version && npm install --package-lock-only`.
-2. **TypeScript floor.** `@apack/sdk` and `@apack/ui` declare `typescript: ">=5.3"` as an optional peer. The published-types specs also run under TypeScript 5.3, installed as a root devDependency alias (`typescript-5.3: npm:typescript@~5.3.3`).
-3. **SDK package hygiene.** `preserve="true"` on the `electron-api.d.ts` reference. No source or declaration maps in the SDK build (the package ships `dist` only). `typescript` and `esbuild` become optional peers of `@apack/sdk` (the CLI and the api provide them). Tiptap peer floors in `@apack/ui` rise to the minimum its own dependencies require, and `@tiptap/extension-text-style` is declared.
+1. **Changesets.** `@apackdev/ui` peers on `@apackdev/sdk` with `">=0.1.0 <1.0.0"` (widen it only when the fixed group's major changes), and `.changeset/config.json` sets `___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH.onlyUpdatePeerDependentsWhenOutOfRange: true`. The publish workflow's version step runs `npx changeset version && npm install --package-lock-only`.
+2. **TypeScript floor.** `@apackdev/sdk` and `@apackdev/ui` declare `typescript: ">=5.3"` as an optional peer. The published-types specs also run under TypeScript 5.3, installed as a root devDependency alias (`typescript-5.3: npm:typescript@~5.3.3`).
+3. **SDK package hygiene.** `preserve="true"` on the `electron-api.d.ts` reference. No source or declaration maps in the SDK build (the package ships `dist` only). `typescript` and `esbuild` become optional peers of `@apackdev/sdk` (the CLI and the api provide them). Tiptap peer floors in `@apackdev/ui` rise to the minimum its own dependencies require, and `@tiptap/extension-text-style` is declared.
 4. **Undeclared imports fail the UI build.** `tsdown.config.ts` sets `deps.onlyBundle: []`, so resolving any package that isn't a declared dependency or peer is a build error.
 5. **Node processes get the source condition explicitly, not from `.npmrc`.**
    - Remove `node-options` from `.npmrc`.
-   - `scripts/with-source.mjs <command…>` appends `--conditions=@apack/source` to any existing `NODE_OPTIONS` and runs the command. Root and workspace scripts that start Node on workspace source (Playwright, `tsx` scripts, `apack` from source, `api` dev boots) use it. Vite, Vitest, esbuild and tsup keep their own configured conditions.
+   - `scripts/with-source.mjs <command…>` appends `--conditions=@apackdev/source` to any existing `NODE_OPTIONS` and runs the command. Root and workspace scripts that start Node on workspace source (Playwright, `tsx` scripts, `apack` from source, `api` dev boots) use it. Vite, Vitest, esbuild and tsup keep their own configured conditions.
    - Docs replace `npx playwright test …` with `npm test -- …`.
-6. **The CLI's source mode is scoped.** The resolve hook adds `@apack/source` only when the importing file is inside the checkout and outside any `node_modules`. The bin no longer sets `NODE_OPTIONS`. `apack test` passes the condition (via Decision 5's appending) only to Playwright, and only when `@apack/testing` resolves from the checkout; it never passes it to a launched app.
-7. **Stale `dist` fails loudly.** `@apack/testing`, the CLI in source mode and the api's dev boot throw when `@apack/sdk`, `@apack/ui` or `@apack/host` resolve inside the checkout's `packages/*/dist` while the matching `packages/*/src` exists, naming the missing condition. `tests/tsconfig.json` sets `customConditions` for editors.
+6. **The CLI's source mode is scoped.** The resolve hook adds `@apackdev/source` only when the importing file is inside the checkout and outside any `node_modules`. The bin no longer sets `NODE_OPTIONS`. `apack test` passes the condition (via Decision 5's appending) only to Playwright, and only when `@apackdev/testing` resolves from the checkout; it never passes it to a launched app.
+7. **Stale `dist` fails loudly.** `@apackdev/testing`, the CLI in source mode and the api's dev boot throw when `@apackdev/sdk`, `@apackdev/ui` or `@apackdev/host` resolve inside the checkout's `packages/*/dist` while the matching `packages/*/src` exists, naming the missing condition. `tests/tsconfig.json` sets `customConditions` for editors.
 8. **Every workspace config that compiles SDK/host/UI source states its flags.** Scaffold template gets `allowImportingTsExtensions` (it has `noEmit`). api drops the duplicate key and moves from `paths` to `customConditions`. main, renderer `tsconfig.node.json` and `tsconfig.defs.json` get the flag. `packages/apack-sdk/tests`, `packages/*/scripts`, `packages/apack-ui/tsdown.config.ts` and root `scripts/` get tsconfigs and run in `npm run typecheck`.
 9. **The specifier guard covers every module form**: static and dynamic imports, re-exports, import types, `require`, import-equals, `vi.mock`-style module-path calls, `.ts`/`.tsx`/`.mts`/`.cts` sources and targets, and `.vue` scripts. It has a spec with a fixture per form. The published-specifier spec scans `.js`/`.mjs`/`.cjs`.
 10. **Component contracts are reported.** `scripts/api-reports.ts` writes `etc/<entry>.component.md` for each component entry: resolved props (name, type, optional), emits (name, payload), slots (name, props) and exposed members, computed with the TypeScript checker over `vue-component-type-helpers` (`ComponentProps`, `ComponentEmit`, `ComponentSlots`, `ComponentExposed`; add it as a root devDependency). `api:check` fails when one is out of date.
-11. **Proxies fail clearly on an older host.** The generated proxy throws `@apack/ui/<subpath> isn't provided by this apack; update the app or check the pack's hostVersion` when the host lacks the module, and `console.warn`s once per missing named export. Export discovery uses es-module-lexer on the resolved module (compiled JS; SFC source is compiled through Vite's transform first when resolved under `@apack/source`).
-12. **`fe.bundleUi` bundles everything but the host's editor core.** Host-shared tiptap is matched by prefix: `@tiptap/core`, `@tiptap/pm` and every `@tiptap/pm/*` subpath, `@tiptap/vue-3` and every `@tiptap/vue-3/*` subpath, and `@tiptap/starter-kit`; the renderer exposes those subpaths too. So a bundled UI and the host share one ProseMirror. The pack's Tailwind content includes the resolved `@apack/ui` `dist/**/*.js` (or its `src/**/*.{vue,ts}` under the source condition).
+11. **Proxies fail clearly on an older host.** The generated proxy throws `@apackdev/ui/<subpath> isn't provided by this apack; update the app or check the pack's hostVersion` when the host lacks the module, and `console.warn`s once per missing named export. Export discovery uses es-module-lexer on the resolved module (compiled JS; SFC source is compiled through Vite's transform first when resolved under `@apackdev/source`).
+12. **`fe.bundleUi` bundles everything but the host's editor core.** Host-shared tiptap is matched by prefix: `@tiptap/core`, `@tiptap/pm` and every `@tiptap/pm/*` subpath, `@tiptap/vue-3` and every `@tiptap/vue-3/*` subpath, and `@tiptap/starter-kit`; the renderer exposes those subpaths too. So a bundled UI and the host share one ProseMirror. The pack's Tailwind content includes the resolved `@apackdev/ui` `dist/**/*.js` (or its `src/**/*.{vue,ts}` under the source condition).
 13. **UI publish surface.** Public modules are `.ts` files under `src` except `*.spec.ts`, `*.test.ts` and anything under an `internal/` directory. `findComponentsWithoutEntry` runs in `packages/apack-ui/scripts/build-package.ts` and as `npm run check:ui-entries` in `npm run typecheck`. The UI build emits source maps.
 14. **Each pack build publishes its facade types for dependents.**
-    - `apack build` writes `dist/types/pack-types.d.ts`: a self-contained declaration bundle (rollup-plugin-dts, added to `@apack/cli` dependencies) exporting `PackEntityShapes`, `PackEvents`, `Services` and `Repositories` of that pack. `snapshot.json` carries it, and `fetch-deps` writes it to `.apack/deps/<id>/defs/pack-types.d.ts`.
+    - `apack build` writes `dist/types/pack-types.d.ts`: a self-contained declaration bundle (rollup-plugin-dts, added to `@apackdev/cli` dependencies) exporting `PackEntityShapes`, `PackEvents`, `Services` and `Repositories` of that pack. `snapshot.json` carries it, and `fetch-deps` writes it to `.apack/deps/<id>/defs/pack-types.d.ts`.
     - Generated facades import each dependency's types under a pack-specific alias (`import type { PackEntityShapes as __dep_base_pack_Shapes } …`), so type names never collide.
     - Codegen fails when a declared own entity shape can't be found.
 15. **Events are keyed by the receiving plugin.**
@@ -118,19 +118,19 @@ Final.
 16. **Repositories are declared like services.**
     - Manifest `features[].repositories?: Record<string, string>` maps a repository name to `path#exportName`.
     - Codegen generates `#generated/repository` exporting `repository` typed as this pack's repositories plus its dependencies' (`Repositories` from their `pack-types.d.ts`), and the generated pack entry registers them (replacing `registerRepository(...)` side effects in feature code).
-    - `@apack/sdk/ears`' `repository` becomes `Record<string, unknown>` for host code.
+    - `@apackdev/sdk/ears`' `repository` becomes `Record<string, unknown>` for host code.
 17. **No `any` on the pack-facing SDK surface.**
     - `tx()` is annotated as returning `TransactionBuilder`.
-    - `createEntityWithDefaults`, `updateEntity`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields`, `findWithRole` and `findFirstWithRole` join `defineEars`' typed factory (typed by the pack's shapes) and move to `@apack/sdk/ears/internals` for host code.
+    - `createEntityWithDefaults`, `updateEntity`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields`, `findWithRole` and `findFirstWithRole` join `defineEars`' typed factory (typed by the pack's shapes) and move to `@apackdev/sdk/ears/internals` for host code.
     - `AttributeValue` and `services` use `unknown` instead of `any`.
-    - A test walks the published `@apack/sdk` pack-facing declarations (every export except `ears/internals`) and fails on any exported symbol whose type contains `any` (allowlist with a reason for genuine cases, e.g. XState generics).
+    - A test walks the published `@apackdev/sdk` pack-facing declarations (every export except `ears/internals`) and fails on any exported symbol whose type contains `any` (allowlist with a reason for genuine cases, e.g. XState generics).
 18. **Services are typed with dependencies and can't collide.** Generated `Services` intersects each dependency's `Services`. `registerPack` throws when a service name is already registered by another pack or is a host service name (`logger`, `emitter`, `repository`).
 19. **Pack lifecycle.**
     - The api boot runs `recoverStagingDirs` before pack discovery: a `.<id>.previous-<pid>-<suffix>` whose process is gone and whose `<id>` is missing is renamed back to `<id>`; then stale staging dirs are removed. New staging names are `.<id>.(installing|previous)-<pid>-<random>` and `.<id>.publishing-<pid>-<random>`, matched by anchored patterns; legacy names without a PID use the one-hour age rule. Each entry and each boot call is wrapped so a failure logs instead of rejecting boot. `host.json` is written via temp file and rename.
     - `apack release` uploads `<archive>.bundle.json` (the bundle's `bundle.json`, which includes `hostVersion`) as a release asset. The updater only considers releases newer than the installed version, reads that asset for them (falling back to `apack.json` at the tag), stops at the first compatible one, caps fetches at 10 with a 10 s timeout each, and keys its cached result by host version.
-    - `apack dev` passes `hostVersion`. `@apack/sdk/cron` and `@apack/sdk/utils/compare-versions` are added to `SDK_BRIDGE`.
+    - `apack dev` passes `hostVersion`. `@apackdev/sdk/cron` and `@apackdev/sdk/utils/compare-versions` are added to `SDK_BRIDGE`.
 20. **Shipping.**
-    - `ci.yml` runs on `pull_request` and `push` to master (the external-pack job included). The check job runs `scripts/publish-packages.ts --dry-run` after `packages:build`, and the `published-*` specs fail when `CI` is set and packages aren't built. Root `test:unit` includes `@apack/host`.
+    - `ci.yml` runs on `pull_request` and `push` to master (the external-pack job included). The check job runs `scripts/publish-packages.ts --dry-run` after `packages:build`, and the `published-*` specs fail when `CI` is set and packages aren't built. Root `test:unit` includes `@apackdev/host`.
     - `packages/default-setup`'s `build` script runs `dev-build.mjs` too.
     - The example pack gets `git init` and one commit of its current state (no remote).
     - Renderer startup is measured (the smoke fixture's "app connected N ms after launch") before and after Phase 3; UI modules are exposed lazily only if startup regressed more than 10%.
@@ -148,13 +148,13 @@ Final.
 
 - Replace the `.npmrc` setting with `scripts/with-source.mjs` and update scripts and docs.
 - Scope the CLI hook; remove its `NODE_OPTIONS` export; drop the `unset NODE_OPTIONS npm_config_node_options` workaround from `test-packaged-authoring.sh`.
-- Stale-`dist` detection in `@apack/testing`, CLI source mode and the api dev boot.
+- Stale-`dist` detection in `@apackdev/testing`, CLI source mode and the api dev boot.
 - Config fixes (Decision 8), guard extension with spec (Decision 9), `.temp` clearing, CI-strict `published-*` skips.
-- Tests: user `NODE_OPTIONS` survives an npm script; the CLI hook leaves an installed `@apack/sdk` resolving to `dist`; stale-`dist` detection throws (unit test with a scratch checkout layout); the scaffold spec runs plain `tsc` on the generated tsconfig with a linked checkout.
+- Tests: user `NODE_OPTIONS` survives an npm script; the CLI hook leaves an installed `@apackdev/sdk` resolving to `dist`; stale-`dist` detection throws (unit test with a scratch checkout layout); the scaffold spec runs plain `tsc` on the generated tsconfig with a linked checkout.
 
 **Done when:** all of the above tests pass and are mutation-checked; `npx playwright test` documentation is gone; the smoke E2E passes via `npm test -- smoke` with no `dist`.
 
-### Phase 3 — `@apack/ui` contract (U1–U7, Decisions 10–13, F3)
+### Phase 3 — `@apackdev/ui` contract (U1–U7, Decisions 10–13, F3)
 
 - Component contract reports; proxy host checks and es-module-lexer discovery; prefix-shared tiptap and Tailwind content for `fe.bundleUi`; publish-surface rule; entries check in build and typecheck; UI source maps.
 - Tests: changing a prop, emit or slot fails `api:check`; a pack FE loaded against a host without a module throws the Decision 11 message and warns on a missing named export (remove `?? {}` from `fe-bundler-shared-ui.spec.ts`); proxy export names equal es-module-lexer's exports for every UI entry; a `fe.bundleUi` pack's `fe.js` contains no `prosemirror-model` code and its `fe.css` contains a class only a UI component uses; the fixture pack gets a second plugin built with `fe.bundleUi` that renders `TiptapEditor` in E2E.
@@ -162,7 +162,7 @@ Final.
 
 **Done when:** those tests pass and are mutation-checked; startup numbers are recorded in this doc.
 
-**Startup (recorded).** Smoke fixture "app connected N ms after launch", five warm runs each (the first, cold run of a session excluded): before Phase 3 1540, 1528, 1612, 1574 ms (median 1557); after (every `@tiptap/pm` and `@tiptap/vue-3` subpath exposed too) 1591, 1476, 1605, 1507, 1474 ms (median 1507). No regression, so `@apack/ui` modules stay eager (Decision 20).
+**Startup (recorded).** Smoke fixture "app connected N ms after launch", five warm runs each (the first, cold run of a session excluded): before Phase 3 1540, 1528, 1612, 1574 ms (median 1557); after (every `@tiptap/pm` and `@tiptap/vue-3` subpath exposed too) 1591, 1476, 1605, 1507, 1474 ms (median 1507). No regression, so `@apackdev/ui` modules stay eager (Decision 20).
 
 ### Phase 4 — Type contract (T1–T10, Decisions 14–18)
 
@@ -178,7 +178,7 @@ Final.
 
 - Staging recovery before discovery, anchored patterns, random suffixes, wrapped boot calls, atomic `host.json`.
 - Release `bundle.json` asset; updater bounds, timeout, cache key; `apack dev` `hostVersion`; bridge the two leaves (update `sdk-bridge-drift.spec.ts`).
-- Tests: crash recovery (`.previous` with `<id>` missing is restored and the registry keeps the pack enabled); a digit-first legacy name follows the age rule; a boot with an unremovable staging dir still boots; the updater stops at the installed version and makes at most 10 fetches; a cached result is ignored after a host version change; `apack release --dry-run` lists the `bundle.json` asset; external pack requiring `@apack/sdk/cron` loads through the bridge.
+- Tests: crash recovery (`.previous` with `<id>` missing is restored and the registry keeps the pack enabled); a digit-first legacy name follows the age rule; a boot with an unremovable staging dir still boots; the updater stops at the installed version and makes at most 10 fetches; a cached result is ignored after a host version change; `apack release --dry-run` lists the `bundle.json` asset; external pack requiring `@apackdev/sdk/cron` loads through the bridge.
 
 **Done when:** those tests pass and are mutation-checked.
 
@@ -200,4 +200,4 @@ Final.
 - Prefer libraries over hand-rolled code (es-module-lexer, vue-component-type-helpers, rollup-plugin-dts, Changesets options). No polling or hacky workarounds.
 - External packs are first-class. Keep the in-repo fixture pack, the example pack (`/Users/spankyed/Develop/Projects/apack-external/example-pack`) and `test:packaged-authoring` passing throughout.
 - Verify from a checkout with no `packages/*/dist` before declaring a phase done: a built `dist` hides resolution bugs (Background S3).
-- Manual API boots: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js` (after Phase 2; until then `node --conditions=@apack/source dist/server.js`).
+- Manual API boots: `cd packages/api && APACK_ENV=development APACK_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js` (after Phase 2; until then `node --conditions=@apackdev/source dist/server.js`).

@@ -126,7 +126,7 @@ here; its own "Done when" is the authority, summarised:
   catches a reach the inputs do not show, and Phase 2 is what retires it.
 - Delete the `t1=/t2=/t3=` breakdown in `chain.ts`; the measured critical path beside it is the
   better number and is already printed.
-- `@apack/testing`'s `definePackTestConfig` keeps its `15_000` literal — it is published, and an
+- `@apackdev/testing`'s `definePackTestConfig` keeps its `15_000` literal — it is published, and an
   external pack author has no suite table. Only its comment changes.
 
 **Done when:** `tier`, `Tier` and `TIER_TIMEOUT_MS` appear nowhere; `npm run spec -- suite-timeouts

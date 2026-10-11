@@ -4,7 +4,7 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 
 ## Files covered
 
-The engine's types moved to `@apack/ears` (`packages/apack-ears`); the SDK keeps the names and shapes it adds, and codegen the pack's.
+The engine's types moved to `@apackdev/ears` (`packages/apack-ears`); the SDK keeps the names and shapes it adds, and codegen the pack's.
 
 
 - `packages/apack-ears/src/entities.ts`: the core `EARS` namespace (`EARS.EntityId`), `BaseEntity`, `ShapeOf`, `EntityNameArg`
@@ -28,7 +28,7 @@ The engine's types moved to `@apack/ears` (`packages/apack-ears`); the SDK keeps
 - They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields` and `updateEntity`.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
-- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@apack/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `qx` an engine's query face has, `createEarsEngine(...).query.qx`.)
+- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@apackdev/ears` on purpose. The brain trigger queries in default-setup are the example. (It's the same untyped `qx` an engine's query face has, `createEarsEngine(...).query.qx`.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
@@ -57,14 +57,14 @@ The engine's types moved to `@apack/ears` (`packages/apack-ears`); the SDK keeps
 
 **Which `EARS` to import.**
 - Pack code imports `EARS` from its `#generated/ears` by default.
-- The SDK's `EARS` (`@apack/sdk`) is fine for `EntityId`, the SDK-owned constants and the shared EARS types (`AttrKind`, `RoleKind`, `Blueprint`…). That covers build facets and SDK-level code. Its `EntityId` is the same type the generated one aliases, and a pack's name (`EARS.Entity.Note`) doesn't exist on it, so a wrong import fails to compile.
+- The SDK's `EARS` (`@apackdev/sdk`) is fine for `EntityId`, the SDK-owned constants and the shared EARS types (`AttrKind`, `RoleKind`, `Blueprint`…). That covers build facets and SDK-level code. Its `EntityId` is the same type the generated one aliases, and a pack's name (`EARS.Entity.Note`) doesn't exist on it, so a wrong import fails to compile.
 - The one hazard is the SDK's `EARS.Entity` as a type. It's open (any string), so a value annotated with it passes the entity-name check unchecked, reads with the generic shape, and compiles with a typo. Use it only when an open name is intended, as in default-setup's create step (`entityTypeTarget`, any entity type a flow names); otherwise annotate with the generated `EARS.Entity` or `EntityName`, which are closed.
 
 **Defaults.**
-- `QueryBuilder<E = string, S = {}, N = string>` and `TransactionBuilder<E = string, S = {}>` keep the helpers from `@apack/ears` (and an engine's `query` face) unchecked.
+- `QueryBuilder<E = string, S = {}, N = string>` and `TransactionBuilder<E = string, S = {}>` keep the helpers from `@apackdev/ears` (and an engine's `query` face) unchecked.
 
 **Compatibility.**
-- `@apack/ears` and `@apack/sdk` support TypeScript 5.7 and later (`packages/typescript-floor`). These types keep their `NoInferType` workaround from when the floor was 5.3.
+- `@apackdev/ears` and `@apackdev/sdk` support TypeScript 5.7 and later (`packages/typescript-floor`). These types keep their `NoInferType` workaround from when the floor was 5.3.
 
 ## Before changing any of these types
 
@@ -79,9 +79,9 @@ The engine's types moved to `@apack/ears` (`packages/apack-ears`); the SDK keeps
    - the untyped `qx`/`tx` (`untypedQx`/`untypedTx`)
 2. **Run the type tests** that pin the contract:
    - default-setup: `tests/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
-   - `@apack/cli`: `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@apack/ears` and `@apack/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
+   - `@apackdev/cli`: `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@apackdev/ears` and `@apackdev/sdk`) and `packages/publish-checks/tests/published-sdk-any.integration.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
-4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apack/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
+4. **Check editor completions and error messages.** `packages/apack-cli/tests/build/facade-typing.integration.spec.ts` in `@apackdev/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `qx(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
    - Entity-name positions should list entity names: `qx('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
@@ -93,7 +93,7 @@ The engine's types moved to `@apack/ears` (`packages/apack-ears`); the SDK keeps
 - **Union field typing (2026-09-14).**
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
-  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@apack/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
+  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@apackdev/ears`). The completions test in `facade-typing.integration.spec.ts` now guards these positions.
 - **`qx('user-note')` compiles: the dash heuristic (investigated 2026-09-18, not fixed).**
   - What it is: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
     `tx` take a name *or* an id, and the dash is the only thing telling those apart. So a misspelled

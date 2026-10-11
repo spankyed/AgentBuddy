@@ -24,7 +24,7 @@ Finished when:
   mutation-checked.
 - packages/renderer/src/packs holds the Vue components and one composition module, and nothing that
   decides anything about packs.
-- @apack/host/fe owns the packs machine, pack-frontend loading and the install request, and imports no
+- @apackdev/host/fe owns the packs machine, pack-frontend loading and the install request, and imports no
   Vue, no tRPC and no browser global: packages/apack-host/tests/boundaries.spec.ts is unchanged and
   passes.
 - The check list passes once at the end: npm run typecheck, npm run test:unit, npm run build, npm test,
@@ -49,17 +49,17 @@ Never:
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- import Vue, tRPC or a browser global in @apack/host, or move the Packs view's .vue files (Decision 1).
+- import Vue, tRPC or a browser global in @apackdev/host, or move the Packs view's .vue files (Decision 1).
 - run the full chain per edit: each phase's "Done when" names the narrow checks (Keeping the loop fast).
 ```
 
 # Goal: the renderer renders — pack management is the host's
 
 The backend splits cleanly today: `packages/api` is transport, process boot and composition, and
-`@apack/host` is what the app *does*. The frontend doesn't. `packages/renderer/src/packs` holds the
+`@apackdev/host` is what the app *does*. The frontend doesn't. `packages/renderer/src/packs` holds the
 Packs plugin's machine, the pack-frontend loader and the install handling — app behaviour that has no
 more to do with Vue than the pack runtime has to do with tRPC. This goal moves that behaviour into
-`@apack/host/fe`, so a frontend is as replaceable as the API already is.
+`@apackdev/host/fe`, so a frontend is as replaceable as the API already is.
 
 ## Background
 
@@ -77,10 +77,10 @@ more to do with Vue than the pack runtime has to do with tRPC. This goal moves t
 ### The precedent
 
 The app shell moved the same way (`docs/archive/goals/goal-host-shell.md`): its machine is
-`@apack/host/fe/shell/`, its window I/O arrives as options (`client`, `packFrontends`, `storage`,
+`@apackdev/host/fe/shell/`, its window I/O arrives as options (`client`, `packFrontends`, `storage`,
 `notify`, `target`), and `packages/renderer/src/core/app-shell.ts` only composes them. That goal
 explicitly deferred "moving the Packs plugin's frontend into the host", which is this goal, and set
-the constraint that keeps the split honest: no Vue, no tRPC, no browser globals in `@apack/host`
+the constraint that keeps the split honest: no Vue, no tRPC, no browser globals in `@apackdev/host`
 (`packages/apack-host/tests/boundaries.spec.ts`).
 
 ### The symmetry this aims at
@@ -88,7 +88,7 @@ the constraint that keeps the split honest: no Vue, no tRPC, no browser globals 
 | Concern | Backend | Frontend after this goal |
 |---|---|---|
 | Framework, transport, process | `packages/api`: tRPC routers, `server.ts`, websockets | `packages/renderer`: Vue components, `main.ts`, the tRPC client, window I/O |
-| Behaviour and state | `@apack/host`: the bus, systems, the pack runtime | `@apack/host/fe`: the shell machine, the pack registry, the packs machine, pack-frontend loading |
+| Behaviour and state | `@apackdev/host`: the bus, systems, the pack runtime | `@apackdev/host/fe`: the shell machine, the pack registry, the packs machine, pack-frontend loading |
 | The app's own feature | `host/packs` system (`packs/runtime/packs-system.ts`) | `host/packs` plugin's machine (`fe/packs/machine.ts`) |
 
 The renderer keeps the Packs view's `.vue` files on purpose: rendering is the frontend's job, the way
@@ -97,13 +97,13 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 
 ## Decisions
 
-1. **`@apack/host` stays Vue-free.** The host is what a different frontend would keep; a Vue import
+1. **`@apackdev/host` stays Vue-free.** The host is what a different frontend would keep; a Vue import
    there would make it un-swappable. Two rules already say so, and this goal changes neither:
    `boundaries.spec.ts:108` bans `vue`, `@trpc/*`, the renderer's `@/` alias and the browser's globals
-   anywhere under `src/fe`, and `check-import-specifiers.ts:311-317` allows `@apack/host` only
-   `@apack/sdk` and `@apack/ears` — so it cannot reach `@apack/ui` either.
+   anywhere under `src/fe`, and `check-import-specifiers.ts:311-317` allows `@apackdev/host` only
+   `@apackdev/sdk` and `@apackdev/ears` — so it cannot reach `@apackdev/ui` either.
 2. **What moves:** the packs machine, pack-frontend loading and unloading, and the install request,
-   into `@apack/host/fe/packs/`.
+   into `@apackdev/host/fe/packs/`.
 3. **What stays:** the `.vue` files, and a small composition module that puts the machine and the
    components together into the plugin the window registers — the shape `app-shell.ts` already has.
    The alternative is the closer mirror of the backend: `hostFeRegistration({ canvas })` in the host,
@@ -123,7 +123,7 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
    component specs stay in the renderer.
 7. **The layout components stay in the renderer** (`toolbar`, `canvas-area`, `chat-area`,
    `inspection-panel`, `router.vue`): their state already lives in the shell machine, so they are
-   rendering only. No new package for UI: `@apack/ui` is there if a second frontend ever needs these.
+   rendering only. No new package for UI: `@apackdev/ui` is there if a second frontend ever needs these.
 8. **The shell is the only owner of pack-frontend loading and unloading.** Today loading goes through
    it (`LOAD_PACK_FRONTENDS`) while `state.ts:85-89` unloads directly and tells the shell afterwards,
    so one operation has two paths. This needs no new event: the machine keeps sending
@@ -154,7 +154,7 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
   explaining `feRevision`. The host's loader takes the entry the API already sends.
 - `createAppShell` passes the host's loader to the shell's `packFrontends`, so the shell's contract is
   unchanged.
-- The failure log keeps its exact text: `@apack/testing`'s fixture fast-fails a pack under test on
+- The failure log keeps its exact text: `@apackdev/testing`'s fixture fast-fails a pack under test on
   `[pack-loader] Failed to load FE entry pack://<id>/` (`packages/apack-testing/src/index.ts:379`,
   documented in `tests/e2e/CLAUDE.md:49`). Reword it and nothing fails — the match just stops firing,
   and a pack whose frontend won't load becomes a plugin-wait timeout with a worse message. A green
@@ -166,9 +166,9 @@ serving `packs.loaded` over tRPC is the API's. `PackDetail.vue` is the counterpa
 ### Phase 3 — the install request, docs and the boundary check
 
 - `install-url.ts` (parsing) moves; the renderer keeps only the protocol subscription in `main.ts`.
-- `core/app-shell.ts:16` re-exports `visiblePluginsOf` and `withHostLast` from `@apack/host/fe`.
+- `core/app-shell.ts:16` re-exports `visiblePluginsOf` and `withHostLast` from `@apackdev/host/fe`.
   `withHostLast` is used nowhere in the renderer and `visiblePluginsOf` only through that
-  indirection (`WebApp.vue:101`): delete the line and import from `@apack/host/fe` directly, so the
+  indirection (`WebApp.vue:101`): delete the line and import from `@apackdev/host/fe` directly, so the
   composition module composes and re-exports nothing.
 - Update `packages/renderer/CLAUDE.md` ("Packs plugin", "Pack loading"), `packages/apack-host/CLAUDE.md`
   (a `fe/packs` section beside the shell's) and the module map.
@@ -211,20 +211,20 @@ edit. The rules that keep this goal from stalling:
   loop; `packages:ensure` is 1s and is the only rebuild a pack test run needs.
 - **Never run two suites at once.** They share the package build lock and the build stamps, so a
   background `test:unit` racing a foreground run produces failures that are about the race.
-- **A stale bundle looks like a bug.** After editing `@apack/sdk`, `@apack/host` or
-  `@apack/testing`, a pack test run needs `packages:ensure`; E2E needs `npm run build:be`. Check that
+- **A stale bundle looks like a bug.** After editing `@apackdev/sdk`, `@apackdev/host` or
+  `@apackdev/testing`, a pack test run needs `packages:ensure`; E2E needs `npm run build:be`. Check that
   first when a failure makes no sense.
 - **Phase boundaries are the checkpoints.** Each phase's "Done when" names the narrow commands; the
   full chain is for the end of a phase, and the E2E and packaged suites for the end of the goal.
 
 ## Constraints
 
-- No Vue, tRPC or browser global in `@apack/host` (Decision 1), enforced by `boundaries.spec.ts`.
+- No Vue, tRPC or browser global in `@apackdev/host` (Decision 1), enforced by `boundaries.spec.ts`.
 - No backward-compat shims: move the modules, update every caller, test and doc in the same change.
 - The shell's contract (`HostShell`, `ShellOptions`) doesn't change: this goal moves what sits beside
   it, not the shell itself.
-- `@apack/host/fe` must keep working in a pack's unit tests (`startShell` from
-  `@apack/testing/harness`), so anything that needs the window arrives as an option.
+- `@apackdev/host/fe` must keep working in a pack's unit tests (`startShell` from
+  `@apackdev/testing/harness`), so anything that needs the window arrives as an option.
 
 ## Outcome
 
@@ -249,7 +249,7 @@ this plan named, not the current ones.
 ## Deferred
 
 - Moving the Packs view's `.vue` files anywhere (Decision 1). Revisit only if a second frontend needs
-  them, and then into `@apack/ui`, not the host.
+  them, and then into `@apackdev/ui`, not the host.
 - The renderer's layout components (Decision 7).
 - A frontend-side counterpart of `packages/api/tests/unit/source-layout.spec.ts` listing what
   `renderer/src` may hold, beyond the packs-folder check in Phase 3.

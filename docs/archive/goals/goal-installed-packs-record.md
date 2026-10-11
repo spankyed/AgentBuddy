@@ -201,7 +201,7 @@ Final.
   value. Leave `reconcileInstalledPacks`'s writes in place for now; Phase 2 deletes them.
 
 **Done when:** boot and `schema.ts` derive the enabled external packs through one function; a pack in
-`packs/` with no row loads at boot. `npm test -w @apack/host` and
+`packs/` with no row loads at boot. `npm test -w @apackdev/host` and
 `npx vitest run tests/database --root packages/apack-host` pass. Mutation: making the shared function
 ignore the disabled set fails a spec that a disabled pack does not load.
 
@@ -231,7 +231,7 @@ rebuild that rewrites the row from the manifest fails that spec.
   up) and drops the record assertion.
 
 **Done when:** `ensureInstalledPack` and `InstalledPacksRecord` exist nowhere; a pack running with no row
-appears in `PACKS_LIST` as enabled; `npm test -w @apack/host` and `npm run test:external-pack` pass.
+appears in `PACKS_LIST` as enabled; `npm test -w @apackdev/host` and `npm run test:external-pack` pass.
 Mutation: making `packRecord` default `enabled` to false hides a running pack and fails that spec.
 
 ### Phase 4 — writes are intentions
@@ -252,7 +252,7 @@ Mutation: reintroducing a `map`-based write in `packs-system.ts` fails the guard
   saved (Decision 7). Boot and background writes log; a user action surfaces it.
 
 **Done when:** a spec with an unwritable record shows the enable/disable path reporting the lost decision
-rather than appearing to succeed; `npm test -w @apack/host` passes. Mutation: swallowing the write
+rather than appearing to succeed; `npm test -w @apackdev/host` passes. Mutation: swallowing the write
 failure again fails that spec. **Closes action item 1a.**
 
 ### Phase 6 — a pack that is gone
@@ -370,7 +370,7 @@ Found while surveying; out of scope, and the agent must not do them.
 - Preload, example pack and release metadata rules.
 - Typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes. This goal is
-  expected to touch none of `@apack/sdk`'s exports; if it does, run `api:update` and say why.
+  expected to touch none of `@apackdev/sdk`'s exports; if it does, run `api:update` and say why.
 - Build order: `packages:build` before the CLI suite, default-setup's runtime before the api suites and
   E2E.
 - Investigate failing tests; mutation-check every new guard.

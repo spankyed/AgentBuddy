@@ -1,11 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFeatures } from '@apack/sdk/build';
+import { packFeatures } from '@apackdev/sdk/build';
 import { renderTemplate } from '../templates.ts';
 import { cliVersion } from '../utils';
 import { scaffoldUnitTestSetup } from './init';
 
-// The Playwright version @apack/testing is tested with
+// The Playwright version @apackdev/testing is tested with
 const PLAYWRIGHT_RANGE = '^1.54.1';
 
 
@@ -76,7 +76,7 @@ export async function initTests(_args: string[]): Promise<void> {
     // author meets an install hint for something `init-tests` could have written. The three ship in
     // lockstep, so one range names all of them.
     const wanted: Record<string, string> = {
-      '@apack/testing': `^${cliVersion()}`,
+      '@apackdev/testing': `^${cliVersion()}`,
       '@playwright/test': PLAYWRIGHT_RANGE,
       'playwright-core': PLAYWRIGHT_RANGE,
     };
@@ -92,9 +92,9 @@ export async function initTests(_args: string[]): Promise<void> {
   // Scaffolding only the Playwright half left an author with no way to check compiled output without one.
   if (!fs.existsSync(path.join(cwd, 'tests', 'setup.ts'))) {
     const { keptConfig, addedDependencies, upgrades } = scaffoldUnitTestSetup(cwd);
-    console.log('Created tests/setup.ts for the contract half (@apack/testing/harness)');
+    console.log('Created tests/setup.ts for the contract half (@apackdev/testing/harness)');
     if (keptConfig) {
-      console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@apack/testing/vitest)`);
+      console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@apackdev/testing/vitest)`);
     } else {
       console.log('Created vitest.config.ts');
     }

@@ -134,10 +134,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, useTemplateRef } from 'vue'
 import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import ImageLightbox from '@apack/ui/design/ImageLightbox'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
 import type { GhPullRequest, GhPRComment } from '#generated/types.ts'
-import { openLink } from '@apack/sdk/fe'
+import { openLink } from '@apackdev/sdk/fe'
 
 const props = defineProps<{
   pr: GhPullRequest | null

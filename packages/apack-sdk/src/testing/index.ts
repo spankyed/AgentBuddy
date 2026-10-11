@@ -1,8 +1,8 @@
 import type { SettingsService } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
-// @apack/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
+// @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
-import { createEarsEngine, installEngine, type EarsEngine } from '@apack/ears';
+import { createEarsEngine, installEngine, type EarsEngine } from '@apackdev/ears';
 import type { ContentWriter } from '../content/writers.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
@@ -72,7 +72,7 @@ function installFreshEngine(repositories: Record<string, unknown> = {}): EarsEng
 
 /** The test runtime's engine (both faces); throws before `startTestRuntime` */
 function testEngine(): EarsEngine {
-  if (!engine) throw new Error('No test engine: call startTestRuntime() from @apack/sdk/testing first');
+  if (!engine) throw new Error('No test engine: call startTestRuntime() from @apackdev/sdk/testing first');
   return engine;
 }
 

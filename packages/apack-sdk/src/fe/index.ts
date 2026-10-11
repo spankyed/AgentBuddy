@@ -3,7 +3,7 @@
 
 // The preload bridge: its declaration, and the `window.electronAPI` global that is a view of it. Naming
 // the types is also what keeps this module in the emitted declarations — without a re-export of some kind,
-// every pack importing `@apack/sdk/fe` loses the global with nothing to say so.
+// every pack importing `@apackdev/sdk/fe` loses the global with nothing to say so.
 export type { _HostBridge } from './electron-api.ts';
 // The event type that global's `speech.onEvent` hands back. Exported by name because two host packages need
 // it too — they reached it through a `types/speech.d.ts` at the repo root until 2026-10-02, which no
@@ -45,11 +45,11 @@ export {
  * What hands a plugin's handlers the answer for the message being handled — the same wrapper a system's
  * `defineSystem` gives, over a machine's own context and events.
  *
- * Re-exported here because `@apack/sdk/framework` is **not** in `SDK_FE_MODULES`
- * (`@apack/host/build/shared-deps`): a pack frontend can import its types but cannot load it at runtime, so
+ * Re-exported here because `@apackdev/sdk/framework` is **not** in `SDK_FE_MODULES`
+ * (`@apackdev/host/build/shared-deps`): a pack frontend can import its types but cannot load it at runtime, so
  * without this a pack's plugin could be handed no `reply` and the frontend half of answering would exist for
  * host code alone. One implementation serves both sides — `define-system.ts` imports only xstate types,
- * `safeEvents`, `eventTypes` and `@apack/sdk/events`, all frontend-safe.
+ * `safeEvents`, `eventTypes` and `@apackdev/sdk/events`, all frontend-safe.
  *
  * A plugin's `reply` is the open form, and that is right rather than a gap: a plugin's contract declares the
  * state it publishes and the inbox it opens, not an outgoing union, so there is nothing to bound it by. A

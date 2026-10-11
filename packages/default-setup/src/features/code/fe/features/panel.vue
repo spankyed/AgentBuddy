@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -54,7 +54,7 @@ import PullRequestPanel from '#features/code/fe/features/pull-request/PullReques
 import ActionsPanel from '#features/code/fe/features/actions/ActionsPanel.vue'
 import PromptsPanel from '#features/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '#features/code/fe/features/terminal/PanelTerminalSection.vue'
-import PanelResizer from '@apack/ui/layout/panel-resizer'
+import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 
 const actor: CodeState = usePlugin()
 

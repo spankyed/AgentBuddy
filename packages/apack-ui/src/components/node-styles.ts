@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { stepRegistry } from '@apack/sdk/steps'
+import { stepRegistry } from '@apackdev/sdk/steps'
 
 export interface NodeConfig {
   type: string

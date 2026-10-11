@@ -14,8 +14,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { createLogger } from '@apack/sdk/logger';
-import { resolveAppContext } from '@apack/sdk/env';
+import { createLogger } from '@apackdev/sdk/logger';
+import { resolveAppContext } from '@apackdev/sdk/env';
 
 const logger = createLogger('installed-packs');
 

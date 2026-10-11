@@ -4,9 +4,9 @@
 //
 // Recorded before the behaviour changes, so the diff that changes it names exactly what moves.
 import { describe, expect, it } from 'vitest'
-import { importFlows, startApp } from '@apack/testing/harness'
+import { importFlows, startApp } from '@apackdev/testing/harness'
 import { entry, fire, keepAlive, on } from '#generated/flow-helpers.ts'
-import { untypedQx } from '@apack/ears'
+import { untypedQx } from '@apackdev/ears'
 
 const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
 

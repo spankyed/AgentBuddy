@@ -1,8 +1,8 @@
-# Migrations (`@apack/host/migrations`)
+# Migrations (`@apackdev/host/migrations`)
 
 Data migrations that run on app startup when a stored version is behind the version being booted. The app's migrations runners live here, with the host's own migrations (`app/`, which move the app's state); the other migrations live with their packs. Host-only: packs never import this module, and the pack bridge doesn't provide it. The versions they ran to are recorded in `AppState` (`../app-state`).
 
-A window's own storage has its counterpart, `src/fe/migrations/` (`runFrontendMigrations`, exported from `@apack/host/fe`): the same shape — versioned files, listed in order, each idempotent — over the storage a window passes in, recorded under `apack-fe-version` rather than in `AppState`, since no app is bound when they run. They are not hooked up to packs.
+A window's own storage has its counterpart, `src/fe/migrations/` (`runFrontendMigrations`, exported from `@apackdev/host/fe`): the same shape — versioned files, listed in order, each idempotent — over the storage a window passes in, recorded under `apack-fe-version` rather than in `AppState`, since no app is bound when they run. They are not hooked up to packs.
 
 ## Who runs what
 
@@ -15,7 +15,7 @@ There are two runners, both in this folder's `index.ts` (`packages/apack-host/sr
 
 **Which runner gets a migration is what its pack declared, not where the pack came from.** A pack files each
 migration under a version line in `apack.json` — `migrations.app` or `migrations.pack` (`MIGRATION_LINES`,
-`@apack/sdk/build`) — because a bare version does not say what it is a version of. Routing on provenance
+`@apackdev/sdk/build`) — because a bare version does not say what it is a version of. Routing on provenance
 instead is the trap: it makes one `0.4.0` mean the app's release in a pack the app ships and the pack's own
 version in every other, so a user's build installed at a shipped pack's id has its migrations compared
 against the wrong thing. So a pack the app ships may be on either line, an external pack may be on either,
@@ -64,7 +64,7 @@ Specs: `packages/apack-host/tests/migrations/runner.spec.ts` (both runners, once
 
 default-setup's migrations are files in `packages/default-setup/src/migrations/`, each named in its `apack.json` under `migrations.app` — **the app's line**, which is why they are named for apack's releases (`0.4.0.ts`) while the pack's own `version` is `0.1.0` and compared to nothing. There is no index module: the manifest is the list, and a file no manifest names runs never.
 
-Each file exports a `DeclaredMigration` (`@apack/sdk/framework`) with:
+Each file exports a `DeclaredMigration` (`@apackdev/sdk/framework`) with:
 - `description` — short summary of changes
 - `up()` — the migration function (synchronous, uses the pack's repositories, e.g. `settingsQueries` / `settingsCommands`)
 
@@ -95,7 +95,7 @@ apack's version line, so it deserves a deliberate `--app` rather than arriving b
 ```ts
 // packages/default-setup/src/migrations/0.X.Y.ts
 import { repository } from '#generated/repository.ts';
-import type { DeclaredMigration } from '@apack/sdk/framework';
+import type { DeclaredMigration } from '@apackdev/sdk/framework';
 
 export const migration: DeclaredMigration = {
   description: 'Describe what this migration does',

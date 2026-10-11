@@ -42,7 +42,7 @@ nothing. The guide warns about it at [`CLAUDE.md:122-127`](../../../CLAUDE.md) â
 typecheck and believe every recorded artifact is current"* â€” which is the tell that it is a known trap rather
 than a surprise. A warning in a guide is the weakest available fix for something a command could answer.
 
-**Four recorded artifacts, split two and two.** `exports:check` (`@apack/ui`'s exports map) and
+**Four recorded artifacts, split two and two.** `exports:check` (`@apackdev/ui`'s exports map) and
 `schema:check` (the SDK's manifest schema) are `TYPECHECK_LEGS` entries, so `npm run typecheck` catches them.
 `api:check` (three packages' `etc/*.api.md`) and `facade:check` (the pack's `etc/pack-types.api.md`) are chain
 steps, so it does not. Closing both is what deletes the warning; closing one only shortens it.

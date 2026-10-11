@@ -1,6 +1,6 @@
 // ⚠️  NODE-ONLY barrel — re-exports modules that use fs, path, child_process, process.env.
 // FE-reachable SDK modules must NEVER import from this barrel; import from
-// '@apack/sdk/utils/pure' (or a specific sub-path like './compare-versions') instead.
+// '@apackdev/sdk/utils/pure' (or a specific sub-path like './compare-versions') instead.
 
 // --- Pure utilities (environment-agnostic, re-exported for backend convenience) ---
 export * from './pure.ts';

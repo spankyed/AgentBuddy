@@ -2931,7 +2931,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @apack/api
+-  add type imports for NodeEntity and NodeKind from @apackdev/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -4266,7 +4266,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @apack
+-  update package namespace from @agent to @apackdev
 
 ### Other
 - update logo, fix white bandana
@@ -5517,7 +5517,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @apack/common
+- Rename package from @agent/common to @apackdev/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -6358,7 +6358,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @apack/api
+-  add type imports for NodeEntity and NodeKind from @apackdev/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -7691,7 +7691,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @apack
+-  update package namespace from @agent to @apackdev
 
 ### Other
 - cleanup generate-icons.sh script
@@ -8941,7 +8941,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @apack/common
+- Rename package from @agent/common to @apackdev/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -9782,7 +9782,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @apack/api
+-  add type imports for NodeEntity and NodeKind from @apackdev/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -11112,7 +11112,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @apack
+-  update package namespace from @agent to @apackdev
 
 ### Other
 - cleanup generate-icons.sh script
@@ -12362,7 +12362,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @apack/common
+- Rename package from @agent/common to @apackdev/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -13201,7 +13201,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @apack/api
+-  add type imports for NodeEntity and NodeKind from @apackdev/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -14525,7 +14525,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @apack
+-  update package namespace from @agent to @apackdev
 
 ### Other
 - update defs
@@ -15762,7 +15762,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @apack/common
+- Rename package from @agent/common to @apackdev/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations
@@ -16601,7 +16601,7 @@
 -  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
 -  implement brain UI with mock data
 -  add execution time tracking to database query results and update related components
--  add type imports for NodeEntity and NodeKind from @apack/api
+-  add type imports for NodeEntity and NodeKind from @apackdev/api
 -  simplify query execution and result handling with improved error management and new simple result table component
 -  separate query execution functionality and refactor database system
 -  enhance Graph Explorer UI with improved controls and layout options
@@ -17919,7 +17919,7 @@
 -  reposition tag input and improve related threads layout
 -  increase threads per page from 3 to 6 and fix threads list height
 -  extract pagination component and simplify thread list implementation
--  update package namespace from @agent to @apack
+-  update package namespace from @agent to @apackdev
 
 ### Other
 - chore: reset version to 0.0.0 and fix CI release permissions
@@ -19151,7 +19151,7 @@
 - Fix trpc client type checking and add readme docs
 - Update trpc client and add Vue TypeScript config
 - Update build script and upgrade TypeScript/Vue dependencies
-- Rename package from @agent/common to @apack/common
+- Rename package from @agent/common to @apackdev/common
 - Update dev script aliases to 'be' and 'fe' for backend and frontend
 - Update workload import path to use correct component file
 - Refactor state machine actions and add Vue type declarations

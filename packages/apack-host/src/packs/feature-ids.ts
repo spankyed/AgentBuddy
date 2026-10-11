@@ -1,4 +1,4 @@
-import { FEATURE_ID_PATTERN } from '@apack/sdk/ids';
+import { FEATURE_ID_PATTERN } from '@apackdev/sdk/ids';
 
 /**
  * Refuses a registration keyed by something other than feature ids. The registries run each feature at

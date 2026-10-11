@@ -74,7 +74,7 @@ function sendsAsItself(actor: AnyActorRef): AnyActorRef {
 /**
  * The running actor of the plugin at `ref`, a registered plugin's `<packId>/<featureId>`.
  *
- * Not exported from `@apack/sdk/fe`: pack code reads a plugin through `useUntypedPluginState`/`readUntypedPluginState` and
+ * Not exported from `@apackdev/sdk/fe`: pack code reads a plugin through `useUntypedPluginState`/`readUntypedPluginState` and
  * sends to one through the generated sends, so no pack holds another plugin's actor.
  */
 export function pluginActor(ref: string): AnyActorRef {

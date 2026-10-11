@@ -1,9 +1,9 @@
 // A pack's Playwright configs: its E2E suite, its driving scripts, and the engine serving one of them.
 //
-//   import { definePackE2EConfig } from '@apack/testing/playwright';
+//   import { definePackE2EConfig } from '@apackdev/testing/playwright';
 //   export default definePackE2EConfig();
 //
-// The counterpart to `@apack/testing/vitest` for the other runner, and it exists for the same reason: six
+// The counterpart to `@apackdev/testing/vitest` for the other runner, and it exists for the same reason: six
 // configs restated these settings, and the repo's own had already drifted to a `use` block the three packs'
 // lacked. A setting held here reaches a pack on its next update; one copied into a pack's own config does
 // not — which is how a `testIgnore` became unaddable and the engine's session got an extension instead.

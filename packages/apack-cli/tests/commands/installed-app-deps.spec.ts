@@ -2,11 +2,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPackArchive, installPackFromLocal, stagePack } from '@apack/host/packs';
+import { createPackArchive, installPackFromLocal, stagePack } from '@apackdev/host/packs';
 import { resolveDepFiles } from '../../src/commands/fetch-deps';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmp: string;
 const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR, build: process.env.APACK_BUILD };

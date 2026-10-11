@@ -1,10 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { createLogger } from '@apack/sdk/logger';
-import { resolveAppContext, getAppVersion } from '@apack/sdk/env';
+import { createLogger } from '@apackdev/sdk/logger';
+import { resolveAppContext, getAppVersion } from '@apackdev/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
 import { installShippedPacks } from '../installer.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';

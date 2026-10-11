@@ -3,10 +3,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { recordHostInfo } from '@apack/host/packs';
+import { recordHostInfo } from '@apackdev/host/packs';
 import { install } from '../../src/commands/install';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 let tmp: string;
 beforeEach(() => {
@@ -61,9 +61,9 @@ describe('apack install', () => {
   });
 });
 
-// Tooling runs host code with no app bound: @apack/host/packs logs through @apack/sdk/logger, which writes to the console
+// Tooling runs host code with no app bound: @apackdev/host/packs logs through @apackdev/sdk/logger, which writes to the console
 describe('the apack bin', () => {
-  it('installs a pack, printing what @apack/host/packs logs', () => {
+  it('installs a pack, printing what @apackdev/host/packs logs', () => {
     const cli = path.resolve(__dirname, '..', '..', 'bin', 'apack.mjs');
     const result = spawnSync(process.execPath, [cli, 'install', builtPack('>=0.3.0'), '--dev'], {
       cwd: tmp,

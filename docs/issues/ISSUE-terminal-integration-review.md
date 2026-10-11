@@ -4,7 +4,7 @@
 **Status:** Open
 **Severity:** Critical — one finding writes user credentials to disk in plaintext; two more can lose work
 **Component:** `packages/default-setup/src/features/code` — terminal (xterm.js front end, node-pty back end),
-plus the app plumbing it depends on (`packages/main`, `packages/api`, `@apack/host/bus`)
+plus the app plumbing it depends on (`packages/main`, `packages/api`, `@apackdev/host/bus`)
 
 ## Symptom
 

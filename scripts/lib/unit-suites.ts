@@ -24,31 +24,31 @@ export interface UnitSuite {
   /**
    * Which resolution a suite runs under, and therefore which pool it can share.
    *
-   * `host` suites resolve the workspace `@apack` packages to source, under the `@apack/source`
+   * `host` suites resolve the workspace `@apackdev` packages to source, under the `@apackdev/source`
    * condition. `pack` suites must resolve the published `dist` — the one layout a pack author ever has —
    * which is why `check:specifiers` fails a pack config that declares that condition.
    *
    * **Node conditions are per process**, and vitest shares its worker pool across projects: per-project
    * `poolOptions.execArgv` is ignored, measured. So the two kinds cannot be one pool. Probed 2026-09-25,
-   * a `default-setup` spec resolves `@apack/sdk` to `dist` today and to `src` inside a pooled process
+   * a `default-setup` spec resolves `@apackdev/sdk` to `dist` today and to `src` inside a pooled process
    * carrying the condition, which would silently change what the pack suite verifies.
    */
   readonly kind: 'host' | 'pack';
 }
 
 export const UNIT_SUITES: readonly UnitSuite[] = [
-  { workspace: '@apack/sdk', dir: 'apack-sdk', kind: 'host' },
+  { workspace: '@apackdev/sdk', dir: 'apack-sdk', kind: 'host' },
   { workspace: '@app/default-setup', dir: 'default-setup', kind: 'pack' },
-  { workspace: '@apack/cli', dir: 'apack-cli', kind: 'host' },
-  { workspace: '@apack/host', dir: 'apack-host', kind: 'host' },
+  { workspace: '@apackdev/cli', dir: 'apack-cli', kind: 'host' },
+  { workspace: '@apackdev/host', dir: 'apack-host', kind: 'host' },
   { workspace: '@app/api', dir: 'api', kind: 'host' },
   { workspace: '@app/repo-checks', dir: 'repo-checks', kind: 'host' },
-  { workspace: '@apack/ears', dir: 'apack-ears', kind: 'host' },
+  { workspace: '@apackdev/ears', dir: 'apack-ears', kind: 'host' },
   { workspace: '@app/renderer', dir: 'renderer', kind: 'host' },
   { workspace: '@app/main', dir: 'main', kind: 'host' },
   { workspace: '@app/preload', dir: 'preload', kind: 'host' },
-  { workspace: '@apack/testing', dir: 'apack-testing', kind: 'host' },
-  { workspace: '@apack/ui', dir: 'apack-ui', kind: 'host' },
+  { workspace: '@apackdev/testing', dir: 'apack-testing', kind: 'host' },
+  { workspace: '@apackdev/ui', dir: 'apack-ui', kind: 'host' },
   { workspace: '@app/publish-checks', dir: 'publish-checks', kind: 'host' },
 ];
 

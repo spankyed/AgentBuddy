@@ -2,11 +2,11 @@
 //
 // It exists because the two writers each know their own half and the app has a third caller that knows
 // neither: the user answering "delete it" on an item their pack stopped shipping (`DELETE_CONTENT_ITEM`,
-// `@apack/host`'s packs system), which holds a content key and the entity type the applied content
+// `@apackdev/host`'s packs system), which holds a content key and the entity type the applied content
 // recorded. Destroying the entity there is wrong twice over — a flow's nodes and wiring are separate
 // entities that would be orphaned, and an entity type whose pack registered a `remove` writer has a delete
 // of its own, which for a soft-deleting type is what keeps the user's undo.
-import { destroyEntity, type EARS as EARSTypes } from '@apack/ears';
+import { destroyEntity, type EARS as EARSTypes } from '@apackdev/ears';
 import { EARS } from '../types/entities.ts';
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { _contentWriterRegistry } from './writers.ts';

@@ -8,11 +8,11 @@
  *
  * Asked of the plan rather than of a run, because a run is 2s a tree and 7.8s for all five (measured
  * 2026-10-08) and the step is checked by the chain anyway. What a tarball packed this way does to the tree it
- * came from is `@apack/host`'s `published-manifest.spec.ts`, over `packTree` itself.
+ * came from is `@apackdev/host`'s `published-manifest.spec.ts`, over `packTree` itself.
  */
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { publishedTreeDirs } from '@apack/host/build/packages-built';
+import { publishedTreeDirs } from '@apackdev/host/build/packages-built';
 import { checksFor, declaresTypes, type PublishedTree } from '../../../scripts/lib/packages-check-plan.ts';
 
 /** A packer a case can recognise the output of, so what reaches `attw` is unambiguous */
@@ -84,7 +84,7 @@ describe('the trees it is asked of', () => {
     }));
     expect(trees.map(({ pkg }) => pkg)).toEqual(
       ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing', 'apack-cli']);
-    // Four of the five: `@apack/cli` publishes a bundle and no declarations
+    // Four of the five: `@apackdev/cli` publishes a bundle and no declarations
     expect(trees.filter(({ manifest }) => declaresTypes(manifest)).map(({ pkg }) => pkg))
       .toEqual(['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing']);
   });

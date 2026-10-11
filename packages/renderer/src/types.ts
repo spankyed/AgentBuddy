@@ -1,5 +1,5 @@
-export type { Plugin } from '@apack/host/fe';
-export type { RouteComponents } from '@apack/sdk/fe';
+export type { Plugin } from '@apackdev/host/fe';
+export type { RouteComponents } from '@apackdev/sdk/fe';
 
 export {
   type HotkeyEvent,
@@ -8,4 +8,4 @@ export {
   matchesHotkey,
   processHotkeys,
   createHotkeyProcessor
-} from '@apack/sdk/fe';
+} from '@apackdev/sdk/fe';

@@ -3,15 +3,15 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@apack/host/build/packages-built';
-import { packTree } from '@apack/host/build/published-manifest';
+import { packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { packTree } from '@apackdev/host/build/published-manifest';
 
 const execFileAsync = promisify(execFile);
 
 /**
  * Re-exported so a consumer of this fixture needs one import, not two.
  *
- * It comes from `@apack/host/build/packages-built`, which derives it from a marker file, rather than by
+ * It comes from `@apackdev/host/build/packages-built`, which derives it from a marker file, rather than by
  * counting `..` from this file. The count was right where this used to live and would have been wrong
  * here; two specs broke exactly that way during `goal-test-placement.md`.
  */
@@ -19,11 +19,11 @@ export { REPO_ROOT };
 
 /**
  * Re-exported for the same reason: the file list `npm pack` would produce lives in
- * `@apack/host/build/published-manifest`, where the package builds stage a tree from it, so the repo has one
+ * `@apackdev/host/build/published-manifest`, where the package builds stage a tree from it, so the repo has one
  * dry-run pack call site rather than one per caller. `installPublishedPackages()` below is the other operation —
  * a real pack, producing tarballs to install.
  */
-export { workspacePackList } from '@apack/host/build/published-manifest';
+export { workspacePackList } from '@apackdev/host/build/published-manifest';
 
 /**
  * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
@@ -31,7 +31,7 @@ export { workspacePackList } from '@apack/host/build/published-manifest';
  * consumer fixture reads the derived manifest rather than the workspace one it is derived from.
  *
  * Deliberately not the build-freshness watch list (`BUILD_UNITS`), which covers everything a build reads —
- * `@apack/host` and `@apack/testing` among it — and must be free to grow without changing what is packed
+ * `@apackdev/host` and `@apackdev/testing` among it — and must be free to grow without changing what is packed
  * into a fixture. `tests/published-manifest-paths.spec.ts` checks every packed package is one the build builds.
  */
 export const PACKED_PACKAGES: Record<string, string> = {
@@ -60,22 +60,22 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
 export const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @app/publish-checks, which builds them)');
 
 /**
- * A directory whose node_modules has the npm-packed @apack/ears, @apack/sdk and @apack/ui installed, as a
+ * A directory whose node_modules has the npm-packed @apackdev/ears, @apackdev/sdk and @apackdev/ui installed, as a
  * pack gets them from the registry, and links to the monorepo's copies of everything else.
  */
 export function installPublishedPackages(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-published-'));
   const modules = path.join(root, 'node_modules');
-  fs.mkdirSync(path.join(modules, '@apack'), { recursive: true });
+  fs.mkdirSync(path.join(modules, '@apackdev'), { recursive: true });
   for (const entry of fs.readdirSync(path.join(REPO_ROOT, 'node_modules'))) {
-    if (entry === '@apack' || entry.startsWith('.')) continue;
+    if (entry === '@apackdev' || entry.startsWith('.')) continue;
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(modules, entry), 'dir');
   }
   for (const [name, dir] of Object.entries(PACKED_PACKAGES)) {
     // `packTree` rather than npm by hand: one declaration of this, shared with `packages:check`, which needs
     // the same tarball for `attw` and must not pack it inside the tree it is checking
     const tarball = packTree(dir, root);
-    const target = path.join(modules, '@apack', name);
+    const target = path.join(modules, '@apackdev', name);
     fs.mkdirSync(target);
     execFileSync('tar', ['-xzf', tarball, '-C', target, '--strip-components', '1']);
   }

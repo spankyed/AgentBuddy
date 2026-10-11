@@ -4,7 +4,7 @@
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears`.
 // `apack.json` names it at `features[].plugin.contract`.
 import type { EventListenerEntity } from '#generated/types.ts'
-import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apack/sdk/steps'
+import type { StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps'
 import type { NormalizedTNodeTree } from './trace-tree.ts'
 
 export interface BrainContext {

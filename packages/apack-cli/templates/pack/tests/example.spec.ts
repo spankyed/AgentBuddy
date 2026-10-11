@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { importContent } from '@apack/testing/harness';
+import { importContent } from '@apackdev/testing/harness';
 import { EARS, findAll } from '#generated/ears.ts';
 
 describe('__NAME__', () => {

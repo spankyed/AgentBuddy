@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertSourceResolution, type ResolveFile } from '../../src/build/source-resolution.ts';
 
 const MANIFEST = {
-  name: '@apack/sdk',
+  name: '@apackdev/sdk',
   type: 'module',
   exports: {
     './package.json': './package.json',
-    '.': { '@apack/source': './src/index.ts', default: './dist/index.js' },
+    '.': { '@apackdev/source': './src/index.ts', default: './dist/index.js' },
   },
 };
 
@@ -27,15 +27,15 @@ function write(file: string, content: string): void {
   fs.writeFileSync(file, content);
 }
 
-/** A checkout whose workspace @apack/sdk is linked into node_modules, as npm workspaces do */
+/** A checkout whose workspace @apackdev/sdk is linked into node_modules, as npm workspaces do */
 function checkout({ built }: { built: boolean }): string {
   const dir = path.join(root, 'checkout');
   const sdk = path.join(dir, 'packages', 'apack-sdk');
   write(path.join(sdk, 'package.json'), JSON.stringify(MANIFEST));
   write(path.join(sdk, 'src', 'index.ts'), 'export {};');
   if (built) write(path.join(sdk, 'dist', 'index.js'), 'export {};');
-  fs.mkdirSync(path.join(dir, 'node_modules', '@apack'), { recursive: true });
-  fs.symlinkSync(sdk, path.join(dir, 'node_modules', '@apack', 'sdk'), 'dir');
+  fs.mkdirSync(path.join(dir, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(sdk, path.join(dir, 'node_modules', '@apackdev', 'sdk'), 'dir');
   return dir;
 }
 
@@ -52,7 +52,7 @@ describe('assertSourceResolution', () => {
   it('throws when a checkout resolves to its built dist', () => {
     const dir = checkout({ built: true });
     expect(() => assertSourceResolution(nodeResolver(dir), 'The test process'))
-      .toThrow(/The test process resolves @apack\/sdk to dist\/index\.js instead of the checkout's source/);
+      .toThrow(/The test process resolves @apackdev\/sdk to dist\/index\.js instead of the checkout's source/);
   });
 
   it('throws when a checkout has no dist and no condition', () => {
@@ -63,12 +63,12 @@ describe('assertSourceResolution', () => {
 
   it('passes when the process has the source condition', () => {
     const dir = checkout({ built: true });
-    expect(() => assertSourceResolution(nodeResolver(dir, ['@apack/source']), 'The test process')).not.toThrow();
+    expect(() => assertSourceResolution(nodeResolver(dir, ['@apackdev/source']), 'The test process')).not.toThrow();
   });
 
   it('passes for an installed package, which ships no src', () => {
     const dir = path.join(root, 'pack');
-    const sdk = path.join(dir, 'node_modules', '@apack', 'sdk');
+    const sdk = path.join(dir, 'node_modules', '@apackdev', 'sdk');
     write(path.join(sdk, 'package.json'), JSON.stringify(MANIFEST));
     write(path.join(sdk, 'dist', 'index.js'), 'export {};');
     expect(() => assertSourceResolution(nodeResolver(dir), 'The test process')).not.toThrow();

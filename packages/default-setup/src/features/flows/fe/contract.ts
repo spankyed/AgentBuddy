@@ -4,9 +4,9 @@
 // be `OutgoingActionEvents` — eleven events from the actions feature's `be/system`, where this plugin handles
 // three. Spelling those three out is what lets the contract live in a leaf at all: a leaf may not import another
 // feature. `apack.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@apack/sdk/fe'
-import type { ActionEntity, FlowEntity, PromptEntity } from '@apack/sdk'
-import type { ModelCatalogEntry } from '@apack/sdk/models'
+import type { NavHistory, PluginInbox } from '@apackdev/sdk/fe'
+import type { ActionEntity, FlowEntity, PromptEntity } from '@apackdev/sdk'
+import type { ModelCatalogEntry } from '@apackdev/sdk/models'
 import type { EARS } from '#generated/ears.ts'
 import type { EdgeEntity, NodeEntity } from '#generated/types.ts'
 

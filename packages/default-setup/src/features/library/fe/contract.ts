@@ -3,7 +3,7 @@
 // A leaf: no machine, no other feature, and nothing from `#generated/*` but `types` and `ears` — which is what lets
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // `apack.json` names it at `features[].plugin.contract`.
-import type { NavHistory, PluginInbox } from '@apack/sdk/fe'
+import type { NavHistory, PluginInbox } from '@apackdev/sdk/fe'
 import type { BreadcrumbItem, DocumentDTO, LibraryIndex, LibraryItem, SearchIndex } from '#generated/types.ts'
 
 export interface LibraryContext {

@@ -1,4 +1,4 @@
-> **Done** (PR #192, branch `AS/single-mode-packs`). The text below is the plan as written; see the Outcome for where the implementation differs from it — chiefly `@apack/testing`, which went fully single-mode rather than keeping the `@apack/source` condition the Decisions describe. For the current rule, see the root `CLAUDE.md`.
+> **Done** (PR #192, branch `AS/single-mode-packs`). The text below is the plan as written; see the Outcome for where the implementation differs from it — chiefly `@apackdev/testing`, which went fully single-mode rather than keeping the `@apackdev/source` condition the Decisions describe. For the current rule, see the root `CLAUDE.md`.
 
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-17). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
@@ -18,7 +18,7 @@ infrastructure and fix what the review found; take none of the other branch's bu
 
 Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
-- No pack config, template or scaffold declares `@apack/source`, enforced by the Phase 2 guard rather
+- No pack config, template or scaffold declares `@apackdev/source`, enforced by the Phase 2 guard rather
   than by grepping once.
 - `npm run typecheck`, `schema:check`, `api:check` (ears, sdk, ui), `packages:build` + `packages:check`,
   `npm run compile`, `facade:check -w @app/default-setup` and `npm run test:unit` pass.
@@ -39,28 +39,28 @@ Never:
 
 ## Background
 
-`@apack/ears`, `@apack/sdk` and `@apack/ui` publish an `@apack/source` export condition, so a consumer
+`@apackdev/ears`, `@apackdev/sdk` and `@apackdev/ui` publish an `@apackdev/source` export condition, so a consumer
 can resolve either their TypeScript source or their built `dist`. Deciding *which* was left to inference,
 and every dual-mode defect found in review came from that inference rather than from the condition itself:
 
 - `sourceConditions()` read one package's install layout and applied the answer to all three. A linked SDK
-  with a published `@apack/ui` resolved `ui` to `src/…` paths its tarball doesn't contain; the reverse
+  with a published `@apackdev/ui` resolved `ui` to `src/…` paths its tarball doesn't contain; the reverse
   silently compiled a linked UI's stale `dist`.
-- `@apack/testing/vitest` carried a second copy of the same heuristic, so a pack's tests could resolve
+- `@apackdev/testing/vitest` carried a second copy of the same heuristic, so a pack's tests could resolve
   differently from its build.
 - The api-extractor tsconfigs resolved dependencies as source, which produced `ae-wrong-input-file-type`
   and a wave of spurious "forgotten export" notes that went unnoticed for months.
-- The root `vitest.config.ts` had an inline project with no config file, so it loaded two `@apack/sdk`
+- The root `vitest.config.ts` had an inline project with no config file, so it loaded two `@apackdev/sdk`
   instances: a runtime bound in one was invisible to the other (18 tests failed that way).
 - `apack dev` never declared the condition at all, so in a checkout it served `dist` while `apack build`
   compiled source.
 
-Two measurements settle the direction. Under the condition, `@apack/sdk`'s program pulls in 22
-`@apack/ears` **source** files; with dist resolution and a project reference it reads 21 declaration files
+Two measurements settle the direction. Under the condition, `@apackdev/sdk`'s program pulls in 22
+`@apackdev/ears` **source** files; with dist resolution and a project reference it reads 21 declaration files
 and zero sources — so the condition is what blocks `tsc -b`, not the reverse. And removing it from pack
 tooling made the repo faster, not slower: `typecheck` 71s → 48s, `compile` 56s → 14s.
 
-It was also hiding a correctness bug. `@apack/sdk/actions` is inlined into every compiled action, so the
+It was also hiding a correctness bug. `@apackdev/sdk/actions` is inlined into every compiled action, so the
 same pack built in a checkout and from installed packages produced different compiled content bytes and
 different `sourceHash`/`rowSha256` values — and the host decides whether to re-apply from those hashes.
 
@@ -76,9 +76,9 @@ commit is partly that work being deleted again, and none of the second half reac
 
 1. **A pack resolves one layout: the published `dist`.** Built-in (`packages/default-setup`), fixture
    (`tests/fixtures/*`) and external packs are the same case. No pack config, scaffold or template declares
-   `@apack/source`, and nothing infers a mode from an install.
+   `@apackdev/source`, and nothing infers a mode from an install.
 2. **The repo declares the condition for its own code, in its own configs.** Compiling the app (renderer,
-   api, main, the `@apack/*` packages themselves) may read source; that is stated in each config, never
+   api, main, the `@apackdev/*` packages themselves) may read source; that is stated in each config, never
    derived.
 3. **A path that consumes `dist` ensures `dist` first.** Every entry point, not just the npm scripts:
    an entry the CLI owns (`apack build`, `apack test`, `apack dev`) is as much a consumer as `npm test`.
@@ -99,7 +99,7 @@ commit is partly that work being deleted again, and none of the second half reac
   changes its verdict: a *pack* config that declares the condition fails; every other config that compiles
   workspace source and doesn't declare it fails; the `RESOLVES_DIST_BY_DESIGN` exception table stays.
 - **Secret redaction stays a bound resource.** `HostRuntime.redaction`, installed by `bindHost`, cleared by
-  `unbindHost`, with the values living in `@apack/host`'s secrets store. Already implemented on
+  `unbindHost`, with the values living in `@apackdev/host`'s secrets store. Already implemented on
   `single-mode/phase-1`, mutation-checked, and independent of the resolution model — it can land first.
 - **`APACK_PACKAGES` goes.** It is a global process switch saying what the configs already say, named in
   nine places: `sourceConditions` (`PACKAGES_MODE_ENV`, `declaredMode()`), `assertSourceResolution`
@@ -117,25 +117,25 @@ commit is partly that work being deleted again, and none of the second half reac
   facade twice, from source and from installed `dist`, and asserts they are identical. Under single mode
   both sides resolve `dist` and the spec compares a thing with itself, so it is re-pointed at the question
   that is still live: **the workspace install versus the packed tarball**. That differential catches
-  packaging faults the old one never could — `@apack/testing`'s tarball carries 10 `src` files and no
+  packaging faults the old one never could — `@apackdev/testing`'s tarball carries 10 `src` files and no
   `dist` (it is `private` with no `files` field while its exports point into `dist/package/dist/`), which a
   workspace-vs-tarball comparison fails on immediately.
-- **`@apack/testing` resolves its built output on both conditions.** On this branch `.` and `./harness`
+- **`@apackdev/testing` resolves its built output on both conditions.** On this branch `.` and `./harness`
   resolve `types` to `./src/{index,harness}.ts` and `default` to `./src/{requires-source,harness-requires-source}.ts`,
   the stubs that throw when the condition isn't set. Phase 2 points `default` at
   `./dist/package/dist/{index,harness}.js` (the deletion the other branch already made) **and** `types` at
   the matching `.d.ts`, so a pack type-checks the declarations it runs rather than source — the same split
   this goal removes everywhere else. Doing only the first half leaves a pack type-checking source and
   running a bundle. It is also why `typecheck:pack` pulls 98
-  `@apack/host` source files into default-setup's program, though the root `CLAUDE.md` says a pack does
+  `@apackdev/host` source files into default-setup's program, though the root `CLAUDE.md` says a pack does
   not depend on host. Declaration quality is not a reason to hesitate: the bundled `.d.ts` are 120 lines
   with their JSDoc intact, real generics (`mockService<S extends object, K extends keyof S & string>`),
-  no `any`, and no mention of `@apack/host`. The repo's own code is unaffected, since it sets the
-  condition and keeps resolving source. The cost is that a `@apack/testing` or `@apack/host` edit needs
+  no `any`, and no mention of `@apackdev/host`. The repo's own code is unaffected, since it sets the
+  condition and keeps resolving source. The cost is that a `@apackdev/testing` or `@apackdev/host` edit needs
   a rebuild before a pack's typecheck sees it — which is what a consumer experiences anyway, and what
   Phase 1's freshness covers on every npm path.
 - **Project references are a separate goal.** They become possible once nothing needs the condition, but
-  they need `@apack/host` to gain a build and every package to go `composite`. Not this goal.
+  they need `@apackdev/host` to gain a build and every package to go `composite`. Not this goal.
 
 ## Phases
 
@@ -150,7 +150,7 @@ later phases lean on it, and re-add anything that went missing:
   `stampedBuild`, `withBuildLock`), with `packages/apack-cli/tests/build/package-freshness.spec.ts`.
 - The `PACKED_PACKAGES` / `BUILD_UNITS` split: the packages a consumer fixture installs and the packages
   watched for staleness are different lists. Merging them makes
-  `tests/helpers/published-packages.ts` pack `@apack/testing` — whose tarball carries 10 `src` files and
+  `tests/helpers/published-packages.ts` pack `@apackdev/testing` — whose tarball carries 10 `src` files and
   no `dist`, because it is `private` with no `files` field — into seven specs' fixtures.
 - The cross-checkout resolution check (`d7ad05bc5`): a worktree nested inside the repo resolves a missing
   build output to the **parent** checkout instead of failing, which silently type-checks another branch's
@@ -158,16 +158,16 @@ later phases lean on it, and re-add anything that went missing:
 - The rewritten `findMissingSourceConditions` (config-scope analysis via
   `ts.getParsedCommandLineOfConfigFile`, AST reading of the real `conditions` option, unreadable-verdict
   reporting, symlink-safe walking, per-run caches).
-- **Done when:** `npm test -w @apack/cli` passes, `package-freshness.spec.ts` still covers the interrupted
-  build, the deleted source and the future-dated source, and no consumer fixture installs `@apack/testing`.
+- **Done when:** `npm test -w @apackdev/cli` passes, `package-freshness.spec.ts` still covers the interrupted
+  build, the deleted source and the future-dated source, and no consumer fixture installs `@apackdev/testing`.
 
 ### Phase 2 — remove the inference
 - Delete `packages/apack-sdk/src/build/source-conditions.ts`, its `./build/source-conditions` package
-  export, `etc/build.source-conditions.api.md`, the `@apack/sdk/build` re-export and the
-  `shared-modules.ts` bridge entry (`npm run shared-modules:update -w @apack/host`).
+  export, `etc/build.source-conditions.api.md`, the `@apackdev/sdk/build` re-export and the
+  `shared-modules.ts` bridge entry (`npm run shared-modules:update -w @apackdev/host`).
 - Drop the seven call sites: `facade-gate.ts`, `types-bundler.ts`, `fe-bundler.ts` (two),
   `content-runtime-check.ts`, `module-exports.ts`, `compile-utils.ts`. Each resolves `dist` with no conditions.
-- Delete the `sourceConditions` re-export from `@apack/testing/src/vitest.ts` and every caller, and remove
+- Delete the `sourceConditions` re-export from `@apackdev/testing/src/vitest.ts` and every caller, and remove
   `customConditions`/`resolve.conditions` from `packages/default-setup` and both `tests/fixtures/*` packs.
 - Invert the guard's verdict per Decisions, and delete `CONDITION_HELPER`'s `sourceConditions` branch only
   if nothing else uses it (today the whole helper branch matches nothing — check before keeping it).
@@ -175,7 +175,7 @@ later phases lean on it, and re-add anything that went missing:
   `source-conditions.ts`, the early return at `packages/apack-host/src/build/source-resolution.ts:40`, the
   `=== 'dist'` branch in `scripts/with-source.mjs`, the early-out in `packages/apack-cli/bin/source-hooks.mjs`,
   and the paragraph in `docs/public-facing/cli.md`. Their specs go with them.
-- Point `@apack/testing`'s `.` and `./harness` at their built output on both conditions — `default` to
+- Point `@apackdev/testing`'s `.` and `./harness` at their built output on both conditions — `default` to
   `./dist/package/dist/{index,harness}.js` and `types` to the matching `.d.ts` — and delete the
   `requires-source.ts` / `harness-requires-source.ts` stubs those defaults name today, together with
   `src/source-check.ts` and `tests/build/testing-source-entry.spec.ts`. Phase 4 replaces the diagnostic
@@ -189,7 +189,7 @@ later phases lean on it, and re-add anything that went missing:
   omits it, both mutation-checked; nothing in the tree reads `APACK_PACKAGES`; the determinism spec fails
   when a package's `files`/`exports` would ship a tarball that doesn't match the workspace build (verify by
   mutating one, e.g. removing `dist` from a `files` field); and `typecheck:pack` no longer loads any
-  `@apack/host` source file (`vue-tsc -p packages/default-setup/tsconfig.json --explainFiles | grep -c
+  `@apackdev/host` source file (`vue-tsc -p packages/default-setup/tsconfig.json --explainFiles | grep -c
   apack-host/src` returns 0, against 98 today).
 
 ### Phase 3 — fix what the review found
@@ -201,19 +201,19 @@ Each of these is a verified defect, with the reproduction in the review:
 - **`npm start` and `npm run build` consume `dist` without ensuring it**: wire `packages:ensure` into
   `prebuild:be:dev` and `build` (`compile`, `typecheck:pack`, `test:external-pack` and default-setup's
   `pretest` already have it).
-- **`fe.bundleUi` packs lose every Tailwind class when `@apack/ui/dist` is missing** (`fe-bundler.ts:63-71`):
+- **`fe.bundleUi` packs lose every Tailwind class when `@apackdev/ui/dist` is missing** (`fe-bundler.ts:63-71`):
   `uiTailwindContent` fails only when the package can't resolve, not when its `dist` globs nothing. Make the
   empty-glob case a build failure, as its own comment already claims.
 - **`apack test` and `apack dev` never ensure freshness** though they load the harness bundle, which
-  inlines `@apack/host`. Per rule 3, an entry point is a consumer.
+  inlines `@apackdev/host`. Per rule 3, an entry point is a consumer.
 - **Done when:** each defect has a test that fails without the fix; `npm start`, `npm run build` and a
   `PACK_DIR=… npm test` run all pass from a clean `dist`.
 
 ### Phase 4 — restore the invariants that lost their guards
 - **"A pack cannot install its own secret-value matcher."** It used to hold because the module was exported
   only under the condition; now it holds only because `setSecretValueMatcher` isn't re-exported. Add a spec
-  that asserts it is absent from `@apack/sdk/utils`, `/utils/pure` and the bridge.
-- **"`@apack/testing` resolves the layout it expects."** The three diagnostic modules were deleted; an
+  that asserts it is absent from `@apackdev/sdk/utils`, `/utils/pure` and the bridge.
+- **"`@apackdev/testing` resolves the layout it expects."** The three diagnostic modules were deleted; an
   external pack now gets `ERR_MODULE_NOT_FOUND` or a silently stale bundle. Give the entry a check that
   names the fix, reachable from a pack repo (which cannot run `packages:ensure`).
 - **Done when:** both are mutation-checked, and the second is verified from a pack directory outside the
@@ -223,9 +223,9 @@ Each of these is a verified defect, with the reproduction in the review:
 - **`apack init` stops scaffolding the condition** (`init.ts:67`, with its now-false comment at `:65-66`).
   This is the one pack config the guard structurally cannot see, and it currently reinstates the dual mode
   in every newly scaffolded pack.
-- **A changeset for the break**: `@apack/testing/vitest` no longer exports `sourceConditions`, so a pack
+- **A changeset for the break**: `@apackdev/testing/vitest` no longer exports `sourceConditions`, so a pack
   scaffolded by an older CLI fails at config load. Name the error and the one-line fix. Note too that
-  `@apack/sdk/testing` now references `vue` and `@tiptap/*` types through `FeTestRuntimeOptions`.
+  `@apackdev/sdk/testing` now references `vue` and `@tiptap/*` types through `FeTestRuntimeOptions`.
 - **Document the new exports** where a pack author looks: `startFeTestRuntime`/`stopFeTestRuntime` and
   `registeredContentKeys` in `docs/public-facing/testing.md` and `packages/apack-sdk/CLAUDE.md`'s Testing
   entry section.
@@ -249,18 +249,18 @@ Each of these is a verified defect, with the reproduction in the review:
 
 Landed on `AS/single-mode-packs`, branched from `AS/package-resolution` at `0ccb78e35`, as 11 commits in
 PR #192 (stacked on #191). Every phase is done and every "Done when" met. Two things differ from the
-Decisions, both recorded below: the `@apack/testing` entries went fully single-mode rather than keeping
-the `@apack/source` key, and the changeset is a `minor` rather than a `major`. Nothing was deferred for
+Decisions, both recorded below: the `@apackdev/testing` entries went fully single-mode rather than keeping
+the `@apackdev/source` key, and the changeset is a `minor` rather than a `major`. Nothing was deferred for
 lack of time; the open items below are choices left standing, not unfinished work.
 
 ### Per phase
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — the mechanical baseline | done (confirmed, not rebuilt) | `npm test -w @apack/cli` green at the start: 60 files, 621 tests. `package-freshness.spec.ts` still covers the interrupted build, the deleted source and the future-dated source; no consumer fixture installs `@apack/testing`. |
+| 1 — the mechanical baseline | done (confirmed, not rebuilt) | `npm test -w @apackdev/cli` green at the start: 60 files, 621 tests. `package-freshness.spec.ts` still covers the interrupted build, the deleted source and the future-dated source; no consumer fixture installs `@apackdev/testing`. |
 | 2 — remove the inference | done | `acd6263d0`, `bac70f8f2`, `f9649ab7f`, `3ab270cc3`. `check:specifiers` mutation-checked both ways on the committed tree: a pack config declaring the condition and a host config omitting it each produce their own message. Nothing reads `APACK_PACKAGES`. `vue-tsc -p packages/default-setup/tsconfig.json --explainFiles \| grep -c apack-host/src` returns **0**, against 98 before. |
-| 3 — fix what the review found | done | `16ad7ab44`. Five defects: the content-runtime check's inherited `NODE_OPTIONS`, `fixtureEnv`'s per-pack decision, Tailwind's silent empty `@apack/ui` dist, `apack test`/`apack dev` against a stale checkout, and the repo's own entry points. |
-| 4 — restore the invariants | done | `157c8209e`, `2dc4ed515`, `28c283f5e`. `secret-matcher-reach.spec.ts` fails if the setter appears in `@apack/sdk/utils`, `/utils/pure` or the pack bridge. `assertCheckoutPackagesFresh` verified from a pack outside the monorepo, green and failing, and covered by `checkout-freshness.spec.ts` (9 tests). |
+| 3 — fix what the review found | done | `16ad7ab44`. Five defects: the content-runtime check's inherited `NODE_OPTIONS`, `fixtureEnv`'s per-pack decision, Tailwind's silent empty `@apackdev/ui` dist, `apack test`/`apack dev` against a stale checkout, and the repo's own entry points. |
+| 4 — restore the invariants | done | `157c8209e`, `2dc4ed515`, `28c283f5e`. `secret-matcher-reach.spec.ts` fails if the setter appears in `@apackdev/sdk/utils`, `/utils/pure` or the pack bridge. `assertCheckoutPackagesFresh` verified from a pack outside the monorepo, green and failing, and covered by `checkout-freshness.spec.ts` (9 tests). |
 | 5 — contracts and documentation | done | `4e2ed2943`, `f16b862a3`. `apack init` scaffolds no condition; a changeset names the break; no non-archive doc names a deleted export. |
 | 6 — verify the paths a unit suite doesn't reach | done | See Final verification. |
 
@@ -271,7 +271,7 @@ lack of time; the open items below are choices left standing, not unfinished wor
   unreadable, which is the honest verdict. Two `import-specifiers.spec.ts` cases that existed only to
   exercise the dead helper name were rewritten without it.
 - **Phase 3.** The freshness rule moved from `scripts/ensure-packages-built.ts` into
-  `@apack/host/build/packages-built`, so `@apack/testing` reaches it by package specifier. A relative
+  `@apackdev/host/build/packages-built`, so `@apackdev/testing` reaches it by package specifier. A relative
   import of a repo-root script puts the repo root into that bundle's declaration emit and moves every
   `.d.ts` it publishes out from under its own exports map — npm packs that silently and a dependent then
   sees an untyped module. `scripts/bundle-package.ts` gained a check that every path the published
@@ -279,15 +279,15 @@ lack of time; the open items below are choices left standing, not unfinished wor
 - **Phase 4.** `assertCheckoutPackagesFresh` takes its checkout and staleness reader as options so it can
   be tested; it reports a build running beside it separately from a stale one, because a build removes each
   stamp before rewriting it and the old message told the reader to run the build already running.
-- **Phase 5.** The `@apack/host` build helper `withSourceCondition` was deleted with the rest: nothing
+- **Phase 5.** The `@apackdev/host` build helper `withSourceCondition` was deleted with the rest: nothing
   added the condition to a child process any more.
 
 ### Corrections to the Decisions
 
-- **`@apack/testing` is fully single-mode, not "built output on both conditions".** The Decision and its
+- **`@apackdev/testing` is fully single-mode, not "built output on both conditions".** The Decision and its
   phase disagreed: Phase 2 says "on both conditions", while the Decision's last lines say "The repo's own
   code is unaffected, since it sets the condition and keeps resolving source" — which keeps the
-  `@apack/source` key and leaves the repo on a second resolution. It was implemented that way first
+  `@apackdev/source` key and leaves the repo on a second resolution. It was implemented that way first
   (`3ab270cc3`), and the consequence showed up immediately: the source entry calls
   `assertCheckoutPackagesFresh`, which reports on a bundle that entry never loads, so **any** edit to a
   package's source broke `npm test` with a message about something the E2E does not use. `eecfbf9aa`
@@ -296,9 +296,9 @@ lack of time; the open items below are choices left standing, not unfinished wor
   anticipated is real and now applies to the repo too: an edit to the fixture's own source needs that
   rebuild before `npm test` sees it.
 - **The changeset is a `minor`.** A `major` on 0.x means 1.0.0, and the `fixed` group carries it to
-  `@apack/ears` and `@apack/ui`, which the changeset does not name — taking all five out of 0.x on a
+  `@apackdev/ears` and `@apackdev/ui`, which the changeset does not name — taking all five out of 0.x on a
   break no one is on the other side of. Owner's call: no consumers, fix forward.
-- **`typecheck` runs `packages:ensure` first, not only `typecheck:pack`.** Once `@apack/testing` resolves
+- **`typecheck` runs `packages:ensure` first, not only `typecheck:pack`.** Once `@apackdev/testing` resolves
   its declarations, `tsc -p tests` needs the bundle, and it runs before `typecheck:pack` would have built it.
 
 ### Open items
@@ -307,16 +307,16 @@ lack of time; the open items below are choices left standing, not unfinished wor
   pack subtree that one day needs a host-side config has no escape. The rule has tests, so it fails loudly.
 - **`CHECKOUT_MARKER` is a filename.** "Am I in a checkout?" is answered by `scripts/ensure-packages-built.ts`
   existing; renaming or moving it turns the freshness guard into a silent no-op.
-- **Two spellings reach the build rule.** `@apack/host/build/packages-built` and
-  `../../../scripts/ensure-packages-built.ts`, the latter a re-export so the `@apack/{ears,sdk,ui}` build
+- **Two spellings reach the build rule.** `@apackdev/host/build/packages-built` and
+  `../../../scripts/ensure-packages-built.ts`, the latter a re-export so the `@apackdev/{ears,sdk,ui}` build
   scripts don't name a package two layers below them — which they still load. Noted beside the layer rule
   in the root `CLAUDE.md`; collapsing it to one spelling, or moving those scripts into the repo's
   `scripts/`, is a separate change.
 - **Four mechanisms enforce build freshness**: the `packages:ensure &&` prefixes, `pretest` in
-  `@apack/cli` and `@app/default-setup`, `ensureCheckoutPackages`, and `assertCheckoutPackagesFresh`.
+  `@apackdev/cli` and `@app/default-setup`, `ensureCheckoutPackages`, and `assertCheckoutPackagesFresh`.
   Each is defensible alone; which is authoritative deserves one deliberate pass.
 - **`test:packaged-authoring`'s E2E prints two renderer `TypeError`s** while passing. No renderer,
-  `@apack/ui` or component source changed on this branch, so it predates the work, but it is real.
+  `@apackdev/ui` or component source changed on this branch, so it predates the work, but it is real.
 
 ### Final verification
 
@@ -343,13 +343,13 @@ work-in-progress one.
 - The built-in pack compiles **both ways** and that is correct: `apack build` and its own tests resolve
   `dist`, while the renderer's Vite config and the API's tsup config compile its frontend and backend from
   source as part of the app. Don't "fix" the second case.
-- `@apack/host` has no `dist` and is consumed as TypeScript source by the api, main, the CLI,
-  `@apack/testing` and the renderer. Single mode for packs does not change that, and the CLI's resolve
+- `@apackdev/host` has no `dist` and is consumed as TypeScript source by the api, main, the CLI,
+  `@apackdev/testing` and the renderer. Single mode for packs does not change that, and the CLI's resolve
   hooks (`bin/source-hooks.mjs`) stay: the CLI is host code, and host source imports
-  `@apack/sdk/runtime/internals`, which is source-only. Deleting those hooks needs that entry to stop being
+  `@apackdev/sdk/runtime/internals`, which is source-only. Deleting those hooks needs that entry to stop being
   source-only first — a separate decision, not this goal's work.
 - Content goldens: `packages/default-setup/tests/unit/content-parity/__golden__/default-setup.json` is now
-  sensitive to the SDK's `dist` output, because compiled actions inline `@apack/sdk/actions`. A bundler or
+  sensitive to the SDK's `dist` output, because compiled actions inline `@apackdev/sdk/actions`. A bundler or
   tsc change can churn it; re-record with `UPDATE_CONTENT_GOLDEN=1` and say so in the summary rather than
   editing hashes by hand.
 - Don't take `single-mode/phase-1`'s `scripts/ensure-packages-built.ts`, its `PACKAGE_DIRS` merge, or its

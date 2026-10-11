@@ -1,8 +1,8 @@
 // An install asked for from outside the app (`apack://install?pack=…&source=…`): the window passes the platform's
 // parameters on, and the app reads them and asks the Packs system.
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Message } from '@apack/sdk/events';
-import { startFeTestRuntime } from '@apack/sdk/testing';
+import type { Message } from '@apackdev/sdk/events';
+import { startFeTestRuntime } from '@apackdev/sdk/testing';
 import { installFromProtocol, packInstallRequest } from '../../../../src/features/packs/fe/install-url.ts';
 
 const sent = vi.fn<(message: Message) => void>();

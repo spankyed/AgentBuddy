@@ -1,13 +1,13 @@
 // What a pack's frontend registration contributes, read the way the renderer and pack frontends read it: each
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apack/sdk/fe';
-import { getDslTypes, tiptapPluginRegistry } from '@apack/sdk/fe';
-import { bindFeHost } from '@apack/sdk/runtime';
-import { stepRegistry, type StepDefinition } from '@apack/sdk/steps';
-import { artifactRegistry } from '@apack/sdk/artifacts';
-import { blockRegistry } from '@apack/sdk/blocks';
-import { getDesignated, hasDesignation } from '@apack/sdk/designations';
+import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
+import { getDslTypes, tiptapPluginRegistry } from '@apackdev/sdk/fe';
+import { bindFeHost } from '@apackdev/sdk/runtime';
+import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { blockRegistry } from '@apackdev/sdk/blocks';
+import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { createFePackRegistry } from '../../src/fe/index.ts';
 
 // How this spec registers and reads: a frontend registry it creates, bound for the SDK's lookups

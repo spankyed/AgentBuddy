@@ -1,4 +1,4 @@
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 
 /** The brain's logger. Its debug messages follow the `brain` debug toggle, which the brain plugin's inspect switch sets. */
 export const brainLogger = createLogger('brain', { debug: true });

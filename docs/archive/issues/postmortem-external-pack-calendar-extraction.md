@@ -92,9 +92,9 @@ Existing installs need their `apack` bin link refreshed (`npm install`, or re-ru
 ### 3. Pack E2E still depends on the monorepo — ✅ resolved
 
 **Resolution** (decisions D4/D5, commits `e04f163e7`, `addc756de`, `7e9f3499e`, `225e081cf`):
-- The SDK, CLI and fixture are published packages (`@apack/sdk`, `@apack/cli`, `@apack/testing`). A pack installs them normally, so peers such as `xstate`, `vue` and `zod` install too, and the pack typechecks without mapping anything to the monorepo.
+- The SDK, CLI and fixture are published packages (`@apackdev/sdk`, `@apackdev/cli`, `@apackdev/testing`). A pack installs them normally, so peers such as `xstate`, `vue` and `zod` install too, and the pack typechecks without mapping anything to the monorepo.
 - `apack test` resolves the app from `--app-root`, `--app beta` (the newest apack Beta satisfying `hostVersion`, verified against its `.sha256` and cached), `APACK_ROOT`, or the choice saved at the first-run prompt. CI never prompts.
-- It runs the Playwright CLI that the pack's `@apack/testing` resolves, not `npx playwright`.
+- It runs the Playwright CLI that the pack's `@apackdev/testing` resolves, not `npx playwright`.
 - `init-tests` adds devDependencies instead of symlinking the SDK.
 
 **Evidence:**
@@ -130,7 +130,7 @@ Docs updated: `packages/apack-sdk/src/testing/CLAUDE.md` (now `packages/apack-te
 
 `packExternalsPlugin` (`fe-bundler.ts`) now **fails the build** when the SDK's host-module registry (`runtime/host.ts`) ends up in the rendered FE bundle. The error names the import chain and the SDK modules the renderer shares.
 - The check runs in `generateBundle` and only counts code that survives tree-shaking.
-- Covered by `packages/apack-sdk/tests/build/fe-bundler-host-registry.spec.ts`. An inlined `@apack/sdk/logger` fails with the chain `src/entry.ts → @apack/sdk/logger/index.ts → @apack/sdk/runtime/host.ts`, while proxied `rpc` plus pure `utils/pure` build fine.
+- Covered by `packages/apack-sdk/tests/build/fe-bundler-host-registry.spec.ts`. An inlined `@apackdev/sdk/logger` fails with the chain `src/entry.ts → @apackdev/sdk/logger/index.ts → @apackdev/sdk/runtime/host.ts`, while proxied `rpc` plus pure `utils/pure` build fine.
 
 **It caught a real latent case.** The example pack's `fe.js` contained the calendar backend repository, EARS helpers and the host registry (91 KB):
 - The FE imported `busId` from `#generated/system-ids`.
@@ -146,7 +146,7 @@ It only avoided crashing because `getHostModule` was called lazily. The fix:
 ### 6. No CI coverage for the external-pack path — ✅ resolved locally
 
 **Added:**
-- `tests/fixtures/external-pack/`: a checked-in pack derived from `apack init` + `apack add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@apack/sdk/rpc` and pack Tailwind, with no content (see N1).
+- `tests/fixtures/external-pack/`: a checked-in pack derived from `apack init` + `apack add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@apackdev/sdk/rpc` and pack Tailwind, with no content (see N1).
   - `memos.spec.ts` checks that a pack-only `p-[13px]` class applies, compares a visual baseline, and runs an add-memo round trip through the pack backend.
 - `tests/scripts/test-external-pack.sh`, run as `npm run test:external-pack`. It runs `apack validate`, `apack build`, `tsc --noEmit` on the pack, then `apack test` from the pack directory.
 - `.github/workflows/ci.yml` gets a new `external-pack-e2e` job (install, `npm run build`, `npm run test:external-pack`, upload test output on failure) and an `sdk` unit-test step in `check`.
@@ -223,13 +223,13 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 | # | Status on HEAD |
 |---|---|
 | F2 | ✅ **Resolved.** `pack-e2e.spec.ts` now runs against a temp dir via `APACK_ENV=test` + `APACK_USER_DATA_DIR`; the hardcoded production packs path and `USER_DATA_PATH` handling are gone. The app-wide resolver makes a test without an environment throw instead of reaching real app data. |
-| F3 | ✅ **Resolved.** Environment and data paths now come from one resolver, `@apack/sdk/env` (`resolveAppContext`): explicit input, then `APACK_ENV` / `APACK_USER_DATA_DIR`, otherwise it throws. The Electron main process infers the environment once (`packages/main/src/app-context.ts`: Playwright → test; packaged → build-stamped channel, unstamped refuses to start; source run → `APACK_ENV` or development) and passes it to the API process. `build/build.sh` now stamps production builds too. `getPacksDir`, `getPacksDirForEnv`, `getApiPortFile`, `resolveAppEnv`, `resolveAppDataDir` and `USER_DATA_PATH` are removed; `tests/env/identity-guard.spec.ts` fails if they return. |
+| F3 | ✅ **Resolved.** Environment and data paths now come from one resolver, `@apackdev/sdk/env` (`resolveAppContext`): explicit input, then `APACK_ENV` / `APACK_USER_DATA_DIR`, otherwise it throws. The Electron main process infers the environment once (`packages/main/src/app-context.ts`: Playwright → test; packaged → build-stamped channel, unstamped refuses to start; source run → `APACK_ENV` or development) and passes it to the API process. `build/build.sh` now stamps production builds too. `getPacksDir`, `getPacksDirForEnv`, `getApiPortFile`, `resolveAppEnv`, `resolveAppDataDir` and `USER_DATA_PATH` are removed; `tests/env/identity-guard.spec.ts` fails if they return. |
 | F4 | ✅ **Resolved** (`6f727af82`). `UNBRIDGED_LEAVES` (proven leaves) and `UNBRIDGED_BY_POLICY` (the dev entry must never require them) are separate. |
 | F5 | ✅ **Resolved** (`6f727af82`). A test asserts each leaf has no imports (mutation-checked). |
-| F6 | ✅ **Resolved** (`6f727af82`). `isFeSpecifier` matches `@apack/sdk/fe` or `@apack/sdk/fe/…` only. |
+| F6 | ✅ **Resolved** (`6f727af82`). `isFeSpecifier` matches `@apackdev/sdk/fe` or `@apackdev/sdk/fe/…` only. |
 | F7 | ✅ **Resolved** (`6f727af82`). The dev-entry assertion applies the same fe filter. |
 | F8 | ✅ **Resolved.** `sdk-bridge-drift.spec.ts` fails on any wildcard export outside `./fe/*` (checked with `./ears/*` and `./fe-widgets/*`), so a non-renderer wildcard can't bypass the bridge check. The package build also fails on export targets that don't exist (`addc756de`). |
-| F9 | ✅ **Resolved** (`6f727af82`). Unbridged entries the SDK no longer exports fail the test. `@apack/sdk/package.json` is recorded as metadata. |
+| F9 | ✅ **Resolved** (`6f727af82`). Unbridged entries the SDK no longer exports fail the test. `@apackdev/sdk/package.json` is recorded as metadata. |
 | F10 | ✅ **Resolved** (`6f727af82`). `pack-loader.spec.ts` asserts the "No machine export found" diagnostic names the compiled file actually loaded, via `rootEvents.onLog` (mutation-checked). Earlier fix: fixtures use `features`. |
 | F11 | ✅ **Resolved** (`6f727af82`). `loadPackFEEntry` warns when an entry registers nothing and calls out a missing default export. Renderer unit tests run in CI. |
 | — | The stale `exportName` fields in the example pack are gone. |
@@ -273,8 +273,8 @@ Branch `AS/external-pack-authoring`. The spec is `docs/archive/goals/goal-extern
 | A2 | Loader read `manifest.plugins` only | pack registered 0 systems | loader reads `manifest.features` (`plugins` since removed) | `pack-loader.ts:320,405` |
 | A3 | Renderer boot deadlock (circular top-level-await chunk) blocked **all** E2E tests, including the monorepo's own | `Main window with applicationState did not appear within timeout`; error page with empty stack | static built-in pack imports; `modulePreload: false` | `renderer/vite.config.ts` |
 | A4 | FE bundler exported the namespace object as `default` | `TypeError: __m$3 is not a function` | `export default __m.default` | `fe-bundler.ts:35` |
-| A5 | `@apack/sdk/rpc` not proxied | `SDK host module "trpc" not registered` | added to `SDK_FE_MODULES` | `shared-deps.ts` (missing guard tracked as item 5) |
-| A6 | Pack systems loaded as ESM bypassed host resolution | `Cannot find package 'xstate'` → `'@apack/sdk'` → `Cannot use import statement outside a module` | new `be-bundler.ts` compiles systems to `dist/systems/*.cjs` | `build.ts` calls `bundlePackSystems` |
+| A5 | `@apackdev/sdk/rpc` not proxied | `SDK host module "trpc" not registered` | added to `SDK_FE_MODULES` | `shared-deps.ts` (missing guard tracked as item 5) |
+| A6 | Pack systems loaded as ESM bypassed host resolution | `Cannot find package 'xstate'` → `'@apackdev/sdk'` → `Cannot use import statement outside a module` | new `be-bundler.ts` compiles systems to `dist/systems/*.cjs` | `build.ts` calls `bundlePackSystems` |
 | A7 | `SystemEntry` wrapper used as the machine | `this.logic.getInitialSnapshot is not a function` | `raw.machine ?? raw` | `pack-loader.ts` |
 | A8 | Pack CSS had no Tailwind utilities | broken grid; every test still passed | Tailwind/PostCSS in `fe-bundler.ts` | `tailwind-inject` plugin |
 | A9 | Test app shared the dev app's single-instance lock and packs dir | `Another dev instance is already running`; `Plugin "calendar" did not load within 30s` | `apack-test` namespace; `getPacksDirForEnv('test')` | `SingleInstanceApp.ts`, `testing/index.ts` |

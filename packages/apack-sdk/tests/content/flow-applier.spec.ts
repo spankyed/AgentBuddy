@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, findRelations, installEngine, installedEngine, untypedTx } from '@apack/ears';
+import { createEarsEngine, findRelations, installEngine, installedEngine, untypedTx } from '@apackdev/ears';
 import { applyRecord, type ApplyRecord } from '../../src/utils/index.ts';
 
 const { createFlowApplier } = await import('../../src/content/flow-applier.ts');

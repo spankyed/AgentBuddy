@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_ENVS } from '@apack/sdk/env';
+import { APP_ENVS } from '@apackdev/sdk/env';
 import { _useFileVault } from '../../src/secrets/index.ts';
 
 /**

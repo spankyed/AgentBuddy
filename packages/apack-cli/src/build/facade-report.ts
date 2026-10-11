@@ -10,8 +10,8 @@
 // Writing stays out: only `facade-report --update` writes the report, and the build never does.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { PACK_TYPES_DEF } from '@apack/sdk/build';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_TYPES_DEF } from '@apackdev/sdk/build';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 import ts from 'typescript';
 import { sortLiteralUnions } from './declaration-text';
 

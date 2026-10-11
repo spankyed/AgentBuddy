@@ -23,7 +23,7 @@ interface PackFiles {
   manifest?: Record<string, unknown> | string;
   tailwindConfig?: string;
   entry?: string;
-  /** Link the repo's node_modules, so @apack/ui and vue resolve (default: yes) */
+  /** Link the repo's node_modules, so @apackdev/ui and vue resolve (default: yes) */
   linkNodeModules?: boolean;
 }
 
@@ -64,7 +64,7 @@ describe('pack FE Tailwind setup', () => {
     expect(emittedCss(packDir)).toContain('#abc123');
   });
 
-  it('fails the build when a pack that bundles @apack/ui has a tailwind.config that throws', async () => {
+  it('fails the build when a pack that bundles @apackdev/ui has a tailwind.config that throws', async () => {
     const packDir = makePack({
       manifest: { build: { bundleUi: true } },
       tailwindConfig: "throw new Error('bad tailwind config');\n",
@@ -85,52 +85,52 @@ describe('pack FE Tailwind setup', () => {
     expect(result.error).toContain('`content`');
   });
 
-  it("fails the build when a bundleUi pack can't resolve @apack/ui", async () => {
+  it("fails the build when a bundleUi pack can't resolve @apackdev/ui", async () => {
     const packDir = makePack({ manifest: { build: { bundleUi: true } }, linkNodeModules: false });
     const result = await build(packDir);
     expect(result.success).toBe(false);
-    expect(result.error).toContain('@apack/ui');
+    expect(result.error).toContain('@apackdev/ui');
     expect(result.error).toContain('build.bundleUi');
   });
 
-  /** A bundleUi pack whose @apack/ui resolves but has no build: a checkout before packages:build */
+  /** A bundleUi pack whose @apackdev/ui resolves but has no build: a checkout before packages:build */
   function uiWithoutBuild(): string {
     const packDir = makePack({ manifest: { build: { bundleUi: true } }, linkNodeModules: false });
-    const modules = path.join(packDir, 'node_modules', '@apack');
+    const modules = path.join(packDir, 'node_modules', '@apackdev');
     fs.mkdirSync(path.join(modules, 'ui'), { recursive: true });
     for (const entry of fs.readdirSync(path.join(REPO_ROOT, 'node_modules'))) {
-      if (entry === '@apack' || entry.startsWith('.')) continue;
+      if (entry === '@apackdev' || entry.startsWith('.')) continue;
       fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(packDir, 'node_modules', entry), 'dir');
     }
     for (const name of ['ears', 'sdk']) {
       fs.symlinkSync(path.join(REPO_ROOT, 'packages', `apack-${name}`), path.join(modules, name), 'dir');
     }
-    fs.writeFileSync(path.join(modules, 'ui', 'package.json'), JSON.stringify({ name: '@apack/ui', version: '0.0.0', exports: { '.': './dist/index.js', './package.json': './package.json' } }));
+    fs.writeFileSync(path.join(modules, 'ui', 'package.json'), JSON.stringify({ name: '@apackdev/ui', version: '0.0.0', exports: { '.': './dist/index.js', './package.json': './package.json' } }));
     return packDir;
   }
 
-  it("fails the build when a bundleUi pack's @apack/ui has no build to read classes from", async () => {
+  it("fails the build when a bundleUi pack's @apackdev/ui has no build to read classes from", async () => {
     // Resolving the package isn't enough: Tailwind reads its compiled output, and an empty dist globs
-    // nothing, which would ship every @apack/ui component unstyled with no error at all.
+    // nothing, which would ship every @apackdev/ui component unstyled with no error at all.
     const packDir = uiWithoutBuild();
 
     const result = await build(packDir);
     expect(result.success).toBe(false);
-    expect(result.error).toContain('@apack/ui has no built modules');
+    expect(result.error).toContain('@apackdev/ui has no built modules');
     expect(result.error).toContain('packages:ensure');
   });
 
-  it("fails the build when a bundleUi pack's @apack/ui dist holds no module to read", async () => {
+  it("fails the build when a bundleUi pack's @apackdev/ui dist holds no module to read", async () => {
     // A dist with only declarations in it is the same silence: Tailwind's glob matches no file either
     // way, so "the directory exists and is not empty" is not the question worth asking
     const packDir = uiWithoutBuild();
-    const dist = path.join(packDir, 'node_modules', '@apack', 'ui', 'dist', 'design');
+    const dist = path.join(packDir, 'node_modules', '@apackdev', 'ui', 'dist', 'design');
     fs.mkdirSync(dist, { recursive: true });
     fs.writeFileSync(path.join(dist, 'button.d.ts'), 'export declare const x: number;\n');
 
     const result = await build(packDir);
     expect(result.success).toBe(false);
-    expect(result.error).toContain('@apack/ui has no built modules');
+    expect(result.error).toContain('@apackdev/ui has no built modules');
   });
 
   it("fails the build when apack.json can't be read, so build.bundleUi is unknown", async () => {
@@ -186,7 +186,7 @@ describe('pack FE Tailwind setup when Tailwind cannot be loaded', () => {
     expect(warn.mock.calls.flat().join('\n')).toContain("Tailwind CSS couldn't be loaded");
   });
 
-  it('fails the build for a pack that bundles @apack/ui', async () => {
+  it('fails the build for a pack that bundles @apackdev/ui', async () => {
     const packDir = makePack({ manifest: { build: { bundleUi: true } } });
     const result = await buildWithoutTailwind(packDir);
     expect(result.success).toBe(false);

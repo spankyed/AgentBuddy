@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@apack/testing';
+import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@apackdev/testing';
 
 const APP_ROOT = path.resolve(import.meta.dirname, '../../..');
 

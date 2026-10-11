@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { importContent } from '@apack/testing/harness';
-import { getPackCommands } from '@apack/sdk/framework';
-import { untypedQx } from '@apack/ears';
+import { importContent } from '@apackdev/testing/harness';
+import { getPackCommands } from '@apackdev/sdk/framework';
+import { untypedQx } from '@apackdev/ears';
 import { repository } from '#generated/repository.ts';
 
 describe('memo content', () => {

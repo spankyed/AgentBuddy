@@ -2,7 +2,7 @@
 // packs feature implements it (`createPackFrontends`). It lives here, beside the other things a frontend needs
 // that aren't a feature's, because a port belongs to neither side — either feature owning it would make the
 // other reach into it, which is the one thing a feature's frontend may not do.
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry } from '../packs/layout.ts';
 
 /** Loads and unloads external packs' frontends (the renderer imports them from `pack://`) */

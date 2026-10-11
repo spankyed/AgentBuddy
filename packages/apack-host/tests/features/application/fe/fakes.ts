@@ -2,8 +2,8 @@
 // test loads, storage kept in memory, and records of what the shell reported to the user
 import { vi } from 'vitest';
 import { setup } from 'xstate';
-import type { Message } from '@apack/sdk/events';
-import type { Plugin, ShellPanelSizes } from '@apack/sdk/fe';
+import type { Message } from '@apackdev/sdk/events';
+import type { Plugin, ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry, ShellClient, ShellConnection, ShellFailure, ShellOptions } from '../../../../src/fe/index.ts';
 
 /** A plugin with an empty machine */

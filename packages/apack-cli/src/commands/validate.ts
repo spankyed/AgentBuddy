@@ -1,10 +1,10 @@
 import * as path from 'node:path';
-import { generatePackFiles, validateManifest, validateFeatures } from '@apack/sdk/build';
+import { generatePackFiles, validateManifest, validateFeatures } from '@apackdev/sdk/build';
 import { resolveDep } from './fetch-deps';
 import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 import { packRuleProblems, PACK_RULES } from '../build/pack-rules.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
  * Warnings only: an unresolved dependency is fixable with "apack fetch-deps", and `apack build`
@@ -37,7 +37,7 @@ async function validateDeps(root: string): Promise<string[]> {
  * The checks code generation makes (content formats' entities, dependency formats, content writer and service
  * exports, …), run in memory without writing. Skipped while a dependency is unresolved: validateDeps
  * reports that, and these checks need the dependency's manifest. Types that don't resolve (the pack's
- * `@apack/sdk` not installed) are a warning, not the pack's error.
+ * `@apackdev/sdk` not installed) are a warning, not the pack's error.
  */
 async function validateCodegen(root: string): Promise<{ errors: string[]; warnings: string[] }> {
   const manifest = readManifest(root);

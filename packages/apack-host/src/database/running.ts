@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { _appDirOf, type AppContext } from '@apack/sdk/env';
+import { _appDirOf, type AppContext } from '@apackdev/sdk/env';
 import { lockIsHeld, readApiEndpoint, sameWriter, type WriterRecord } from '../process-liveness.ts';
 
 /** What the app process publishes in the data dir for as long as it runs */

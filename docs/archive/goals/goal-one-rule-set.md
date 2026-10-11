@@ -106,9 +106,9 @@ check that a two-entry list is complete.
 
 Facts that constrain the design:
 
-- `@apack/host` declares neither `typescript` nor `vue`; `packages/api` imports host, so the Vue compiler must
-  not enter the backend's tree. `@apack/cli` has both as hard dependencies and is `private` with no `exports`
-  map. `@apack/sdk` has `vue` as a peer and `typescript` as an optional one, but its published `./build`
+- `@apackdev/host` declares neither `typescript` nor `vue`; `packages/api` imports host, so the Vue compiler must
+  not enter the backend's tree. `@apackdev/cli` has both as hard dependencies and is `private` with no `exports`
+  map. `@apackdev/sdk` has `vue` as a peer and `typescript` as an optional one, but its published `./build`
   declarations are typechecked standalone by `packages/publish-checks`.
 - A repo script importing a package's internals by relative path is already the pattern:
   `scripts/build-ui-package.ts:18` imports `../packages/apack-ui/scripts/exports.ts`, and
@@ -116,7 +116,7 @@ Facts that constrain the design:
   `scripts/`, not the repo's.
 - `packages/main` bundles: `vite.config.js` uses `build.lib` with one `src/index.ts` entry and `dist/` holds
   one `index.js`. It is `moduleResolution: NodeNext` **with** `allowImportingTsExtensions: true` — the same
-  combination `@apack/ears`, `/sdk`, `/host` and `/ui` use while naming `.ts`. `packages/preload` is NodeNext
+  combination `@apackdev/ears`, `/sdk`, `/host` and `/ui` use while naming `.ts`. `packages/preload` is NodeNext
   with `noEmit: true` and without that flag.
 - `electron-builder.mjs`'s `files` array excludes `'!**/*.md'` (:125) and `'!**/*.ts'` (:130), so a `.ts` or
   `.md` file inside `packages/apack-cli/dist/package/` is stripped from the packaged app — the CLI the app
@@ -144,7 +144,7 @@ Final.
    `apack validate`, `apack build` and `apack test` for every pack, and by `check:specifiers` for this
    repo's. `internal-imports-gate.ts` is deleted: its rule and the script's `internalImport` are the same rule
    written twice.
-2. **The reader stays in `@apack/cli`** (`src/build/pack-sources.ts`) and the repo script imports it by
+2. **The reader stays in `@apackdev/cli`** (`src/build/pack-sources.ts`) and the repo script imports it by
    relative path. Not host (no `typescript`/`vue`, and the API imports it), not the SDK (pack sources import
    it, and its published declarations are typechecked standalone).
 3. **A pack rule is switchable only when a violation has no runtime effect.** Not switchable:
@@ -229,7 +229,7 @@ Decisions 6 and 7. Each step ends with the byte-identity diff below.
 
 **Done when:** `apack init` + every `add` command, driven from the CLI into a fresh directory, is
 byte-identical to a golden tree captured at `ed84beced` (`diff -r -x __generated__ -x .apack -x node_modules`,
-empty output) at **every** step; `npm test -w @apack/cli` and its integration half pass;
+empty output) at **every** step; `npm test -w @apackdev/cli` and its integration half pass;
 `npm run test:packaged-authoring` and `npm run test:external-pack` pass; a `--dir` electron package lists
 `Resources/app/packages/apack-cli/dist/package/templates/`; the completeness spec fails when a template file
 is unreferenced and when a `renderTemplate` literal names a missing file.
@@ -340,7 +340,7 @@ deleted; `npm run test:external-pack:contract` passes.
 | 5 — `specifiers:fix` | **done** | `6c8eee988`. Its first subject was real: the 87 specifiers the widened rule found |
 | 6 — `backend-console` moves, the cast rule stays | **done** | `437bdf35d`, and the rule itself in Phase 3 |
 
-**Counts**: `@apack/cli` 350 tests (was 305 + 21 in the integration half), `@app/repo-checks` 239,
+**Counts**: `@apackdev/cli` 350 tests (was 305 + 21 in the integration half), `@app/repo-checks` 239,
 `@app/default-setup` 720 unchanged, the fixture pack 32 unchanged, E2E 21 unchanged, `npm run chain` green in
 183s. 15 commits.
 
@@ -376,7 +376,7 @@ Three defects in what the phases shipped, each found by checking rather than by 
 
 - **The script's walk never skipped `node_modules` or `dist`**, while the CLI's did — so the one reader the
   goal was about was reading two trees it had no business in. One walker now skips both (`f2156fd70`).
-- **Three rules reported one import three times.** `import { _rootEvents } from '@apack/host/bus'` breaks
+- **Three rules reported one import three times.** `import { _rootEvents } from '@apackdev/host/bus'` breaks
   `host-imports`, `internal-package-imports` and `raw-transport`, and a pack author deleting one line was told
   three times in three blocks. A finding now carries the span of the code it is about, and one overlapping a
   span an earlier rule claimed stands down; `PACK_RULES`' order *is* that precedence. Overlap rather than

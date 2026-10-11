@@ -1,11 +1,11 @@
 // Checker 5 of the package-freshness doors (the doors are listed in packages/apack-testing/CLAUDE.md):
-// A pack loads this harness from the @apack/testing bundle, and in a checkout that bundle is built on
+// A pack loads this harness from the @apackdev/testing bundle, and in a checkout that bundle is built on
 // demand: `apack test` and `apack dev` refresh it first, but `npx vitest` and `npx playwright test` in
 // a pack repo do not. A stale bundle is the dangerous case — it loads and silently tests the previous
-// @apack/host, since the bundle inlines it — so the harness says so instead of passing quietly.
+// @apackdev/host, since the bundle inlines it — so the harness says so instead of passing quietly.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { CHECKOUT_MARKER, REPO_ROOT, runningPackageBuild, stalePackageUnits, staleMessage, waitForPackageBuild, type StaleUnit } from '@apack/host/build/packages-built';
+import { CHECKOUT_MARKER, REPO_ROOT, runningPackageBuild, stalePackageUnits, staleMessage, waitForPackageBuild, type StaleUnit } from '@apackdev/host/build/packages-built';
 
 /** What the check reads. The defaults are this checkout's; a test passes its own. */
 export interface CheckoutFreshnessOptions {
@@ -57,7 +57,7 @@ export function assertCheckoutPackagesFresh(
     );
   }
   throw new Error(
-    `@apack/testing was built before the checkout's current sources, so this run would test the previous ones:\n${staleMessage(stale)}\n`
+    `@apackdev/testing was built before the checkout's current sources, so this run would test the previous ones:\n${staleMessage(stale)}\n`
     + 'Run: npm run packages:ensure in the checkout (apack test and apack dev do it for you).',
   );
 }

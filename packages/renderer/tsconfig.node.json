@@ -10,8 +10,8 @@
   ],
   "compilerOptions": {
     "noUnusedLocals": true,
-    // Workspace @apack/* packages resolve to source (see their package.json exports)
-    "customConditions": ["@apack/source"],
+    // Workspace @apackdev/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@apackdev/source"],
     // Their relative imports name .ts sources
     "allowImportingTsExtensions": true,
     "noEmit": true,

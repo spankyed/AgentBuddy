@@ -82,8 +82,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '#generated/types.ts'
-import BaseForm from '@apack/ui/components/BaseForm'
-import TipSection from '@apack/ui/components/TipSection'
+import BaseForm from '@apackdev/ui/components/BaseForm'
+import TipSection from '@apackdev/ui/components/TipSection'
 
 const props = defineProps<{
   node: NodeEntity

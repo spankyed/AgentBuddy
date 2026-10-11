@@ -1,4 +1,4 @@
-// Unit tests for a pack without the app, on the pack's own @apack/sdk (registrations are the ones
+// Unit tests for a pack without the app, on the pack's own @apackdev/sdk (registrations are the ones
 // the pack's code sees). Two tiers:
 // - data: the pack's content, repositories and content writers against an in-memory EARS, with its
 //   dependencies' content behaviour (their content runtimes);
@@ -8,7 +8,7 @@
 //   // tests/setup.ts (vitest setupFiles, after isolatedDataDir's)
 //   import { contentRuntime } from '#generated/content-runtime';
 //   import { registration } from '#generated/pack-entry';
-//   import { setupPackTests } from '@apack/testing/harness';
+//   import { setupPackTests } from '@apackdev/testing/harness';
 //   await setupPackTests({ contentRuntime, registration });
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 import * as fs from 'node:fs';
@@ -16,24 +16,24 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
-import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type ContentRuntime, fakeInference, type FakeInference } from '@apack/sdk/testing';
-import type { PackRegistryView } from '@apack/sdk/runtime';
-import type { FeatureRef } from '@apack/sdk/ids';
-import type { PackRegistration } from '@apack/sdk/framework';
-import { createPackRegistry, type PackOrigin } from '@apack/host/packs';
-import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apack/host/features';
-import { appState, HOST_ENTITY_TYPES } from '@apack/host/app-state';
-import { createSettingsService, createSettingsStore, type SettingsDocument } from '@apack/host/settings';
-import { getPackSettingsDefaults } from '@apack/sdk/framework';
+import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type ContentRuntime, fakeInference, type FakeInference } from '@apackdev/sdk/testing';
+import type { PackRegistryView } from '@apackdev/sdk/runtime';
+import type { FeatureRef } from '@apackdev/sdk/ids';
+import type { PackRegistration } from '@apackdev/sdk/framework';
+import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
+import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apackdev/host/features';
+import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
+import { createSettingsService, createSettingsStore, type SettingsDocument } from '@apackdev/host/settings';
+import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apack/sdk/build';
-import { actionRepository, flowRepository, promptRepository } from '@apack/sdk/repositories';
-import { untypedQx } from '@apack/ears';
-import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apack/sdk/utils';
+import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
+import { untypedQx } from '@apackdev/ears';
+import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
 
 export { takeSystemErrors, addTestSecret, type ContentRuntime };
 
@@ -258,7 +258,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     );
   }
   if (!process.env.APACK_USER_DATA_DIR) {
-    throw new Error('APACK_USER_DATA_DIR is unset: use isolatedDataDir() from @apack/testing/vitest in vitest.config.ts');
+    throw new Error('APACK_USER_DATA_DIR is unset: use isolatedDataDir() from @apackdev/testing/vitest in vitest.config.ts');
   }
   const packDir = options.packDir ?? findPackDir(projectRoot() ?? process.cwd());
   assertSharedEars(packDir);

@@ -1,7 +1,7 @@
 // Reading a run's own reporter to find out what it actually covered.
 //
 // The pool asks for N projects with `--project` and then stamps all N. That is only sound if the filter
-// selected them: measured, `--project @apack/ears --project @apack/no-such-project` runs ears, drops the
+// selected them: measured, `--project @apackdev/ears --project @apackdev/no-such-project` runs ears, drops the
 // second silently and exits 0. Only a filter matching *nothing at all* is an error. So a suite whose
 // workspace stopped matching its vitest project name would be stamped as having passed a run it was
 // excluded from — the same "recorded fresh having never run" the pool was already fixed for once.
@@ -10,10 +10,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
-import { declaredPaths, diffableStamp } from '@apack/host/build/packages-built';
+import { declaredPaths, diffableStamp } from '@apackdev/host/build/packages-built';
 import { DIAGNOSTIC_RUN_ENV, holdPoolLock, POOLS, livePoolStamps, poolLockFor, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
@@ -265,14 +265,14 @@ const ran = (...projects: string[]): ReportedRun => ({ projects, modules: [] });
  * minimum project count, and no case this cannot answer.
  */
 describe('projectsThatDidNotRun', () => {
-  const asked = ['@apack/ears', '@app/main'];
+  const asked = ['@apackdev/ears', '@app/main'];
 
   it('names a project that was asked for and never reported', () => {
-    expect(projectsThatDidNotRun(asked, ran('@apack/ears'))).toEqual(['@app/main']);
+    expect(projectsThatDidNotRun(asked, ran('@apackdev/ears'))).toEqual(['@app/main']);
   });
 
   it('says nothing when every project reported', () => {
-    expect(projectsThatDidNotRun(asked, ran('@apack/ears', '@app/main'))).toEqual([]);
+    expect(projectsThatDidNotRun(asked, ran('@apackdev/ears', '@app/main'))).toEqual([]);
   });
 
   it('names them all when the filter matched none of several', () => {
@@ -295,7 +295,7 @@ describe('projectsThatDidNotRun', () => {
   // A project the run started and found no file for is still a project that ran, and it is nameable from
   // nowhere else: it appears in no reporter's output, only in the specifications the run began with
   it('counts a project that reported no files, which no output could have shown', () => {
-    expect(projectsThatDidNotRun(['@apack/ui'], { projects: ['@apack/ui'], modules: [] })).toEqual([]);
+    expect(projectsThatDidNotRun(['@apackdev/ui'], { projects: ['@apackdev/ui'], modules: [] })).toEqual([]);
   });
 });
 
@@ -414,7 +414,7 @@ describe('the pools', () => {
    *
    * The command is taken from the pool's own `run`, which is why it is specific enough to be worth hashing:
    * the integration pool names the config it passes, and the host pool the wrapper that supplies the
-   * `@apack/source` condition. Two pools running one suite two ways is the whole subject.
+   * `@apackdev/source` condition. Two pools running one suite two ways is the whole subject.
    */
   it('record what each pool would run, as its command', () => {
     // Counted over pools, not entries: every suite has an entry per provenance, so counting those called

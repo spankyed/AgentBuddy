@@ -1,5 +1,5 @@
 // startTestRuntime's in-memory app: what systems, services and steps call outside the app
-import { installedEngine as ears } from '@apack/ears';
+import { installedEngine as ears } from '@apackdev/ears';
 import * as os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
@@ -10,7 +10,7 @@ import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
 import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { registerRepository, repository, untypedTx } from '@apack/ears';
+import { registerRepository, repository, untypedTx } from '@apackdev/ears';
 
 process.env.APACK_ENV ??= 'test';
 process.env.APACK_USER_DATA_DIR ??= os.tmpdir();

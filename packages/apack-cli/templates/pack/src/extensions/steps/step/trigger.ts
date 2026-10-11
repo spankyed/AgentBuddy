@@ -1,8 +1,8 @@
 // A trigger's build-time facet. A trigger is not a step with a flag: it owns a DSL *track* rather than a
 // node in one, so it compiles from a track and decompiles back to the track's fields, and its facet is a
 // `TriggerFacet` rather than a `StepBuildFacet`. `apack.json` names it at `extensions.steps.__TYPE__.trigger.facet`.
-import type { TriggerFacet, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 
 export const __CAMEL__TriggerBuild: TriggerFacet = {
   // The track field this trigger owns. `entry({ __TYPE__: '...' }, [ ... ])` in a flow reaches this facet

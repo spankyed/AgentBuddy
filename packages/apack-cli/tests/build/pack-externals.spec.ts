@@ -6,8 +6,8 @@
 // that pack is installed into a data dir, where nothing does — which is what `@vscode/ripgrep` did to the
 // first boot that installed the pack the app ships.
 import { describe, expect, it } from 'vitest';
-import { HOST_RESOLVED_BINARIES, getSharedBeDeps, sharedInstanceExternals } from '@apack/host/build/shared-deps';
-import { getBridgedSdkSpecifiers, getHostProvidedPackages } from '@apack/host/packs/runtime';
+import { HOST_RESOLVED_BINARIES, getSharedBeDeps, sharedInstanceExternals } from '@apackdev/host/build/shared-deps';
+import { getBridgedSdkSpecifiers, getHostProvidedPackages } from '@apackdev/host/packs/runtime';
 import { HOST_EXTERNALS } from '../../src/build/be-bundler';
 
 /** What `bundlePackSource` passes esbuild as `external` */

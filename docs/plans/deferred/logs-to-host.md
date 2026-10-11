@@ -23,7 +23,7 @@ contract; that is done. Instead it has to *restore* early start, host-side — s
 
 ## Where each file goes
 
-Host features are `be/` + `fe/` in `@apack/host` with their Vue in the renderer — the shape `host/settings`
+Host features are `be/` + `fe/` in `@apackdev/host` with their Vue in the renderer — the shape `host/settings`
 has, whose machine is `features/settings/fe/machine.ts` and whose components live in
 `renderer/src/views/settings/`.
 
@@ -44,7 +44,7 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 
 | in the feature | becomes |
 |---|---|
-| `services` from `#generated/services.ts` | `@apack/sdk/services`, as `features/settings/be/system.ts` does |
+| `services` from `#generated/services.ts` | `@apackdev/sdk/services`, as `features/settings/be/system.ts` does |
 | `broadcastToPlugin` / `sendToSystem` from `#generated/events.ts` | `apack-host/src/events.ts`, both halves |
 | `ref('logs')` from `#generated/ref.ts` | `HOST.logs` |
 | `LogsSettings` from `#generated/types.ts` | a relative import — that generated file is only `export type * from '../features/logs/be/types.ts'` |
@@ -61,7 +61,7 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 3. **`src/events.ts`** — `host/logs` into `HostPlugins` (the system broadcasts to it) and `HostSystems` (the
    frontend sends `CLEAR_LOGS` / `REQUEST_LOGS_UPDATE`). Its own comment says these maps are
    `registration.ts`'s `receives` expressions as types, and to keep them together.
-4. **`@apack/sdk`'s `events/index.ts`** — `'host/logs'` into `HostPluginEvents` and
+4. **`@apackdev/sdk`'s `events/index.ts`** — `'host/logs'` into `HostPluginEvents` and
    `HOST_PLUGIN_EVENT_TYPES`. **Load-bearing, not bookkeeping:** that record is the only source of host
    names in pack codegen (`generate-entries.ts:830`), so without it no pack can name `host/logs` and the
    fixture's send cannot compile.
@@ -156,7 +156,7 @@ behaviour over historical data — but the rename's end state wants asserting, t
 
 ## Recorded, not changed
 
-`@apack/host/logs` is already an export subpath, for `src/logs.ts` — the capped log-**file** appender the
+`@apackdev/host/logs` is already an export subpath, for `src/logs.ts` — the capped log-**file** appender the
 api, main and renderer loggers use. A different concern from the viewer, and the feature needs no subpath
 of its own, so both stay. The collision is only in grepping, and this paragraph is the warning.
 

@@ -1,5 +1,5 @@
-import type { ActionEntity, FlowEntity, PromptEntity } from '@apack/sdk'
-import type { ModelCatalogEntry } from '@apack/sdk/models'
+import type { ActionEntity, FlowEntity, PromptEntity } from '@apackdev/sdk'
+import type { ModelCatalogEntry } from '@apackdev/sdk/models'
 
 export interface FormResources {
   actions?: ActionEntity[]

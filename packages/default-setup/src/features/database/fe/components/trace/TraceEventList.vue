@@ -43,12 +43,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import type { DatabaseState } from '../../state.ts'
 import { Loader2 } from 'lucide-vue-next'
-import TNodeListItem from '@apack/ui/components/TNodeListItem'
+import TNodeListItem from '@apackdev/ui/components/TNodeListItem'
 
 const databaseActor: DatabaseState = usePlugin()
 

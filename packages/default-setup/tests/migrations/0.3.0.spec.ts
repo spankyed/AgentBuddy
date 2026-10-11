@@ -2,8 +2,8 @@
 // merged ones: the defaults already have Codex, and a user who never changed the modes must keep getting the defaults.
 import { services } from '#generated/services.ts';
 import { describe, expect, it } from 'vitest'
-import { untypedTx, untypedQx } from '@apack/ears'
-import type { EARS as SdkEARS } from '@apack/sdk'
+import { untypedTx, untypedQx } from '@apackdev/ears'
+import type { EARS as SdkEARS } from '@apackdev/sdk'
 import { migration } from '../../src/migrations/0.3.0.ts'
 import threadsSettings from '#features/threads/settings.ts'
 import { ref } from '#generated/ref.ts'

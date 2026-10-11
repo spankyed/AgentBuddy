@@ -175,17 +175,17 @@ function rotateQuote() {
 }
 
 import ChatMessage from './message.vue'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '#features/threads/fe/canvas/agent/canvas.vue'
 import ThreadSidebar from './thread-sidebar.vue'
-import PanelResizer from '@apack/ui/layout/panel-resizer'
-import ImageLightbox from '@apack/ui/design/ImageLightbox'
-import ConfirmationDialog from '@apack/ui/design/ConfirmationDialog'
-import ScrollToBottomFob from '@apack/ui/design/ScrollToBottomFob'
-import { usePlugin, useShell, updateSettings } from '@apack/sdk/fe'
+import PanelResizer from '@apackdev/ui/layout/panel-resizer'
+import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
+import ConfirmationDialog from '@apackdev/ui/design/ConfirmationDialog'
+import ScrollToBottomFob from '@apackdev/ui/design/ScrollToBottomFob'
+import { usePlugin, useShell, updateSettings } from '@apackdev/sdk/fe'
 import { openPlugin } from '#generated/fe.ts'
 import { useSelector } from '@xstate/vue'
 import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts';

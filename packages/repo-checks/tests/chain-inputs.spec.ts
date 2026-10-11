@@ -15,8 +15,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@apack/host/build/packages-built';
-import { PUBLISH_TREE } from '@apack/host/build/published-manifest';
+import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@apackdev/host/build/packages-built';
+import { PUBLISH_TREE } from '@apackdev/host/build/published-manifest';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
@@ -434,7 +434,7 @@ describe('a step declares the modules its script imports', () => {
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
 /**
- * A step that drives the Playwright fixture reads `@apack/testing`'s built bundle — the code that
+ * A step that drives the Playwright fixture reads `@apackdev/testing`'s built bundle — the code that
  * launches Electron, finds the main window and bypasses onboarding. It reaches it by *package name*,
  * never by path, so every other check in this file is blind to the edge: they read a step's text for
  * paths, and there is no path to read.
@@ -455,7 +455,7 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
   // This asks whether a step reads the bundle, and `apack test --contract` does — the harness it runs
   // is published from it. Keep the shapes in step; the lookahead is where the two questions differ.
   const DRIVES_THE_APP = /playwright\s+test\b|\bapack["']?\s+test\b|\$\{?APACK\}?"?\s+test\b/;
-  const fixture = BUILD_UNITS['@apack/testing'].outputs.map(repoRelative);
+  const fixture = BUILD_UNITS['@apackdev/testing'].outputs.map(repoRelative);
   const all = rootScripts();
   // Only the cacheable ones: a step that never caches cannot cache over anything, so the rule has no
   // subject there. `test` is the one that drives the app and declares no bundle, and carries its reason
@@ -504,7 +504,7 @@ describe('a unit suite whose specs name build output declares it', () => {
       .filter((file) => file !== import.meta.filename)
       .map((file) => fs.readFileSync(file, 'utf-8'));
   };
-  // Naming `@apack/testing` means loading its built bundle — except in `@apack/testing`'s own suite, where
+  // Naming `@apackdev/testing` means loading its built bundle — except in `@apackdev/testing`'s own suite, where
   // its specs name it because it is what they are about, and import its `src/` rather than the bundle. A
   // detector must not read a package's own name as evidence about it; the same mistake as scanning the file
   // that declares these patterns.
@@ -512,7 +512,7 @@ describe('a unit suite whose specs name build output declares it', () => {
     const pretest = (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8')) as
       { scripts?: Record<string, string> }).scripts?.pretest ?? '';
     if (pretest.includes('ensure-packages-built')) return true;
-    return dir !== 'apack-testing' && texts.some((text) => text.includes('@apack/testing'));
+    return dir !== 'apack-testing' && texts.some((text) => text.includes('@apackdev/testing'));
   };
   // `PACK_DIR` is the variable the pack fixture reads, so it is matched as a whole word: without the
   // boundaries it also matched `APACK_DEV_PACK_DIRS`, which names a pack's *source* and says nothing about

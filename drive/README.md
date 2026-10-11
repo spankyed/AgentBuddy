@@ -14,7 +14,7 @@ inside `testDir`, so the runner picked it up anyway.
 
 ```ts
 // drive/notes.ts
-import { drive } from '@apack/testing';
+import { drive } from '@apackdev/testing';
 
 drive('open notes and look at it', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -107,5 +107,5 @@ A pack author gets the same thing from `apack drive`, which also takes `--profil
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
 gitignored.
 
-`playwright.config.ts` is a call to `@apack/testing/playwright`'s `defineDriveConfig`, so a setting lives
+`playwright.config.ts` is a call to `@apackdev/testing/playwright`'s `defineDriveConfig`, so a setting lives
 in the package rather than going stale in a copy here.

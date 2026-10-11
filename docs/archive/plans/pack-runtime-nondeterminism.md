@@ -67,15 +67,15 @@ Ruled out by measurement, three runs each:
 ## The fix
 
 esbuild is 0.25.12 against 0.28.2. An upgrade is the candidate, and it is not a one-line change: esbuild
-builds the pack runtime, the content runtime, the step build, the FE bundle, `@apack/cli`'s and
-`@apack/testing`'s published bundles, and the API through tsup. It wants its own goal, with the published
+builds the pack runtime, the content runtime, the step build, the FE bundle, `@apackdev/cli`'s and
+`@apackdev/testing`'s published bundles, and the API through tsup. It wants its own goal, with the published
 bundles re-checked.
 
 Reproduction, which takes about a minute:
 
 ```bash
 for i in 1 2 3 4; do
-  node --import tsx --conditions=@apack/source packages/default-setup/dev-build.mjs >/dev/null 2>&1
+  node --import tsx --conditions=@apackdev/source packages/default-setup/dev-build.mjs >/dev/null 2>&1
   shasum -a 256 packages/default-setup/dist/runtime/index.cjs | cut -c1-12
 done
 ```

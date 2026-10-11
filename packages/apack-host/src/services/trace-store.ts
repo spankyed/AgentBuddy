@@ -1,7 +1,7 @@
 // services.traceStore: read-only access to the volatile trace store (flow execution records)
-import type { TraceStore, TraceEntityMeta, TraceRelation } from '@apack/sdk/services';
-import type { EARS } from '@apack/sdk';
-import type { LmdbStore } from '@apack/ears/lmdb';
+import type { TraceStore, TraceEntityMeta, TraceRelation } from '@apackdev/sdk/services';
+import type { EARS } from '@apackdev/sdk';
+import type { LmdbStore } from '@apackdev/ears/lmdb';
 
 export function createTraceStore(store: LmdbStore): TraceStore {
   // Over the current volatile env (reopened after a reset or import)

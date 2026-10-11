@@ -3,8 +3,8 @@
 // so nothing can take it back out, and a step left broken by one pack would throw again for every pack
 // registered after it.
 import { describe, expect, it } from 'vitest';
-import type { PackFERegistration, PluginDefinition } from '@apack/sdk/fe';
-import type { StepDefinition } from '@apack/sdk/steps';
+import type { PackFERegistration, PluginDefinition } from '@apackdev/sdk/fe';
+import type { StepDefinition } from '@apackdev/sdk/steps';
 import { createFePackRegistry } from '../../src/fe/index.ts';
 
 const plugin = (label: string) => ({ label, icon: 'x', state: {}, canvas: {} } as unknown as PluginDefinition);

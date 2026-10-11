@@ -5,8 +5,8 @@ import { delimiter, dirname, resolve } from 'node:path'
 import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin, type Rollup, type ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { sharedFeModules } from '@apack/host/build/shared-deps'
-import { devPackFrontendsModule, discoverDevPackFrontends } from '@apack/host/build/discover'
+import { sharedFeModules } from '@apackdev/host/build/shared-deps'
+import { devPackFrontendsModule, discoverDevPackFrontends } from '@apackdev/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -225,10 +225,10 @@ export default defineConfig(({ command }) => ({
     vueDevTools(),
   ],
   resolve: {
-    // Workspace @apack/* packages resolve to source (see their package.json exports)
-    conditions: ['@apack/source', ...defaultClientConditions],
+    // Workspace @apackdev/* packages resolve to source (see their package.json exports)
+    conditions: ['@apackdev/source', ...defaultClientConditions],
   },
-  ssr: { resolve: { conditions: ['@apack/source', ...defaultServerConditions] } },
+  ssr: { resolve: { conditions: ['@apackdev/source', ...defaultServerConditions] } },
   optimizeDeps: {
     include: [
       'monaco-editor',

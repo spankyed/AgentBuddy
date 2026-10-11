@@ -1,8 +1,8 @@
 import type { SwitchNode, Condition, Predicate } from '#extensions/steps/switch/types.ts';
-import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
-import { BinaryOperator, BinaryOperator as Op } from '@apack/sdk/utils';
-import { createLogger, reportError } from '@apack/sdk/logger';
-import { extractValueByPath } from '@apack/sdk/utils';
+import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import { BinaryOperator, BinaryOperator as Op } from '@apackdev/sdk/utils';
+import { createLogger, reportError } from '@apackdev/sdk/logger';
+import { extractValueByPath } from '@apackdev/sdk/utils';
 
 const brainLogger = createLogger('brain', { debug: true });
 

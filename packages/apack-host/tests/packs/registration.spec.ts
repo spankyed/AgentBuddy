@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, installEngine, installedEngine, repository } from '@apack/ears';
-import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@apack/sdk/framework';
-import { artifactRegistry } from '@apack/sdk/artifacts';
-import { _contentWriterRegistry } from '@apack/sdk/content';
-import { SDK_ENTITIES } from '@apack/sdk/types';
+import { createEarsEngine, installEngine, installedEngine, repository } from '@apackdev/ears';
+import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
+import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { _contentWriterRegistry } from '@apackdev/sdk/content';
+import { SDK_ENTITIES } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { getDesignated, hasDesignation } from '@apack/sdk/designations';
-import { startTestRuntime } from '@apack/sdk/testing';
+import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
+import { startTestRuntime } from '@apackdev/sdk/testing';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { HOST } from '../../src/refs.ts';
-import { HOST_PACK_ID } from '@apack/sdk/ids';
+import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });

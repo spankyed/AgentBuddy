@@ -10,7 +10,7 @@ import {
   _buildProvenance,
   packFeatures,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
-} from '@apack/sdk/build';
+} from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { apackScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
@@ -22,10 +22,10 @@ import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { PACK_LAYOUT, createPackRegistry } from '@apack/host/packs';
-import { replaceDir } from '@apack/host/replace-dir';
+import { PACK_LAYOUT, createPackRegistry } from '@apackdev/host/packs';
+import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
-import { checkFeatureSettings } from '@apack/sdk/framework';
+import { checkFeatureSettings } from '@apackdev/sdk/framework';
 import { resolveDeps } from './generate';
 import { resolveDepFiles } from './fetch-deps';
 import { generateEntries, warnStaleDepTypes } from './generate-entries';
@@ -73,7 +73,7 @@ export function buildStagingDir(root: string): string {
 }
 
 /**
- * `apack build` as the user runs it. A pack compiles against the @apack packages' dist, and when that
+ * `apack build` as the user runs it. A pack compiles against the @apackdev packages' dist, and when that
  * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
  * `apack test` and `apack dev` do (the doors are listed in packages/apack-testing/CLAUDE.md).
  *

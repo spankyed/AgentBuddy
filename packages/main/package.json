@@ -13,9 +13,9 @@
     }
   },
   "dependencies": {
-    "@apack/cli": "*",
-    "@apack/host": "*",
-    "@apack/sdk": "*",
+    "@apackdev/cli": "*",
+    "@apackdev/host": "*",
+    "@apackdev/sdk": "*",
     "@app/api": "*",
     "@app/preload": "*",
     "@app/renderer": "*",

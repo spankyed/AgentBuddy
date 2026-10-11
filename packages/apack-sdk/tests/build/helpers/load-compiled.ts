@@ -1,4 +1,4 @@
-import type { EarsQuery } from '@apack/ears';
+import type { EarsQuery } from '@apackdev/ears';
 import type { EARS } from '../../../src/types/entities.ts';
 import type { CompiledRows } from '../../../src/build/compilers/flow-compiler.ts';
 

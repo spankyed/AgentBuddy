@@ -1,7 +1,7 @@
-import type { SecretsClient } from '@apack/sdk/fe';
+import type { SecretsClient } from '@apackdev/sdk/fe';
 import { trpc } from '@/transport';
 
-/** `secretsClient` in `@apack/sdk/fe`: the API's secrets procedures, the only ones pack frontends call directly */
+/** `secretsClient` in `@apackdev/sdk/fe`: the API's secrets procedures, the only ones pack frontends call directly */
 export const secretsClient: SecretsClient = {
   list: () => trpc.secrets.list.query(),
   add: (provider, label, value) => trpc.secrets.add.mutate({ provider, label, value }),

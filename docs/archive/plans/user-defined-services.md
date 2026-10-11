@@ -28,7 +28,7 @@ my-weather-service/
 ### Manifest (`buddy.config.ts`)
 
 ```typescript
-import type { ServiceConfig } from '@apack/service-sdk'; // or inline type
+import type { ServiceConfig } from '@apackdev/service-sdk'; // or inline type
 
 export default {
   key: 'weather',                    // → services.weather
@@ -291,7 +291,7 @@ Fully isolated. The app bundles its own `node_modules/` inside the Electron app.
 
 ## Open questions
 
-1. **Service SDK package**: Should we publish an `@apack/service-sdk` npm package with types for `ServiceConfig`, `createService` signature, etc.? Or just inline types in the template repo?
+1. **Service SDK package**: Should we publish an `@apackdev/service-sdk` npm package with types for `ServiceConfig`, `createService` signature, etc.? Or just inline types in the template repo?
 
 2. **Service versioning**: When a user "updates" a service (re-clones from GitHub), how do we handle breaking changes? Semantic versioning in `buddy.config.ts`? Or just "latest from main branch"?
 

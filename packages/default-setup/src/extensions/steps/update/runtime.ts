@@ -1,6 +1,6 @@
-import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
-import { createLogger } from '@apack/sdk/logger';
-import { extractValueByPath } from '@apack/sdk/utils';
+import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import { createLogger } from '@apackdev/sdk/logger';
+import { extractValueByPath } from '@apackdev/sdk/utils';
 import { findById, updateEntity, type EARS } from '#generated/ears.ts';
 import { assertEntityType, createEntityRow, reportStepError, stepFields } from '../create/runtime.ts';
 import type { UpdateNode } from './types.ts';

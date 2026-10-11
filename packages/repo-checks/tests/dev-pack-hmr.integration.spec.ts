@@ -18,14 +18,14 @@
  *
  * What is **not** here: which payload Vite then sends. That is Vite's and plugin-vue's behaviour over a
  * self-accepting module, identical for every module in the graph, and asserting it would be testing Vite.
- * The map's own contents — which packs are in it, and why a directory is not — are `@apack/host`'s
+ * The map's own contents — which packs are in it, and why a directory is not — are `@apackdev/host`'s
  * `tests/build/dev-pack-frontends.spec.ts`, where they cost nothing.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type ViteDevServer } from 'vite';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** One pack the app ships, and one that is not in `packages/` at all, reached the same way */
 const PACKS = [

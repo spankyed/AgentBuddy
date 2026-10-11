@@ -158,10 +158,10 @@ import {
   DropdownMenuItem,
 } from 'reka-ui'
 import NoteTreeItem from './NoteTreeItem.vue'
-import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
+import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop.ts'
-import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu'
-import { useTrackedMenuOpen } from '@apack/sdk/fe'
+import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu'
+import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
 
 const props = defineProps<{
   tasks: NoteDTO[]

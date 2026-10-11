@@ -4,12 +4,12 @@ import { execFileSync } from 'node:child_process';
 import * as semver from 'semver';
 import { Octokit } from '@octokit/rest';
 import { findPackRoot, readManifest } from '../utils';
-import { parseManifest } from '@apack/sdk/build';
+import { parseManifest } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
 import { build } from './build';
 import { buildPackArchive } from './pack';
-import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apack/host/packs';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apackdev/host/packs';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const HELP = `
 Usage:

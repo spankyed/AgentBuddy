@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BaseForm from '@apack/ui/components/BaseForm';
+import BaseForm from '@apackdev/ui/components/BaseForm';
 import type { __PASCAL__Node } from './types.ts';
 
 defineProps<{

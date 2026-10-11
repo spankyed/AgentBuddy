@@ -202,7 +202,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          # imports a pack's backend or frontend: 1-3 files in 2-6s against the whole
                          # suite's 87 and 18s.
                          # **Nor is an integration half**, for a duller reason: it is a second config and
-                         # the root projects exclude its specs. 22 modules in @apack/cli are imported
+                         # the root projects exclude its specs. 22 modules in @apackdev/cli are imported
                          # directly by one. Named the same way, run by spec:full.
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. The routing is data

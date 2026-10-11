@@ -69,11 +69,11 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
-import type { SettingsState } from '@apack/host/fe'
+import type { SettingsState } from '@apackdev/host/fe'
 import type { GeneralSection} from '@/views/settings/types'
-import type { SettingUpdate } from '@apack/sdk/fe'
+import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 const actor: SettingsState = usePlugin()
 

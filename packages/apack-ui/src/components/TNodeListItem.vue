@@ -135,7 +135,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { TrackTree, TNodeEntity } from '@apack/sdk/steps';
+import type { TrackTree, TNodeEntity } from '@apackdev/sdk/steps';
 import DataRenderer from './DataRenderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getNodeStatusClasses } from './node-styles.ts';
 

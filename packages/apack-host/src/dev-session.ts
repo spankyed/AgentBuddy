@@ -23,7 +23,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { AppEnv } from '@apack/sdk/env';
+import type { AppEnv } from '@apackdev/sdk/env';
 import { writePrivateFile } from './private-file.ts';
 import { recordIsStale } from './process-liveness.ts';
 

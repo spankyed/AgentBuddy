@@ -7,8 +7,8 @@
 //
 // The maps are the three `receives` expressions in `features/registration.ts`, as types. Those are the runtime
 // lists the bus checks a send against, so the two say the same thing about the same features — keep them together.
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf, type WithOwnNames } from '@apack/sdk/events';
-import { HOST_PACK_ID } from '@apack/sdk/ids';
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf, type WithOwnNames } from '@apackdev/sdk/events';
+import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import type { Contract as PacksContract } from './features/packs/be/contract.ts';
 import type { Contract as SettingsContract } from './features/settings/be/contract.ts';
 import type { SettingsPluginEvents } from './features/settings/be/system.ts';

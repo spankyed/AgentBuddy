@@ -21,7 +21,7 @@ import { INTERRUPTS } from '../../src/exclusive-lock.ts';
  */
 const DELIVERABLE_INTERRUPTS = INTERRUPTS.filter((signal) => signal in os.constants.signals);
 import { removeTempDirs, tempDir } from './fixtures.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 const locks: Array<{ release(): void }> = [];
 /** Every child a case spawned, so reaping one is not something a case has to remember */

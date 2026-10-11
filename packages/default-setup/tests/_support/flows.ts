@@ -1,7 +1,7 @@
 // default-setup's own flows for brain tests, and reading what they ran (flows as DSL: importFlows from the harness)
 import * as path from 'node:path';
-import { importCompiledContent } from '@apack/sdk/utils';
-import type { FlowStepTrace } from '@apack/testing/harness';
+import { importCompiledContent } from '@apackdev/sdk/utils';
+import type { FlowStepTrace } from '@apackdev/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 /** default-setup's compiled actions, prompts and flows, written as the app's boot apply content them */

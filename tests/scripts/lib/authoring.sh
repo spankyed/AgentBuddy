@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # Where the author half tells the app half what it built. Repo-relative because that is the only thing the
 # chain can derive an edge from (`dependsOn` reads one step's `outputs` against another's `inputs`), and
-# **the work dir itself stays outside the checkout**: a pack built inside it would resolve `@apack/*` by
+# **the work dir itself stays outside the checkout**: a pack built inside it would resolve `@apackdev/*` by
 # walking up to the workspace `node_modules`, which is the one thing this check exists to prove does not
 # happen. So the handoff is a path and a digest in the tree, and the tree the pack lives in is not.
 HANDOFF="$ROOT/tests/authoring-handoff"
@@ -34,7 +34,7 @@ unset APACK_ROOT APACK_BUILD APACK_APP_EXECUTABLE APACK_CLI
 # The CLI caches its Beta downloads under the user's home; use a fresh one.
 #
 # THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a
-# fresh directory, the @apack packages come from tarballs it packs itself, and the app choice is written
+# fresh directory, the @apackdev packages come from tarballs it packs itself, and the app choice is written
 # below rather than typed. npm's cache is deliberately not isolated, because a cold cache makes this a
 # network test — several minutes of downloads, and a failure when the network is down that says nothing
 # about the code. The cost of keeping it is that a corrupt or partial cache entry fails here and nowhere
@@ -50,7 +50,7 @@ useWorkDir() {
 # A work dir for this run, after sweeping the ones earlier runs left behind.
 #
 # **The dir is named after the process that made it, which is what lets a sweep tell a leftover from a live
-# run** — `isolatedDataDir` (`@apack/testing/vitest`) names its data dirs the same way for the same reason.
+# run** — `isolatedDataDir` (`@apackdev/testing/vitest`) names its data dirs the same way for the same reason.
 # The rule before this was to delete the one the *handoff* named, which cleaned nothing whenever the handoff
 # did not survive to name it: a run interrupted before writing one, or one whose handoff another path had
 # already replaced. Each dir is around 566MB, so measured 2026-10-10 that left 26 of them and 13GB, exactly

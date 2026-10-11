@@ -44,9 +44,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@apack/ears": "*",
-    "@apack/host": "*",
-    "@apack/sdk": "*",
+    "@apackdev/ears": "*",
+    "@apackdev/host": "*",
+    "@apackdev/sdk": "*",
     "@trpc/server": "^11.1.2",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.15.17",

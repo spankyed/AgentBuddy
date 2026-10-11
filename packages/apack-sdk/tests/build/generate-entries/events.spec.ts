@@ -214,7 +214,7 @@ describe('generated system sends', () => {
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<__SystemContracts['memos']>;\n};");
     expect(events).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & ");
     expect(events).toContain("export type SendableSystemEvents = WithOwnNames<'demo-pack', QualifiedSystemEvents>;");
-    // No table of names: the sends derive every address from the pack id (@apack/sdk/ids)
+    // No table of names: the sends derive every address from the pack id (@apackdev/sdk/ids)
     expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
     expect(events).not.toContain('systemIds');
     // Type-only, and over the contracts: it imports no system module, because those import the generated events

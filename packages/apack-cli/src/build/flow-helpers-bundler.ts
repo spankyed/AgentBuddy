@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { PackFlowHelpers } from '@apack/sdk/build';
+import type { PackFlowHelpers } from '@apackdev/sdk/build';
 import { bundlePackFlowHelpersModule } from './be-bundler';
 import type { RecordReads } from './build-reads';
 import { bundleDeclarations } from './types-bundler';

@@ -1,22 +1,22 @@
 import { createActor } from 'xstate';
-import { createLogger, reportError } from '@apack/sdk/logger';
-import { bindHost } from '@apack/sdk/runtime';
-import { _getLmdbPath, _getVolatileLmdbPath } from '@apack/sdk/utils';
-import type { EarsEngine } from '@apack/ears';
-import type { LmdbStore, WriteFailure } from '@apack/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore } from '@apack/host/database';
-import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apack/host/packs';
-import { resolveAppContext } from '@apack/sdk/env';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { loadAppPacks, startPacks } from '@apack/host/packs/runtime';
+import { createLogger, reportError } from '@apackdev/sdk/logger';
+import { bindHost } from '@apackdev/sdk/runtime';
+import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
+import type { EarsEngine } from '@apackdev/ears';
+import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
+import { assertNoDatabaseWriter, openDatabaseStore } from '@apackdev/host/database';
+import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { loadAppPacks, startPacks } from '@apackdev/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
   APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
-} from '@apack/host/features';
-import { createAppBus, createParticipantClaims, HOST } from '@apack/host/bus';
-import { createHostRuntime } from '@apack/host/services';
-import { forwardSecretsChanges } from '@apack/host/secrets';
-import { assertSourceResolution } from '@apack/host/build/source-resolution';
+} from '@apackdev/host/features';
+import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
+import { createHostRuntime } from '@apackdev/host/services';
+import { forwardSecretsChanges } from '@apackdev/host/secrets';
+import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
 import { rootEvents } from '@/transport/emitter';
 import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
 import { createRequire } from 'module';
@@ -64,7 +64,7 @@ export let appStore: LmdbStore | undefined;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
- * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apack/host/database`,
+ * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@apackdev/host/database`,
  * which `apack db` opens a data dir with too) with their partition policy and entity types, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
@@ -126,7 +126,7 @@ export async function setupBackend(): Promise<void> {
   // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered
   const { store, packs } = openAppStore();
 
-  // Packs require workspace @apack/* packages at runtime: from a checkout they must get source,
+  // Packs require workspace @apackdev/* packages at runtime: from a checkout they must get source,
   // not a stale dist (main starts the API with the condition; manual boots must pass it). The
   // packaged app runs the API on Electron's runtime and ships no workspace source.
   if (!process.versions.electron) {

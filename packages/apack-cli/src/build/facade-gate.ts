@@ -1,17 +1,17 @@
 import * as fs from 'node:fs';
-import { packageName } from '@apack/host/build/specifiers';
-import { SOURCE_CONDITION } from '@apack/host/build/source-resolution';
+import { packageName } from '@apackdev/host/build/specifiers';
+import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { createRequire, isBuiltin } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /** Declaration extensions an import of the facade must resolve to; anything else reads as `any` */
 const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extension.Dmts, ts.Extension.Dcts, ts.Extension.Ts, ts.Extension.Mts, ts.Extension.Cts, ts.Extension.Tsx];
 
 
 /**
- * Packages a facade may import: every dependent has them. @apack/* packages, @apack/sdk's peer
+ * Packages a facade may import: every dependent has them. @apackdev/* packages, @apackdev/sdk's peer
  * dependencies (as the pack resolves the SDK) and Node's built-in modules.
  *
  * **"Every dependent has them" is checked, not assumed**, which is worth knowing before deriving it again: a
@@ -25,12 +25,12 @@ const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extensio
  * its state from a machine, which is what `contract-leaves` is there to stop.
  */
 function allowedPackages(packDir: string): { allows: (name: string) => boolean; description: string } {
-  const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@apack/sdk/package.json');
+  const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/sdk/package.json');
   const { peerDependencies = {} } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { peerDependencies?: Record<string, string> };
   const peers = Object.keys(peerDependencies);
   return {
-    allows: (name) => name.startsWith('@apack/') || peers.includes(name) || isBuiltin(name),
-    description: `@apack/* packages, @apack/sdk's peer dependencies (${peers.join(', ')}) and Node built-ins`,
+    allows: (name) => name.startsWith('@apackdev/') || peers.includes(name) || isBuiltin(name),
+    description: `@apackdev/* packages, @apackdev/sdk's peer dependencies (${peers.join(', ')}) and Node built-ins`,
   };
 }
 
@@ -53,7 +53,7 @@ function exportTarget(exportsMap: Record<string, unknown>, subpath: string): unk
   return pattern === undefined ? undefined : exportsMap[pattern];
 }
 
-/** Whether an exports target resolves under some condition other than @apack/source */
+/** Whether an exports target resolves under some condition other than @apackdev/source */
 function publishedTarget(target: unknown): boolean {
   if (typeof target === 'string') return true;
   if (Array.isArray(target)) return target.some(publishedTarget);
@@ -64,12 +64,12 @@ function publishedTarget(target: unknown): boolean {
 }
 
 /**
- * Why an @apack/* import isn't part of the published package, or null. A linked checkout resolves
- * source-only exports (`@apack/sdk/runtime/internals`) and private packages (`@apack/host`); a
+ * Why an @apackdev/* import isn't part of the published package, or null. A linked checkout resolves
+ * source-only exports (`@apackdev/sdk/runtime/internals`) and private packages (`@apackdev/host`); a
  * dependent installing from the registry resolves neither.
  *
  * This reads the exports map rather than trying to resolve: a source-only entry is one whose target
- * names no condition but `@apack/source`, and in the published manifest there is no entry at all
+ * names no condition but `@apackdev/source`, and in the published manifest there is no entry at all
  * (`publishedManifest` drops one the condition was the whole of). Both read as unpublished here, which is
  * the point — that is why such an entry must not gain a `default`, even one pointing at a module that
  * throws a friendlier error than ERR_MODULE_NOT_FOUND: a published target makes it look resolvable here,
@@ -200,7 +200,7 @@ function topLevelNames(file: ts.SourceFile, position: number): string[] {
  * - the bundle must type-check on its own, resolving its imports from the pack as the bundler did.
  *   Only the bundle's own diagnostics count: errors inside installed packages' declarations aren't
  *   the pack's.
- * - it may import only packages every dependent has (see allowedPackages), and of @apack/* only
+ * - it may import only packages every dependent has (see allowedPackages), and of @apackdev/* only
  *   what the published packages export (see unpublishedReason).
  */
 export function facadeProblems(packDir: string, bundleFile: string): string[] {
@@ -209,7 +209,7 @@ export function facadeProblems(packDir: string, bundleFile: string): string[] {
   try {
     allowed = allowedPackages(packDir);
   } catch (err) {
-    return [`${rel} can't be checked: @apack/sdk doesn't resolve from ${packDir} (install the pack's dependencies). ${errorMessage(err)}`];
+    return [`${rel} can't be checked: @apackdev/sdk doesn't resolve from ${packDir} (install the pack's dependencies). ${errorMessage(err)}`];
   }
 
   const options = checkOptions(packDir);
@@ -233,7 +233,7 @@ export function facadeProblems(packDir: string, bundleFile: string): string[] {
     const name = packageName(specifier);
     const reason = !allowed.allows(name)
       ? `which dependents don't have: facades may import only ${allowed.description}`
-      : name.startsWith('@apack/') ? unpublishedReason(packDir, name, specifier) : null;
+      : name.startsWith('@apackdev/') ? unpublishedReason(packDir, name, specifier) : null;
     if (reason && !reported.has(specifier)) {
       reported.add(specifier);
       const via = [...new Set(locals.flatMap(exportsFor))];

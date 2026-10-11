@@ -1,4 +1,4 @@
-import type { DSLStepNode } from '@apack/sdk/build';
+import type { DSLStepNode } from '@apackdev/sdk/build';
 import type { DSLSwitchCondition } from './types.ts';
 
 export function branch(

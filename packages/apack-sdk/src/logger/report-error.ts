@@ -3,7 +3,7 @@ import { createSends } from '../events/index.ts';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
-import { RepositoryError, RepositoryErrorCode } from '@apack/ears';
+import { RepositoryError, RepositoryErrorCode } from '@apackdev/ears';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
 import { tnodeRepository } from '../repositories/tnode-repository.ts';
 import type { EARS } from '../types/entities.ts';

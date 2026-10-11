@@ -1,5 +1,5 @@
-// Resolve hooks for the CLI run from a checkout. Workspace @apack/* packages that live in the
-// checkout resolve to their source (the @apack/source condition in their package.json exports),
+// Resolve hooks for the CLI run from a checkout. Workspace @apackdev/* packages that live in the
+// checkout resolve to their source (the @apackdev/source condition in their package.json exports),
 // including from packs linked to the checkout. Installed copies, under node_modules or outside
 // the checkout, resolve as usual to their dist.
 let checkout = '';
@@ -10,12 +10,12 @@ export function initialize(data) {
 }
 
 export async function resolve(specifier, context, next) {
-  if (!specifier.startsWith('@apack/') || context.conditions.includes('@apack/source')) {
+  if (!specifier.startsWith('@apackdev/') || context.conditions.includes('@apackdev/source')) {
     return next(specifier, context);
   }
   const { conditions } = context;
   try {
-    const source = await next(specifier, { ...context, conditions: [...conditions, '@apack/source'] });
+    const source = await next(specifier, { ...context, conditions: [...conditions, '@apackdev/source'] });
     if (source.url.startsWith(checkout) && !source.url.slice(checkout.length).split('/').includes('node_modules')) {
       return source;
     }

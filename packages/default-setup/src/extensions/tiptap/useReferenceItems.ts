@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import { CATEGORIES, ITEMS_PROVIDERS } from '#generated/references.ts'
-import type { ReferenceItem } from '@apack/sdk/fe/references'
+import type { ReferenceItem } from '@apackdev/sdk/fe/references'
 
 export type ReferenceCategory = string
 export type { ReferenceItem }

@@ -3,12 +3,12 @@
 // settings. A feature with no system, or no plugin, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
-import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apack/testing/harness';
-import { untypedTx } from '@apack/ears';
-import type { EARS } from '@apack/sdk';
+import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
+import { untypedTx } from '@apackdev/ears';
+import type { EARS } from '@apackdev/sdk';
 
 import { services } from '#generated/services.ts';
-import { resolveName } from '@apack/sdk/ids';
+import { resolveName } from '@apackdev/sdk/ids';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
 const recorder = setup({ types: { context: {} as { heard: unknown[] } } }).createMachine({

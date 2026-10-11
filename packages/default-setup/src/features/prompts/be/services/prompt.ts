@@ -1,4 +1,4 @@
-import { executeTemplate, createTemplateResolver } from '@apack/sdk/templates';
+import { executeTemplate, createTemplateResolver } from '@apackdev/sdk/templates';
 import { repository } from '#generated/repository.ts';
 
 export class PromptService {

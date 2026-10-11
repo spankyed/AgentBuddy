@@ -8,17 +8,17 @@
 
 import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apack/sdk/framework';
-import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apack/sdk/build';
-import type { PackRegistryView } from '@apack/sdk/runtime';
-import type { HostServices } from '@apack/sdk/services';
-import type { ContentOffer } from '@apack/sdk/utils';
-import type { ArtifactDefinition } from '@apack/sdk/artifacts';
-import type { BlockDefinition } from '@apack/sdk/blocks';
-import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apack/sdk/types';
-import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apack/sdk/events';
-import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@apack/sdk/ids';
-import { registerRepository, unregisterRepository } from '@apack/ears';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
+import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
+import type { PackRegistryView } from '@apackdev/sdk/runtime';
+import type { HostServices } from '@apackdev/sdk/services';
+import type { ContentOffer } from '@apackdev/sdk/utils';
+import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
+import type { BlockDefinition } from '@apackdev/sdk/blocks';
+import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
+import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
+import { registerRepository, unregisterRepository } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPacks, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';

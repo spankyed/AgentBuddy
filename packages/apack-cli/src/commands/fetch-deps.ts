@@ -4,11 +4,11 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@apack/sdk/build';
+import { CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apack/host/packs';
+import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
-import { APP_ENVS, resolveAppContext, type AppEnv } from '@apack/sdk/env';
+import { APP_ENVS, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
 // ── Dependency value parsing ──

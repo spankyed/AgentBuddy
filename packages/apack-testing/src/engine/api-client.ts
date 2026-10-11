@@ -31,7 +31,7 @@
 // every system in the app. So the channel records why it is finished and every later verb fails saying so,
 // which an agent can act on — rather than reconnecting into a session whose claim somebody else now holds.
 
-import { API_HOST } from '@apack/sdk/utils/pure';
+import { API_HOST } from '@apackdev/sdk/utils/pure';
 
 /** A message on the app's bus, as `bus.sub` delivers it */
 export interface BusMessage {

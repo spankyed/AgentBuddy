@@ -219,9 +219,9 @@ import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
-import { useContextMenu } from '@apack/ui/composables/useContextMenu'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup'
+import { useContextMenu } from '@apackdev/ui/composables/useContextMenu'
 
 interface ChatMessageProps {
   message: MessageEntity

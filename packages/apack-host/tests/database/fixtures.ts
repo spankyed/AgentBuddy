@@ -3,11 +3,11 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { untypedTx, installEngine } from '@apack/ears';
-import { _appDataPaths } from '@apack/sdk/utils';
+import { untypedTx, installEngine } from '@apackdev/ears';
+import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openDatabaseStore } from '../../src/database/open.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 export const tempDirs: string[] = [];
 

@@ -49,7 +49,7 @@ Never:
 
 ## Background
 
-`@apack/ears` (see `packages/apack-ears/CLAUDE.md`) keeps all data in memory and mirrors writes to LMDB:
+`@apackdev/ears` (see `packages/apack-ears/CLAUDE.md`) keeps all data in memory and mirrors writes to LMDB:
 
 - **Memory is the read path.**
   - `src/attribute-storage.ts` holds `store` (kind → id → value list) and `entityIndex` (type → ids).
@@ -334,7 +334,7 @@ assumptions: settle the sequencing before either Phase 3.
 - `src/lmdb/disk-storage.ts`, with the key layout, per-type counts and format key (Decision 2).
 - Commit semantics (Decision 3): `transaction()` in the engine API and on the query face, `@internal` where only the host needs it, plus the background sync with its interval and close handling.
 - The value index per Open decision 4.
-- A disk-engine factory in `@apack/ears/lmdb`.
+- A disk-engine factory in `@apackdev/ears/lmdb`.
 - The contract suite runs against both engines (parametrized `engine-under-test.ts`). Rewrite the sink call-order contract as a storage contract: which keys each write touches, and that a throwing `transaction` rolls back.
 
 **Done when:**
@@ -365,7 +365,7 @@ assumptions: settle the sequencing before either Phase 3.
 - Delete hydration, the router, `PersistenceSink`, `LmdbQuery` and the store's engine reader (Decision 1).
 - Port `appData.reset`, backup export/import (Decision 8), `services.traceStore` and `restart-persistence.spec`.
 - Add the format migration (Decision 7).
-- `apack db` (`@apack/host/database`) opens the env with the app's flags, coordinated with docs/archive/goals/goal-apack-db-cli.md.
+- `apack db` (`@apackdev/host/database`) opens the env with the app's flags, coordinated with docs/archive/goals/goal-apack-db-cli.md.
 
 **Done when:**
 - The api and host suites pass.
@@ -405,7 +405,7 @@ assumptions: settle the sequencing before either Phase 3.
 - **User data:** never touch real data dirs; use copies in temp `APACK_USER_DATA_DIR`s. E2E runs in the `apack-test` namespace alongside the user's apps; never pkill/killall.
 - **Tooling limits:** never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit version/release metadata.
 - **Typed EARS types are change-controlled** (`packages/apack-sdk/TYPED-EARS.md`): run its type tests, completions check and mutation checks, and review API report diffs.
-- **Published packages:** `@apack/ears`, `@apack/sdk`, `@apack/ui` and `@apack/testing` are published. No `any` in pack-facing exports, TypeScript 5.7, and run `api:update` after export changes. `lmdb` stays an optional peer of `@apack/ears`, loaded only by `/lmdb`.
+- **Published packages:** `@apackdev/ears`, `@apackdev/sdk`, `@apackdev/ui` and `@apackdev/testing` are published. No `any` in pack-facing exports, TypeScript 5.7, and run `api:update` after export changes. `lmdb` stays an optional peer of `@apackdev/ears`, loaded only by `/lmdb`.
 - **Build order:** the CLI suite needs `npm run packages:build` after SDK or ears source changes. Rebuild default-setup's runtime before the api suites and E2E.
 - **Migrations:** pack data migrations follow `packages/apack-host/src/migrations/CLAUDE.md`. The store format migration (Decision 7) is store-level, idempotent and tested on copies.
 - **Tests:** investigate failing tests before changing assertions. Mutation-check every new guard, helper and test.

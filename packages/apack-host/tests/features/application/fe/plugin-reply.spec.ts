@@ -12,10 +12,10 @@
 // fails if that distinction is ever collapsed.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyEventObject, type MachineContext } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
-import type { Reply } from '@apack/sdk/events';
-import { defineHandlers } from '@apack/sdk/framework';
-import { startFeTestRuntime, stopFeTestRuntime } from '@apack/sdk/testing';
+import type { Plugin } from '@apackdev/sdk/fe';
+import type { Reply } from '@apackdev/sdk/events';
+import { defineHandlers } from '@apackdev/sdk/framework';
+import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
 import { createShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, settle } from './fakes.ts';
 

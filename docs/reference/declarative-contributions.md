@@ -192,7 +192,7 @@ The test for any field is **does something outside the pack need to know this be
   all types. Entities are already declarative, which is why this works — and why entity declaration can never
   become lazy.
 - **The module bridge has to be permanent.** Loading pack code at arbitrary later moments means
-  `Module._resolveFilename` must resolve `@apack/*` whenever a pack lazily requires one. A bridge scoped to a
+  `Module._resolveFilename` must resolve `@apackdev/*` whenever a pack lazily requires one. A bridge scoped to a
   boot-time load cannot survive lazy activation (`packs/runtime/bridge.ts`'s
   `keepHostModulesResolvable` is that shape).
 - **The undo log stays.** Packs are removed and reloaded at runtime, so `Contribution`/`UndoLog` is still
@@ -208,7 +208,7 @@ The test for any field is **does something outside the pack need to know this be
   views; code loads on activation. The closest analogue, and the source of the activation footgun above.
 - **Eclipse** — `plugin.xml` extension points with lazy class loading. The same idea, twenty years older.
 - **npm itself** — an `exports` map is pure data, resolvable without executing the package. This repo already
-  leans hard on that (the `@apack/source` condition, `stagePublishTree`).
+  leans hard on that (the `@apackdev/source` condition, `stagePublishTree`).
 - **Kubernetes CRDs** — declare the schema, validate at admission, implement in a controller: the
   collisions-at-install move, generalised.
 - **The deliberate counter-example** — ESLint flat config, Vite and webpack configs are *code*, chosen for

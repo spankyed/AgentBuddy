@@ -34,7 +34,7 @@ Finished when:
 - tests/packs/two-registries.spec.ts asserts two registries hold their own loaded packs, and its opening
   comment no longer overstates what it checks.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack all pass.
-- npm run api:update if any @apack/sdk, /ears or /ui export changed, with etc/ committed.
+- npm run api:update if any @apackdev/sdk, /ears or /ui export changed, with etc/ committed.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Commit as you go:
@@ -166,7 +166,7 @@ Add `PackOrigin` and the second argument to `registerPack`. Add the reads: `pack
 together; nothing is migrated yet.
 
 **Done when:** for every registered pack the registry returns what the module holds, asserted by a new
-case in `tests/packs/registration.spec.ts`. `npm test -w @apack/host` passes unchanged otherwise.
+case in `tests/packs/registration.spec.ts`. `npm test -w @apackdev/host` passes unchanged otherwise.
 **Mutation:** registering without an origin leaves the pack out of `externalPacks()`; the new case fails.
 
 ### Phase 2 — the built-in readers move
@@ -221,9 +221,9 @@ assertion fails today and must pass after.
   including a "temporary" one during the migration.
 - The five write sites must stay paired until Phase 3 removes the second write. A phase that writes one
   list and not the other reintroduces exactly the divergence this goal removes.
-- `@apack/testing`'s harness creates a registry per test file; Phase 3 and 4 must be checked against
+- `@apackdev/testing`'s harness creates a registry per test file; Phase 3 and 4 must be checked against
   `npm run test:external-pack`, not only the unit suites.
-- No `@apack/sdk` export should need to change. If one does, `npm run api:update` and commit `etc/`.
+- No `@apackdev/sdk` export should need to change. If one does, `npm run api:update` and commit `etc/`.
 
 ## Outcome (2026-09-19)
 

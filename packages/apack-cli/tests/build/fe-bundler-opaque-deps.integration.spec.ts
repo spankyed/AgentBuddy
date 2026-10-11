@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 
 const UNUSED = 'UNUSED_EXPORT_MARKER';

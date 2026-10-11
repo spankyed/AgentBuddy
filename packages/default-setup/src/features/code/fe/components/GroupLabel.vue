@@ -110,7 +110,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from 'reka-ui'
-import type { TabGroupColor } from '@apack/sdk/fe'
+import type { TabGroupColor } from '@apackdev/sdk/fe'
 import GroupMenuItems from './GroupMenuItems.vue'
 
 defineProps<{

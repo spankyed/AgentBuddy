@@ -70,7 +70,7 @@ Never:
 
 ## Background (2026-09-29, at `8c90bd614` on `master`)
 
-`@apack/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
+`@apackdev/cli`'s integration half is 167.9s of recorded spec file-time — 53% of the repo's 315.9s, and the
 largest single number in the records. It was deferred out of
 [`goal-spec-earns-its-pass.md`](goal-spec-earns-its-pass.md) and
 [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md) as "a separate look, not a blocker".
@@ -79,12 +79,12 @@ largest single number in the records. It was deferred out of
 
 | | specs | file-time | **wall** |
 |---|---|---|---|
-| `@apack/cli` integration | 15 | 167.9s | **31s** |
+| `@apackdev/cli` integration | 15 | 167.9s | **31s** |
 | `@app/repo-checks` integration | 3 | 34.2s | **32s** |
 | `@app/publish-checks` integration | 5 | 30.6s | **8s** |
 | all three, as the chain runs them | 23 | 232.7s | **71s**, and 90-105s as the step measures |
 
-So the question is not why `@apack/cli` is slow. It is **why 71s of work takes 90-105s, and why the step
+So the question is not why `@apackdev/cli` is slow. It is **why 71s of work takes 90-105s, and why the step
 uses half the machine to do it.**
 
 ### 1. Three specs of twenty-three spawn a compiler; all twenty-three pay for it
@@ -123,10 +123,10 @@ and running the floor in-process would mean two `typescript` instances in one pr
 
 ### 2. The step is three `npm -w` invocations in series
 
-`package.json`'s `test:integration` is `npm run test:integration -w @apack/cli -w @app/repo-checks -w
+`package.json`'s `test:integration` is `npm run test:integration -w @apackdev/cli -w @app/repo-checks -w
 @app/publish-checks`: three vitest startups, three worker pools, three `packages:ensure` pretests, none
 overlapping. All three configs declare **identical** resolution —
-`['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
+`['@apackdev/source', ...defaultServerConditions.filter((c) => c !== 'module')]` — so unlike the unit suites,
 where `host` and `pack` cannot share a process because Node conditions are per process (`UnitSuite.kind`),
 these three can. The repo already pooled the unit suites for exactly this reason
 ([`goal-one-job-pool.md`](goal-one-job-pool.md)); the integration halves were left as `-w`
@@ -225,7 +225,7 @@ Final.
    bounded-concurrency gate for a load that halves by deleting two lines is the wrong way round. So Phase 3
    deletes `add-extensions`' two `tsc --noEmit` spawns in favour of the in-process `typecheckPack` *first*,
    which takes the concurrent-compiler count from five to three across 23 files, and only then asks whether
-   any cap is needed. A semaphore is the fallback, not the plan; `@apack/host/exclusive-lock` is the
+   any cap is needed. A semaphore is the fallback, not the plan; `@apackdev/host/exclusive-lock` is the
    one-token version of it already in the tree if it comes to that.
 
 6. **Twenty clean runs, because five would prove almost nothing.** The birpc failure is a flake, so the

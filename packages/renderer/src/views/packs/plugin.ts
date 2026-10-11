@@ -1,6 +1,6 @@
-import type { PackFERegistration, PluginDefinition } from '@apack/sdk/fe';
-import { HOST_PACK_ID } from '@apack/sdk/ids';
-import { packsMachine } from '@apack/host/fe';
+import type { PackFERegistration, PluginDefinition } from '@apackdev/sdk/fe';
+import { HOST_PACK_ID } from '@apackdev/sdk/ids';
+import { packsMachine } from '@apackdev/host/fe';
 import { Package } from 'lucide-vue-next';
 import canvas from './canvas.vue';
 import { settingsPlugin } from '@/views/settings/plugin';

@@ -1,6 +1,6 @@
-# @apack/ui
+# @apackdev/ui
 
-Vue 3 components, editors (tiptap, Monaco) and UI composables for pack frontends and the app itself. It is published as compiled ESM with vue-tsc declarations. Packs import it by subpath (`@apack/ui/design/button`) and, by default, use the host app's copy at runtime. Pack-facing docs: `docs/public-facing/architecture.md` (`@apack/ui` section), `docs/public-facing/manifest.md` (`build.bundleUi`). Paths below are relative to `packages/apack-ui`.
+Vue 3 components, editors (tiptap, Monaco) and UI composables for pack frontends and the app itself. It is published as compiled ESM with vue-tsc declarations. Packs import it by subpath (`@apackdev/ui/design/button`) and, by default, use the host app's copy at runtime. Pack-facing docs: `docs/public-facing/architecture.md` (`@apackdev/ui` section), `docs/public-facing/manifest.md` (`build.bundleUi`). Paths below are relative to `packages/apack-ui`.
 
 ## Layout
 
@@ -34,17 +34,17 @@ There is no barrel: every public module is its own export subpath.
   export * from './button.vue';
   ```
   TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. An SFC without an entry is internal (`components/JsonViewerDialog.vue`, the tiptap menus, `bubble-menu/*`); other files in this package import it by relative path.
-- `computeExports()` gives each public module `{ "@apack/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`. The published copy keeps only the last two: `stagePublishTree` drops the source branch, since no tarball ships `src/`. This package is the only one of the three published ones whose map is computed rather than written — `@apack/ears` and `@apack/sdk` list theirs by hand, where the map *is* the definition of public and cannot fall behind `src/`. Deriving it buys a component being public by default, and costs the two copies being able to disagree, which is what `exports:check` exists for and why no sibling package has one.
+- `computeExports()` gives each public module `{ "@apackdev/source": "./src/<m>.ts", "types": "./dist/<m>.d.ts", "default": "./dist/<m>.js" }`. There are no wildcards, and the map is checked into `package.json`. The published copy keeps only the last two: `stagePublishTree` drops the source branch, since no tarball ships `src/`. This package is the only one of the three published ones whose map is computed rather than written — `@apackdev/ears` and `@apackdev/sdk` list theirs by hand, where the map *is* the definition of public and cannot fall behind `src/`. Deriving it buys a component being public by default, and costs the two copies being able to disagree, which is what `exports:check` exists for and why no sibling package has one.
 
 Workflow after adding, removing or renaming a public module:
 
 ```bash
-npm run exports:update -w @apack/ui   # rewrite package.json exports
-npm run exports:check -w @apack/ui    # (part of the root's npm run typecheck) fails on a stale map
-npm run api:update -w @apack/ui       # regenerate etc/ reports, commit them
+npm run exports:update -w @apackdev/ui   # rewrite package.json exports
+npm run exports:check -w @apackdev/ui    # (part of the root's npm run typecheck) fails on a stale map
+npm run api:update -w @apackdev/ui       # regenerate etc/ reports, commit them
 ```
 
-`findComponentsWithoutEntry()` scans every other `packages/*` and `tests/` for `@apack/ui/<path>` imports that name a `.vue` without a public entry. `exports:update`, `exports:check` and `build:package` all fail on those and print the entry to add (`missingEntriesMessage`).
+`findComponentsWithoutEntry()` scans every other `packages/*` and `tests/` for `@apackdev/ui/<path>` imports that name a `.vue` without a public entry. `exports:update`, `exports:check` and `build:package` all fail on those and print the entry to add (`missingEntriesMessage`).
 
 ## API reports (`etc/`)
 
@@ -52,7 +52,7 @@ npm run api:update -w @apack/ui       # regenerate etc/ reports, commit them
 
 - `etc/<entry>.api.md` for each export (API Extractor), with `/` in the subpath written as `.` (`design.button.api.md`).
 - `etc/<entry>.component.md` for each component entry (a `.ts` whose source matches `export { default } from '*.vue'`). It records props, emits, slots and `exposed` members as the TypeScript checker resolves them through `vue-component-type-helpers`. Changing a component's props, emits, slots or `defineExpose` changes this report, so run `api:update`.
-- Stale reports are deleted on update. CI runs `api:check` for `@apack/ears`, the SDK and UI, after `packages:build`: `tsconfig.api-extractor.json` resolves `@apack/*` dependencies to their built declarations, since API Extractor analyses `.d.ts` and follows a dependency read as source into it instead of reporting it as an import.
+- Stale reports are deleted on update. CI runs `api:check` for `@apackdev/ears`, the SDK and UI, after `packages:build`: `tsconfig.api-extractor.json` resolves `@apackdev/*` dependencies to their built declarations, since API Extractor analyses `.d.ts` and follows a dependency read as source into it instead of reporting it as an import.
 - The reports carry API Extractor's messages (`scripts/api-reports.ts` sets them explicitly, because `ExtractorConfig.prepare()` applies none of its defaults and reports nothing without them). `ae-forgotten-export` — a type a public export names without exporting it — is recorded in the report, so a new one shows up as a report diff. On a component entry one of those names `__VLS_export`: that is vue-tsc's own symbol for the SFC's default export, not something to export.
 
 The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `@app/publish-checks`'s `published-ui-types` compiles consumers against the packed package with both compilers (`packages/typescript-floor`).
@@ -69,26 +69,26 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 
 `dist/` checks live in `@app/publish-checks`: `published-ui-dist` (no SFC source shipped, no relative CSS `@import` left, shared modules emitted once), `published-exports`, `published-specifiers`. They skip without `dist/` locally and fail when `dist` is older than `src`. This package's own suite holds `exports` (the map) and `import-side-effects` (its source).
 
-`package.json` is what the published manifest is derived from (`files: ["dist"]`); the build stages the derived one in `publish/`. Monorepo tooling resolves `src/` through the `@apack/source` condition (`tsconfig.json` `customConditions`, the renderer's Vite `resolve.conditions`), which only a checkout can satisfy.
+`package.json` is what the published manifest is derived from (`files: ["dist"]`); the build stages the derived one in `publish/`. Monorepo tooling resolves `src/` through the `@apackdev/source` condition (`tsconfig.json` `customConditions`, the renderer's Vite `resolve.conditions`), which only a checkout can satisfy.
 
 ## How packs get it at runtime
 
-- **Host copy (default).** `getUiFeModules()` (`@apack/host/build/shared-deps`) lists every key of this package's exports map, and `sharedFeModules()` folds them in beside the deps and the SDK's frontend modules. The renderer's `hostSharedModulesPlugin` (`packages/renderer/vite.config.ts`) serves each as a build entry and names it in the document's import map under its full specifier. The pack FE bundler (`apack-cli/src/build/fe-bundler.ts`, `packExternalsPlugin`) leaves a pack's `@apack/ui/*` imports external, so the browser resolves them through that map. Stateful modules therefore have one instance app-wide: `monaco-config.ts` (registered DSL libs, initialized languages). An import of a module or a name this apack does not have fails when the pack's frontend links, naming it. Specs: `fe-bundler-externals`, `fe-bundler-host-registry`.
-- **`build.bundleUi: true`** in `apack.json` bundles all of `@apack/ui` into the pack's `fe.js`, so a pack never mixes its own copy with the host's. The pack's Tailwind build then also scans `@apack/ui` (its `src/` when linked to a checkout, else `dist/**/*.js`). Fixture: `tests/packs/bundled-ui-pack`.
+- **Host copy (default).** `getUiFeModules()` (`@apackdev/host/build/shared-deps`) lists every key of this package's exports map, and `sharedFeModules()` folds them in beside the deps and the SDK's frontend modules. The renderer's `hostSharedModulesPlugin` (`packages/renderer/vite.config.ts`) serves each as a build entry and names it in the document's import map under its full specifier. The pack FE bundler (`apack-cli/src/build/fe-bundler.ts`, `packExternalsPlugin`) leaves a pack's `@apackdev/ui/*` imports external, so the browser resolves them through that map. Stateful modules therefore have one instance app-wide: `monaco-config.ts` (registered DSL libs, initialized languages). An import of a module or a name this apack does not have fails when the pack's frontend links, naming it. Specs: `fe-bundler-externals`, `fe-bundler-host-registry`.
+- **`build.bundleUi: true`** in `apack.json` bundles all of `@apackdev/ui` into the pack's `fe.js`, so a pack never mixes its own copy with the host's. The pack's Tailwind build then also scans `@apackdev/ui` (its `src/` when linked to a checkout, else `dist/**/*.js`). Fixture: `tests/packs/bundled-ui-pack`.
 - **Consequences for this package:**
   - The app imports every public module at startup, so a module must do nothing when imported: no top-level listeners or registrations (`tests/import-side-effects.spec.ts`). Declarations are fine, including objects built from calls.
   - Removing or renaming an export breaks packs built against it on newer hosts. The `etc/` reports make such changes visible in review.
 
-## What stays in `@apack/sdk/fe`
+## What stays in `@apackdev/sdk/fe`
 
-Contracts and host-shared state that packs need even without `@apack/ui` live in the SDK (`packages/apack-sdk/src/fe/`) and are shared through `SDK_FE_MODULES`. UI code imports them from `@apack/sdk/fe` and does not define its own copies:
+Contracts and host-shared state that packs need even without `@apackdev/ui` live in the SDK (`packages/apack-sdk/src/fe/`) and are shared through `SDK_FE_MODULES`. UI code imports them from `@apackdev/sdk/fe` and does not define its own copies:
 
 - `useShell` (`KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
 - registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
 - `openLink` (`tiptap/composables/createEditorClickHandler.ts`)
 
-UI modules also read `stepRegistry` from `@apack/sdk/steps` (`node-styles.ts`, `node-dimensions.ts`) and types from `@apack/sdk/steps` (`TNodeListItem.vue`) and `@apack/sdk/types` (`KeyboardShortcutInput.vue`). The dependency goes one way only: `@apack/sdk` must not import `@apack/ui`, and the SDK's `package.json` doesn't declare it. `@apack/sdk` is a peer (`>=0.1.0 <1.0.0`; the range has to span the 0.x line — Changesets majors a peer dependent whose range excludes the version its peer moves to, and the fixed release group carries that major to all five packages, so `~0.1.0` or `^0.1.0` would turn the next minor into a 1.0.0 release: `apack-cli/tests/build/release-plan.spec.ts`), as are `vue`, `xstate`, `@xstate/vue`, `reka-ui`, `lucide-vue-next`, `@vue-flow/core`, the tiptap core packages, `monaco-editor` and `elkjs`. Tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown` and `@guolao/vue-monaco-editor` are regular dependencies.
+UI modules also read `stepRegistry` from `@apackdev/sdk/steps` (`node-styles.ts`, `node-dimensions.ts`) and types from `@apackdev/sdk/steps` (`TNodeListItem.vue`) and `@apackdev/sdk/types` (`KeyboardShortcutInput.vue`). The dependency goes one way only: `@apackdev/sdk` must not import `@apackdev/ui`, and the SDK's `package.json` doesn't declare it. `@apackdev/sdk` is a peer (`>=0.1.0 <1.0.0`; the range has to span the 0.x line — Changesets majors a peer dependent whose range excludes the version its peer moves to, and the fixed release group carries that major to all five packages, so `~0.1.0` or `^0.1.0` would turn the next minor into a 1.0.0 release: `apack-cli/tests/build/release-plan.spec.ts`), as are `vue`, `xstate`, `@xstate/vue`, `reka-ui`, `lucide-vue-next`, `@vue-flow/core`, the tiptap core packages, `monaco-editor` and `elkjs`. Tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown` and `@guolao/vue-monaco-editor` are regular dependencies.
 
 ## Component conventions (as used in `src/`)
 
@@ -114,9 +114,9 @@ UI modules also read `stepRegistry` from `@apack/sdk/steps` (`node-styles.ts`, `
 
 ```bash
 npm run typecheck:ui                  # vue-tsc --noEmit (src, scripts, tsdown config)
-npm run exports:check -w @apack/ui   # exports map + component entries
-npm run api:check -w @apack/ui       # etc/ reports current
+npm run exports:check -w @apackdev/ui   # exports map + component entries
+npm run api:check -w @apackdev/ui       # etc/ reports current
 npm run packages:build && npm run packages:check   # dist, publint, attw (esm-only)
 npm test -w @app/publish-checks       # the published-* dist checks
-npm test -w @apack/cli               # the fe-bundler-*ui specs
+npm test -w @apackdev/cli               # the fe-bundler-*ui specs
 ```

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from 'vue';
-import type { PackInfo } from '@apack/host/fe';
+import type { PackInfo } from '@apackdev/host/fe';
 import PackDetail from '@/views/packs/PackDetail.vue';
 
 /** An installed external pack with nothing declared, and `overrides` */

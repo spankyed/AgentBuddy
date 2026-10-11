@@ -2,7 +2,7 @@
 // visibility) were stored under it. The move puts each bare key a plugin's feature id stands for onto that
 // plugin's ref, and leaves everything else alone.
 import { describe, expect, it } from 'vitest';
-import { resolveName } from '@apack/sdk/ids';
+import { resolveName } from '@apackdev/sdk/ids';
 import { addressPluginKeys, pluginRefOf } from '../../src/migrations/app/0.4.0.ts';
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];

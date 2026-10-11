@@ -81,7 +81,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 
    It read: there are 61 raw `broadcastToPlugin`/`sendToSystem`/`sendToPlugin` call sites across host, api and
    renderer, none with a pack id in scope, so rejecting unstamped messages breaks the host. That is no longer
-   true — those sends go through `@apack/host/src/events.ts` and stamp `from: 'host'` (`e5580d6b4`).
+   true — those sends go through `@apackdev/host/src/events.ts` and stamp `from: 'host'` (`e5580d6b4`).
 
    Its second half is untouched: trust unstamped messages and the rule is advisory, because anything that wants
    around it simply doesn't stamp, including the untyped SDK sends that `check:specifiers` only blocks *in pack
@@ -100,7 +100,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
    guesswork: may a pack forward an event it received? Re-emit on behalf of another feature? The first real
    external pack answers that. Picking now means picking twice.
 
-5. **A third delivery path would not have the check.** `testRootEvents` has no bus actor — `@apack/testing`'s
+5. **A third delivery path would not have the check.** `testRootEvents` has no bus actor — `@apackdev/testing`'s
    `startApp` delivers plugin sends itself. So either the harness gets the same check, and every pack test that
    sends cross-pack needs its fixtures made audience-correct, or pack tests pass on sends the running app rejects.
    Green locally and a diagnostic in the app is the worst of the available failure modes.

@@ -46,7 +46,7 @@ Creates `src/content/actions/analysis/analyze-text.ts`.
 ### Structure
 
 ```typescript
-import type { ActionMeta } from '@apack/sdk/build';
+import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 
 export const meta: ActionMeta = {
@@ -148,7 +148,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 
 ### Metadata
 
-`ActionMeta` (`@apack/sdk/build`):
+`ActionMeta` (`@apackdev/sdk/build`):
 
 | Field | Type | Description |
 |---|---|---|
@@ -177,7 +177,7 @@ The function's return value is the step's result (`$.lastStep.result`).
 
 The build bundles each action file with esbuild and extracts its `meta` and the body of `action`:
 
-- **Imports**: a relative import is bundled into the action. The only package import allowed is `@apack/sdk/actions` (`formatProviderError(error, provider, alternatives?)`, `buildTranscript(messages, { maxMessages?, maxChars? })`); any other package, `node:` modules included, fails the build. Type-only imports (`ActionMeta`, `Services`, `Z`) are erased and always allowed.
+- **Imports**: a relative import is bundled into the action. The only package import allowed is `@apackdev/sdk/actions` (`formatProviderError(error, provider, alternatives?)`, `buildTranscript(messages, { maxMessages?, maxChars? })`); any other package, `node:` modules included, fails the build. Type-only imports (`ActionMeta`, `Services`, `Z`) are erased and always allowed.
 - **Node globals** (`require`, `process`, `__dirname`, `__filename`, `Buffer`, `global`) in the bundled code only produce a build warning, but the action runs in the app's backend without them.
 - **`meta` is evaluated on its own**: write it as an object literal that references no imports or other variables.
 - **Top-level helpers** (functions and constants next to `action`) are inlined into the action. A helper function whose only uses are direct calls can declare a `services` parameter: the build removes it and the helper uses the action's `services`.
@@ -199,7 +199,7 @@ Creates `src/content/prompts/summarize-text.ts`.
 ### Structure
 
 ```typescript
-import type { PromptMeta } from '@apack/sdk/build';
+import type { PromptMeta } from '@apackdev/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Summarize Text',
@@ -239,7 +239,7 @@ ${params.text}`;
 
 ### Metadata
 
-`PromptMeta` (`@apack/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
+`PromptMeta` (`@apackdev/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
 
 `TemplateInput`: `name`, `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `defaultValue?`, `example?`. Like an action's parameters, these describe the inputs; the template applies its own defaults.
 
@@ -247,7 +247,7 @@ ${params.text}`;
 
 - `template(params, usePrompt)` must be **synchronous** and return a string. Keep the parameters named `params` and `usePrompt`: the build keeps only the body.
 - `usePrompt(label, params)` renders another prompt by label (up to 10 levels deep), returning `undefined` when there's none.
-- Prompt files are scanned and bundled like actions: `export const meta`, relative imports, `@apack/sdk/actions` as the only package import, no `*.example.ts`.
+- Prompt files are scanned and bundled like actions: `export const meta`, relative imports, `@apackdev/sdk/actions` as the only package import, no `*.example.ts`.
 - Prompts are rendered by label with `services.prompt.usePrompt('Summarize Text', params)`, or by a flow's `llm` step.
 
 ## Flows
@@ -265,7 +265,7 @@ Creates `src/content/flows/onboarding.ts`.
 ### Structure
 
 ```typescript
-import type { FlowDSL } from '@apack/sdk/build';
+import type { FlowDSL } from '@apackdev/sdk/build';
 import { entry, on, keepAlive, action, fire, branch, subflow } from '#generated/flow-helpers.ts';
 
 export default {
@@ -329,7 +329,7 @@ export default {
 
 ### Flow definitions
 
-A flow file's default export is a `FlowDSL` (`@apack/sdk/build`): flow name → a `Track[]`, or a `FlowConfig`.
+A flow file's default export is a `FlowDSL` (`@apackdev/sdk/build`): flow name → a `Track[]`, or a `FlowConfig`.
 
 | Type | Fields |
 |---|---|
@@ -447,7 +447,7 @@ A specialty key takes its path as a string or `{ "path": … }`; any other key i
 
 ### Include sets
 
-ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@apack/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `content.json` lists them:
+ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@apackdev/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `content.json` lists them:
 
 | Key | Item name |
 |---|---|
@@ -522,7 +522,7 @@ When a source needs parsing that field sources can't express, give the format a 
 
 ```typescript
 // src/content/compilers/glossary.ts
-import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apack/sdk/build';
+import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apackdev/sdk/build';
 
 export default function compileGlossary({ path, format }: ContentCompileContext): ContentItem[] {
   // Skip the format's media directory, if it has one
@@ -549,7 +549,7 @@ An entry with all three, `{ "path", "format", "applier" }`, is compiled with the
 
 ```typescript
 // src/content/custom.ts
-import type { ApplyContext, ApplyResult } from '@apack/sdk/utils';
+import type { ApplyContext, ApplyResult } from '@apackdev/sdk/utils';
 
 export function apply(ctx: ApplyContext): ApplyResult {
   ctx.log('  custom content');
@@ -605,7 +605,7 @@ Without hooks, the applier writes rows directly: it matches existing rows on the
 
 ```typescript
 // src/content/writers/memos.ts
-import type { ContentWriter, ContentItem } from '@apack/sdk/content';
+import type { ContentWriter, ContentItem } from '@apackdev/sdk/content';
 import { repository } from '#generated/repository.ts';
 
 export const memoContentWriter: ContentWriter<ContentItem & { title: string; text: string; pinned?: boolean }> = {

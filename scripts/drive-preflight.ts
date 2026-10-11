@@ -26,7 +26,7 @@
  * tell, because an output it cannot read is not evidence of staleness.
  */
 import * as fs from 'node:fs';
-import { inputFiles, repoRelative, skipsFingerprint } from '@apack/host/build/packages-built';
+import { inputFiles, repoRelative, skipsFingerprint } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS } from './lib/chain-steps.ts';
 import { unitFor } from './lib/chain-stamps.ts';
 

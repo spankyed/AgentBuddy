@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
-import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@apack/sdk/fe'
+import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@apackdev/sdk/fe'
 import type { Editor } from '@tiptap/vue-3'
 import { useBlockHandle } from './composables/useBlockHandle.ts'
 import {

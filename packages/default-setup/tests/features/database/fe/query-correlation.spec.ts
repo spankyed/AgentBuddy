@@ -12,7 +12,7 @@
 // call.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@apack/sdk/testing';
+import { answerTo } from '@apackdev/sdk/testing';
 import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());

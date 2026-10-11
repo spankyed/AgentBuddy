@@ -1,6 +1,6 @@
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
-import { findRelations, installedEngine as ears, untypedTx } from '@apack/ears';
+import { findRelations, installedEngine as ears, untypedTx } from '@apackdev/ears';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
@@ -54,7 +54,7 @@ function graphState(flowId: EARS.EntityId): GraphState {
 }
 
 /**
- * The walk's three parts, a hash each (`AppliedItem.parts`, `@apack/sdk/utils`): the flow's own fields, each
+ * The walk's three parts, a hash each (`AppliedItem.parts`, `@apackdev/sdk/utils`): the flow's own fields, each
  * node's values as one unit, and the whole edge set with each edge's `info`.
  *
  * A node's path is its compiled id, which derives from the flow's name — the determinism `collidingOwner`

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PACK_READS_FILE } from '@apack/host/build/pack-workdir';
+import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 import { buildReads } from '../../src/build/build-reads';
 
 function tmp(): string {

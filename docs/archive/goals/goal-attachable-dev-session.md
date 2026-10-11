@@ -127,7 +127,7 @@ Final.
    with `compilePack`, the content-compile step inside a build.
 7. **The Playwright test runner stays**, and so does what it launches (Decision 15). `drive <script>`
    goes on being a Playwright run;
-   `playwright-core` and `@playwright/test` are both optional peers of `@apack/testing`, imported
+   `playwright-core` and `@playwright/test` are both optional peers of `@apackdev/testing`, imported
    lazily, with an install hint.
 8. **What scopes Electron's single-instance lock is settled by observation, not by picking a doc.**
    `packages/main/CLAUDE.md` says the app name, `apack-cli/src/commands/drive.ts` says the data dir,
@@ -146,7 +146,7 @@ Final.
     pack itself"*). A spawn that copied dev's *environment* would hand a pack author an app without
     their pack, or with a stale copy of it. `dev` already does it — `installToApp` (`run.ts:61`, called at
     `:259`) is the pack install, and `ensureCheckoutPackages` beside it is the different job of building
-    the `@apack` packages' `dist` that a pack compiles against — so spawning `dev` gets both for nothing.
+    the `@apackdev` packages' `dist` that a pack compiles against — so spawning `dev` gets both for nothing.
     **No `dev --no-watch`.** A flag whose only purpose is to let one caller skip a step is the thing that
     drifts, and a watcher costs nothing while nothing is edited. It also keeps the "session file's writers
     are derived, not listed" population at the two the design already has, `dev` and `npm start`, rather
@@ -501,13 +501,13 @@ Attached to the development app (pid 36307).
 
 Four decisions the phase settled, each because the obvious placement was wrong:
 
-- **The session module is `@apack/host/dev-session`, not the CLI's.** Two launchers publish one — `dev`, and
+- **The session module is `@apackdev/host/dev-session`, not the CLI's.** Two launchers publish one — `dev`, and
   the `npm start` loop that spawns Electron from `packages/main/vite.config.js` — so a CLI-owned module would
   have meant a second copy. The `pack-dev-servers` marker is in the host for that same reason.
-- **`readDevToolsPort` went with it, after two wrong homes.** `@apack/testing` put a devDependency in the
-  CLI's import graph, which `bundle-package.ts` refuses; `@apack/host/process-liveness` reads well but that
+- **`readDevToolsPort` went with it, after two wrong homes.** `@apackdev/testing` put a devDependency in the
+  CLI's import graph, which `bundle-package.ts` refuses; `@apackdev/host/process-liveness` reads well but that
   module is about *whether a writer is still there*, and this answers *what port Chromium picked*.
-- **`@apack/testing` is resolved at runtime by `drive`, never imported.** The CLI already reaches it that way
+- **`@apackdev/testing` is resolved at runtime by `drive`, never imported.** The CLI already reaches it that way
   for the Playwright binary, from the pack's own `node_modules` — so a pack drives with the harness it tests
   with. `attachedSession` was added there so the CLI asks for one thing rather than assembling five.
 - **The pid means "the process whose death ends both"**, which differs in direction between the two
@@ -590,7 +590,7 @@ helper, three specs and the `--serve`/`--attach` flags.
 
 What is left is smaller in the way that matters rather than merely shorter: `drive` has **one path for a
 question** (attach, or refuse, or `--spawn`) and **one for a script** (the Playwright runner, untouched),
-where it had three sharing a config, a scaffold and a one-shot client. `@apack/testing/playwright` has two
+where it had three sharing a config, a scaffold and a one-shot client. `@apackdev/testing/playwright` has two
 helpers rather than three, and neither locks a setting any more — the handshake they were protecting is
 gone, so there is no setting left that a pack changing it would break.
 
@@ -651,7 +651,7 @@ The seven phases left three claims in Phase 5's Done-when standing on nothing, a
 right to refuse them. What closed each, and what each turned up:
 
 **The idle reap, built** (`reapsWhenIdle`, `idleVerdict`, `IDLE_REAP_MS` in `commands/dev.ts`;
-`touchSession`/`lastAttachedAt` in `@apack/host/dev-session`). Deferred on the argument that Decision 16
+`touchSession`/`lastAttachedAt` in `@apackdev/host/dev-session`). Deferred on the argument that Decision 16
 had removed most of what it was for — true of the `development` dir, where `mayReclaim` answers, and false
 of the case that remains. A `--spawn` on a **profile** is reclaimed by nothing, because
 `apack dev --profile <name>` is not a command a developer happens to run, so before this it held a data
@@ -841,9 +841,9 @@ the `npm start` watcher). The first two belong to Phase 1's row and the last to 
 instrument, not the subject.
 
 **Verification at `319ed640b`**: `npm run typecheck` (19 jobs), `npm run chain` 159.4s, `npm test -- smoke`
-5 passed, `app-integration` 14 passed, and every workspace suite with one — `@apack/cli` 573 + 209
-integration, `@apack/host` 900, `@apack/sdk` 730, `@app/repo-checks` 910, `@app/default-setup` 843,
-`@apack/ears` 119, `@app/api` 110, `@apack/testing` 98, `@app/main` 32, `@app/publish-checks` 8.
+5 passed, `app-integration` 14 passed, and every workspace suite with one — `@apackdev/cli` 573 + 209
+integration, `@apackdev/host` 900, `@apackdev/sdk` 730, `@app/repo-checks` 910, `@app/default-setup` 843,
+`@apackdev/ears` 119, `@app/api` 110, `@apackdev/testing` 98, `@app/main` 32, `@app/publish-checks` 8.
 
 **Three workspaces have no suite**, so `npm run spec` over one reports exactly that and exits 3 —
 `@app/preload`, `@app/electron-versions`, `@app/typescript-floor`. That is the whole answer the command can
@@ -913,7 +913,7 @@ unconditionally, and `APACK_ENV=beta npm start` was an unauthenticated port on a
 identical decision had six cases guarding it.
 
 The asymmetry was the cause, so the fix is one owner: `debugPortArgsFor(build)` in
-`@apack/host/dev-session`, which `apack dev`'s `debugPortArgs(place)` now delegates to and the watcher
+`@apackdev/host/dev-session`, which `apack dev`'s `debugPortArgs(place)` now delegates to and the watcher
 calls with the build `_inferElectronAppEnv` gives it — the app's own rule rather than a second copy. The
 session follows the same gate, and the publisher's hardcoded `development` went with it: a beta run
 publishes nothing because it is not attachable. Four cases, firing on a gate that opens for every build.

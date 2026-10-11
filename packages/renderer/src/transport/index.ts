@@ -1,7 +1,7 @@
 import { createWSClient, wsLink, createTRPCClient, type TRPCClient } from '@trpc/client';
-import { API_HOST } from '@apack/sdk/utils/pure';
+import { API_HOST } from '@apackdev/sdk/utils/pure';
 import type { AppRouter } from '@app/api';   // ← BE import Type‑only!
-import type { _HostBridge } from '@apack/sdk/fe';
+import type { _HostBridge } from '@apackdev/sdk/fe';
 
 type ApiClient = TRPCClient<AppRouter>;
 

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostInfo } from '@apack/host/packs';
-import { resolveAppContext } from '@apack/sdk/env';
+import { installPack, installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
+import { resolveAppContext } from '@apackdev/sdk/env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */

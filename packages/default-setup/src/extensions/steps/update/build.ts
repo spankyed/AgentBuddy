@@ -1,7 +1,7 @@
-import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
-import { expandRecord, collapseRecord } from '@apack/sdk/steps';
-import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
+import { expandRecord, collapseRecord } from '@apackdev/sdk/steps';
+import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 import { validateFields } from '../create/build.ts';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {

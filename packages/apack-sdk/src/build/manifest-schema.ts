@@ -97,7 +97,7 @@ export const DslEntrySchema = z.object({
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
   prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
   globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
-  inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apack/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
+  inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apackdev/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
 /** Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }` */
@@ -220,7 +220,7 @@ const ContentDatasetsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
-  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apack/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
+  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -228,7 +228,7 @@ const SystemSchema = z.object({
 
 const PluginSchema = z.object({
   entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
-  contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apack/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
+  contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 }).strict();
 
@@ -341,7 +341,7 @@ const EntityShapeSchema = z.object({
  */
 const BuildConfigSchema = z.object({
   opaqueDeps: z.array(z.string()).describe('Dependencies the frontend bundle includes whole instead of tree-shaking, by package name. For a prebuilt bundle — a dependency shipped as one already-minified file, or compiled from another language — where the shake removes almost nothing and walking it is most of the build. Each ships as it is, so nothing inside it is dead-code eliminated.').optional(),
-  bundleUi: z.boolean().describe('Bundle a copy of @apack/ui into the pack instead of using the host app\'s. All of @apack/ui is bundled, so the pack never mixes the two.').optional(),
+  bundleUi: z.boolean().describe('Bundle a copy of @apackdev/ui into the pack instead of using the host app\'s. All of @apackdev/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
 const FEConfigSchema = z.object({
@@ -424,7 +424,7 @@ const MIGRATION_TARGET_SCHEMA = z.string()
  * id would have its versions compared against the app's.
  *
  * - `app` — the data moves when apack moves. A prerelease counts as its release, and a development
- *   build runs every pending one on each boot (`@apack/host`'s runners).
+ *   build runs every pending one on each boot (`@apackdev/host`'s runners).
  * - `pack` — the data moves when this pack moves, against `version` in this manifest.
  *
  * **A map rather than a field on each entry**, because a field needs a default and whichever default it took

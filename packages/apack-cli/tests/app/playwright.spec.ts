@@ -25,9 +25,9 @@ afterEach(() => {
 });
 
 describe('resolvePlaywrightCli', () => {
-  it('runs the @playwright/test that @apack/testing resolves, not another copy', () => {
-    const testing = path.join(pack, 'node_modules', '@apack', 'testing');
-    writePackage(testing, { name: '@apack/testing', main: 'index.js' }, { 'index.js': '' });
+  it('runs the @playwright/test that @apackdev/testing resolves, not another copy', () => {
+    const testing = path.join(pack, 'node_modules', '@apackdev', 'testing');
+    writePackage(testing, { name: '@apackdev/testing', main: 'index.js' }, { 'index.js': '' });
     playwright(path.join(testing, 'node_modules', '@playwright', 'test'));
     playwright(path.join(pack, 'node_modules', '@playwright', 'test')); // a second, mismatched copy
 
@@ -35,6 +35,6 @@ describe('resolvePlaywrightCli', () => {
   });
 
   it('tells the author what to install', () => {
-    expect(() => resolvePlaywrightCli(pack)).toThrow('npm i -D @apack/testing @playwright/test');
+    expect(() => resolvePlaywrightCli(pack)).toThrow('npm i -D @apackdev/testing @playwright/test');
   });
 });

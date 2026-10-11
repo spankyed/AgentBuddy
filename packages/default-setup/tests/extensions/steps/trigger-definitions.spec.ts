@@ -1,5 +1,5 @@
-import { stepRegistry, type StepDefinition } from '@apack/sdk/steps';
-import { testPacks } from '@apack/sdk/testing';
+import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { testPacks } from '@apackdev/sdk/testing';
 import { steps as buildSteps } from '#generated/steps-build.ts';
 import { listenerTriggerFE } from '#extensions/steps/listener/fe.ts';
 import { scheduleTriggerFE } from '#extensions/steps/schedule/fe.ts';

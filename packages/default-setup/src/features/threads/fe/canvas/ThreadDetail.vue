@@ -177,21 +177,21 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, computed, nextTick } from 'vue'
 import { Plus, MessageSquare, Link } from 'lucide-vue-next'
-import Button from '@apack/ui/design/button'
+import Button from '@apackdev/ui/design/button'
 import { useSelector } from '@xstate/vue'
 import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts'
 import type { ThreadEditFields } from '#generated/types.ts'
 import type { Ref } from 'vue'
-import NameSaveHeader from '@apack/ui/design/NameSaveHeader'
+import NameSaveHeader from '@apackdev/ui/design/NameSaveHeader'
 import MessageList from './components/message-list.vue'
-import TagInput from '@apack/ui/design/tag-input'
+import TagInput from '@apackdev/ui/design/tag-input'
 import ThreadLinkInput from '#features/threads/fe/canvas/components/link-thread-input.vue'
-import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
 
 const actor: ThreadsState = usePlugin();
 const mediaEntityId = crypto.randomUUID();

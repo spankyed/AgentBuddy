@@ -57,7 +57,7 @@ Never:
 - delete a test to make a tier boundary hold. A test that needs the app is tier 3; that is an answer,
   not a failure.
 - give the chain's steps unbounded parallel lanes. Measured twice: total work 348s to 567s and
-  @apack/cli failing, because every step already uses the cores. Phase 6 is a *limited* lane count.
+  @apackdev/cli failing, because every step already uses the cores. Phase 6 is a *limited* lane count.
   `test:unit`'s own two lanes are a different thing and already landed.
 ```
 
@@ -112,10 +112,10 @@ it from 6m53s to 5m50s (`0f0e57a15`, `7eb5aa1e5`). After it, `.tsbuildinfo` per 
 
 | | Step | What it needs |
 |---|---|---|
-| 1 | `apack validate` | `@apack/cli`, `@apack/sdk` |
+| 1 | `apack validate` | `@apackdev/cli`, `@apackdev/sdk` |
 | 2 | `apack build` | those, plus default-setup's snapshot (the fixture depends on it) |
-| 3 | `tsc --noEmit -p` | the CLI's generated output, `@apack/sdk`'s `dist` |
-| 4 | `vitest run --root` | `@apack/sdk`, `@apack/host`, `@apack/testing` |
+| 3 | `tsc --noEmit -p` | the CLI's generated output, `@apackdev/sdk`'s `dist` |
+| 4 | `vitest run --root` | `@apackdev/sdk`, `@apackdev/host`, `@apackdev/testing` |
 | 5 | `apack test --app-root "$ROOT"` | **the whole built app** — renderer, main, preload, api, default-setup |
 
 Steps 1–4 need no app. Step 5 does, and because they share a script the whole step depends on the app.
@@ -144,9 +144,9 @@ Four attempts at a cheaper chain, each defeated by the same coupling:
 | Attempt | Result |
 |---|---|
 | Run the steps in three lanes | Failed. `test:packaged-authoring` ran `packages:build`, rewriting `dist/` under the other lanes |
-| Run them in lanes with that step alone | Failed. Work 348s → 567s, `@apack/cli` 56s → 118s: every step already uses all the cores |
+| Run them in lanes with that step alone | Failed. Work 348s → 567s, `@apackdev/cli` 56s → 118s: every step already uses all the cores |
 | Drop `compile` as redundant with `build` | Wrong. No workspace declares a dependency on `@app/default-setup`, so `build -ws` gives no ordering guarantee, and the renderer's build reads the pack entry `compile` writes |
-| One `vitest run` over eight projects | 105s against 100.9s, no gain — the suites report 99.6s of 104s wall, so startup was never the cost — and it broke `@app/api`'s `boot-recovery.spec.ts`, which spawns the API server and needs the `@apack/source` condition the package's own run supplies. The root `vitest.config.ts`'s four projects stay, for `npm run spec`'s cross-package selection |
+| One `vitest run` over eight projects | 105s against 100.9s, no gain — the suites report 99.6s of 104s wall, so startup was never the cost — and it broke `@app/api`'s `boot-recovery.spec.ts`, which spawns the API server and needs the `@apackdev/source` condition the package's own run supplies. The root `vitest.config.ts`'s four projects stay, for `npm run spec`'s cross-package selection |
 | Per-step input caching | Not viable. Every expensive step reads the built app, so its honest input set is the whole repo |
 
 Only the coarse gate survived: the chain skips itself when no tracked file under `packages/`, `scripts/`
@@ -155,7 +155,7 @@ or `tests/` has changed (of the 20 commits before this, three touched none).
 ### What is cheap, and already built
 
 - `fingerprintInputs(paths)`, `unitStaleReason`, `stampFile`, `STAMP_VERSION`, `withBuildLock` —
-  `@apack/host/build/packages-built`. A content-addressed task cache, used today for five package builds
+  `@apackdev/host/build/packages-built`. A content-addressed task cache, used today for five package builds
   and nothing else. 1972 tracked files fingerprint in 160ms.
 - `ensurePackagesBuilt()` returns before taking the build lock when nothing is stale, and
   `APACK_PACKAGES_PREBUILT=1` makes staleness an error rather than a racing rebuild (`b76190721`).
@@ -179,7 +179,7 @@ came out of `goal-test-cleanup.md` and the review after it.
   beside it on the same row.
 - **`check:tiers` follows `-w` / `--workspace`** into a workspace's own scripts. Before, a step that
   delegated to one was inspected as nothing at all and passed vacuously.
-- **There is a tenth step, `test:integration`** (tier 2, needs `packages:ensure`): the `@apack/cli` specs
+- **There is a tenth step, `test:integration`** (tier 2, needs `packages:ensure`): the `@apackdev/cli` specs
   that run a real build, install or process, split out so the fast half stays seconds. It needs `inputs`
   like every other step.
 - **`BuildUnit` is exported.** Phase 5 said it was not and that this blocked `fingerprintUnit`/`stampedBuild`
@@ -202,7 +202,7 @@ loop, not for every step up front, which `scripts/chain.ts` says at the point wh
 `test:unit` is eight steps, one per package. Each declares its own workspace plus its dependencies' source,
 read from that package's `package.json`, so a dependency added later is covered the moment it is declared.
 Five of the eight declare no build output and so need no step at all: they resolve workspace source through
-the `@apack/source` condition. That is what lets them start beside the builds in Phase 6.
+the `@apackdev/source` condition. That is what lets them start beside the builds in Phase 6.
 
 Staleness is a pure function of the tree, so `npm run chain --dry` answers most of the "Done when" without
 running anything — which is how they were checked, on a machine another checkout was loading:
@@ -216,7 +216,7 @@ running anything — which is how they were checked, on a machine another checko
 | `packages/apack-cli/tests` | `typecheck`, `test:unit:apack-cli` |
 | `tests/e2e` | `typecheck` alone; the E2E step is never cached |
 
-`@apack/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
+`@apackdev/ears` invalidating all eight is honest rather than a bug: every package imports the bottom layer.
 
 #### The split makes a *serial* cold chain slower, and Phase 6 is what pays it back
 
@@ -283,7 +283,7 @@ reproduce. The critical path is 109s (`packages:ensure -> compile -> build:app -
 and is reported in the summary, so a disappointing run is legible rather than a tuning mystery.
 
 **Why this paid where the earlier attempt did not.** That attempt measured work going 348s to 567s with
-`@apack/cli` reporting errors it does not report alone. The limit is not the only difference:
+`@apackdev/cli` reporting errors it does not report alone. The limit is not the only difference:
 `test:packaged-authoring` no longer rebuilds the published packages underneath the other steps, `build:app`
 no longer rebuilds the pack, and `test:unit` is eight small steps rather than one large one, so a lane can
 be filled with a 1s suite instead of a 43s block. Three lanes reproduces the old result almost exactly, at
@@ -325,18 +325,18 @@ rather than an error, which is why the bundled-UI fixture needs no special case 
 `apack init-tests` scaffolds both halves, having previously scaffolded only Playwright — which left an
 author with a `vitest.config.ts` only if they had run `apack init` or `apack add feature`.
 
-**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @apack/cli` —
+**One deviation from the "Done when", and it is forced.** That clause asks for `npm test -w @apackdev/cli` —
 the fast half — to cover the flag. No spec of this flag can live there: `suite-split.spec.ts` asks whether an
 export's implementation reaches a child process, and `contractTest`'s default runner is `spawnSync`. That is
 true of the export and false of all nine tests, which inject a recorder and run in ~20ms. The coverage is in
-`@apack/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
+`@apackdev/cli`'s suite, in the integration half, rather than weakening a guard to suit one spec.
 `docs/plans/test-unit-scheduling.md` records this as a third instance of that predicate being mechanism-based
 rather than cost-based.
 
 Wiring the two scaffolders together surfaced a pre-existing inconsistency worth knowing about: `init-tests`
-derives `@apack/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
-pack's `@apack/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
-`@apack/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
+derives `@apackdev/testing`'s range from `cliVersion()` while `scaffoldUnitTestSetup` checks it against the
+pack's `@apackdev/sdk` range, so in this checkout it adds `^0.1.0` and immediately reports it as too old for
+`@apackdev/sdk ^0.3.14`. Left alone here: those are version ranges, which the release process owns.
 
 ### What Phase 8 landed
 
@@ -354,7 +354,7 @@ process group (`detached: true`, `kill(-pid)`, then SIGKILL after a grace period
 one" and "nothing uses `kill 0`, `setsid` or `set -m`" no longer describe the repo.
 
 **`test-packaged-authoring.sh` no longer drives a prompt.** The `expect` block, the tty and `env -u CI` are
-gone; the script writes the saved app choice directly, and the prompt is covered in `@apack/cli`'s fast
+gone; the script writes the saved app choice directly, and the prompt is covered in `@apackdev/cli`'s fast
 suite (`app-target.spec.ts`), which already injected a `prompt` and a temp config dir. The shape the script
 writes is pinned by a spec there, so a hand-written literal in a shell script cannot drift from what
 `saveAppChoice` produces. This is the item that hung a machine: `expect`'s `set timeout` covers a pattern
@@ -388,14 +388,14 @@ Each of these was found in this survey, not taken from a list.
 
 - **Nothing owns concurrency.** Eight suites each start their own scheduler and each claims every core, so
   the chain has eight independent opinions about parallelism and no budget. That is why running the steps
-  in lanes made total work rise from 348s to 567s and `@apack/cli` fail. A build system has one job pool;
+  in lanes made total work rise from 348s to 567s and `@apackdev/cli` fail. A build system has one job pool;
   this has N.
 - **No test target declares its inputs**, so nothing can compute what a change affects. Bazel, Nx and
   Turborepo all start here, and this goal's Decision 1 is the same idea at the granularity the repo can
   reach today.
 - **Timeouts are not sized to the tier.** `packages/api` and `packages/default-setup` both set
   `testTimeout: 120_000`. A unit test allowed two minutes means a hang is indistinguishable from slowness —
-  and under load that is exactly how `@apack/cli` presented, as errors rather than a fast, clear failure.
+  and under load that is exactly how `@apackdev/cli` presented, as errors rather than a fast, clear failure.
 - **There is no flake policy.** `playwright.config.ts` sets `retries: 0` and vitest sets none, while the CLI
   suite demonstrably fails under CPU pressure. The answer is not blanket retries: retrying a unit test hides
   a bug, and retrying an app E2E is ordinary. The distinction needs the tiers to exist first.
@@ -403,7 +403,7 @@ Each of these was found in this survey, not taken from a list.
   `env -u CI ... expect` to *unset* `CI` so the CLI will prompt, then answers "Choose 1 or 2: " with
   `send "1\r"`. The app choice should be injectable, with the prompt itself covered by a unit test of the
   prompt.
-- **Per-test cost is invisible.** `@apack/cli` reports `tests 249s` inside a 56s wall; which tests those
+- **Per-test cost is invisible.** `@apackdev/cli` reports `tests 249s` inside a 56s wall; which tests those
   are is unknown. Every mainstream runner reports slowest-N, and it is how the 20% that costs 80% gets found.
 - **One external input is not hermetic.** The same script reuses the developer's real npm cache
   (`npm_config_cache="$(npm config get cache)"`) so installs do not re-download. Pragmatic, and worth
@@ -419,7 +419,7 @@ Final.
 | Tier | May read | May not | Examples |
 |---|---|---|---|
 | **1 pure** | its own package's source, the in-memory runtime, fakes | any build output, any app | most of the 3036 unit tests |
-| **2 contract** | the built `@apack` packages, a pack's build output | the built app; Electron | `apack validate/build`, a pack's `tsc`, fixture unit specs, the CLI suite |
+| **2 contract** | the built `@apackdev` packages, a pack's build output | the built app; Electron | `apack validate/build`, a pack's `tsc`, fixture unit specs, the CLI suite |
 | **3 app** | the built app | — | the repo's E2E, `apack test` |
 
 The tier is a property of the check, not of the package: one package may own checks in two tiers.
@@ -464,7 +464,7 @@ including a `normalise` hook they have no equivalent for — and bring a config 
 for a nine-step pipeline on one machine with one contributor. The gap is one field, not a tool.
 
 **11. Cache before parallelism.** Parallelism was measured twice in this repo and made things worse: total
-work rose from 348s to 567s and `@apack/cli` began failing, because every step already uses all the cores.
+work rose from 348s to 567s and `@apackdev/cli` began failing, because every step already uses all the cores.
 Caching makes the *second* run cost only what changed. So the order is split → graph → coverage guard →
 cache → parallelism, and parallelism lands last because by then it matters least.
 
@@ -610,7 +610,7 @@ step and its descendants run again.
 - Run ready steps concurrently up to a concurrency limit; `exclusive: true` takes the build lock.
 
 **Read the measurements before writing this.** Unlimited three-lane parallelism was tried twice and made
-things worse: total work 348s → 567s, `@apack/cli` 56s → 118s and reporting errors it does not report alone,
+things worse: total work 348s → 567s, `@apackdev/cli` 56s → 118s and reporting errors it does not report alone,
 because every step already saturates the cores. A limit is the difference between this phase and that
 attempt, and if a limited run is not measurably faster than Phase 5's warm time, the honest outcome is to
 leave it serial and record that.
@@ -627,7 +627,7 @@ steps passed.
   2026-09-25.
 - `apack init-tests` scaffolds both halves.
 
-**Done when:** `apack test --contract` passes in both fixtures with no app built; `npm test -w @apack/cli`
+**Done when:** `apack test --contract` passes in both fixtures with no app built; `npm test -w @apackdev/cli`
 covers the flag.
 
 ### Phase 8 — The practices that are work, not policy
@@ -635,7 +635,7 @@ covers the flag.
 - Size the timeouts per Decision 7, tier by tier, and delete the two `testTimeout: 120_000` — still
   `packages/default-setup/vitest.config.ts:27` and `packages/api/vitest.config.ts:28`, checked 2026-09-25.
 - Make the app choice injectable so `test-packaged-authoring.sh` stops unsetting `CI` to drive a prompt with
-  `expect`; cover the prompt itself in `@apack/cli`'s suite. **This one hung a machine**, which is worth more
+  `expect`; cover the prompt itself in `@apackdev/cli`'s suite. **This one hung a machine**, which is worth more
   than the tidiness argument: with the app missing, `apack test --list` started a Playwright test-server that
   never returned, and the script's `lassign [wait] …` blocks with no timeout — `expect`'s `set timeout` covers a
   pattern match, not `wait`. It took three PIDs killed by hand. No `spawn`, no `wait`, no hang.
@@ -646,7 +646,7 @@ covers the flag.
   `perl -e 'alarm'` or a watchdog.
 - **Reap the process group on exit.** Nothing in `tests/scripts/` uses `kill 0`, `setsid` or `set -m`, so an
   orphaned server outlives its parent and a bound on the script alone would not have cleaned it up.
-- Report slowest-N per suite, so the next person profiling `@apack/cli` has it without instrumenting.
+- Report slowest-N per suite, so the next person profiling `@apackdev/cli` has it without instrumenting.
 - Record the npm-cache exception where the script uses it, as a declared non-hermetic input.
 
 **Done when:** no suite sets a timeout above its tier's budget; `test-packaged-authoring.sh` contains no
@@ -667,7 +667,7 @@ hang fails at its tier budget rather than at two minutes.
 
 ## Deferred
 
-- **The `@apack/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
+- **The `@apackdev/cli` suite at 56s**, over half of `test:unit`. **Profiled, and there is no hot spot**: the
   slowest 25 tests are all 1–1.6s, spread across `facade-gate`, `scaffold`, `add-extensions`,
   `component-contracts`, `release` and `db`, and every one spawns a real `tsc`, `apack build` or node
   subprocess. So the lever is fewer subprocesses, which is a project rather than a fix:
@@ -754,7 +754,7 @@ every package, which resetting `STAMP_VERSION` forces once). `npm run typecheck`
 
 ### Deviations, both forced and both recorded where they bite
 
-- **Phase 7's "`npm test -w @apack/cli` covers the flag"** could not hold: `suite-split.spec.ts` asks what
+- **Phase 7's "`npm test -w @apackdev/cli` covers the flag"** could not hold: `suite-split.spec.ts` asks what
   an export's implementation reaches, and `contractTest`'s default runner is `spawnSync`. The spec is in
   that package's integration half instead of weakening the guard for it.
 - **Phase 5's "a cold run matches Phase 3's time"** is true only with lanes. Splitting `test:unit` into

@@ -11,7 +11,7 @@ import { cliVersion, readManifest, sdkVersion } from '../utils';
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
   return JSON.stringify({
-    $schema: './node_modules/@apack/sdk/apack.schema.json',
+    $schema: './node_modules/@apackdev/sdk/apack.schema.json',
     id: name,
     name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
     version: '0.1.0',
@@ -67,7 +67,7 @@ export const PACK_TSCONFIG = {
     skipLibCheck: true,
     noEmit: true,
     types: ['node'],
-    // A pack typechecks the @apack packages' published declarations, which is what apack build
+    // A pack typechecks the @apackdev packages' published declarations, which is what apack build
     // compiles it against. Their declarations name .ts files.
     allowImportingTsExtensions: true,
     // Mirrors package.json "imports": TypeScript doesn't add extensions to subpath import targets
@@ -103,13 +103,13 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
   dependencies: {
     // The generated facades import the EARS engine; it's released with the SDK at the same version
-    '@apack/ears': SDK_RANGE(),
-    '@apack/sdk': SDK_RANGE(),
+    '@apackdev/ears': SDK_RANGE(),
+    '@apackdev/sdk': SDK_RANGE(),
   },
   devDependencies: {
     // Pinned per project: a global, Homebrew or app-bundled `apack` hands off to this one
-    '@apack/cli': `^${cliVersion()}`,
-    // Unit tests run the pack's content and repositories in memory (@apack/testing/harness)
+    '@apackdev/cli': `^${cliVersion()}`,
+    // Unit tests run the pack's content and repositories in memory (@apackdev/testing/harness)
     ...UNIT_TEST_DEV_DEPENDENCIES(SDK_RANGE()),
     // The scaffold's tsconfig uses Node types
     '@types/node': '^22.15.17',
@@ -123,7 +123,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
 // electron-builder strips every `.d.ts` from the packaged app whatever its `files` array says — measured, zero
 // remain in app.asar — so a `.d.ts` template would be missing from the CLI the app installs.
 const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
-// generic component here. @apack/ui components ship declarations and keep their prop types.
+// generic component here. @apackdev/ui components ship declarations and keep their prop types.
 // Checking inside SFCs needs vue-tsc.
 declare module '*.vue' {
   import type { DefineComponent } from 'vue';
@@ -132,17 +132,17 @@ declare module '*.vue' {
 }
 `;
 
-/** The @apack/sdk range the scaffold declares: the SDK this CLI runs against */
+/** The @apackdev/sdk range the scaffold declares: the SDK this CLI runs against */
 const SDK_RANGE = () => `^${sdkVersion() ?? cliVersion()}`;
 
 /** The first vitest release the harness runs on (its peer range) */
 const VITEST_FLOOR = '3.0.0';
 
 /**
- * What the unit test setup needs installed, for a pack on `sdkRange`. @apack/testing is released with @apack/sdk at
+ * What the unit test setup needs installed, for a pack on `sdkRange`. @apackdev/testing is released with @apackdev/sdk at
  * the same version and takes it as a peer dependency (^<version>, one minor before 1.0), so it gets the pack's SDK range.
  */
-const UNIT_TEST_DEV_DEPENDENCIES = (sdkRange: string) => ({ '@apack/testing': sdkRange, vitest: '^3.2.1' });
+const UNIT_TEST_DEV_DEPENDENCIES = (sdkRange: string) => ({ '@apackdev/testing': sdkRange, vitest: '^3.2.1' });
 
 /** The files vitest loads its config from, in the order it looks for them */
 export const VITEST_CONFIG_FILES = ['vitest.config', 'vite.config'].flatMap((name) => ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((ext) => `${name}.${ext}`));
@@ -158,9 +158,9 @@ export interface UnitTestSetup {
   upgrades: Array<{ name: string; range: string; reason: string }>;
 }
 
-/** The pack's @apack/sdk range, as npm resolves @apack/testing's peer against it */
+/** The pack's @apackdev/sdk range, as npm resolves @apackdev/testing's peer against it */
 function packSdkRange(pkg: PackageJson): string {
-  const declared = pkg.dependencies?.['@apack/sdk'] ?? pkg.devDependencies?.['@apack/sdk'] ?? pkg.peerDependencies?.['@apack/sdk'];
+  const declared = pkg.dependencies?.['@apackdev/sdk'] ?? pkg.devDependencies?.['@apackdev/sdk'] ?? pkg.peerDependencies?.['@apackdev/sdk'];
   return declared && semver.validRange(declared) ? declared : SDK_RANGE();
 }
 
@@ -184,9 +184,9 @@ function installedPackage(root: string, name: string): PackageJson | undefined {
 /** Why the pack's own `name` (declared as `declared`, installed or not) can't run the harness, if it can't */
 function outdatedReason(root: string, name: string, declared: string, wanted: string): string | undefined {
   const installed = installedPackage(root, name);
-  if (name === '@apack/testing') {
-    if (installed && !installed.exports?.['./harness']) return `the installed ${installed.version ?? 'version'} has no @apack/testing/harness`;
-    if (semver.validRange(declared) && !semver.intersects(declared, wanted)) return `${declared} doesn't match the pack's @apack/sdk ${wanted}`;
+  if (name === '@apackdev/testing') {
+    if (installed && !installed.exports?.['./harness']) return `the installed ${installed.version ?? 'version'} has no @apackdev/testing/harness`;
+    if (semver.validRange(declared) && !semver.intersects(declared, wanted)) return `${declared} doesn't match the pack's @apackdev/sdk ${wanted}`;
   } else {
     if (installed?.version && semver.valid(installed.version) && semver.lt(installed.version, VITEST_FLOOR)) return `the installed ${installed.version} is before ${VITEST_FLOOR}`;
     if (semver.validRange(declared) && !semver.intersects(declared, `>=${VITEST_FLOOR}`)) return `${declared} is before ${VITEST_FLOOR}`;
@@ -292,7 +292,7 @@ export async function init(args: string[]) {
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your content code:`);
-  console.log(`  import type { ActionMeta } from '@apack/sdk/build';`);
+  console.log(`  import type { ActionMeta } from '@apackdev/sdk/build';`);
   console.log(`  import type { Services, Z } from '#generated/services.ts';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);

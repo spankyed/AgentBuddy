@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
-import { readPackIntegrity } from '@apack/host/packs';
+import { readPackIntegrity } from '@apackdev/host/packs';
 
 /**
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
@@ -31,7 +31,7 @@ vi.mock('../../src/commands/build', () => ({
   }),
 }));
 import { buildPackArchive } from '../../src/commands/pack';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
 

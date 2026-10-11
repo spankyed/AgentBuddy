@@ -12,18 +12,18 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, expect, it } from 'vitest';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-packaged-boot-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadAppPacks } = await import('@apack/host/packs/runtime');
-const { installPackFromLocal, installShippedPacks } = await import('@apack/host/packs');
-const { resolveAppContext } = await import('@apack/sdk/env');
-const { unbindHost } = await import('@apack/sdk/runtime/internals');
-const { getDesignated } = await import('@apack/sdk/designations');
+const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
+const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
+const { getDesignated } = await import('@apackdev/sdk/designations');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 

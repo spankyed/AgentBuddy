@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolveAppContext } from '@apack/sdk/env';
+import { resolveAppContext } from '@apackdev/sdk/env';
 import { verifyPack } from '../../src/packs/layout.ts';
 import { installPackFromLocal } from '../../src/packs/installer.ts';
 import {
@@ -13,7 +13,7 @@ import {
   removeDevServerMarker,
   writeDevServerMarker,
 } from '../../src/packs/dev-server.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
 let userDataDir: string;

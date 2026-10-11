@@ -4,7 +4,7 @@
  */
 
 import type { editor, IDisposable } from 'monaco-editor'
-import { getDslTypes } from '@apack/sdk/fe'
+import { getDslTypes } from '@apackdev/sdk/fe'
 
 type Monaco = typeof import('monaco-editor')
 type Language = 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext'

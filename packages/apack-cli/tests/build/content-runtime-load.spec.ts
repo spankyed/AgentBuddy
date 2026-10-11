@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { bundlePackContentRuntime } from '../../src/build/be-bundler';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** A content runtime that bundles but can't load where dependents' unit tests load it fails `apack build` */
 const tmpDirs: string[] = [];
@@ -17,7 +17,7 @@ function pack(repository: string): string {
   const files: Record<string, string> = {
     'src/repository.ts': repository,
     'src/__generated__/content-runtime.ts': [
-      "import type { ContentRuntime } from '@apack/sdk/testing';",
+      "import type { ContentRuntime } from '@apackdev/sdk/testing';",
       "import { memoQueries } from '../repository';",
       "export const contentRuntime: ContentRuntime = { id: 'load-pack', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, contentWriters: {} };",
     ].join('\n'),
@@ -30,18 +30,18 @@ function pack(repository: string): string {
 }
 
 describe('apack build loads the content runtime it bundles', () => {
-  it('passes a content runtime that uses only @apack/sdk', async () => {
-    const dir = pack("import { findRelations } from '@apack/ears';\nexport const memoQueries = { links: findRelations };\n");
+  it('passes a content runtime that uses only @apackdev/sdk', async () => {
+    const dir = pack("import { findRelations } from '@apackdev/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackContentRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 
   it('passes when the caller carries the source condition, as npm test and PACK_DIR builds do', async () => {
-    // The check loads the bundle in a child process. Inheriting --conditions=@apack/source would make
+    // The check loads the bundle in a child process. Inheriting --conditions=@apackdev/source would make
     // that child resolve the packages' TypeScript with no loader to read it, and the build would fail
     // naming the pack's content runtime rather than the loader.
-    const dir = pack("import { findRelations } from '@apack/ears';\nexport const memoQueries = { links: findRelations };\n");
+    const dir = pack("import { findRelations } from '@apackdev/ears';\nexport const memoQueries = { links: findRelations };\n");
     const before = process.env.NODE_OPTIONS;
-    process.env.NODE_OPTIONS = `${before ?? ''} --conditions=@apack/source`.trim();
+    process.env.NODE_OPTIONS = `${before ?? ''} --conditions=@apackdev/source`.trim();
     try {
       expect(await bundlePackContentRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
     } finally {

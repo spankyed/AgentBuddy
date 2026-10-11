@@ -10,8 +10,8 @@
 // Settings plugin instead makes a reply and a broadcast arrive at the same place — measured, a case that drove
 // the real system passed with the reply deleted. Passing `reply` in makes the two arms ordinary arguments.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Reply } from '@apack/sdk/events';
-import { startTestRuntime, testRootEvents } from '@apack/sdk/testing';
+import type { Reply } from '@apackdev/sdk/events';
+import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../../src/app-state/index.ts';
 import { createPackRegistry } from '../../../src/packs/registry.ts';
 import { answerSettings } from '../../../src/features/settings/be/answer.ts';

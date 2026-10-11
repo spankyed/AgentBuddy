@@ -4,7 +4,7 @@
 import {
   findRelations, filterSystemFields, generateLabelWithCount, generateShortCode, getTimestamp,
   removeRelationById, RepositoryError, RepositoryErrorCode, untypedTx, untypedQx as qx,
-} from '@apack/ears';
+} from '@apackdev/ears';
 import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';

@@ -49,7 +49,7 @@ function cacheBeta(tag: string, appVersion?: string): string {
 }
 /**
  * A checkout `checkoutFor` would find, which the fixture above is not: it writes no `package.json` and no
- * `node_modules/@apack/*`, so the real resolver answers `undefined` for every one of them. The derivation
+ * `node_modules/@apackdev/*`, so the real resolver answers `undefined` for every one of them. The derivation
  * is therefore driven through an injected `checkout`, and `checkoutFor`'s own behaviour is covered by
  * `tests/build/checkout-packages.spec.ts` — one seam, tested on its own side.
  */
@@ -458,14 +458,14 @@ describe('fixtureEnv', () => {
       .toEqual({ APACK_ROOT: '/repo', APACK_CLI: cliBin() });
   });
 
-  it('never gives the runner the @apack/source condition: a pack resolves the published dist', () => {
+  it('never gives the runner the @apackdev/source condition: a pack resolves the published dist', () => {
     const app = { kind: 'source', root: '/repo' } as const;
     // The caller's own flags survive; the condition does not, however the run was started
     expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--max-old-space-size=4096' }).NODE_OPTIONS)
       .toBe('--max-old-space-size=4096');
-    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@apack/source --max-old-space-size=4096' }).NODE_OPTIONS)
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@apackdev/source --max-old-space-size=4096' }).NODE_OPTIONS)
       .toBe('--max-old-space-size=4096');
-    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@apack/source' })).not.toHaveProperty('NODE_OPTIONS');
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@apackdev/source' })).not.toHaveProperty('NODE_OPTIONS');
   });
 });
 

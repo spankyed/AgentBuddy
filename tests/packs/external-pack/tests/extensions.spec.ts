@@ -4,9 +4,9 @@
 // compile, a track builder typed against the shipped pack's two trigger fields, and a warning on every
 // step-less build — were all invisible while `default-setup` was the only pack exercising it.
 import { describe, expect, it } from 'vitest';
-import { stepRegistry } from '@apack/sdk/steps';
-import { artifactRegistry } from '@apack/sdk/artifacts';
-import { blockRegistry } from '@apack/sdk/blocks';
+import { stepRegistry } from '@apackdev/sdk/steps';
+import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { blockRegistry } from '@apackdev/sdk/blocks';
 import { pulseTriggerBuild } from '../src/extensions/steps/pulse/trigger.ts';
 
 describe("a pack's declared steps", () => {

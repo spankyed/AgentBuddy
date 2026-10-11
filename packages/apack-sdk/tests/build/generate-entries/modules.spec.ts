@@ -131,7 +131,7 @@ describe("the SDK's entities and relation kinds", () => {
     for (const entity of Object.values(SDK_ENTITIES)) expect(ears).toContain(`export const ${entity} = '${entity}';`);
     for (const [name, kind] of Object.entries(SDK_REL_KINDS)) expect(ears).toContain(`export const ${name} = '${kind}';`);
     expect(ears).toContain(`export type EntityName = ${Object.values(SDK_ENTITIES).map((name) => `'${name}'`).join(' | ')};`);
-    expect(ears).toContain("import type { SdkEntityShapes } from '@apack/sdk';");
+    expect(ears).toContain("import type { SdkEntityShapes } from '@apackdev/sdk';");
     // Relation alone doesn't close the pack's Entity type
     expect(ears).toContain('export type Entity = string;');
   });

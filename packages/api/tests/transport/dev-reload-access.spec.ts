@@ -11,11 +11,11 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 process.env.APACK_API_TOKEN = 'the-run-token';
 const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/transport/websocket');
-const { API_HOST } = await import('@apack/sdk/utils/pure');
+const { API_HOST } = await import('@apackdev/sdk/utils/pure');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/boot/config');
-const { resolveAppContext } = await import('@apack/sdk/env');
-const { readApiEndpoint } = await import('@apack/host/process-liveness');
-const { API_TOKEN_HEADER } = await import('@apack/sdk/utils/pure');
+const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { readApiEndpoint } = await import('@apackdev/host/process-liveness');
+const { API_TOKEN_HEADER } = await import('@apackdev/sdk/utils/pure');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 const TOKEN = 'the-run-token';

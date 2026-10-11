@@ -17,7 +17,7 @@
 // sleep was the cheapest thing available.
 //
 // **Source-only, as `./testing/pack-fixture` and `./testing/serialisation-matrix` are.** The `exports` entry
-// names a path under `@apack/source` and nothing else, so `publishedManifest` drops it and no pack can resolve
+// names a path under `@apackdev/source` and nothing else, so `publishedManifest` drops it and no pack can resolve
 // it. This is repo-internal test support, not something a pack author reaches for.
 
 /**

@@ -16,10 +16,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
-import { sharedFeModules } from '@apack/host/build/shared-deps';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { sharedFeModules } from '@apackdev/host/build/shared-deps';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { bundleExternals } from '../_support/pack-builds';
 
 const tmpDirs: string[] = [];
@@ -28,9 +28,9 @@ afterEach(() => { for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursiv
 /** One specifier from each population the host shares, and one it deliberately does not */
 const ENTRY = [
   "export { ref } from 'vue';",                                              // a third-party dep
-  "export { usePlugin } from '@apack/sdk/fe';",                             // an SDK frontend module
-  "export { useDebounce } from '@apack/ui/composables/useDebounce';",       // a UI kit module
-  "export { b64Encode } from '@apack/ears';",                               // NOT shared: the renderer keeps no EARS data
+  "export { usePlugin } from '@apackdev/sdk/fe';",                             // an SDK frontend module
+  "export { useDebounce } from '@apackdev/ui/composables/useDebounce';",       // a UI kit module
+  "export { b64Encode } from '@apackdev/ears';",                               // NOT shared: the renderer keeps no EARS data
 ].join('\n');
 
 async function buildFE(manifest: Record<string, unknown> = {}, entrySource = ENTRY): Promise<string[]> {
@@ -51,8 +51,8 @@ it('leaves a specifier from every population the host shares', async () => {
   const externals = await buildFE();
 
   expect(externals).toContain('vue');
-  expect(externals).toContain('@apack/sdk/fe');
-  expect(externals).toContain('@apack/ui/composables/useDebounce');
+  expect(externals).toContain('@apackdev/sdk/fe');
+  expect(externals).toContain('@apackdev/ui/composables/useDebounce');
 });
 
 // The mutation on the same bundle: a specifier the host does *not* share must be inlined, or the three
@@ -60,8 +60,8 @@ it('leaves a specifier from every population the host shares', async () => {
 it('inlines what the host does not share', async () => {
   const externals = await buildFE();
 
-  expect(externals, '@apack/ears is inlined on the frontend: the renderer keeps no EARS data to share')
-    .not.toContain('@apack/ears');
+  expect(externals, '@apackdev/ears is inlined on the frontend: the renderer keeps no EARS data to share')
+    .not.toContain('@apackdev/ears');
   expect(fs.existsSync(path.join(REPO_ROOT, 'packages', 'apack-ears'))).toBe(true);
 });
 
@@ -77,14 +77,14 @@ it('leaves bare only specifiers the host publishes a module for', async () => {
   }
 });
 
-// build.bundleUi is the opt-out, and it opts out of @apack/ui alone: a pack carrying its own UI kit still has
+// build.bundleUi is the opt-out, and it opts out of @apackdev/ui alone: a pack carrying its own UI kit still has
 // to share ProseMirror and tiptap's Vue menus, which is where "two ProseMirror instances" actually comes from.
-it('inlines @apack/ui with build.bundleUi, and still shares what @apack/ui depends on', async () => {
+it('inlines @apackdev/ui with build.bundleUi, and still shares what @apackdev/ui depends on', async () => {
   const externals = await buildFE({ build: { bundleUi: true } }, [
-    "export { useDebounce } from '@apack/ui/composables/useDebounce';",
+    "export { useDebounce } from '@apackdev/ui/composables/useDebounce';",
     "export { EditorState } from '@tiptap/pm/state';",
   ].join('\n'));
 
-  expect(externals).not.toContain('@apack/ui/composables/useDebounce');
+  expect(externals).not.toContain('@apackdev/ui/composables/useDebounce');
   expect(externals).toContain('@tiptap/pm/state');
 });

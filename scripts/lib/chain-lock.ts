@@ -1,4 +1,4 @@
-// One chain run per checkout, and the policy over `@apack/host/exclusive-lock`'s mechanism: where the lock
+// One chain run per checkout, and the policy over `@apackdev/host/exclusive-lock`'s mechanism: where the lock
 // file lives, what the refusal says, and how long `--wait` waits.
 //
 // **Two runs share this checkout's stamps**, `node_modules/.cache/apack-chain`, so each would cache results
@@ -10,7 +10,7 @@
 // It is a module of its own because `chain.ts` runs the chain on import (a top-level `await main()`), so a
 // spec can only reach this by it being here — the same reason `chain-stamps.ts` and `chain-flags.ts` exist.
 import * as path from 'node:path';
-import { holdExclusiveLockWaiting, type ExclusiveLock } from '@apack/host/exclusive-lock';
+import { holdExclusiveLockWaiting, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { STAMP_DIR } from './chain-stamps.ts';
 
 /**

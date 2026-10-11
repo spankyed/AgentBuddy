@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import Dialog from '@apack/ui/design/dialog'
+import Dialog from '@apackdev/ui/design/dialog'
 
 interface Props {
   modelValue: boolean

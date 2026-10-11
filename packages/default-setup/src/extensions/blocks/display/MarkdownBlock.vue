@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import CopyButton from '@apack/ui/design/CopyButton'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@apackdev/ui/design/CopyButton'
 
 defineProps<{
   content: string

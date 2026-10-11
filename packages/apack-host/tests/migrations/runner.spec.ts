@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { PackMigration } from '@apack/sdk/framework';
+import type { PackMigration } from '@apackdev/sdk/framework';
 
 // The migrations runner reads the app environment; a test build runs release rules
 process.env.APACK_ENV = 'test';
@@ -18,8 +18,8 @@ const runs = vi.hoisted(() => ({ shipped: 0, external: 0 }));
 
 /** The app version the runner reads; the test host's unless a test sets one */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
-vi.mock('@apack/sdk/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/sdk/env')>();
+vi.mock('@apackdev/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/sdk/env')>();
   return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
 });
 
@@ -27,7 +27,7 @@ import { registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/
 import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
 import { appState } from '../../src/app-state/index.ts';
-import { resetTestData } from '@apack/sdk/testing';
+import { resetTestData } from '@apackdev/sdk/testing';
 
 let builtInDir: string;
 

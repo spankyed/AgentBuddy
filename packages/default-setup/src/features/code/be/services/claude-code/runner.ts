@@ -24,7 +24,7 @@ import {
 import type { Readable, Writable } from 'stream'
 
 import { resolveForService } from '../../utils/resolve-cli.ts'
-import { createLogger } from '@apack/sdk/logger'
+import { createLogger } from '@apackdev/sdk/logger'
 
 import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson.ts'
 import {

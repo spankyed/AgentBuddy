@@ -1,5 +1,5 @@
 > **Done** (`AS/cli-suite-spawns`, in a worktree). **Superseded in part** by
-> [`goal-measured-placement.md`](goal-measured-placement.md): this split `@apack/cli`'s suite by whether a
+> [`goal-measured-placement.md`](goal-measured-placement.md): this split `@apackdev/cli`'s suite by whether a
 > spec spawns a process, and spawning turned out to be a proxy that said three things wrongly. Placement is
 > now measured cost. The split itself stands; the predicate does not.
 
@@ -29,7 +29,7 @@ Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new helper is mutation-checked.
 - Every remaining `run('node', [CLI, …])` call site is one whose assertion is about the process — an exit
   code, stderr, argv parsing or a tty — and a comment beside it says which.
-- `npm test -w @apack/cli` passes with the same test count it has today, or more. Not fewer: this goal moves
+- `npm test -w @apackdev/cli` passes with the same test count it has today, or more. Not fewer: this goal moves
   work off the process boundary, it does not delete coverage.
 - Measured and recorded in the doc: the suite's wall time and total test time before and after, and
   `npm run chain`'s `test:unit` step before and after.
@@ -59,7 +59,7 @@ Never:
 
 # Goal: the CLI suite spawns a process only where the process is the thing under test
 
-`@apack/cli`'s suite is 56s of `test:unit`'s ~100s — the single largest block of time in the pre-merge
+`@apackdev/cli`'s suite is 56s of `test:unit`'s ~100s — the single largest block of time in the pre-merge
 chain. It is not slow because a few tests are slow; it is slow because it starts processes. This goal moves
 the work that does not need a process boundary off it, and leaves the work that does.
 
@@ -191,7 +191,7 @@ merge.
 (`STAMP_DIR = repoFile('node_modules', '.cache', 'apack-packages-build')`, `packages-built.ts:107-108`) while
 `packages/*/dist` stays per-checkout. That only matters when the two checkouts disagree about a *build input*,
 because `unitStaleReason` (`:190-205`) compares a stamp against the inputs, and
-`packages/apack-cli/tests` is not one — the `@apack/cli` unit's inputs are the root manifests,
+`packages/apack-cli/tests` is not one — the `@apackdev/cli` unit's inputs are the root manifests,
 `scripts/bundle-package.ts`, `apack-cli/{bin,src,package.json,tsconfig.json}` and `apack-host/{src,package.json}`.
 
 So Phase 1, and every edit confined to `tests/`, leave the fingerprint identical to master's and the shared
@@ -327,17 +327,17 @@ load average of 109. Take those two numbers before claiming the goal's headline.
 ### The suite did not get faster, and that is the finding
 
 Taken on a quiet machine (load 6-12) once the other session stopped, before and after, each a full
-`npm run test:unit` so the `@apack/cli` step is measured exactly as the chain runs it:
+`npm run test:unit` so the `@apackdev/cli` step is measured exactly as the chain runs it:
 
 | | before | after |
 |---|---|---|
-| `@apack/cli` suite, wall | 59.07s | 59.54s |
-| `@apack/cli` suite, total test time | 261.6s | 259.9s |
+| `@apackdev/cli` suite, wall | 59.07s | 59.54s |
+| `@apackdev/cli` suite, total test time | 261.6s | 259.9s |
 | tests | 764 | 764 |
 | `npm run test:unit`, whole step | 144.5s (load 20) | 113.5s (load 12) |
 
 **The suite is unchanged.** The `test:unit` difference is ambient load, not this work: the only step
-this change can touch is `@apack/cli`, and that step moved 0.5s on a 59s wall, which is noise.
+this change can touch is `@apackdev/cli`, and that step moved 0.5s on a 59s wall, which is noise.
 
 The four converted files *did* get faster, by the same ~20% in the suite that they showed in isolation:
 

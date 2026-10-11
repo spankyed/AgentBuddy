@@ -15,8 +15,8 @@
 // fails, which is the point of having it.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
-import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
-import { untypedSendToSystem, type Message } from '@apack/sdk/events';
+import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { untypedSendToSystem, type Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -193,7 +193,7 @@ describe('what it leaves alone', () => {
  * **The helper above still works, which is the design.** `answering` is its own field on the report, so
  * `operation` goes on meaning "the reports this function made" and a reader filtering for direction keeps
  * getting all of them. The first attempt made `operation` itself `'reply'`, which forced a second filter here
- * and — outside the specs — left `@apack/testing`'s fixture collecting one value while the bus sent two.
+ * and — outside the specs — left `@apackdev/testing`'s fixture collecting one value while the bus sent two.
  */
 describe('an answer to a system that declares no such event', () => {
   const answer = (type: string) => { send({ to: MEMOS, event: { type }, answering: 'c-asked' }); };

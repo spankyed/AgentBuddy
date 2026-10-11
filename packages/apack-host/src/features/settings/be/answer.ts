@@ -1,4 +1,4 @@
-import type { Reply } from '@apack/sdk/events';
+import type { Reply } from '@apackdev/sdk/events';
 import { broadcastToPlugin } from '../../../events.ts';
 import type { OutgoingSettingsEvents } from './types.ts';
 

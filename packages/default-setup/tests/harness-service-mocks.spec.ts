@@ -1,7 +1,7 @@
-// @apack/testing's mockService lasts for the test it's made in: made in a beforeEach it applies to each test,
+// @apackdev/testing's mockService lasts for the test it's made in: made in a beforeEach it applies to each test,
 // and made where no test runs (beforeAll, module scope) it fails instead of silently lapsing after the first test
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { mockService } from '@apack/testing/harness'
+import { mockService } from '@apackdev/testing/harness'
 import { services } from '#generated/services.ts'
 
 const scripted = { clearAllSchedules: () => {} }

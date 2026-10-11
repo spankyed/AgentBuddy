@@ -122,7 +122,7 @@ import { nodeTypes } from '../nodes/index.ts'
 import { useNodeViewport } from '../useNodeViewport.ts'
 
 import type { LayoutDirection } from '#features/flows/fe/canvas/layout-utils.ts'
-import { isTriggerNode } from '@apack/ui/components/node-styles'
+import { isTriggerNode } from '@apackdev/ui/components/node-styles'
 
 provide('BaseNodeAddHandle', AddHandle)
 

@@ -1,6 +1,6 @@
 // The host's own app migrations: they move the app's state, which no pack owns. Listed in version order;
 // runAppMigrations() runs them before the built-in packs' migrations.
-import type { PackMigration } from '@apack/sdk/framework';
+import type { PackMigration } from '@apackdev/sdk/framework';
 import type { PackRegistry } from '../../packs/registry.ts';
 import { migration as m040, type InstalledManifests } from './0.4.0.ts';
 

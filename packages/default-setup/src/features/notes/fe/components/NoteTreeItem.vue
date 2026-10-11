@@ -244,10 +244,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from 'reka-ui'
-import EmojiPicker from '@apack/ui/design/EmojiPicker'
-import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup'
-import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu'
-import { useTrackedMenuOpen } from '@apack/sdk/fe'
+import EmojiPicker from '@apackdev/ui/design/EmojiPicker'
+import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup'
+import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu'
+import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8

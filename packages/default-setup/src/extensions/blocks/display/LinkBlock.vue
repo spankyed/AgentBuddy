@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { ExternalLink, FileText, MessageSquare, Settings, Link as LinkIcon } from 'lucide-vue-next'
 import type { Component } from 'vue'
-import { untypedOpenPlugin } from '@apack/sdk/fe'
+import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 
 export type SupportedLinkIcon =
   | 'external-link'

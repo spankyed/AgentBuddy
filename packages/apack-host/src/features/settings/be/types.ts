@@ -1,8 +1,8 @@
-import type { ApplicationHotkeys } from '@apack/sdk/types';
-import type { HelpEntry } from '@apack/sdk/framework';
-import type { ApplyResult } from '@apack/sdk/utils';
-import type { PackContentPreview } from '@apack/sdk/content';
-import type { SecretInfo, SecretsStatus } from '@apack/sdk/services';
+import type { ApplicationHotkeys } from '@apackdev/sdk/types';
+import type { HelpEntry } from '@apackdev/sdk/framework';
+import type { ApplyResult } from '@apackdev/sdk/utils';
+import type { PackContentPreview } from '@apackdev/sdk/content';
+import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services';
 import type { SettingsDocument } from './store.ts';
 // The settings feature's contract: what its system receives, what it sends its plugin, and its context.
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.

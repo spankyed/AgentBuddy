@@ -3,7 +3,7 @@
 // partitions are hydrated at boot.
 import { describe, expect, it } from 'vitest';
 import { appPartitionPolicy } from '../../src/database/open.ts';
-import { SDK_ENTITIES } from '@apack/sdk/types';
+import { SDK_ENTITIES } from '@apackdev/sdk/types';
 import { APPLIED_CONTENT_ENTITY } from '../../src/app-state/index.ts';
 
 const policy = appPartitionPolicy();

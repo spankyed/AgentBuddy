@@ -6,7 +6,7 @@
 // It was an `AsyncLocalStorage` until this file said otherwise, because `reply()` read the scope *at the
 // moment it was called* and a backend handler routinely answers after an `await`. That requirement left when
 // `reply` became something a handler is *handed*: the wrapper reads the delivery synchronously as the handler
-// is entered (`_replyTo(_currentDelivery())`, `@apack/sdk/framework`), before any `await` can have happened,
+// is entered (`_replyTo(_currentDelivery())`, `@apackdev/sdk/framework`), before any `await` can have happened,
 // and the handler closes over the result. Measured on removal — the whole host suite (3077) and the pack
 // suite (787) passed, `reply.spec.ts`'s two-overlapping-asks case included, which is the case its own header
 // named as the one thing a single variable could not do.
@@ -20,7 +20,7 @@
 // handler creates inside it, a timer included — so a send made minutes later, long after the asker stopped
 // waiting, carried that asker's address, and a `reply` made there would have answered a request nobody was
 // listening for. Binding at entry cannot do that: a handler either took an answer with it or it did not.
-import { _runDelivery, type _Asker, type Message } from '@apack/sdk/events';
+import { _runDelivery, type _Asker, type Message } from '@apackdev/sdk/events';
 
 /**
  * The way back to whoever sent this message, read off the envelope.

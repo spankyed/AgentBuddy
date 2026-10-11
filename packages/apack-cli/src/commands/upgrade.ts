@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { replaceDir, stagingDirName } from '@apack/host/replace-dir';
+import { replaceDir, stagingDirName } from '@apackdev/host/replace-dir';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import semver from 'semver';
-import { resolveAppContext } from '@apack/sdk/env';
-import { findRunningApp } from '@apack/host/database';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { findRunningApp } from '@apackdev/host/database';
 import { downloadVerified, listAppReleases, type Release } from '../app/app-releases.ts';
 import { parseTargetEnv, TARGET_ENV_USAGE } from '../utils.ts';
 

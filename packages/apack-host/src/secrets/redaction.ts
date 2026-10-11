@@ -2,7 +2,7 @@
 // are printed. The app binds this as HostRuntime.redaction; the SDK reads it and has no way to install another, so
 // what counts as a secret is the host's to say.
 import * as crypto from 'node:crypto';
-import type { SecretRedaction } from '@apack/sdk/runtime';
+import type { SecretRedaction } from '@apackdev/sdk/runtime';
 
 const digests = new Set<string>();
 const lengths = new Set<number>();

@@ -9,14 +9,14 @@
 // made-up workspace resolves to no body — which is immaterial: what these cases are about is *which* script
 // each call is attributed to, and that is `invoked`.
 import { describe, expect, it } from 'vitest';
-import { population } from '@apack/sdk/testing';
+import { population } from '@apackdev/sdk/testing';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { reachableText, rootScripts, workspaceScripts } from '../../../scripts/lib/npm-scripts.ts';
 
 describe('reachableText', () => {
   it('attributes a workspace call to the workspace, and reads every flag in its tail', () => {
-    const all = { a: 'npm run t --workspace @apack/cli --workspace @apack/testing' };
-    expect([...reachableText('a', all).invoked]).toEqual(['a', '@apack/cli:t', '@apack/testing:t']);
+    const all = { a: 'npm run t --workspace @apackdev/cli --workspace @apackdev/testing' };
+    expect([...reachableText('a', all).invoked]).toEqual(['a', '@apackdev/cli:t', '@apackdev/testing:t']);
   });
 
   /**

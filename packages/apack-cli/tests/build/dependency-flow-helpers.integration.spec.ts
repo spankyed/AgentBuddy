@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@apack/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 import { bundlePackFlowHelpers } from '../../src/build/flow-helpers-bundler';
 
 /**
@@ -18,7 +18,7 @@ afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 const tsconfig = {
   compilerOptions: {
     target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true, types: [],
-    customConditions: ['@apack/source'], allowImportingTsExtensions: true,
+    customConditions: ['@apackdev/source'], allowImportingTsExtensions: true,
   },
   include: ['src/**/*.ts'],
 };
@@ -70,10 +70,10 @@ let snapshot: PackSnapshot;
 
 beforeAll(async () => {
   const base = writePack('base-pack', {
-    'src/steps/pour/types.ts': "import type { DSLNodeBase } from '@apack/sdk/build';\nexport interface DSLPourNode extends DSLNodeBase { type: 'pour'; cup: string; size?: 'small' | 'large' }\n",
-    'src/steps/choose/types.ts': "import type { DSLStepNode } from '@apack/sdk/build';\nexport interface DSLChooseOption { when: string; steps: DSLStepNode[] }\n",
+    'src/steps/pour/types.ts': "import type { DSLNodeBase } from '@apackdev/sdk/build';\nexport interface DSLPourNode extends DSLNodeBase { type: 'pour'; cup: string; size?: 'small' | 'large' }\n",
+    'src/steps/choose/types.ts': "import type { DSLStepNode } from '@apackdev/sdk/build';\nexport interface DSLChooseOption { when: string; steps: DSLStepNode[] }\n",
     'src/steps/choose/helpers.ts': [
-      "import type { DSLStepNode } from '@apack/sdk/build';",
+      "import type { DSLStepNode } from '@apackdev/sdk/build';",
       "import type { DSLChooseOption } from './types.ts';",
       "export function choose(options: DSLChooseOption[]): DSLStepNode { return { type: 'choose', options }; }",
     ].join('\n'),

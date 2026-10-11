@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { init } from '../../src/commands/init';
 import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';
@@ -87,7 +87,7 @@ describe('apack add step', () => {
     expect(read('src/__generated__/types.ts')).toContain('export type NodeEntity = MyStepNode | MyOtherStepNode;');
 
     write('src/flow-helpers-usage.ts', [
-      "import type { DSLStepNode } from '@apack/sdk/build';",
+      "import type { DSLStepNode } from '@apackdev/sdk/build';",
       "import { myStep, myOtherStep } from '#generated/flow-helpers';",
       "export const nodes: DSLStepNode[] = [myStep('Hello', { description: 'd' }), myOtherStep()];",
       '',
@@ -167,7 +167,7 @@ describe('apack add artifact and block', () => {
     await addArtifact(['table', '--icon', 'Table2'], pack);
 
     const viewer = read('src/extensions/artifacts/viewers/chart-artifact.vue');
-    expect(viewer).toContain("import type { ArtifactItem } from '@apack/sdk/artifacts';");
+    expect(viewer).toContain("import type { ArtifactItem } from '@apackdev/sdk/artifacts';");
     expect(viewer).toContain('defineProps<{ artifact: ArtifactItem }>();');
 
     expect(readManifest().extensions.artifacts).toEqual({
@@ -222,7 +222,7 @@ describe('apack add migration', () => {
     await addMigration(['0.3.16-beta.1', '--app'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
-    expect(migration).toContain("import type { DeclaredMigration } from '@apack/sdk/framework';");
+    expect(migration).toContain("import type { DeclaredMigration } from '@apackdev/sdk/framework';");
     // The version is the manifest key and the line is the map, so the module restates neither
     expect(migration).not.toContain('target:');
     expect(readManifest().migrations).toEqual({
@@ -316,7 +316,7 @@ describe('apack add action, prompt and flow', () => {
   it('writes a prompt with its label and template function', async () => {
     await addPrompt(['summarize-text'], pack);
     const prompt = read('src/content/prompts/summarize-text.ts');
-    expect(prompt).toContain("import type { PromptMeta } from '@apack/sdk/build';");
+    expect(prompt).toContain("import type { PromptMeta } from '@apackdev/sdk/build';");
     expect(prompt).toContain("label: 'Summarize Text'");
     expect(prompt).toContain('export function template(params: Record<string, any>)');
   });
@@ -330,7 +330,7 @@ describe('apack add action, prompt and flow', () => {
     write('src/__generated__/flow-helpers.ts', ['export const entry = 1;', 'export const keepAlive = 2;', ''].join('\n'));
     await addFlow(['onboarding'], pack);
     expect(read('src/content/flows/onboarding.ts')).toBe([
-      "import type { FlowDSL } from '@apack/sdk/build';",
+      "import type { FlowDSL } from '@apackdev/sdk/build';",
       "import { entry, keepAlive } from '#generated/flow-helpers.ts';",
       '',
       'export default {',

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@apack/sdk/env';
+import { resolveAppContext } from '@apackdev/sdk/env';
 import { parseTargetEnv, envLabel } from '../utils';
 
 export async function list(args: string[]) {

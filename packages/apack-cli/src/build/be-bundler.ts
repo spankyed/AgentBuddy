@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@apack/host/build/shared-deps';
-import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@apack/sdk/build';
+import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@apackdev/host/build/shared-deps';
+import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@apackdev/sdk/build';
 import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */
@@ -192,8 +192,8 @@ export const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
 /**
  * Bundle the pack's content runtime (src/__generated__/content-runtime.ts: entity types, repositories,
- * content writers) into dist/build/content-runtime.mjs. Only the shared-instance packages (@apack/sdk and
- * @apack/ears) stay external, so a dependent's unit tests can load it with just their own installed
+ * content writers) into dist/build/content-runtime.mjs. Only the shared-instance packages (@apackdev/sdk and
+ * @apackdev/ears) stay external, so a dependent's unit tests can load it with just their own installed
  * and share their instances. The
  * build then loads it that way, so a bundle that can't load fails here.
  */
@@ -224,9 +224,9 @@ export async function bundlePackContentRuntime(
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 /**
- * Fails the bundle when pack code imports @apack/host, the app's private package, or an export only the
+ * Fails the bundle when pack code imports @apackdev/host, the app's private package, or an export only the
  * app loads (`APP_ONLY_EXPORTS`, the LMDB store): installed apack doesn't provide them to packs, so
- * they would only fail later, at load. Packs use @apack/sdk.
+ * they would only fail later, at load. Packs use @apackdev/sdk.
  */
 export function rejectHostImportsPlugin(): import('esbuild').Plugin {
   const appOnly = new RegExp(`^(?:${Object.keys(APP_ONLY_EXPORTS).map(escapeRegExp).join('|')})$`);
@@ -234,8 +234,8 @@ export function rejectHostImportsPlugin(): import('esbuild').Plugin {
     name: 'reject-host-imports',
     setup(build) {
       const importedFrom = (importer: string) => path.relative(process.cwd(), importer) || importer;
-      build.onResolve({ filter: /^@apack\/host(?:\/|$)/ }, (args) => ({
-        errors: [{ text: `${args.path} is the app's private host package; packs import @apack/sdk instead (imported from ${importedFrom(args.importer)})` }],
+      build.onResolve({ filter: /^@apackdev\/host(?:\/|$)/ }, (args) => ({
+        errors: [{ text: `${args.path} is the app's private host package; packs import @apackdev/sdk instead (imported from ${importedFrom(args.importer)})` }],
       }));
       build.onResolve({ filter: appOnly }, (args) => ({
         errors: [{ text: `${args.path} is only for the app (${APP_ONLY_EXPORTS[args.path]}); packs can't import it (imported from ${importedFrom(args.importer)})` }],

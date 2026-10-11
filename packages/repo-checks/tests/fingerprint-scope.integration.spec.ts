@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { covers, GUIDES_A_CHECK_READS, inputFiles, READS_MARKDOWN, REPO_ROOT, skipsFingerprint } from '@apack/host/build/packages-built';
+import { covers, GUIDES_A_CHECK_READS, inputFiles, READS_MARKDOWN, REPO_ROOT, skipsFingerprint } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, SUITE_READS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -33,10 +33,10 @@ const filesUnder = (input: string): readonly string[] => {
 /**
  * A guard whose subject is the repo has to be an input to the repo.
  *
- * These live inside one package's suite — `identity-guard` in `@apack/sdk`, six here — while what they
+ * These live inside one package's suite — `identity-guard` in `@apackdev/sdk`, six here — while what they
  * assert is every tracked file. The pool runs a project only when that project's own inputs moved, so each
- * was blind to the rest of the tree: `@apack/sdk`'s suite was an input to 241 of 1860 tracked code files.
- * It missed a forbidden path committed to `@apack/cli`, which is not one of its dependencies, and two full
+ * was blind to the rest of the tree: `@apackdev/sdk`'s suite was an input to 241 of 1860 tracked code files.
+ * It missed a forbidden path committed to `@apackdev/cli`, which is not one of its dependencies, and two full
  * chain runs passed over it. `SUITE_READS`' `repo` flag is the fix; this is what keeps it applied.
  *
  * The subject is derived from the specs themselves, through the AST: a spec that calls `repoFiles` is

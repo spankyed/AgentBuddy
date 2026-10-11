@@ -1,10 +1,10 @@
 // The app's migrations runners: the host runs them at boot, and again in an app reset
 // (services.appData.reset()). The migrations live with their packs, and the host's own (the app's
 // state) in ./app. The versions they ran to are recorded in AppState.
-import { getAppVersion, resolveAppContext } from '@apack/sdk/env';
-import { compareVersions } from '@apack/sdk/utils';
-import type { PackMigration } from '@apack/sdk/framework';
-import type { PackManifest } from '@apack/sdk/build';
+import { getAppVersion, resolveAppContext } from '@apackdev/sdk/env';
+import { compareVersions } from '@apackdev/sdk/utils';
+import type { PackMigration } from '@apackdev/sdk/framework';
+import type { PackManifest } from '@apackdev/sdk/build';
 import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';

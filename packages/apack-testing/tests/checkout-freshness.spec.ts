@@ -1,4 +1,4 @@
-// The @apack/testing bundle inlines @apack/host, so a bundle older than the checkout it came from
+// The @apackdev/testing bundle inlines @apackdev/host, so a bundle older than the checkout it came from
 // loads and silently tests the previous one. setupPackTests and the Playwright fixture call this check
 // first, and it is the only thing standing between that and a green run on yesterday's packages.
 import * as fs from 'node:fs';
@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { assertCheckoutPackagesFresh } from '../src/checkout-freshness.ts';
-import { CHECKOUT_MARKER, REPO_ROOT, type StaleUnit } from '@apack/host/build/packages-built';
+import { CHECKOUT_MARKER, REPO_ROOT, type StaleUnit } from '@apackdev/host/build/packages-built';
 
 const tmpDirs: string[] = [];
 afterEach(() => {
@@ -25,7 +25,7 @@ function root(kind: 'checkout' | 'installed'): string {
   return dir;
 }
 
-const STALE: StaleUnit[] = [{ workspace: '@apack/sdk', reason: 'its inputs changed since the last successful run' }];
+const STALE: StaleUnit[] = [{ workspace: '@apackdev/sdk', reason: 'its inputs changed since the last successful run' }];
 const threw = (): StaleUnit[] => { throw new Error('the layout could not be read'); };
 
 describe('the packages a pack test run loads', () => {
@@ -35,7 +35,7 @@ describe('the packages a pack test run loads', () => {
 
   it('fails when the checkout moved past the build this bundle came from, naming each package and the fix', () => {
     expect(() => assertCheckoutPackagesFresh({ root: root('checkout'), stalePackages: () => STALE }))
-      .toThrow(/@apack\/sdk: its inputs changed since the last successful run[\s\S]*npm run packages:ensure/);
+      .toThrow(/@apackdev\/sdk: its inputs changed since the last successful run[\s\S]*npm run packages:ensure/);
   });
 
   it('says what a stale run would be testing, not just that something is stale', () => {
@@ -64,7 +64,7 @@ describe('the packages a pack test run loads', () => {
       root: root('checkout'),
       // Stale until the build this waits for finishes, which is what makes the wait the thing under test
       stalePackages: () => (built ? [] : STALE),
-      runningBuild: () => ({ pid: 4321, label: '@apack/ui' }),
+      runningBuild: () => ({ pid: 4321, label: '@apackdev/ui' }),
       waitForBuild: () => { waited += 1; built = true; },
     })).not.toThrow();
     expect(waited, 'it judged without waiting for the build it could see').toBe(1);
@@ -75,9 +75,9 @@ describe('the packages a pack test run loads', () => {
     expect(() => assertCheckoutPackagesFresh({
       root: root('checkout'),
       stalePackages: () => STALE,
-      runningBuild: () => ({ pid: 4321, label: '@apack/ui' }),
+      runningBuild: () => ({ pid: 4321, label: '@apackdev/ui' }),
       waitForBuild: () => undefined,
-    })).toThrow(/longer than the wait allows \(pid 4321, @apack\/ui\)[\s\S]*Wait for that build/);
+    })).toThrow(/longer than the wait allows \(pid 4321, @apackdev\/ui\)[\s\S]*Wait for that build/);
   });
 
   it('asks for the build when none is running, so a stale checkout still names the fix', () => {

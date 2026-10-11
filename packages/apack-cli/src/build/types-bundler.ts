@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sortLiteralUnions } from './declaration-text';
 import type { RecordReads } from './build-reads';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
-/** A package specifier (`vue`, `@apack/ears`), not a relative path or a pack's own `#` subpath */
+/** A package specifier (`vue`, `@apackdev/ears`), not a relative path or a pack's own `#` subpath */
 export function isPackageSpecifier(id: string): boolean {
   return !id.startsWith('.') && !path.isAbsolute(id) && !id.startsWith('#') && !id.startsWith('\0');
 }
@@ -59,7 +59,7 @@ export async function bundleDeclarations(
         respectExternal: true,
         tsconfig: options.compilerOptions || !fs.existsSync(tsconfig) ? undefined : tsconfig,
         compilerOptions: {
-          // A pack linked to a checkout reads @apack/* declarations from source
+          // A pack linked to a checkout reads @apackdev/* declarations from source
           allowImportingTsExtensions: true,
           skipLibCheck: true,
           ...options.compilerOptions,

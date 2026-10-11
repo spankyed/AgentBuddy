@@ -10,8 +10,8 @@
 // Which half a spec is in stays a decision, declared by this filename and re-derived by nothing.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, publishedTreeDirs } from '@apack/host/build/packages-built';
-import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@apack/host/build/published-manifest';
+import { BUILD_UNITS, publishedTreeDirs } from '@apackdev/host/build/packages-built';
+import { declaredPathFields, manifestPaths, missingPublishedPaths, type Manifest } from '@apackdev/host/build/published-manifest';
 import { describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, PACKED_PACKAGES, workspacePackList } from '../src/published-packages.ts';
 
@@ -63,8 +63,8 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
 
   /**
    * The inverse of the failure a staged tree can introduce, and the reason the source condition has nothing to
-   * resolve to here. Not "no `.ts` file", which is red on a correct artifact twice over: `@apack/cli` ships its
-   * pack templates as source on purpose, and `@apack/ui`'s declarations are named `*.d.vue.ts`, which no
+   * resolve to here. Not "no `.ts` file", which is red on a correct artifact twice over: `@apackdev/cli` ships its
+   * pack templates as source on purpose, and `@apackdev/ui`'s declarations are named `*.d.vue.ts`, which no
    * `.d.ts` test matches.
    */
   it('ships no source directory', () => {
@@ -75,7 +75,7 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
   });
 
   /**
-   * What stops the cases above passing by finding nothing. `@apack/cli`'s `bin` is `"bin/apack.mjs"` with no
+   * What stops the cases above passing by finding nothing. `@apackdev/cli`'s `bin` is `"bin/apack.mjs"` with no
    * `./` prefix, so an extractor keyed on that prefix reports green over zero paths — and `bin` is the only path
    * that manifest names at all.
    */
@@ -103,6 +103,6 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
 describe('the packages a consumer fixture installs', () => {
   it('are all packages the build builds', () => {
     expect(Object.keys(PACKED_PACKAGES).sort()).toEqual(['ears', 'sdk', 'ui']);
-    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@apack/${name}`]).toBeDefined();
+    for (const name of Object.keys(PACKED_PACKAGES)) expect(BUILD_UNITS[`@apackdev/${name}`]).toBeDefined();
   });
 });

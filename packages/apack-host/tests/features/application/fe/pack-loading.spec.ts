@@ -4,7 +4,7 @@
 // isn't loaded again.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, type Actor } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin, settle } from './fakes.ts';
 

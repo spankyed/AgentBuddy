@@ -35,7 +35,7 @@ describe('generated entity shapes', () => {
   });
 
   it("reads Node rows as the step node types of the pack and its dependencies, NodeBase when none define any", () => {
-    write('src/steps/ping/types.ts', "import type { NodeBase } from '@apack/sdk';\nexport interface PingNode extends NodeBase { nodeType: 'ping' }\n");
+    write('src/steps/ping/types.ts', "import type { NodeBase } from '@apackdev/sdk';\nexport interface PingNode extends NodeBase { nodeType: 'ping' }\n");
     write('src/steps/ping/build.ts', 'export const pingStepBuild = {};\n');
     const withSteps = generate(
       { steps: { ping: { build: 'src/steps/ping/build.ts#pingStepBuild' } } },

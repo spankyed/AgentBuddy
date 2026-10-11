@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { generatePackFiles, type PackManifest } from '@apack/sdk/build';
+import { generatePackFiles, type PackManifest } from '@apackdev/sdk/build';
 import { facadeProblems } from '../../src/build/facade-gate';
 import { bundlePackTypes } from '../../src/build/types-bundler';
 
@@ -33,7 +33,7 @@ function systemSource(declaration: 'bare' | 'annotation'): string {
   const machine = "{ spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: 'tags' }) }";
   return [
     "import { setup } from 'xstate';",
-    "import { defineSystem, type SystemEntry } from '@apack/sdk/framework';",
+    "import { defineSystem, type SystemEntry } from '@apackdev/sdk/framework';",
     "import type { Contract } from './contract';",
     'export const tagsSpec = defineSystem<Contract>();',
     declaration === 'bare' ? `const entry = ${machine};` : `const entry: SystemEntry = ${machine};`,

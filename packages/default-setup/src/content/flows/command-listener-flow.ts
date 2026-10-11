@@ -1,4 +1,4 @@
-import type { FlowDSL } from '@apack/sdk/build';
+import type { FlowDSL } from '@apackdev/sdk/build';
 import { entry, on, keepAlive, action, branch } from '#generated/flow-helpers.ts';
 
 export default {

@@ -2,14 +2,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
+import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES, unitStepName } from '../../../scripts/lib/unit-suites.ts';
 import { depFileNames, pruneOrphanDepFiles, readsOf, sourceOf, untrustworthy } from '../../../scripts/lib/dep-files.ts';
 import * as buildReads from '../../../scripts/lib/build-reads.ts';
-import { population } from '@apack/sdk/testing';
+import { population } from '@apackdev/sdk/testing';
 
 /**
  * The compiler reports what it read, and what `typecheck` declares has to cover it.
@@ -575,7 +575,7 @@ describe('what has looked at a step at all', () => {
    *
    * *A tool could report, and two now are asked.* `build:default-setup` and `test:external-pack:contract` both run
    * `apack build`, which records what each bundling phase read — the describe above reads it. Measured
-   * 2026-10-02 on its first run: 285 files for `build:default-setup`, 131 of them `@apack/sdk`'s and `@apack/ears`'
+   * 2026-10-02 on its first run: 285 files for `build:default-setup`, 131 of them `@apackdev/sdk`'s and `@apackdev/ears`'
    * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
    *
@@ -622,9 +622,9 @@ describe('what has looked at a step at all', () => {
  * **What a bundle read, against what its build unit declares.**
  *
  * The third thing this repo can observe, after the compilers' dep files and `apack build`'s module graphs —
- * and the one whose absence cost a real defect. `@apack/cli` and `@apack/testing` are bundled by esbuild
- * with `@apack/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
- * only the first. So an edit to `@apack/sdk/src` left both bundles stale with their stamps reading fresh,
+ * and the one whose absence cost a real defect. `@apackdev/cli` and `@apackdev/testing` are bundled by esbuild
+ * with `@apackdev/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
+ * only the first. So an edit to `@apackdev/sdk/src` left both bundles stale with their stamps reading fresh,
  * `packages:ensure` rebuilt nothing, and it surfaced only when a packaged-authoring run type-checked a
  * generated file against an SDK whose type no longer matched the CLI that emitted it.
  *
@@ -637,7 +637,7 @@ describe('what has looked at a step at all', () => {
  * on a file that was not read last time, which is this same defect wearing a different hat.
  */
 describe('a bundle reads nothing its build unit leaves undeclared', () => {
-  const BUNDLED = ['@apack/cli', '@apack/testing'];
+  const BUNDLED = ['@apackdev/cli', '@apackdev/testing'];
 
   it('finds the records to read, or says plainly that there is no evidence here', () => {
     for (const workspace of BUNDLED) {
@@ -679,6 +679,6 @@ describe('a bundle reads nothing its build unit leaves undeclared', () => {
   it('reports a read the unit does not declare', () => {
     const planted = 'packages/renderer/src/main.ts';
     expect(fs.existsSync(path.join(REPO_ROOT, planted)), 'point this at a file that exists').toBe(true);
-    expect(notCoveredBy(BUILD_UNITS['@apack/cli']!, [planted])).toEqual([planted]);
+    expect(notCoveredBy(BUILD_UNITS['@apackdev/cli']!, [planted])).toEqual([planted]);
   });
 });

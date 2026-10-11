@@ -1,6 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { Component } from 'vue'
-import { useTrackedMenuOpen } from '@apack/sdk/fe'
+import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
 
 export interface MenuItem {
   label: string

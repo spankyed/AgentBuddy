@@ -11,11 +11,11 @@
 // `node_modules/@trpc/server/dist/ws-*.mjs`). These cases pin that, because the failure is invisible: a leaked
 // claim looks like nothing at all until the session after next.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createParticipantClaims } from '@apack/host/bus';
+import { createParticipantClaims } from '@apackdev/host/bus';
 
 const claims = createParticipantClaims();
-vi.mock('@apack/host/bus', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/host/bus')>();
+vi.mock('@apackdev/host/bus', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/host/bus')>();
   return { ...actual, receiveClientEvent: () => {} };
 });
 vi.mock('@/runtime', () => ({ appPacks: {}, appClaims: claims }));

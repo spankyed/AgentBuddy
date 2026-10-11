@@ -11,7 +11,7 @@
 
 Implement docs/goals/goal-published-package-checks.md on AS/chain-inputs, at or after c4f59a87c — the
 base its Background was surveyed at. After goal-test-placement.md lands: its Phase 2 creates the
-@apack/testing suite that one of the Open decisions here can put the packing fixture in, and its Phase 3
+@apackdev/testing suite that one of the Open decisions here can put the packing fixture in, and its Phase 3
 adds the guard this goal's last phase extends.
 Before Phase 1, confirm the base: packages/apack-cli/tests/helpers/published-packages.ts exists and is
 imported by 21 files, of which 9 use its packing exports. If those counts are far off, stop and say so —
@@ -27,7 +27,7 @@ fixture, template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard or helper is
   mutation-checked.
-- No spec whose subject is a published @apack package sits in a package that does not publish it, or the
+- No spec whose subject is a published @apackdev package sits in a package that does not publish it, or the
   exception is recorded with a reason and a stale-entry check.
 - The packing fixture has one home, reachable by every spec that needs it without a cross-package
   relative import.
@@ -61,7 +61,7 @@ break* — to five findings. This is the sixth, split out because it is four tim
 and because, unlike the others, **it has no obvious right answer**: the specs in question have a subject
 that belongs to no single package.
 
-Twelve specs in `@apack/cli` are about the published `@apack` packages rather than about the CLI. They
+Twelve specs in `@apackdev/cli` are about the published `@apackdev` packages rather than about the CLI. They
 are 30.2s of that suite's 190.8s:
 
 | ms | Spec |
@@ -91,11 +91,11 @@ happened not to apply to the other twelve.
 divide cleanly:
 
 - **`installPublishedPackages()`, `compileConsumer()`, `CONSUMER_MATRIX`, `PACKED_PACKAGES`,
-  `TSC_VERSIONS`** — npm-packs `@apack/ears`, the SDK and UI into a temp `node_modules` and compiles a
+  `TSC_VERSIONS`** — npm-packs `@apackdev/ears`, the SDK and UI into a temp `node_modules` and compiles a
   consumer against them, across the current TypeScript and the 5.7 floor × `node16`/`bundler`. **Nine
   files use these.**
 - **`REPO_ROOT` and `PACKAGES_BUILT`** — a path constant and a freshness verdict. **Ten files use only
-  these**, and both are now available from `@apack/host/build/packages-built` (`REPO_ROOT` directly,
+  these**, and both are now available from `@apackdev/host/build/packages-built` (`REPO_ROOT` directly,
   `PACKAGES_BUILT` via `packagesBuiltOrRefuse()`, which `@app/repo-checks` already calls). Those ten import
   a packing fixture to get a path.
 
@@ -108,19 +108,19 @@ That split is what makes the move hard, because the nine real users are not one 
 
 | Group | Specs | Subject |
 |---|---|---|
-| **A — the published artefact** | `published-declarations`, `published-exports`, `published-sdk-any`, `published-sdk-types`, `published-ui-types` | what a consumer gets from `@apack/ears`, `/sdk`, `/ui` |
+| **A — the published artefact** | `published-declarations`, `published-exports`, `published-sdk-any`, `published-sdk-types`, `published-ui-types` | what a consumer gets from `@apackdev/ears`, `/sdk`, `/ui` |
 | **B — the CLI, with a packed consumer as fixture** | `facade-typing`, `fe-bundler-host-registry`, `types-bundler-determinism` | `apack build`'s bundlers and facade gate |
-| **freshness** | `package-freshness` | `@apack/host/build/packages-built`'s stamp rule; uses `PACKED_PACKAGES` only to assert `BUILD_UNITS` covers everything packed |
+| **freshness** | `package-freshness` | `@apackdev/host/build/packages-built`'s stamp rule; uses `PACKED_PACKAGES` only to assert `BUILD_UNITS` covers everything packed |
 
-Group B legitimately belongs in `@apack/cli`. So wherever Group A goes, the packing fixture cannot simply
+Group B legitimately belongs in `@apackdev/cli`. So wherever Group A goes, the packing fixture cannot simply
 go with it — Group B would then reach across a package boundary for a test helper, which is the defect this
 family already exhibits.
 
 ### Why it matters beyond tidiness
 
-`@apack/cli`'s cost record says it is the heaviest suite in the repo. Of its 65 specs, these 12 are about
-the published packages and (per `goal-test-placement.md` Finding 1) six more are about `@apack/testing`
-and `@apack/ui`. Those records are not documentation any more — `suite-split.spec.ts` places specs by
+`@apackdev/cli`'s cost record says it is the heaviest suite in the repo. Of its 65 specs, these 12 are about
+the published packages and (per `goal-test-placement.md` Finding 1) six more are about `@apackdev/testing`
+and `@apackdev/ui`. Those records are not documentation any more — `suite-split.spec.ts` places specs by
 them and the chain sizes step budgets from them — so a package that serves as a dumping ground confounds
 both, and no care taken over the measurement fixes a mislabelled subject.
 
@@ -133,7 +133,7 @@ Constraints.
 **A new suite that never runs no longer passes silently.** Phase 2 may create a workspace and add it to
 `UNIT_SUITES` and the root `projects` list. The pool runs one vitest with `--project <workspace>` per stale
 suite and then stamps them all — and a `--project` filter that matches nothing is *dropped silently* as long
-as one other filter matched: measured, `--project @apack/ears --project @apack/no-such-project` runs ears
+as one other filter matched: measured, `--project @apackdev/ears --project @apackdev/no-such-project` runs ears
 and exits 0 with no warning. So a new suite whose workspace name did not match its vitest project name would
 be stamped as having passed a run it was excluded from, and would stay cached.
 
@@ -163,14 +163,14 @@ not caused by anything this goal does. Phase 3's Done-when says which line it me
 
 Final.
 
-1. **Group B stays in `@apack/cli`.** Its subject is the CLI's bundlers and facade gate; a packed
+1. **Group B stays in `@apackdev/cli`.** Its subject is the CLI's bundlers and facade gate; a packed
    consumer is the fixture, not the thing under test. Whatever happens to Group A must leave Group B with
    a non-relative way to reach the fixture.
 2. **The twelve incidental importers stop using the fixture for a path.** They take `REPO_ROOT` from
-   `@apack/host/build/packages-built` and, where they need it, `PACKAGES_BUILT` from
+   `@apackdev/host/build/packages-built` and, where they need it, `PACKAGES_BUILT` from
    `packagesBuiltOrRefuse()`. This is true regardless of how the Open decision lands, costs nothing, and
    makes the real coupling visible — so it is Phase 1 and lands on its own.
-3. **`package-freshness` stays where its subject is.** Its subject is the stamp rule in `@apack/host`, not
+3. **`package-freshness` stays where its subject is.** Its subject is the stamp rule in `@apackdev/host`, not
    the packed output; it reads `PACKED_PACKAGES` only to assert `BUILD_UNITS` covers it. If Phase 1 leaves
    it needing nothing but that one constant, the constant moves to it rather than it moving to the fixture.
 4. **No spec is deleted or merged by this goal.** `goal-test-cleanup.md` did that sweep. If a move exposes
@@ -183,13 +183,13 @@ Final.
 
 ## Open decision — **settled 2026-09-25: a new `@app/publish-checks`**
 
-The five specs and the packing fixture go to one new workspace, and `@apack/cli` depends on it for the
+The five specs and the packing fixture go to one new workspace, and `@apackdev/cli` depends on it for the
 fixture. Option 2 below.
 
-**What decided it was the fixture, not the specs.** Three `@apack/cli` specs need `installPublishedPackages`
+**What decided it was the fixture, not the specs.** Three `@apackdev/cli` specs need `installPublishedPackages`
 and stay put under Decision 1, so wherever the five go, the fixture must be reachable from two packages by
-name. Every other answer paid for that badly: promoting it to `@apack/testing` ships repo-internal packing
-tooling in a package pack authors install; distributing the five gives `@apack/sdk` and `@apack/ui` an
+name. Every other answer paid for that badly: promoting it to `@apackdev/testing` ships repo-internal packing
+tooling in a package pack authors install; distributing the five gives `@apackdev/sdk` and `@apackdev/ui` an
 expensive pack-and-compile half each, where both suites are currently pure and fast; and folding them into
 `@app/repo-checks` widens that package again, after the one widening it already carries for layout checks. A workspace is what exists
 so two packages can share a module by name, and it keeps five specs that share one expensive fixture in one
@@ -207,8 +207,8 @@ The options as surveyed, kept for the reasoning:
 |---|---|---|---|
 | 1 | `@app/repo-checks` | with it, exported for Group B | Two siblings are already there, so the family stops being split. But `repo-checks` is defined as *specs whose subject is a repo script*, and these aren't — the definition widens to "cross-package concerns", and its boundary guard has to widen with it |
 | 2 | A new `@app/publish-checks` | with it | Mirrors `repo-checks` exactly, and the subject is genuinely its own. A fourth workspace that exists for twelve specs, and the `published-*` family in `repo-checks` should then move again |
-| 3 | `@apack/ears`, `/sdk`, `/ui` respectively | promoted to a published `@apack/testing` export | The fixture's natural home: `@apack/testing` *is* the test-fixture package, `goal-test-placement.md` Phase 2 gives it a suite, and Group B reaches it by a normal import. But `published-exports` and `published-declarations` span all three packages in one consumer install, so they have no single owner and would need splitting or an arbitrary host |
-| 4 | Stay in `@apack/cli`, with the reason recorded | stays | Honest null option. Publishing is driven from `scripts/publish-packages.ts` and `scripts/bundle-package.ts`, so the *repo* publishes and the CLI is merely where the helper landed — which is an argument for 1, not for 4. Choosing this means recording that `@apack/cli`'s cost record includes 30.2s that is not about the CLI, so nobody reads it as a CLI number |
+| 3 | `@apackdev/ears`, `/sdk`, `/ui` respectively | promoted to a published `@apackdev/testing` export | The fixture's natural home: `@apackdev/testing` *is* the test-fixture package, `goal-test-placement.md` Phase 2 gives it a suite, and Group B reaches it by a normal import. But `published-exports` and `published-declarations` span all three packages in one consumer install, so they have no single owner and would need splitting or an arbitrary host |
+| 4 | Stay in `@apackdev/cli`, with the reason recorded | stays | Honest null option. Publishing is driven from `scripts/publish-packages.ts` and `scripts/bundle-package.ts`, so the *repo* publishes and the CLI is merely where the helper landed — which is an argument for 1, not for 4. Choosing this means recording that `@apackdev/cli`'s cost record includes 30.2s that is not about the CLI, so nobody reads it as a CLI number |
 
 What would decide it: whether "the published packages" is a subject with its own home (1 or 2), or a
 property each package owns about itself (3). Option 3 is the only one that makes a spec's location predict
@@ -219,11 +219,11 @@ its subject without a new workspace, and the only one that has to answer the spa
 ### Phase 1 — stop importing a packing fixture to get a path
 
 For each of the ten files that use only `REPO_ROOT`/`PACKAGES_BUILT`, take them from
-`@apack/host/build/packages-built` instead. Independent of the Open decision, and it drops the fixture's
+`@apackdev/host/build/packages-built` instead. Independent of the Open decision, and it drops the fixture's
 apparent reach from 21 files to 9.
 
 **Done when:** `grep -rl helpers/published-packages packages/apack-cli/tests` lists nine files, each of
-which uses a packing export; `npm test -w @apack/cli` and `npm run test:integration -w @apack/cli` green.
+which uses a packing export; `npm test -w @apackdev/cli` and `npm run test:integration -w @apackdev/cli` green.
 
 ### Phase 2 — settle and move
 
@@ -254,18 +254,18 @@ goal's doing; see the confounder above before chasing it.
 ### Phase 4 — the guard
 
 Extend `goal-test-placement.md` Phase 3's placement guard so that a spec whose subject is a published
-`@apack` package cannot sit in a package that does not publish it. The mechanical signal available is the
+`@apackdev` package cannot sit in a package that does not publish it. The mechanical signal available is the
 packing fixture: a spec that installs or compiles a published consumer belongs in the chosen home.
 Exceptions recorded with reasons and a stale-entry check — Group B is the first entry, and its reason is
 Decision 1.
 
-Mutation-check it: put a Group A spec back in `@apack/cli` and watch the guard name it.
+Mutation-check it: put a Group A spec back in `@apackdev/cli` and watch the guard name it.
 
 **Done when:** the guard passes, has been made to fail, and its exception list has a reason per entry.
 
 ## Deferred
 
-- **Whether `@apack/cli` should own `tests/build/` at all.** After this goal and
+- **Whether `@apackdev/cli` should own `tests/build/` at all.** After this goal and
   `goal-test-placement.md`, that directory is bundlers, gates and Group B. Whether "the CLI's build
   pipeline" wants its own suite is a separate question and needs the numbers those two goals produce.
 - **The consumer matrix's cost.** `published-sdk-any` and `published-sdk-types` are 14.7s between them
@@ -285,7 +285,7 @@ Mutation-check it: put a Group A spec back in `@apack/cli` and watch the guard n
 - **Another agent works in this checkout.** Check `git status` before committing and name paths
   explicitly.
 - **The packed fixture is expensive and shared.** `installPublishedPackages()` npm-packs three packages
-  into a temp tree; `@apack/cli`'s integration config caps worker threads because these specs spawn
+  into a temp tree; `@apackdev/cli`'s integration config caps worker threads because these specs spawn
   compilers of their own. A new suite that runs them needs the same cap, and its reason recorded — the
   comment in `vitest.integration.config.ts` has the measurement.
 - **Don't relitigate settled decisions.** Cost-based placement, the two pools, the tier table, and
@@ -296,14 +296,14 @@ Mutation-check it: put a Group A spec back in `@apack/cli` and watch the guard n
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — stop importing a fixture to get a path | **done** | `9e0eb7891`. Ten files repointed; the fixture's reach fell from 21 importers to its real 9 |
-| 2 — settle and move | **done** | `52c0d7a60`. `@app/publish-checks` created; eight specs and the fixture moved, one to `@apack/ui` |
+| 2 — settle and move | **done** | `52c0d7a60`. `@app/publish-checks` created; eight specs and the fixture moved, one to `@apackdev/ui` |
 | 3 — re-record and re-measure | **done** | this commit. 338 specs across twelve suites; chain green, no drift reported |
 | 4 — the guard | **done** | `3d0d0da8d`. Mutation-checked both ways |
 
 ### What moved, and what it cost
 
-`@apack/cli` went from 65 specs and 190.8s to **53 and 170.8s**, and its record can now be read as a CLI
-number rather than a suite total. `@app/publish-checks` holds 7 specs and 28.1s. `@apack/ui` gained the
+`@apackdev/cli` went from 65 specs and 190.8s to **53 and 170.8s**, and its record can now be read as a CLI
+number rather than a suite total. `@app/publish-checks` holds 7 specs and 28.1s. `@apackdev/ui` gained the
 one spec whose subject was its own source.
 
 **The chain's `test:integration` reads 71.4s against a declared 52s, and is left at 52.** The step gained a
@@ -317,10 +317,10 @@ goal, 71.4s after.
 The Finished-when is about subjects, not about the fixture, and three more specs failed it.
 `published-specifiers` and `published-ui-dist` read the built `dist` of four packages, so they came here and
 gave the new suite a fast half it would otherwise have lacked — its `vitest.config.ts` matched zero files
-until they arrived, which is how it was noticed. `ui-import-side-effects` reads `@apack/ui`'s *source*, so
-it went to `@apack/ui` instead. That one hard-coded the repo root by counting four `..`, which the move
+until they arrived, which is how it was noticed. `ui-import-side-effects` reads `@apackdev/ui`'s *source*, so
+it went to `@apackdev/ui` instead. That one hard-coded the repo root by counting four `..`, which the move
 would have broken; it needs no repo root at all now, one level up to its own `src`. Taking `REPO_ROOT` from
-`@apack/host` would have been an upward dependency from a leaf package.
+`@apackdev/host` would have been an upward dependency from a leaf package.
 
 ### What the move surfaced
 
@@ -341,8 +341,8 @@ would have broken; it needs no repo root at all now, one level up to its own `sr
 `scripts/`. The family is split by subject, correctly; "reuniting it" was the wrong goal, and this is five
 specs rather than seven.
 
-**The first recommendation was wrong and the user rejected it.** It distributed the specs to `@apack/sdk`
-and `@apack/ui` and promoted the fixture to `@apack/testing` — which would have shipped repo-internal
+**The first recommendation was wrong and the user rejected it.** It distributed the specs to `@apackdev/sdk`
+and `@apackdev/ui` and promoted the fixture to `@apackdev/testing` — which would have shipped repo-internal
 packing tooling in a package pack authors install, given two pure fast suites an expensive
 pack-and-compile half each, and widened `repo-checks` again. All three costs were stated and waved
 through in the same message. What decided it in the end was the fixture, not the specs: three CLI specs
@@ -352,11 +352,11 @@ that.
 ### Conventional choices made
 
 - The new workspace is `host` kind with both halves, `SUITE_READS: { packages: true }`, and the worker cap
-  its integration config explains — the same shape as `@apack/cli`'s, for the same reason.
-- `@apack/cli` reaches the fixture as `@app/publish-checks`, a devDependency, rather than by path.
+  its integration config explains — the same shape as `@apackdev/cli`'s, for the same reason.
+- `@apackdev/cli` reaches the fixture as `@app/publish-checks`, a devDependency, rather than by path.
 - The guard's signal is the fixture import, because nothing else in the repo installs a published consumer.
 
 ### Deferred, unchanged
 
-Whether `@apack/cli` should own `tests/build/` at all once `goal-tests-mirror-source.md` lands, and
+Whether `@apackdev/cli` should own `tests/build/` at all once `goal-tests-mirror-source.md` lands, and
 whether the consumer matrix's four TypeScript × moduleResolution combinations all earn their 14.7s.

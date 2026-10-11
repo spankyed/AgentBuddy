@@ -3,11 +3,11 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { buildPackConfigFromManifest, compilePack } from '@apack/sdk/build';
-import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apack/sdk/utils';
-import { untypedQx as qx } from '@apack/ears';
-import { entityIds } from '@apack/sdk/testing';
-import { resetTestData, testMediaPath } from '@apack/testing/harness';
+import { buildPackConfigFromManifest, compilePack } from '@apackdev/sdk/build';
+import { applyRecord, importCompiledContent, type ApplyRecord, type AppliedItem, type ImportMode, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
+import { untypedQx as qx } from '@apackdev/ears';
+import { entityIds } from '@apackdev/sdk/testing';
+import { resetTestData, testMediaPath } from '@apackdev/testing/harness';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/content-parity');

@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import ArtifactItem from './artifact-item.vue';
-import type { ArtifactItem as ArtifactType } from '@apack/sdk/artifacts';
+import type { ArtifactItem as ArtifactType } from '@apackdev/sdk/artifacts';
 
 const props = defineProps<{
   artifacts: ArtifactType[];

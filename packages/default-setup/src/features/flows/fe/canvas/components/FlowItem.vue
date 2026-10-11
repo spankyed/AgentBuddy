@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { Brain, Workflow, Trash2, Edit, FileCode } from 'lucide-vue-next'
-import type { FlowEntity } from '@apack/sdk'
+import type { FlowEntity } from '@apackdev/sdk'
 import {
   ContextMenuContent,
   ContextMenuItem,

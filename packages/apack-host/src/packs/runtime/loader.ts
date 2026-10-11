@@ -1,10 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
-import { createLogger } from '@apack/sdk/logger';
-import { resolveAppContext, getAppVersion } from '@apack/sdk/env';
-import type { PackSnapshot } from '@apack/sdk/build';
-import type { PackRegistration } from '@apack/sdk/framework';
+import { createLogger } from '@apackdev/sdk/logger';
+import { resolveAppContext, getAppVersion } from '@apackdev/sdk/env';
+import type { PackSnapshot } from '@apackdev/sdk/build';
+import type { PackRegistration } from '@apackdev/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
 import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
@@ -34,7 +34,7 @@ let _hostSdkVersion: string | undefined;
 function getHostSdkVersion(): string | undefined {
   if (_hostSdkVersion !== undefined) return _hostSdkVersion || undefined;
   try {
-    const sdkEntry = esmRequire.resolve('@apack/sdk/package.json');
+    const sdkEntry = esmRequire.resolve('@apackdev/sdk/package.json');
     _hostSdkVersion = findSdkVersion(path.dirname(sdkEntry)) ?? '';
   } catch { _hostSdkVersion = ''; }
   return _hostSdkVersion || undefined;

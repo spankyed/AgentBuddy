@@ -112,7 +112,7 @@ file. That is the whole of what an advisory lock buys here.
 
 **Where a native module would land.** `holdDatabaseWriteLock` is called from
 `apack-cli/src/commands/db/target.ts:90` — the **published** CLI. A native dependency in this path
-becomes a dependency of every pack author's `npm i @apack/cli`, on every platform they use, not just the
+becomes a dependency of every pack author's `npm i @apackdev/cli`, on every platform they use, not just the
 `mac-arm64` the app ships as.
 
 **The ABI constraint.** The packaged app is Electron. `@napi-rs/keyring` works there because N-API is
@@ -371,5 +371,5 @@ build — that last one would remove the only objection that isn't about size.
   takeable because the kernel says so, not because a pid is gone.
 - The lock must work between a **Node** process (`apack db`) and an **Electron** process (the app's API
   boot). Same file, two runtimes: this is the case to test first in the spike.
-- `@apack/testing`'s harness and the CLI bundle both inline host; a native dependency must not break
+- `@apackdev/testing`'s harness and the CLI bundle both inline host; a native dependency must not break
   `npm run packages:check`.

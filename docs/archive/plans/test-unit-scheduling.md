@@ -11,7 +11,7 @@ ideal is `max(floor, work/cores)` ≈ 13s. The 3.4× gap is architectural, not s
 that closes it is already in the repo as dead code.
 
 Surveyed 2026-09-25 against `faee075fd`. Timings come from a full `test:unit` capture on an adjacent base;
-the per-suite floors below are unaffected by the fast/integration split, but the `@apack/cli` fast-suite
+the per-suite floors below are unaffected by the fast/integration split, but the `@apackdev/cli` fast-suite
 figures are derived by mapping file timings onto the tip's naming rather than measured on the tip. Test 1
 confirms the whole model in one run.
 
@@ -19,16 +19,16 @@ confirms the whole model in one run.
 
 | suite | work | **floor** (slowest single file) | files |
 |---|---|---|---|
-| `@apack/cli` fast | 30.8s | 7.4s | 38 |
-| `@apack/host` | 19.9s | 4.8s | 79 |
-| `@apack/sdk` | 18.9s | **13.0s** | 57 |
+| `@apackdev/cli` fast | 30.8s | 7.4s | 38 |
+| `@apackdev/host` | 19.9s | 4.8s | 79 |
+| `@apackdev/sdk` | 18.9s | **13.0s** | 57 |
 | `@app/default-setup` | 17.6s | 5.3s | 84 |
 | `@app/api` | 5.1s | 1.1s | 16 |
-| `@apack/ears` | 2.8s | 2.1s | 10 |
+| `@apackdev/ears` | 2.8s | 2.1s | 10 |
 | `@app/renderer` | 0.1s | 0.1s | 8 |
 
-For contrast, the split moved 229.1s of work and a 39.5s file out of `@apack/cli` into the integration
-half: 32 integration files vs 38 fast ones. `@apack/cli` is no longer the giant; `@apack/sdk`'s floor is.
+For contrast, the split moved 229.1s of work and a 39.5s file out of `@apackdev/cli` into the integration
+half: 32 integration files vs 38 fast ones. `@apackdev/cli` is no longer the giant; `@apackdev/sdk`'s floor is.
 
 ## Why more lanes do not pay
 
@@ -76,8 +76,8 @@ front. `test-unit.ts` already does exactly that, for the same reason.
 `packages/apack-sdk/tests/build/generate-entries.spec.ts`, 94 tests, 13.0s. **The cost is 3 tests, not 94.**
 
 There are exactly three `typecheck()` call sites (L428, L444, L470), all inside the describe *"generated
-sends compile"*. Each runs a full `ts.createProgram` that resolves `@apack/sdk` under
-`customConditions: ['@apack/source']`, so it type-checks **165 files / ~17k lines** of SDK + ears
+sends compile"*. Each runs a full `ts.createProgram` that resolves `@apackdev/sdk` under
+`customConditions: ['@apackdev/source']`, so it type-checks **165 files / ~17k lines** of SDK + ears
 *source* — `skipLibCheck: true` skips `.d.ts`, and the SDK is `.ts`. The other 91 tests are string and AST
 assertions over generated code, together about 1s.
 
@@ -177,7 +177,7 @@ anything.
 
 `@app/api`'s suite reads the built-in pack's `dist`, and no spec of its names that path: they boot the app
 runtime and host code resolves it. Declaring it independent let it run beside `compile` under three lanes,
-where it failed on a missing `settings.content.json` after passing serially forever. `@apack/host` is the
+where it failed on a missing `settings.content.json` after passing serially forever. `@apackdev/host` is the
 inverse — `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is absent, so it
 passes without the pack and would pass vacuously in a race.
 
@@ -207,7 +207,7 @@ them.
   finally be expressed. `generate-entries.spec.ts` is one of the files whose margin against vitest's 5s
   default caps lanes today — **not the only one**, so Lever 3 should not be credited with lifting that cap.
   Measured 2026-09-25 on a three-lane chain run: the failure was `findLmdbImports > holds for the repo` in
-  `@apack/cli` at 5220ms, a whole-repo scan that takes ~2s alone. Two thin-margin whole-repo scans in two
+  `@apackdev/cli` at 5220ms, a whole-repo scan that takes ~2s alone. Two thin-margin whole-repo scans in two
   different suites is the "class of thin margins, not one test" already recorded in `scripts/test-unit.ts`,
   where raising one suite's timeout moved the failure to another suite.
 - `cli-suite-spawns-rebase.md` is independent: its conversions live in the integration half, which

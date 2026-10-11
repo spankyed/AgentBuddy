@@ -1,17 +1,17 @@
 // The app's own state moves out of the built-in pack's settings: before 0.4.0 it was stored in the
 // Settings row's `internal` section, which resetting settings erased. And every pack's stored plugin settings move
 // onto their plugins' refs, before any pack's own migration reads them.
-import { untypedTx, untypedQx } from '@apack/ears';
-import type { EARS } from '@apack/sdk';
-import type { PackMigration } from '@apack/sdk/framework';
-import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apack/sdk/ids';
+import { untypedTx, untypedQx } from '@apackdev/ears';
+import type { EARS } from '@apackdev/sdk';
+import type { PackMigration } from '@apackdev/sdk/framework';
+import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST } from '../../refs.ts';
-import { resolveAppContext } from '@apack/sdk/env';
-import type { PackManifest } from '@apack/sdk/build';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import type { PackManifest } from '@apackdev/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/registry.ts';
 import { discoverPacks } from '../../packs/discovery.ts';
-import { deepMerge } from '@apack/sdk/utils/pure';
+import { deepMerge } from '@apackdev/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.4.0, and where the plugin settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
@@ -83,7 +83,7 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
  * records are dropped and the first boot after this applies each pack's content once, which is what writes
  * the record. That costs an adoption: an item the user edited before anything recorded *which part* they
  * edited is taken as ours and overwritten. That is the merge's rule for an item it has no parts for
- * (`@apack/sdk/content`'s `resolve`), and the alternative is freezing every such item for good.
+ * (`@apackdev/sdk/content`'s `resolve`), and the alternative is freezing every such item for good.
  *
  * **`failedAgainst` is deliberately not in here.** It is the name the row carries *now*, so `appState`
  * already reads it: an entry would read the attribute, write it back unchanged and then `drop` it, which

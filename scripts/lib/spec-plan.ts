@@ -9,7 +9,7 @@
  * **The rule.** A spec path, a directory or a name names specs directly, so those run in the package that
  * holds them — that is what you asked for. A **source file** is a different question: after an edit you
  * want *what could this break*, and the answer is every spec that imports it, transitively, wherever it
- * lives. That question used to be answered with the file's own package, which for `@apack/sdk` meant one
+ * lives. That question used to be answered with the file's own package, which for `@apackdev/sdk` meant one
  * of the seven suites covering it, reported green.
  *
  * Vitest already answers it properly: the root `vitest.config.ts` lists every host project and `related`
@@ -223,7 +223,7 @@ export const packageOf = (rel: string): string | null => /^packages\/([^/]+)\//.
  *
  * Which is why this is derived from the *declared* graph (`workspaceDeps`) rather than the import graph, and
  * from the same function the chain keys its cache on. Not every package reaches a pack suite, and the ones
- * that do are not only the ones a pack names: `@apack/host` arrives transitively through `@apack/testing`,
+ * that do are not only the ones a pack names: `@apackdev/host` arrives transitively through `@apackdev/testing`,
  * whose bundle inlines it. No count is written here on purpose — `spec-plan.spec.ts` partitions every
  * package under `packages/` into those that reach one and those that do not, which is the only form of that
  * claim that cannot quietly go stale. A hand-written "four of twelve" was wrong the day it was written.
@@ -249,9 +249,9 @@ const PACK_SUITES = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
  * reason — it is a second vitest config, and the root projects `exclude` its specs — but the consequence is
  * the same and was worse, because nothing said so: `npm run spec -- <a source file>` printed *"every spec
  * covering X"* over a run that had skipped every integration spec covering X. Measured, 22 modules in
- * `@apack/cli` alone are imported directly by one.
+ * `@apackdev/cli` alone are imported directly by one.
  *
- * Which is also why the sentence must not say "through a build": these specs resolve `@apack/source` like
+ * Which is also why the sentence must not say "through a build": these specs resolve `@apackdev/source` like
  * any host project, so `spec:full` reaches them without building anything.
  */
 export function affectedIntegrationSuites(editedPackages: readonly (string | null)[], root?: string): string[] {
@@ -319,8 +319,8 @@ const CONTENT_SPECS = 'tests/content';
  * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
  *
  * `apack.json` drives codegen into `src/__generated__/`; `package.json` holds the `imports` map those
- * generated specifiers resolve by — 76 of default-setup's 95 specs go through it — and the `prepare` that
- * runs the codegen; `tsconfig.json` is what the build compiles with.
+ * generated specifiers resolve by — 76 of default-setup's 95 specs go through it;
+ * `tsconfig.json` is what the build compiles with.
  */
 const BUILD_INPUTS: readonly string[] = ['apack.json', 'package.json', 'tsconfig.json'];
 
@@ -685,7 +685,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   for (const pkg of changedPackages) {
     if (!pack.includes(pkg)) runs.push(packageRun(root, pkg, [], flags, '(changed)'));
   }
-  // What the runs above do not already cover: changing `@apack/sdk` *and* the pack code that uses it is one
+  // What the runs above do not already cover: changing `@apackdev/sdk` *and* the pack code that uses it is one
   // edit under this repo's no-backward-compatibility rule, and planned the pack's 87 specs twice
   const toRun = notYetCovered(affected, runs);
   if (full && toRun.length > 0) runs.push(packSuiteRun(root, toRun));

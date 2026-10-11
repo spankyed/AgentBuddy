@@ -1,13 +1,13 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (apack db) share, so both hydrate a data dir the same way
-import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apack/ears';
-import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apack/ears/lmdb';
-import { resolveAppContext, type AppEnv } from '@apack/sdk/env';
-import type { _AppDataPaths } from '@apack/sdk/utils';
+import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
+import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
+import { resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
-import { SDK_EXCLUDED_ENTITY_TYPES } from '@apack/sdk/types';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { SDK_EXCLUDED_ENTITY_TYPES } from '@apackdev/sdk/types';
 
 /**
  * Which partition an entity type lives in: the SDK's volatile types in the volatile partition, everything
@@ -83,7 +83,7 @@ export interface OpenAppDatabaseOptions {
 /**
  * Opens the database in `userDataDir` as the app does: the installed packs' schema (their manifests; no pack code
  * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine's query face is
- * installed, so `@apack/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
+ * installed, so `@apackdev/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
 export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
@@ -110,7 +110,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     store.close();
     throw error;
   }
-  // Installed so `@apack/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
+  // Installed so `@apackdev/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
   // puts back whatever was installed before rather than leaving none. `apack db`, the one caller today, has no
   // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
   // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.

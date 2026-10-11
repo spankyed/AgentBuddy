@@ -1,11 +1,11 @@
 /**
- * Where a pack's own compiler resolves the `@apack` packages: their published `dist`, or a checkout's source.
+ * Where a pack's own compiler resolves the `@apackdev` packages: their published `dist`, or a checkout's source.
  *
  * A pack compiles against `dist` — the one layout a pack author ever has — and both of its bundlers do so
  * unconditionally: `bundlePackSource` hands esbuild the pack's tsconfig, and esbuild reads `baseUrl`, `paths` and
  * `experimentalDecorators` from one but has no notion of `customConditions` at all (measured: the string does not
  * appear in its binary); the FE bundler names Vite's default client conditions outright. `tsc` is the odd one out,
- * because it *does* honour `customConditions`. So a pack linked to a checkout that enables `@apack/source`
+ * because it *does* honour `customConditions`. So a pack linked to a checkout that enables `@apackdev/source`
  * typechecks green against workspace source while shipping bundles built from `dist`: the typecheck proved
  * nothing, and the author finds out after publishing.
  *
@@ -15,14 +15,14 @@
  * does, which catches every route to source (an `extends` chain, a `paths` entry, a project reference), needs no
  * config text parsed, and can name the file it landed on.
  *
- * `assertSourceResolution` (`@apack/host/build/source-resolution`) is the same question with the opposite
- * expectation, asked of a host process. It lives in `@apack/host` and this does not, because this needs
- * `typescript`, which `@apack/host` deliberately does not declare — `packages/api` imports host, and the
+ * `assertSourceResolution` (`@apackdev/host/build/source-resolution`) is the same question with the opposite
+ * expectation, asked of a host process. It lives in `@apackdev/host` and this does not, because this needs
+ * `typescript`, which `@apackdev/host` deliberately does not declare — `packages/api` imports host, and the
  * compiler has no business in the backend's tree.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SOURCE_CONDITION, SOURCE_PACKAGES } from '@apack/host/build/source-resolution';
+import { SOURCE_CONDITION, SOURCE_PACKAGES } from '@apackdev/host/build/source-resolution';
 import ts from 'typescript';
 import { readSource } from './pack-sources.ts';
 import type { PackWideFinding } from './pack-rules.ts';
@@ -68,7 +68,7 @@ function packageRootOf(file: string): string | undefined {
 }
 
 /**
- * Every `@apack` package this pack's `tsconfig.json` resolves to source instead of `dist`, or why that could
+ * Every `@apackdev` package this pack's `tsconfig.json` resolves to source instead of `dist`, or why that could
  * not be worked out.
  *
  * Empty for a pack with no tsconfig — there is nothing to resolve against and nothing to report — and, the

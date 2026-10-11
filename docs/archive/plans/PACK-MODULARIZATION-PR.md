@@ -28,7 +28,7 @@ Three architectural layers emerge:
 - Content (DSL source) → `default-setup/src/content/`
 - Migrations → `default-setup/src/migrations/`
 
-### 2. SDK Creation (`@apack/sdk`) (~110 commits)
+### 2. SDK Creation (`@apackdev/sdk`) (~110 commits)
 
 Entirely new package (248 files, +29,111 lines). Provides:
 

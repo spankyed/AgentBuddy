@@ -2,10 +2,10 @@
 // ones a later apply answered for, and keeps what the user decided. The apply that produces them is covered in
 // `packs/runtime/loader.spec.ts`; this is the record's own half.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { resetTestData, startTestRuntime } from '@apack/sdk/testing';
+import { resetTestData, startTestRuntime } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { appliedContent } from '../../src/app-state/applied-content.ts';
-import type { AppliedItem, ContentOffer } from '@apack/sdk/utils';
+import type { AppliedItem, ContentOffer } from '@apackdev/sdk/utils';
 
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES });
 

@@ -163,12 +163,12 @@ export default /** @type import('electron-builder').Configuration */
     'packages/*/dist/**',
     ...APP_WORKSPACES.map(name => `!packages/${name}/dist/**`),
     // ...but not the tree each publishable package stages for npm (stagePublishTree): a second copy of the same
-    // dist, which the app never loads — it resolves @apack/sdk through node_modules to packages/apack-sdk/dist.
+    // dist, which the app never loads — it resolves @apackdev/sdk through node_modules to packages/apack-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
     '!packages/*/publish/**',
     // ...nor a pack's working directory. `apack build` keeps its dependency cache, its staging, its release
     // output and its record of what each bundling phase read in `.apack/` (PACK_READS_FILE,
-    // @apack/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
+    // @apackdev/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
     // it, dotted directories and all, because electron-builder reads no .gitignore either.
     '!packages/*/.apack/**',
     // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the

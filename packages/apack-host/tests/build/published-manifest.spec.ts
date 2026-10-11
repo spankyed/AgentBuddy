@@ -36,18 +36,18 @@ function pkg(extra: Record<string, string> = {}, manifest: Record<string, unknow
 describe('publishedManifest', () => {
   it('drops the source branch and keeps what a consumer resolves', () => {
     expect(publishedManifest({
-      exports: { '.': { '@apack/source': './src/index.ts', types: './dist/index.d.ts', default: './dist/index.js' } },
+      exports: { '.': { '@apackdev/source': './src/index.ts', types: './dist/index.d.ts', default: './dist/index.js' } },
     })).toEqual({ exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' } } });
   });
 
   it('drops it at any depth', () => {
     expect(publishedManifest({
-      exports: { './x': { types: { '@apack/source': './src/x.ts', default: './dist/x.d.ts' }, default: './dist/x.js' } },
+      exports: { './x': { types: { '@apackdev/source': './src/x.ts', default: './dist/x.d.ts' }, default: './dist/x.js' } },
     })).toEqual({ exports: { './x': { types: { default: './dist/x.d.ts' }, default: './dist/x.js' } } });
   });
 
   /**
-   * `@apack/sdk`'s `./runtime/internals` is this entry. It must not gain a published target and must not be left
+   * `@apackdev/sdk`'s `./runtime/internals` is this entry. It must not gain a published target and must not be left
    * as an empty object either: `facade-gate.ts` reports a pack whose facade imports what installed dependents
    * cannot resolve, and it decides that by asking whether the entry has a published target. Dropping the entry
    * keeps that answer "no" — an absent subpath is not resolvable — and it is what lets the SDK's
@@ -55,7 +55,7 @@ describe('publishedManifest', () => {
    */
   it('drops an entry the source branch was the whole of, rather than emptying it', () => {
     const published = publishedManifest({
-      exports: { '.': { '@apack/source': './src/index.ts', default: './dist/index.js' }, './internals': { '@apack/source': './src/internals.ts' } },
+      exports: { '.': { '@apackdev/source': './src/index.ts', default: './dist/index.js' }, './internals': { '@apackdev/source': './src/internals.ts' } },
     });
     expect(published.exports).toEqual({ '.': { default: './dist/index.js' } });
     expect(Object.keys(published.exports as object)).not.toContain('./internals');
@@ -133,7 +133,7 @@ describe('stagePublishTree', () => {
   it('stages exactly what npm would pack, with the derived manifest over it', () => {
     const manifest = pkg({ 'README.md': '# fake\n' }, {
       scripts: { build: 'tsc' },
-      exports: { '.': { '@apack/source': './src/index.ts', types: './dist/index.d.ts', default: './dist/index.js' } },
+      exports: { '.': { '@apackdev/source': './src/index.ts', types: './dist/index.d.ts', default: './dist/index.js' } },
     });
     const tree = stagePublishTree(dir, manifest);
 
@@ -141,7 +141,7 @@ describe('stagePublishTree', () => {
     expect(fs.readFileSync(path.join(tree, 'README.md'), 'utf-8')).toBe('# fake\n');
     const staged = JSON.parse(fs.readFileSync(path.join(tree, 'package.json'), 'utf-8')) as Record<string, unknown>;
     expect(staged).toEqual(publishedManifest(manifest));
-    expect(JSON.stringify(staged)).not.toContain('@apack/source');
+    expect(JSON.stringify(staged)).not.toContain('@apackdev/source');
     expect(staged.scripts).toBeUndefined();
   });
 

@@ -114,10 +114,10 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
-import KeyboardShortcutInput from '@apack/ui/components/KeyboardShortcutInput'
-import { useDebounceFn } from '@apack/ui/composables/useDebounce'
-import type { ApplicationHotkeys, CustomHotkey, KeyboardShortcut } from '@apack/sdk/types'
-import type { SettingUpdate } from '@apack/sdk/fe'
+import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
+import { useDebounceFn } from '@apackdev/ui/composables/useDebounce'
+import type { ApplicationHotkeys, CustomHotkey, KeyboardShortcut } from '@apackdev/sdk/types'
+import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 interface Props {
   settings?: ApplicationHotkeys

@@ -1,5 +1,5 @@
 {
-  "name": "@apack/testing",
+  "name": "@apackdev/testing",
   "version": "0.1.0",
   "private": true,
   "description": "Playwright E2E fixture, vitest helpers and a unit test harness for apack packs",
@@ -31,9 +31,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apack/ears": "*",
-    "@apack/host": "*",
-    "@apack/sdk": "*",
+    "@apackdev/ears": "*",
+    "@apackdev/host": "*",
+    "@apackdev/sdk": "*",
     "tsx": "^4.19.4"
   },
   "peerDependencies": {

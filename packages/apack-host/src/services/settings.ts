@@ -3,7 +3,7 @@
 // The store is the app's (`features/settings/be/store.ts`) — one row, one writer, the defaults merged under the
 // user's changes. This is the pack-facing face of it: a feature reads and writes its own settings, and each
 // registered section, without depending on whichever pack renders the settings view.
-import type { SettingsService } from '@apack/sdk/services';
+import type { SettingsService } from '@apackdev/sdk/services';
 import type { SettingsStore } from '../features/settings/be/store.ts';
 
 /**

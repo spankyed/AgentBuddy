@@ -6,19 +6,19 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { spawn, spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installEngine, installedEngine, untypedTx, type EARS } from '@apack/ears';
-import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apack/host/database';
-import { exportDatabase } from '@apack/host/backup';
-import { closeEnv, openEnvAt } from '@apack/ears/lmdb';
-import { createSecretsStore, memoryKeyVault } from '@apack/host/secrets';
-import { _appDataPaths } from '@apack/sdk/utils';
-import { _appDirOf, appDataDirFor, resolveAppContext } from '@apack/sdk/env';
+import { installEngine, installedEngine, untypedTx, type EARS } from '@apackdev/ears';
+import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
+import { exportDatabase } from '@apackdev/host/backup';
+import { closeEnv, openEnvAt } from '@apackdev/ears/lmdb';
+import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
+import { _appDataPaths } from '@apackdev/sdk/utils';
+import { _appDirOf, appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 import { mintProfile, openProfile } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 // `--profile` resolves a name through the CLI's own data dir, which is the real one on this machine.
 // Pointing it at a temp tree is the only way to test the lookup without reading whatever profiles the

@@ -3,11 +3,11 @@ import type {} from '@trpc/server/unstable-core-do-not-import';
 import { observable } from '@trpc/server/observable';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import type { Message } from '@apack/sdk/events';
-import { HOST, receiveClientEvent, UnknownClientEventError } from '@apack/host/bus';
-import { splitRef } from '@apack/sdk/ids';
+import type { Message } from '@apackdev/sdk/events';
+import { HOST, receiveClientEvent, UnknownClientEventError } from '@apackdev/host/bus';
+import { splitRef } from '@apackdev/sdk/ids';
 import { procedure, router } from './trpc';
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 import { rootEvents } from '@/transport/emitter';
 import { appClaims, appPacks } from '@/runtime';
 

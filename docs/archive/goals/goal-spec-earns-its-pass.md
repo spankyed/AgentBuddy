@@ -112,7 +112,7 @@ Never:
 
 [`goal-spec-follows-the-graph.md`](goal-spec-follows-the-graph.md) made `npm run spec` route a
 source file through the module graph: one root `vitest related` over every host project, so editing
-`@apack/sdk` runs the 104 specs that cover it rather than the one package it lives in.
+`@apackdev/sdk` runs the 104 specs that cover it rather than the one package it lives in.
 [`goal-pack-test-config.md`](goal-pack-test-config.md) closed the pack side, so a pack's own
 source walks the pack's graph instead of running its whole 89-spec suite. `scripts/lib/spec-plan.ts` is the
 routing as data and `packages/repo-checks/tests/spec-plan.spec.ts` asserts it in 33 cases.
@@ -283,11 +283,11 @@ Two items from the review that produced this doc are fixed at this commit, and a
 otherwise go looking:
 
 - **`vitest related` crashing in `@app/default-setup`** (`Failed to parse source for import analysis …
-  Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@apack/testing/vitest`) stubs a pack's `.vue`
+  Install @vitejs/plugin-vue`) is gone: `definePackTestConfig` (`@apackdev/testing/vitest`) stubs a pack's `.vue`
   files, so the walk no longer stops at the first SFC. That was
   [`goal-pack-test-config.md`](goal-pack-test-config.md).
 - **Two `spec` runs racing each other's package build** is gone, and this one was verified rather than read:
-  with `@apack/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
+  with `@apackdev/ears`' stamp cleared, two `npm run packages:ensure` started 0.3s apart both exit 0. The second
   waits on the lock, re-checks once it holds it, and returns without a duplicate build — `BuildIntent`, whose
   `freshness` arm is what `ensurePackagesBuilt` sets on the builds it spawns
   (`packages/apack-host/src/build/packages-built.ts:777,856,966`). What used to fail here was a second reader
@@ -486,10 +486,10 @@ file removed reports one unpriced spec by name rather than a smaller total.
 
 ## Deferred
 
-- **`@apack/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
+- **`@apackdev/cli`'s integration half.** 167.9s of its 182.9s, and 53% of the 315.9s the twelve records hold
   between them (132.0s of 144.1s, and the same 53%, at the survey) — the largest single cost in the repo's specs, and not a routing problem: those specs run real
   builds, and whether they can share one is the question. It belongs with
-  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@apack/sdk`
+  [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), whose Phases aim at `default-setup` and `@apackdev/sdk`
   (the `test:unit` halves) and say nothing about the integration half. Recorded here so the number is written
   down where it was measured; the agent implementing this goal must not start it.
 - **Tier-aware escalation**, refused with its reasoning in Decision 6 rather than deferred, so it is not
@@ -575,7 +575,7 @@ loading rather than a graph being walked.
 
 ### What this leaves
 
-- **`@apack/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
+- **`@apackdev/cli`'s integration half**, 167.9s of the 315.9s the twelve records hold, is still the largest
   single cost in the repo's specs and is not a routing problem. It belongs with
   [`goal-unit-suite-cost.md`](goal-unit-suite-cost.md), as Deferred said.
 - **Nothing automated runs `spec:dry` or `--all`**, so a correlated drift in the record is still found only by

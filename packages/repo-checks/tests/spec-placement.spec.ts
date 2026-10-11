@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
@@ -15,16 +15,16 @@ import { INTEGRATION_SUFFIX, hasSplit } from '../../../scripts/lib/spec-halves.t
  *
  * - **A package has source and no suite.** Then there is nowhere for its specs to be, so they end up in a
  *   neighbour — and `npm run spec`, which asks which package a changed file belongs to, finds nothing to
- *   run. `@apack/testing` and `@apack/ui` were in this state: six specs about them lived in `@apack/cli`,
- *   and asking for the specs covering `@apack/testing/src/launch-env.ts` did not report "none", it crashed
+ *   run. `@apackdev/testing` and `@apackdev/ui` were in this state: six specs about them lived in `@apackdev/cli`,
+ *   and asking for the specs covering `@apackdev/testing/src/launch-env.ts` did not report "none", it crashed
  *   in vitest's project resolution, because with no config of its own vitest walked up to the root one and
  *   resolved its `projects` list against the wrong directory.
  * - **A spec reaches into another package's tree.** The assertion is right and the location is not, so a
  *   failure points at the wrong package and a rename in one breaks a suite in another.
  *
  * Neither is a mistake anyone makes on purpose; both are what a package extraction leaves behind when the
- * tests do not follow it. Every one this repo has done — `@apack/host` out of the api, `@apack/testing`,
- * `@apack/ui`, `@app/repo-checks` — left some, and nothing noticed any of them. That is what these two
+ * tests do not follow it. Every one this repo has done — `@apackdev/host` out of the api, `@apackdev/testing`,
+ * `@apackdev/ui`, `@app/repo-checks` — left some, and nothing noticed any of them. That is what these two
  * checks are for: not to find today's, which `goal-test-placement.md` moved, but to fail on the next one.
  *
  * The repo's own `scripts/` is the other half of this and lives in `repo-check-boundary.spec.ts`; between
@@ -75,9 +75,9 @@ describe('a package with source has a suite', () => {
  */
 const SPANS_PACKAGES: Record<string, string> = {
   'packages/apack-cli/tests/build/fe-bundler-ui-theme.spec.ts':
-    "its four tests are a chain across three packages: @apack/ui's preset defines the shades its components "
+    "its four tests are a chain across three packages: @apackdev/ui's preset defines the shades its components "
     + 'name, the renderer applies that preset instead of copying the colours, and a built build.bundleUi pack '
-    + 'ships CSS for them. Moving it to @apack/ui would put a dependency on the app\'s tree and a fixture '
+    + 'ships CSS for them. Moving it to @apackdev/ui would put a dependency on the app\'s tree and a fixture '
     + "pack's build output into a leaf package's suite; splitting it would lose the chain",
 };
 
@@ -86,7 +86,7 @@ const SPANS_PACKAGES: Record<string, string> = {
  *
  * Every entry is a claim that the packed consumer is the spec's *fixture* rather than its *subject* — that
  * what fails when the spec fails is the package it lives in, not the publish. That is a real distinction and
- * the reason `@apack/cli` keeps three of these, but it is not one a checker can make, so it is written
+ * the reason `@apackdev/cli` keeps three of these, but it is not one a checker can make, so it is written
  * down per spec.
  */
 const PACKS_AS_A_FIXTURE: Record<string, string> = {
@@ -154,7 +154,7 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
  * It was landed full by `goal-tests-mirror-source.md` Phase 2 — nine entries, each one work not yet done —
  * so that the guard was green before anything moved and each phase deleted its own. The two left are the
  * other kind: a directory naming a module of a package this one *depends on*, which its own `src/` has no
- * counterpart for and should not grow one. Both are `@apack/cli`, which is where the specs that drive a
+ * counterpart for and should not grow one. Both are `@apackdev/cli`, which is where the specs that drive a
  * pack's whole toolchain live ([`goal-test-placement.md`](../../../docs/archive/goals/goal-test-placement.md)
  * settled that), so the toolchain's parts are what its directories can name.
  *
@@ -162,7 +162,7 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
  * they drive — but "what it covers is another package's, and this package holds it on purpose".
  */
 const NOT_MIRRORED_YET: Record<string, string> = {
-  'apack-cli/harness': "@apack/testing's harness: the scaffolded setup, a dependency's cached runtime, and "
+  'apack-cli/harness': "@apackdev/testing's harness: the scaffolded setup, a dependency's cached runtime, and "
     + 'isolatedDataDir. The CLI owns the commands that launch it (`apack test`, `init-tests`) and none of the '
     + 'harness itself, so a tests/commands/ name would say the wrong thing about all three',
 };
@@ -363,7 +363,7 @@ describe('a spec is collected by some config', () => {
    * The roots a config's `include` or `exclude` arrays name, read as text.
    *
    * Text rather than an import, for `suite-timeouts.spec.ts`' reason: importing a pack's config creates a
-   * temp data dir. The cost is that every array under the key is collected, `@apack/ears`' nested
+   * temp data dir. The cost is that every array under the key is collected, `@apackdev/ears`' nested
    * `benchmark.include` among them — so the included set is a little wider than the test runner's, and the
    * direction of that error is a spec under `bench/` going unreported. Narrowing it means parsing the
    * nesting, which means importing.

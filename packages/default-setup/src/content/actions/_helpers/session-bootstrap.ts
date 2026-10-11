@@ -1,5 +1,5 @@
 import type { EntityId, Services } from '#generated/services.ts';
-import { buildTranscript, type TranscriptMessage } from '@apack/sdk/actions';
+import { buildTranscript, type TranscriptMessage } from '@apackdev/sdk/actions';
 
 type ThreadMessage = {
   id?: string;

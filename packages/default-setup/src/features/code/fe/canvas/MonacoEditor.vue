@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import UnifiedMonacoEditor from '@apack/ui/components/UnifiedMonacoEditor'
+import UnifiedMonacoEditor from '@apackdev/ui/components/UnifiedMonacoEditor'
 import type { editor } from 'monaco-editor'
 
 const props = defineProps<{

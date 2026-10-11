@@ -14,7 +14,7 @@ import {
   createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes,
   getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo, type EARS,
-} from '@apack/ears';
+} from '@apackdev/ears';
 import { errorMessage } from '../utils/shared.ts';
 
 /** Entities per type, and each attribute kind's and relation kind's use, over the whole database */

@@ -2,11 +2,11 @@
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
 import { describe, expect, it } from 'vitest';
-import { startTestRuntime } from '@apack/sdk/testing';
-import { services } from '@apack/sdk/services';
-import { getDesignated, hasDesignation } from '@apack/sdk/designations';
-import { stepRegistry, type StepDefinition } from '@apack/sdk/steps';
-import { getPackSettingsDefaults, type PackRegistration } from '@apack/sdk/framework';
+import { startTestRuntime } from '@apackdev/sdk/testing';
+import { services } from '@apackdev/sdk/services';
+import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
+import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { getPackSettingsDefaults, type PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */

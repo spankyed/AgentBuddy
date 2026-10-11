@@ -94,9 +94,9 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
-import { useExternalFileDrag } from '@apack/ui/composables/useExternalFileDrag'
+import { useExternalFileDrag } from '@apackdev/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import { type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state.ts'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'

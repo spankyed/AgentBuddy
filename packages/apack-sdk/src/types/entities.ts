@@ -1,5 +1,5 @@
 /*───────────────────────────────────────────────────────────────────────────
- * The SDK's EARS namespace: the engine's (@apack/ears) with the entity types
+ * The SDK's EARS namespace: the engine's (@apackdev/ears) with the entity types
  * and relation kinds the SDK owns (sdk-entities.ts). Packs add theirs in their
  * generated EARS.
  *
@@ -7,7 +7,7 @@
  * depend on their exact form. Don't change them to make one call site compile; fix the call site.
  * Read packages/apack-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  *───────────────────────────────────────────────────────────────────────────*/
-import { EARS as Core } from '@apack/ears';
+import { EARS as Core } from '@apackdev/ears';
 import { SDK_ENTITIES, SDK_REL_KINDS } from './sdk-entities.ts';
 
 export namespace EARS {

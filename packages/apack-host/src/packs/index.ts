@@ -2,7 +2,7 @@
 export { createPackRegistry } from './registry.ts';
 export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './registry.ts';
 
-// Loading pack runtime code on the loader's own @apack/sdk
+// Loading pack runtime code on the loader's own @apackdev/sdk
 export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
@@ -24,7 +24,7 @@ export type { PackRecord } from './installed.ts';
  * A pack's backend leaves no other trace a test can see: an external pack with no frontend registers no
  * plugin, and the loaded-packs the renderer is served leave out packs with no frontend files. So the log
  * is the signal, and these are the sentences it is made of — imported by both the code that writes them
- * and `@apack/testing`, so that rewording one is a change to the other and not a suite that fails
+ * and `@apackdev/testing`, so that rewording one is a change to the other and not a suite that fails
  * somewhere else saying something untrue.
  */
 export { PACK_LOAD_MESSAGES, packRegistered, packLoadFailed } from './load-messages.ts';

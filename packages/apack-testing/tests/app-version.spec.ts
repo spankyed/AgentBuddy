@@ -13,7 +13,7 @@ function writeVersion(file: string, version: string) {
   fs.writeFileSync(file, JSON.stringify({ version }));
 }
 
-describe('appVersion (the @apack/testing fixture checks packs against it)', () => {
+describe('appVersion (the @apackdev/testing fixture checks packs against it)', () => {
   it("reads a checkout's package.json", () => {
     writeVersion(path.join(tmp, 'package.json'), '0.3.14');
     expect(appVersion({ kind: 'source', root: tmp })).toBe('0.3.14');

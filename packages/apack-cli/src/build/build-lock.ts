@@ -1,4 +1,4 @@
-// One writer or long reader of a pack's `dist` at a time, and the policy over `@apack/host/exclusive-lock`'s
+// One writer or long reader of a pack's `dist` at a time, and the policy over `@apackdev/host/exclusive-lock`'s
 // mechanism: where the lock file lives, what the refusal says, and how long a second arrival waits.
 //
 // **It guards the output, not only the build**, which is why `apack pack` takes it too: staging an archive is
@@ -11,7 +11,7 @@
 // sharing a staging directory makes the collision certain rather than likely.
 //
 // **And nothing else excluded them.** `holdChainLock` keeps one chain run per checkout, and `withBuildLock`
-// (`@apack/host/build/packages-built`) keeps one build of the five `@apack` packages; a pack's own build sat
+// (`@apackdev/host/build/packages-built`) keeps one build of the five `@apackdev` packages; a pack's own build sat
 // between the two with no lock, so `npm run build:default-setup` run beside a chain, or two agents in one checkout, raced.
 // What that costs is not only a broken `dist`: a reader of the pack's `dist/build` while one build has moved it
 // aside sees no build dir at all, which is how a dependent's content compiler comes back unresolved.
@@ -21,7 +21,7 @@
 // work: serialised they are both correct, the second simply builds the sources as they are when it starts. So
 // the default is to queue, and the bound is for a holder that is wedged rather than working.
 import * as path from 'node:path';
-import { findLockHolder, holdExclusiveLockWaiting, type ExclusiveLock } from '@apack/host/exclusive-lock';
+import { findLockHolder, holdExclusiveLockWaiting, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
 
 /**
  * The lock, inside the pack.

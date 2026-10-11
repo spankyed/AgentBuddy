@@ -2,12 +2,12 @@
 // apps use, with the test pack's plugins registered, so a pack's frontend (navigation, the shell's state, sends to
 // its systems) is tested as the app runs it rather than against a stand-in.
 import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@apack/host/fe';
-import type { Message } from '@apack/sdk/events';
-import { resolveName } from '@apack/sdk/ids';
-import type { HostShell, PluginDefinition } from '@apack/sdk/fe';
-import { startFeTestRuntime, testRootEvents } from '@apack/sdk/testing';
-import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apack/sdk/runtime';
+import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@apackdev/host/fe';
+import type { Message } from '@apackdev/sdk/events';
+import { resolveName } from '@apackdev/sdk/ids';
+import type { HostShell, PluginDefinition } from '@apackdev/sdk/fe';
+import { startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
+import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apackdev/sdk/runtime';
 
 /** One of the pack's plugins, as a test registers it: its state machine, and whatever else of its definition it needs */
 export type TestPlugin = { state: AnyStateMachine } & Partial<Omit<PluginDefinition, 'state'>>;

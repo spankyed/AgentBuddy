@@ -8,7 +8,7 @@
  * transformation below, which is a second copy of a cache key — the thing most worth not having two of.
  */
 import * as path from 'node:path';
-import { REPO_ROOT, type BuildUnit } from '@apack/host/build/packages-built';
+import { REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
 import type { ChainStep } from './chain-steps.ts';
 import { commandText, rootScripts } from './npm-scripts.ts';
 

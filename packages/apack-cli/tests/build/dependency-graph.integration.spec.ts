@@ -11,12 +11,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CLI, buildPack, callCli, packageJson, preparePack, run, tsconfig } from '../_support/pack-builds';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @apack/cli, which builds them)');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @apackdev/cli, which builds them)');
 
 /** A pack declaring `entities`, depending on `dependencies`. Nothing else: the graph is the subject. */
 function pack(id: string, entities: Record<string, string>, dependencies: Record<string, string> = {}, extra: Record<string, unknown> = {}) {
@@ -42,13 +42,13 @@ const NOTIFIER_SOURCES = {
   ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './system.contract.ts';",
     'export const notifierSpec = defineSystem<Contract>();',
     'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': "import type { Plugin } from '@apack/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",
 };
 
 const DEEP = 'deep-pack';

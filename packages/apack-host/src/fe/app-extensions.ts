@@ -1,4 +1,4 @@
-import type { FePackRegistryView } from '@apack/sdk/runtime';
+import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import { createOwnedStore } from '../packs/extensions.ts';
 
 /** A component a pack registered for an app extension slot, as the SDK types it */

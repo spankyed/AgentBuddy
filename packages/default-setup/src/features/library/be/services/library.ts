@@ -2,7 +2,7 @@ import * as path from 'path'
 import { repository } from '#generated/repository.ts';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '#features/library/be/types.ts';
 import { EARS } from '#generated/ears.ts';
-import { getPackCommands } from '@apack/sdk/framework';
+import { getPackCommands } from '@apackdev/sdk/framework';
 import * as symlink from '#features/library/be/repository/symlink.ts';
 import type { ContentSection, DocumentShortCode } from '#features/library/be/types.ts';
 import type { CommandItem } from '#generated/types.ts';

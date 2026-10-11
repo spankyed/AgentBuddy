@@ -1,9 +1,9 @@
 import { vi, describe, expect, it } from 'vitest';
-import { mockService } from '@apack/testing/harness';
+import { mockService } from '@apackdev/testing/harness';
 import { services, type Services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import { action as updateSessionSettings } from '../../../../src/content/actions/codex/update-session-settings.ts';
-import type { EARS } from '@apack/ears';
+import type { EARS } from '@apackdev/ears';
 
 // The action runs on the harness's services: a real thread in the in-memory database, with the Codex
 // app server and the chat and threads services it drives mocked

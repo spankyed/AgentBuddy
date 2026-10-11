@@ -1,5 +1,5 @@
 // Fixer 3 of the package-freshness doors (the doors are listed in packages/apack-testing/CLAUDE.md):
-// A pack compiles and runs against the @apack packages' published dist. When those packages come from
+// A pack compiles and runs against the @apackdev packages' published dist. When those packages come from
 // an apack checkout (a linked pack, the in-repo fixtures), that dist is built on demand and can be
 // behind the checkout's source — so a command that loads it asks the checkout to bring it up to date.
 // Installed packages have nothing to build: their dist is what npm delivered.
@@ -7,14 +7,14 @@ import { createRequire } from 'node:module';
 import { spawnSync, type StdioOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { CHECKOUT_MARKER } from '@apack/host/build/packages-built';
+import { CHECKOUT_MARKER } from '@apackdev/host/build/packages-built';
 
 /**
  * The packages a pack can resolve whose dist a checkout builds on demand. Every one is asked, because a
- * pack need not link them all: with @apack/sdk installed from the registry and @apack/ui linked to a
+ * pack need not link them all: with @apackdev/sdk installed from the registry and @apackdev/ui linked to a
  * checkout, asking only the SDK would find no checkout and leave that linked dist stale and silent.
  */
-const CHECKOUT_PACKAGES = ['@apack/sdk', '@apack/ears', '@apack/ui', '@apack/testing', '@apack/cli'];
+const CHECKOUT_PACKAGES = ['@apackdev/sdk', '@apackdev/ears', '@apackdev/ui', '@apackdev/testing', '@apackdev/cli'];
 
 /** The checkout a package resolves into from `packDir`, or undefined for an installed copy */
 function checkoutOf(packDir: string, pkg: string): string | undefined {
@@ -30,7 +30,7 @@ function checkoutOf(packDir: string, pkg: string): string | undefined {
   return undefined;
 }
 
-/** The apack checkout a pack's @apack packages come from, or undefined when they are all installed */
+/** The apack checkout a pack's @apackdev packages come from, or undefined when they are all installed */
 export function checkoutFor(packDir: string): string | undefined {
   for (const pkg of CHECKOUT_PACKAGES) {
     const checkout = checkoutOf(packDir, pkg);

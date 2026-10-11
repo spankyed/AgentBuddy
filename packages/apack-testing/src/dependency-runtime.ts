@@ -1,14 +1,14 @@
 // Loads a dependency's backend runtime (runtime/index.cjs) into the test process on the pack's own
-// shared-instance packages, xstate and zod, the way the app loads it on its own (@apack/host/packs/runtime, bridge.ts).
+// shared-instance packages, xstate and zod, the way the app loads it on its own (@apackdev/host/packs/runtime, bridge.ts).
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import {
   APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES, getSharedBeDeps, sharedInstanceExports, sharedInstanceSpecifiers,
-} from '@apack/host/build/shared-deps';
-import { withModuleBridge } from '@apack/host/packs';
-import type { PackRegistration } from '@apack/sdk/framework';
+} from '@apackdev/host/build/shared-deps';
+import { withModuleBridge } from '@apackdev/host/packs';
+import type { PackRegistration } from '@apackdev/sdk/framework';
 
-/** The shared-instance exports (@apack/sdk, @apack/ears) a backend runtime can require, as the pack resolves them */
+/** The shared-instance exports (@apackdev/sdk, @apackdev/ears) a backend runtime can require, as the pack resolves them */
 function sharedSpecifiers(packDir: string): string[] {
   const fromFile = path.join(packDir, 'package.json');
   return SHARED_INSTANCE_PACKAGES.flatMap((pkg) => sharedInstanceSpecifiers(pkg, sharedInstanceExports(pkg, fromFile)));

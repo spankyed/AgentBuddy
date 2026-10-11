@@ -8,20 +8,20 @@ import { findPackRootOrNone, readManifest } from '../utils';
 import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
-} from '@apack/host/dev-session';
+} from '@apackdev/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { createDevHold } from '../app/dev-hold.ts';
-import { resolveAppContext } from '@apack/sdk/env';
-import { errorMessage } from '@apack/sdk/utils/pure';
-import type { AppEnv } from '@apack/sdk/env';
-import { readApiEndpoint } from '@apack/host/process-liveness';
-import { withoutSourceCondition } from '@apack/host/build/source-resolution';
-import { installPackFromLocal, readHostInfo } from '@apack/host/packs';
-import { removeDevServerMarker, writeDevServerMarker } from '@apack/host/packs/dev-server';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
+import type { AppEnv } from '@apackdev/sdk/env';
+import { readApiEndpoint } from '@apackdev/host/process-liveness';
+import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
+import { installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
+import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
 Usage: apack dev [--build <name|path>]
@@ -76,7 +76,7 @@ export function installToApp(root: string, place: AppPlace = { build: 'developme
 
 /**
  * The app's environment, minus this process's own. Two things have to go: ELECTRON_RUN_AS_NODE, which the
- * app-bundled `apack` sets and which would start Electron as plain Node, and the `@apack/source`
+ * app-bundled `apack` sets and which would start Electron as plain Node, and the `@apackdev/source`
  * condition, since a checkout's app declares its own and a packaged one must not resolve source at all.
  */
 function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
@@ -371,7 +371,7 @@ async function session(args: string[], hooks: SessionHooks) {
   }
 
   if (pack) {
-    // The build and the app both read the @apack packages' dist; from a checkout that dist is built on demand
+    // The build and the app both read the @apackdev packages' dist; from a checkout that dist is built on demand
     ensureCheckoutPackages(pack.root);
 
     console.log('Running initial build...\n');

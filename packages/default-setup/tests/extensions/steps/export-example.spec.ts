@@ -16,11 +16,11 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { exportFlowsToDSL } from '@apack/sdk/build'
-import { ROOT_FLOW_ROLE } from '@apack/sdk'
-import { importFlows } from '@apack/testing/harness'
-import { population } from '@apack/sdk/testing'
-import { startTestRuntime } from '@apack/sdk/testing'
+import { exportFlowsToDSL } from '@apackdev/sdk/build'
+import { ROOT_FLOW_ROLE } from '@apackdev/sdk'
+import { importFlows } from '@apackdev/testing/harness'
+import { population } from '@apackdev/sdk/testing'
+import { startTestRuntime } from '@apackdev/sdk/testing'
 import { steps as registeredSteps } from '#generated/steps-build.ts'
 import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
 
@@ -46,7 +46,7 @@ function exported(): unknown {
  * reached through every track, and the triggers, identified by the Track key each trigger facet declares it
  * owns (`trigger.trackField`).
  *
- * The walk follows nesting through the step's own `branches` facet (`StepBranch`, `@apack/sdk/steps`), which
+ * The walk follows nesting through the step's own `branches` facet (`StepBranch`, `@apackdev/sdk/steps`), which
  * is the declared answer to "which keys of this node hold more steps". Without it this finds ten of eleven:
  * `kill` sits inside the switch's `conditions[].steps` and a second `keep_alive` inside its `else`, so a walk
  * that reads only `exits` reports a shorter list and blames the fixture for it.

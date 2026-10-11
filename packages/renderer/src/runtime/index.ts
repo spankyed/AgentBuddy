@@ -1,7 +1,7 @@
 // The renderer's side of the SDK's frontend port (bindFeHost): the app shell, the secrets client, the app's
 // settings, the window's client to the API, and the window's registered pack frontends
-import { bindFeHost } from '@apack/sdk/runtime';
-import type { HostShell } from '@apack/sdk/fe';
+import { bindFeHost } from '@apackdev/sdk/runtime';
+import type { HostShell } from '@apackdev/sdk/fe';
 import { feClient } from '@/transport/client';
 import { fePacks } from '@/runtime/packs';
 import { secretsClient } from '@/transport/secrets';

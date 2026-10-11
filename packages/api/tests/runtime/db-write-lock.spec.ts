@@ -1,5 +1,5 @@
 // The API refuses to boot while a tool (`apack db`) is changing the data dir's database: opening it would overwrite
-// that change from this process's memory. See @apack/host/database's write lock.
+// that change from this process's memory. See @apackdev/host/database's write lock.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -9,7 +9,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-db-write-lock-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { setupBackend } = await import('@/runtime');
-const { holdDatabaseWriteLock } = await import('@apack/host/database');
+const { holdDatabaseWriteLock } = await import('@apackdev/host/database');
 
 const locks: Array<{ release(): void }> = [];
 afterEach(() => { for (const lock of locks.splice(0)) lock.release(); });

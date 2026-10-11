@@ -2,7 +2,7 @@
 // on it, a read works and warns that it may be stale, and a change is refused, so the app stays its only writer
 import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
-import { test, expect } from '@apack/testing';
+import { test, expect } from '@apackdev/testing';
 
 const CLI = path.resolve(import.meta.dirname, '../../../packages/apack-cli/bin/apack.mjs');
 

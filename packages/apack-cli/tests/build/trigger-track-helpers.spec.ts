@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { generatePackFiles, type PackManifest } from '@apack/sdk/build';
+import { generatePackFiles, type PackManifest } from '@apackdev/sdk/build';
 
 let tmp: string | undefined;
 afterEach(() => {

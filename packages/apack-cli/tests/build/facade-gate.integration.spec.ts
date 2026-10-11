@@ -29,10 +29,10 @@ async function gate(name: string, files: Record<string, string>): Promise<{ prob
 }
 
 describe('facade gate', () => {
-  it('passes a facade that imports only @apack/* and @apack/sdk peers', async () => {
+  it('passes a facade that imports only @apackdev/* and @apackdev/sdk peers', async () => {
     const { problems } = await gate('clean', {
       'src/search.ts': [
-        "import type { EARS } from '@apack/sdk';",
+        "import type { EARS } from '@apackdev/sdk';",
         "import type { AnyActorLogic } from 'xstate';",
         "import { z } from 'zod';",
         'export const Query = z.object({ text: z.string() });',
@@ -66,25 +66,25 @@ describe('facade gate', () => {
       'src/__generated__/pack-types.ts': "import type { browserService } from '../browser.ts';\nexport type Services = { browser: typeof browserService };\n",
     });
     expect(problems).toEqual([
-      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:1:1 imports "playwright", which dependents don't have: facades may import only @apack\/\* packages, @apack\/sdk's peer dependencies \([^)]*\bxstate\b[^)]*\) and Node built-ins \(reached from: Services\)$/),
+      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:1:1 imports "playwright", which dependents don't have: facades may import only @apackdev\/\* packages, @apackdev\/sdk's peer dependencies \([^)]*\bxstate\b[^)]*\) and Node built-ins \(reached from: Services\)$/),
     ]);
   });
 
   // Nothing resolves these now: a pack build compiles the published packages, so a source-only export
   // fails the rule and fails to compile, and the rule's message is what names the reason
-  it('fails a facade that imports an @apack/* module no pack resolves', async () => {
+  it('fails a facade that imports an @apackdev/* module no pack resolves', async () => {
     const { problems } = await gate('source-only-export', {
       'src/internals.ts': [
-        "import type { unbindHost } from '@apack/sdk/runtime/internals';",
-        "import type { PackInfo } from '@apack/host/packs';",
+        "import type { unbindHost } from '@apackdev/sdk/runtime/internals';",
+        "import type { PackInfo } from '@apackdev/host/packs';",
         'export const internalsService = { unbind: (): typeof unbindHost | null => null, pack: (): PackInfo | null => null };',
       ].join('\n'),
       'src/__generated__/pack-types.ts': "import type { internalsService } from '../internals.ts';\nexport type Services = { internals: typeof internalsService };\n",
     });
     expect(problems).toEqual([
-      expect.stringMatching(/imports "@apack\/sdk\/runtime\/internals", which @apack\/sdk doesn't export to installed dependents: in a checkout it resolves only under the @apack\/source condition, and the published manifest drops the entry \(reached from: Services\)$/),
-      expect.stringMatching(/imports "@apack\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
-      expect.stringContaining("error TS2307: Cannot find module '@apack/sdk/runtime/internals'"),
+      expect.stringMatching(/imports "@apackdev\/sdk\/runtime\/internals", which @apackdev\/sdk doesn't export to installed dependents: in a checkout it resolves only under the @apackdev\/source condition, and the published manifest drops the entry \(reached from: Services\)$/),
+      expect.stringMatching(/imports "@apackdev\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
+      expect.stringContaining("error TS2307: Cannot find module '@apackdev/sdk/runtime/internals'"),
     ]);
   });
 

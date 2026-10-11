@@ -1,5 +1,5 @@
-import type { TriggerFacet, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 import { Cron } from 'croner';
 
 export function compile(track: Record<string, unknown>, trackId: string, ts: number, trackKey: string): Record<string, unknown> {

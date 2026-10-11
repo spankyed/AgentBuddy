@@ -4,8 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
-import { _appDirOf, resolveAppContext } from '@apack/sdk/env';
-import { resetTestData, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
+import { _appDirOf, resolveAppContext } from '@apackdev/sdk/env';
+import { resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
 import { readInstalledPacks } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
@@ -14,12 +14,12 @@ import { createPacksSystem, type PackInfo } from '../../../../src/features/packs
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
-import { createFormatApplier } from '@apack/sdk/content';
-import { untypedQx, untypedTx } from '@apack/ears';
+import { createFormatApplier } from '@apackdev/sdk/content';
+import { untypedQx, untypedTx } from '@apackdev/ears';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -580,8 +580,8 @@ describe('importing a pack’s content', () => {
   }
 
   it('records what it wrote and leaves the revision where it is', async () => {
-    const { startTestRuntime, testPacks } = await import('@apack/sdk/testing');
-    const { createFormatApplier } = await import('@apack/sdk/content');
+    const { startTestRuntime, testPacks } = await import('@apackdev/sdk/testing');
+    const { createFormatApplier } = await import('@apackdev/sdk/content');
     resetTestData();
     startTestRuntime({ entityTypes: ['Memo'] });
     appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map() });
@@ -605,7 +605,7 @@ describe('importing a pack’s content', () => {
        * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
        * which is exactly not what was asked for.
        */
-      const { untypedQx, untypedTx } = await import('@apack/ears');
+      const { untypedQx, untypedTx } = await import('@apackdev/ears');
       const memos = () => untypedQx('Memo' as never).pickAll();
       untypedTx(memos()[0]!.id).destroy();
       expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);

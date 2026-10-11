@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';

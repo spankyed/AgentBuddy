@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { ref, toRef, onMounted, onUnmounted } from 'vue'
 import type { MenuItem } from '../composables/useContextMenu.ts'
-import { useTrackedMenuOpen } from '@apack/sdk/fe'
+import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
 
 const props = withDefaults(defineProps<{
   show: boolean

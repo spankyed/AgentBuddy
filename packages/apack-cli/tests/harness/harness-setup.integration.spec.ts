@@ -53,10 +53,10 @@ function dataPack(spec: string, manifest: Record<string, unknown> = {}): string 
   write(root, 'apack.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0', ...manifest }));
   // As `apack init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
-import { definePackTestConfig } from '@apack/testing/vitest';
+import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
-import { setupPackTests } from '@apack/testing/harness';
+import { setupPackTests } from '@apackdev/testing/harness';
 await setupPackTests({ contentRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
   write(root, 'tests/pack.spec.ts', spec);
   return root;
@@ -66,7 +66,7 @@ describe("a pack's unit tests on the harness", () => {
   it('find the pack from the vitest project root when run from another directory (--root)', () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
-import { importContent } from '@apack/testing/harness';
+import { importContent } from '@apackdev/testing/harness';
 it('writes nothing', async () => {
   expect(await importContent()).toEqual({});
 });`);
@@ -79,7 +79,7 @@ it('writes nothing', async () => {
   it("let services.emitter send to the features the pack's manifest declares", () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
-import { services } from '@apack/sdk/services';
+import { services } from '@apackdev/sdk/services';
 it('sends to its own system and plugin', () => {
   expect(() => services.emitter.sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
@@ -93,7 +93,7 @@ it('sends to its own system and plugin', () => {
   it('fail naming why when test files share the harness (vitest isolate off)', () => {
     const spec = `
 import { expect, it } from 'vitest';
-import { importContent } from '@apack/testing/harness';
+import { importContent } from '@apackdev/testing/harness';
 it('writes nothing', async () => {
   expect(await importContent()).toEqual({});
 });`;
@@ -102,7 +102,7 @@ it('writes nothing', async () => {
     // `isolate: false` is the thing under test, and a pack sets what the helper does not by spreading it —
     // which is also the only way to override anything `definePackTestConfig` decides
     write(root, 'vitest.config.ts', `
-import { definePackTestConfig } from '@apack/testing/vitest';
+import { definePackTestConfig } from '@apackdev/testing/vitest';
 const base = await definePackTestConfig({ dataDirPrefix: 'harness-setup-' });
 export default { ...base, test: { ...base.test, isolate: false, fileParallelism: false } };`);
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
@@ -148,7 +148,7 @@ describe('apack add feature in a pack without the unit test setup', () => {
     fs.rmSync(path.join(pack, 'tests'), { recursive: true });
     const pkgPath = path.join(pack, 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    delete pkg.devDependencies['@apack/testing'];
+    delete pkg.devDependencies['@apackdev/testing'];
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
@@ -158,8 +158,8 @@ describe('apack add feature in a pack without the unit test setup', () => {
     expect(added.output).toContain('+ tests/setup.ts');
     expect(added.output).toContain('+ tests/features/memos/be/system.spec.ts');
     expect(added.output).toContain('vitest.config.ts already exists');
-    expect(added.output).toContain('Added @apack/testing to devDependencies. Run: npm install');
-    expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@apack/testing']).toMatch(/^\^/);
+    expect(added.output).toContain('Added @apackdev/testing to devDependencies. Run: npm install');
+    expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@apackdev/testing']).toMatch(/^\^/);
     // The kept config is the scaffold's, which loads tests/setup.ts
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const unit = run(process.execPath, [VITEST, 'run'], pack);

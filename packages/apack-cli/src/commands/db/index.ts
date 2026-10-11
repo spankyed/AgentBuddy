@@ -1,4 +1,4 @@
-// apack db: the app's database, opened offline (@apack/host/database)
+// apack db: the app's database, opened offline (@apackdev/host/database)
 import { CLEAR_SETTINGS_USAGE, dbClearSettings, dbImport, dbReset, IMPORT_USAGE, RESET_USAGE } from './destructive';
 import { dbExec, dbQuery, EXEC_USAGE, QUERY_USAGE } from './code';
 import { dbExport, EXPORT_USAGE } from './export';

@@ -56,7 +56,7 @@ adding another sample:
   on another box, and an idle floor on recording.
 - And a sum of it needed a drift report, because a correlated slowdown sits under every per-spec tolerance.
   That report fired on one file's noise in five of the twelve records, where a single spec was 64% or more of
-  the body (`@apack/ui` 93%, `main` 89%, `@apack/sdk` 86%) and the worst single spec moves 74% between two
+  the body (`@apackdev/ui` 93%, `main` 89%, `@apackdev/sdk` 86%) and the worst single spec moves 74% between two
   quiet runs.
 
 **What finally settled it was not the cost of the apparatus but a contradiction.** Once each spec was
@@ -103,7 +103,7 @@ spec where the report is printed — guards fourteen annotations in one directio
 mode is a stale comment. What it is *for* is whether a spec should move between halves.
 
 **The wait was answered, and in the direction the condition did not expect.** `f2a003bb2` moved two specs
-on this evidence on 2026-10-06: `fe-bundler-proxy-exports` into `@apack/cli`'s integration half, and
+on this evidence on 2026-10-06: `fe-bundler-proxy-exports` into `@apackdev/cli`'s integration half, and
 `published-manifest-paths` against a recorded placement whose justifying figure had gone 2.5x stale. So the
 condition as written — a year passing with nothing moved — cannot be the test any more, and the question is
 no longer whether the gate is ever acted on.
@@ -111,7 +111,7 @@ no longer whether the gate is ever acted on.
 **What the count still says is how much of the population is reachable.** Eleven of the fourteen sit in
 packages with a single vitest config, so for those the move the remedy names costs a new config and a root
 project entry rather than a rename — `hasSplit` is where that fact lives, and `markerReachLines` prints the
-gap on a passing run. The three in `@apack/cli` have both halves and could move today. So what would now
+gap on a passing run. The three in `@apackdev/cli` have both halves and could move today. So what would now
 justify deleting the gate and keeping the ranking is a settled judgement that keeping these markers true is
 not worth its weight, priced against the two placement decisions it has enabled — a judgement rather than
 something a run can check, which is why it is prose. The mechanical halves stay cases: that the markers

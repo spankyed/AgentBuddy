@@ -5,7 +5,7 @@
 > not.** `APACK_ENV` is the *handoff* — how a parent process tells a child what it is — where `--build` is
 > a *selector* a person types, so one name for both would put the question and the answer under one word,
 > which is the fusion this plan exists to end. The selector collapsed and the handoff stayed. For the
-> vocabulary as it is now, see `docs/public-facing/cli.md` and `@apack/sdk/env`.
+> vocabulary as it is now, see `docs/public-facing/cli.md` and `@apackdev/sdk/env`.
 Compiled 2026-10-09. **Lands last of the three**, after
 [`profiles-not-instances.md`](profiles-not-instances.md) and
 [`attachable-dev-session.md`](attachable-dev-session.md) — see "Where it goes in the order" below, which

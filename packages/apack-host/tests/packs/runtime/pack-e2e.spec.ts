@@ -1,6 +1,6 @@
 /**
  * E2E test: exercises the real pack loading pipeline against an isolated
- * test data directory (resolved through @apack/sdk/env, never the user's
+ * test data directory (resolved through @apackdev/sdk/env, never the user's
  * real app data). The test installs a fresh test pack, runs the full
  * boot-sequence functions, and verifies the system loads, registers, and
  * could serve plugins to the FE (the packs.loaded entries).
@@ -15,8 +15,8 @@ import * as os from 'os';
 import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 /** A loaded pack's system, by feature id */

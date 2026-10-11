@@ -2,14 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Plugin, PluginDefinition } from '@apack/sdk/fe';
+import type { Plugin, PluginDefinition } from '@apackdev/sdk/fe';
 
-import { resetTestData } from '@apack/sdk/testing';
+import { resetTestData } from '@apackdev/sdk/testing';
 import { registry } from './test-host.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 let tmpDir: string;
@@ -146,7 +146,7 @@ describe('activating and tearing down a pack at runtime', () => {
   it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
     await install();
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getPackCommands } = await import('@apack/sdk/framework');
+    const { getPackCommands } = await import('@apackdev/sdk/framework');
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
 
@@ -173,8 +173,8 @@ describe('activating and tearing down a pack at runtime', () => {
   it('drops its commands and appliers when torn down, and tells the systems still running after stopping its own', async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { getPackCommands } = await import('@apack/sdk/framework');
-    const { importCompiledContent } = await import('@apack/sdk/utils');
+    const { getPackCommands } = await import('@apackdev/sdk/framework');
+    const { importCompiledContent } = await import('@apackdev/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-content');
     fs.mkdirSync(compiledDir);
@@ -196,8 +196,8 @@ describe('activating and tearing down a pack at runtime', () => {
   // registered.
   it('finishes tearing a pack down when one of its contributions will not come out', async () => {
     const { teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { onPackSettingsDefaultsChanged } = await import('@apack/sdk/framework');
-    const { testRootEvents } = await import('@apack/sdk/testing');
+    const { onPackSettingsDefaultsChanged } = await import('@apackdev/sdk/framework');
+    const { testRootEvents } = await import('@apackdev/sdk/testing');
 
     registry.registerPack({
       id: 'stuck-pack',

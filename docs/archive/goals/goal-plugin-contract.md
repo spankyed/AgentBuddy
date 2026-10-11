@@ -261,17 +261,17 @@ Final.
    question Decision 6 already gives the shell.
 
    **The SDK's untyped pair is renamed: `useUntypedPluginState` and `readUntypedPluginState`**, staying
-   public in `@apack/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
+   public in `@apackdev/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
    the path people should take — the convention this repo already follows three times:
 
-   | typed, `#generated/*` | untyped, `@apack/sdk` |
+   | typed, `#generated/*` | untyped, `@apackdev/sdk` |
    |---|---|
    | `qx` | `untypedQx` |
    | `tx` | `untypedTx` |
    | `navigateToPlugin` | `openPlugin` |
 
    `tx`/`untypedTx` is the most recent and was applied for this reason: the untyped write had been exported
-   under the same name as the typed one, so `import { tx, untypedQx } from '@apack/ears'` read as a matched
+   under the same name as the typed one, so `import { tx, untypedQx } from '@apackdev/ears'` read as a matched
    pair when only one half was qualified. The one exception is instructive — the Database console keeps `tx`
    as its REPL global (`database-console/index.ts`, `defs/database.ts`), because that name is a different,
    user-facing API and the two lists must agree.
@@ -320,11 +320,11 @@ The change everything else rests on, and the only one that closes the cycle.
   that last caller and assumes this deletion happened here.
 - `apack.json` gains `features[].plugin.contract` (Decision 2), with `manifest-schema.ts`,
   `generate:schema` and `schema:check`. `library` omits it and gets no leaf.
-- `PluginInbox` stays a type helper in `@apack/sdk/fe`, constraining the `inbox` half's audiences.
+- `PluginInbox` stays a type helper in `@apackdev/sdk/fe`, constraining the `inbox` half's audiences.
 - `state.ts` imports its context from the leaf. Nothing else moves; the machine keeps its generated sends.
 - The selectors stay for now on the SDK's untyped `usePluginState`; Phase 3 deletes them.
 
-**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apack/sdk`,
+**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @apackdev/sdk`,
 `npm test -w @app/default-setup` pass; `git grep pluginAccepts` returns nothing and no SDK export replaced it; `#generated/events` imports
 no `fe/plugin.ts`; a `declaredTypeOf` spec covers a type alias, an interface and a missing name; a guard in
 `scripts/check-import-specifiers.ts` rejects a leaf importing `./state`, `#generated/events`, `#generated/fe`
@@ -367,10 +367,10 @@ After Phases 1 and 2.
   `#generated/references`, which already aggregates reference config.
 
 **Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in
-`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@apack/sdk/fe` and its
+`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@apackdev/sdk/fe` and its
 specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `tx`/`untypedTx` rename
 that landed this convention: a multi-line `import {` block, a module that *re-exports* the name (its consumers
-then import it from there, not from the SDK), `await import('@apack/sdk/fe')` destructuring, and the name
+then import it from there, not from the SDK), `await import('@apackdev/sdk/fe')` destructuring, and the name
 inside a string or a test label. The third is the one to take seriously — **`npm run typecheck` did not catch
 a dynamic-import case**, and ten api specs failed at runtime instead. a fixture-pack spec reads a default-setup plugin's state with types, and
 a `@ts-expect-error` pins that the dependency read is `T | undefined`. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
@@ -388,7 +388,7 @@ makes `check:specifiers` pass again, proving the rule is what rejects it.
 - The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
   at their callers.
 
-**Done when:** `npm test -w @apack/host` and `-w @apack/sdk` pass; a spec in
+**Done when:** `npm test -w @apackdev/host` and `-w @apackdev/sdk` pass; a spec in
 `apack-host/tests/features/application/fe/` pins that a send to a plugin whose pack is still loading is
 delivered once it arrives, and reported through `notify` once loading settles with no such plugin; a read of
 an absent plugin returns `undefined` instead of throwing; and the scope spec the archived goal left open
@@ -416,7 +416,7 @@ recorded below. Phases 1–4 went in as `3d79fed34`, with `5a3442700` fixing a r
   names a `path#Export` rather than the plugin entry.
 - **`usePluginState` kept its name; the SDK's untyped pair was renamed.** The plan left the collision open. The
   generated readers are what pack code should reach for, so they keep the plain name and the SDK's became
-  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@apack/ears`.
+  `useUntypedPluginState`/`readUntypedPluginState`, matching `untypedQx`/`untypedTx` in `@apackdev/ears`.
 
 ### Open items
 Neither `Deferred` item is still open; both were settled after this was archived.

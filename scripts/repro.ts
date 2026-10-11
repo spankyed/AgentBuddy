@@ -34,7 +34,7 @@
 // on every run.
 //
 import { execFileSync } from 'node:child_process';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from './lib/repro.ts';
 
 /**

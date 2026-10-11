@@ -5,9 +5,9 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
-import { resolveAppContext } from '@apack/sdk/env';
-import { resolveName } from '@apack/sdk/ids';
-import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apack/host/packs';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveName } from '@apackdev/sdk/ids';
+import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -127,10 +127,10 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
   const bases = [path.join(packDir, 'package.json'), ...(app.kind === 'source' ? [path.join(app.root, 'package.json')] : [])];
   for (const base of bases) {
     try {
-      return path.join(path.dirname(createRequire(base).resolve('@apack/cli/package.json')), 'bin', 'apack.mjs');
+      return path.join(path.dirname(createRequire(base).resolve('@apackdev/cli/package.json')), 'bin', 'apack.mjs');
     } catch {}
   }
-  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apack/cli) or run the tests with `apack test`.');
+  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack test`.');
 }
 
 /** The newest thing under `dir`, or 0 when there is nothing there. */
@@ -229,7 +229,7 @@ function captureOutput(app: ElectronApplication, logFile?: string): void {
   packLoads.set(app, packLoad);
   const packId = getPackManifest()?.id;
   // The loader logs one line per outcome for every pack it reaches, and those lines are its contract with
-  // this fixture (`PACK_LOAD_MESSAGES`, `@apack/host/packs`), not prose it happens to print. Watched from
+  // this fixture (`PACK_LOAD_MESSAGES`, `@apackdev/host/packs`), not prose it happens to print. Watched from
   // the launch because the tail only keeps the last few hundred lines and the app has usually logged past
   // boot by the time a test asks.
   const escaped = packId?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

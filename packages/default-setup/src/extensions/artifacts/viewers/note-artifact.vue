@@ -31,9 +31,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
-import type { ArtifactItem } from '@apack/sdk/artifacts'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import CopyButton from '@apack/ui/design/CopyButton'
+import type { ArtifactItem } from '@apackdev/sdk/artifacts'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@apackdev/ui/design/CopyButton'
 import { usePluginState } from '#generated/fe.ts'
 
 const props = defineProps<{

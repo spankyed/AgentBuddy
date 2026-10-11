@@ -1,9 +1,9 @@
 // Events the app's clients send its backend systems (the API's `bus.send`): checked against the registered systems,
 // logged and put on the root event bus the app bus listens to (the SDK's bound transport).
-import { _rootEvents } from '@apack/sdk/runtime';
-import { createLogger } from '@apack/sdk/logger';
+import { _rootEvents } from '@apackdev/sdk/runtime';
+import { createLogger } from '@apackdev/sdk/logger';
 import type { PackRegistry } from '../packs/registry.ts';
-import { senderSuffix, type Message } from '@apack/sdk/events';
+import { senderSuffix, type Message } from '@apackdev/sdk/events';
 
 const logger = createLogger('app-events');
 

@@ -67,7 +67,7 @@ export function templateFiles(): string[] {
     return entry.isDirectory() ? walk(full) : [path.relative(root, full).split(path.sep).join('/')];
   });
   if (!fs.existsSync(root)) {
-    throw new Error(`No templates at ${root}. A published @apack/cli ships them beside bin/ and dist/; `
+    throw new Error(`No templates at ${root}. A published @apackdev/cli ships them beside bin/ and dist/; `
       + 'a build that dropped them scaffolds nothing.');
   }
   return walk(root).sort();

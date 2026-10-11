@@ -8,8 +8,8 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // The upcoming release; the test environment runs release rules, including intervening migrations
-vi.mock('@apack/sdk/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/sdk/env')>();
+vi.mock('@apackdev/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/sdk/env')>();
   return { ...actual, getAppVersion: () => '0.4.0' };
 });
 
@@ -18,14 +18,14 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
-const { hostRegistration } = await import('@apack/host/features');
-const { loadAppPacks } = await import('@apack/host/packs/runtime');
-const { installShippedPacks } = await import('@apack/host/packs');
-const { resolveAppContext } = await import('@apack/sdk/env');
-const { runAppMigrations } = await import('@apack/host/migrations');
-const { appliedContent, appState } = await import('@apack/host/app-state');
-const { untypedTx, untypedQx } = await import('@apack/ears');
-const { services } = await import('@apack/sdk/services');
+const { hostRegistration } = await import('@apackdev/host/features');
+const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
+const { installShippedPacks } = await import('@apackdev/host/packs');
+const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { runAppMigrations } = await import('@apackdev/host/migrations');
+const { appliedContent, appState } = await import('@apackdev/host/app-state');
+const { untypedTx, untypedQx } = await import('@apackdev/ears');
+const { services } = await import('@apackdev/sdk/services');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const SETTINGS_ID = 'Settings-app';

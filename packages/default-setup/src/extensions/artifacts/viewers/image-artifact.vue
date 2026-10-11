@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ArtifactItem } from '@apack/sdk/artifacts';
+import type { ArtifactItem } from '@apackdev/sdk/artifacts';
 
 defineProps<{
   /** content: the image's URL */

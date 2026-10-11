@@ -1,6 +1,6 @@
 import type { MemosContext, MemosInbox } from './contract.ts';
 import { setup, assign, type ActorRefFrom } from 'xstate';
-import { safeEvents } from '@apack/sdk/fe';
+import { safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '#generated/events.ts';
 import type { OutgoingMemosEvents } from '../be/types.ts';
 

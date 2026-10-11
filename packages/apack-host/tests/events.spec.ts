@@ -2,9 +2,9 @@
 // leaving that to a grep. The untyped sends below stamp nothing — a caller reaches for them deliberately, and
 // nothing routes or refuses on the stamp — so absent is a sender with nothing to declare rather than a fault.
 import { describe, expect, it } from 'vitest';
-import type { Message } from '@apack/sdk/events';
-import { untypedBroadcastToPlugin, untypedSendToSystem } from '@apack/sdk/events';
-import { startTestRuntime, testRootEvents } from '@apack/sdk/testing';
+import type { Message } from '@apackdev/sdk/events';
+import { untypedBroadcastToPlugin, untypedSendToSystem } from '@apackdev/sdk/events';
+import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../src/app-state/index.ts';
 import { broadcastToPlugin, sendToSystem } from '../src/events.ts';
 import { HOST } from '../src/refs.ts';

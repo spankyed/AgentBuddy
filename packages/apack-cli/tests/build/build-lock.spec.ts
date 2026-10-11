@@ -3,11 +3,11 @@
  *
  * Two builds of one pack stage into the same directory and each clears it as its first act, so without this
  * the second wipes the first's half-written tree and both rename something over `dist`. Nothing else excluded
- * them: `holdChainLock` keeps one chain run per checkout and `withBuildLock` one build of the five `@apack`
+ * them: `holdChainLock` keeps one chain run per checkout and `withBuildLock` one build of the five `@apackdev`
  * packages, and a pack's own build sat between the two.
  *
  * The mechanism — the take, the takeover of a dead holder's lock, the release on four interrupts, the bounded
- * retry — is `@apack/host/exclusive-lock`'s, covered from above by `apack-host/tests/database/write-lock.spec.ts`
+ * retry — is `@apackdev/host/exclusive-lock`'s, covered from above by `apack-host/tests/database/write-lock.spec.ts`
  * with real processes. What is asked here is this caller's policy: where the file sits, that it waits, what it
  * says when the wait runs out, and that the wait is not a wait on itself.
  */

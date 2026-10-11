@@ -5,11 +5,11 @@ import type { OutgoingLibraryEvents } from '#features/library/be/types.ts'
 import type { SearchIndexFormData } from './types/search-index.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@apack/sdk/fe'
-import breadcrumb, { breadcrumbWithParams } from '@apack/sdk/fe'
-import { targetIs, TRAIL_CLICK } from '@apack/sdk/fe'
+import { contextMenuFn } from '@apackdev/sdk/fe'
+import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
+import { targetIs, TRAIL_CLICK } from '@apackdev/sdk/fe'
 import { tagStorage } from './services/tagStorage.ts'
-import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apack/sdk/fe'
+import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apackdev/sdk/fe'
 
 // Helper function to convert DocumentItem to DocumentDTO
 function documentItemToDTO(item: DocumentItem): DocumentDTO {

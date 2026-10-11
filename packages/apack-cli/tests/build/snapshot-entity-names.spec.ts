@@ -5,8 +5,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 const snapshotFile = (pack: string): string | undefined => {
   const file = path.join(REPO_ROOT, pack, 'dist', PACK_LAYOUT.snapshot);

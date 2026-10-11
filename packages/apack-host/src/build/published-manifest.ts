@@ -1,13 +1,13 @@
 /**
  * The manifest a published tarball carries, derived from the workspace one, and what it may name.
  *
- * The workspace manifest cannot be published as it stands. Every export of `@apack/ears`, `@apack/sdk` and
- * `@apack/ui` names `./src/**` under the `@apack/source` condition, which `files` does not ship — 99 targets
+ * The workspace manifest cannot be published as it stands. Every export of `@apackdev/ears`, `@apackdev/sdk` and
+ * `@apackdev/ui` names `./src/**` under the `@apackdev/source` condition, which `files` does not ship — 99 targets
  * measured 2026-09-27 — and Node picks a matching condition and *then* requires the file, with no fallback to
  * the next branch. So a consumer that enables the condition (a pack copying a config, a monorepo using the
  * same trick for its own packages) fails to resolve at all, with a message naming neither the condition nor
  * the config. The condition is a checkout-only mechanism, so the artifact does not mention it rather than
- * mentioning it as a trap: `@apack/testing`'s manifest has never had a source branch, and enabling the
+ * mentioning it as a trap: `@apackdev/testing`'s manifest has never had a source branch, and enabling the
  * condition against it resolves the same `dist` path as not enabling it.
  *
  * Derived at **build** time, into a staged tree the build writes. Not at publish time: `test-packaged-authoring.sh`
@@ -47,7 +47,7 @@ const PATH_FIELDS = ['exports', 'main', 'module', 'types', 'typings', 'browser',
  * the whole of, and without the fields above.
  *
  * An emptied entry is dropped rather than left as `{}`, and must not be given a published target instead.
- * `@apack/sdk`'s `./runtime/internals` is the case: `facade-gate.ts` reports a pack whose facade imports
+ * `@apackdev/sdk`'s `./runtime/internals` is the case: `facade-gate.ts` reports a pack whose facade imports
  * something installed dependents cannot resolve, and it decides that by asking whether the entry has a
  * published target. Give it one and the gate goes quiet; drop the entry and the gate still reports, because an
  * absent entry is not resolvable either.
@@ -83,7 +83,7 @@ function withoutSourceCondition(target: unknown): unknown {
 
 /**
  * Every path a manifest names, as `[what names it, the path]`: every condition at every depth, and `bin`,
- * which is how a package with no exports map (`@apack/cli`) names anything at all.
+ * which is how a package with no exports map (`@apackdev/cli`) names anything at all.
  *
  * The keys of an `exports`, `bin` or `typesVersions` object are subpaths, conditions, commands or version
  * ranges — only the values name files, so the walk reads values and never keys.

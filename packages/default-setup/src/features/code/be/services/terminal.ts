@@ -8,7 +8,7 @@ import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types.ts'
 import { EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts';
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 import { ref } from '#generated/ref.ts';
 
 const logger = createLogger('terminal');

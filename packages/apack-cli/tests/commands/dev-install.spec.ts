@@ -5,14 +5,14 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const installPackFromLocal = vi.fn(async () => ({ dir: '/installed', missingDependencies: [] }));
-vi.mock('@apack/host/packs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@apack/host/packs')>()),
+vi.mock('@apackdev/host/packs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@apackdev/host/packs')>()),
   installPackFromLocal,
 }));
 
 let userDataDir: string;
-vi.mock('@apack/sdk/env', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@apack/sdk/env')>()),
+vi.mock('@apackdev/sdk/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@apackdev/sdk/env')>()),
   resolveAppContext: () => ({
     env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'),
     apiPortFile: path.join(userDataDir, 'api-port'), apiTokenFile: path.join(userDataDir, 'api-token'),
@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('apack dev', () => {
   it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
-    const { recordHostInfo } = await import('@apack/host/packs');
+    const { recordHostInfo } = await import('@apackdev/host/packs');
     recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
     const { installToApp } = await import('../../src/commands/dev');
 
@@ -39,7 +39,7 @@ describe('apack dev', () => {
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
-    const { recordHostInfo } = await import('@apack/host/packs');
+    const { recordHostInfo } = await import('@apackdev/host/packs');
     const { installToApp } = await import('../../src/commands/dev');
     await installToApp('/pack');
     recordHostInfo(userDataDir, { version: '1.0.0', packFormat: 1 });
@@ -69,7 +69,7 @@ describe('apack dev reloads', () => {
   }
 
   it("send the pack id with the token from the dev app's token file", async () => {
-    const { API_TOKEN_HEADER } = await import('@apack/sdk/utils/pure');
+    const { API_TOKEN_HEADER } = await import('@apackdev/sdk/utils/pure');
     expect(API_TOKEN_HEADER).toBe('x-apack-api-token');
     const api = await fakeApi(200);
     try {

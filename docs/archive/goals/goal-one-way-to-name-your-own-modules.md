@@ -145,8 +145,8 @@ Final.
 3. **The tsconfig `paths` mirror stays**, in default-setup and in the scaffold, because `tsc` under `bundler`
    requires it (spiked). A pack therefore declares each mapping twice, and the scaffold's comment explaining
    why is kept and pointed at from `default-setup/CLAUDE.md`.
-4. **`resolveWithExtensions` moves to `@apack/host/build/`**, because `packages/api` does not depend on
-   `@apack/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
+4. **`resolveWithExtensions` moves to `@apackdev/host/build/`**, because `packages/api` does not depend on
+   `@apackdev/cli` and both depend on host, and it needs only `node:fs` and `node:path` — no new dependency
    anywhere. The api's `resolve-at-aliases` plugin is replaced by a `#`-extension plugin over it, and the
    CLI's BE bundler calls the same function.
 
@@ -201,7 +201,7 @@ Add the `imports` entries the settled Open decision 1 names, mirrored in `paths`
 
 Delete the `@/` branch from `packages/renderer/vite.config.ts`, and `vite-tsconfig-paths` from
 `packages/default-setup/vitest.config.ts` (with its devDependency). Move `resolveWithExtensions` to
-`@apack/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension
+`@apackdev/host/build/`, replace `packages/api/tsup.config.ts`'s `resolve-at-aliases` with a `#`-extension
 plugin over it, and point the CLI's BE bundler at the same function. Act on Open decision 2 for the CLI's
 alias reader.
 
@@ -258,7 +258,7 @@ significant — measure `npm run build:app` before and after rather than claimin
 | 5 — the numbers | **done** | below |
 
 **832 specifiers across 416 files**, and every suite's counts unchanged throughout: default-setup 87 files /
-720 tests, `@apack/cli` 37 / 305 and 15 / 187, `@apack/host` 77 / 697, repo-checks 17 / 227, the fixture
+720 tests, `@apackdev/cli` 37 / 305 and 15 / 187, `@apackdev/host` 77 / 697, repo-checks 17 / 227, the fixture
 pack 10 / 32, E2E 21, `test:packaged-authoring` green.
 
 ### What went, and what replaced it
@@ -274,8 +274,8 @@ Four implementations of one idea became zero, because the idea itself was remove
   — deleted per Open decision 2.
 
 What a pack needs instead is `#` from its own `package.json` `imports`, plus one small thing esbuild will not
-do: supply the extension. That lives in `@apack/host/build/subpath-imports`, shared by `apack build`'s
-backend bundle and the API's, because `packages/api` does not depend on `@apack/cli` and both depend on host.
+do: supply the extension. That lives in `@apackdev/host/build/subpath-imports`, shared by `apack build`'s
+backend bundle and the API's, because `packages/api` does not depend on `@apackdev/cli` and both depend on host.
 
 ### Corrections to the Decisions
 
@@ -297,7 +297,7 @@ per-import `resolveId`/`onResolve` callbacks, and their cost is below the noise 
 
 **A valid "before" was not cheaply obtainable, and the attempt is worth recording.** Restoring the two
 configs while the code uses `#` gives a build that *fails* — 292 errors — so the 24.5s it took is a
-measurement of nothing; a worktree at the old commit resolves `@apack/*` back through the shared
+measurement of nothing; a worktree at the old commit resolves `@apackdev/*` back through the shared
 `node_modules` to this checkout's migrated source, so that is no better. The configs and the specifiers are
 now coupled, which is the point of the change and also what makes them hard to time apart. Reporting the
 failed run as a "before" would have been the easy error.
@@ -319,5 +319,5 @@ failed run as a "before" would have been the easy error.
 
 [`goal-pack-imports-name-the-file.md`](goal-pack-imports-name-the-file.md) is now the one thing
 between the repo and needing no resolver at all: with extensions written, esbuild needs no help and
-`@apack/host/build/subpath-imports` can be deleted too. Its spike table and this goal's are the same
+`@apackdev/host/build/subpath-imports` can be deleted too. Its spike table and this goal's are the same
 measurements.

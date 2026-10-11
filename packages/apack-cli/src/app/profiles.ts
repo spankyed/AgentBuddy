@@ -25,9 +25,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { APP_ENVS, resolveAppContext } from '@apack/sdk/env';
-import { lockIsHeld, readApiEndpoint } from '@apack/host/process-liveness';
-import { _pathSegmentProblem, randomId } from '@apack/sdk/utils/pure';
+import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
+import { lockIsHeld, readApiEndpoint } from '@apackdev/host/process-liveness';
+import { _pathSegmentProblem, randomId } from '@apackdev/sdk/utils/pure';
 import type { CliDirs } from './app-target';
 
 /** What a profile records about itself, in `.apack-profile.json` at its root. */
@@ -154,7 +154,7 @@ function chromiumLock(dir: string): { host: string; pid: number } | undefined {
  * **The host is checked, because this pid is one `endAppHolding` signals.** A data dir reached over a
  * synced volume, a network home, a restored backup or a VM mount carries the lock of the machine that
  * wrote it, whose pid means nothing here: pids are small integers and collide, so signalling one would
- * end whatever local process happens to hold that number. `@apack/host/process-liveness` states the rule
+ * end whatever local process happens to hold that number. `@apackdev/host/process-liveness` states the rule
  * this follows — only for a record this machine wrote, which the write lock's `machine` field and the
  * instance lock's hostname both check first. Here the hostname is in the link itself.
  */

@@ -18,7 +18,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
-import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apack/sdk/build';
+import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 
 /**

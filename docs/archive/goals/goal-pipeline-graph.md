@@ -159,9 +159,9 @@ rather than process startup:
 
 | Suite | Wall | Note |
 |---|---|---|
-| `@apack/cli` | 56.0s | reports `tests 249.4s` across workers — already ~4.5× parallel |
+| `@apackdev/cli` | 56.0s | reports `tests 249.4s` across workers — already ~4.5× parallel |
 | `@app/default-setup` | 15.4s | reports `setup 97.3s` — an expensive per-file setup, undiagnosed |
-| `@apack/host` | 12.5s | |
+| `@apackdev/host` | 12.5s | |
 | the other five | ~15s combined | |
 
 **`packages:ensure` runs 18 times** in one chain (3 in `compile`, 4 in `typecheck`, 3 in `build`, 6 in
@@ -299,7 +299,7 @@ the section names the graph as the thing that decides. Docs only, so nothing to 
 - **`@app/default-setup` reports `setup 97.3s` against 15.4s wall.** The most suspicious number in the
   run and undiagnosed. An expensive per-file setup paid by every test file; worth profiling on its own,
   and it is a cost caching hides rather than fixes.
-- **The `@apack/cli` suite at 56s**, 54% of `test:unit`. Already ~4.5× parallel internally; it does real
+- **The `@apackdev/cli` suite at 56s**, 54% of `test:unit`. Already ~4.5× parallel internally; it does real
   `apack build` runs per test, and a shared fixture cache is the obvious lever. Which tests dominate is
   unmeasured, so this needs profiling before a proposal.
 - **`test:packaged-authoring` at 71s**, mostly npm installs from packed tarballs. A warm `node_modules`

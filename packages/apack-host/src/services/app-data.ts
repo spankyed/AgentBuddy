@@ -1,11 +1,11 @@
 // services.appData: reset, back up and restore the app's stored data, and the user's onboarding (AppState)
-import type { AppDataService, BackupDatabase } from '@apack/sdk/services';
-import type { EarsAdmin } from '@apack/ears';
-import type { LmdbStore } from '@apack/ears/lmdb';
+import type { AppDataService, BackupDatabase } from '@apackdev/sdk/services';
+import type { EarsAdmin } from '@apackdev/ears';
+import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
-import { _getMediaPath } from '@apack/sdk/utils';
-import { getAppVersion } from '@apack/sdk/env';
+import { _getMediaPath } from '@apackdev/sdk/utils';
+import { getAppVersion } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../packs/registry.ts';
 import { startPacks } from '../packs/runtime/start.ts';
 import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';

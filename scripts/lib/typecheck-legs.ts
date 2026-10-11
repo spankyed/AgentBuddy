@@ -7,7 +7,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { rootScripts } from './npm-scripts.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { PACKAGE_DIRS } from './workspace-deps.ts';
@@ -52,7 +52,7 @@ export interface Leg {
    * **A file inside a workspace does not belong here, and the one that did is gone.** `typecheck:preload`
    * used to name `packages/apack-sdk/src/fe/speech-event.d.ts`, because a `types/speech.d.ts` at the repo
    * root re-exported it and preload's manifest said nothing about the SDK — an edge no declaration
-   * described, so nothing could derive it. The type is published from `@apack/sdk/fe` now and preload
+   * described, so nothing could derive it. The type is published from `@apackdev/sdk/fe` now and preload
    * declares the dependency, so `workspaceDeps` finds it like any other.
    *
    * Declared rather than derived from the dep file, for the reason a dep file is never a key — it records

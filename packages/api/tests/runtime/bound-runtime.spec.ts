@@ -10,11 +10,11 @@ process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { boundHost } = await import('@apack/sdk/runtime/internals');
-const { getAppVersion } = await import('@apack/sdk/env');
-const { services } = await import('@apack/sdk/services');
-const { untypedSendToSystem } = await import('@apack/sdk/events');
-const { installedEngine, repository } = await import('@apack/ears');
+const { boundHost } = await import('@apackdev/sdk/runtime/internals');
+const { getAppVersion } = await import('@apackdev/sdk/env');
+const { services } = await import('@apackdev/sdk/services');
+const { untypedSendToSystem } = await import('@apackdev/sdk/events');
+const { installedEngine, repository } = await import('@apackdev/ears');
 const { registerPack, unregisterPack } = packs;
 const { rootEvents } = await import('@/transport/emitter');
 /** The app version the composition binds: the root package.json's */

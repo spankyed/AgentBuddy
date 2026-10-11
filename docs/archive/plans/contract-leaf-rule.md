@@ -93,7 +93,7 @@ reported** — and the closure walk stops there too, so claims 2, 4 and 5 are by
 hop. No contract leaf uses `#features/` today, so nothing is missed *now*; the rule is one ordinary import away
 from being silent about the thing it exists for.
 
-`readSubpathImports` (`@apack/host/build/subpath-imports.ts:25`) is the resolver for a pack's own `imports` map,
+`readSubpathImports` (`@apackdev/host/build/subpath-imports.ts:25`) is the resolver for a pack's own `imports` map,
 and `pack-rules.ts:272` already uses it for exactly this. That is the fix, not a new resolver.
 
 ---
@@ -173,7 +173,7 @@ MemosContext`. Because a dependent's facade inlines its dependencies' verbatim (
 **And the third wrong harm, for the record.** The first was "codegen refuses it anyway" (refuted above); the second
 "a contract that reads as `any`" (refuted by the two mutations); the third was mine — *"the facade gains a
 third-party import its dependents may not have."* `apack-cli/src/build/facade-gate.ts:14-25` already allows a
-facade to import `@apack/*`, Node built-ins and `@apack/sdk`'s peers, which include **`xstate`** and `zod`,
+facade to import `@apackdev/*`, Node built-ins and `@apackdev/sdk`'s peers, which include **`xstate`** and `zod`,
 under *"Packages a facade may import: every dependent has them"* — with a passing gate case whose facade imports
 both. `zod` travels that route today into a fixture that uses no zod. The leak is size and coupling, not
 resolution.

@@ -1,7 +1,7 @@
 // The breadcrumbs and context menu of the plugin open: read off its state machine's `meta` (`breadcrumb`,
 // `contextMenu`) each time its state changes, by a child actor that follows whichever plugin is open.
 import { fromCallback, type AnyActorRef, type AnyMachineSnapshot } from 'xstate';
-import type { ContextMenuItem, ContextMenuMeta } from '@apack/sdk/fe';
+import type { ContextMenuItem, ContextMenuMeta } from '@apackdev/sdk/fe';
 import { HOST } from '../../../refs.ts';
 
 const capitalizeFirstLetter = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

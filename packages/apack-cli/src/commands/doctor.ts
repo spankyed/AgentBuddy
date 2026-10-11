@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFeatures, MIGRATION_LINES } from '@apack/sdk/build';
+import { packFeatures, MIGRATION_LINES } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 
 type Status = 'pass' | 'warn' | 'fail';

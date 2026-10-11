@@ -1,4 +1,4 @@
-import { installedEngine, type EarsQuery } from '@apack/ears';
+import { installedEngine, type EarsQuery } from '@apackdev/ears';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
 import type { StepDefinition } from '../../steps/index.ts';
 import { stepLookup, type StepLookup } from './step-lookup.ts';

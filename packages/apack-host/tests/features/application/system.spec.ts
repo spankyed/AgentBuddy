@@ -3,8 +3,8 @@
 // a choice or a pack's defaults change, so every window agrees.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type EventFromLogic } from 'xstate';
-import type { Message } from '@apack/sdk/events';
-import { resetTestData, testRootEvents } from '@apack/sdk/testing';
+import type { Message } from '@apackdev/sdk/events';
+import { resetTestData, testRootEvents } from '@apackdev/sdk/testing';
 import '../../packs/runtime/test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { createApplicationSystem } from '../../../src/features/application/be/system.ts';

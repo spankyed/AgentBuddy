@@ -5,8 +5,8 @@
 // wires it once instead of once per cause, and a fact is left for what publishing cannot fix.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
-import { untypedSendToSystem } from '@apack/sdk/events';
-import { startTestRuntime, testRootEvents } from '@apack/sdk/testing';
+import { untypedSendToSystem } from '@apackdev/sdk/events';
+import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST } from '../../src/refs.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';

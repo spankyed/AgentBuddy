@@ -1,7 +1,7 @@
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-18). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
 ```
-# Goal: a running dev app keeps the @apack packages' dist current
+# Goal: a running dev app keeps the @apackdev packages' dist current
 
 Implement docs/goals/goal-dev-loop-freshness.md, it may be outdated so first verify all claims. Read Background, Decisions, Phases and Constraints first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
@@ -12,7 +12,7 @@ template and doc in the same change, and fix forward.
 Finished when:
 - Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- Editing a source of @apack/ears, @apack/sdk or @apack/ui while `npm run dev` runs rebuilds that
+- Editing a source of @apackdev/ears, @apackdev/sdk or @apackdev/ui while `npm run dev` runs rebuilds that
   package's dist on its own, within a few seconds of the edit, without rebuilding the built-in pack.
 - The watcher's watch set is derived from BUILD_UNITS rather than listed again, so adding an input to
   a unit extends the watcher with no second edit.
@@ -20,15 +20,15 @@ Finished when:
   running.
 - The freshness doors table in packages/apack-testing/CLAUDE.md lists the new door, and the "What a
   running dev app does and doesn't pick up" section says what changed.
-- npm run typecheck; npm test -w @apack/cli; npm test -w @apack/host; npm run build; npm test.
+- npm run typecheck; npm test -w @apackdev/cli; npm test -w @apackdev/host; npm run build; npm test.
 ```
 
 ## Background
 
 `npm run dev` leaves the built-in pack on two clocks, documented in `packages/apack-testing/CLAUDE.md`
 under "What a running dev app does and doesn't pick up". The renderer's Vite config and the API's tsup
-build both declare the `@apack/source` condition, so editing `@apack/sdk`, `@apack/ears` or
-`@apack/ui` hot-reloads the browser and the pack's running code follows source. What does not follow is
+build both declare the `@apackdev/source` condition, so editing `@apackdev/sdk`, `@apackdev/ears` or
+`@apackdev/ui` hot-reloads the browser and the pack's running code follows source. What does not follow is
 anything read from those packages' **`dist`**, which is built on demand in a checkout and refreshed only
 when a command with a freshness door runs (the six doors are listed in that same file).
 
@@ -42,7 +42,7 @@ re-derived:
 
 | Proposal | Why not | Where |
 |---|---|---|
-| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. Re-measured 2026-09-28 at chain-sweep scale (12 units, 39.1MB), where the arithmetic is worse: the stats *are* the walk, and a unit whose stats moved pays both, 861ms against 661ms — which is the ordinary case, since a chain run is a run you made because something changed. | comment on `fingerprintInputs`, `@apack/host/build/packages-built` |
+| Stat-before-hash, so the check is cheap enough to run continuously | The check is already 24ms; the 345ms of `packages:ensure` is npm spawn and node/tsx startup. Saving ~20ms is not worth a cache key that is right unless a file changes content while keeping its size and timestamp. Re-measured 2026-09-28 at chain-sweep scale (12 units, 39.1MB), where the arithmetic is worse: the stats *are* the walk, and a unit whose stats moved pays both, 861ms against 661ms — which is the ordinary case, since a chain run is a run you made because something changed. | comment on `fingerprintInputs`, `@apackdev/host/build/packages-built` |
 | Rebuild the built-in pack whenever the SDK changes | `apack build` for default-setup is ~14s, and what it refreshes (compiled content, the facade dependents consume, the step build, the content runtime) is not what bites the person editing SDK and default-setup together. | Decision 2 below |
 
 ### Measurements (this machine, warm)
@@ -51,10 +51,10 @@ re-derived:
 |---|---|
 | `stalePackageUnits()` in-process | **24ms** (417 files, 2.5MB) |
 | `npm run packages:ensure`, everything fresh | **345ms** (24ms of work, ~320ms process startup) |
-| `build:package -w @apack/ears` | 1.10s |
-| `build:package -w @apack/sdk` | 2.47s |
-| `build:package -w @apack/ui` | 4.99s |
-| `build:package -w @apack/testing` | 2.58s |
+| `build:package -w @apackdev/ears` | 1.10s |
+| `build:package -w @apackdev/sdk` | 2.47s |
+| `build:package -w @apackdev/ui` | 4.99s |
+| `build:package -w @apackdev/testing` | 2.58s |
 | `apack build` for default-setup | ~14s |
 
 `ensurePackagesBuilt` builds only the stale units, so an SDK edit costs 2.5s, not the 12s a full
@@ -67,7 +67,7 @@ re-derived:
   packages' `dist` — that is the everyday pain and it costs 1.1–5.0s to fix. The pack's own build output
   (compiled content, `dist/types/pack-types.d.ts`, `dist/build/*`) is consumed by dependent packs and by
   applying, not by someone editing SDK and default-setup together, and costs ~14s.
-- **Nothing rebuilds the built-in pack on an `@apack` source change.** The existing trigger stays as it
+- **Nothing rebuilds the built-in pack on an `@apackdev` source change.** The existing trigger stays as it
   is: default-setup's own sources, through `apack build --watch` (`dev-build.mjs` when this was written; `goal-one-kind-of-pack` replaced it with the CLI's own watch, which rebuilds only the runtime). Keeping `dist` current means the pack
   rebuild that does fire consumes a fresh SDK, which is the ordering win without the cost.
 - **Pull-based, not push-based.** No `tsc --watch` or `tsdown --watch` per package: that is three
@@ -91,7 +91,7 @@ re-derived:
 
 ### Phase 1 — the watcher
 
-- A module in `@apack/host` beside the freshness rule (`src/build/`), exporting something like
+- A module in `@apackdev/host` beside the freshness rule (`src/build/`), exporting something like
   `watchPackageFreshness({ onBuilt?, onError? }): () => void`.
 - Its watch set is every existing directory and file in `BUILD_UNITS[*].inputs`, deduplicated. Watch with
   `fs.watch` and `{ recursive: true }` on directories.
@@ -110,8 +110,8 @@ re-derived:
 - `packages/dev-mode.js` starts the watcher for the life of the session and stops it on shutdown,
   printing what it rebuilt in the same style as the rest of the dev output.
 - It does not touch the pack's own watcher, which keeps its own trigger (Decision 2) — `apack build --watch`, forked by `packages/dev-mode.js`.
-- **Done when:** with `npm run dev` running, editing a `@apack/sdk` source rebuilds `packages/apack-sdk/dist`
-  within a few seconds and prints one line; editing a `@apack/ui` source rebuilds only `@apack/ui`; the
+- **Done when:** with `npm run dev` running, editing a `@apackdev/sdk` source rebuilds `packages/apack-sdk/dist`
+  within a few seconds and prints one line; editing a `@apackdev/ui` source rebuilds only `@apackdev/ui`; the
   built-in pack is not rebuilt by either. Verified by hand and recorded in the Outcome with the observed
   timings.
 

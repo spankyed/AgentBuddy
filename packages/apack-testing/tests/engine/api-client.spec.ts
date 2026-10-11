@@ -15,7 +15,7 @@ import { WebSocketServer } from 'ws';
 import { initTRPC, TRPCError } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
-import { _whenSatisfied } from '@apack/sdk/testing/waiting';
+import { _whenSatisfied } from '@apackdev/sdk/testing/waiting';
 import { connectApiClient, type ApiClient, type BusMessage } from '../../src/engine/api-client.ts';
 
 const TOKEN = 'a-test-token';
@@ -76,7 +76,7 @@ const connect = () => connectApiClient({ port, token: TOKEN });
  * A fixed delay, kept for the one case whose subject *is* elapsed time.
  *
  * Everything else here awaits the event it is about: a sleep puts a guess about duration on the success path,
- * and a short guess fails identically to the bug it was meant to catch. See `@apack/sdk/testing/waiting`.
+ * and a short guess fails identically to the bug it was meant to catch. See `@apackdev/sdk/testing/waiting`.
  */
 const after = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -16,7 +16,7 @@ import type { BusMessage } from '../../src/engine/api-client.ts';
 import type { EngineSession, SettingsTarget } from '../../src/engine/session.ts';
 import { asSessionPage } from '../../src/engine/index.ts';
 import type { Page } from '@playwright/test';
-import { answerTo } from '@apack/sdk/testing';
+import { answerTo } from '@apackdev/sdk/testing';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
