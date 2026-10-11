@@ -30,7 +30,7 @@ const pack = (): string => {
 const heldByAnother = (file: string): void => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify({
-    pid: process.ppid, machine: os.hostname(), what: 'apack build', since: new Date().toISOString(),
+    pid: process.ppid, machine: os.hostname(), what: 'apack pack build', since: new Date().toISOString(),
   }));
 };
 
@@ -54,7 +54,7 @@ describe('where the lock sits', () => {
 
 describe('a second build', () => {
   it('takes the lock when nothing holds it, and gives it back', async () => {
-    const lock = await holdPackBuildLock(pack(), { packId: 'demo', what: 'apack build' });
+    const lock = await holdPackBuildLock(pack(), { packId: 'demo', what: 'apack pack build' });
     expect(fs.existsSync(packBuildLock(root))).toBe(true);
     lock.release();
     expect(fs.existsSync(packBuildLock(root))).toBe(false);
@@ -69,19 +69,19 @@ describe('a second build', () => {
     let clock = 0;
     let tries = 0;
     await expect(holdPackBuildLock(root, {
-      packId: 'demo', what: 'apack build', waitMs: 5_000,
+      packId: 'demo', what: 'apack pack build', waitMs: 5_000,
       onWait: (holder) => { waitedFor = holder; },
       now: () => clock,
       pause: async (ms) => { tries += 1; clock += ms; },
     })).rejects.toThrow(PackBuildLockHeld);
     expect(tries, 'it refused at once instead of retrying while the holder ran').toBeGreaterThan(1);
-    expect(waitedFor, 'a wait that prints nothing reads as a hang').toContain('apack build');
+    expect(waitedFor, 'a wait that prints nothing reads as a hang').toContain('apack pack build');
   });
 
   it('names the holder, the pack and the file it is waiting on', async () => {
     const file = packBuildLock(pack());
     heldByAnother(file);
-    const err = await holdPackBuildLock(root, { packId: 'demo-pack', what: 'apack build', waitMs: 0 })
+    const err = await holdPackBuildLock(root, { packId: 'demo-pack', what: 'apack pack build', waitMs: 0 })
       .then(() => undefined, (e: unknown) => e);
     expect(err).toBeInstanceOf(PackBuildLockHeld);
     const { message } = err as PackBuildLockHeld;
@@ -96,7 +96,7 @@ describe('a second build', () => {
    * it twice — and waiting would turn that refusal into spending the whole bound to say the same thing.
    */
   it('does not wait for a lock this process already holds', async () => {
-    const held = await holdPackBuildLock(pack(), { packId: 'demo', what: 'apack build' });
+    const held = await holdPackBuildLock(pack(), { packId: 'demo', what: 'apack pack build' });
     try {
       let tries = 0;
       await expect(holdPackBuildLock(root, {
@@ -141,7 +141,7 @@ describe('waiting for a build without taking the lock', () => {
       now: () => clock,
       pause: async (ms) => { looks += 1; clock += ms; },
     });
-    expect(waited, 'it reports what it waited for, so a wait does not read as a hang').toContain('apack build');
+    expect(waited, 'it reports what it waited for, so a wait does not read as a hang').toContain('apack pack build');
     expect(looks, 'it gave up without looking again').toBeGreaterThan(1);
     expect(fs.existsSync(packBuildLock(root)), "the holder's lock is untouched").toBe(true);
   });
@@ -153,6 +153,6 @@ describe('waiting for a build without taking the lock', () => {
     let clock = 0;
     await expect(waitForPackBuild(root, {
       timeoutMs: 1_000, now: () => clock, pause: async (ms) => { clock += ms; },
-    })).resolves.toContain('apack build');
+    })).resolves.toContain('apack pack build');
   });
 });

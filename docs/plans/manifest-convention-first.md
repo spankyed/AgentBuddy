@@ -32,7 +32,7 @@ pointer; each plugin's accepted events are 11 literal arrays inside `dist/runtim
 "what does this pack contribute" needs the manifest *plus* the compiled content *plus* the backend bundle,
 and no artifact holds all three.
 
-**The symptom that proves it is structural.** `apack info` — the one command whose job is to say what a
+**The symptom that proves it is structural.** `apack pack info` — the one command whose job is to say what a
 pack has — hardcoded `src/content/actions` instead of reading `content.sources.actions.path`, because the
 manifest does not carry what it needed. It also printed `Features: 0` for a pack with eleven, since
 `Record<string, T>`'s index signature makes `.length` type-check as `T`. Both fixed in `673790d5e`; the
@@ -111,7 +111,7 @@ goes entirely: `helpers.ts` existing is the same fact.
 
 ## The resolved shape
 
-`apack build` already compiles 90 actions and knows every label; it writes them to `dist/*.content.json`
+`apack pack build` already compiles 90 actions and knows every label; it writes them to `dist/*.content.json`
 and discards the inventory. The snapshot gains it:
 
 ```jsonc
@@ -124,7 +124,7 @@ and discards the inventory. The snapshot gains it:
 }
 ```
 
-Three things become available that are not today: `apack info` can list what a pack ships rather than
+Three things become available that are not today: `apack pack info` can list what a pack ships rather than
 counting files; the host can answer "what does this pack contribute" at install time without loading it;
 and a flow's action references become declared data, so renaming an action is checkable from the rename's
 side rather than only from the flow's.
@@ -157,14 +157,14 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
 
 1. **Settle the fork above.** Everything else is mechanical once it is answered.
 2. **One layout table per contribution kind**, in `@apackdev/sdk/build`, read by codegen, `validate`,
-   `doctor` and `apack add` — the `FEATURE_LAYOUT` Decision 7 asks for, generalised to steps, blocks,
+   `doctor` and `apack pack add` — the `FEATURE_LAYOUT` Decision 7 asks for, generalised to steps, blocks,
    artifacts, services, repositories and content. A spec fails when the documented table and the constant
    disagree.
 3. **`contributes` in the snapshot**, written by the build from what it already computed, with each
-   plugin's `receives` lifted out of the backend bundle. `apack info` reads it.
+   plugin's `receives` lifted out of the backend bundle. `apack pack info` reads it.
 4. **The authored manifest**, in the shape of the example: default-setup, both fixture packs, the `apack
    init` scaffold, `packFixture`'s `DEFAULT_MANIFEST` and `generate-entries`' spec-support `manifest()`.
-5. **`apack add` writes the short form**, and the canonical key order at all three levels (root,
+5. **`apack pack add` writes the short form**, and the canonical key order at all three levels (root,
    `extensions`, each feature).
 
 ## Footguns

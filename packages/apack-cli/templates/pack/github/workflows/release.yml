@@ -14,7 +14,7 @@ jobs:
     # apack Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
     runs-on: macos-14
     env:
-      APACK_BUILD: beta
+      APACK_HOST: beta
     steps:
       - uses: actions/checkout@v4
 
@@ -29,24 +29,24 @@ jobs:
         run: test "v$(node -p "require('./apack.json').version")" = "$GITHUB_REF_NAME"
 
       # The checks, before anything is built for publication. Without these the tag path could publish a
-      # pack whose tests fail: `apack release` runs them, but this workflow calls `build`, `pack` and
+      # pack whose tests fail: `apack pack release` runs them, but this workflow calls `build`, `pack` and
       # `release publish` directly, and `publish`'s own verify checks the archive's checksums, not the code.
-      - run: npx apack validate
+      - run: npx apack pack validate
 
       - run: npm run typecheck
 
       - run: npm test
 
-      - run: npx apack build --release
+      - run: npx apack pack build --release
 
       - run: npm run facade:check
 
-      - run: npx apack pack --out .apack/release
+      - run: npx apack pack archive --out .apack/release
 
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: .apack/release/*.tgz
 
-      - run: npx apack release publish --dir .apack/release
+      - run: npx apack pack release publish --dir .apack/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

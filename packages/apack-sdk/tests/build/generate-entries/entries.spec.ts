@@ -288,7 +288,7 @@ describe('generated step registrations', () => {
     }
   });
 
-  // The module is what a dependent pack's `apack build` loads, so the backend and it are generated from the
+  // The module is what a dependent pack's `apack pack build` loads, so the backend and it are generated from the
   // same entries rather than from two barrels that can name different facets
   it('name the same build facet in the backend entry and the module dependents load', () => {
     const files = generate(stepPack());

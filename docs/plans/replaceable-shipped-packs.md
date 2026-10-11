@@ -12,8 +12,8 @@ Today that cannot work. Three facts stack:
   overwrites anything that differs, so a fork is gone at the next start. The overwrite is pinned
   (`tests/packs/shipped-packs.spec.ts:72-79` writes `'// a user got in here'` and asserts it is gone).
 - The same refresh runs as **step 0 of every `/dev/reload`** (`packs/runtime/reload.ts:105-115`), so a fork
-  is clobbered mid-session by `apack build --watch`.
-- `apack pack` **refuses** to archive a pack whose manifest says `builtIn: true`
+  is clobbered mid-session by `apack pack build --watch`.
+- `apack pack archive` **refuses** to archive a pack whose manifest says `builtIn: true`
   (`apack-cli/src/commands/pack.ts:42`), which is the one live reader of that field — so you cannot even
   package a clone of `default-setup`.
 
@@ -95,10 +95,10 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
    installs once — equal hashes mean the app placed it, so mark those `'app'`, or every current install
    silently becomes a fork.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
-   author lives in. Verify that `apack dev` in the fork's own directory is the path that serves them.
+   author lives in. Verify that `apack pack dev` in the fork's own directory is the path that serves them.
 5. **`apack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
    refused. Uninstall of an app-owned pack records `enabled: false`.
-6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `apack pack`'s
+6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `apack pack archive`'s
    refusal, which is its only reader and actively blocks packaging a fork. **Drop `canUninstall`** in both
    forms. Hide the toggle behind developer mode. Guard `closeDevLetter`'s `getDesignated('threads')`.
 7. **Fix the failed-load pack hiding its own error** — a shipped pack that fails to load has no
@@ -148,7 +148,7 @@ The cases that decide it, none of which can be written today:
 - an **app-owned** pack is still re-installed when the shipped build changes with the app version
 - an app-owned pack uninstalled through the CLI **stays gone** across a restart, and comes back on re-enable
 - an existing install with no record is reconciled to `'app'`, not left as a fork
-- `apack pack` archives a clone of `default-setup`
+- `apack pack archive` archives a clone of `default-setup`
 
 And the rewrite of the pinned invariant at `tests/packs/shipped-packs.spec.ts:72-79`: an edited **app-owned**
 file is still repaired at the next boot; a **user-owned** pack is left alone. Those are the same bytes

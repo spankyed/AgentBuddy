@@ -2,7 +2,7 @@
 //
 // The mechanism, not the policy: where a caller stages its work and what it calls the staging directory are
 // the caller's. `placePack` is one (an installed pack replaced by a newly staged one), the package builds are
-// another (`dist` and the staged publish tree), and `apack build` a third (a pack's own `dist`).
+// another (`dist` and the staged publish tree), and `apack pack build` a third (a pack's own `dist`).
 //
 // **Why anything needs this.** A tree that is cleared and refilled does not exist for the length of the
 // build, and every reader of a derived tree in this repo treats absent as *not built* — so a build publishes

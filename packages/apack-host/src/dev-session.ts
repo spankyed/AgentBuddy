@@ -7,7 +7,7 @@
  * would put two unrelated records under one word.
  *
  * **It is declared, never inferred.** A launcher writes one because it means its app to be driven, so
- * `apack test` writes none and a packaged build carries no port: there is no probing a port to find out,
+ * `apack pack test` writes none and a packaged build carries no port: there is no probing a port to find out,
  * and nothing treats the absence of a file as "try anyway".
  *
  * **The pid is the supervisor's, not the app's.** The supervisor is what wrote this file and what has to be
@@ -16,7 +16,7 @@
  * and leave a watcher and a dev server running with nothing to serve. The app needs no pid here; it is
  * reached through `debugPort`.
  *
- * **It lives here rather than in the CLI because two launchers publish one**: `apack dev` and the
+ * **It lives here rather than in the CLI because two launchers publish one**: `npm run dev:open --` and the
  * renderer-HMR loop `npm run dev` runs, which spawns Electron from `packages/main/vite.config.js`. The
  * `pack-dev-servers` marker is here for the same reason — a record about a running app's data dir, written
  * by whoever started it and read by whoever wants to reach it.
@@ -42,6 +42,8 @@ export type SessionStarter = (typeof SESSION_STARTERS)[number];
 export const STARTED_BY_ENV = 'APACK_SESSION_STARTED_BY';
 
 export interface DevSession {
+  readonly host: { readonly kind: 'source'; readonly root: string };
+  readonly env: 'development';
   /** Chromium's `--remote-debugging-port`, as it reported it. Absent means the app is not attachable */
   readonly debugPort: number;
   /** The app's API, so a session can reach the bus without going through the page */
@@ -65,21 +67,21 @@ export const sessionFile = (dataDir: string): string => path.join(dataDir, 'sess
  * picks a free one, which is the only safe way to ask: a fixed port collides with whatever holds it and with
  * a second app.
  *
- * **It is here rather than in `apack dev` because the `npm run dev` watcher had no gate at all.** That hook
+ * **It is here rather than in `npm run dev:open --` because the `npm run dev` watcher had no gate at all.** That hook
  * pushed the flag unconditionally, behind a `NODE_ENV !== 'development'` check — which is the *build mode*
  * of the bundle, not the environment the spawned app resolves. A source run takes that from `APACK_ENV`, so
  * `APACK_ENV=beta npm run dev` opened a port on a **beta** app while the CLI's identical decision had six
  * cases guarding it. One function, both callers, and the asymmetry cannot come back.
  */
-export function debugPortArgsFor(build: AppEnv): string[] {
-  return build === 'development' ? ['--remote-debugging-port=0'] : [];
+export function debugPortArgsFor(env: AppEnv): string[] {
+  return env === 'development' ? ['--remote-debugging-port=0'] : [];
 }
 
 /**
  * Waits for a session to be published on a data dir, or says why none was.
  *
  * **The deadline is a pack build, not a window.** A cold spawn runs the packages' freshness check and
- * `apack build` before Electron starts, which is tens of seconds — a deadline sized for a launch reports a
+ * `apack pack build` before Electron starts, which is tens of seconds — a deadline sized for a launch reports a
  * timeout on a build that was working. `isAlive` is how the caller says the launcher has gone: a child that
  * exited is an error with a body rather than a wait to the deadline, and the two read quite differently to
  * whoever is waiting.
@@ -199,8 +201,8 @@ export function lastAttachedAt(dataDir: string): number | undefined {
  * wrote it whenever one is killed, and `recordIsStale` errs toward stale for exactly this — it never misses
  * a live holder, because inventing a dead one is what would take a running app's dir.
  *
- * Unreadable, malformed and incomplete are all misses too. Nothing downstream can do anything useful with
- * half a record, and a throw here would make every caller handle a case that means "there is no session".
+ * Unreadable and malformed records are misses. A live record lacking host identity is refused,
+ * so an older launcher cannot be mistaken for permission to attach or replace its app.
  */
 export function readSession(dataDir: string): DevSession | undefined {
   const file = sessionFile(dataDir);
@@ -212,8 +214,13 @@ export function readSession(dataDir: string): DevSession | undefined {
   }
   const session = parsed as Partial<DevSession> | null;
   if (session === null || typeof session !== 'object') return undefined;
-  if (typeof session.debugPort !== 'number' || typeof session.supervisorPid !== 'number') return undefined;
+  if (typeof session.debugPort !== 'number' || !Number.isInteger(session.debugPort) || session.debugPort < 1 || session.debugPort > 65_535) return undefined;
+  if (typeof session.supervisorPid !== 'number' || !Number.isSafeInteger(session.supervisorPid) || session.supervisorPid < 1) return undefined;
   if (typeof session.dataDir !== 'string' || !SESSION_STARTERS.includes(session.startedBy as SessionStarter)) return undefined;
   if (recordIsStale(file, session.supervisorPid)) return undefined;
+  if (session.env !== 'development' || session.host?.kind !== 'source' || typeof session.host.root !== 'string' || !path.isAbsolute(session.host.root)) {
+    throw new Error(`The live session at ${file} has no verifiable development host identity. Close it and restart its development launcher.`);
+  }
+  if (path.resolve(session.dataDir) !== path.resolve(dataDir)) throw new Error(`Session storage identity mismatch at ${file}.`);
   return session as DevSession;
 }

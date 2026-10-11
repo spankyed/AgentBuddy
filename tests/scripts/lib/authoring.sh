@@ -30,7 +30,7 @@ _step_report() {
 }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-unset APACK_ROOT APACK_BUILD APACK_APP_EXECUTABLE APACK_CLI
+unset APACK_HOST_ROOT APACK_HOST APACK_APP APACK_BUILD APACK_CHANNEL APACK_HOST_EXECUTABLE APACK_CLI
 # The CLI caches its Beta downloads under the user's home; use a fresh one.
 #
 # THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a

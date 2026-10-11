@@ -35,7 +35,7 @@ interface GitHubRelease {
  * 1.2.0-beta.1) or by GitHub's own `prerelease` flag — are only considered for the beta channel;
  * drafts and non-semver tags are ignored,
  * and so are releases not newer than `installedVersion`. With a hostVersion, each candidate's
- * range is read, newest first, from its `<archive>.integrity.json` asset (`apack release` uploads it),
+ * range is read, newest first, from its `<archive>.integrity.json` asset (`apack pack release` uploads it),
  * else from apack.json at its tag; a candidate whose range can't be read is returned with
  * `hostVersionUnverified`, and the installer checks it again.
  * A failing release list (rate limit, private or missing repository) throws GitHubRequestError.
@@ -90,7 +90,7 @@ export async function findLatestRelease(
 
 function updateChannelIncludesPrereleases(): boolean {
   try {
-    return resolveAppContext().build === 'beta';
+    return resolveAppContext().env === 'beta';
   } catch {
     return false;
   }

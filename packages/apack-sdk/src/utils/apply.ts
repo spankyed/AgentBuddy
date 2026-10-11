@@ -163,7 +163,7 @@ export function contentPackId(compiledDir: string): string {
 /** The pack a parsed content index names; an index from before packs were recorded names none */
 export function indexPackId(index: { packId?: string } | null, indexFile: string): string {
   if (!index?.packId) {
-    throw new Error(`${indexFile} doesn't name the pack that compiled this content: rebuild the pack with apack build`);
+    throw new Error(`${indexFile} doesn't name the pack that compiled this content: rebuild the pack with apack pack build`);
   }
   return index.packId;
 }

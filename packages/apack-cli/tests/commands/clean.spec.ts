@@ -1,4 +1,4 @@
-// What `apack clean --apps` deletes, which is the only branch of this command that removes something a
+// What `apack cache clean` deletes, which is the only branch of this command that removes something a
 // person did not build in the directory they are standing in: downloaded apack Beta builds, a few
 // hundred megabytes each, which nothing reclaimed before.
 //
@@ -8,9 +8,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanApps } from '../../src/commands/clean';
+import { cleanApps } from '../../src/commands/cache-clean';
 import { betaCacheDir, packagedExecutable } from '../../src/app/beta-app';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -40,7 +40,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('apack clean --apps', () => {
+describe('apack cache clean', () => {
   /**
    * The newest survives, because resolution prefers a cached build: `cachedBetaApp` answers from the cache
    * whenever one satisfies the pack's range, so emptying it would turn every later run into a download.

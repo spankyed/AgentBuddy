@@ -1,13 +1,9 @@
-// Which release `apack upgrade` installs, and what it reads off the app already in /Applications.
-//
-// The two pure halves of the command. What is left — downloading, quitting the app, swapping the bundle —
-// is `ditto`, an Apple Event and a rename, each of which is the system's to get right and none of which a
-// unit test can observe without a real app installed.
+// Release selection and installed bundle versions, shared by app install and upgrade.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { installedVersion, pickAppRelease } from '../../src/commands/upgrade';
+import { installedVersion, pickAppRelease } from '../../src/app/installed-app';
 
 const asset = (name: string) => ({ name, browser_download_url: `https://example.test/${encodeURIComponent(name)}` });
 const zipName = (product: string, version: string) => `${product}-${version}-mac-arm64.zip`;
@@ -48,14 +44,9 @@ describe('pickAppRelease', () => {
     expect(pickAppRelease(onlyBeta, 'production')).toBeNull();
   });
 
-  /**
-   * Skipped rather than failed, and the older one still installs: a release that published a zip and no
-   * checksum is unverifiable, which is a reason not to install *it* and not a reason to strand the user.
-   */
-  it('passes over an unverifiable release and takes the one before it', () => {
+  it('refuses an incomplete latest release instead of substituting an older one', () => {
     const picked = pickAppRelease([release('0.4.2', { checksum: false }), release('0.4.1')], 'production');
-
-    expect(picked?.version).toBe('0.4.1');
+    expect(picked).toBeNull();
   });
 
   it('ignores a draft', () => {
@@ -105,8 +96,7 @@ describe('installedVersion', () => {
   });
 
   /**
-   * A bundle it cannot read is "no version", not a crash — and that is what makes the caller's `--force`
-   * unnecessary for it: an unreadable version compares as absent, so the upgrade proceeds.
+   * An unreadable bundle still exists: install requires --replace and upgrade refuses it.
    */
   it('answers nothing for a bundle with an unreadable plist', () => {
     expect(installedVersion(anApp('not a plist'))).toBeNull();

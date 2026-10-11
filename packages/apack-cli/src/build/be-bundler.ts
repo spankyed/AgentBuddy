@@ -84,7 +84,7 @@ export async function bundlePackRuntime(
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'pack-entry.ts');
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: 'No src/__generated__/pack-entry.ts. Run "apack generate-entries" first.' };
+    return { success: false, error: 'No src/__generated__/pack-entry.ts. Run "apack pack generate-entries" first.' };
   }
 
   const runtimeDir = path.join(outputDir, 'runtime');
@@ -105,7 +105,7 @@ export async function bundlePackRuntime(
 
 /**
  * Bundle the pack's build-time step definitions (the module codegen writes from its `steps` entries) into
- * dist/build/steps.build.mjs. Dependent packs' `apack build` imports it to validate
+ * dist/build/steps.build.mjs. Dependent packs' `apack pack build` imports it to validate
  * and compile flows with this pack's real step code. Shared-instance and host-shared
  * packages stay external and resolve from the importing pack's node_modules.
  */
@@ -116,7 +116,7 @@ export async function bundlePackStepBuild(
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.resolve(packDir, STEPS_BUILD_MODULE);
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: `No ${STEPS_BUILD_MODULE}. Run "apack generate-entries" first.` };
+    return { success: false, error: `No ${STEPS_BUILD_MODULE}. Run "apack pack generate-entries" first.` };
   }
   try {
     await bundlePackSource(packDir, options, {
@@ -131,7 +131,7 @@ export async function bundlePackStepBuild(
 
 /**
  * Bundle the compiler modules named in the pack's content.formats into dist/build/content-compilers.mjs,
- * one export per format name. Dependent packs' `apack build` compiles this pack's formats with it,
+ * one export per format name. Dependent packs' `apack pack build` compiles this pack's formats with it,
  * since the pack's sources aren't installed. Shared-instance and host-shared packages stay external.
  */
 export async function bundlePackContentCompilers(
@@ -171,7 +171,7 @@ export async function bundlePackFlowHelpersModule(
 ): Promise<{ success: true; module: string; exports: string[] } | { success: false; error: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'flow-helpers.ts');
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "apack generate-entries" first.' };
+    return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "apack pack generate-entries" first.' };
   }
   try {
     const result = await bundlePackSource(packDir, options, {
@@ -204,7 +204,7 @@ export async function bundlePackContentRuntime(
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'content-runtime.ts');
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: 'No src/__generated__/content-runtime.ts. Run "apack generate-entries" first.' };
+    return { success: false, error: 'No src/__generated__/content-runtime.ts. Run "apack pack generate-entries" first.' };
   }
   const outfile = path.join(outputDir, 'build', CONTENT_RUNTIME_FILE);
   try {

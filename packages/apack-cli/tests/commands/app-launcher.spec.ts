@@ -35,11 +35,12 @@ describe.skipIf(process.platform === 'win32')('app-bundled apack launcher', () =
     fs.mkdirSync(binDir);
     fs.symlinkSync(launcher, path.join(binDir, 'apack'));
 
-    const output = execFileSync(path.join(binDir, 'apack'), ['build', '--release'], { env: { PATH: process.env.PATH } }).toString();
+    const output = execFileSync(path.join(binDir, 'apack'), ['pack', 'build', '--release'], { env: { PATH: process.env.PATH } }).toString();
 
     expect(output.trim().split('\n')).toEqual([
       'ELECTRON_RUN_AS_NODE=1',
       `arg=${cliBin}`,
+      'arg=pack',
       'arg=build',
       'arg=--release',
     ]);

@@ -155,7 +155,7 @@ the rule "a feature declares the entities it is the home of, not the entities it
 - **One E2E claim is worth the real process boundary** and meets the two-part test in `tests/e2e/CLAUDE.md`:
   a reference clicked in a stored message opens the right plugin on the right row. Everything else here is a
   harness test.
-- **End-to-end by eye**: `npm run drive`, open a thread holding a note reference, click it.
+- **End-to-end by eye**: `npm run dev:drive`, open a thread holding a note reference, click it.
 - **`npm run chain`** per phase. Phase 1 touches `@apackdev/sdk/src` and codegen, so expect a cold run;
   `api:update` for `PackFERegistration`, the plugin contract types and `@apackdev/ears`' barrel.
 - **No `schema:update`** — no manifest key moves. **`PACK_SNAPSHOT_FORMAT`** bumps, because a dependent pack

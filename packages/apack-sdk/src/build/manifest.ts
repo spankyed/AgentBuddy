@@ -41,7 +41,7 @@ export function packFeatures(manifest: { features?: Record<string, PackFeatureEn
 // Not part of apack.json — used for dist/snapshot.json and build-time type exchange.
 
 /**
- * The format of a pack's build, recorded in its snapshot: everything another apack reads from what `apack build`
+ * The format of a pack's build, recorded in its snapshot: everything another apack reads from what `apack pack build`
  * wrote. A dependent's codegen reads the facade types in `defs['pack-types']` and the exports generated code imports
  * from them, `types`, `provenance` and its kinds, `flowHelpers`, and the manifest's fields. The app loads the
  * registration the runtime bundle exports, and refuses to install or load a build in another format.
@@ -230,7 +230,7 @@ export function _buildProvenance(
 
 /**
  * A pack's generated flow helpers (src/__generated__/flow-helpers.ts: a helper per step, custom
- * step helpers and trigger track builders, its dependencies' included), bundled by `apack build`.
+ * step helpers and trigger track builders, its dependencies' included), bundled by `apack pack build`.
  */
 export interface PackFlowHelpers {
   /** The names the module exports */

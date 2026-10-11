@@ -5,14 +5,14 @@ import { renderTemplate } from '../../templates.ts';
 import { readManifest, writeManifest, addBlock as addBlockToManifest } from './manifest';
 
 const HELP = `
-Usage: apack add block <type> [options]
+Usage: apack pack add block <type> [options]
 
 Options:
   --input    Create an input block instead of a display block
 
 Example:
-  apack add block rating
-  apack add block color-picker --input
+  apack pack add block rating
+  apack pack add block color-picker --input
 `.trim();
 
 // The threads chat renders a message's blocks with each block's `props` spread as component props;

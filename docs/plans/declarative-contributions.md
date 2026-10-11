@@ -59,11 +59,11 @@ repository and service entries the same way, so this is the existing pattern ext
 
 The check that keeps it honest is the one this repo uses everywhere: the declared set and the registered set
 must agree, derived from each, asserted. A pack registering a step its manifest does not declare should fail
-`apack validate`, not be silently accepted.
+`apack pack validate`, not be silently accepted.
 
 ## Verification
 
-- `apack validate` fails a fixture pack that registers an undeclared contribution, and the message names
+- `apack pack validate` fails a fixture pack that registers an undeclared contribution, and the message names
   it.
 - The snapshot carries the declared set, and a reader can list a pack's contributions **without loading its
   runtime** — asserted by a test that never imports the pack's module.

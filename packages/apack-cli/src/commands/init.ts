@@ -53,7 +53,7 @@ Written from src/content/${EXAMPLE_CONTENT_KEY}/hello.md by the "${EXAMPLE_CONTE
 `;
 
 /**
- * The tsconfig `apack init` scaffolds, as an object so the test packs can build on it. A test pack that
+ * The tsconfig `apack pack init` scaffolds, as an object so the test packs can build on it. A test pack that
  * compiles a narrower file set than a real one hides whole classes of bug: a dangling import in generated
  * code stayed invisible for exactly that reason.
  */
@@ -67,7 +67,7 @@ export const PACK_TSCONFIG = {
     skipLibCheck: true,
     noEmit: true,
     types: ['node'],
-    // A pack typechecks the @apackdev packages' published declarations, which is what apack build
+    // A pack typechecks the @apackdev packages' published declarations, which is what apack pack build
     // compiles it against. Their declarations name .ts files.
     allowImportingTsExtensions: true,
     // Mirrors package.json "imports": TypeScript doesn't add extensions to subpath import targets
@@ -90,16 +90,16 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     '#generated/*': './src/__generated__/*',
   },
   scripts: {
-    prepare: 'apack generate-entries',
-    build: 'apack build',
-    validate: 'apack validate',
-    dev: 'apack dev',
+    prepare: 'apack pack generate-entries',
+    build: 'apack pack build',
+    validate: 'apack pack validate',
+    dev: 'apack pack dev',
     test: 'vitest run',
     typecheck: 'tsc --noEmit',
     // The facade dependents compile against, recorded for review. Either half bundles the facade itself, so
     // neither needs a build; `etc/pack-types.api.md` appears at the first `facade:update` rather than at init
-    'facade:check': 'apack facade-report',
-    'facade:update': 'apack facade-report --update',
+    'facade:check': 'apack pack facade-report',
+    'facade:update': 'apack pack facade-report --update',
   },
   dependencies: {
     // The generated facades import the EARS engine; it's released with the SDK at the same version
@@ -297,8 +297,8 @@ export async function init(args: string[]) {
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
-  console.log(`  apack add feature <name>`);
-  console.log(`  apack build`);
+  console.log(`  apack pack add feature <name>`);
+  console.log(`  apack pack build`);
   console.log(`  npm run facade:update   # records the types dependents compile against; commit it`);
   console.log(`\nREADME.md has the rest.`);
 }

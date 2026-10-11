@@ -588,7 +588,7 @@ describe("the package's CLAUDE.md names what is here", () => {
 /**
  * The two edges no module graph can see, and the packs they are derived for.
  *
- * A pack's specs import what `apack build` produced, never the source that produced it, so the edge runs
+ * A pack's specs import what `apack pack build` produced, never the source that produced it, so the edge runs
  * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
  * covers. Those are opposite facts and until these routes existed they got the same sentence: a content source
  * was told *"No spec covers …"*, which `tests/content/` refutes.

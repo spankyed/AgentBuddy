@@ -7,7 +7,7 @@ import { packRuleProblems, PACK_RULES } from '../build/pack-rules.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
- * Warnings only: an unresolved dependency is fixable with "apack fetch-deps", and `apack build`
+ * Warnings only: an unresolved dependency is fixable with "apack pack fetch-deps", and `apack pack build`
  * is what refuses to build without it.
  */
 async function validateDeps(root: string): Promise<string[]> {
@@ -24,7 +24,7 @@ async function validateDeps(root: string): Promise<string[]> {
   for (const [depId, depValue] of Object.entries(deps)) {
     try {
       const resolved = await resolveDep(root, depId, depValue);
-      if (!resolved) warnings.push(`Dependency "${depId}" could not be resolved — run "apack fetch-deps"`);
+      if (!resolved) warnings.push(`Dependency "${depId}" could not be resolved — run "apack pack fetch-deps"`);
     } catch (err) {
       // Found only in builds this CLI can't use: the message names each one and why
       warnings.push(errorMessage(err));
@@ -72,7 +72,7 @@ export async function validate(_args: string[]) {
   // Codegen stops at its first problem, so it runs only once the manifest and features check out
   const codegen = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : { errors: [], warnings: [] };
 
-  // The rules `apack build` refuses on, reported here without building: this is also what covers the repo's
+  // The rules `apack pack build` refuses on, reported here without building: this is also what covers the repo's
   // fixture packs, which are not npm workspaces and so are reached by no lint script (`build/pack-rules.ts`)
   const ruleErrors = [...packRuleProblems(root)].flatMap(([key, found]) => {
     const rule = PACK_RULES.find((candidate) => candidate.key === key);

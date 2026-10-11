@@ -20,7 +20,7 @@ function writeManifest(dir: string, manifest: Record<string, unknown>) {
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest, null, 2));
 }
 
-/** What `apack build` leaves in a pack's dist/: the runtime the host loads and the snapshot dependents read */
+/** What `apack pack build` leaves in a pack's dist/: the runtime the host loads and the snapshot dependents read */
 function writeBuild(dir: string, id: string) {
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
@@ -52,7 +52,7 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'content', 'actions'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'content', 'flows'))).toBe(true);
-    // Features come from `apack add feature`; the pack id (kebab-case) is not a valid feature id
+    // Features come from `apack pack add feature`; the pack id (kebab-case) is not a valid feature id
     expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'vitest.config.ts'))).toBe(true);
@@ -97,7 +97,7 @@ describe('pack CLI: init', () => {
 
 describe('pack CLI: install', () => {
   it('install with no args returns without throwing (prints help)', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
     await expect(install([])).resolves.toBeUndefined();
   });
 
@@ -107,7 +107,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects manifest with invalid id format', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const badPack = path.join(tmpDir, 'bad-id-pack');
     fs.mkdirSync(badPack, { recursive: true });
@@ -122,7 +122,7 @@ describe('pack CLI: install', () => {
   });
 
   it("rejects a pack that hasn't been built", async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const unbuilt = path.join(tmpDir, 'unbuilt');
     fs.mkdirSync(unbuilt, { recursive: true });
@@ -132,11 +132,11 @@ describe('pack CLI: install', () => {
       version: '1.0.0',
     });
 
-    await expect(install([unbuilt])).rejects.toThrow(/Pack unbuilt is not built:.*Run "apack build" first/s);
+    await expect(install([unbuilt])).rejects.toThrow(/Pack unbuilt is not built:.*Run "apack pack build" first/s);
   });
 
   it('rejects pack without apack.json', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const noManifest = path.join(tmpDir, 'no-manifest');
     fs.mkdirSync(noManifest, { recursive: true });
@@ -239,4 +239,13 @@ describe('pack CLI: security', () => {
       expect(validPattern.test(id)).toBe(true);
     }
   });
+});
+
+it('pack installation refuses removed or misspelled target flags before changing data', async () => {
+  const { install } = await import('../../src/commands/pack-install');
+  const { uninstall } = await import('../../src/commands/pack-uninstall');
+  for (const flag of ['--dev', '-b', '--channel', '--typo']) {
+    await expect(install(['demo', flag])).rejects.toThrow('Usage');
+    await expect(uninstall(['demo', flag])).rejects.toThrow('Usage');
+  }
 });

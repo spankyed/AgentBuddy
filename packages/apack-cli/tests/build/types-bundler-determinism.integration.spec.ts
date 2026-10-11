@@ -74,9 +74,9 @@ function buildFacade(parent: string, name: string, modules: string): string {
   }
   fs.symlinkSync(modules, path.join(dir, 'node_modules'), 'dir');
   try {
-    execFileSync(process.execPath, [CLI, 'build'], { cwd: dir, stdio: 'pipe', env: { ...process.env, FORCE_COLOR: '0' } });
+    execFileSync(process.execPath, [CLI, 'pack', 'build'], { cwd: dir, stdio: 'pipe', env: { ...process.env, FORCE_COLOR: '0' } });
   } catch (err: any) {
-    throw new Error(`apack build failed (${name}):\n${err.stdout ?? ''}${err.stderr ?? ''}`);
+    throw new Error(`apack pack build failed (${name}):\n${err.stdout ?? ''}${err.stderr ?? ''}`);
   }
   return fs.readFileSync(path.join(dir, 'dist', 'types', 'pack-types.d.ts'), 'utf-8');
 }

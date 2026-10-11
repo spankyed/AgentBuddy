@@ -30,7 +30,7 @@ const COMMANDS = {
   'add': async () => (await import('../../src/commands/add')).add,
   'generate-entries': async () => (await import('../../src/commands/generate-entries')).generateEntries,
   'build': async () => (await import('../../src/commands/build')).build,
-  'pack': async () => (await import('../../src/commands/pack')).pack,
+  'archive': async () => (await import('../../src/commands/archive')).archive,
   'init-tests': async () => (await import('../../src/commands/init-tests')).initTests,
   'facade-report': async () => (await import('../../src/commands/facade-report')).facadeReport,
 } satisfies Record<string, () => Promise<(args: string[]) => unknown>>;
@@ -136,13 +136,13 @@ export const packageJson = (name: string) =>
  * checkout and resolve the workspace packages. They do sit inside it, but they never needed to read its source:
  * dropping the condition left all 15 integration specs and their 191 cases green (2026-09-27). What it bought
  * was the asymmetry the root CLAUDE.md warns about — these packs typechecked against workspace `src/` while
- * `apack build` bundled them from `dist`, because esbuild has no notion of the condition. So the fixture was
+ * `apack pack build` bundled them from `dist`, because esbuild has no notion of the condition. So the fixture was
  * the one place in the repo where a pack compiled unlike every pack author's, which is what the
  * `source-resolution` pack rule now refuses.
  */
 export const tsconfig = JSON.stringify(PACK_TSCONFIG);
 
-/** Writes a pack and links it to the given `node_modules`, so `apack build` can run in it */
+/** Writes a pack and links it to the given `node_modules`, so `apack pack build` can run in it */
 export function preparePack(parent: string, name: string, files: Record<string, string>, modules: string): string {
   return packFixture({ at: path.join(parent, name), files, nodeModules: modules });
 }
@@ -150,7 +150,7 @@ export function preparePack(parent: string, name: string, files: Record<string, 
 /** Builds a prepared pack, throwing with the CLI's output when it fails */
 export async function buildPack(dir: string, name = path.basename(dir)): Promise<string> {
   const build = await callCli(dir, 'build');
-  if (build.code !== 0) throw new Error(`apack build failed in ${name}:\n${build.output}`);
+  if (build.code !== 0) throw new Error(`apack pack build failed in ${name}:\n${build.output}`);
   return build.output;
 }
 

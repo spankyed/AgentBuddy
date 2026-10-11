@@ -104,7 +104,7 @@ export function manifest(fields: Record<string, unknown>): PackManifest {
   } as unknown as PackManifest;
 }
 
-/** The exports every facade `apack build` bundles publishes, and the declaration each gets by default */
+/** The exports every facade `apack pack build` bundles publishes, and the declaration each gets by default */
 export const FACADE_DEFAULTS = {
   PackEntityShapes: '{}',
   PackStepNodes: 'never',
@@ -115,7 +115,7 @@ export const FACADE_DEFAULTS = {
 };
 
 /**
- * A dependency's facade as `apack build` bundles one, with `overrides` replacing a named export's
+ * A dependency's facade as `apack pack build` bundles one, with `overrides` replacing a named export's
  * declaration. Generated code imports these from every dependency.
  */
 export function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>> = {}): Record<string, string> {

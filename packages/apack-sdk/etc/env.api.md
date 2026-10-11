@@ -8,7 +8,7 @@
 export const APP_ENVS: readonly ["production", "beta", "preview", "development", "test"];
 
 // @public
-export type AppBuild = AppEnv;
+export type AppChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
 // @public (undocumented)
 export interface AppContext {
@@ -16,7 +16,7 @@ export interface AppContext {
     apiTokenFile: string;
     appDir: string;
     appName: string;
-    build: AppBuild;
+    env: AppEnv;
     installedPacksFile: string;
     // (undocumented)
     packsDir: string;
@@ -49,12 +49,9 @@ export function _inferElectronAppEnv(input: {
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
 // @public
-export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
-
-// @public
 export function resolveAppContext(input?: {
-    build?: AppBuild;
-    profile?: string;
+    env?: AppEnv;
+    userDataDir?: string;
 }): AppContext;
 
 // (No @packageDocumentation comment for this package)

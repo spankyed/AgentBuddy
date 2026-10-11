@@ -10,7 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/** Where `apack build` writes this pack's compiled content */
+/** Where `apack pack build` writes this pack's compiled content */
 const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist', 'runtime', 'content');
 
 /** Parses a body without running it; `AsyncFunction` so `await` inside one is allowed */

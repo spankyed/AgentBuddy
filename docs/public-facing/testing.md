@@ -3,13 +3,13 @@
 A pack has two kinds of tests:
 
 - **Unit tests** (`npm test`, vitest) run your pack's code without the app, through `@apackdev/testing/harness`: content and repositories, systems, services and flows, with your dependencies' behaviour.
-- **E2E tests** (`apack test`, Playwright) run your pack in apack, UI included. See the `@apackdev/testing` fixture (`apack init-tests`).
+- **E2E tests** (`apack pack test`, Playwright) run your pack in apack, UI included. See the `@apackdev/testing` fixture (`apack pack init-tests`).
 
 This page covers unit tests.
 
 ## Setup
 
-`apack init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
+`apack pack init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
 
 ```typescript
 // vitest.config.ts
@@ -23,13 +23,13 @@ That one call is the whole config. It gives you:
 - **A throwaway data dir per run**, one subdir per worker. The harness fails without `APACK_USER_DATA_DIR`,
   and a per-worker split is what stops one spec's reset deleting another worker's files mid-test.
 - **`include: ['tests/**/*.spec.ts']`**, because a spec's path mirrors the source it covers, less `tests/e2e/`
-  (Playwright's, run by `apack test`) and `tests/_support/` (helpers and fixtures, not specs).
+  (Playwright's, run by `apack pack test`) and `tests/_support/` (helpers and fixtures, not specs).
 - **A stub for your `.vue` files**, so `vitest related` and `--changed` can walk your pack's module graph.
   Without it they stop at the first SFC they reach, which is any pack with a plugin. Your specs can import a
   plugin module and read everything but the component; rendering one throws and says how to enable it.
 - **`globals: true`**, and timeouts that match what a pack's unit tests are allowed.
 - **No `resolve.conditions`** — and you should not add any. A pack's tests resolve its `@apackdev` packages
-  exactly as `apack build` does, to the `dist` each published package ships, which is the one layout a pack
+  exactly as `apack pack build` does, to the `dist` each published package ships, which is the one layout a pack
   ever has. There is nothing to select.
 
 What you may pass it:
@@ -58,13 +58,13 @@ await setupPackTests({ contentRuntime, registration });
 - **Without `registration`**, only data code runs: each dependency contributes its content runtime (entity types, repositories, content writers). Pass your appliers (`import { appliers } from '#generated/appliers.ts'`, `setupPackTests({ contentRuntime, appliers })`) for `importContent`; a registration carries its own. These tests start faster and never load a dependency's runtime.
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@apackdev/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@apackdev/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
-- **Run `apack build` once first**, so dependencies are fetched into `.apack/deps/`.
+- **Run `apack pack build` once first**, so dependencies are fetched into `.apack/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` does the same mid-test: a fresh engine, the secrets emptied and the media store cleared; registrations stay. `testMediaPath(entityId?)` names the media store (or one row's folder in it) for a test that asserts on written media.
 - **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@apackdev/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@apackdev/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine. Install `@apackdev/ears` at the version your `@apackdev/sdk` uses: when they differ, npm gives the SDK its own copy, and `setupPackTests` fails naming both.
 - **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a test that runs alongside another (`it.concurrent`, `describe.concurrent` or `sequence.concurrent` next to another concurrent test) fails. Spec files still run in parallel, each in its own worker.
 - **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@apackdev/testing/harness`: it returns the `SYSTEM_ERROR` events systems reported with `reportError` (without `step`) since the last call (`message`, `source`, `stack`, …), and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
-- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `apack add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@apackdev/testing` is added at your `@apackdev/sdk` range (they're released together); when your `@apackdev/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
+- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `apack pack add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@apackdev/testing` is added at your `@apackdev/sdk` range (they're released together); when your `@apackdev/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
 ## Content
 
@@ -112,7 +112,7 @@ it('stores a memo a client adds and sends it back', async () => {
 
 **Boot hooks run around a test's apps.** The first app a test starts runs each registered pack's `boot.onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs `boot.onShutdown`. A pack that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
 
-`apack add feature` scaffolds a system test like this for each feature.
+`apack pack add feature` scaffolds a system test like this for each feature.
 
 ## Frontend
 

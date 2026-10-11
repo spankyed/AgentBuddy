@@ -6,7 +6,7 @@ import { bundleDslDefs, monacoDefsFile, withoutRenameSuffixes } from '../../src/
 import type { PackManifest } from '@apackdev/sdk/build';
 
 /**
- * The DSL editors load the declarations `apack build` writes, with no node_modules behind them: a
+ * The DSL editors load the declarations `apack pack build` writes, with no node_modules behind them: a
  * package import left in a definitions file is a type the editor silently can't resolve.
  */
 let dir: string;

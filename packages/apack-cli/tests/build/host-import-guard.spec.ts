@@ -6,7 +6,7 @@ import { bundlePackRuntime, bundlePackContentCompilers, bundlePackStepBuild } fr
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
-/** Pack code that imports the app's private @apackdev/host fails `apack build`, not the app at load */
+/** Pack code that imports the app's private @apackdev/host fails `apack pack build`, not the app at load */
 const tmpDirs: string[] = [];
 afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
@@ -21,7 +21,7 @@ function pack(files: Record<string, string>): string {
 const HOST_IMPORT = "import { edgeStore } from '@apackdev/host/ears';\nexport const registration = { edgeStore };\n";
 const HOST_ERROR = /@apackdev\/host\/ears is the app's private host package; packs import @apackdev\/sdk instead/;
 
-describe('apack build rejects @apackdev/host imports', () => {
+describe('apack pack build rejects @apackdev/host imports', () => {
   it('in the backend runtime', async () => {
     const dir = pack({ 'src/__generated__/pack-entry.ts': HOST_IMPORT });
     const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));

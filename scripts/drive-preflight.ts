@@ -44,7 +44,7 @@ interface Edge { readonly file: string; readonly at: number }
  * **Newest on both sides, which is the only pair that works.** For the inputs it is the obvious reading:
  * the latest edit. For the outputs it is *when the build last produced anything*, and the tempting
  * alternative — the oldest output, "has every product been refreshed" — is wrong because a build need not
- * rewrite all of them: `apack build` overwrites `dist/defs/` without clearing it, by design, so some of
+ * rewrite all of them: `apack pack build` overwrites `dist/defs/` without clearing it, by design, so some of
  * `build:default-setup`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
  * after a successful build.
  *

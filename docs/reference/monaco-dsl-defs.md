@@ -1,12 +1,12 @@
 # Monaco DSL Definitions
 
-Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `apack build` and carried by the pack's frontend registration.
+Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `apack pack build` and carried by the pack's frontend registration.
 
 ## Pipeline
 
 ```
 src/defs/{action,prompt,database}.ts            (1) Hand-authored type source
-        ↓  apack build (bundleDslDefs)
+        ↓  apack pack build (bundleDslDefs)
 dist/defs/monaco/{action,prompt,database}-defs.d.ts  (2) Bundled declarations
         ↓
 src/__generated__/dsl-types-fe.ts               (3) Generated `dslTypes`, imports (2) as ?raw strings
@@ -19,10 +19,10 @@ getDslTypes() → Monaco TypeScript worker        (4) The renderer's registered 
 | 1 | `src/defs/action.ts` | Hand-authored | The types and values in scope in the action DSL (services, params, z, entity types) |
 | 1 | `src/defs/prompt.ts` | Hand-authored | Prompt DSL types (`usePrompt`, params, `PromptEntity`) |
 | 1 | `src/defs/database.ts` | Hand-authored | EARS DSL types (`qx`, `tx`, `bp`, `spawn`, entity helpers) |
-| 2 | `dist/defs/monaco/*-defs.d.ts` | `apack build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
-| 3 | `src/__generated__/dsl-types-fe.ts` | `apack generate-entries` | Imports (2) as `?raw` and exports `dslTypes` (one `DslTypeConfig` per DSL), which `pack-entry-fe.ts` puts in the frontend registration; nothing registers on import |
+| 2 | `dist/defs/monaco/*-defs.d.ts` | `apack pack build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
+| 3 | `src/__generated__/dsl-types-fe.ts` | `apack pack generate-entries` | Imports (2) as `?raw` and exports `dslTypes` (one `DslTypeConfig` per DSL), which `pack-entry-fe.ts` puts in the frontend registration; nothing registers on import |
 
-Every pack gets this: `apack build` bundles each `apack.json` `extensions.dsl` entry whose `targets` include `monaco` (`packages/apack-cli/src/build/dsl-defs.ts`, covered by `packages/apack-cli/tests/build/dsl-defs.integration.spec.ts`).
+Every pack gets this: `apack pack build` bundles each `apack.json` `extensions.dsl` entry whose `targets` include `monaco` (`packages/apack-cli/src/build/dsl-defs.ts`, covered by `packages/apack-cli/tests/build/dsl-defs.integration.spec.ts`).
 
 ## What is inlined
 
@@ -30,11 +30,11 @@ The editor loads no `node_modules`, so a declaration Monaco can't resolve is a s
 
 ## When they are rebuilt
 
-Anything that builds the pack rebuilds them, because they are part of `apack build`:
+Anything that builds the pack rebuilds them, because they are part of `apack pack build`:
 
 | Trigger | Rebuilds `dist/defs/` |
 |---|---|
-| `npm run dev` (dev launcher → `apack build --skip-fe`) | Yes |
+| `npm run dev` (dev launcher → `apack pack build --skip-fe`) | Yes |
 | `npm run build:default-setup` | Yes |
 | `npm run build:api` | No — builds only the API |
 | `npm run build:production` (`build/build.sh`) | Yes |

@@ -3,7 +3,7 @@
  *
  * A **dep file** is the build-system name for a tool reporting its own input set after the fact — Buck2's
  * `dep_files`, Ninja's `depfile`, `gcc -MD`. The repo's typecheck legs already produce one (TypeScript's
- * `tsBuildInfoFile`, read by `scripts/lib/dep-files.ts`), and the two chain steps that run `apack build`
+ * `tsBuildInfoFile`, read by `scripts/lib/dep-files.ts`), and the two chain steps that run `apack pack build`
  * produced none: their declared inputs were compared against nothing, which is the one gap no coverage
  * check can close, because asking whether every tracked file is *some* step's input cannot catch a step
  * declaring too little.
@@ -46,7 +46,7 @@ const OPT_OUT = 'APACK_NO_BUILD_READS';
 const optedOut = (): boolean => process.env[OPT_OUT] === '1';
 
 /**
- * The bundles of `apack build`, in the order it runs them — which is also the order the record is written
+ * The bundles of `apack pack build`, in the order it runs them — which is also the order the record is written
  * in, so its keys read as the build rather than as a Map's insertion order.
  *
  * Each is named after what it produces rather than the bundler that produces it: a phase whose bundler is
@@ -58,7 +58,7 @@ export const BUILD_PHASES = [
   'contentCompilers', 'contentRuntime', 'stepBuild', 'runtime', 'fe',
 ] as const;
 
-/** One bundle of `apack build`. Derived from the list, which is the declaration. */
+/** One bundle of `apack pack build`. Derived from the list, which is the declaration. */
 export type BuildPhase = (typeof BUILD_PHASES)[number];
 
 /** What one bundle read, as the bundler that ran it reports — including what the bundler says it is */

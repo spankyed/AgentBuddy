@@ -84,7 +84,7 @@ Rules that pay for themselves:
   `includePath` and the two path trackers), 1.6s GC, 0.7s tailwind and **0.3s compiling every SFC** — so
   the stage the first table blamed held a twentieth of the cost, and both intuitive optimisations ("make
   Vue faster", "cache the SFC transforms") were aimed at it. Subtract two profiles to isolate one phase
-  (`apack build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
+  (`apack pack build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
   it charged the frontend phase 0.75s of `spawnSync` that was `packages:ensure` running in both arms.
 
   **What the profile bought was a rejection, which is the usual return on one.** `treeshake: false` for the
@@ -130,7 +130,7 @@ Rules that pay for themselves:
   half — the byte count tells the two regimes apart (8,511,670 shaken against 8,549,845 opaque), it had
   already caught one dead plugin in this same spike, and it was not run on this arm.
 
-  **Skipping the phase is not the other lever.** `apack build` records what each phase read, and that
+  **Skipping the phase is not the other lever.** `apack pack build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
   nobody has made yet. The chain already caches `build:default-setup` on declared inputs, so an unchanged tree never
   pays the 11.3s in the first place, and the gate would only serve a hand-run build. What is left is making

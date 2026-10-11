@@ -11,14 +11,14 @@ function serviceExport(camel: string): string {
 }
 
 const HELP = `
-Usage: apack add service <name> [options]
+Usage: apack pack add service <name> [options]
 
 Options:
   --feature <feature>    Create a feature service instead of pack-level
 
 Example:
-  apack add service cache
-  apack add service bookmarks --feature bookmarks
+  apack pack add service cache
+  apack pack add service bookmarks --feature bookmarks
 `.trim();
 
 export async function addService(args: string[], root: string) {

@@ -13,7 +13,7 @@ import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 const DRIVE_CONFIG_FILE = 'playwright.config.ts';
 
 /**
- * A pack's E2E suite, run by `apack test`.
+ * A pack's E2E suite, run by `apack pack test`.
  *
  * Nothing in the tooling reads these back, so a pack's own word is last — pass anything Playwright takes.
  *
@@ -38,7 +38,7 @@ export function definePackE2EConfig(options: PlaywrightTestConfig = {}): Playwri
 export type DriveConfigOptions = Omit<PlaywrightTestConfig, 'testDir'>;
 
 /**
- * A pack's driving scripts, run by `apack drive`. Driving is not testing: nothing asserts and nothing
+ * A pack's driving scripts, run by `apack pack drive`. Driving is not testing: nothing asserts and nothing
  * gates on it, so there is no budget to hold and no timeout at all — you are looking at the app.
  *
  * **The session is ignored whatever `testMatch` says**, which is the one thing a pack cannot override. A

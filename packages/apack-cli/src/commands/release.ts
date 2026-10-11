@@ -7,14 +7,14 @@ import { findPackRoot, readManifest } from '../utils';
 import { parseManifest } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
 import { build } from './build';
-import { buildPackArchive } from './pack';
+import { buildPackArchive } from './archive';
 import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const HELP = `
 Usage:
-  apack release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]
-  apack release publish [--dir <dir>] [--dry-run]
+  apack pack release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]
+  apack pack release publish [--dir <dir>] [--dry-run]
 
 release   Preflight, bump the version (beta cycle: 1.2.3 → 1.2.4-beta.0 → -beta.1 → 1.2.4),
           build --release, typecheck, unit tests, E2E, pack, then commit, tag v<version>
@@ -75,7 +75,7 @@ const NOTHING_RELEASED: ReleaseState = { committed: false, tagged: false, pushed
  * The tag reaching origin ends it. Past that the release exists for everyone and a rerun is asking for
  * the next version — the beta cycle is two releases in a row with nothing committed between them, and
  * reading the finished one as resumable would mean -beta.1 could never be cut. A `--local` publish
- * that failed after the push is `apack release publish`, which exists for exactly that.
+ * that failed after the push is `apack pack release publish`, which exists for exactly that.
  */
 export function isResumable(state: ReleaseState): boolean {
   return state.committed && !(state.tagged && state.pushed);
@@ -90,10 +90,10 @@ export function isResumable(state: ReleaseState): boolean {
 export function releaseStateReport(version: string, state: ReleaseState): string {
   const mark = (done: boolean) => (done ? '✓' : '·');
   const next = isResumable(state)
-    ? ['Rerun the same `apack release` command to continue: it resumes this version instead of bumping again.',
+    ? ['Rerun the same `apack pack release` command to continue: it resumes this version instead of bumping again.',
        'Nothing needs reverting first.']
     : ['The tag is on origin, so the release itself is done and a rerun would cut the next version.',
-       'To finish publishing it, run `apack release publish`.'];
+       'To finish publishing it, run `apack pack release publish`.'];
   return [
     `Release v${version} stopped part-way. What exists now:`,
     `  ${mark(state.committed)} version commit "release: v${version}"`,
@@ -189,7 +189,7 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
     errors.push('--local publishes from this machine, but .github/workflows/release.yml also publishes when the tag is pushed; release without --local, or remove the workflow');
   }
   if (!options.local && !hasWorkflow) {
-    warnings.push('no .github/workflows/release.yml — pushing the tag will not publish anything (use --local, or run "apack init" to scaffold the workflow)');
+    warnings.push('no .github/workflows/release.yml — pushing the tag will not publish anything (use --local, or run "apack pack init" to scaffold the workflow)');
   }
   return { errors, warnings };
 }
@@ -276,7 +276,7 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   const archive = path.join(releaseDir, packArchiveName(manifest.id, version));
   const checksumFile = `${archive}.sha256`;
   if (!fs.existsSync(archive) || !fs.existsSync(checksumFile)) {
-    throw new Error(`No ${path.basename(archive)} (+ .sha256) in ${releaseDir}. Run "apack pack --out ${releaseDir}" first.`);
+    throw new Error(`No ${path.basename(archive)} (+ .sha256) in ${releaseDir}. Run "apack pack archive --out ${releaseDir}" first.`);
   }
 
   // Refuse to publish anything that doesn't verify

@@ -14,7 +14,7 @@ import type { PackManifest } from '../../src/build/manifest.ts';
 
 const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
 const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'content-runtime.mjs');
-// dist/ is gitignored; CI builds default-setup (apack build) and requires the facet
+// dist/ is gitignored; CI builds default-setup (apack pack build) and requires the facet
 const built = fs.existsSync(FACET);
 if (!built && process.env.REQUIRE_CONTENT_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_CONTENT_RUNTIME) but not built`);
 

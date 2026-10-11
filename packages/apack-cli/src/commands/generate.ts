@@ -10,7 +10,7 @@ async function loadDepSnapshots(root: string, deps: Record<string, string>): Pro
     const resolved = artifacts?.snapshot;
     if (!resolved) {
       unresolved.push(depValue.startsWith('file:')
-        ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "apack build" there first)`
+        ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "apack pack build" there first)`
         : `${depId} ("${depValue}"): not found in the installed app, a workspace, a GitHub release or the local cache`);
       continue;
     }

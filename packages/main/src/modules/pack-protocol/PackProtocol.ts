@@ -39,7 +39,7 @@ export function packRequestTarget(requestUrl: string): { packId: string; filePat
  *
  * **Two roots, because a pack is either installed in the user's data dir or shipped with the app**, and a
  * pack's frontend is fetched the same way whichever it is. A shipped pack is served out of its `dist/`,
- * which is where its own `apack build` wrote the bundle an installed pack carries at its root. The
+ * which is where its own `apack pack build` wrote the bundle an installed pack carries at its root. The
  * installed copy comes first, so a pack the user replaced serves its own files.
  *
  * Each candidate is checked against *its own* prefix, so neither root widens what the other serves, and

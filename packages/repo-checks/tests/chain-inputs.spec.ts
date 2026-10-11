@@ -447,14 +447,14 @@ describe('a step declares the modules its script imports', () => {
  */
 describe('a step that drives the app fixture declares the bundle it drives', () => {
   // How a script reaches the fixture: Playwright directly, the CLI's own `test`, or the CLI held in a
-  // variable (`"$APACK" test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
+  // variable (`"$APACK" pack test`, which `tests/scripts/test-external-pack-app.sh` uses). The third is not
   // optional — without it this watched two steps and not the one it was written for.
   //
   // The same three shapes `check:tiers` looks for (`APP_MARKERS`), and deliberately **not** the same
   // rule: that one asks whether a step launches an app, so it exempts `--contract`, which starts none.
-  // This asks whether a step reads the bundle, and `apack test --contract` does — the harness it runs
+  // This asks whether a step reads the bundle, and `apack pack test --contract` does — the harness it runs
   // is published from it. Keep the shapes in step; the lookahead is where the two questions differ.
-  const DRIVES_THE_APP = /playwright\s+test\b|\bapack["']?\s+test\b|\$\{?APACK\}?"?\s+test\b/;
+  const DRIVES_THE_APP = /playwright\s+test\b|\bapack["']?\s+pack\s+test\b|\$\{?APACK\}?"?\s+pack\s+test\b/;
   const fixture = BUILD_UNITS['@apackdev/testing'].outputs.map(repoRelative);
   const all = rootScripts();
   // Only the cacheable ones: a step that never caches cannot cache over anything, so the rule has no

@@ -9,7 +9,7 @@ import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
 import { APP_ENVS, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
-import { configuredAppPackagesDir } from '../app/app-target';
+import { configuredHostPackagesDir } from '../app/pack-host';
 
 // ── Dependency value parsing ──
 
@@ -161,19 +161,23 @@ function unusable(depId: string, rejected: Rejected): Error {
 /** A pack installed in an apack's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of APP_ENVS) {
-    const found = findDepFiles(path.join(resolveAppContext({ build: env }).packsDir, depId));
+    const found = findDepFiles(path.join(resolveAppContext({ env }).packsDir, depId));
     if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }
   return null;
 }
 
 /** Built-in packs of the app this pack is built against: a named one, or the checkout behind it. */
-async function resolveFromConfiguredApp(root: string, depId: string): Promise<(DepFiles & { label: string }) | null> {
+async function resolveFromConfiguredHost(root: string, depId: string, pinned = false): Promise<(DepFiles & { label: string }) | null> {
   let hostVersion: string | undefined;
   try { hostVersion = readManifest(root).hostVersion; } catch {}
-  const app = await configuredAppPackagesDir({ hostVersion, from: root });
+  const app = await configuredHostPackagesDir({ hostVersion, from: root });
   if (!app) return null;
-  const found = findDepFiles(path.join(app.dir, depId));
+  const dir = path.join(app.dir, depId);
+  const found = findDepFiles(dir);
+  if (pinned && !found && fs.existsSync(path.join(dir, PACK_LAYOUT.manifest))) {
+    throw new Error(`Selected host dependency "${depId}" has no built snapshot in ${dir}. Build that host's pack before using it.`);
+  }
   return found && { ...found, label: app.label };
 }
 
@@ -371,15 +375,27 @@ function copyContent(from: string, to: string): void {
 // ── Resolution chain ──
 
 /**
- * Sources on this machine, in order: the workspace, the app this pack is built against (APACK_BUILD,
- * APACK_ROOT, or the apack checkout behind the pack), then installed apps. Each must satisfy the
- * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
+ * A selected host owns its dependency artifacts: never substitute a workspace or another app.
+ * Otherwise prefer the workspace, linked checkout, then installed apps. All must satisfy the range.
  */
 async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+  const pinned = Boolean(process.env.APACK_HOST_ROOT || process.env.APACK_HOST_EXECUTABLE || process.env.APACK_HOST);
+  if (pinned) {
+    const configured = await resolveFromConfiguredHost(root, depId, true);
+    if (configured) {
+      const version = configured.snapshot.manifest.version;
+      if (!usable(configured, range, configured.label, rejected)) {
+        if (rejected.length) throw unusable(depId, rejected);
+        throw new Error(`Selected host dependency "${depId}" version ${version} does not satisfy ${range}.`);
+      }
+      const { label, ...artifacts } = configured;
+      return { ...artifacts, resolvedFrom: label };
+    }
+  }
   const workspace = await resolveFromWorkspace(root, depId);
   if (usable(workspace, range, 'workspace', rejected)) return { ...workspace, resolvedFrom: 'workspace' };
 
-  const configured = await resolveFromConfiguredApp(root, depId);
+  const configured = pinned ? null : await resolveFromConfiguredHost(root, depId);
   if (configured && usable(configured, range, configured.label, rejected)) {
     const { label, ...artifacts } = configured;
     return { ...artifacts, resolvedFrom: label };
@@ -423,7 +439,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 /**
  * A resolved dependency, with where it came from when that is known.
  *
- * The label is the one `apack fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
+ * The label is the one `apack pack fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
  * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
  * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
  * recorded in the snapshot, which ships inside the pack.

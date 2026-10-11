@@ -23,8 +23,8 @@ export { answerTo } from './answers.ts';
 
 /**
  * What a pack's content needs outside the app: its entity types and relation kinds, its repositories
- * and its content writers. `apack generate-entries` writes it as `contentRuntime` in
- * `src/__generated__/content-runtime.ts`; `apack build` bundles it into `build/content-runtime.mjs` for
+ * and its content writers. `apack pack generate-entries` writes it as `contentRuntime` in
+ * `src/__generated__/content-runtime.ts`; `apack pack build` bundles it into `build/content-runtime.mjs` for
  * packs that depend on this one.
  */
 export interface ContentRuntime {

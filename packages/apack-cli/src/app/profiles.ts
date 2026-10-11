@@ -1,39 +1,20 @@
 /**
- * Profiles: a data dir you can throw away.
- *
- * `apack dev` launches into the one shared `development` data dir, so every run inherits what the last
- * one left — applied content, half-migrated rows, settings from a pack you have since deleted. A profile
- * is that dir, somewhere else, created on demand and disposable.
- *
- * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the
- * Electron app identity and the URL scheme are untouched, and `--build beta` works: a packaged build stamps
- * its own channel and ignores `APACK_ENV`, where `APACK_USER_DATA_DIR` reaches it. Nothing here is a new
- * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
- * fixture has relied on all along.
- *
- * **The word is `profile` and not `instance` because an instance of an app is a running process**, which
- * is what Electron's own single-instance lock is about. A named, disposable user-data-dir that leaves the
- * application's identity alone is a browser profile, and that is the analogy anyone reaches for when
- * explaining one. The three terms this keeps apart: a **data dir** is the generic thing, one app per dir;
- * an **environment** is one of four fixed data dirs by name (`APP_NAMES`), which nobody creates; a
- * **profile** is an extra one, created by name, carrying no environment.
- *
- * A profile is not bound to the kind of app that opens it: `apack dev --profile x` against a checkout and
- * against `--build beta` mean the same directory, because one layout puts both their stores in the same
- * places inside it.
+ * Built-in profiles use canonical environment storage. Custom profiles live under the CLI's data root.
+ * A profile selects storage independently of the executable host; only a profile this run creates may
+ * be removed automatically. Temporary profiles live separately so cleanup cannot delete a named one.
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
+import { APP_ENVS, appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@apackdev/host/process-liveness';
 import { _pathSegmentProblem, randomId } from '@apackdev/sdk/utils/pure';
-import type { CliDirs } from './app-target';
+import type { CliDirs } from './pack-host';
 
 /** What a profile records about itself, in `.apack-profile.json` at its root. */
 interface ProfileRecord {
   created: string;
-  /** The `apack dev` that owns an ephemeral profile, so a later run can tell a leak from a live one */
+  /** The `npm run dev:open --` that owns an ephemeral profile, so a later run can tell a leak from a live one */
   pid?: number;
 }
 
@@ -50,17 +31,15 @@ const profilesRoot = (dirs: CliDirs) => path.join(dirs.data, 'profiles');
  * The rule itself is `_pathSegmentProblem`: a pack's data directory name needs the same one, and the copy
  * that governed it was missing the filesystem's reserved names.
  *
- * **And a profile is never named after a build.** `--profile beta` and `--build beta` would otherwise be
- * two different things a letter apart — one a data dir, the other the app that opens it — which is the
- * collision this vocabulary exists to end, reintroduced by the one input a user picks freely. The names
- * come from `APP_ENVS` rather than a list of their own, so a fifth build cannot arrive nameable.
+ * Built-in profile names are reserved. Creating a custom profile with the same name would make
+ * storage lookup ambiguous; APP_ENVS defines those names once.
  */
 export const profileNameProblem = (name: string): string | undefined => {
   const segment = _pathSegmentProblem(name, 'profile name');
   if (segment) return segment;
   if ((APP_ENVS as readonly string[]).includes(name)) {
-    return `"${name}" is a build, so it can't also be a profile name: \`--build ${name}\` names the app and`
-      + ` \`--profile <name>\` names a data dir it opens. Pick a name for the data dir — \`${name}-work\`, say.`;
+    return `"${name}" is a built-in profile, so it cannot name a custom profile.`
+      + ` Choose ${name}-work as a custom profile name instead.`;
   }
   return undefined;
 };
@@ -88,6 +67,15 @@ export function profileDir(dirs: CliDirs, name: string): string {
   const dir = path.resolve(root, name);
   if (path.dirname(dir) !== root) throw new Error(`"${name}" doesn't resolve inside ${root}.`);
   return dir;
+}
+
+/** Resolve a printed profile name across persistent and temporary storage without claiming ownership. */
+export function resolveProfileDir(dirs: CliDirs, name: string): string {
+  const regular = profileDir(dirs, name);
+  const temporary = path.join(profilesRoot(dirs), EPHEMERAL, name);
+  if (!fs.existsSync(temporary)) return regular;
+  if (fs.existsSync(regular)) throw new Error(`Ambiguous profile name ${name}: both regular and temporary profiles exist.`);
+  return temporary;
 }
 
 const readRecord = (dir: string): ProfileRecord | undefined => {
@@ -120,7 +108,7 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  * the dir open.
  */
 export function dataDirInUse(dir: string): boolean {
-  return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null
+  return readApiEndpoint(resolveAppContext({ env: 'development', userDataDir: dir }).apiPortFile) !== null
     || chromiumLockHeld(dir);
 }
 
@@ -271,7 +259,7 @@ export function trimDataDir(dir: string, bytes: (dir: string) => number = dirByt
 
 /** A profile by name, created if it isn't there yet. */
 export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
-  const dir = profileDir(dirs, name);
+  const dir = resolveProfileDir(dirs, name);
   // **`created` is about the record, not the directory**, because the two are not the same question and
   // `--rm` turns on the answer: a caller may have made the dir for its own reasons before `dev` opens it —
   // `drive`'s spawn puts its log in there before the app starts — and an existing-*dir* test then reports
@@ -288,7 +276,7 @@ export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
  * seeing rather than a silent reuse of someone else's data.
  */
 export function mintProfile(dirs: CliDirs, ephemeral: boolean): OpenedProfile {
-  const name = randomId({ length: 10 });
+  const name = freshProfileName();
   const dir = ephemeral
     ? path.join(profilesRoot(dirs), EPHEMERAL, `${process.pid}-${name}`)
     : profileDir(dirs, name);
@@ -306,7 +294,7 @@ export interface ListedProfile {
   ephemeral: boolean;
   /** An app is running on it right now, whoever started it */
   inUse: boolean;
-  /** Ephemeral, with neither its `apack dev` nor an app still going: a crash left it, and it can go */
+  /** Ephemeral, with neither its `npm run dev:open --` nor an app still going: a crash left it, and it can go */
   leaked: boolean;
   bytes: number;
 }
@@ -323,7 +311,7 @@ export function listProfiles(dirs: CliDirs): ListedProfile[] {
       created: record?.created,
       ephemeral,
       inUse,
-      // Two holders, and both have to be gone. The pid is the `apack dev` that made it; the app is the
+      // Two holders, and both have to be gone. The pid is the `npm run dev:open --` that made it; the app is the
       // one that has the data open, and it outlives a killed run — measured, by killing a run and
       // watching its app rebuild the directory that had just been removed underneath it. `lockIsHeld` is
       // `processExists`, whose contract is the one this needs: never miss a live holder, because
@@ -442,15 +430,15 @@ export type ProfileMode =
 export const PROFILE_USAGE = [
   '  --profile <name>    a data dir of its own, created the first time you name it',
   '  --fresh             a new profile, whose name is printed so you can come back to it',
-  '  --fresh --rm        the same, removed when this command exits',
+  '  --fresh --rm        the same, removed when its app session ends',
   '  --profile <name> --rm  the same for a name you choose, and only if this run creates it',
   '  --with-secrets      copy the secrets this environment already holds into the new profile, so a',
   '                      throwaway run can use them without you entering anything again',
 ].join('\n');
 
 /**
- * Takes the profile flags out of the arguments, leaving the rest for `parseAppFlags`. They live here
- * rather than in `AppFlags` because `apack test` shares that parser and must never take them: its data
+ * Takes the profile flags out of the arguments, leaving the rest for `parseHostFlags`. They live here
+ * rather than in `HostFlags` because `apack pack test` shares that parser and must never take them: its data
  * dir is a fresh temp one every run, which is what makes a test mean the same thing on any machine.
  */
 export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecrets: boolean; rest: string[] } {
@@ -462,9 +450,13 @@ export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecr
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) : [arg];
+    if (inline !== undefined && ['--fresh', '--rm', '--with-secrets'].includes(name)) {
+      throw new Error(`${name} does not take a value.`);
+    }
     if (name === '--profile') {
       const value = inline ?? argv[++i];
-      if (!value) throw new Error('--profile needs a name');
+      if (!value || value.startsWith('-')) throw new Error('--profile needs a name');
+      if (named !== undefined) throw new Error('Specify --profile once.');
       named = value;
     } else if (name === '--fresh') {
       fresh = true;
@@ -529,5 +521,15 @@ export function profileFor(mode: ProfileMode, dirs: CliDirs): OpenedProfile | un
  * an ephemeral dir's name while the app outlives it.
  */
 export function freshProfileName(): string {
-  return randomId({ length: 10 });
+  return randomId({ includeTimestamp: false });
+}
+
+/** Stored-state operations look up existing custom profiles; built-ins have canonical locations. */
+export function resolveStoredProfile(dirs: CliDirs, name: string): string {
+  const env = APP_ENVS.find(env => env === name);
+  if (env) return appDataDirFor(env);
+  const dir = resolveProfileDir(dirs, name);
+  if (fs.existsSync(dir)) return dir;
+  const names = listProfiles(dirs).map(profile => profile.name).sort();
+  throw new Error(`No profile named "${name}". ${names.length ? `There is: ${names.join(', ')}.` : 'There are none: apack pack dev --fresh makes one.'}`);
 }

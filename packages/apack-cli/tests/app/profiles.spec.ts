@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   profileDir,
   profileFor,
@@ -13,7 +13,7 @@ import {
   removeProfile,
   renameProfile,
 } from '../../src/app/profiles';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
 import { askTarget } from '../../src/commands/drive';
 
@@ -178,7 +178,7 @@ describe('renaming a profile', () => {
   // directory, so moving it leaves the app writing somewhere that no longer exists
   it('refuses while an app has it open', () => {
     const live = openProfile(dirs, 'live');
-    const { apiPortFile } = resolveAppContext({ build: 'development', profile: live.dir });
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: live.dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid: process.pid }));
 
@@ -189,8 +189,8 @@ describe('renaming a profile', () => {
 
 describe('the flags', () => {
   it('take the profile ones out and leave the rest for the app parser', () => {
-    expect(parseProfileFlags(['--profile', 'probe', '--build', '/repo']))
-      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--build', '/repo'] });
+    expect(parseProfileFlags(['--profile', 'probe', '--app', '/repo']))
+      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--app', '/repo'] });
     expect(parseProfileFlags(['--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe', rm: false });
     expect(parseProfileFlags(['--fresh']).mode).toEqual({ kind: 'fresh', rm: false });
     expect(parseProfileFlags([]).mode).toEqual({ kind: 'shared' });
@@ -240,7 +240,12 @@ describe('the flags', () => {
     expect(() => parseProfileFlags(['--with-secrets'])).toThrow(/needs a profile/);
   });
 
+  it.each(['--fresh', '--rm', '--with-secrets'])('rejects an inline value for %s', flag => {
+    expect(() => parseProfileFlags(['--fresh', `${flag}=false`])).toThrow('does not take a value');
+  });
+
   it('needs a name for --profile', () => {
+    expect(() => parseProfileFlags(['--profile', '--fresh'])).toThrow(/needs a name/);
     expect(() => parseProfileFlags(['--profile'])).toThrow(/needs a name/);
   });
 
@@ -269,7 +274,7 @@ describe('the flags', () => {
 });
 
 /**
- * The app outlives the `apack dev` that started it, so the run's pid is not enough to call a directory
+ * The app outlives the `apack pack dev` that started it, so the run's pid is not enough to call a directory
  * abandoned. Found by killing a run, reclaiming what looked like its leak, and watching the app that was
  * still going rebuild the directory underneath — the removal had only corrupted what was in it.
  */
@@ -277,7 +282,7 @@ describe('a profile an app still has open', () => {
   // Where the API actually publishes it, asked of the same resolver the app uses — a literal path here is a
   // second guess, and the one time it disagreed with the app this assertion still passed
   const publishApi = (dir: string, pid: number) => {
-    const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid }));
   };
@@ -316,7 +321,7 @@ describe("a question's dir and the spawn that opens it", () => {
   const devWouldOpen = (spawnArgs: readonly string[]): string => {
     const { mode } = parseProfileFlags([...spawnArgs]);
     const profile = profileFor(mode, dirs);
-    return resolveAppContext({ build: 'development', ...(profile ? { profile: profile.dir } : {}) }).userDataDir;
+    return resolveAppContext({ env: 'development', ...(profile ? { userDataDir: profile.dir } : {}) }).userDataDir;
   };
 
   it.each([
@@ -389,7 +394,7 @@ describe('--rm on a name', () => {
 
 /**
  * **A profile is never named after a build**, which is the one place this vocabulary could be put back
- * where it started: `--profile beta` and `--build beta` a letter apart, one a data dir and the other the
+ * where it started: `--profile beta` and `--host beta` a letter apart, one a data dir and the other the
  * app that opens it. A name is the only input here a user picks freely, so it is the only way a build name
  * could reappear as storage.
  *
@@ -397,17 +402,16 @@ describe('--rm on a name', () => {
  * property as held. Derived from `APP_ENVS` rather than a list of its own, so a fifth build arrives
  * refused rather than nameable, which is what the `it.each` below holds.
  */
-describe('a name that is a build', () => {
+describe('a name that is an app data namespace', () => {
   it.each(APP_ENVS)('is refused, and says what each word names: %s', (build) => {
-    expect(profileNameProblem(build)).toMatch(/is a build/);
-    expect(profileNameProblem(build)).toMatch(/--build/);
-    expect(profileNameProblem(build)).toMatch(/--profile/);
+    expect(profileNameProblem(build)).toMatch(/built-in profile/);
+    expect(profileNameProblem(build)).toContain(`${build}-work`);
   });
 
   /** Every door goes through `profileDir`, so none of them has to remember the rule. */
   it.each(APP_ENVS)('cannot reach a directory either: %s', (build) => {
-    expect(() => profileDir(dirs, build)).toThrow(/is a build/);
-    expect(() => openProfile(dirs, build)).toThrow(/is a build/);
+    expect(() => profileDir(dirs, build)).toThrow(/built-in profile/);
+    expect(() => openProfile(dirs, build)).toThrow(/built-in profile/);
     expect(fs.existsSync(path.join(root(), build))).toBe(false);
   });
 
@@ -417,4 +421,25 @@ describe('a name that is a build', () => {
       expect(profileNameProblem(name), name).toBeUndefined();
     }
   });
+});
+
+it('a temporary profile is attachable by its printed name without transferring cleanup ownership', () => {
+  const owned = mintProfile(dirs, true);
+  const target = askTarget({ kind: 'named', name: owned.name, rm: false }, false, dirs);
+  expect(target.dir).toBe(owned.dir);
+  const reused = profileFor({ kind: 'named', name: owned.name, rm: false }, dirs);
+  expect(reused).toMatchObject({ dir: owned.dir, created: false, ephemeral: false });
+  expect(() => profileFor({ kind: 'named', name: owned.name, rm: true }, dirs)).toThrow('--rm won');
+  expect(fs.existsSync(owned.dir)).toBe(true);
+});
+
+
+it('keeps fresh profile names distinct when a timestamp would consume the ID length budget', () => {
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(36 ** 10);
+  try {
+    const one = mintProfile(dirs, true);
+    const two = mintProfile(dirs, true);
+    expect(one.dir).not.toBe(two.dir);
+    expect(fs.existsSync(one.dir) && fs.existsSync(two.dir)).toBe(true);
+  } finally { clock.mockRestore(); }
 });

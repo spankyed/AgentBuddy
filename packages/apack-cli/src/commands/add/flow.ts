@@ -5,10 +5,10 @@ import { validateName, toLabel, writeIfNotExists, logCreated, hasFlag } from './
 
 
 const HELP = `
-Usage: apack add flow <name>
+Usage: apack pack add flow <name>
 
 Example:
-  apack add flow onboarding
+  apack pack add flow onboarding
 `.trim();
 
 export async function addFlow(args: string[], root: string) {
@@ -25,8 +25,8 @@ export async function addFlow(args: string[], root: string) {
   if (!fs.existsSync(helpers) || !/\bkeepAlive\b/.test(fs.readFileSync(helpers, 'utf-8'))) {
     console.error(
       'Flows are built from step types that dependencies provide, and this pack has none yet.\n' +
-      'Add one to apack.json, e.g. "dependencies": { "default-setup": "*" }, run "apack generate-entries",\n' +
-      'then run "apack add flow" again.',
+      'Add one to apack.json, e.g. "dependencies": { "default-setup": "*" }, run "apack pack generate-entries",\n' +
+      'then run "apack pack add flow" again.',
     );
     process.exit(1);
   }

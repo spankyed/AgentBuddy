@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { packFeatures } from '@apackdev/sdk/build';
 import { renderTemplate } from '../templates.ts';
-import { cliVersion } from '../utils';
+import { cliVersion, findPackRoot } from '../utils';
 import { scaffoldUnitTestSetup } from './init';
 
 // The Playwright version @apackdev/testing is tested with
@@ -21,7 +21,8 @@ function sampleTest(pluginId: string | undefined): string {
 }
 
 export async function initTests(_args: string[]): Promise<void> {
-  const cwd = process.cwd();
+  if (_args.length) throw new Error('Usage: apack pack init-tests');
+  const cwd = findPackRoot(process.cwd());
   const manifestPath = path.join(cwd, 'apack.json');
 
   if (!fs.existsSync(manifestPath)) {
@@ -70,7 +71,7 @@ export async function initTests(_args: string[]): Promise<void> {
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     // `playwright-core` beside the runner, because the two paths need different halves of it: a script
-    // runs on `@playwright/test`, and `apack drive --eval` attaches with `playwright-core`'s
+    // runs on `@playwright/test`, and `npm run dev:drive -- --eval` attaches with `playwright-core`'s
     // `connectOverCDP`. It arrives by hoisting under npm, so the attach usually works without it being
     // declared — and "usually" is the problem: under pnpm or `--no-hoist` the bare import misses and the
     // author meets an install hint for something `init-tests` could have written. The three ship in
@@ -88,7 +89,7 @@ export async function initTests(_args: string[]): Promise<void> {
     }
   }
 
-  // Both halves, because a pack has both: `apack test` needs an app and `apack test --contract` does not.
+  // Both halves, because a pack has both: `apack pack test` needs an app and `apack pack test --contract` does not.
   // Scaffolding only the Playwright half left an author with no way to check compiled output without one.
   if (!fs.existsSync(path.join(cwd, 'tests', 'setup.ts'))) {
     const { keptConfig, addedDependencies, upgrades } = scaffoldUnitTestSetup(cwd);
@@ -106,6 +107,6 @@ export async function initTests(_args: string[]): Promise<void> {
   }
 
   console.log('\nTo run tests:');
-  console.log('  apack test --contract   # the pack\'s vitest, no app');
-  console.log('  apack test              # Playwright, in apack');
+  console.log('  apack pack test --contract   # the pack\'s vitest, no app');
+  console.log('  apack pack test              # Playwright, in apack');
 }

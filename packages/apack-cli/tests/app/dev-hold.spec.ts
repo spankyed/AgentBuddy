@@ -69,3 +69,22 @@ describe('what a dev session holds', () => {
     expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'server.close']);
   });
 });
+
+it('concurrent shutdown callers wait until the app exits and profile cleanup completes', async () => {
+  let finish!: () => void;
+  let removed = false;
+  const hold = createDevHold({
+    removeMarker: () => {},
+    awaitExit: () => new Promise<void>(resolve => { finish = resolve; }),
+    removeProfile: () => { removed = true; },
+  });
+  hold.holdsApp({ kill: () => {} } as unknown as ChildProcess);
+  const signal = hold.release();
+  const childExit = hold.release();
+  expect(childExit).toBe(signal);
+  await Promise.resolve();
+  expect(removed).toBe(false);
+  finish();
+  await Promise.all([signal, childExit]);
+  expect(removed).toBe(true);
+});

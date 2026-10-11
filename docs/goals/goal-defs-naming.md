@@ -73,7 +73,7 @@ the answer was not obvious from the names. That is the cost the rename removes.
    with the old field exists outside a checkout's build output and `.apack/deps` caches, both regenerated
    on demand. The code never reads `defs` as a fallback.
 4. **The cache directory follows the field.** `.apack/deps/<id>/defs/` -> `facades/`. It is a cache, not a
-   format: `cacheDep` rewrites it and `apack clean` removes it.
+   format: `cacheDep` rewrites it and `apack pack clean` removes it.
 
 5. **A snapshot with no facade is malformed, and is rejected.** The gate today is the facade's exports,
    not `typesFormat` — deliberately, and pinned by two tests ("accepts a capable facade whose recorded
@@ -86,7 +86,7 @@ the answer was not obvious from the names. That is the cost the rename removes.
    been bitten by ("Packs with looser code get no error at all, just silently lost typing").
 
    So the `continue` goes: a dependency whose snapshot carries no facade is rejected by name, with the
-   rebuild remedy. Every snapshot `apack build` writes has one — a facade that fails the gate throws
+   rebuild remedy. Every snapshot `apack pack build` writes has one — a facade that fails the gate throws
    before the snapshot is written — so "no facade" only ever means "built by a CLI older than this one",
    which is exactly the case that must not pass silently. The untyped-dependency concept goes with it,
    and the comment allowing it ("older snapshots have none, so their types stay untyped").

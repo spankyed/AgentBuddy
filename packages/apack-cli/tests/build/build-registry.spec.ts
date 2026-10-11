@@ -1,4 +1,4 @@
-// apack build compiles with the step definitions it loads into a registry of its own: a registry the process
+// apack pack build compiles with the step definitions it loads into a registry of its own: a registry the process
 // has bound (an app's, a test's) sees none of them.
 import * as fs from 'node:fs';
 import * as os from 'node:os';

@@ -4,7 +4,7 @@
  * Nothing resolves them here any more. A pack's specifier names the file that is there
  * (`docs/archive/goals/goal-pack-imports-name-the-file.md`), and esbuild and Vite both resolve a pack's
  * mapping themselves once the path names a file — measured by deleting the two plugins that used to supply
- * the suffix and rebuilding: `apack build` over the fixture pack and default-setup, and the API's tsup
+ * the suffix and rebuilding: `apack pack build` over the fixture pack and default-setup, and the API's tsup
  * build, byte for byte the same output. What is left is the reading, which the check that a specifier names
  * its file still needs (`own-module-specifiers.ts`).
  */
@@ -16,7 +16,7 @@ import * as path from 'node:path';
  *
  * A condition map is ordered by the author's preference and Node takes the first that applies, so this
  * keeps that order rather than imposing one. The previous reader tried `default`, then `require`, then
- * `node`, and never `import` — and `apack init` writes `"type": "module"`, so `import` is the condition a
+ * `node`, and never `import` — and `apack pack init` writes `"type": "module"`, so `import` is the condition a
  * pack's own entries are most likely to carry. `types` is TypeScript's and never a runtime target.
  */
 const APPLICABLE_CONDITIONS = new Set(['node', 'import', 'require', 'default']);

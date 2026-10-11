@@ -48,7 +48,7 @@ async function bootApi() {
 }
 
 /**
- * Installs an external pack declaring its own entity type, as `apack install` leaves one: the API registers its
+ * Installs an external pack declaring its own entity type, as `apack pack install` leaves one: the API registers its
  * runtime, the tool reads the manifest beside it
  */
 async function installExternalPack(id: string, entityType: string): Promise<void> {

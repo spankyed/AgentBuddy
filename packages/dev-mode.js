@@ -38,7 +38,7 @@ const apiBuildDone = new Promise((resolve) => {
 
 // The built-in pack's backend watcher: it keeps dist/runtime/index.cjs current and asks the API to
 // reload the pack in place. The CLI's own bundler, so there is one esbuild config for a pack's runtime
-const devBuild = fork(path.resolve('packages/apack-cli/bin/apack.mjs'), ['build', '--watch'], {
+const devBuild = fork(path.resolve('packages/apack-cli/bin/apack.mjs'), ['pack', 'build', '--watch'], {
   cwd: path.resolve('packages/default-setup'),
   stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
 });

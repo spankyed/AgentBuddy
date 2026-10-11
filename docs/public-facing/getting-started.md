@@ -28,14 +28,14 @@ The five are released together with the same version.
 ## Create a pack
 
 ```bash
-apack init my-pack
+apack pack init my-pack
 cd my-pack
 npm install
-apack add feature notes --label Notes
-apack build
+apack pack add feature notes --label Notes
+apack pack build
 ```
 
-`apack init` creates no feature; `apack add feature` adds one (a feature id is a lowercase letter followed by letters and digits, like `notes` or `calendarEvents`). This scaffolds:
+`apack pack init` creates no feature; `apack pack add feature` adds one (a feature id is a lowercase letter followed by letters and digits, like `notes` or `calendarEvents`). This scaffolds:
 
 ```
 my-pack/
@@ -45,12 +45,12 @@ my-pack/
   vitest.config.ts         # unit tests: an isolated data dir per run, the harness setup
   .gitignore
   .github/workflows/
-    release.yml            # Publishes a GitHub release when `apack release` pushes a tag
+    release.yml            # Publishes a GitHub release when `apack pack release` pushes a tag
   src/
     env.d.ts
     features/
-      notes/                # added by `apack add feature notes`: settings.ts, be/, fe/
-    extensions/             # added by `apack add step|artifact|block`: one directory each,
+      notes/                # added by `apack pack add feature notes`: settings.ts, be/, fe/
+    extensions/             # added by `apack pack add step|artifact|block`: one directory each,
                             # declared in apack.json's `extensions` — there is no barrel
     content/
       actions/
@@ -67,22 +67,22 @@ my-pack/
       notes-system.spec.ts  # added with the feature: its system under the app's bus
 ```
 
-The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `apack.json`. `apack build` resolves each dependency from a `file:` path, the workspace, the app you configured for `apack test` (a checkout or the downloaded beta; `APACK_BUILD=beta` in CI), an installed apack app, the `.apack/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `APACK_BUILD=beta`, so built-in dependencies resolve in CI.
+The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `apack.json`. `apack pack build` resolves each dependency from an explicit `file:` path, then the selected host for packs it provides (a checkout or downloaded beta; `APACK_HOST=beta` in CI), then the workspace, linked checkout, an installed apack app, the `.apack/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `APACK_HOST=beta`, so built-in dependencies resolve in CI.
 
 ## The dev loop
 
 ```bash
-apack dev
+apack pack dev
 ```
 
 This launches apack with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `apack.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
 
-It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--build <path>` and `--build beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `dev` uses it rather than starting a second.
+It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else a cached/downloaded Beta build your `hostVersion` accepts. `--host <path>` and `--host beta` name one outright, and it always says which it chose and why. A source app already using that data dir is reused only after its session verifies the selected checkout. Packaged hosts require an unused profile because their running app identity cannot be verified.
 
-The build pipeline (`apack build`):
+The build pipeline (`apack pack build`):
 
 1. Validates `apack.json` and clears `dist/`
-2. `apack generate` and `apack generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
+2. `apack generate` and `apack pack generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
 3. Checks each feature's settings file sets only its own plugin's settings
 4. Resolves dependencies, warning when the generated dependency types are from a different version
 5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
@@ -98,29 +98,29 @@ See [CLI Reference](cli.md#building) for details.
 
 ```bash
 # Compile the pack
-apack build
+apack pack build
 
 # Pack into a verified .tgz archive (integrity.json lists a sha256 per file)
-apack pack
+apack pack archive
 # Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 
 # Install into apack
-apack install ./my-pack-0.1.0.tgz
+apack pack install ./my-pack-0.1.0.tgz
 ```
 
 You can also install directly from a built pack directory, a `.zip` or `.tar.gz` archive, a URL to an archive, or a GitHub release:
 
 ```bash
-apack install ../my-pack          # local directory
-apack install my-pack.zip         # zip archive
-apack install user/repo           # latest GitHub release (user/repo@v0.1.0 for a tag)
+apack pack install ../my-pack          # local directory
+apack pack install my-pack.zip         # zip archive
+apack pack install user/repo           # latest GitHub release (user/repo@v0.1.0 for a tag)
 ```
 
-`apack install` targets the production app; add `-d` for the development data dir or `-b` for apack Beta.
+`apack pack install` targets the production app; add `--profile development` for the development data dir or `--profile beta` for apack Beta.
 
 After installing, **restart the app** for the pack to load.
 
-To release a version, run `apack release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the pack without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
+To release a version, run `apack pack release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the pack without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
 
 ## Unit tests
 
@@ -128,29 +128,29 @@ To release a version, run `apack release [patch|minor|major] [--beta]`: it check
 npm test
 ```
 
-Unit tests run your pack without the app, through `@apackdev/testing/harness`: content and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `apack build` once first, so dependencies are fetched. See [Testing](testing.md).
+Unit tests run your pack without the app, through `@apackdev/testing/harness`: content and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `apack pack build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## E2E tests
 
 ```bash
-apack init-tests
+apack pack init-tests
 npm install
-apack test --build beta      # or --build ../apack for a local checkout
+apack pack test --host beta      # or --host ../apack for a local checkout
 ```
 
-`apack init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `apack test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--build`, or `APACK_ROOT`), or the newest apack Beta satisfying your `hostVersion` (`--build beta`, or `APACK_BUILD=beta` in CI). With neither, it uses that newest Beta: `apack test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
+`apack pack init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `apack pack test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--host`, or `APACK_HOST`), or a cached/downloaded apack Beta satisfying your `hostVersion` (`--host beta`, or `APACK_HOST=beta` in CI). With neither, it uses a compatible Beta: `apack pack test` never reads a stored app preference and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
 
 ## Verify it works
 
-After restarting, your pack's feature should appear in the sidebar. Run `apack list` to see all installed packs.
+After restarting, your pack's feature should appear in the sidebar. Run `apack pack list` to see all installed packs.
 
 ## Useful commands
 
 ```bash
-apack info       # Show pack summary (features, steps, content, etc.)
-apack validate   # Check manifest and file references
-apack doctor     # Run health checks
-apack clean      # Remove dist/, .apack/, __generated__/
+apack pack info       # Show pack summary (features, steps, content, etc.)
+apack pack validate   # Check manifest and file references
+apack pack doctor     # Run health checks
+apack pack clean      # Remove dist/, .apack/, __generated__/
 ```
 
 ## Key concepts

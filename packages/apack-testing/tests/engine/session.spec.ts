@@ -491,7 +491,7 @@ describe('the viewport', () => {
    * the window, and a run nobody is watching sets the emulated viewport.
    *
    * Both directions, because each is wrong in the other's run. Emulating inside a shown window draws the
-   * app into its top-left corner and leaves the desktop showing through the rest — what `npm run drive`
+   * app into its top-left corner and leaves the desktop showing through the rest — what `npm run dev:drive`
    * looked like before `pinsViewport` — and moving a hidden window buys nothing while making a suite's
    * layout depend on whatever size the window happened to open at.
    */
@@ -609,7 +609,7 @@ describe('a bus round-trip', () => {
    * The bridge is still a reply path, and this is the only case that says so.
    *
    * An app built before `host/drive` existed answers with a broadcast, which never reaches this session's
-   * connection — the in-page inspector is the only way to see it. `apack drive --build beta` can be exactly that
+   * connection — the in-page inspector is the only way to see it. `apack pack drive --channel beta` can be exactly that
    * app, so waiters hear both channels and this case is what stops the page path being deleted as redundant.
    */
   it('still resolves a round-trip from a reply seen only in the page', async () => {

@@ -74,10 +74,14 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 
 ### Development
 
+Run these scripts from the root of the apack source monorepo to develop the app itself.
+For external pack development, run `apack pack dev` in your pack repository.
+
 ```sh
 npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
-npm run open             # Open/reuse the built app and hold it; no builds or watchers
+npm run dev:open         # Hold the built source app; no builds or watchers
+npm run dev:drive        # Run app automation; see drive/README.md
 ```
 
 ### Build
@@ -104,7 +108,7 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run build:default-setup          # Build the default-setup pack (apack build, DSL defs, runtime)
+npm run build:default-setup          # Build the default-setup pack (apack pack build, DSL defs, runtime)
 ```
 
 ### Database Tools

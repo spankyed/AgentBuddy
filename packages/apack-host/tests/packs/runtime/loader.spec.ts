@@ -98,7 +98,7 @@ describe('pack-loader', () => {
       });
       try {
         expect(loadExternalPacks()).toEqual([]);
-        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with apack install or apack dev$/)]);
+        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with apack pack install or apack pack dev$/)]);
       } finally {
         unsubscribe();
       }
@@ -908,7 +908,7 @@ describe('contentRevision', () => {
 
   // **The hash is content, so a rewrite with the same bytes is not a change.** It used to be: file times were in
   // here so that reinstalling a pack would re-apply it, since `placePack` replaces every file. That made a `touch`
-  // re-apply too, and made every `apack dev` backend rebuild re-import every item, because that loop reinstalls.
+  // re-apply too, and made every `apack pack dev` backend rebuild re-import every item, because that loop reinstalls.
   // Asking for a pack's data to be put back is `IMPORT_PACK_CONTENT` now, which says so.
   it('returns the same hash when the same bytes are put back in new files', () => {
     const distDir = path.join(tmpDir, 'hash-replaced');
@@ -968,7 +968,7 @@ describe('contentRevision', () => {
     expect(hash).not.toBe('');
   });
 
-  // **Everything in the pack's content directory, media included.** The directory holds what `apack build`
+  // **Everything in the pack's content directory, media included.** The directory holds what `apack pack build`
   // compiled there and nothing else, so there is no file kind to exclude — and a changed image is changed
   // content, which a hash over `.json` alone called unchanged
   it('hashes every file under the content directory, media and all', () => {
@@ -1021,7 +1021,7 @@ describe('loaded packs: the packs.loaded entries', () => {
     ]);
   });
 
-  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `apack dev`
+  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `apack pack dev`
   // rebuild keeps its version, so the revision follows the files
   it("gives a frontend a revision that changes with its files, and only with them", () => {
     const dir = path.join(tmpDir, 'with-fe');

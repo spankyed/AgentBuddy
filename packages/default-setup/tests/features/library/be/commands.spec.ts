@@ -13,7 +13,7 @@ import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
 import manifest from '../../../../apack.json'
 
-/** Where `apack build` writes this pack's compiled content */
+/** Where `apack pack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)

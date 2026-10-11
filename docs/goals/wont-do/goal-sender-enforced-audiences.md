@@ -52,7 +52,7 @@ What did **not** land: any change to `PackFeaturePlugin.receives` or `PackFEFeat
 - The bus's drop path is well-behaved and is what enforcement would reuse: `reportDrop`
   (`bus/machine.ts:154`) reports a `diagnostic` — logged, recorded, failing any pack test that leaves one, no
   user toast — dedupes per pair, and stays quiet while a pack is mid-replacement (`isPluginReplacing`), so
-  `apack dev` rebuild cycles don't spam.
+  `apack pack dev` rebuild cycles don't spam.
 - Third-party pack distribution does not exist: `resolveFromRemoteRegistry` (`apack-cli/src/commands/install.ts:17`)
   always throws. Every pack that exists is in this repo, where types already cover every send.
 

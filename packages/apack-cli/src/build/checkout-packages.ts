@@ -46,7 +46,7 @@ export function checkoutFor(packDir: string): string | undefined {
  */
 /**
  * @param stdio where the build's own output goes. `inherit` for a command whose stdout is prose; a caller
- * whose stdout is *data* passes `['ignore', 2, 2]` to send it to stderr instead — `apack drive --eval`
+ * whose stdout is *data* passes `['ignore', 2, 2]` to send it to stderr instead — `npm run dev:drive -- --eval`
  * prints one JSON envelope and npm's two banner lines in front of it would corrupt what a program parses.
  */
 export function ensureCheckoutPackages(packDir: string, stdio: StdioOptions = 'inherit'): void {

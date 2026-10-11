@@ -33,7 +33,7 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   return dsl;
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const keepAliveStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };
 
 /** What a node of this type starts with; the backend writes it and the canvas draws it */

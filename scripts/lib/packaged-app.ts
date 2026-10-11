@@ -42,7 +42,7 @@ export function selectPackagedApp(options: Options, root = REPO_ROOT, applicatio
   if (!fs.statSync(executable).isFile()) throw new Error(`Missing app executable: ${executable}`);
   fs.accessSync(executable, fs.constants.X_OK);
   const profile = options.dataDir || process.env.APACK_USER_DATA_DIR;
-  const context = resolveAppContext({ build: options.channel, ...(profile ? { profile: path.resolve(profile) } : {}) });
+  const context = resolveAppContext({ env: options.channel, ...(profile ? { userDataDir: path.resolve(profile) } : {}) });
   const logsDir = profile ? path.join(context.appDir, 'logs') : path.join(os.homedir(), 'Library/Logs', context.appName);
   return { appPath, appDir, executable, metadata, context, logsDir, isolated: Boolean(profile) };
 }

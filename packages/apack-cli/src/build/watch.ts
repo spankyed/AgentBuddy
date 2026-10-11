@@ -8,14 +8,14 @@ import { reloadPack, type AppPlace } from './dev-reload.ts';
 const DEBOUNCE_MS = 300;
 
 /**
- * **What `--watch` rebuilds is the backend runtime and nothing else**, which is less than `apack build`
+ * **What `--watch` rebuilds is the backend runtime and nothing else**, which is less than `apack pack build`
  * does and is the point of it: it is the backend edit loop, where the runtime bundle is the only output
  * whose staleness the app can see. Measured 2026-10-07 on default-setup, 1,071 modules into a 956KB
  * bundle: **40ms** against the 23.7s a full build costs — the content, the facade types, the step build and
  * the DSL defs are the other 23.6s, and none of them moves when a system's source does.
  *
  * So an edit to a content source or to `apack.json` is **not** covered here, and the loop does not pretend
- * otherwise: it names what it watches on startup, and `apack build` is what follows those.
+ * otherwise: it names what it watches on startup, and `apack pack build` is what follows those.
  */
 export interface WatchOptions {
   /** Which app to ask for a reload; the shared development data dir by default */
@@ -36,7 +36,7 @@ export interface WatchOptions {
  * deleted: the app then reloads the pack and gets the runtime from before the edit, with nothing reporting it.
  */
 async function rebuild(root: string, packId: string): Promise<boolean> {
-  const lock = await holdPackBuildLock(root, { packId, what: 'apack build --watch (a rebuild)' });
+  const lock = await holdPackBuildLock(root, { packId, what: 'apack pack build --watch (a rebuild)' });
   try {
     const result = await bundlePackRuntime(root, path.join(root, 'dist'), {});
     if (!result.success) console.error(`[watch] Runtime bundle failed: ${result.error}`);

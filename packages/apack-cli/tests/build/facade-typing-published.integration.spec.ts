@@ -1,4 +1,4 @@
-// @slow: two programs and six language-service queries, over two `apack build`s and three packed tarballs
+// @slow: two programs and six language-service queries, over two `apack pack build`s and three packed tarballs
 // The **published package** half of `facade-typing.integration.spec.ts`: the same questions asked of a pack
 // that resolves @apackdev from the registry rather than from workspace source, which is the layout every pack
 // author actually has. `installPublishedPackages()` packs @apackdev/ears, /sdk and /ui and installs them into

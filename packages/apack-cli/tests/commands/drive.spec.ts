@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { answerLine, drive, driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
+import { appDataDirFor } from '@apackdev/sdk/env';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { answerLine, askTarget, drive, driveTarget, driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
 
 let root: string;
 
@@ -15,7 +16,7 @@ const write = (name: string) => {
 };
 
 /**
- * What decides whether `apack drive` has anything to do. It used to scaffold the directory and then run
+ * What decides whether `npm run dev:drive --` has anything to do. It used to scaffold the directory and then run
  * Playwright against it regardless, so the first run in any pack ended in `No tests found` and exit 1 —
  * after a full pack build and an app launch. The question is the scripts that exist, not whether this
  * call created the directory: a pack whose author deleted their last script hits the same wall.
@@ -59,13 +60,24 @@ describe('the driving scripts a pack has', () => {
  * directly — the flag, where the address is, and how to end a session — so they are the ones pinned.
  */
 describe('the help text', () => {
+  it('offers host selection only in pack help', async () => {
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await drive(['--help'], 'pack');
+      const help = output.mock.calls.flat().join('\n');
+      expect(help).toContain('Usage: apack pack drive');
+      expect(help).toContain('--host <path|beta>');
+      expect(help).not.toContain('npm run');
+    } finally { output.mockRestore(); }
+  });
+
   /**
    * The claim a caller cannot guess and will otherwise discover by being refused: that a question is asked
    * of an app something else is holding, and what to do when there is none.
    */
   it('says what to do when no app is running', () => {
     expect(DRIVE_USAGE).toContain('--spawn');
-    expect(DRIVE_USAGE).toContain('apack dev');
+    expect(DRIVE_USAGE).toContain('npm run dev:open --');
   });
 
   // One per claim a reader acts on, which is this file's existing bar for the usage text
@@ -122,6 +134,14 @@ describe('a config that has stopped delegating', () => {
     expect(scaffold(root).keptStale).toEqual([]);
   });
 
+  it('names the pack command in a pack driving scaffold', () => {
+    scaffold(root, 'pack');
+    const readme = fs.readFileSync(path.join(root, 'drive', 'README.md'), 'utf8');
+    expect(readme).toContain('apack pack drive');
+    expect(readme).not.toContain('`npm run dev:drive --`');
+    expect(readme).toContain('apack pack dev');
+  });
+
   it('reports what it created, so a caller can tell a first run from a later one', () => {
     const first = scaffold(root);
     const second = scaffold(root);
@@ -170,6 +190,7 @@ describe('takeOneShotFlags', () => {
     expect(() => takeOneShotFlags(['--eval', 'a', '--query', 'b'])).toThrow(/--query can't be combined with --eval/);
     expect(() => takeOneShotFlags(['--eval', 'a', '--eval', 'b'])).toThrow(/--eval was given twice/);
     expect(() => takeOneShotFlags(['--state=x'])).toThrow(/--state does not take a value/);
+    expect(() => takeOneShotFlags(['--spawn=false'])).toThrow(/--spawn does not take a value/);
     // The message names `return`, because a body without one answers `{"ok":true}` rather than failing
     expect(() => takeOneShotFlags(['--eval'])).toThrow(/`return` is required/);
   });
@@ -190,22 +211,22 @@ describe('takeOneShotFlags', () => {
 
 /**
  * **A flag a command advertises and ignores reads as having been obeyed**, which is the class `dev` refuses
- * unknown options over. The usage offers `--build` for the script half, and the question half parsed it and
- * never looked at it: `drive --eval x --build beta` answered from the *development* app while naming beta.
+ * unknown options over. The usage offers `--app` for the script half, and the question half parsed it and
+ * never looked at it: `drive --eval x --host beta` answered from the *development* app while naming beta.
  *
  * Refusing is the right answer rather than honouring it, and the reason is structural: a question attaches
  * over a debug port, and only a development build is given one (`debugPortArgsFor`). There is no beta app
- * to attach to, so a `--build` that worked would have to launch one — which is the script half's job.
+ * to attach to, so a `--app` that worked would have to launch one — which is the script half's job.
  */
-describe('--build on a question', () => {
+describe('release selection on a question', () => {
   it('is refused, and says why a question cannot take one', async () => {
-    await expect(drive(['--state', '--build', 'beta'])).rejects.toThrow(/a question launches nothing/);
-    await expect(drive(['--eval', 'return 1', '--build=beta'])).rejects.toThrow(/publishes no session/);
+    await expect(drive(['--state', '--channel', 'beta'])).rejects.toThrow(/not a pack host selector/);
+    await expect(drive(['--eval', 'return 1', '--channel=beta'])).rejects.toThrow(/not a pack host selector/);
   });
 
   /** Still a script flag: the usage offers it, so the refusal must not reach that half. */
   it('is still offered for a script', () => {
-    expect(DRIVE_USAGE).toMatch(/--build <name\|path>/);
+    expect(DRIVE_USAGE).not.toContain('--host');
   });
 });
 
@@ -240,4 +261,57 @@ describe("a question's one line", () => {
     expect(parse('').value).toBe('');
     expect(parse(false).value).toBe(false);
   });
+});
+
+
+describe('explicit live launch', () => {
+  it.each(['--rm', '--with-secrets'])('requires a spawn for %s', async flag => {
+    await expect(drive(['--state', '--profile', 'work', flag])).rejects.toThrow(/require --spawn/);
+  });
+
+  it.each(['--session', '--evalute', 'drive/extra.ts'])('refuses unused live arguments: %s', async arg => {
+    await expect(drive(['--state', arg])).rejects.toThrow(/Unexpected live-question arguments/);
+  });
+
+  it('requires --spawn for fresh state instead of silently opening an app', async () => {
+    await expect(drive(['--state', '--fresh'])).rejects.toThrow(/requires --spawn/);
+  });
+
+  it('keeps repository automation pinned to its checkout', async () => {
+    await expect(drive(['--state', '--spawn', '--host', process.cwd()]))
+      .rejects.toThrow(/own checkout/);
+  });
+});
+
+
+describe('live profile handoff', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('keeps explicit development selection canonical through a spawn', () => {
+    vi.stubEnv('APACK_USER_DATA_DIR', '/tmp/unrelated-data');
+    const target = askTarget({ kind: 'named', name: 'development', rm: false }, false);
+    expect(target.dir).toBe(appDataDirFor('development'));
+    expect(target.spawnArgs).toEqual(['--profile', 'development']);
+  });
+
+  it('uses the same inherited data handoff as a plain development launcher', () => {
+    vi.stubEnv('APACK_USER_DATA_DIR', '/tmp/shared-development-data');
+    expect(askTarget({ kind: 'shared' }, false).dir).toBe('/tmp/shared-development-data');
+  });
+});
+
+
+it('keeps repository driving on its own root when SDK links point to another checkout', () => {
+  const own = path.join(root, 'own');
+  const other = path.join(root, 'other');
+  for (const checkout of [own, other]) {
+    fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+    fs.writeFileSync(path.join(checkout, 'packages', 'entry-point.mjs'), '');
+  }
+  const sdk = path.join(other, 'packages', 'sdk');
+  fs.mkdirSync(sdk);
+  fs.writeFileSync(path.join(sdk, 'package.json'), JSON.stringify({ name: '@apackdev/sdk', exports: { './package.json': './package.json' } }));
+  fs.mkdirSync(path.join(own, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(sdk, path.join(own, 'node_modules', '@apackdev', 'sdk'), 'dir');
+  expect(driveTarget(own, 'app').root).toBe(own);
 });

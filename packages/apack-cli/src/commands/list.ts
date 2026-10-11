@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@apackdev/sdk/env';
-import { parseTargetEnv, envLabel } from '../utils';
+import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
 
 export async function list(args: string[]) {
-  const { env } = parseTargetEnv(args);
-  const { packsDir } = resolveAppContext({ build: env });
-  const label = envLabel(env);
+  const { env, profile, args: rest } = parseStorageProfile(args);
+  if (rest.length) throw new Error('Usage: apack pack list [--profile <name>]');
+  const { packsDir } = targetDataContext(env, profile);
+  const label = profileLabel(env, profile);
 
   if (!fs.existsSync(packsDir)) {
     console.log(`No packs installed${label}.`);

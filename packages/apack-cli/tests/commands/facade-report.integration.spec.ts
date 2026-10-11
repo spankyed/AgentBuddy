@@ -1,4 +1,4 @@
-// `apack facade-report` over a real pack: what its subject is.
+// `apack pack facade-report` over a real pack: what its subject is.
 //
 // The command re-takes the facade — codegen, then the same `bundlePackTypes` the build runs — rather than
 // reading `dist/types/pack-types.d.ts`, so the report is held against what the pack's sources describe now.
@@ -72,7 +72,7 @@ const reportFile = () => path.join(pack, 'etc', 'pack-types.api.md');
 const bundleFile = () => path.join(pack, 'dist', PACK_LAYOUT.typesDir, 'pack-types.d.ts');
 const readReport = () => fs.readFileSync(reportFile(), 'utf-8');
 
-describe.skipIf(!PACKAGES_BUILT)('apack facade-report', () => {
+describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   /** Nothing is recorded before the first update: there is no report to be stale against */
   it('reports a missing report as missing rather than as a difference', async () => {
     const { code, output } = await callCli(pack, 'facade-report');
@@ -152,7 +152,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack facade-report', () => {
  * cannot use, and because failing would mean no pack author could start their app until they had rewritten a
  * reviewed artifact mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
  */
-describe.skipIf(!PACKAGES_BUILT)('apack build', () => {
+describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
   it('warns about a report that has gone stale, and still succeeds', async () => {
     fs.writeFileSync(path.join(pack, 'src', 'system.contract.ts'), CONTRACT(" | { type: 'NOTIFIED_AGAIN' }"));
 

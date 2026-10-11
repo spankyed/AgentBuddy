@@ -76,7 +76,7 @@ function rewrite(file: string, content: string): void {
 }
 
 /**
- * The subpath map a pack fixture declares, which is how a pack names its own modules: `apack init` writes one and
+ * The subpath map a pack fixture declares, which is how a pack names its own modules: `apack pack init` writes one and
  * every own-module specifier in this repo's packs is one. `@/` is not an alternative to it — `findPackOwnAliases`
  * below and the CLI's `pack-own-aliases` both refuse one — so no fixture here writes that spelling except the cases
  * whose subject it is.
@@ -254,7 +254,7 @@ describe('findPackBackendConsole', () => {
 });
 
 /**
- * Read from the syntax tree, since the rule became the pack rule `apack build` runs (`goal-one-rule-set.md`).
+ * Read from the syntax tree, since the rule became the pack rule `apack pack build` runs (`goal-one-rule-set.md`).
  * The case this used to have for a specifier inside a template literal is gone with its subject: the CLI's
  * templates are files now, and in a pack's own source a string that looks like an import is a string.
  */
@@ -890,7 +890,7 @@ describe('CHECKS', () => {
    * `own-modules` reported a relative `.js` to a pack author and nothing at all here.
    *
    * Asserted over each rule's own example, which `exampleFor` both writes and runs through the repo's entry
-   * point. `packRuleProblems` is what `apack build` calls, and prints pack-relative where this prints
+   * point. `packRuleProblems` is what `apack pack build` calls, and prints pack-relative where this prints
    * repo-relative, which is the one difference between them that is meant to exist.
    */
   it.each([...sweepers('src')].map((rule) => rule.id))('%s reports the same offence to a pack author and to this repo', (id) => {
@@ -1022,7 +1022,7 @@ describe('CHECKS', () => {
 
   /**
    * The population a rule about a pack's own code reads. A rule that covered `src` alone was narrower in this repo
-   * than the same rule is for a pack, since `apack test` runs the set over a pack's `tests` — which is how
+   * than the same rule is for a pack, since `apack pack test` runs the set over a pack's `tests` — which is how
    * `@apackdev/host` in a pack's test came to be reported by a third rule instead of the one that owns it.
    */
   it("covers every pack's src and its tests", () => {
@@ -1057,7 +1057,7 @@ describe('CHECKS', () => {
   /**
    * The one shape two pack rules are both right about, and the two consumers answer differently on purpose.
    *
-   * `apack validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
+   * `apack pack validate` runs every rule together, so its dedupe gives a pack author one message — asserted in
    * `apack-cli/tests/build/pack-rules.spec.ts`. `packRule` here runs one rule at a time, because `--rule <id>`
    * has to answer for that rule alone and an answer that depended on which other rules ran would not be one. So
    * this side reports both, and that is the difference, not a bug: pinned so nobody 'fixes' one to match the other.
@@ -1276,7 +1276,7 @@ describe('CHECKS', () => {
   });
 
   /**
-   * The other population, and nothing swept it: `apack test` runs the whole rule set over a pack's `tests`
+   * The other population, and nothing swept it: `apack pack test` runs the whole rule set over a pack's `tests`
    * (`refusePackRuleViolations(cwd, TEST_DIRS)`), so an offence there has an owner exactly as one in `src` does.
    * Three rules claimed `@apackdev/host` in a pack's test until `f04775d70`, and this is the case that would have
    * said so — the fixtures live in `tests/`, where a src sweep cannot reach.
@@ -1297,7 +1297,7 @@ describe('CHECKS', () => {
 /**
  * A pack names its own modules by the file that is there. Two forms fail the same way — nothing, and the
  * `.js` a pack never emits — so they get one rule and one message, and the search that names the file the
- * author meant is the one `apack build` runs over every pack outside this checkout.
+ * author meant is the one `apack pack build` runs over every pack outside this checkout.
  */
 describe('findExtensionlessOwnModules', () => {
   /** A pack with an `imports` map, which is what makes a `#` string a specifier rather than a colour */

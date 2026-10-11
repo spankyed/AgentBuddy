@@ -49,7 +49,7 @@ describe('what the loader says about a pack', () => {
   // decides, and this is how its decision reaches the fixture. Matched exactly as the fixture matches it.
   it('says a pack it will not load is not loaded, in the sentence the harness watches for', () => {
     const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
-    // An installed pack as `apack install` leaves one, except that another apack built it
+    // An installed pack as `apack pack install` leaves one, except that another apack built it
     fs.mkdirSync(path.join(tmpDir, PACK_LAYOUT.runtimeDir), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, PACK_LAYOUT.typesDir), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, PACK_LAYOUT.runtimeEntry), 'module.exports = {};');

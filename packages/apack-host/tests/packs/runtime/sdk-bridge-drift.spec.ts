@@ -53,12 +53,12 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@apackdev/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
   ['@apackdev/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
   ['@apackdev/host/build/subpath-imports', "build-time only: a pack's package.json `imports`, read by the rule "
-    + 'below and by the pack rules apack build runs'],
+    + 'below and by the pack rules apack pack build runs'],
   ['@apackdev/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
-    + 'names the file that is there, applied by check:specifiers here and by apack build to every other pack'],
+    + 'names the file that is there, applied by check:specifiers here and by apack pack build to every other pack'],
   ['@apackdev/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
   ['@apackdev/host/build/pack-workdir', "build-time only: where a build keeps what it does not publish, declared "
-    + 'once because the writer (apack build) and the reader (the repo\'s chain checks) cannot import each other'],
+    + 'once because the writer (apack pack build) and the reader (the repo\'s chain checks) cannot import each other'],
   // Test machinery: what a spec asserted over, confirmed to be there. It throws rather than asserting, so it
   // needs no test framework — which is also why it must not reach a pack, whose code has no business
   // refusing on the size of something it read.
@@ -90,7 +90,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@apackdev/host/database', "the app's database opened by the host and apack db"],
   // Backups: packs reach export and import through services.appData
   ['@apackdev/host/backup', 'host backups, reached by packs through services.appData'],
-  // The apack dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  // The apack pack dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
   ['@apackdev/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `apack db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.

@@ -19,7 +19,7 @@ const isBeta = metadata.channel === 'beta';
 const isPreview = metadata.channel === 'preview';
 const {appId, productName, urlScheme} = metadata;
 // File names without spaces: GitHub rewrites spaces in release asset names, and
-// `apack test --build beta` looks for apack-Beta-<version>-mac-arm64.zip
+// `apack pack test --channel beta` looks for apack-Beta-<version>-mac-arm64.zip
 export const artifactPrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting
@@ -166,13 +166,13 @@ export default /** @type import('electron-builder').Configuration */
     // dist, which the app never loads — it resolves @apackdev/sdk through node_modules to packages/apack-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
     '!packages/*/publish/**',
-    // ...nor a pack's working directory. `apack build` keeps its dependency cache, its staging, its release
+    // ...nor a pack's working directory. `apack pack build` keeps its dependency cache, its staging, its release
     // output and its record of what each bundling phase read in `.apack/` (PACK_READS_FILE,
     // @apackdev/host/build/pack-workdir), none of which the app loads — and `packages/**/*` above took all of
     // it, dotted directories and all, because electron-builder reads no .gitignore either.
     '!packages/*/.apack/**',
     // The CLI's scaffold templates, which are .ts and .vue files it reads at run time rather than code the
-    // app loads — so the exclusions above would strip every one of them and `apack init` from the CLI this
+    // app loads — so the exclusions above would strip every one of them and `apack pack init` from the CLI this
     // app installs (bin/app-launcher.sh) would scaffold nothing. Last match wins, so this comes after them.
     'packages/apack-cli/dist/package/templates/**',
     // Include API's local node_modules

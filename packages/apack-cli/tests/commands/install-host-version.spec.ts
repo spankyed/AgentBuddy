@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordHostInfo } from '@apackdev/host/packs';
-import { install } from '../../src/commands/install';
+import { install } from '../../src/commands/pack-install';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -21,7 +21,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/** A pack dir as `apack build` leaves it. */
+/** A pack dir as `apack pack build` leaves it. */
 function builtPack(hostVersion: string): string {
   const root = path.join(tmp, 'pack');
   const write = (rel: string, content: string) => {
@@ -34,29 +34,29 @@ function builtPack(hostVersion: string): string {
   return root;
 }
 
-describe('apack install', () => {
+describe('apack pack install', () => {
   it("refuses a pack whose hostVersion the data dir's apack doesn't satisfy", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
-    await expect(install([builtPack('>=99.0.0'), '--dev'])).rejects.toThrow(/requires apack >=99\.0\.0/);
+    await expect(install([builtPack('>=99.0.0')])).rejects.toThrow(/requires apack >=99\.0\.0/);
   });
 
   it("installs when the data dir's apack satisfies it", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
-    await install([builtPack('>=0.3.0'), '--dev']);
+    await install([builtPack('>=0.3.0')]);
     expect(fs.existsSync(path.join(_appDirOf(path.join(tmp, 'data')), 'packs', 'demo-pack', 'apack.json'))).toBe(true);
   });
 
   // The app records the pack format it reads, which need not be the one this CLI builds
   it("refuses a pack built in a format other than the data dir's apack reads", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT + 1 });
-    await expect(install([builtPack('>=0.3.0'), '--dev'])).rejects.toThrow(
+    await expect(install([builtPack('>=0.3.0')])).rejects.toThrow(
       `Pack "demo-pack" can't be installed: its snapshot is format ${PACK_SNAPSHOT_FORMAT}, written by an older apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT + 1}`,
     );
     expect(fs.existsSync(path.join(_appDirOf(path.join(tmp, 'data')), 'packs', 'demo-pack'))).toBe(false);
   });
 
   it("notes that hostVersion wasn't checked before the app has used the data dir", async () => {
-    await install([builtPack('>=99.0.0'), '--dev']);
+    await install([builtPack('>=99.0.0')]);
     expect(vi.mocked(console.warn).mock.calls.flat().join('\n')).toContain("hostVersion wasn't checked");
   });
 });
@@ -65,7 +65,7 @@ describe('apack install', () => {
 describe('the apack bin', () => {
   it('installs a pack, printing what @apackdev/host/packs logs', () => {
     const cli = path.resolve(__dirname, '..', '..', 'bin', 'apack.mjs');
-    const result = spawnSync(process.execPath, [cli, 'install', builtPack('>=0.3.0'), '--dev'], {
+    const result = spawnSync(process.execPath, [cli, 'pack', 'install', builtPack('>=0.3.0')], {
       cwd: tmp,
       encoding: 'utf-8',
       env: { ...process.env, APACK_USER_DATA_DIR: path.join(tmp, 'data'), NO_COLOR: '1', FORCE_COLOR: '0' },

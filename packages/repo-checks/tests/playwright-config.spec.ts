@@ -10,7 +10,7 @@ import { repoFiles } from './_support/repo-files.ts';
  *
  * The sibling of `pack-test-config.spec.ts`, and it exists because the vitest half of this question was
  * answered and the Playwright half was not. There were six of these: the repo's own E2E config, the one
- * `apack init-tests` scaffolds, both fixture packs', and the drive layer's two — and the repo's own had
+ * `apack pack init-tests` scaffolds, both fixture packs', and the drive layer's two — and the repo's own had
  * already drifted to a `use` block giving it screenshots and traces that the three packs' lacked. Nobody
  * decided that; it is what six copies do.
  *

@@ -44,7 +44,7 @@ export function validate(node: Record<string, unknown>): { valid: boolean; error
   return { valid: errors.length === 0, errors };
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const scheduleTriggerBuild: TriggerFacet = {
   trackField: 'schedule',
   compile,

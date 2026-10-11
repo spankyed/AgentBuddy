@@ -1,9 +1,9 @@
 /**
- * What `apack build` says it read, per pack.
+ * What `apack pack build` says it read, per pack.
  *
  * The companion to `dep-files.ts` and the same kind of evidence: a tool reporting its own input set after
  * the fact, which is the only check in this repo that can catch a step declaring *too little*. The
- * typecheck legs are observed through TypeScript's `tsBuildInfoFile`; the two steps that run `apack build`
+ * typecheck legs are observed through TypeScript's `tsBuildInfoFile`; the two steps that run `apack pack build`
  * were observed by nothing until that command started recording its bundlers' module graphs
  * (`@apackdev/cli`'s `build/build-reads.ts`, which writes the file this reads).
  *
@@ -49,7 +49,7 @@ const read = (packDir: string): BuildReads | undefined => {
 };
 
 /**
- * The version of a bundler that `apack build` would resolve — **the CLI's**, not the pack's.
+ * The version of a bundler that `apack pack build` would resolve — **the CLI's**, not the pack's.
  *
  * The pack declares none of these; the command that builds it does, and that is the copy that wrote the
  * record. Resolved rather than read out of a manifest, so a hoisted install and a nested one give the same
@@ -115,12 +115,12 @@ export function readsOf(packDir: string): BuildReads | undefined {
  * A bundler bump invalidates every record at once, and the message for that used to name the two versions
  * and stop there — true, diagnostic, and silent about the one action that resolves it.
  *
- * `apack build` for anything this cannot place, which is the honest answer and the general one: a refusal
+ * `apack pack build` for anything this cannot place, which is the honest answer and the general one: a refusal
  * is asked about a directory the caller named, which may hold no pack at all — the spec asks about
  * `packages/api` — so this cannot be the place that requires a manifest to be there.
  */
 /**
- * The packs this repo builds through a script of its own rather than by `apack build` in the pack's own
+ * The packs this repo builds through a script of its own rather than by `apack pack build` in the pack's own
  * directory. A path, because there is one kind of pack: nothing here asks a manifest what kind it is.
  */
 const SCRIPTED_PACK_BUILDS: Record<string, string> = {
@@ -129,7 +129,7 @@ const SCRIPTED_PACK_BUILDS: Record<string, string> = {
 
 export function rebuildCommand(packDir: string): string {
   if (packDir.startsWith('tests/packs/')) return 'npm run test:external-pack:contract';
-  return SCRIPTED_PACK_BUILDS[packDir] ?? 'apack build';
+  return SCRIPTED_PACK_BUILDS[packDir] ?? 'apack pack build';
 }
 
 /** Every file a pack's build read, across its phases, pack-relative and deduplicated */

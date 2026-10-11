@@ -2,7 +2,7 @@
 //
 // **Both halves need a firing case, and they fail to opposite mutations.** Reaping on `startedBy` alone
 // closes the development app a developer is working in; reaping on the profile alone closes the app they
-// opened themselves with `apack dev --profile`. So the two clauses are asserted apart, and the deadline
+// opened themselves with `npm run dev:open -- --profile`. So the two clauses are asserted apart, and the deadline
 // arithmetic is asserted as the claim it makes — that a session asked a question wakes this once per
 // question and an idle one wakes it once.
 import { describe, expect, it } from 'vitest';
@@ -13,16 +13,16 @@ const person = { startedBy: 'dev' } as const;
 
 describe('which app closes itself when nothing attaches', () => {
   it('is a drive app in a profile, which nothing else reclaims', () => {
-    expect(reapsWhenIdle(drive, { build: 'development', profile: '/p/probe' })).toBe(true);
+    expect(reapsWhenIdle(drive, { env: 'development', userDataDir: '/p/probe' })).toBe(true);
   });
 
   /**
-   * The development dir is `mayReclaim`'s, not this timer's: the developer's own `apack dev` or
+   * The development dir is `mayReclaim`'s, not this timer's: the developer's own `npm run dev:open --` or
    * `npm run dev` takes it back and says so. Mutation — drop the `profile` clause — and this is the case
    * that fails, where a `--spawn` with no flags lands exactly here.
    */
   it('is not a drive app in the development dir', () => {
-    expect(reapsWhenIdle(drive, { build: 'development' })).toBe(false);
+    expect(reapsWhenIdle(drive, { env: 'development' })).toBe(false);
   });
 
   /**
@@ -30,15 +30,15 @@ describe('which app closes itself when nothing attaches', () => {
    * `startedBy` clause — and this is the case that fails.
    */
   it('is not an app a person started, wherever it is', () => {
-    expect(reapsWhenIdle(person, { build: 'development', profile: '/p/mine' })).toBe(false);
-    expect(reapsWhenIdle(person, { build: 'development' })).toBe(false);
+    expect(reapsWhenIdle(person, { env: 'development', userDataDir: '/p/mine' })).toBe(false);
+    expect(reapsWhenIdle(person, { env: 'development' })).toBe(false);
   });
 
   it('is never a build that has no debug port to attach to', () => {
     // `debugPortArgs` publishes no session for these, so no supervisor arms the timer — but the rule must
     // not be the one place that would say yes if one ever did
-    expect(reapsWhenIdle(drive, { build: 'beta', profile: '/p/probe' })).toBe(true);
-    expect(reapsWhenIdle(person, { build: 'beta', profile: '/p/probe' })).toBe(false);
+    expect(reapsWhenIdle(drive, { env: 'beta', userDataDir: '/p/probe' })).toBe(true);
+    expect(reapsWhenIdle(person, { env: 'beta', userDataDir: '/p/probe' })).toBe(false);
   });
 });
 

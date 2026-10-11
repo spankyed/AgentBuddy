@@ -1,6 +1,6 @@
-// `apack facade-report [--update]` — the reviewed report of a pack's facade types (etc/pack-types.api.md).
+// `apack pack facade-report [--update]` — the reviewed report of a pack's facade types (etc/pack-types.api.md).
 //
-// `apack build` bundles a pack's facade into dist/types/pack-types.d.ts, which packs depending on this one
+// `apack pack build` bundles a pack's facade into dist/types/pack-types.d.ts, which packs depending on this one
 // compile against. **This re-takes that bundle rather than reading it**: codegen, then the same
 // `bundlePackTypes` the build runs, into a directory of its own — so the report is compared against the
 // facade the pack's sources describe now, and a `dist` built from older sources cannot be mistaken for the
@@ -11,10 +11,10 @@
 // made the question easy is that re-bundling default-setup's facade costs 2.4s against `api:check`'s 6.9s.
 //
 // A command rather than a repo script, which is what it was: it reads one pack's sources and writes that
-// pack's etc, the same shape as `apack validate` and `apack build`. As a script it could not share code with
+// pack's etc, the same shape as `apack pack validate` and `apack pack build`. As a script it could not share code with
 // the bundler that produces its subject, and the normalisation it needs ended up in a third package to be
-// reachable from both; `build/facade-report.ts` is that shared half, which `apack build` reads too.
-// **One pack has a committed report today.** `apack init` scaffolds no `etc/`, so a pack's report appears at
+// reachable from both; `build/facade-report.ts` is that shared half, which `apack pack build` reads too.
+// **One pack has a committed report today.** `apack pack init` scaffolds no `etc/`, so a pack's report appears at
 // its first `facade:update`, and default-setup's `facade:check`/`facade:update` are the only invocations here.
 // The open question is not a missing test: a pack with dependents publishes a facade the same way
 // default-setup does, so either the scaffold or the release preflight should offer this, or the command is
@@ -31,6 +31,9 @@ import { generateEntries } from './generate-entries';
 import { findPackRoot } from '../utils';
 
 export async function facadeReport(args: string[]): Promise<void> {
+  if (args.some(arg => !['--update', '--skip-generate'].includes(arg))) {
+    throw new Error('Usage: apack pack facade-report [--update] [--skip-generate]');
+  }
   const update = args.includes('--update');
   const packDir = findPackRoot(process.cwd());
   const reportFile = facadeReportFile(packDir);
@@ -43,7 +46,7 @@ export async function facadeReport(args: string[]): Promise<void> {
   // **`--skip-generate` is for a caller that has just regenerated it**, which is the only way this command
   // can run beside something reading the pack: codegen writes `src/__generated__`, and `typecheck:pack`
   // compiles out of it. `scripts/typecheck.ts` regenerates once, ordered ahead of its pool, and passes this —
-  // the same flag and the same reasoning as `apack build --skip-generate`. Default is to regenerate, so a
+  // the same flag and the same reasoning as `apack pack build --skip-generate`. Default is to regenerate, so a
   // pack author running it by hand still gets an answer over a tree nobody has built.
   if (!args.includes('--skip-generate')) await generateEntries([]);
   // Into the scratch directory, never dist/: that is the build's output, and a check that wrote it would both

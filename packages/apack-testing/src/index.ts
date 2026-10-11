@@ -8,6 +8,7 @@ import { createRequire } from 'module';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
+import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-host.ts';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -32,76 +33,14 @@ export interface AppHelper {
   waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
 }
 
-export interface CreateTestOptions {
-  /** A built apack checkout to launch from source */
-  appRoot?: string;
-  /** A packaged apack executable (e.g. apack Beta.app/Contents/MacOS/apack Beta) */
-  appExecutable?: string;
+export interface CreateTestOptions extends TestHostOptions {
   screenshotDir?: string;
-}
-
-
-
-/** How the fixture launches apack: from a checkout's sources, or a packaged build. */
-type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
-
-function isValidAppRoot(dir: string): boolean {
-  return fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'));
-}
-
-function validateAppRoot(dir: string): void {
-  const missing: string[] = [];
-  if (!isValidAppRoot(dir)) missing.push('packages/entry-point.mjs');
-  if (!fs.existsSync(path.join(dir, 'node_modules', 'electron'))) missing.push('node_modules/electron (run npm install)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'main', 'dist'))) missing.push('packages/main/dist (run npm run build:default-setup && npm run build:runtime)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'renderer', 'dist'))) missing.push('packages/renderer/dist (run npm run build:default-setup && npm run build:runtime)');
-  if (missing.length > 0) {
-    throw new Error(
-      `apack checkout ${dir} is missing required files:\n` +
-      missing.map(m => `  - ${m}`).join('\n') +
-      '\n\nThe apack monorepo must be cloned, installed, and built before E2E tests can run.',
-    );
-  }
-}
-
-function sourceApp(dir: string): AppLaunch {
-  const root = path.resolve(dir);
-  validateAppRoot(root);
-  return { kind: 'source', root };
-}
-
-function packagedApp(executable: string): AppLaunch {
-  if (!fs.existsSync(executable)) throw new Error(`apack executable not found: ${executable}`);
-  return { kind: 'packaged', executable };
-}
-
-function resolveApp(options: CreateTestOptions): AppLaunch {
-  if (options.appExecutable) return packagedApp(options.appExecutable);
-  if (options.appRoot) return sourceApp(options.appRoot);
-  // Set by `apack test` for a downloaded app build
-  if (process.env.APACK_APP_EXECUTABLE) return packagedApp(process.env.APACK_APP_EXECUTABLE);
-  if (process.env.APACK_ROOT) return sourceApp(process.env.APACK_ROOT);
-
-  // Auto-detect: walk up from this package looking for packages/entry-point.mjs (inside the monorepo)
-  let dir = path.resolve(import.meta.dirname, '..', '..');
-  for (let i = 0; i < 10; i++) {
-    if (isValidAppRoot(dir)) return sourceApp(dir);
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-
-  throw new Error(
-    'Could not find an apack app to test against. Run the tests with `apack test`, which ' +
-    'resolves one (--build <path>, --build beta, or the apack checkout behind your pack), or set\n' +
-    'APACK_ROOT to a built apack checkout.',
-  );
 }
 
 function resolveScreenshotDir(override?: string): string {
   if (override) return path.resolve(override);
   // A caller that is not a test says where its own output goes. The fallbacks below assume the caller is
-  // a suite — written when it always was — so `apack drive` landed its screenshots under `tests/`,
+  // a suite — written when it always was — so `npm run dev:drive --` landed its screenshots under `tests/`,
   // which is the one place the command exists to keep driving out of. Same reason `E2E_DATA_DIR` exists:
   // the `screenshotDir` option cannot reach the `test` every script imports, built here with no options
   if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
@@ -122,7 +61,7 @@ function resolveReportDir(): string {
 
 /** The apack CLI bin that builds the pack under test. */
 function resolveApackBin(app: AppLaunch, packDir: string): string {
-  // `apack test` passes itself, so the build uses the same CLI as the test run
+  // `apack pack test` passes itself, so the build uses the same CLI as the test run
   if (process.env.APACK_CLI) return process.env.APACK_CLI;
   const bases = [path.join(packDir, 'package.json'), ...(app.kind === 'source' ? [path.join(app.root, 'package.json')] : [])];
   for (const base of bases) {
@@ -130,7 +69,7 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
       return path.join(path.dirname(createRequire(base).resolve('@apackdev/cli/package.json')), 'bin', 'apack.mjs');
     } catch {}
   }
-  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack test`.');
+  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack pack test`.');
 }
 
 /** The newest thing under `dir`, or 0 when there is nothing there. */
@@ -183,7 +122,7 @@ const E2E_VIEWPORT = { width: 1400, height: 900 };
 /** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ build: 'test', profile: userDataDir }).installedPacksFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -470,7 +409,7 @@ export function appHelper(page: Page, screenshotDir: string): AppHelper {
 }
 
 export function createTest(options: CreateTestOptions = {}) {
-  const appLaunch = resolveApp(options);
+  const appLaunch = resolveTestHost(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
 
   const test = base.extend<
@@ -485,7 +424,7 @@ export function createTest(options: CreateTestOptions = {}) {
       assertCheckoutPackagesFresh();
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's apack-test dir
-      // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `apack drive`
+      // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `npm run dev:drive --`
       // runs against a profile whose state survives the session. An environment variable rather than a
       // `createTest` option because the `test` every spec imports is built at module scope with no
       // options, so an option could never reach it.
@@ -503,23 +442,23 @@ export function createTest(options: CreateTestOptions = {}) {
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           if (archive) assertArchiveIsCurrent(archive, packDir);
           if (!archive && process.env.APACK_PACK_PREBUILT) {
-            // The caller built it in an earlier step (`apack test --prebuilt`), so this installs that build.
+            // The caller built it in an earlier step (`apack pack test --prebuilt`), so this installs that build.
             // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
             // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
             // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
             // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
-            // `apack build` no longer creates now that it stages its output and renames it into place.
+            // `apack pack build` no longer creates now that it stages its output and renames it into place.
             //
             // What the rebuild bought is checked instead of dropped: a build older than the sources it came
             // from fails here, which is the whole of "a stale build tested silently is worse than no test".
             const stale = staleBuildOutput(packDir);
-            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack build) or drop --prebuilt.`);
+            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack pack build) or drop --prebuilt.`);
           } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const apackBin = resolveApackBin(appLaunch, packDir);
             // A release run tests what it ships: without this the rebuild below replaces the release
             // build with a development one, and the archive is cut from that.
-            const buildArgs = process.env.APACK_PACK_RELEASE ? ['build', '--release'] : ['build'];
+            const buildArgs = process.env.APACK_PACK_RELEASE ? ['pack', 'build', '--release'] : ['pack', 'build'];
             console.log(`[pack] Building ${manifest.id} from ${packDir}${process.env.APACK_PACK_RELEASE ? ' (release)' : ''}...`);
             try {
               execFileSync(process.execPath, [apackBin, ...buildArgs], { cwd: packDir, stdio: 'pipe' });
@@ -529,7 +468,7 @@ export function createTest(options: CreateTestOptions = {}) {
             }
           }
           // Install through the same bundle path users get (stage → verify → place)
-          const { packsDir } = resolveAppContext({ build: 'test', profile: userDataDir });
+          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
@@ -690,12 +629,12 @@ export function createTest(options: CreateTestOptions = {}) {
   return { test, expect: base.expect };
 }
 
-// Direct exports — the app comes from `apack test` (APACK_APP_EXECUTABLE / APACK_ROOT) or the enclosing monorepo
+// Direct exports — the app comes from `apack pack test` (APACK_HOST_EXECUTABLE / APACK_HOST_ROOT) or the enclosing monorepo
 const _default = createTest();
 export const test = _default.test;
 
 /**
- * The same runner under a name that says what a driving script is, for `apack drive`. A driving script
+ * The same runner under a name that says what a driving script is, for `npm run dev:drive --`. A driving script
  * asserts nothing and nothing gates on it, so calling it `test` was the whole confusion; Playwright
  * discovers work from the calls made at import rather than from the binding's name, so the alias costs
  * nothing and reporters and `--grep` still match titles.

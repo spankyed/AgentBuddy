@@ -3,7 +3,7 @@ import {beforeEach, expect, it, vi} from 'vitest';
 import type {ModuleContext} from '../src/ModuleContext.ts';
 
 const fixture = vi.hoisted(() => ({
-  context: {build: 'test', urlScheme: 'apack'},
+  context: {env: 'test', urlScheme: 'apack'},
   send: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock('electron', () => ({BrowserWindow: {
 import {createProtocolHandler} from '../src/modules/ProtocolHandler.ts';
 
 beforeEach(() => {
-  fixture.context.build = 'test';
+  fixture.context.env = 'test';
   fixture.send.mockClear();
 });
 
@@ -33,7 +33,7 @@ it('receives install links in an isolated test without claiming the system proto
 });
 
 it('registers the protocol for ordinary app builds', () => {
-  fixture.context.build = 'production';
+  fixture.context.env = 'production';
   const app = Object.assign(new EventEmitter(), {setAsDefaultProtocolClient: vi.fn()});
   createProtocolHandler().enable({app} as unknown as ModuleContext);
   expect(app.setAsDefaultProtocolClient).toHaveBeenCalledWith('apack');

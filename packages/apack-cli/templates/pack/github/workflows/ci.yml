@@ -8,8 +8,8 @@ on:
 jobs:
   checks:
     # ubuntu is enough while this pack declares no dependencies in apack.json: nothing has to resolve
-    # another pack, so no apack install is needed. Add one and this needs what the release workflow
-    # uses — `runs-on: macos-14` with `APACK_BUILD: beta`, so the build can read it from an installed app.
+    # another pack, so no apack pack install is needed. Add one and this needs what the release workflow
+    # uses — `runs-on: macos-14` with `APACK_HOST: beta`, so the build can read it from an installed app.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,16 +19,16 @@ jobs:
           node-version: 23
           cache: npm
 
-      # `prepare` runs `apack generate-entries`, so src/__generated__ exists for everything below
+      # `prepare` runs `apack pack generate-entries`, so src/__generated__ exists for everything below
       - run: npm ci
 
-      - run: npx apack validate
+      - run: npx apack pack validate
 
       - run: npm run typecheck
 
       - run: npm test
 
-      - run: npx apack build
+      - run: npx apack pack build
 
       # After the build, which is what it reads: the facade is what packs depending on this one compile
       # against, so a change to it should be visible in review rather than only at their next build

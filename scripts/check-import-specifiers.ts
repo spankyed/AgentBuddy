@@ -48,7 +48,7 @@ function findSpecifiers(files: string[], root: string, matches: (text: string) =
  *
  * The `@apackdev` packages only. A pack's sources are covered by `own-modules` instead — the pack rule that
  * resolves a specifier against the pack's files and so reports the file to write rather than only the offence,
- * and the one `apack build` already runs for every pack. Two rules claiming one relative `.js` is what let the
+ * and the one `apack pack build` already runs for every pack. Two rules claiming one relative `.js` is what let the
  * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
  */
 export function findJsSpecifiers(dirs: readonly string[] = CHECKED_DIRS, root = repoRoot): string[] {
@@ -94,7 +94,7 @@ export const repoRootDir = (): string => repoRoot;
  * Every own-module specifier in this repo's packs that names no file, with the file it should name.
  *
  * The rule is `@apackdev/cli`'s `own-modules`; this is its findings before they become sentences, which is what
- * `specifiers:fix` splices. A pack's own `apack build` gets the same repair through the same function.
+ * `specifiers:fix` splices. A pack's own `apack pack build` gets the same repair through the same function.
  */
 export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): Fix[] {
   return dirs.flatMap((dir) => {
@@ -186,7 +186,7 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
  * **Over `PACK_CODE_DIRS`, tests included, because a test is where the key is reached for.** A pack's own
  * code has the two verbs and no reason to name the key; a spec driving a machine with no delivery door in
  * front of it has to synthesise what a door would write, and `answerTo` (`@apackdev/sdk/testing`) is that.
- * `apack test` runs this rule over a pack's `tests` for the same reason, so the two entry points agree.
+ * `apack pack test` runs this rule over a pack's `tests` for the same reason, so the two entry points agree.
  */
 export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('reserved-event-keys', dirs, root);
@@ -199,7 +199,7 @@ export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, 
  * Vite and esbuild all resolve unaided and which is private to the declaring package. `@/…` is a TypeScript
  * `compilerOptions.paths` mapping that no runtime reads — and it was not even a static one here, meaning
  * *the importer's own pack*, so four separate bundler configs each carried an implementation of it: the
- * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `apack build`'s
+ * renderer's resolveId hook, the API's esbuild plugin, the pack's `vite-tsconfig-paths`, and `apack pack build`'s
  * own reader, which had two copies that had each missed the other's fix.
  *
  * All four are gone (`goal-one-way-to-name-your-own-modules.md`), so a single `@/` reintroduced here does not
@@ -212,7 +212,7 @@ export function findPackOwnAliases(dirs: readonly string[] = PACK_CODE_DIRS, roo
 /**
  * `file:line: specifier -> what it should say` for each of a pack's own-module specifiers naming no file.
  *
- * The rule is `@apackdev/cli`'s `own-modules`, which `apack build`, `apack validate` and `apack test` run for
+ * The rule is `@apackdev/cli`'s `own-modules`, which `apack pack build`, `apack pack validate` and `apack pack test` run for
  * every pack outside this checkout. This applies it to the packs in it.
  */
 export function findExtensionlessOwnModules(
@@ -227,7 +227,7 @@ export function findExtensionlessOwnModules(
  *
  * It used to match `@apackdev/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
  * `host-imports` owns the package wherever a pack names it, and `pack-own-aliases` owns every `@/` specifier —
- * each over a pack's tests as well as its sources, here and through `apack test` for every other pack. Three
+ * each over a pack's tests as well as its sources, here and through `apack pack test` for every other pack. Three
  * rules claiming one import is how only the first to run gets read.
  */
 const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|apack-host|apack-cli)\/src(?:\/|$)/;
@@ -447,7 +447,7 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; 
   // The engine's root never loads the store
   { dirs: ['packages/apack-ears/src'], except: 'packages/apack-ears/src/lmdb', forbidden: /^(?:lmdb(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*lmdb(?:\/|$))/ },
   // Packs and their tests don't use the app's store. Named rather than spelled: this population is a pack's, so
-  // the rule is `@apackdev/cli`'s, the one `apack build` already runs for every pack. The two above are the host's
+  // the rule is `@apackdev/cli`'s, the one `apack pack build` already runs for every pack. The two above are the host's
   // and the engine's own trees, which no pack rule can have, so they keep a pattern here.
   { dirs: PACK_CODE_DIRS, rule: 'lmdb-imports' },
 ];
@@ -550,7 +550,7 @@ export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(
 // applies to, and repo-checks' integration spec imports the name from here
 export { SOURCE_CONDITION };
 
-/** What a pack author's own `apack build` reports, for the spec that holds the two runners to agreeing */
+/** What a pack author's own `apack pack build` reports, for the spec that holds the two runners to agreeing */
 // Same reason as above: repo-checks may not reach into another package's tree, and this script is already
 // where it reads the rules from. The property it buys is the one this file's header claims — one rule,
 // two entry points — which nothing could check while only one of them was reachable
@@ -559,8 +559,8 @@ export { packRuleProblems };
 /**
  * `file:line: specifier` for each import of another feature's frontend, in the packs of this checkout.
  *
- * The rule is `@apackdev/cli`'s `cross-feature-imports` (`build/pack-features.ts`), which `apack build`,
- * `apack validate` and `apack test` run for every pack outside this checkout. `PACK_SRC_ROOTS` adds
+ * The rule is `@apackdev/cli`'s `cross-feature-imports` (`build/pack-features.ts`), which `apack pack build`,
+ * `apack pack validate` and `apack pack test` run for every pack outside this checkout. `PACK_SRC_ROOTS` adds
  * `@apackdev/host`, which is the pack `host` and has the same feature layout without being a pack the CLI builds.
  */
 export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {
@@ -571,8 +571,8 @@ export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_R
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen,
  * in the packs of this checkout.
  *
- * The rule is `@apackdev/cli`'s `contract-leaves` (`build/pack-features.ts`), which `apack build`, `apack validate`
- * and `apack test` run for every pack outside this checkout — where the whole reasoning, and what the two harms
+ * The rule is `@apackdev/cli`'s `contract-leaves` (`build/pack-features.ts`), which `apack pack build`, `apack pack validate`
+ * and `apack pack test` run for every pack outside this checkout — where the whole reasoning, and what the two harms
  * were measured to be, is recorded.
  */
 export function findContractLeafImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {

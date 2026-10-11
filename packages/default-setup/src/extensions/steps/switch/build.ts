@@ -178,7 +178,7 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
   return result;
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };
 
 /** What a node of this type starts with; the backend writes it and the canvas draws it */

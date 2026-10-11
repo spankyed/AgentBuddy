@@ -19,7 +19,7 @@ const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
  * **Serving a pack's frontend from source is the whole of what a dev server adds**, and it is what makes a
  * `.vue` edit patch the component: the pack's modules are in the renderer's own graph, so Vite has an
  * accepting importer to stop the update at. A built app has no source to serve, so the map is empty there
- * and every pack's frontend is fetched over `pack://` from the bundle its own `apack build` wrote — which
+ * and every pack's frontend is fetched over `pack://` from the bundle its own `apack pack build` wrote — which
  * is the path a pack takes in production whatever directory it lives in.
  *
  * The map is keyed by pack id and says nothing about `builtIn`: a pack is in it because its source is on

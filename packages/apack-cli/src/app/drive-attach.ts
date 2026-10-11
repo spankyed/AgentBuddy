@@ -3,7 +3,7 @@
  *
  * **`@apackdev/testing` is resolved at runtime, never imported.** It is a devDependency of this package, so a
  * static import would make `bundle-package.ts` refuse the bundle outright, and a real dependency would put
- * the whole Playwright harness in every install of someone who only runs `apack build`. The CLI already
+ * the whole Playwright harness in every install of someone who only runs `apack pack build`. The CLI already
  * reaches it this way for the Playwright binary (`resolvePlaywrightCli`), from the pack's own
  * `node_modules` — so a pack drives with the harness it tests with, rather than one this CLI carried.
  */
@@ -15,6 +15,8 @@ import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@apackdev/testing';
 import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@apackdev/host/dev-session';
 import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
+import { dataDirInUse } from './profiles';
+import { sourceTarget } from './pack-host';
 
 /** Just the part of `@apackdev/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -57,14 +59,23 @@ export interface AttachableApp {
  * started by something that meant it to be driven. `readSession` already treats a record whose supervisor
  * has gone as absent, so a session file a killed run left behind reads as no app at all.
  */
-export function attachableApp(dataDir: string): AttachableApp | undefined {
+export function attachableApp(dataDir: string, expectedRoot?: string): AttachableApp | undefined {
   const session = readSession(dataDir);
   if (session === undefined) return undefined;
+  verifySessionHost(session, expectedRoot);
   return { session, logPath: session.logPath };
 }
 
+/** A session can be located by profile, but only its recorded checkout establishes ownership. */
+export function verifySessionHost(session: DevSession, expectedRoot?: string): void {
+  const actualRoot = fs.realpathSync(session.host.root);
+  if (expectedRoot && actualRoot !== fs.realpathSync(expectedRoot)) {
+    throw new Error(`The profile is held by another checkout (${session.host.root}); requested ${expectedRoot}. Stop it or choose another profile.`);
+  }
+}
+
 /**
- * Starts an app and waits for it to be attachable, by running `apack dev` detached.
+ * Starts an app or pack session explicitly and waits for it to be attachable.
  *
  * **`dev` itself, and detached, are both load-bearing.** The fixture sets `PLAYWRIGHT_TEST`, which makes the
  * app resolve the `test` environment and so refuse the debug port — and the fixture is also the only thing
@@ -77,18 +88,23 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
  * "no session appeared" with no cause, and the timeout message names this path.
  */
 export async function spawnDevApp(
-  from: string, dataDir: string, profileArgs: readonly string[],
+  from: string, dataDir: string, profileArgs: readonly string[], scope: 'app' | 'pack' = 'app',
 ): Promise<AttachableApp> {
+  const checkout = scope === 'app' ? sourceTarget(from, 'source checkout').root : undefined;
+  const command = checkout
+    ? ['--conditions=@apackdev/source', path.join(checkout, 'scripts/app-dev.mjs'), 'open']
+    : [cliBin(), 'pack', 'dev'];
   const logPath = path.join(dataDir, 'dev-spawn.log');
   fs.mkdirSync(dataDir, { recursive: true });
   const log = fs.openSync(logPath, 'a');
-  const child = spawn(process.execPath, [cliBin(), 'dev', ...profileArgs], {
+  const child = spawn(process.execPath, [...command, ...profileArgs], {
     cwd: from,
     detached: true,
     stdio: ['ignore', log, log],
     // The one thing `dev` cannot work out for itself: it writes the session file and cannot know who asked
     env: { ...process.env, [STARTED_BY_ENV]: 'drive' },
   });
+  fs.closeSync(log);
   child.unref();
   let exited = false;
   child.once('exit', () => { exited = true; });
@@ -126,24 +142,36 @@ const HELD = new Error('another spawn holds this data dir');
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
   // Seams, because which of the two branches a loser took is the claim and nothing else observes it
-  { spawn = spawnDevApp, waitFor = waitForSession }: {
+  { spawn, waitFor = waitForSession, scope = 'app', expectedRoot, reuse = true }: {
     spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
     waitFor?: (dataDir: string) => Promise<DevSession>;
+    scope?: 'app' | 'pack';
+    expectedRoot?: string;
+    /** Cleanup/copy flags require a new session, including when another caller wins the spawn race. */
+    reuse?: boolean;
   } = {},
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
   try {
-    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'apack drive --spawn', refuse: () => HELD });
+    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'development session spawn', refuse: () => HELD });
   } catch (error) {
     if (error !== HELD) throw error;
+    if (!reuse) throw new Error('--rm and --with-secrets require a new session; another caller is already starting one here.');
     // Another question is already starting an app here. What this one wants is an app, not a spawn
     const session = await waitFor(dataDir);
+    verifySessionHost(session, expectedRoot);
     return { app: { session, logPath: session.logPath }, state: 'attached' };
   }
   try {
-    const live = attachableApp(dataDir);
-    if (live) return { app: live, state: 'attached' };
-    return { app: await spawn(from, dataDir, profileArgs), state: 'spawned' };
+    const live = attachableApp(dataDir, expectedRoot);
+    if (live) {
+      if (!reuse) throw new Error('--rm and --with-secrets require a new session; this app is already running. Attach without those flags.');
+      return { app: live, state: 'attached' };
+    }
+    if (dataDirInUse(dataDir)) throw new Error('An app occupies this profile without a verifiable development session. Close it before spawning.');
+    const app = spawn ? await spawn(from, dataDir, profileArgs) : await spawnDevApp(from, dataDir, profileArgs, scope);
+    verifySessionHost(app.session, expectedRoot);
+    return { app, state: 'spawned' };
   } finally {
     lock.release();
   }

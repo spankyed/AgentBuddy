@@ -9,7 +9,7 @@ import { fixtureEnv } from '../../src/commands/test';
 /**
  * What the shell may still decide about a pinned run.
  *
- * `apack test` is hermetic: it reads no machine state. `fixtureEnv` is where that is enforced, by
+ * `apack pack test` is hermetic: it reads no machine state. `fixtureEnv` is where that is enforced, by
  * stripping the variables the fixture would otherwise read out of the caller's environment — and it is a
  * hand-written list of someone else's inputs, which is the shape that goes stale. It did: `E2E_DATA_DIR`
  * and `E2E_SCREENSHOT_DIR` were never added to it, so an exported one sent a test run at a directory the

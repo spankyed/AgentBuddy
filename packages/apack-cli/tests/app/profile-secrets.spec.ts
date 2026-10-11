@@ -53,6 +53,12 @@ afterEach(() => {
 });
 
 describe('copying keys into a new profile', () => {
+  it('refuses an existing profile before reading or replacing any secrets', async () => {
+    const { copySecretsInto } = await import('../../src/app/profile-secrets.ts');
+    expect(() => copySecretsInto({ ...profile(tmp), created: false }, 'development')).toThrow('new profile only');
+    expect(osEntries).toEqual([]);
+  });
+
   it('puts the keys and their data key inside the profile, and nothing in the keychain', async () => {
     const { copySecretsInto } = await import('../../src/app/profile-secrets.ts');
     writeSource({ format: 1, protection: 'os-keystore', keyId: 'k_1', secrets: [{ provider: 'anthropic' }, { provider: 'openai' }] });

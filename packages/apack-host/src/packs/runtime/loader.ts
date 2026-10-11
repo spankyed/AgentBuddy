@@ -73,7 +73,7 @@ export function loadSingleExternalPack(
 
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack install or apack dev`);
+    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack pack install or apack pack dev`);
   }
   try {
     const integrity = readPackIntegrity(dir);
@@ -123,7 +123,7 @@ export function loadSingleExternalPack(
 }
 
 /**
- * The pack's own registration from its runtime bundle, as the pack built it: `apack build` already put the
+ * The pack's own registration from its runtime bundle, as the pack built it: `apack pack build` already put the
  * events the manifest adds into each system's `receives`, and the registry derives every ref from the feature ids.
  */
 function loadBundledRuntime(

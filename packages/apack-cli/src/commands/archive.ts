@@ -6,11 +6,11 @@ import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIn
 import { holdPackBuildLock } from '../build/build-lock.ts';
 
 const HELP = `
-Usage: apack pack [--out <dir>]
+Usage: apack pack archive [--out <dir>]
 
 Stage the built pack (dist/) into a verified pack layout and write
-<id>-<version>.tgz plus <id>-<version>.tgz.sha256. Run "apack build" first
-("apack build --release" for publishable output).
+<id>-<version>.tgz plus <id>-<version>.tgz.sha256. Run "apack pack build" first
+("apack pack build --release" for publishable output).
 
 Options:
   --out <dir>   Output directory (default: pack root)
@@ -43,19 +43,19 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
     throw new Error('Built-in packs ship inside the app and are not packed.');
   }
   // **A build that is not of these sources must not be shipped, and absence is no longer what says so.**
-  // `apack build` renames its output into place, so a failed build leaves the previous one where it was and
+  // `apack pack build` renames its output into place, so a failed build leaves the previous one where it was and
   // `stagePack` would find a complete `dist` to pack. Before that it left none, and the pack simply failed for
   // want of files — which caught a failed build and missed a stale one. This catches both.
   const stale = staleBuildOutput(root);
   if (stale) {
-    throw new Error(`${manifest.id}'s build is older than ${stale}. Run apack build, then pack.`);
+    throw new Error(`${manifest.id}'s build is older than ${stale}. Run apack pack build, then apack pack archive.`);
   }
   // **Held for the whole stage, because this is a multi-file copy of `dist`.** A build renaming that tree
   // mid-copy would leave an archive holding half of two builds — whole-looking, verified, and wrong — which is
   // a far wider window than the rename and a worse outcome than the "not built" a short read sees.
   const lock = await holdPackBuildLock(root, {
     packId: manifest.id,
-    what: 'apack pack',
+    what: 'apack pack archive',
     onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
   });
   try {
@@ -69,10 +69,13 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
   }
 }
 
-export async function pack(args: string[]) {
+export async function archive(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;
+  }
+  if (args.length && (args[0] !== '--out' || args.length !== 2 || args[1]!.startsWith('-'))) {
+    throw new Error('Usage: apack pack archive [--out <dir>]');
   }
   const root = findPackRoot(process.cwd());
   const outIndex = args.indexOf('--out');

@@ -55,7 +55,7 @@ export interface DiscoveredPack {
  * ids `disabled` names.
  *
  * The directory is the list. A pack the record has never heard of is installed and enabled — which is
- * what an `apack install` outside the app leaves behind, and what `apack dev` leaves when it installs
+ * what an `apack pack install` outside the app leaves behind, and what `apack pack dev` leaves when it installs
  * into a running one. The record only ever takes packs away from this list.
  *
  * The caller reads `disabled`, because what an unreadable record means depends on who is asking: the app

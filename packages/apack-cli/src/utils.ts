@@ -2,60 +2,61 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { parseManifest, type PackManifest } from '@apackdev/sdk/build';
-import { APP_ENVS, parseAppEnv, type AppEnv } from '@apackdev/sdk/env';
+import { cliDirs } from './app/pack-host';
+import { resolveStoredProfile } from './app/profiles';
+import { APP_ENVS, parseAppEnv, resolveAppContext, type AppEnv, type AppChannel } from '@apackdev/sdk/env';
 
-const ENV_FLAGS = ['-d', '--dev', '-b', '--beta', '--production'] as const;
+/** Data commands may default to the bundled CLI's channel; installed-app commands select production explicitly. */
+export const defaultDataEnv = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
 
-/** The app-bundled launcher supplies its channel; a standalone CLI defaults to production. */
-export const defaultDataBuild = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
-
-/**
- * Which build's data a command is pointed at.
- *
- * **`-d`, `-b` and `--production` are `--build` shorthands**, which is Decision 4 of the vocabulary
- * change: they keep working and change what they *mean*, a build rather than an environment. `--build
- * <name>` says the same thing in the one word the whole CLI now uses, so a reader who learned the flag on
- * `apack dev` does not have to learn a second spelling here.
- *
- * It names a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one
- * override. That is the fusion kept where it is harmless — a default, stated once, rather than a second
- * meaning the word carries everywhere.
- */
-export function parseTargetEnv(args: string[]): { env: AppEnv; args: string[] } {
-  const filtered: string[] = [];
-  let named: AppEnv | undefined;
+/** Installed/published app selection never takes a storage or host default. */
+export function parseAppChannel(args: string[]): { channel: AppChannel; args: string[] } {
+  const allowed = ['production', 'beta', 'preview'] as const;
+  const rest: string[] = [];
+  let channel: AppChannel | undefined;
   for (let i = 0; i < args.length; i++) {
-    const arg = args[i]!;
-    const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) as [string, string | undefined] : [arg, undefined];
-    if (name === '--build') {
-      const value = inline ?? args[++i];
-      if (!value) throw new Error('--build needs a build name: ' + APP_ENVS.join(', '));
-      if (!(APP_ENVS as readonly string[]).includes(value)) {
-        throw new Error(`Unknown build "${value}". This command reads a build's data, so it takes one of: ${APP_ENVS.join(', ')}.`);
-      }
-      named = value as AppEnv;
-    } else if ((ENV_FLAGS as readonly string[]).includes(arg)) {
-      named = arg === '-b' || arg === '--beta' ? 'beta' : arg === '--production' ? 'production' : 'development';
-    } else {
-      filtered.push(arg);
-    }
+    const [name, inline] = args[i]!.split(/=(.*)/s, 2);
+    if (name !== '--channel') { rest.push(args[i]!); continue; }
+    if (channel !== undefined) throw new Error('Specify --channel once.');
+    const value = inline ?? args[++i];
+    const selected = allowed.find(channel => channel === value);
+    if (!selected) throw new Error(`--channel needs one of: ${allowed.join(', ')}`);
+    channel = selected;
   }
-  return { env: named ?? defaultDataBuild(), args: filtered };
+  return { channel: channel ?? 'production', args: rest };
 }
 
-export function envLabel(env: AppEnv): string {
-  if (env === 'production') return '';
-  return ` (${env})`;
+export function parseStorageProfile(args: string[]) {
+  const rest: string[] = [];
+  let profile: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const [name, inline] = args[i]!.split(/=(.*)/s, 2);
+    if (name === '--data') throw new Error('Use --profile <name> to select stored state.');
+    if (name !== '--profile') { rest.push(args[i]!); continue; }
+    if (profile !== undefined) throw new Error('Specify --profile once.');
+    profile = inline ?? args[++i];
+    if (!profile || profile.startsWith('-')) throw new Error('--profile needs a name');
+  }
+  return { env: APP_ENVS.find(env => env === profile) ?? defaultDataEnv(), profile, args: rest };
 }
 
-export const TARGET_ENV_USAGE = '--build <name>  Which build\'s data: ' + APP_ENVS.join(', ')
-  + '\n  -d, -b, --production  shorthands for development, beta and production';
+/** An explicit namespace uses its canonical storage; an unnamed target may honor a caller's data override. */
+export function targetDataContext(env: AppEnv, profile?: string) {
+  return resolveAppContext({ env, userDataDir: profile === undefined ? undefined : resolveStoredProfile(cliDirs(), profile) });
+}
+
+export function profileLabel(env: AppEnv, profile?: string): string {
+  if (profile === undefined && env === 'production') return '';
+  return ` (profile ${profile ?? env})`;
+}
+
+export const TARGET_ENV_USAGE = '--profile <name>  Built-in or custom stored profile; built-ins: ' + APP_ENVS.join(', ');
 
 /**
  * The pack at or above `from`, or undefined.
  *
  * Every command but one wants the throwing form below: they act on a pack, and having none is the end of
- * it. `apack drive` is the exception — driving the app with no pack under test is a coherent thing to do,
+ * it. `npm run dev:drive --` is the exception — driving the app with no pack under test is a coherent thing to do,
  * and this is what lets it say so rather than treating it as a failure.
  */
 export function findPackRootOrNone(from: string): string | undefined {

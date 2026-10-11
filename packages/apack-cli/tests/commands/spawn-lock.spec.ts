@@ -24,7 +24,7 @@ let spawns: number;
 /** A spawner that publishes a session as a real `dev` would, and counts its calls. */
 const spawner = async (_from: string, dir: string) => {
   spawns += 1;
-  publishSession({ debugPort: 51873, dataDir: dir, supervisorPid: process.pid, startedBy: 'drive' });
+  publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 51873, dataDir: dir, supervisorPid: process.pid, startedBy: 'drive' });
   return { session: readSession(dir)! };
 };
 
@@ -37,13 +37,30 @@ afterEach(() => {
 });
 
 describe('two questions spawning at once', () => {
+  it('refuses reuse flags when another caller already holds the spawn lock', async () => {
+    const lock = holdExclusiveLock({ file: path.join(dataDir, 'spawn.lock'), what: 'other spawn', refuse: () => new Error('held') });
+    const waitFor = vi.fn();
+    try {
+      await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner, waitFor, reuse: false })).rejects.toThrow('require a new session');
+      expect(waitFor).not.toHaveBeenCalled();
+      expect(spawns).toBe(0);
+    } finally { lock.release(); }
+  });
+
+  it('refuses reuse flags after a session appeared before acquiring the lock', async () => {
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
+    await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner, reuse: false })).rejects.toThrow('require a new session');
+    expect(spawns).toBe(0);
+    expect(readSession(dataDir)).toBeDefined();
+  });
+
   it('starts one app, and the loser attaches to it', async () => {
     // The winner holds the lock and has not published yet — the state in which a loser without the lock
     // would spawn a second app. What the loser does *instead* is the claim, so the waiter is injected
     // rather than ordered by a sleep: `spec-waits` refuses a spec that sleeps and then asserts, and the
     // version that dropped the sleep passed while no longer firing on the mutation that removes the lock.
     const lock = holdExclusiveLock({ file: path.join(dataDir, 'spawn.lock'), what: 'the other question', refuse: () => new Error('held') });
-    const winner: DevSession = { debugPort: 44444, dataDir, supervisorPid: process.ppid, startedBy: 'drive' };
+    const winner: DevSession = { host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.ppid, startedBy: 'drive' };
     const waitFor = vi.fn(async () => winner);
 
     const loser = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner, waitFor }).finally(() => lock.release());
@@ -62,7 +79,7 @@ describe('two questions spawning at once', () => {
    * spawns a second app over a data dir that already has one.
    */
   it('attaches to a session published while it waited for the lock', async () => {
-    publishSession({ debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
 
     const answer = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
 
@@ -88,5 +105,33 @@ describe('two questions spawning at once', () => {
     const after = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
 
     expect(after.state).toBe('spawned');
+  });
+});
+
+
+describe('session ownership before spawn', () => {
+  it('refuses another checkout without spawning or deleting its session', async () => {
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
+    await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner, expectedRoot: dataDir }))
+      .rejects.toThrow(/another checkout/);
+    expect(spawns).toBe(0);
+    expect(readSession(dataDir)?.supervisorPid).toBe(process.pid);
+  });
+
+  it('refuses an older live session whose host cannot be verified', async () => {
+    fs.writeFileSync(path.join(dataDir, 'session.json'), JSON.stringify({ debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' }));
+    await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner }))
+      .rejects.toThrow(/no verifiable development host identity/);
+    expect(spawns).toBe(0);
+    expect(fs.existsSync(path.join(dataDir, 'session.json'))).toBe(true);
+  });
+
+  it('accepts a symlink to the same checkout', async () => {
+    const alias = path.join(dataDir, 'checkout');
+    fs.symlinkSync(process.cwd(), alias, 'dir');
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'dev' });
+    const result = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner, expectedRoot: alias });
+    expect(result.state).toBe('attached');
+    expect(spawns).toBe(0);
   });
 });

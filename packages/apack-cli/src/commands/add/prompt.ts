@@ -4,10 +4,10 @@ import { renderTemplate } from '../../templates.ts';
 
 
 const HELP = `
-Usage: apack add prompt <name>
+Usage: apack pack add prompt <name>
 
 Example:
-  apack add prompt summarize-text
+  apack pack add prompt summarize-text
 `.trim();
 
 export async function addPrompt(args: string[], root: string) {

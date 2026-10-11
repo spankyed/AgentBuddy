@@ -18,7 +18,7 @@
  * (`check:specifiers`, `findJsSpecifiers`).
  *
  * **The rule is here; finding the specifiers is the caller's.** `npm run check:specifiers` applies this to
- * the packs in this checkout and `apack build` to every pack outside it, and each already parses a pack's
+ * the packs in this checkout and `apack pack build` to every pack outside it, and each already parses a pack's
  * sources for other rules — so each hands its specifiers over and neither reimplements the rule. It was
  * briefly the other way round, with a regex and a hand-written comment stripper in here: that reported a
  * commented-out import as a real one whenever a regex literal earlier in the file held an unbalanced quote,

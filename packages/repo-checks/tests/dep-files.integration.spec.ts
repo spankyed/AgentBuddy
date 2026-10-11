@@ -320,7 +320,7 @@ describe('a dep file is checked against itself before it is believed', () => {
 });
 
 /**
- * And the same question of `apack build`, which is the other tool here that can be asked.
+ * And the same question of `apack pack build`, which is the other tool here that can be asked.
  *
  * Two chain steps run it — `build:default-setup` and `test:external-pack:contract`, 70s between them — and until the
  * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
@@ -334,7 +334,7 @@ describe('a dep file is checked against itself before it is believed', () => {
  * **It covers the bundling, not the step.** The phases with no bundler to ask are absent from the record,
  * which is why both steps stay on the list at the end of this file.
  */
-describe('apack build says what it read', () => {
+describe('apack pack build says what it read', () => {
   /** The step that builds a pack: the one that declares that pack's `dist` among its outputs */
   const building = (packDir: string) =>
     CHAIN_STEPS.find((step) => (step.outputs ?? []).includes(`${packDir}/dist`));
@@ -390,7 +390,7 @@ describe('apack build says what it read', () => {
    * go; the gate below cannot, because fewer reads is never a finding there.
    *
    * Whether a record is here at all is the case above's question, and one record answers this one: every
-   * pack is built by `apack build`, so each records all nine phases its manifest asks for.
+   * pack is built by `apack pack build`, so each records all nine phases its manifest asks for.
    */
   it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
     const built = buildReads.packsWithReads();
@@ -574,7 +574,7 @@ describe('what has looked at a step at all', () => {
    * `test` are the same shape: Playwright driving a real Electron process.
    *
    * *A tool could report, and two now are asked.* `build:default-setup` and `test:external-pack:contract` both run
-   * `apack build`, which records what each bundling phase read — the describe above reads it. Measured
+   * `apack pack build`, which records what each bundling phase read — the describe above reads it. Measured
    * 2026-10-02 on its first run: 285 files for `build:default-setup`, 131 of them `@apackdev/sdk`'s and `@apackdev/ears`'
    * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
@@ -621,7 +621,7 @@ describe('what has looked at a step at all', () => {
 /**
  * **What a bundle read, against what its build unit declares.**
  *
- * The third thing this repo can observe, after the compilers' dep files and `apack build`'s module graphs —
+ * The third thing this repo can observe, after the compilers' dep files and `apack pack build`'s module graphs —
  * and the one whose absence cost a real defect. `@apackdev/cli` and `@apackdev/testing` are bundled by esbuild
  * with `@apackdev/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
  * only the first. So an edit to `@apackdev/sdk/src` left both bundles stale with their stamps reading fresh,

@@ -572,7 +572,7 @@ export function createPacksSystem(registry: PackRegistry) {
             actions: 'sendPacksList',
           },
           // A pack activated, reloaded or torn down changes this list, and a reload is the one that
-          // reaches here no other way: it comes from `apack dev`, not from an action of this system
+          // reaches here no other way: it comes from `apack pack dev`, not from an action of this system
           INSTALL_PACK: {
             actions: 'installPack',
           },

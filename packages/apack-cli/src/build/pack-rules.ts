@@ -71,7 +71,7 @@ export interface PackFinding {
 /**
  * A finding whose subject is the pack rather than one file's text.
  *
- * Structured rather than a formatted string, because the two consumers write a path differently — `apack validate`
+ * Structured rather than a formatted string, because the two consumers write a path differently — `apack pack validate`
  * relative to the pack, as its author reads it, and `check:specifiers` relative to the repo, so a finding in one of
  * five packs says which — and free-form strings gave them no way to tell a path from prose. The repo's runner used
  * to prefix the whole string and substitute inside `(reached from …)`, which knew one rule's wording and would have
@@ -217,7 +217,7 @@ const RULE_LIST = [
       + 'bundler ignore the @apackdev/source condition, so a pack that declares it typechecks and tests against '
       + 'source while both its bundles are built from dist',
     // The finding is the site, not the advice: the sentence above is printed once per rule by
-    // `refusePackRuleViolations` and appended to each finding by `apack validate`, so advice carried here too
+    // `refusePackRuleViolations` and appended to each finding by `apack pack validate`, so advice carried here too
     // arrived twice, three times over for a pack that resolves all three packages
     checkPack(packDir) {
       const { resolved, unreadable } = packResolvesSource(packDir);
@@ -519,7 +519,7 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
    * Byte spans are what the per-file pass compares, and a whole-pack finding has none, which is why this is the
    * one place the two kinds are matched on a site rather than a span. Measured before this existed: a contract
    * leaf importing another feature's frontend was reported by `contract-leaves` and by `cross-feature-imports`,
-   * identically, and `apack validate` printed both.
+   * identically, and `apack pack validate` printed both.
    */
   const claimedWide = new Set<string>();
   const site = (file: string, line: number, subject: string) => `${file}\u0000${line}\u0000${subject}`;

@@ -6,7 +6,7 @@ import { MIGRATION_TARGET_PATTERN, type MigrationLine } from '@apackdev/sdk/buil
 import { readManifest, writeManifest, addMigration as addMigrationToManifest } from './manifest';
 
 const HELP = `
-Usage: apack add migration [version] [options]
+Usage: apack pack add migration [version] [options]
 
 Options:
   --version <version>    Target version (default: this pack's version)
@@ -18,9 +18,9 @@ whose shape follows the app rather than the pack. Either way a target is a relea
 prerelease is normalised to the release it belongs to.
 
 Example:
-  apack add migration 0.2.0
-  apack add migration --version 0.2.0
-  apack add migration 0.4.1 --app
+  apack pack add migration 0.2.0
+  apack pack add migration --version 0.2.0
+  apack pack add migration 0.4.1 --app
 `.trim();
 
 export async function addMigration(args: string[], root: string) {

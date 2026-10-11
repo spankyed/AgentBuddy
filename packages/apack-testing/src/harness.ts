@@ -134,7 +134,7 @@ export function mockInference(...args: Parameters<typeof fakeInference>): FakeIn
   return inference;
 }
 
-/** Where `apack build` caches a dependency's snapshot and build/ in a pack */
+/** Where `apack pack build` caches a dependency's snapshot and build/ in a pack */
 const DEPS_DIR = path.join('.apack', 'deps');
 const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
@@ -213,11 +213,11 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
     const dir = path.join(packDir, DEPS_DIR, depId);
     const snapshotFile = path.join(dir, 'snapshot.json');
     if (!fs.existsSync(snapshotFile)) {
-      throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`apack build\` once to fetch dependencies.`);
+      throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`apack pack build\` once to fetch dependencies.`);
     }
     const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8')) as PackSnapshot;
     const mismatch = _snapshotFormatMismatch(snapshot);
-    if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${_cliFormatMismatchMessage(mismatch)}. Run \`apack build\` to fetch it again.`);
+    if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${_cliFormatMismatchMessage(mismatch)}. Run \`apack pack build\` to fetch it again.`);
     const buildDir = path.join(dir, 'build');
     dependencies.set(depId, { snapshot, dir, manifest: snapshot.manifest, ...(fs.existsSync(buildDir) && { buildDir }) });
   }
@@ -284,7 +284,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     for (const [depId, dependency] of dependencies) {
       const file = dependency.buildDir && path.join(dependency.buildDir, CONTENT_RUNTIME_FILE);
       if (!file || !fs.existsSync(file)) {
-        throw new Error(`Dependency "${depId}" has no ${CONTENT_RUNTIME_FILE}; rebuild it, or update apack for built-in packs, then run \`apack build\` again`);
+        throw new Error(`Dependency "${depId}" has no ${CONTENT_RUNTIME_FILE}; rebuild it, or update apack for built-in packs, then run \`apack pack build\` again`);
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
       startTestRuntime({ entityTypes: Object.values(contentRuntime.entities) });
@@ -343,7 +343,7 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
   for (const [depId, dependency] of dependencies) {
     const runtimeEntry = path.join(dependency.dir, 'runtime', 'index.cjs');
     if (!fs.existsSync(runtimeEntry)) {
-      throw new Error(`Dependency "${depId}" has no runtime/index.cjs in ${path.relative(packDir, dependency.dir)}; rebuild it, or update apack for built-in packs, then run \`apack build\` again`);
+      throw new Error(`Dependency "${depId}" has no runtime/index.cjs in ${path.relative(packDir, dependency.dir)}; rebuild it, or update apack for built-in packs, then run \`apack pack build\` again`);
     }
     const contentDir = path.join(dependency.dir, 'runtime', 'content');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(contentDir) ? contentDir : undefined);

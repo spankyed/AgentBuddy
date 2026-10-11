@@ -23,7 +23,7 @@ const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
 /**
  * A pack rule from `@apackdev/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
  *
- * The rule is the same rule wherever it runs — `apack build`, `apack validate` and `apack test` run these
+ * The rule is the same rule wherever it runs — `apack pack build`, `apack pack validate` and `apack pack test` run these
  * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
  * drift apart (`docs/goals/goal-one-rule-set.md`). What this adds is the repo's shape: each `dir` may be a
  * pack's `src`, a pack's `tests`, or — in a spec — a directory standing in for one, and paths are reported
@@ -32,7 +32,7 @@ const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
  * One rule at a time, so it does not get `packRuleProblems`' "one offence, one message" — there, a pack author
  * reading a build failure is told once by the rule whose cause comes first. Here the rule *is* the subject:
  * `--rule <id>` runs one; `--list` names them all, says which an external pack is held to as well (a rule with
- * a `packRule` is one `apack validate`, `build` and `test` run), and prints what doing without each of the
+ * a `packRule` is one `apack pack validate`, `build` and `test` run), and prints what doing without each of the
  * rest costs a pack — answering from the entries rather than from a table in a doc, which is what a survey of
  * this taken by hand went stale as. A rule that stood down would make a per-rule run's
  * answer depend on which other rules ran. What keeps that from becoming two answers to one question is that
@@ -96,7 +96,7 @@ interface RuleShape {
    * Data rather than a default parameter, because two checks need to read it: the sweeps that assert one rule owns
    * each offence derive who takes part from it — a rule that reads a pack's `tests` is swept there, and one that
    * reads `packages/*` minus the packs takes part in neither — and a population is otherwise unassertable, which is
-   * how `host-imports` came to read a pack's `src` alone while `apack test` ran it over a pack's tests.
+   * how `host-imports` came to read a pack's `src` alone while `apack pack test` ran it over a pack's tests.
    *
    * Absent for the six rules whose subject is not a dir list: the layer table, `LMDB_RULES`, the shared-list files,
    * the repo's configs, a package's own `scripts/` and the checkout itself.
@@ -139,7 +139,7 @@ export type ImportRule = RuleShape & (
  * function.
  *
  * The sentence comes from `PACK_RULES` rather than being written again here, because a second copy drifts: for a
- * while `host-imports` printed one sentence from `apack validate` and a different one from `check:specifiers`,
+ * while `host-imports` printed one sentence from `apack pack validate` and a different one from `check:specifiers`,
  * for the same offence in the same file.
  */
 export const backed = <Id extends string>(

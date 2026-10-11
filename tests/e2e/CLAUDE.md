@@ -45,7 +45,7 @@ boundary pays a full Electron launch for nothing.
 **Driving does not belong here at all — it belongs in `drive/`, and it is mainly for you.** Driving is how
 an agent debugs and develops against the app: open what you just built, click through it, read the state
 back, screenshot it, and find out whether the change worked instead of reasoning about it. A driving
-script asserts nothing and nothing gates on it, so `npm run drive` collects it and no test runner does.
+script asserts nothing and nothing gates on it, so `npm run dev:drive` collects it and no test runner does.
 A scratch file kept inside `testDir` does not work for this, however it is named and even gitignored: the
 suite picks it up anyway. A script graduates into a spec here only when it asserts something a
 future change could break **and** it needs the real app. Most driving is neither.
@@ -77,13 +77,13 @@ DEBUG_E2E=1 npm run test:e2e                  # Electron process output to termi
 
 ## How the fixture works
 
-The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack init-tests` scaffolds.
+The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack pack init-tests` scaffolds.
 
 ### Startup lifecycle
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detection, walking up from the `@apackdev/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
+1. **Resolve the app** — `resolveTestHost()` (when `createTest()` runs, at import) honors the CLI's resolved `APACK_HOST_EXECUTABLE` / `APACK_HOST_ROOT`; explicit fixture options must agree. Standalone fixtures may select `appExecutable` or `appRoot`, then fall back to the checkout enclosing `@apackdev/testing`. Executables must exist; source checkouts must have `packages/entry-point.mjs`, `node_modules/electron`, and main/renderer `dist` outputs.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
@@ -120,7 +120,7 @@ Three fixtures are provided, each at a different scope:
 
 ```ts
 app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
-                                 // `drive`, a pack's tests/screenshots/ under `apack test`
+                                 // `drive`, a pack's tests/screenshots/ under `apack pack test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -172,12 +172,12 @@ drive('check something', async ({ app, appPage }) => {
 ```
 
 ```bash
-npm run drive                    # everything in drive/, windows shown
-npm run drive -- drive/notes.ts  # one script
+npm run dev:drive                    # everything in drive/, windows shown
+npm run dev:drive -- drive/notes.ts  # one script
 ```
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
-file is. A pack author gets the same thing from `apack drive`, which scaffolds the directory on first use
+file is. A pack author gets the same thing from `npm run dev:drive --`, which scaffolds the directory on first use
 and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
@@ -263,10 +263,10 @@ Pack developers can write and run E2E tests without the apack repo. The fixture 
 
 ```bash
 cd /path/to/my-pack
-apack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
+apack pack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
 npm install
-apack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
-apack test --build beta   # CI: never prompts; --build <path> for a checkout
+apack pack test                # a Beta matching the pack's hostVersion; --host <path> for a checkout
+apack pack test --host beta   # CI: never prompts; --host <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -275,7 +275,7 @@ Set `PACK_DIR` to test an external pack using the monorepo's test runner. No set
 
 ```bash
 # Drive a pack's app instead of testing it
-PACK_DIR=/path/to/my-pack npm run drive
+PACK_DIR=/path/to/my-pack npm run dev:drive
 
 # Run against any test file
 PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/smoke
@@ -285,7 +285,7 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/smoke
 
 1. **Read manifest** — parses `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
 2. **Isolated data dir** — creates `$TMPDIR/apack-e2e-*` for the worker
-3. **Build**: always runs `apack build` in the pack directory (fails the run if the build fails)
+3. **Build**: always runs `apack pack build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
 6. **Check applying** — fails if the pack's installed-packs entry has a `lastError`
@@ -313,10 +313,10 @@ The renderer exposes on `window`:
 | *(always)* | The same output is written to `tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
-| `APACK_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
-| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack test --build beta`); wins over `APACK_ROOT` |
-| `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack test`) |
-| `APACK_BUILD=beta` | Read by `apack test` (and `apack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
+| `APACK_HOST_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
+| `APACK_HOST_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --host beta`); cannot be combined with `APACK_HOST_ROOT` |
+| `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack pack test`) |
+| `APACK_HOST=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 

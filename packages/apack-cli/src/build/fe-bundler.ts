@@ -28,7 +28,7 @@ function opaqueDeps(packDir: string): string[] {
  *
  * **Rollup's include pass is what this is about, not the output.** Walking a prebuilt bundle costs most
  * of the frontend phase and removes almost nothing from it: measured on the pack the app ships,
- * 2026-10-08, declaring its one such dependency opaque took `apack build` from 23.3s to 20.6s, median
+ * 2026-10-08, declaring its one such dependency opaque took `apack pack build` from 23.3s to 20.6s, median
  * of 3 interleaved runs, for 38 KB on an 8.5 MB output. Taking that dependency out of the graph
  * altogether is 18.5s, which is the ceiling this cannot reach — the module still has to be parsed and
  * emitted, because it is what the pack loads at runtime.
@@ -277,7 +277,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
  * request comes back to *this* server, which left the specifier external and has nothing to serve for it. The
  * pack's frontend then fails to load, where leaving the name alone resolves it through the document's import
  * map to the host's module. A build has no such rewrite and emits the bare name already, so this is what
- * makes `apack dev` agree with `apack build`.
+ * makes `apack pack dev` agree with `apack pack build`.
  *
  * **It has to be a middleware, not a `transform`.** Vite appends `importAnalysisPlugin` after the user's
  * `post` plugins, so no hook runs after the rewrite; the only place left is the response. That is also the
@@ -327,7 +327,7 @@ function keepExternalsBarePlugin(packDir: string): VitePlugin {
 }
 
 /**
- * The dev server `apack dev` serves a pack's frontend from.
+ * The dev server `apack pack dev` serves a pack's frontend from.
  *
  * Here rather than inline in the command, so a spec can drive the same server the command does. It is one
  * declaration with two readers for a reason: the first spec to stand a dev server up wrote its own config, left

@@ -865,7 +865,7 @@ describe('the stale message', () => {
 describe('a stamped build', () => {
   /** stampedBuild against a fixture: its own stamp and lock, never the repo's */
   // Pinned to `command` rather than left to `intentFromEnv()`, so a test reads the same whatever
-  // APACK_BUILD_INTENT the run inherited
+  // APACK_APP_INTENT the run inherited
   const run = (f: Fixture, build: () => void | Promise<void>, intent: BuildIntent = 'command') =>
     stampedBuild('@apackdev/fixture', f.unit, path.join(f.root, 'stamp.json'), build, { lock: path.join(f.root, 'build.lock'), intent });
 

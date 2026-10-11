@@ -1,6 +1,6 @@
 # Content
 
-Content sources `apack build` compiles to JSON, as `apack.json` `content.formats` and `content.sources` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the content writers for Note, Document and Collection. Actions and prompts run in a sandboxed scope at runtime: no module system, their function bodies are extracted (with inlined helpers). Flows compile to Flow/Node graphs.
+Content sources `apack pack build` compiles to JSON, as `apack.json` `content.formats` and `content.sources` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the content writers for Note, Document and Collection. Actions and prompts run in a sandboxed scope at runtime: no module system, their function bodies are extracted (with inlined helpers). Flows compile to Flow/Node graphs.
 
 ## Actions
 

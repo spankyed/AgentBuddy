@@ -15,7 +15,7 @@ export interface HostInfo {
   packFormat?: number;
 }
 
-/** Records what the apack starting with this data dir can load, so `apack install` and `apack dev` can check a pack against it. */
+/** Records what the apack starting with this data dir can load, so `apack pack install` and `apack pack dev` can check a pack against it. */
 export function recordHostInfo(userDataDir: string, info: Required<HostInfo>): void {
   const current = readHostInfo(userDataDir);
   if (current.version === info.version && current.packFormat === info.packFormat) return;

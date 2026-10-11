@@ -5,13 +5,13 @@ import { validateName, writeIfNotExists, logCreated, parseFlag, hasFlag } from '
 import { readManifest, writeManifest, addArtifact as addArtifactToManifest } from './manifest';
 
 const HELP = `
-Usage: apack add artifact <type> [options]
+Usage: apack pack add artifact <type> [options]
 
 Options:
   --icon <Icon>    Lucide icon name (default: FileText)
 
 Example:
-  apack add artifact chart --icon BarChart3
+  apack pack add artifact chart --icon BarChart3
 `.trim();
 
 // The threads artifact panel renders a viewer with the selected `artifact` (ArtifactItem)

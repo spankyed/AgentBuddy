@@ -40,7 +40,7 @@ host services is a content change to codegen, not a new mechanism.
 `@apackdev/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
 not exclusive. `check:specifiers` already rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem`
 imports in pack sources for exactly this reason; this is the same rule for the same kind of escape hatch,
-and `apack validate`/`apack build` are where it binds for an external pack.
+and `apack pack validate`/`apack pack build` are where it binds for an external pack.
 
 ## The design
 
@@ -103,7 +103,7 @@ Restricting the data layer contradicts a documented affordance. Either:
 
 **A pack's compiled content may only create entity types the pack declares** — derivable at build time from
 `apack.json`'s `ears.entities` against the `record.entity` values in the compiled content data, and refused by
-`apack validate` and `apack build`. It closes the content path without touching runtime queries or the
+`apack pack validate` and `apack pack build`. It closes the content path without touching runtime queries or the
 untyped affordance, and it is the same shape as the externals subset check `goal-one-kind-of-pack` landed
 (`apack-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
 refusal.

@@ -382,7 +382,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',
-      'test:packaged-authoring:app': 'launches the app through `apack test`, and the install that would '
+      'test:packaged-authoring:app': 'launches the app through `apack pack test`, and the install that would '
         + 'derive its rung is in the author half — so the facts read it as a bare check where it is one '
         + 'Electron launch. A suite, as `test:smoke` is for launching one',
     };
@@ -771,7 +771,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
   /**
    * `facade:check` runs after `build:default-setup`, and that is what makes its one write safe rather than lucky.
    *
-   * `apack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
+   * `apack pack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
    * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
    * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
    * it could read it mid-write. None does, because `build:default-setup` writes that tree and this one declares it as an

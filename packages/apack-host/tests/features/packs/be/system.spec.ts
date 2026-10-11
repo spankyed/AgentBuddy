@@ -43,7 +43,7 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-/** The pack source `apack build` would leave, at `version`; `content` gives it compiled data that won't content */
+/** The pack source `apack pack build` would leave, at `version`; `content` gives it compiled data that won't content */
 function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
@@ -227,7 +227,7 @@ describe('a pack that ships with the app', () => {
 });
 
 // The system whose whole job is listing packs once did not re-send it, so an open Packs view stayed stale
-// after an `apack dev` reload. It publishes on the one ask now, whatever caused it — the bus sends that
+// after an `apack pack dev` reload. It publishes on the one ask now, whatever caused it — the bus sends that
 // after a pack changes, a client connects or the data is replaced (`tests/bus/send-state.spec.ts`).
 describe('the packs system asked to publish', () => {
   it('sends the list again', () => {
@@ -242,7 +242,7 @@ describe('the packs system asked to publish', () => {
   });
 });
 
-// The packs directory is what makes a pack installed. `apack install` and `apack dev` write it and
+// The packs directory is what makes a pack installed. `apack pack install` and `apack pack dev` write it and
 // never installed-packs.json, so a pack with no row is the ordinary case, not a broken one.
 describe('a pack with nothing recorded about it', () => {
   it('is listed, enabled', async () => {
@@ -250,7 +250,7 @@ describe('a pack with nothing recorded about it', () => {
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
       await installPackFromLocal(packSource('1.0.0'));
-      expect(fs.existsSync(resolveAppContext({ build: 'test', profile: tmpDir }).installedPacksFile)).toBe(false);
+      expect(fs.existsSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile)).toBe(false);
 
       system.send({ type: 'GET_INSTALLED_PACKS' });
 
@@ -331,7 +331,7 @@ describe('a decision that could not be saved', () => {
       expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
       takeSystemErrors();
       // A directory where the record goes: the rename onto it fails, whatever is written beside it
-      fs.mkdirSync(resolveAppContext({ build: 'test', profile: tmpDir }).installedPacksFile, { recursive: true });
+      fs.mkdirSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile, { recursive: true });
 
       system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
 

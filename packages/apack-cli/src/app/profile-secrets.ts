@@ -70,7 +70,7 @@ function sourceSecretsFile(env: AppEnv): string {
  */
 function vaultFor(file: SecretsFile, secretsFile: string, env: AppEnv): KeyVault {
   if (file.protection === 'unprotected') return fileKeyVault(dataKeyFile(secretsFile));
-  return osKeyVault(resolveAppContext({ build: env }).appName);
+  return osKeyVault(resolveAppContext({ env }).appName);
 }
 
 export interface SecretCopy {
@@ -88,6 +88,7 @@ export interface SecretCopy {
  * credential store doing its job.
  */
 export function copySecretsInto(profile: OpenedProfile, env: AppEnv): SecretCopy {
+  if (!profile.created) throw new Error('--with-secrets copies into a new profile only. Use --fresh or choose a new profile name.');
   const from = sourceSecretsFile(env);
   const source = readFile(from);
   if (!source) throw new Error(`--with-secrets found no keys to copy: ${from} doesn't exist or can't be read.`);

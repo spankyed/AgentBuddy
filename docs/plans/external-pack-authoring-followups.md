@@ -27,7 +27,7 @@ code; this is the index from item to commit.
 |---|---|
 | 1, 2 — release packs a dev build; `--app beta` resolved deps against the wrong app | `c5a16033b` |
 | 3 — tear down an active pack before installing over it | `e5d71b849` |
-| 4, 5 — `test()` exiting on the release path; a resumable `apack release` | `6efd8f48c` |
+| 4, 5 — `test()` exiting on the release path; a resumable `apack pack release` | `6efd8f48c` |
 | 6, 7, 8 — delete `emitDepTypes`, drop the deps glob, use the scaffolded tsconfig | `7d018e0e5`, `df90afeae` |
 | 9 — one installed-packs reader, "no record" in its type | `1d6cf3226` |
 | 10 — `recoverStagingDirs` takes known/not-known, not an optional Set | `d78131150` |
@@ -87,15 +87,15 @@ run to verify. Hardening only: it is `workflow_dispatch` only and dry-run by def
 
 ~~**Beta resolution hits the network before checking the cache.**~~ **Closed 2026-10-02.** The ordering was
 real and the diagnosis pointed one module too far down: `ensureBetaApp` is the *downloader*, and the
-resolution order is `app-target.ts`'s. `cachedBetaApp` there already answered "the newest downloaded beta
-this range accepts"; `configuredAppPackagesDir` asked it only for a *remembered* beta choice and
+resolution order is `pack-host.ts`'s. `cachedBetaApp` there already answered "the newest downloaded beta
+this range accepts"; `configuredHostPackagesDir` asked it only for a *remembered* beta choice and
 `packagedTarget` never did. Both ask it first now, and the rule no longer depends on how beta was requested —
 neither `build` nor `test` is an upgrade command, so a cached build that satisfies `hostVersion` is a correct
 answer, and a newer beta is an explicit act (delete the cached one).
 
 What that leaves unverifiable is narrower than the item was: a real release cycle still cannot be exercised
 here, so "does a GitHub release resolve" is untested, but the offline and rate-limit halves are now covered
-by `app-target.spec.ts` with no network — *answers from the cache without reaching the network, named or
+by `pack-host.spec.ts` with no network — *answers from the cache without reaching the network, named or
 not*, and its counterpart, that a cached build the range rejects still falls through.
 
 **`npx`/`npm` fail on Windows without a shell.** `release.ts`. No Windows machine here.

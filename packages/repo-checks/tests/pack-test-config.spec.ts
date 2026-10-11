@@ -9,7 +9,7 @@ import { repoFiles } from './_support/repo-files.ts';
  * A pack's vitest config is a call to `definePackTestConfig`, not a copy of one.
  *
  * There were three of these and they had drifted: the built-in pack, the repo's fixture pack and the config
- * `apack init` scaffolds each restated the same settings, and one ran without `globals` while another set
+ * `apack pack init` scaffolds each restated the same settings, and one ran without `globals` while another set
  * it. Nobody decided that; it is what three copies do, and a fourth copy is a `cp` away — which is why this
  * is a check and not a convention.
  *
@@ -73,7 +73,7 @@ describe("a pack's vitest config calls definePackTestConfig", () => {
    * And the config a pack author is *given*, which is the one that matters most: every pack outside this repo
    * starts as a copy of it, so a template that assembled its own would put the drift back at the source.
    */
-  it('is what apack init scaffolds', () => {
+  it('is what apack pack init scaffolds', () => {
     // The template is a file now, so this reads the file rather than a literal out of init.ts
     // (`docs/goals/goal-one-rule-set.md`) — the same two assertions over a stronger subject.
     const template = read(path.join('packages', 'apack-cli', 'templates', 'pack', 'vitest.config.ts'));

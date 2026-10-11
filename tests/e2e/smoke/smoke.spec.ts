@@ -44,7 +44,7 @@ test('runs in an isolated per-worker test data dir', async ({ electronApp, appPa
  * Playwright drives Electron over CDP, so it launches every app here with `--remote-debugging-port`, and
  * Chromium writes the number it chose to `DevToolsActivePort` in the data dir. So a tool that *inferred*
  * attachability — from the file, from a reachable port — would find this app and drive a test run's app
- * mid-suite. `@apackdev/host/dev-session`'s rule is that the file is declared instead: `apack dev` and the
+ * mid-suite. `@apackdev/host/dev-session`'s rule is that the file is declared instead: `apack pack dev` and the
  * `npm run dev` loop publish one because they mean their app to be driven, and nothing treats the absence of
  * one as "try anyway".
  *

@@ -1,4 +1,4 @@
-// The scaffold's output, as files. `apack init` and `apack add` write pack code, and pack code in a
+// The scaffold's output, as files. `apack pack init` and `apack pack add` write pack code, and pack code in a
 // template literal is code no rule can read: it needed a masker that blanked `${…}` in place, an
 // extension-only specifier check with no pack to resolve against, and a rule whose whole job was to check
 // that the list of files holding such literals was complete (`goal-one-rule-set.md`). As files under

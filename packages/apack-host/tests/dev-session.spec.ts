@@ -19,6 +19,8 @@ afterEach(() => {
 });
 
 const session = (over: Partial<DevSession> = {}): DevSession => ({
+  host: { kind: 'source', root: dataDir },
+  env: 'development',
   debugPort: 51873,
   apiPort: 3001,
   logPath: path.join(dataDir, 'dev.log'),
@@ -67,6 +69,16 @@ describe('reading a session', () => {
     // A pid no process has. 2^22 is above every platform's default pid_max, so this cannot collide with a
     // process started between writing and reading
     publishSession(session({ supervisorPid: 4_194_303 }));
+    expect(readSession(dataDir)).toBeUndefined();
+  });
+
+  it.each([0, -1, 1.5])('ignores unsafe supervisor pid %s before any liveness check', supervisorPid => {
+    publishSession(session({ supervisorPid }));
+    expect(readSession(dataDir)).toBeUndefined();
+  });
+
+  it.each([0, -1, 65_536, 1.5])('ignores invalid debug port %s', debugPort => {
+    publishSession(session({ debugPort }));
     expect(readSession(dataDir)).toBeUndefined();
   });
 
@@ -197,7 +209,7 @@ describe('the debug port for a launch', () => {
  * `--remote-debugging-port` is unauthenticated control of the renderer, which holds the app's API token, so
  * its subject is input and it needs cases that fire: `development` is the only answer that gets a port.
  *
- * It lives here because **two** launchers need it, which is the whole reason it is a function. `apack dev`
+ * It lives here because **two** launchers need it, which is the whole reason it is a function. `apack pack dev`
  * had this decision with six cases guarding it; the `npm run dev` watcher pushed the flag unconditionally,
  * behind a `NODE_ENV !== 'development'` check — the *bundle's* mode, which says nothing about the
  * environment the spawned app resolves. A source run takes that from `APACK_ENV`, so

@@ -45,7 +45,7 @@ export function discoverDevPackFrontends(
     }
     if (typeof id !== 'string' || !id) { reject('has no id in its apack.json'); continue; }
     const feEntry = path.join(dir, 'src', '__generated__', 'pack-entry-fe.ts');
-    if (!fs.existsSync(feEntry)) { reject(`has no ${path.relative(dir, feEntry)} — run apack generate-entries in it`); continue; }
+    if (!fs.existsSync(feEntry)) { reject(`has no ${path.relative(dir, feEntry)} — run apack pack generate-entries in it`); continue; }
     if (found.some((pack) => pack.id === id)) continue;
     found.push({ id, feEntry });
   }
@@ -58,7 +58,7 @@ export function discoverDevPackFrontends(
  * module graph — which is what makes a component edit a patch rather than a reload.
  *
  * It is empty in a production build, where there is no source to serve and every pack's frontend is
- * fetched over `pack://` from the bundle its own `apack build` wrote.
+ * fetched over `pack://` from the bundle its own `apack pack build` wrote.
  */
 export function devPackFrontendsModule(packs: readonly DevPackFrontend[]): string {
   const lines = packs.map((pack) => `  ${JSON.stringify(pack.id)}: () => import(${JSON.stringify(pack.feEntry)}),`);

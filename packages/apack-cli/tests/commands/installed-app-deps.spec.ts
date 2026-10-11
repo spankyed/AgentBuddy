@@ -9,19 +9,20 @@ import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmp: string;
-const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR, build: process.env.APACK_BUILD };
+const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR, host: process.env.APACK_HOST };
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-app-deps-'));
   process.env.APACK_USER_DATA_DIR = path.join(tmp, 'userdata');
-  delete process.env.APACK_BUILD;
+  delete process.env.APACK_HOST;
 });
 
 afterEach(() => {
-  for (const [key, value] of [['APACK_ENV', saved.env], ['APACK_USER_DATA_DIR', saved.dir], ['APACK_BUILD', saved.build]] as const) {
+  for (const [key, value] of [['APACK_ENV', saved.env], ['APACK_USER_DATA_DIR', saved.dir], ['APACK_HOST', saved.host]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
+  vi.unstubAllEnvs();
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -38,7 +39,7 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
   // Compiled content at the top of a shipped pack's dist, beside files that aren't content
-  // Compiled content, where `apack build` writes them for every pack
+  // Compiled content, where `apack pack build` writes them for every pack
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"content":[]}');
@@ -102,11 +103,11 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.existsSync(path.join(packRoot, '.apack', 'deps', 'base-pack', 'runtime'))).toBe(false);
   });
 
-  it('resolves a shipped dependency from the app configured for apack test, before the app has run', async () => {
+  it('resolves a shipped dependency from the app configured for apack pack test, before the app has run', async () => {
     const checkout = path.join(tmp, 'apack');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
-    process.env.APACK_BUILD = checkout;
+    process.env.APACK_HOST = checkout;
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
@@ -157,7 +158,7 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepFiles(packRoot, 'base-pack', '^1.0.0'))?.snapshot.manifest.version).toBe('1.0.0');
   });
 
-  it('prefers the app configured for apack test over an installed app', async () => {
+  it('prefers the app configured for apack pack test over an installed app', async () => {
     await publishInstalled('1.0.0');
     const checkout = path.join(tmp, 'apack');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
@@ -165,7 +166,7 @@ describe('dependency resolution from an installed app', () => {
       builtInPack(snapshotOf('3.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
-    process.env.APACK_BUILD = checkout;
+    process.env.APACK_HOST = checkout;
 
     expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
   });
@@ -190,14 +191,14 @@ describe('dependency resolution from an installed app', () => {
    * checked where a build is chosen, beside the version range.
    */
   describe('the snapshot format', () => {
-    it('passes over a nearer build in another format for one in the format this CLI reads', async () => {
+    it('refuses an explicitly selected host in another snapshot format', async () => {
       await publishInstalled('1.0.0');
       const checkout = path.join(tmp, 'apack');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
-      process.env.APACK_BUILD = checkout;
+      process.env.APACK_HOST = checkout;
 
-      expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
+      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(/its snapshot is format/);
     });
 
     it('refuses a dependency found only in another format, naming where and which side is older', async () => {
@@ -223,7 +224,7 @@ describe('dependency resolution from an installed app', () => {
     });
   });
 
-  /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack release` publishes them */
+  /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack pack release` publishes them */
   async function publishedRelease(version: string, format: number | undefined) {
     const src = path.join(tmp, `dep-pack-${version}`);
     fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });
@@ -311,5 +312,45 @@ describe('dependency resolution from an installed app', () => {
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
     expect(await resolveDepFiles(packRoot, 'missing-pack', '*')).toBeNull();
+  });
+});
+
+
+describe('resolved host dependency ownership', () => {
+  function sources() {
+    const workspace = path.join(tmp, 'workspace');
+    const selected = path.join(tmp, 'selected-host');
+    const pack = path.join(workspace, 'author-pack');
+    fs.mkdirSync(pack, { recursive: true });
+    const source = builtInPack();
+    for (const [root, version] of [[workspace, '2.0.0'], [selected, '1.0.0']]) {
+      const dependency = path.join(root, 'packages', 'base-pack');
+      fs.cpSync(source, dependency, { recursive: true });
+      fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version }, format: PACK_SNAPSHOT_FORMAT }));
+    }
+    vi.stubEnv('APACK_HOST_ROOT', selected);
+    return { selected, workspace, pack };
+  }
+
+  it('uses the selected host before a nearby workspace', async () => {
+    const { pack } = sources();
+    expect((await resolveDepFiles(pack, 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
+  });
+
+  it('refuses an incompatible selected host instead of substituting the workspace', async () => {
+    const { pack } = sources();
+    await expect(resolveDepFiles(pack, 'base-pack', '>=2.0.0')).rejects.toThrow(/Selected host dependency.*base-pack.*1.0.0.*>=2.0.0/);
+  });
+
+  it('refuses an unbuilt dependency belonging to the selected host', async () => {
+    const { selected, pack } = sources();
+    fs.rmSync(path.join(selected, 'packages', 'base-pack', 'dist'), { recursive: true });
+    await expect(resolveDepFiles(pack, 'base-pack', '*')).rejects.toThrow(/Selected host dependency.*no built snapshot/);
+  });
+
+  it('keeps an explicitly declared file dependency authoritative', async () => {
+    const { workspace, pack } = sources();
+    const dependency = `file:${path.join(workspace, 'packages', 'base-pack')}`;
+    expect((await resolveDepFiles(pack, 'base-pack', dependency))?.snapshot.manifest.version).toBe('2.0.0');
   });
 });

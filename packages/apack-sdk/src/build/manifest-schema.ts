@@ -66,7 +66,7 @@ const StepTriggerSchema = z.object({
 
 /**
  * One step type: its facets, each named where its code is. A step's `build` facet is what a dependent
- * pack's `apack build` validates flows with, its `fe` facet is what the flow editor draws, and its
+ * pack's `apack pack build` validates flows with, its `fe` facet is what the flow editor draws, and its
  * `runtime` is what the brain runs — so the three go to three different places and none of them is a
  * barrel the author keeps in step with the others.
  *
@@ -336,7 +336,7 @@ const EntityShapeSchema = z.object({
 
 /**
  * How the pack is built. These are settings no part of the app reads — unlike `entities` or `features`,
- * which the host loads at boot — so what belongs here is anything that changes only what `apack build`
+ * which the host loads at boot — so what belongs here is anything that changes only what `apack pack build`
  * produces or how long it takes.
  */
 const BuildConfigSchema = z.object({
@@ -371,7 +371,7 @@ function extensionPoint<T extends z.ZodTypeAny>(
 /**
  * What the pack gives the host, as against what it is made of (`features`) or what data it ships
  * (`content`). Every entry is a contribution the app registers and some other pack or the shell can
- * reach; a setting that only changes what `apack build` produces is `build`, not one of these.
+ * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
 const ExtensionsSchema = z.object({
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
@@ -405,7 +405,7 @@ export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
 
 /**
  * A migration's key: the version it targets, which is the only place that version is written. Exported
- * because `apack add migration` checks a version against it before writing one — the schema is what
+ * because `apack pack add migration` checks a version against it before writing one — the schema is what
  * refuses a bad key, and it cannot do so until the manifest has already been written.
  */
 export const MIGRATION_TARGET_PATTERN = /^\d+\.\d+\.\d+$/;

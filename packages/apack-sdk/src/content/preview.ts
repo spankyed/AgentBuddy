@@ -14,7 +14,7 @@ export type { PackContentPreview, PackContentPreviewItem } from '../build/previe
 export function previewPackContent(directory: string): PackContentPreview {
   const indexFile = path.join(directory, CONTENT_INDEX_FILE);
   if (!fs.existsSync(indexFile)) {
-    throw new Error(`${directory} has no ${CONTENT_INDEX_FILE}: choose a pack's compiled content directory (built by apack build)`);
+    throw new Error(`${directory} has no ${CONTENT_INDEX_FILE}: choose a pack's compiled content directory (built by apack pack build)`);
   }
   const index = JSON.parse(fs.readFileSync(indexFile, 'utf-8')) as ContentIndex;
   const packId = indexPackId(index, indexFile);

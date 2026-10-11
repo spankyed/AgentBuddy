@@ -133,8 +133,8 @@ describe('the recorded irreproducible outputs', () => {
 /**
  * The trap this check would otherwise walk into, and the reason `scripts/repro.ts` runs codegen itself.
  *
- * `apack build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early when
- * `.inputs-hash` matches. So a round that leaves codegen to `apack build` re-hashes `src/__generated__`
+ * `apack pack build` calls `generateEntries([])` with no `--force`, and `generate-entries` returns early when
+ * `.inputs-hash` matches. So a round that leaves codegen to `apack pack build` re-hashes `src/__generated__`
  * without having regenerated it, and reports it identical — half of `PACK_OUTPUTS` passing for having been
  * looked at rather than checked.
  *
@@ -143,7 +143,7 @@ describe('the recorded irreproducible outputs', () => {
  * dropped.
  */
 describe('the codegen the second build would otherwise skip', () => {
-  it('is forced by the script, not left to apack build', () => {
+  it('is forced by the script, not left to apack pack build', () => {
     const script = fs.readFileSync(path.join(REPO_ROOT, 'scripts/repro.ts'), 'utf-8');
     const call = /'generate:entries'[^\n]*\n?[^\n]*/.exec(script)?.[0];
     expect(call, 'scripts/repro.ts no longer runs generate:entries at all').toBeDefined();
