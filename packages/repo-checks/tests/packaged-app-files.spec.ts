@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 // What the app installs, asked of the matcher electron-builder itself builds from `electron-builder.mjs`.
 //
 // Nothing else looks at that file: it is named by no chain step on purpose (`chain-inputs.spec.ts`'s
-// `NOT_A_CHAIN_INPUT` — it is read by `npm run build-prod`, which is not one), and its patterns have gone wrong
+// `NOT_A_CHAIN_INPUT` — it is read by `npm run build:production`, which is not one), and its patterns have gone wrong
 // silently before. The exclusion of `.ts` files once stripped the CLI's scaffold templates out of the installed
 // app, found by packaging the app and listing what arrived.
 //

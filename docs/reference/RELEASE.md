@@ -16,10 +16,10 @@ Validates, bumps version, generates changelog, tags, and pushes — triggering C
 | `npm run release:minor` | Release with minor bump |
 | `npm run release:major` | Release with major bump |
 | `npm run release -- --dry-run` | Preview without making changes |
-| `npm run build-prod` | Local production build (unsigned) |
-| `npm run build-prod:signed` | Local build with signing (reads `.env.signing`) |
-| `npm run prod-app` | Launch the built app with logging |
-| `npm run clean-prod` | Delete all prod data and build artifacts |
+| `npm run build:production` | Local production build (unsigned) |
+| `npm run build:production:signed` | Local build with signing (reads `.env.signing`) |
+| `npm run start:production` | Launch the built app with logging |
+| `npm run reset:production` | Delete all prod data and build artifacts |
 | `npm run verify-signing` | Verify code signature and notarization |
 
 ## Installing (Unsigned Builds)
@@ -53,14 +53,14 @@ The release script (`build/release/release.sh`) runs these steps:
 
 ## Production Build Pipeline
 
-`npm run build-prod` runs `build/build.sh` with 7 steps:
+`npm run build:production` runs `build/build.sh` with 7 steps:
 
 | Step | What it does |
 |------|-------------|
-| 1. Clean | Removes `dist/` and `packages/*/dist/` |
-| 2. Install | `npm install` |
+| 1. Prepare | Selects the production or beta build environment |
+| 2. Install | `npm install`, then create a fresh staging directory |
 | 3. Compile DSL | `npm run compile` (skip with `SKIP_COMPILE=1`) |
-| 4. Build packages | API (tsc + tsup), main/preload (Vite), renderer (vue-tsc + Vite) |
+| 4. Build packages | API (tsc + tsup), main/preload (Vite), renderer (Vite); outputs go to the staging directory |
 | 5. Native helpers | macOS speech recognition binary |
 | 6. Package | electron-builder → `.app`, `.dmg`, `.zip` in `dist/` |
 | 7. Verify signing | Validates code signature + notarization (skipped if unsigned) |
@@ -127,7 +127,7 @@ This is a JSONL sidecar for backend/in-app log events emitted through the app ev
 For a terminal-captured production run, use:
 
 ```bash
-npm run prod-app
+npm run start:production
 ```
 
 That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/apack/main.log`.
@@ -177,7 +177,7 @@ Controlled by environment variables. Without them, builds are unsigned (fine for
 | `CSC_LINK` | CI only: base64-encoded `.p12` certificate |
 | `CSC_KEY_PASSWORD` | CI only: password for the `.p12` file |
 
-For local signed builds, create `.env.signing` (gitignored) from `.env.signing.example`, then run `npm run build-prod:signed`.
+For local signed builds, create `.env.signing` (gitignored) from `.env.signing.example`, then run `npm run build:production:signed`.
 
 ## CI Workflow
 

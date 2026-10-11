@@ -12,7 +12,7 @@ import {APP_WORKSPACES, readBuildManifest, verifyBuildArtifacts, verifyPackagedB
  */
 
 const buildRoot = process.env.APACK_BUILD_ROOT;
-if (!buildRoot) throw new Error('Packaging requires a completed staging build. Use build-prod or build:preview.');
+if (!buildRoot) throw new Error('Packaging requires a completed staging build. Use build:production or build:preview.');
 verifyBuildArtifacts(buildRoot);
 const metadata = readBuildManifest(buildRoot);
 const isBeta = metadata.channel === 'beta';

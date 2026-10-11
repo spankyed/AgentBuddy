@@ -7,7 +7,7 @@ APP="${1:-$SCRIPT_DIR/../../dist/mac-arm64/apack.app}"
 
 if [ ! -d "$APP" ]; then
   echo "App not found at: $APP"
-  echo "Build first with: npm run build-prod"
+  echo "Build first with: npm run build:production"
   exit 1
 fi
 

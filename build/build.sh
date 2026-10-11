@@ -180,5 +180,5 @@ fi
 echo ""
 echo "📦 Next steps:"
 echo "  1. Copy dev data: npm run copy-dev-data"
-echo "  2. Test the app: npm run prod-app"
+echo "  2. Test the app: npm run start:production"
 echo ""

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Clean apack data for testing
-# Usage: npm run clean-prod [--beta]
+# Usage: npm run reset:production [--beta]
 
 set -e
 

@@ -53,7 +53,7 @@ elif [ -d "/Applications/${APP_NAME}.app" ]; then
 else
     echo "✗ Error: ${APP_NAME} not found!"
     echo ""
-    echo "Please build the app first with: npm run build-prod${CHANNEL_LABEL:+ (--beta for beta)}"
+    echo "Please build the app first with: npm run build:production${CHANNEL_LABEL:+ (--beta for beta)}"
     echo "The built app will be at: dist/mac-arm64/${APP_NAME}.app"
     echo ""
     echo "To install (optional):"

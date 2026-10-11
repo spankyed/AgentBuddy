@@ -421,7 +421,7 @@ npm run start:gen        # Full built-in pack build (npm run compile), then dev 
 npm run build:be         # Build backend only
 npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
                          # built-in pack to compile — building it twice rewrote the dist five steps read
-npm run build-prod       # Full production build (build/build.sh)
+npm run build:production       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
                          # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 74.1s of

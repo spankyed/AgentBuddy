@@ -37,7 +37,7 @@ Anything that builds the pack rebuilds them, because they are part of `apack bui
 | `npm start` (`prebuild:be:dev` → `apack build --skip-fe`) | Yes |
 | `npm run build:be`, `npm run build` (`prebuild:be` → `npm run compile`) | Yes |
 | `npm run start:gen`, `npm run compile` | Yes |
-| `npm run build-prod` (`build/build.sh`) | Yes |
+| `npm run build:production` (`build/build.sh`) | Yes |
 | Branch switch on its own | No — `dist/` is gitignored; the next build refreshes it |
 
 The declaration files are generated output: never edit them, and edit `src/defs/*.ts` instead.
