@@ -1,4 +1,7 @@
 import pkg from './package.json' with {type: 'json'};
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {resolveBuildMetadata, verifyPackagedBuild} from './build/build-metadata.ts';
 
 /**
  * Electron Builder Configuration
@@ -9,9 +12,9 @@ import pkg from './package.json' with {type: 'json'};
  */
 
 const isBeta = process.env.APACK_ENV === 'beta';
-const appId = isBeta ? 'dev.apack.beta' : 'dev.apack.app';
-const productName = isBeta ? 'apack Beta' : 'apack';
-const urlScheme = isBeta ? 'apack-beta' : 'apack';
+const isPreview = process.env.APACK_ENV === 'preview';
+const metadata = resolveBuildMetadata();
+const {appId, productName, urlScheme} = metadata;
 // File names without spaces: GitHub rewrites spaces in release asset names, and
 // `apack test --build beta` looks for apack-Beta-<version>-mac-arm64.zip
 export const artifactPrefix = productName.replace(/ /g, '-');
@@ -33,8 +36,16 @@ export default /** @type import('electron-builder').Configuration */
   // Basic configuration
   appId,
   productName,
+  extraMetadata: {version: metadata.version, apackBuild: metadata},
+  afterPack: async (context) => {
+    const appDir = context.electronPlatformName === 'darwin'
+      ? path.join(context.appOutDir, `${productName}.app`, 'Contents/Resources/app')
+      : path.join(context.appOutDir, 'resources/app');
+    verifyPackagedBuild(appDir, metadata);
+    execFileSync(process.execPath, ['build/prod/verify-node-modules.mjs', appDir], {stdio: 'inherit'});
+  },
   directories: {
-    output: 'dist',
+    output: isPreview ? 'dist/preview' : 'dist',
     buildResources: 'build/resources',
   },
   icon: 'build/resources/icon',
@@ -60,7 +71,8 @@ export default /** @type import('electron-builder').Configuration */
         CFBundleURLSchemes: [urlScheme],
       }],
     },
-    notarize: !!process.env.APPLE_TEAM_ID,
+    notarize: !isPreview && !!process.env.APPLE_TEAM_ID,
+    ...(isPreview && {identity: null}),
     target: [
       {
         target: 'dmg',
@@ -89,6 +101,7 @@ export default /** @type import('electron-builder').Configuration */
   },
   
   win: {
+    ...(isPreview && {signAndEditExecutable: false}),
     target: [
       {
         target: 'nsis',
@@ -192,7 +205,7 @@ export default /** @type import('electron-builder').Configuration */
   ],
   
   // Publishing: enable with PUBLISH_TO_GITHUB=true
-  publish: process.env.PUBLISH_TO_GITHUB === 'true' ? {
+  publish: !isPreview && process.env.PUBLISH_TO_GITHUB === 'true' ? {
     provider: 'github',
     owner: 'spankyed',
     repo: 'apack',

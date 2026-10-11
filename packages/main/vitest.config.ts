@@ -17,6 +17,7 @@ export default defineConfig({
   define: {
     // The release channel the build stamps in (build/build.sh); a test is neither channel
     __APACK_CHANNEL__: '"unstamped"',
+    __APACK_BUILD_VERSION__: '"0.0.0-test"',
   },
   test: {
     // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). Declared rather than left to vitest's 5s

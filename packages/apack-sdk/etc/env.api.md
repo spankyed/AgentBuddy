@@ -5,7 +5,7 @@
 ```ts
 
 // @public
-export const APP_ENVS: readonly ["production", "beta", "development", "test"];
+export const APP_ENVS: readonly ["production", "beta", "preview", "development", "test"];
 
 // @public
 export type AppBuild = AppEnv;
@@ -49,7 +49,7 @@ export function _inferElectronAppEnv(input: {
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
 // @public
-export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
+export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
 // @public
 export function resolveAppContext(input?: {

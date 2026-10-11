@@ -65,7 +65,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 `initAppContext()` runs first and is the only place the environment is decided:
 
-- `_inferElectronAppEnv` (`@apack/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__APACK_CHANNEL__` and `process.env.APACK_ENV`. `__APACK_CHANNEL__` is `APACK_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
+- `_inferElectronAppEnv` (`@apack/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__APACK_CHANNEL__` and `process.env.APACK_ENV`. `build/build-metadata.ts` supplies the main/API bundlers and electron-builder with one version and channel (`production`, `beta`, or `preview` for packaged apps). Packaging rejects inconsistent stamps, main checks its baked version against `app.getVersion()`, and the API checks `APACK_EXPECTED_APP_VERSION` before opening data. See `docs/reference/preview-builds.md` for the local preview command.
 - `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 

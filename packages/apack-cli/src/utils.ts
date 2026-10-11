@@ -2,9 +2,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { parseManifest, type PackManifest } from '@apack/sdk/build';
-import { APP_ENVS, type AppEnv } from '@apack/sdk/env';
+import { APP_ENVS, parseAppEnv, type AppEnv } from '@apack/sdk/env';
 
 const ENV_FLAGS = ['-d', '--dev', '-b', '--beta', '--production'] as const;
+
+/** The app-bundled launcher supplies its channel; a standalone CLI defaults to production. */
+export const defaultDataBuild = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
 
 /**
  * Which build's data a command is pointed at.
@@ -37,7 +40,7 @@ export function parseTargetEnv(args: string[]): { env: AppEnv; args: string[] } 
       filtered.push(arg);
     }
   }
-  return { env: named ?? 'production', args: filtered };
+  return { env: named ?? defaultDataBuild(), args: filtered };
 }
 
 export function envLabel(env: AppEnv): string {

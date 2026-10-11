@@ -120,6 +120,7 @@ export async function upgrade(args: string[]) {
   }
 
   const { env, args: rest } = parseTargetEnv(args);
+  if (env === 'preview') throw new Error('Preview builds are local. Rebuild with npm run build:preview -- --version <version>.');
   if (env !== 'production' && env !== 'beta') {
     throw new Error('There is no installed dev app to upgrade. Run `npm start` in the apack repo instead.');
   }

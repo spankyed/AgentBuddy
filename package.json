@@ -21,6 +21,7 @@
     "postinstall": "node scripts/postinstall.mjs",
     "build": "npm run build -ws --if-present",
     "build:app": "tsx scripts/build-app.ts",
+    "build:preview": "tsx scripts/build-preview.ts",
     "build-prod": "sh build/build.sh",
     "build:speech-macos": "cd native/speech/macos && bash build.sh",
     "prod-app": "sh build/prod/run.sh",

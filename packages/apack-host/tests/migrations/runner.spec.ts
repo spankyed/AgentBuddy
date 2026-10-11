@@ -187,16 +187,17 @@ describe('which migrations run', () => {
     process.env.APACK_ENV = 'test';
   });
 
-  it("runs a beta's release migrations, not later ones, and again only when the beta's version changes", () => {
-    version.current = '0.4.0-beta.0';
+  it.each(['beta', 'preview'])("runs a %s's release migrations, not later ones, and again only when its version changes", (channel) => {
+    process.env.APACK_ENV = channel;
+    version.current = `0.4.0-${channel}.0`;
     expect(runAppMigrations(registry)).toBe(true);
     expect(ran).toEqual(['0.4.0']);
-    expect(appState.get().version).toBe('0.4.0-beta.0');
+    expect(appState.get().version).toBe(`0.4.0-${channel}.0`);
 
     runAppMigrations(registry);
     expect(ran).toEqual(['0.4.0']);
 
-    version.current = '0.4.0-beta.1';
+    version.current = `0.4.0-${channel}.1`;
     runAppMigrations(registry);
     expect(ran).toEqual(['0.4.0', '0.4.0']);
 

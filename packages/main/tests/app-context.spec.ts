@@ -30,6 +30,18 @@ async function load() {
 const context = async () => (await load()).getAppContext();
 
 describe('the app context', () => {
+  it('refuses a packaged app whose version differs from the main bundle', async () => {
+    const { app, getAppContext } = await load();
+    app.isPackaged = true;
+    vi.spyOn(app, 'getVersion').mockReturnValue('999.0.0');
+    try {
+      expect(() => getAppContext()).toThrow(/Packaged app version .* differs from main build/);
+    } finally {
+      vi.restoreAllMocks();
+      app.isPackaged = false;
+    }
+  });
+
   // macOS keeps logs in ~/Library/Logs/<app>, which is where Console.app looks. Putting an installed
   // app's logs under its data dir instead would tidy the layout and take them out of the tool a user
   // reaches for.

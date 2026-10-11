@@ -86,6 +86,7 @@ npm run start:inspect    # Dev mode with Electron inspection enabled
 npm run build            # Build all workspaces
 npm run build:be         # Build backend only
 npm run build-prod       # Full production build
+npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data
 npm run package:all      # Package for macOS, Windows, and Linux
 ```
 

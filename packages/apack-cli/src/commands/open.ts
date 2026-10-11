@@ -14,6 +14,7 @@ Options:
 const PRODUCT_NAMES = {
   production: 'apack',
   beta: 'apack Beta',
+  preview: 'apack Preview',
 } as const;
 
 export async function open(args: string[]) {
@@ -23,7 +24,7 @@ export async function open(args: string[]) {
   }
 
   const { env } = parseTargetEnv(args);
-  if (env !== 'production' && env !== 'beta') {
+  if (env !== 'production' && env !== 'beta' && env !== 'preview') {
     throw new Error('There is no installed dev app. Run `npm start` in the apack repo instead.');
   }
   if (process.platform !== 'darwin') {

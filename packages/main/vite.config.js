@@ -3,10 +3,14 @@ import {spawn} from 'child_process';
 import electronPath from 'electron';
 import {defineConfig, defaultServerConditions} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
+import {resolveBuildMetadata} from '../../build/build-metadata.ts';
+
+const metadata = resolveBuildMetadata();
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   define: {
-    __APACK_CHANNEL__: JSON.stringify(process.env.APACK_ENV || ''),
+    __APACK_CHANNEL__: JSON.stringify(metadata.channel),
+    __APACK_BUILD_VERSION__: JSON.stringify(metadata.version),
   },
   // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {
@@ -33,6 +37,12 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
     reportCompressedSize: false,
   },
   plugins: [
+    {
+      name: 'apack-build-metadata',
+      generateBundle() {
+        this.emitFile({type: 'asset', fileName: 'build-metadata.json', source: JSON.stringify(metadata, null, 2) + '\n'});
+      },
+    },
     viteStaticCopy({
       environment: 'ssr', // Required: Vite 7 Environment API defaults to 'client', skipping copies in SSR builds
       targets: [

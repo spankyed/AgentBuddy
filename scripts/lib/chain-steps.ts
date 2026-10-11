@@ -516,7 +516,7 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
 const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
-  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
+  'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs', 'build/build-metadata.ts', 'package.json',
   // The drive layer's one tracked file. The driving scripts beside it are gitignored and ad-hoc, so naming
   // the directory would re-run a typecheck every time someone poked at the app
   'drive/playwright.config.ts',
@@ -1152,7 +1152,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // back quietly
   { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
-      'packages/api/tsup.config.ts', ...APP_ENTRY,
+      'packages/api/tsup.config.ts', 'build/build-metadata.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run

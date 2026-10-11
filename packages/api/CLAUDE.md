@@ -27,7 +27,7 @@ transport, boot or composition belongs in `@apack/host`, which the same guard is
 | `types.ts` | The `types` entry (`dist/types.d.ts`): `AppRouter`, `EARS`, `BaseEntity`, pack content preview types |
 | `transport/` | tRPC, the root event emitter and the ws server (below) |
 | `adapters/logging.ts` | Log output (below) |
-| `runtime/index.ts` | The composition: `openAppStore()`, which creates the app's registered packs, opens the store and binds the app (below), `setupBackend()`, the exported `appPacks` (the app's registry, which `transport/bus.ts` and `transport/websocket.ts` work on) and `backendActor` (`createAppBus(appPacks)`, with systemId `bus` from `@apack/host/bus`), and `logErrors(actor)` (an actor error observer that reports a fatal system error with `reportError` and writes a `__fatal` line). The app version is the root `package.json`'s |
+| `runtime/index.ts` | The composition: `openAppStore()`, which creates the app's registered packs, opens the store and binds the app (below), `setupBackend()`, the exported `appPacks` (the app's registry, which `transport/bus.ts` and `transport/websocket.ts` work on) and `backendActor` (`createAppBus(appPacks)`, with systemId `bus` from `@apack/host/bus`), and `logErrors(actor)` (an actor error observer that reports a fatal system error with `reportError` and writes a `__fatal` line). Bundles use the version from `build/build-metadata.ts`; source runs use root `package.json`. A mismatch with the packaged parent's version is refused before opening data |
 | `transport/websocket.ts` | `createWebSocketServer()` (below) |
 | `boot/config.ts` | `SERVER_CONFIG.port` (`API_PORT`, default 3001), `WS_CONFIG` (accepts every connection) |
 

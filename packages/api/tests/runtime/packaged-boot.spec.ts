@@ -75,6 +75,17 @@ it("installs each shipped pack and loads its built runtime, with its systems and
   });
 });
 
+it('refuses an API build that differs from the parent Electron version before opening data', () => {
+  const previous = process.env.APACK_EXPECTED_APP_VERSION;
+  process.env.APACK_EXPECTED_APP_VERSION = '999.0.0-preview.1';
+  try {
+    expect(() => openAppStore()).toThrow(/API build version .* differs from Electron version/);
+  } finally {
+    if (previous === undefined) delete process.env.APACK_EXPECTED_APP_VERSION;
+    else process.env.APACK_EXPECTED_APP_VERSION = previous;
+  }
+});
+
 // The bug this covers: an installed pack claiming a role the shipped pack designates took it, because the
 // shipped packs were still loading when the external ones registered. `loadAppPacks` holds the order, and
 // here it is held over the real packs and the real `brain` designation rather than a fixture's role name
