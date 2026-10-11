@@ -18,7 +18,6 @@ export interface TiptapPlugin {
 }
 
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlockItems')
-export const TIPTAP_PLUGINS_KEY: InjectionKey<TiptapPlugin[]> = Symbol('tiptapPlugins')
 
 // The tiptap plugins the renderer's registered pack frontends contribute
 export const tiptapPluginRegistry = {

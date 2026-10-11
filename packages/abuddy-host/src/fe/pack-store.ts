@@ -48,7 +48,13 @@ function addressed(registration: PackFERegistration): AddressedRegistration {
   };
 }
 
-/** Pushes each of `items` onto `list`, recording how to take that item back out */
+/**
+ * Pushes each of `items` onto `list`, recording how to take that item back out.
+ *
+ * Removal is by value, which is safe only where no two packs can contribute the same object. Its one
+ * caller is the plugin list, and a plugin comes from the pack's own feature, so it cannot be shared. For a
+ * kind that can be, use `createOwnedList`.
+ */
 function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => void) => void): void {
   for (const item of items ?? []) {
     list.push(item);
@@ -57,6 +63,29 @@ function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => 
       if (idx >= 0) list.splice(idx, 1);
     });
   }
+}
+
+/**
+ * A list of contributions kept with the pack that made each, for a kind whose items have no key to collide
+ * on — which is every kind `createOwnedStore` cannot hold.
+ *
+ * Removal is by **contribution**, not by value. Two packs can contribute the same object: `@abuddy/sdk` is
+ * a shared instance, so a tiptap plugin a dependency exports is the same reference in both packs, and
+ * removing it by `indexOf` takes the first occurrence — which may be the other pack's, leaving the
+ * unregistered pack's behind.
+ */
+function createOwnedList<T>() {
+  let held: Array<{ owner: string; value: T }> = [];
+  return {
+    register(owner: string, items: readonly T[] | undefined): void {
+      for (const value of items ?? []) held.push({ owner, value });
+    },
+    unregister(owner: string): void {
+      held = held.filter((entry) => entry.owner !== owner);
+    },
+    /** In registration order, which is load-bearing: tiptap resolves equal-priority extensions by it */
+    all: (): T[] => held.map((entry) => entry.value),
+  };
 }
 
 /** A new, empty frontend registry */
@@ -68,7 +97,7 @@ export function createFePackRegistry(): FePackRegistry {
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
   const blocks = createDefinitionStore<BlockDefinition>();
-  const tiptapPlugins: TiptapPlugin[] = [];
+  const tiptapPlugins = createOwnedList<TiptapPlugin>();
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
@@ -87,7 +116,10 @@ export function createFePackRegistry(): FePackRegistry {
       defaultPlugin = claim.plugin;
       undo(() => { defaultPlugin = undefined; });
     },
-    (reg, undo) => listed(tiptapPlugins, reg.tiptapPlugins, undo),
+    (reg, undo) => {
+      tiptapPlugins.register(reg.id, reg.tiptapPlugins);
+      undo(() => tiptapPlugins.unregister(reg.id));
+    },
     (reg, undo) => {
       for (const [slot, component] of Object.entries(reg.appExtensions ?? {})) {
         appExtensions.register(slot, component, reg.id);
@@ -152,7 +184,7 @@ export function createFePackRegistry(): FePackRegistry {
     // frontend loads after the window is up, so a caller demanding a default plugin could not run at all:
     // the shell waits for one instead (`wantsDefaultPlugin`). Absent until a pack claims it
     defaultPlugin: () => defaultPlugin,
-    tiptapPlugins: () => tiptapPlugins,
+    tiptapPlugins: tiptapPlugins.all,
     appExtension: appExtensions.get,
     dslTypes: () => dslTypes.entries(),
   };

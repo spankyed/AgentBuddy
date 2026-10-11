@@ -801,9 +801,6 @@ export const targetIs: (input: {
 }) => boolean;
 
 // @public (undocumented)
-export const TIPTAP_PLUGINS_KEY: InjectionKey<TiptapPlugin[]>;
-
-// @public (undocumented)
 export interface TiptapPlugin {
     // (undocumented)
     extensions?: AnyExtension[];

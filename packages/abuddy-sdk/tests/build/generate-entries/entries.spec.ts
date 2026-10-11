@@ -104,6 +104,26 @@ describe('generated frontend entry', () => {
     expect(fe).not.toContain("'worker'");
     expect(fe).toContain("'memos': { plugin: __plugin_memos },");
   });
+
+  // The manifest names the module and `tiptapPlugins` is the export name by convention, so the convention
+  // is checked rather than assumed: it used to reach the author as a missing binding in a generated file.
+  it('names the module and the export it expects when a tiptap module exports neither', () => {
+    write('src/tiptap/index.ts', 'export const plugins = [];\n');
+
+    expect(() => generate({ fe: { tiptapPlugins: 'src/tiptap/index.ts' } }))
+      .toThrow('fe.tiptapPlugins: src/tiptap/index.ts doesn\'t export "tiptapPlugins"');
+    expect(() => generate({ fe: { tiptapPlugins: 'src/tiptap/missing.ts' } }))
+      .toThrow('fe.tiptapPlugins: no module found at src/tiptap/missing.ts');
+  });
+
+  it('registers the tiptap plugins a pack declares', () => {
+    write('src/tiptap/ok.ts', 'export const tiptapPlugins = [];\n');
+
+    const fe = generate({ fe: { tiptapPlugins: 'src/tiptap/ok.ts' } })['src/__generated__/pack-entry-fe.ts'];
+
+    expect(fe).toContain("import { tiptapPlugins } from '../tiptap/ok.ts';");
+    expect(fe).toContain('  tiptapPlugins,');
+  });
 });
 
 describe('generated backend entry', () => {

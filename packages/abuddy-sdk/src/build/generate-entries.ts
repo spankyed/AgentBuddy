@@ -494,6 +494,9 @@ export function generatePackFiles(
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
+      // Named as a module rather than a `path#export`, but its export name is a convention codegen checks,
+      // so it has to be in the program for `exportOf` to see it
+      ...(manifest.extensions?.fe?.tiptapPlugins ? [manifest.extensions.fe.tiptapPlugins] : []),
       // The contract leaves, and not the system and plugin entries beside them: a feature's events are read from
       // its contract now, so putting the machines in the program would parse and bind every one of them — and
       // their whole closure, XState and Vue included — for nothing. Their paths still reach the generated
@@ -1047,6 +1050,14 @@ ${contractCheck}`;
 
     const extraImports: string[] = [];
     if (fe.tiptapPlugins) {
+      // The manifest names the module and the export name is this convention, so it is checked here: a
+      // renamed export otherwise reaches the author as a missing binding in a generated file, naming
+      // neither the manifest key nor what it expected.
+      const source = sourceFileOf(fe.tiptapPlugins);
+      if (!source) throw new Error(`fe.tiptapPlugins: no module found at ${fe.tiptapPlugins} (.ts or /index.ts)`);
+      if (!exportOf(source, 'tiptapPlugins')?.value) {
+        throw new Error(`fe.tiptapPlugins: ${fe.tiptapPlugins} doesn't export "tiptapPlugins" (export const tiptapPlugins: TiptapPlugin[] = [ … ])`);
+      }
       extraImports.push(`import { tiptapPlugins } from '${toImportPath(root, fe.tiptapPlugins)}';`);
     }
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);

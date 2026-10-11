@@ -123,3 +123,39 @@ describe("a pack's frontend", () => {
     expect(defaultPlugin()?.id, "the first pack's default left with the second").toBe('first-pack/notes');
   });
 });
+
+/**
+ * Tiptap plugins are the one frontend contribution with no key: `TiptapPlugin` has no name, so two of them
+ * are told apart only by which pack contributed each. Nothing covered this — these plugins appeared here
+ * only as one line of a wider case — and the list is what the editor resolves extension order by.
+ */
+describe('tiptap plugins, which have no key', () => {
+  const mentions: TiptapPlugin = { extensions: [] };
+  const slashes: TiptapPlugin = { extensions: [] };
+
+  it('are listed in registration order, which the editor resolves extensions by', () => {
+    add('first-pack', { tiptapPlugins: [mentions] });
+    add('second-pack', { tiptapPlugins: [slashes] });
+
+    expect(tiptapPluginRegistry.getAll()).toEqual([mentions, slashes]);
+  });
+
+  it('loses every one of a pack when it unregisters, not just the first', () => {
+    add('many-pack', { tiptapPlugins: [mentions, slashes] });
+
+    unregister('many-pack');
+
+    expect(tiptapPluginRegistry.getAll()).toEqual([]);
+  });
+
+  // The read hands out a copy, as the backend's command store does, so a reader cannot edit what every
+  // other reader sees. It used to hand out the live array by reference.
+  it('cannot be added to or emptied by a reader', () => {
+    add('first-pack', { tiptapPlugins: [mentions] });
+
+    tiptapPluginRegistry.getAll().push(slashes);
+    tiptapPluginRegistry.getAll().length = 0;
+
+    expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
+  });
+});

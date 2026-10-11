@@ -18,7 +18,7 @@ export { pluginIsRunning, readUntypedPluginState, useUntypedPluginState } from '
 export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
 export { getDslTypes, type DslTypeConfig } from './dsl-types.ts'
-export { EXTRA_BLOCK_ITEMS_KEY, TIPTAP_PLUGINS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.ts'
+export { EXTRA_BLOCK_ITEMS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.ts'
 
 export { default, default as breadcrumb, breadcrumbWithParams, breadcrumbList, staticBreadcrumbList } from './breadcrumb.ts'
 export { safeEvents, safeEvents as feSafeEvents, type ExtractEvent } from './safe-events.ts'
