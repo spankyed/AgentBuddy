@@ -1,6 +1,7 @@
 import {build, createServer} from 'vite';
 import { fork, spawn } from 'child_process';
 import path from 'path';
+import { prepareCheckoutProfile } from '../scripts/lib/dev-profile.mjs';
 
 const mode = 'development';
 process.env.NODE_ENV = mode;
@@ -18,6 +19,8 @@ await new Promise((resolve, reject) => {
     else reject(new Error(`Default-setup build failed with code ${code}`));
   });
 });
+
+await prepareCheckoutProfile(process.cwd());
 
 // ── 1. Start the API build, the pack's backend watcher and the renderer server concurrently ──
 
@@ -58,6 +61,8 @@ const devBuildReady = new Promise((resolve) => {
 /** @type {import('vite').ViteDevServer} */
 const rendererWatchServer = await createServer({
   mode,
+  // Vite binds the next available port when its preferred one is occupied.
+  server: { host: '127.0.0.1', strictPort: false },
   root: path.resolve('packages/renderer'),
 });
 await rendererWatchServer.listen();

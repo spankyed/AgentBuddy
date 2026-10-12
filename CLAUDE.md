@@ -31,6 +31,19 @@ apack is an Electron desktop app with an actor-based architecture. Both frontend
 
 Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
+## Parallel editing sessions
+
+Use one branch and worktree per editing session. Start with `npm run session:new -- <name>`
+(or an explicit `git worktree add` outside the main checkout) and continue all edits, staging and
+validation there. Never share `node_modules`, generated output or the staging index between worktrees.
+Repository dev, drive and database scripts default to a separate profile in linked worktrees;
+explicit profile/storage overrides are intentional sharing, so use them only when requested.
+
+Before combining concurrent branches, run `npm run session:check -- <branch> [branch...]` from
+the clean target checkout. It pins the committed inputs, merges in a detached worktree and runs the
+full strict chain. Merge only those tested commits; rerun if any input advances.
+See [worktree development](docs/reference/worktree-development.md).
+
 ## Release metadata
 
 Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
