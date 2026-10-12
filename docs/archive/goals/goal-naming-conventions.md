@@ -1,6 +1,6 @@
 # Names that state their contracts
 
-Status: implementing on `session/naming-contracts`. Revised 2026-10-12 from the 2026-09-19 survey.
+Status: complete on `session/naming-contracts`. Revised 2026-10-12 from the 2026-09-19 survey.
 Base: `e108d6a25` (rebased after PR #244 merged). The original counts, paths and blanket bans are superseded by this plan.
 
 ```text
@@ -135,3 +135,25 @@ Every newly enforceable rule has a firing case; semantic noun choices stay revie
   paths, checksums or runtime loading. All typechecks pass; 77 host tests, the provenance credential
   stripping test and 27 real release/archive tests pass, including explicit/inferred URL and GitHub
   routing and local directory/archive routing. The review caught and fixed the renderer’s install field.
+
+- Phase 5: the repository guard checks bare exported Context types, aliases, barrels and Vue scripts,
+  including owned declarations, package tests and untracked owned sources. All five guard tests and scripts typechecks pass. Disabling
+  enforcement makes the three negative tests fail; restoring it makes the suite pass. Getter naming
+  remains semantic review guidance. Final review fixed two stale main environment paths in CLAUDE.md.
+
+## Completion audit
+
+- Each retained operation rename describes its API family; keyed stores, registries, EARS getters and
+  property accessors keep their conventional names. Diff review confirms absence contracts and
+  operation bodies are preserved. Required retrieval behavior was not changed.
+- Owner and role types, install dispatch/input names, callers and public reports agree. Searches of
+  active code and public/reference docs find no retired role API names or compatibility aliases.
+- Diff review confirms host.json fields, backup metadata, secrets data, settings keys, migration
+  behavior and release versions are unchanged. Only optional archive provenance metadata was renamed.
+- `npm run chain -- --all` passed all 30 gated steps in 214.3 seconds, including API/facade reports,
+  both unit pools, integration, smoke, external-pack contract/app and packaged-authoring author/app.
+  The opt-in driving harness is outside the regression chain. The final broader guard scan passes
+  all five fixtures/repository checks. The final affected-chain rerun passed seven gates
+  in 30.9 seconds, with the other 23 cached from the full run.
+- Archived here and repaired incoming links in CLAUDE.md, the goal index and active roadmap plans.
+  Settings-specific naming remains in the settings workstream. No production data was used.

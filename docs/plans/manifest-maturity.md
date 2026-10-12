@@ -14,7 +14,7 @@ adding fields because another ecosystem has them.
 
 Deliver in this order:
 
-1. Finish the in-flight [naming contracts goal](../goals/goal-naming-conventions.md). It has been reworked;
+1. Build on the completed [naming contracts goal](../archive/goals/goal-naming-conventions.md). It replaced the old survey;
    its old blanket naming bans are not the current instructions. Rebase subsequent audits on its result.
 2. Close the contribution inventory and establish the common descriptor/catalog foundation, using
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
@@ -59,7 +59,7 @@ contracts. The following older designs are archived as absorbed/superseded, not 
 | [Manifest redesign goal](../archive/goals/goal-manifest-redesign.md) and its example | Remaining-work ledger below; the example is not a target schema |
 | [Facade naming goal](../archive/goals/goal-defs-naming.md) | Descriptor work owns facade terminology and missing-contract diagnostics |
 
-The [naming contracts goal](../goals/goal-naming-conventions.md) remains active and precedes this work.
+The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete and precedes this work.
 Do not duplicate its renames in the settings/discovery implementation. Settings-specific names stay in
 the settings plan, as that goal already specifies.
 

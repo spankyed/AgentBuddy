@@ -7,7 +7,7 @@ This is the discovery workstream of [manifest maturity](manifest-maturity.md). I
 [declarative contributions plan](../archive/plans/declarative-contributions.md) as the target for complete discovery.
 The older inventory remains historical evidence. This plan owns the current implementation target;
 [manifest maturity](manifest-maturity.md) records decisions transferred from the other archived designs.
-The reworked [naming contracts goal](../goals/goal-naming-conventions.md) completes first. Re-audit code
+The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete. Re-audit code
 names on that result rather than applying the old naming survey or renaming a surface twice.
 
 ## Goal and boundary
