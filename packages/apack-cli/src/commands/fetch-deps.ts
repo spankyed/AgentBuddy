@@ -116,7 +116,7 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<DepFil
       // and `withBuildAndRuntime` reports one that is simply absent** — which surfaces downstream as the
       // dependency's content compiler coming back unresolved, naming the wrong cause. Waiting costs an
       // `existsSync` per candidate when no build is running, which is every ordinary resolution.
-      await waitForPackBuild(candidate, { onWait: (holder) => console.log(`Waiting for ${holder} to finish...`) });
+      await waitForPackBuild(candidate, { onWait: (holder) => console.error(`Waiting for ${holder} to finish...`) });
       const found = findDepFiles(candidate);
       if (found) return found;
     }
@@ -168,10 +168,10 @@ function resolveFromInstalledApp(depId: string, range: string, rejected: Rejecte
 }
 
 /** Built-in packs of the app this pack is built against: a named one, or the checkout behind it. */
-async function resolveFromConfiguredHost(root: string, depId: string, pinned = false): Promise<(DepFiles & { label: string }) | null> {
+async function resolveFromConfiguredHost(root: string, depId: string, pinned = false, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { label: string }) | null> {
   let hostVersion: string | undefined;
   try { hostVersion = readManifest(root).hostVersion; } catch {}
-  const app = await configuredHostPackagesDir({ hostVersion, from: root });
+  const app = await configuredHostPackagesDir({ hostVersion, from: root, readOnly: options.readOnly });
   if (!app) return null;
   const dir = path.join(app.dir, depId);
   const found = findDepFiles(dir);
@@ -378,10 +378,10 @@ function copyContent(from: string, to: string): void {
  * A selected host owns its dependency artifacts: never substitute a workspace or another app.
  * Otherwise prefer the workspace, linked checkout, then installed apps. All must satisfy the range.
  */
-async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   const pinned = Boolean(process.env.APACK_HOST_ROOT || process.env.APACK_HOST_EXECUTABLE || process.env.APACK_HOST);
   if (pinned) {
-    const configured = await resolveFromConfiguredHost(root, depId, true);
+    const configured = await resolveFromConfiguredHost(root, depId, true, options);
     if (configured) {
       const version = configured.snapshot.manifest.version;
       if (!usable(configured, range, configured.label, rejected)) {
@@ -395,7 +395,7 @@ async function resolveFromMachine(root: string, depId: string, range: string, re
   const workspace = await resolveFromWorkspace(root, depId);
   if (usable(workspace, range, 'workspace', rejected)) return { ...workspace, resolvedFrom: 'workspace' };
 
-  const configured = pinned ? null : await resolveFromConfiguredHost(root, depId);
+  const configured = pinned ? null : await resolveFromConfiguredHost(root, depId, false, options);
   if (configured && usable(configured, range, configured.label, rejected)) {
     const { label, ...artifacts } = configured;
     return { ...artifacts, resolvedFrom: label };
@@ -446,6 +446,11 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
  */
 export type ResolvedDepFiles = DepFiles & { resolvedFrom?: string };
 
+export interface DependencyResolutionOptions {
+  /** Inspect existing local artifacts only: never download or refresh caches. */
+  readOnly?: boolean;
+}
+
 const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedDepFiles | null =>
   artifacts && { ...artifacts, resolvedFrom };
 
@@ -455,7 +460,7 @@ const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedD
  * only while it satisfies the declared range. A dependency found only in builds this CLI can't use throws,
  * naming each one and why.
  */
-export async function resolveDepFiles(root: string, depId: string, depValue: string, skipCache = false): Promise<ResolvedDepFiles | null> {
+export async function resolveDepFiles(root: string, depId: string, depValue: string, options: DependencyResolutionOptions = {}): Promise<ResolvedDepFiles | null> {
   const { github, filePath, range } = parseDepValue(depValue);
   const rejected: Rejected = [];
   if (filePath) {
@@ -464,8 +469,9 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
     return found ?? null;
   }
 
-  const local = await resolveFromMachine(root, depId, range, rejected);
+  const local = await resolveFromMachine(root, depId, range, rejected, options);
   if (local) {
+    if (options.readOnly) return local;
     cacheDep(root, depId, local);
     return withSource(resolveFromLocal(root, depId), local.resolvedFrom);
   }
@@ -473,9 +479,12 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
   // A cache hit carries no source: cacheDep writes the snapshot, defs, build code and runtime, and
   // nothing about where they came from. Recording provenance in .apack/deps would cover this, and
   // isn't worth a new cache artifact until a hedged message proves annoying in practice.
-  if (!skipCache) {
-    const cached = resolveFromLocal(root, depId);
-    if (usable(cached, range, 'the .apack/deps cache', rejected)) return cached;
+  const cached = resolveFromLocal(root, depId);
+  if (usable(cached, range, 'the .apack/deps cache', rejected)) return cached;
+
+  if (options.readOnly) {
+    if (rejected.length) throw unusable(depId, rejected);
+    return null;
   }
 
   const fetched = await resolveFromNetwork(root, depId, github, range, rejected);
@@ -483,10 +492,6 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
   if (!fetched) return null;
   cacheDep(root, depId, fetched);
   return withSource(resolveFromLocal(root, depId), fetched.resolvedFrom);
-}
-
-export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {
-  return (await resolveDepFiles(root, depId, depValue, skipCache))?.snapshot ?? null;
 }
 
 // ── Command ──

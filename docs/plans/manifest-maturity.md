@@ -128,9 +128,13 @@ The declared names, generated registration and discovery result agree. Existing 
 
 ## 2. Share precise validation and diagnostics
 
-Current validation mostly returns strings. `validateCodegen()` skips its checks when dependency resolution
-throws, returning no errors or warnings for that phase. Other phases may warn about dependencies, but the
-result does not clearly distinguish a complete check from an incomplete one.
+The first implementation checkpoint introduces shared `PackDiagnostic` / `PackValidation` records.
+Manifest and feature checks carry codes, severity, owner and paths; `apack pack validate --json` renders
+one report. Exit codes are 0 valid, 1 invalid and 2 incomplete. Dependency failure names skipped checks
+instead of claiming validity. Validation resolves existing artifacts without downloads or cache writes,
+including a selected beta host; malformed manifests skip checks that require their shape. Build and
+installation keep their strict refusals. Remaining semantic checkers must adopt the same records as their
+contributions migrate; semver/range tightening below is still outstanding.
 
 Introduce a shared diagnostic record with a stable code, severity, owning pack, manifest path and human
 message. Include a source location or actionable suggestion when available; do not require every checker

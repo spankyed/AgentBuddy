@@ -2,21 +2,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { _MOVED_ROOT_KEYS, ManifestSchema } from './manifest-schema.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
+import { packValidation, type PackDiagnostic, type PackValidation } from './diagnostics.ts';
 
-export interface ManifestValidation {
-  errors: string[];
-  warnings: string[];
-}
-
-export function parseManifest(raw: unknown): ManifestValidation {
+export function parseManifest(raw: unknown): PackValidation {
   const result = ManifestSchema.safeParse(raw);
-  if (result.success) return { errors: [], warnings: [] };
+  if (result.success) return packValidation();
+  const packId = raw && typeof raw === 'object' && 'id' in raw && typeof raw.id === 'string' ? raw.id : undefined;
 
-  const errors = result.error.issues.map(issue => {
+  const diagnostics: PackDiagnostic[] = result.error.issues.map(issue => {
     const fieldPath = issue.path.length > 0 ? `"${issue.path.join('.')}"` : 'root';
-    return `apack.json ${fieldPath}: ${issue.message}${movedKeyHint(issue)}`;
+    return {
+      code: `manifest.${issue.code}`, severity: 'error', packId, path: issue.path,
+      message: `apack.json ${fieldPath}: ${issue.message}${movedKeyHint(issue)}`,
+    };
   });
-  return { errors, warnings: [] };
+  return packValidation(diagnostics);
 }
 
 /**
@@ -33,16 +33,16 @@ function movedKeyHint(issue: { code: string; keys?: string[] }): string {
   return moved.length > 0 ? ` (${moved.join(', ')})` : '';
 }
 
-export function validateManifest(manifestPath: string): ManifestValidation {
+export function validateManifest(manifestPath: string): PackValidation {
   if (!fs.existsSync(manifestPath)) {
-    return { errors: ['Missing apack.json manifest'], warnings: [] };
+    return packValidation([{ code: 'manifest.missing', severity: 'error', path: [], message: 'Missing apack.json manifest' }]);
   }
 
   let raw: unknown;
   try {
     raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   } catch {
-    return { errors: ['apack.json is not valid JSON'], warnings: [] };
+    return packValidation([{ code: 'manifest.json', severity: 'error', path: [], message: 'apack.json is not valid JSON' }]);
   }
 
   return parseManifest(raw);
@@ -58,8 +58,8 @@ export function validateManifest(manifestPath: string): ManifestValidation {
  * object, so the last one would silently win — which is what the check below is for. Across packs
  * `registerPack` throws.
  */
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation {
-  const errors: string[] = [];
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id'>>): PackValidation {
+  const diagnostics: PackDiagnostic[] = [];
   const designatedBy = new Map<string, string>();
   for (const feature of packFeatures(manifest)) {
     const files: [string, string | undefined][] = [
@@ -72,17 +72,25 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
     ];
     for (const [field, file] of files) {
       if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
-        errors.push(`Feature "${feature.id}": ${field} file "${file}" not found`);
+        diagnostics.push({
+          code: 'feature.missing-file', severity: 'error', packId: manifest.id,
+          path: ['features', feature.id, ...field.split('.')], source: file,
+          message: `Feature "${feature.id}": ${field} file "${file}" not found`,
+        });
       }
     }
     if (feature.designation !== undefined) {
       const held = designatedBy.get(feature.designation);
       if (held !== undefined) {
-        errors.push(`Feature "${feature.id}": designation "${feature.designation}" is already claimed by feature "${held}"`);
+        diagnostics.push({
+          code: 'feature.designation-conflict', severity: 'error', packId: manifest.id,
+          path: ['features', feature.id, 'designation'],
+          message: `Feature "${feature.id}": designation "${feature.designation}" is already claimed by feature "${held}"`,
+        });
       } else {
         designatedBy.set(feature.designation, feature.id);
       }
     }
   }
-  return { errors, warnings: [] };
+  return packValidation(diagnostics);
 }

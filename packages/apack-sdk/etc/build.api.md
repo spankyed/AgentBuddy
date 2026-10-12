@@ -1790,14 +1790,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
 }>;
 
-// @public (undocumented)
-export interface ManifestValidation {
-    // (undocumented)
-    errors: string[];
-    // (undocumented)
-    warnings: string[];
-}
-
 // @public
 export interface MarkdownItem {
     body: string;
@@ -1901,6 +1893,23 @@ export interface PackContentPreviewItem {
 }
 
 // @public
+export interface PackDiagnostic {
+    // (undocumented)
+    code: string;
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    packId?: string;
+    path: readonly (string | number)[];
+    // (undocumented)
+    severity: 'error' | 'warning';
+    // (undocumented)
+    source?: string;
+    // (undocumented)
+    suggestion?: string;
+}
+
+// @public
 export type PackFeature = PackFeatureEntry & {
     id: string;
 };
@@ -1962,7 +1971,20 @@ export interface PackTypeManifest {
 }
 
 // @public (undocumented)
-export function parseManifest(raw: unknown): ManifestValidation;
+export interface PackValidation {
+    // (undocumented)
+    diagnostics: PackDiagnostic[];
+    // (undocumented)
+    skippedChecks: SkippedPackCheck[];
+    // (undocumented)
+    status: 'valid' | 'invalid' | 'incomplete';
+}
+
+// @public
+export function packValidation(diagnostics?: PackDiagnostic[], skippedChecks?: SkippedPackCheck[]): PackValidation;
+
+// @public (undocumented)
+export function parseManifest(raw: unknown): PackValidation;
 
 // @public
 export function parseMarkdownFile(text: string, file?: string): {
@@ -2051,6 +2073,14 @@ export type ResolvedContentSource = {
 
 // @public (undocumented)
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
+
+// @public (undocumented)
+export interface SkippedPackCheck {
+    // (undocumented)
+    check: string;
+    // (undocumented)
+    reason: string;
+}
 
 // Warning: (ae-internal-missing-underscore) The name "SnapshotFormatMismatch" should be prefixed with an underscore because the declaration is marked as @internal
 //
@@ -2276,7 +2306,7 @@ export interface Track {
 }
 
 // @public
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation;
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id'>>): PackValidation;
 
 // @public (undocumented)
 export function validateFlowDSL(dsl: unknown, options?: ValidateOptions): ValidationResult;
@@ -2287,7 +2317,7 @@ export function validateFlows(merged: FlowDSL, actionLabels: string[], promptLab
 }): ValidationResult;
 
 // @public (undocumented)
-export function validateManifest(manifestPath: string): ManifestValidation;
+export function validateManifest(manifestPath: string): PackValidation;
 
 // @public (undocumented)
 export interface ValidationError {

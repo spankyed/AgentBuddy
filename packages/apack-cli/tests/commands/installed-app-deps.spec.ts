@@ -58,6 +58,26 @@ describe('dependency resolution from an installed app', () => {
     return dir;
   };
 
+  it('inspects an installed dependency without executing its runtime, downloading or populating the author cache', async () => {
+    const source = builtInPack();
+    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'throw new Error("Runtime must not execute");');
+    await installPackFromLocal(source, packsDir());
+    const packRoot = path.join(tmp, 'author-pack');
+    fs.mkdirSync(packRoot);
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network must not run'));
+    try {
+      const found = await resolveDepFiles(packRoot, 'base-pack', '*', { readOnly: true });
+      expect(found?.snapshot.manifest.id).toBe('base-pack');
+      expect(found?.resolvedFrom).toMatch(/^installed app/);
+      expect(fs.readdirSync(packRoot)).toEqual([]);
+      expect(await resolveDepFiles(packRoot, 'missing-pack', 'github:acme/missing-pack', { readOnly: true })).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(fs.readdirSync(packRoot)).toEqual([]);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it('resolves a shipped dependency (snapshot, step build code, runtime) from the installed app, and caches it in the pack', async () => {
     await installPackFromLocal(builtInPack(), packsDir());
 

@@ -103,9 +103,9 @@ function readValidManifest(dir: string): PackManifest {
     throw new Error('apack.json is not valid JSON');
   }
 
-  const { errors } = parseManifest(raw);
-  if (errors.length > 0) {
-    throw new Error(`Invalid apack.json:\n${errors.map(e => `  - ${e}`).join('\n')}`);
+  const { diagnostics } = parseManifest(raw);
+  if (diagnostics.length > 0) {
+    throw new Error(`Invalid apack.json:\n${diagnostics.map(({ message }) => `  - ${message}`).join('\n')}`);
   }
   return raw as PackManifest;
 }

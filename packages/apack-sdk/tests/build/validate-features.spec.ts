@@ -30,7 +30,7 @@ const memosFiles = [memos.settings, memos.system.entry, memos.plugin.entry];
 describe('validateFeatures', () => {
   it('accepts features whose files exist and whose designation is the feature id', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'memos' } } })).toEqual({ errors: [], warnings: [] });
+    expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'memos' } } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
   });
 
   it.each([
@@ -39,29 +39,29 @@ describe('validateFeatures', () => {
     ['plugin.entry', memos.plugin.entry],
   ])('reports a missing %s file', (field, missing) => {
     const root = pack(memosFiles.filter(file => file !== missing));
-    expect(validateFeatures(root, { features: { memos } }).errors).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
+    expect(messagesOf(validateFeatures(root, { features: { memos } }))).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
   });
 
   // `inbox`, not `memos`: a designation equal to the feature's id is what this case is *not* about, and a
   // rename made it exactly that for a while, leaving the name to claim what the fixture no longer showed
   it('accepts a designation that differs from the feature id: a designation is a role, not a name', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'inbox' } } }).errors).toEqual([]);
+    expect(messagesOf(validateFeatures(root, { features: { memos: { ...memos, designation: 'inbox' } } }))).toEqual([]);
   });
 
   it('reports one role claimed by two features of the same pack', () => {
     const root = pack(memosFiles);
-    const errors = validateFeatures(root, {
+    const errors = messagesOf(validateFeatures(root, {
       features: { memos: { ...memos, designation: 'inbox' }, scraps: { ...memos, designation: 'inbox' } },
-    }).errors;
+    }));
     expect(errors).toEqual(['Feature "scraps": designation "inbox" is already claimed by feature "memos"']);
   });
 
   it('accepts two features with different designations', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, {
+    expect(messagesOf(validateFeatures(root, {
       features: { memos: { ...memos, designation: 'memos' }, scraps: { ...memos, designation: 'scraps' } },
-    }).errors).toEqual([]);
+    }))).toEqual([]);
   });
 });
 
@@ -71,18 +71,22 @@ describe('typesEntry', () => {
   it('accepts one whose module exists, written with or without its extension', () => {
     const root = pack([...memosFiles, 'src/features/memos/be/types.ts']);
     for (const typesEntry of ['src/features/memos/be/types', 'src/features/memos/be/types.ts']) {
-      expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry } } })).toEqual({ errors: [], warnings: [] });
+      expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry } } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
     }
   });
 
   it('reports one whose module is not there', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry: 'src/features/memos/be/typos' } } }).errors)
+    expect(messagesOf(validateFeatures(root, { features: { memos: { ...memos, typesEntry: 'src/features/memos/be/typos' } } })))
       .toEqual(['Feature "memos": typesEntry file "src/features/memos/be/typos.ts" not found']);
   });
 
   it('says nothing about a feature that declares none', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: { memos } })).toEqual({ errors: [], warnings: [] });
+    expect(validateFeatures(root, { features: { memos } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
   });
 });
+
+function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
+  return result.diagnostics.map(issue => issue.message);
+}

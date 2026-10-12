@@ -10,12 +10,12 @@ describe('parseManifest', () => {
       readFileSync(resolve(__dirname, '../../../default-setup/apack.json'), 'utf-8'),
     );
     const result = parseManifest(raw);
-    expect(result.errors).toEqual([]);
+    expect(messagesOf(result)).toEqual([]);
   });
 
   it("rejects declaring the SDK's entities or relation kinds, by name or value, naming each", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const errorsOf = (field: object) => parseManifest({ ...pack, ...field }).errors;
+    const errorsOf = (field: object) => messagesOf(parseManifest({ ...pack, ...field }));
     expect(errorsOf({ entities: { Relation: 'Relation', Memo: 'Memo' } })).toEqual([
       'apack.json "entities": "Relation" is defined by the SDK and available to every pack: remove it',
     ]);
@@ -30,13 +30,13 @@ describe('parseManifest', () => {
   });
 
   it("rejects an entity whose key isn't its type name", () => {
-    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'memo', Note: 'Note' } }).errors;
+    const errors = messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'memo', Note: 'Note' } }));
     expect(errors).toEqual(['apack.json "entities.Memo": an entity\'s key must be its type name: use "memo": "memo"']);
   });
 
   it('accepts a minimal valid manifest', () => {
     const result = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
-    expect(result.errors).toEqual([]);
+    expect(messagesOf(result)).toEqual([]);
   });
 
   it('rejects unknown top-level keys', () => {
@@ -44,8 +44,8 @@ describe('parseManifest', () => {
       id: 'test-pack', name: 'Test', version: '0.1.0',
       bogusField: true,
     });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('bogusField');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('bogusField');
   });
 
   it('rejects unknown keys in feature system entries', () => {
@@ -53,27 +53,27 @@ describe('parseManifest', () => {
       id: 'test-pack', name: 'Test', version: '0.1.0',
       features: { main: { system: { entry: 'src/system.ts', exportName: 'mainEntry' } } },
     });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('exportName');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('exportName');
   });
 
   it('rejects missing required fields', () => {
     const result = parseManifest({ name: 'Test' });
-    expect(result.errors.length).toBeGreaterThan(0);
+    expect(messagesOf(result).length).toBeGreaterThan(0);
   });
 
   it('rejects invalid id format', () => {
     const result = parseManifest({ id: 'BadCase', name: 'Test', version: '0.1.0' });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('id');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('id');
   });
 
   it('rejects feature ids generated code reserves: reserved words', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     for (const id of ['default', 'export', 'eval']) {
-      expect(parseManifest({ ...pack, features: { [id]: {} } }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
+      expect(messagesOf(parseManifest({ ...pack, features: { [id]: {} } }))).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
     }
-    expect(parseManifest({ ...pack, features: { defaults: {}, specs: {} } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { defaults: {}, specs: {} } }))).toEqual([]);
   });
 
   // JSON cannot hold a key twice, so this is a property of the format rather than a check anything runs:
@@ -82,7 +82,7 @@ describe('parseManifest', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     const parsed = JSON.parse('{"notes": {"settings": "a.ts"}, "notes": {"settings": "b.ts"}}');
     expect(Object.keys(parsed)).toEqual(['notes']);
-    expect(parseManifest({ ...pack, features: parsed }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: parsed }))).toEqual([]);
   });
 
   /**
@@ -93,7 +93,7 @@ describe('parseManifest', () => {
   it('names where a contribution key went when it is found at the root', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     for (const [key, to] of Object.entries(_MOVED_ROOT_KEYS)) {
-      expect(parseManifest({ ...pack, [key]: {} }).errors, key)
+      expect(messagesOf(parseManifest({ ...pack, [key]: {} })), key)
         .toEqual([expect.stringContaining(`"${key}" is now "${to}"`)]);
     }
     // Every key the section holds, and the two that moved elsewhere
@@ -103,24 +103,24 @@ describe('parseManifest', () => {
 
   // The hint is for a key that moved; an unrecognized key that never existed gets the plain message
   it('says nothing extra about a root key that was never a contribution', () => {
-    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }).errors;
+    const errors = messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }));
     expect(errors).toEqual([expect.stringContaining('nonsense')]);
     expect(errors[0]).not.toContain('is now');
   });
 
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { 'my-ext': 'x.vue' } } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
-    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { welcome: 'x.vue' } } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { fe: { appExtensions: { 'my-ext': 'x.vue' } } } }))).toEqual([expect.stringContaining('Must be an identifier')]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { fe: { appExtensions: { welcome: 'x.vue' } } } }))).toEqual([]);
   });
 });
 
 describe('the pack id', () => {
   // The app is the pack `host`: its features are `host/<feature>`, so a pack of that id would share them
   it("refuses the host's own", () => {
-    expect(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' }).errors)
+    expect(messagesOf(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' })))
       .toEqual([expect.stringContaining('"host" is the app\'s own pack id')]);
-    expect(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }))).toEqual([]);
   });
 });
 
@@ -133,9 +133,9 @@ describe('content.formats, content.sources and content.datasets', () => {
     media: 'media',
   };
   const errorsFor = (sources: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, content: { formats, sources } }).errors;
+    messagesOf(parseManifest({ ...pack, content: { formats, sources } }));
   const datasetErrors = (datasets: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, content: { formats, datasets } }).errors;
+    messagesOf(parseManifest({ ...pack, content: { formats, datasets } }));
 
   it('accepts specialty paths, sources naming own or dependency formats, applier sources, and format sources with an applier', () => {
     expect(errorsFor({
@@ -177,10 +177,10 @@ describe('content.formats, content.sources and content.datasets', () => {
       .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}: it is compiled and never written/)]);
     expect(datasetErrors({ faqs: { format: 'memos' } }))
       .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}/)]);
-    expect(parseManifest({
+    expect(messagesOf(parseManifest({
       ...pack,
       content: { formats: { memos }, sources: { memos: { path: 'p', format: 'memos' } }, datasets: { memos: { path: 'q', format: 'memos' } } },
-    }).errors).toEqual([expect.stringMatching(/"memos" is both a content source and a dataset/)]);
+    }))).toEqual([expect.stringMatching(/"memos" is both a content source and a dataset/)]);
   });
 
   it('rejects format settings on a source: they belong to a content.formats format', () => {
@@ -198,8 +198,8 @@ describe('content.formats, content.sources and content.datasets', () => {
   // key, which `.strict()` refuses for every pack alike
   it('refuses features[].earlySystem as the unknown key it now is, in any pack', () => {
     const features = { logs: { earlySystem: true, system: { entry: 'src/logs/system.ts' } } };
-    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
-    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
+    expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
+    expect(messagesOf(parseManifest({ ...pack, builtIn: true, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
   // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there
@@ -209,13 +209,13 @@ describe('content.formats, content.sources and content.datasets', () => {
     const plugin = (id: string, isDefault?: boolean) =>
       ({ [id]: { plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
 
-    expect(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }).errors).toEqual([]);
-    expect(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } }).errors)
+    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } })))
       .toEqual([expect.stringMatching(/"features\.cards\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
   });
 
   it('has no root defaultPlugin to name a feature that may not exist', () => {
-    expect(parseManifest({ ...pack, defaultPlugin: 'threads' }).errors).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
+    expect(messagesOf(parseManifest({ ...pack, defaultPlugin: 'threads' }))).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
   });
 
   it('rejects anything but a path on a specialty key', () => {
@@ -268,16 +268,16 @@ describe('content.writers', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } };
 
   it('accepts a writer for an entity type the pack declares', () => {
-    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))).toEqual([]);
   });
 
   it("rejects a writer for an entity type the pack doesn't declare", () => {
-    expect(parseManifest({ ...pack, content: { writers: { Action: 'src/writers.ts#actionWriter' } } }).errors)
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Action: 'src/writers.ts#actionWriter' } } })))
       .toEqual([expect.stringMatching(/A content writer for "Action": only entity types this pack declares/)]);
   });
 
   it('rejects a target without an export name', () => {
-    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts' } } }))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 });
 
@@ -286,16 +286,16 @@ describe('services', () => {
   const feature = (services: Record<string, string>) => ({ ...pack, features: { memos: { services } } });
 
   it('accepts feature and pack-level services naming their export', () => {
-    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), extensions: { services: { cache: 'src/cache#cacheService' } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), extensions: { services: { cache: 'src/cache#cacheService' } } }))).toEqual([]);
   });
 
   it('rejects a service path without an export name', () => {
-    expect(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
-    expect(parseManifest({ ...pack, extensions: { services: { cache: 'src/cache' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { services: { cache: 'src/cache' } } }))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 
   it('rejects a service name that is not an identifier', () => {
-    expect(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }))).toEqual([expect.stringMatching(/Must be an identifier/)]);
   });
 });
 
@@ -304,26 +304,30 @@ describe('commands', () => {
   const withCommands = (commands: Record<string, unknown>) => ({ ...pack, extensions: { commands } });
 
   it('accepts lowercase names with hyphens as keys, each with its placeholder', () => {
-    expect(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })).errors).toEqual([]);
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })))).toEqual([]);
   });
 
   it('rejects a key that is not a command: uppercase, a leading slash, digit or hyphen, a space, an underscore', () => {
     for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
-      expect(parseManifest(withCommands({ [name]: { placeholder: 'x' } })).errors)
+      expect(messagesOf(parseManifest(withCommands({ [name]: { placeholder: 'x' } }))))
         .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
     }
   });
 
   it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
-    expect(parseManifest(withCommands({ standup: {} })).errors.length).toBeGreaterThan(0);
-    expect(parseManifest(withCommands({ standup: { placeholder: '' } })).errors[0]).toContain('placeholder');
-    expect(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })).errors[0]).toContain('action');
+    expect(messagesOf(parseManifest(withCommands({ standup: {} }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: '' } })))[0]).toContain('placeholder');
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })))[0]).toContain('action');
   });
 
   // The name is the key, so declaring one twice is unrepresentable rather than refused: JSON cannot hold a
   // key twice, which is why the check that used to say so is gone. What is still refused is a command on a
   // feature — commands are the pack's.
   it("refuses one on a feature: they're the pack's", () => {
-    expect(parseManifest({ ...pack, features: { memos: { commands: { standup: { placeholder: 'a' } } } } }).errors[0]).toContain('commands');
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { commands: { standup: { placeholder: 'a' } } } } }))[0]).toContain('commands');
   });
 });
+
+function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
+  return result.diagnostics.map(issue => issue.message);
+}

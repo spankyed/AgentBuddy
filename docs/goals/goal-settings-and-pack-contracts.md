@@ -250,6 +250,7 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 | Contribution inventory | `b5761c0db` | BE/FE registration and nested metadata coverage audited in discovery plan; six doc checks passed. |
 | Main-checkout promotion | Branch preserved at `b5761c0db` | Both checkouts were clean; switched main checkout to `session/settings-pack-contracts` at user request. |
 | Schema prototype | Disposable `/private/tmp/apack-settings-schema-prototype` | Ajv 8.20.0 / json-schema-to-typescript 15.0.4 passed pure validation, optional/nullable/enum/record/array/local-reference and generated-type probes; no runtime contracts changed yet. |
+| Shared diagnostics | This checkpoint | SDK checks 52, CLI resolution/report checks 66, external validation checks 10 and doc links 6 passed. Incomplete-result guard mutation was caught. `npm run chain -- --strict --cores 4` passed all 30 steps (229.6s); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T11-30-43Z-30065`. `validate --json` is read-only and exits 0/1/2 for valid/invalid/incomplete. |
 
 ## Outcome
 

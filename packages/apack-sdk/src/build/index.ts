@@ -64,7 +64,8 @@ export type { GenerateEntriesOptions } from './generate-entries.ts';
 
 // Pack validation
 export { validateManifest, validateFeatures, parseManifest } from './validate.ts';
-export type { ManifestValidation } from './validate.ts';
+export { packValidation } from './diagnostics.ts';
+export type { PackDiagnostic, SkippedPackCheck, PackValidation } from './diagnostics.ts';
 
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {

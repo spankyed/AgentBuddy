@@ -138,8 +138,8 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   const git = (...args: string[]) => options.run('git', args, root);
 
   const raw = readManifest(root);
-  const { errors: manifestErrors } = parseManifest(raw);
-  errors.push(...manifestErrors.map(e => `apack.json: ${e}`));
+  const { diagnostics: manifestErrors } = parseManifest(raw);
+  errors.push(...manifestErrors.map(({ message }) => `apack.json: ${message}`));
   if (!raw.hostVersion) errors.push('apack.json: hostVersion is required for releases (e.g. ">=0.3.0")');
 
   try {

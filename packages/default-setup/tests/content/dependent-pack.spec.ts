@@ -44,7 +44,7 @@ function importAll(compiledDir: string, pack: PackManifest, packDir: string, dep
 
 describe('a pack depending on default-setup content with its formats', () => {
   it("declares only a path and default-setup's format per entry, and registers no hooks", () => {
-    expect(parseManifest(manifest).errors).toEqual([]);
+    expect(messagesOf(parseManifest(manifest))).toEqual([]);
     for (const entry of Object.values(manifest.content!.sources!)) {
       expect(Object.keys(entry as object).sort()).toEqual(['format', 'path']);
     }
@@ -107,3 +107,7 @@ describe('a pack depending on default-setup content with its formats', () => {
     expect(dependent).toEqual(snapshot());
   });
 });
+
+function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
+  return result.diagnostics.map(issue => issue.message);
+}

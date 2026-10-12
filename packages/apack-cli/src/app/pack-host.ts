@@ -109,6 +109,8 @@ export interface HostLookupOptions {
 }
 
 export interface HostPackagesOptions extends HostLookupOptions {
+  /** Inspect cached host packages without downloading a beta. */
+  readOnly?: boolean;
   /** The pack whose checkout to look for, when nothing names an app. Absent means "do not derive" */
   from?: string;
   /** Injected for tests; defaults to `checkoutFor` */
@@ -161,7 +163,9 @@ export async function configuredHostPackagesDir(options: HostPackagesOptions = {
   }
 
   // Build/test are not upgrade commands: reuse a compatible cached beta before consulting the network.
-  return asPackages(cachedBetaApp(dirs, hostVersion) ?? await betaApp(hostVersion, dirs.cache));
+  const cached = cachedBetaApp(dirs, hostVersion);
+  if (!cached && options.readOnly) throw new Error('Selected beta host has no compatible cached build. Fetch the host before validating.');
+  return asPackages(cached ?? await betaApp(hostVersion, dirs.cache));
 }
 
 function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {

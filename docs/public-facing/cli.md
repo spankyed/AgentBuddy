@@ -407,11 +407,18 @@ when another caller wins the spawn race. `--with-secrets` refuses an existing pr
 
 ### Validation
 
-#### `apack pack validate`
+#### `apack pack validate [--json]`
+
+Read-only authoring checks. Exit codes are `0` for valid, `1` for invalid and `2` for incomplete
+validation (for example, unresolved dependencies prevent codegen checks). An incomplete report names
+the skipped checks and never claims the pack is valid. Build and installation remain strict gates.
+`--json` prints one report with `status`, `diagnostics` and `skippedChecks`; diagnostics carry a stable
+code, severity, manifest path, message and owner/source/suggestion when available. Text output renders
+the same report.
 
 Checks:
 - Manifest structure validation
-- Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
+- Each keyed `features` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
 - **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 

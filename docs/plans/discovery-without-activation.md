@@ -104,9 +104,10 @@ Each grouped row accounts for its named fields; new fields must extend the event
 
 Current consumers confirmed: backend registration/defaults stores, frontend registration/default selection,
 reference aggregate/provider initialization, CLI validate/build, and installed-layout/offline readers.
-`validateCodegen()` still returns no issues when dependency resolution throws; validation must report an
-incomplete check rather than “Pack is valid.” `PackSnapshot` currently holds manifest/types/facade/provenance
-but not all hidden metadata above. Extend it; do not add a second descriptor file authored independently.
+At this audit, codegen validation returned no issues when dependency resolution threw. The first
+foundation checkpoint fixes this with structured incomplete results and read-only dependency resolution.
+`PackSnapshot` still holds manifest/types/facade/provenance but not all hidden metadata above. Extend it;
+do not add a second descriptor file authored independently.
 
 The eleven default-setup feature settings modules use Zod objects with explicit defaults, strict objects,
 arrays, optional fields, records, enums, nullable values and numeric constraints. The audited modules and

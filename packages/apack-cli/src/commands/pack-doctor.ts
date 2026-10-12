@@ -43,7 +43,7 @@ export async function doctor(args: string[]) {
   if (!manifest) throw new Error('Pack health check failed: invalid manifest.');
   const parsed = manifest;
 
-  check('Manifest is valid', () => parseManifest(parsed).errors.join('; ') || 'pass');
+  check('Manifest is valid', () => parseManifest(parsed).diagnostics.map(issue => issue.message).join('; ') || 'pass');
 
   check('Generated files exist', () => {
     const genDir = path.join(root, 'src', '__generated__');

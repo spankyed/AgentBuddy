@@ -1,12 +1,12 @@
 import * as path from 'node:path';
 import type { PackSnapshot, PackTypeManifest } from '@apackdev/sdk/build';
-import { resolveDepFiles } from './fetch-deps';
+import { resolveDepFiles, type DependencyResolutionOptions } from './fetch-deps';
 
-async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<Map<string, PackSnapshot>> {
+async function loadDepSnapshots(root: string, deps: Record<string, string>, options: DependencyResolutionOptions): Promise<Map<string, PackSnapshot>> {
   const result = new Map<string, PackSnapshot>();
   const unresolved: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
-    const artifacts = await resolveDepFiles(root, depId, depValue);
+    const artifacts = await resolveDepFiles(root, depId, depValue, options);
     const resolved = artifacts?.snapshot;
     if (!resolved) {
       unresolved.push(depValue.startsWith('file:')
@@ -29,8 +29,8 @@ export interface ResolvedDeps {
   depSnapshots: Map<string, PackSnapshot>;
 }
 
-export async function resolveDeps(root: string, deps?: Record<string, string>): Promise<ResolvedDeps> {
-  const depSnapshots = deps ? await loadDepSnapshots(root, deps) : new Map<string, PackSnapshot>();
+export async function resolveDeps(root: string, deps?: Record<string, string>, options: DependencyResolutionOptions = {}): Promise<ResolvedDeps> {
+  const depSnapshots = deps ? await loadDepSnapshots(root, deps, options) : new Map<string, PackSnapshot>();
 
   const depTypes = new Map<string, PackTypeManifest>();
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
