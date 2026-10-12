@@ -28,6 +28,7 @@
     "@apackdev/sdk": "*",
     "@octokit/rest": "^21.1.1",
     "@vitejs/plugin-vue": "^6.0.1",
+    "ajv": "^8.20.0",
     "autoprefixer": "^10.4.14",
     "env-paths": "^3.0.0",
     "esbuild": "^0.25.0",

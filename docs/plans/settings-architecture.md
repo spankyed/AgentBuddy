@@ -176,9 +176,9 @@ a schema-to-Zod or schema-to-TypeScript translator. The first implementation che
 chosen tools on optional fields, nullable values, records, enums and arrays; reject unsupported authoring
 shapes explicitly rather than silently generating an incorrect facade.
 
-Ajv 8 is the proposed backend validator; `json-schema-to-typescript` is the proposed build-only type
-generator. Neither is a direct dependency of the SDK today. Add declared dependencies in the appropriate
-packages rather than use tooling's transitive installations. Compile/check validators once per declaration
+Ajv 8.20.0 and json-schema-to-typescript 15.0.4 are now declared SDK dependencies. The host/build-only
+`_compileSettingsDefinition` validates explicit defaults and returns a pure value validator; build tooling
+`generateSettingsTypes` emits schema-derived declarations. Compile/check validators once per declaration
 change, not on every read. Keep validator compilation out of renderer form rendering.
 
 The repository uses Zod 3.25 today. Audit every existing feature settings schema before conversion:
@@ -429,6 +429,28 @@ and refused missing remote references. The generator disabled file and HTTP refe
 This establishes tool suitability, not delivery: declare production dependencies, add focused contract
 specs and wire validation and generation into the pack build before migrating settings readers. Trusted
 caller binding, catalog publication and custom-form loading still require implementation.
+
+### Implemented contract kernel
+
+The SDK now carries `SettingsDefinition` / `SettingsSchema` data types, a host/build-only validator and
+a build-only declaration generator. Settings schemas explicitly declare `type: "object"` at the root;
+nested shapes support ordinary draft-07 validation. References use `#` or document-local JSON Pointers.
+Remote/file references, named anchors, nested `$id` bases, custom keywords and `$async` are refused.
+The validator also refuses non-JSON values, including explicit `undefined`, without changing input.
+Repeated objects are valid; actual cycles and sparse array holes are refused. This validates data,
+rather than substituting strings or dropping fields as the logging/transport serializers do.
+
+Generation keeps optionality, nullable values, enums, records, arrays and local definitions. Schema
+`title` remains presentation metadata; a cloned schema uses the requested generated export name, so a
+heading cannot rename the author-facing type. Numeric and other constraints remain runtime checks.
+Focused specs typecheck generated declarations and invalid-use examples; defaults and external-reference
+guard mutations are caught. Catalog/build integration, trusted caller binding and legacy feature conversion
+remain unfinished; this kernel does not yet switch any settings reader or writer.
+
+Bundled CLI/testing packages also declare Ajv 8 directly: their bundles inline SDK code but externalize
+Ajv, so checkout execution must resolve the same major as the published dependency metadata, rather
+than the unrelated tooling's root Ajv 6. The strict checkpoint chain passed serially; concurrent native
+app scenarios had Electron teardown timeouts after passing their assertions, and isolated retries passed.
 
 ## Delivery sequence
 

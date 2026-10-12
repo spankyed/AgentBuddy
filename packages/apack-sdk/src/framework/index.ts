@@ -5,3 +5,5 @@ export type { PackRegistration, PackFeature, PackFeatureSystem, PackFeaturePlugi
 export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, type HelpCatalog, type HelpTarget } from './pack-help.ts';
 export { defineFeatureSettings, checkFeatureSettings, getFeaturesWithSettings, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type FeatureSettings, type PackSettingsDefaults } from './pack-settings.ts';
 export { getPackCommands, type PackCommand } from './pack-commands.ts';
+export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
+export { _compileSettingsDefinition } from './settings-validation.ts';

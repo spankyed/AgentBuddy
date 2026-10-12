@@ -578,6 +578,9 @@ export interface GenerateEntriesOptions {
 // @public (undocumented)
 export function generatePackFiles(manifest: PackManifest, opts: GenerateEntriesOptions): Record<string, string>;
 
+// @public
+export function generateSettingsTypes(definition: SettingsDefinition, name: string): Promise<string>;
+
 // @public (undocumented)
 export function hashFlows(merged: FlowDSL): Record<string, object>;
 

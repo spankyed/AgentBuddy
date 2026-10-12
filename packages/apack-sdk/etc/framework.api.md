@@ -23,6 +23,9 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 // @public
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
+// @internal
+export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
+
 // @public
 export interface DeclaredMigration {
     // (undocumented)
@@ -260,6 +263,40 @@ export interface PackSettingsDefaults {
 export function packSystem(entry: SystemEntry, options?: {
     incoming?: readonly string[];
 }): PackFeatureSystem;
+
+// @public
+export interface SettingsDefinition {
+    access?: 'shared' | 'owner';
+    // (undocumented)
+    defaults: Record<string, unknown>;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    form?: string;
+    // (undocumented)
+    schema: SettingsSchema;
+    // (undocumented)
+    title?: string;
+}
+
+// @public (undocumented)
+export interface SettingsProblem {
+    // (undocumented)
+    keyword: string;
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    path: readonly string[];
+}
+
+// @public
+export type SettingsSchema = Record<string, unknown>;
+
+// @public (undocumented)
+export interface SettingsValidator {
+    // (undocumented)
+    validate(value: unknown): SettingsProblem[];
+}
 
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["SEND_STATE", "CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
