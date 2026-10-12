@@ -78,6 +78,40 @@ live in the SDK so packs and the renderer do not import private host implementat
 Feature ownership stays under `features.<id>.settings`; its definition changes from an executable
 Zod module to the same data contract used for app and pack preferences.
 
+### Remove the pack's app-settings abstraction
+
+Host ownership is incomplete while default-setup still assembles a document through
+`src/app-settings` and `settingsSections`. Moving some values to the host did not extract the contract:
+the remaining pack assembly, arbitrary section APIs and section-addressed forms preserve that coupling.
+Do not rename or relocate this directory into another settings assembly layer.
+
+The current source audit found these responsibilities:
+
+| Current artifact | Final disposition |
+|---|---|
+| `default-setup/src/app-settings/index.ts` | Delete `getBaseSettings`, `assertNoFeatureSlice` and the `settingsSections` thunk. Manifest ownership and schema validation make the assembly and its guard unnecessary. |
+| `default-setup/src/app-settings/types.ts` | Delete the pack's whole-document `SettingsData` and hand-written assistant value type. The host/SDK owns the document; assistant values derive from the declared group schema. |
+| `default-setup/src/app-settings/schema.ts` | Delete the unused `hotkeysSchema`; it has no callers. Host app and feature definitions already declare their respective values. |
+| `default-setup/src/content/default-settings.ts` | Delete. Declare the assistant group inline in `extensions.settings`; settings defaults are neither content nor an executable export. |
+| `default-setup/src/defs/action.ts` `SettingsData` re-export | Delete; actions use owner-bound settings access rather than a pack-authored app document. |
+| `#app-settings/*` package/TypeScript aliases and assembly tests | Delete. Replace tests with ownership, schema, effective-value and real lifecycle checks. |
+| `getSection`, `setInSection`, `useSettingsSection` and section/label transport targets | Replace with explicit app, pack/group and feature targets through the common writer and frontend runtime. No section API remains as an adapter. |
+
+The only remaining pack preference in that assembly is assistant `name`. Its declaration belongs in
+`extensions.settings.assistant`, stored at `packs['default-setup'].assistant`. App hotkeys, personal
+details and projects belong to host app definitions, stored at `app`. Onboarding completion and progress
+remain existing lifecycle state; they imply no assistant feature, actor or settings assembly module.
+Custom forms are presentation bindings to those owners, not owners of their definitions or data source.
+
+**One integrated removal checkpoint:** establish the shared document/target/handle contract and trusted
+caller binding; publish installed declarations through the common catalog; migrate the assistant group,
+app and feature callers, writer, events, renderer consumers and custom-form targets; then remove all
+artifacts above in that same working change. Generated entries/types, manifest/schema, public API reports,
+fixtures and docs must agree. Do not commit a new catalog reader as a substitute while retaining this
+pack-owned app assembly. Before committing, prove the app/pack/feature route described in the goal,
+including disabled definitions, restrictions, reset and restore; assert the obsolete directory, aliases,
+exports and manifest key are absent. No compatibility bridge or historical conversion accompanies removal.
+
 ## Naming contract
 
 Use **settings** consistently in APIs, types and manifest keys. Preferences describes their product
@@ -193,9 +227,9 @@ inline or in local JSON files resolved and embedded at build time. Built snapsho
 schemas and defaults so installed settings discovery requires no executable settings module. Keep existing
 feature form paths and visibility semantics; presentation metadata is independent of value validation.
 
-Reuse the current writer and normalize JSON Schema issues into its refusal contract. A temporary adapter
-may support old feature declarations during implementation, but the completed work has one settings schema
-format and no retained Zod settings authoring API or compatibility alias. Zod used by unrelated APIs,
+Reuse the current writer and normalize JSON Schema issues into its refusal contract. Change all owned
+declarations and consumers together: one settings schema format, without a temporary adapter, retained
+Zod settings authoring API or compatibility alias. Zod used by unrelated APIs,
 manifests and domain code is unaffected; no repository-wide Zod upgrade is required.
 
 The common definition supports runtime validation, JSON editor completion/descriptions/errors, generated
@@ -653,8 +687,10 @@ and refresh path must agree. This does not require finishing other contribution 
    targets, templates, fixtures, schema/API reports and public docs.
    Apply the naming contract across SDK/service/transport APIs, generated files, forms, fixtures and docs.
    Remove old section accessors, overloaded selectors, duplicated types and inaccurate lazy/opaque-section
-   prose. Move default-setup's remaining pack definitions/forms out of the misleading `app-settings`
-   directory when host app ownership is extracted; choose paths by the definitions/forms they contain.
+   prose. Delete default-setup's `app-settings` assembly and `content/default-settings.ts` as specified
+   above; do not relocate them. Steps 2, 3, 6 and this contract cleanup form the integrated removal
+   checkpoint while the old assembly is present. The existing host ownership and catalog prototypes are
+   foundation evidence, not completion of that checkpoint.
 
 Each step ends with a usable, validated implementation. Update consumers, tests, fixtures, templates
 and docs together. No aliases, fallback reads, compatibility readers, invalid-value grandfathering or

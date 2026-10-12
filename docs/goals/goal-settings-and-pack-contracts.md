@@ -143,6 +143,13 @@ values -> trusted owner-bound access -> edit/reset -> notifications -> export/im
 or activation-failed pack, a restricted dependency, and an unavailable custom form. This is the first
 integrated checkpoint, not a reduction of the goal or a substitute for remaining contribution kinds.
 
+The user identified the retained default-setup `src/app-settings` assembly as a missed architectural
+boundary. Delete that directory, `content/default-settings.ts`, their aliases and pack whole-document
+types together with `settingsSections` and arbitrary section addressing. Do not rename/rearrange the
+assembly or commit catalog integration as a substitute for removing it. Follow the audited deletion and
+integrated owner-contract checkpoint in
+[settings architecture](../plans/settings-architecture.md#remove-the-packs-app-settings-abstraction).
+
 The rejected assistant draft has been removed and bindings regenerated. Before further implementation,
 settle real root/client readiness semantics in the settings plan. Do not invent a lifecycle field to
 retain the obsolete timestamp or move domain-specific logic into Brain instead of designing the boundary. All Phases 0–7 and all three Phase 6 workstreams remain required.
@@ -371,3 +378,15 @@ Strict chain passed (225.5s, 16 cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-12T19-35-10Z-62769`. An earlier typecheck failure exposed an
 unnecessary event payload, which was removed. Multi-window and pack-reload acceptance remain outstanding,
 along with the catalog, settings handles/frontend runtime and later phases; no plan is ready to archive.
+
+### App-settings boundary correction
+
+Audited all remaining assembly callers after the user's correction. The directory contains a root-section
+thunk, a pack-authored whole-document type and an unused hotkey schema; the assistant baseline remains in
+a separate content source. Section APIs and transport targets still encode the old ownership. The plan
+now requires deletion of this abstraction in the integrated app/pack/feature contract change, rather than
+relocation. This turn's partial installed-catalog draft was discarded from source and retained only as
+`/private/tmp/apack-catalog-draft-before-owner-redesign.patch`. Its focused run passed 99 checks and caught
+one loader fixture registering a settings definition absent from its manifest; future integration must
+correct that fixture rather than relax declaration agreement. No production catalog integration was
+committed and no settings phase is complete.
