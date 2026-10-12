@@ -25,7 +25,7 @@ import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { PACK_LAYOUT, createPackRegistry } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild, verifyPack, createPackRegistry } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { resolveDeps } from './generate';
@@ -118,7 +118,9 @@ async function buildIntoStaging(args: string[]) {
   // absent from the record rather than guessed at
   const reads = buildReads(root);
   // What the last build left reusable, and what this one leaves for the next
-  const stamps = readStamps(root);
+  let stamps = readStamps(root);
+  try { verifyPack(path.join(root, 'dist')); }
+  catch { stamps = {}; } // A damaged output must be rebuilt, never carried forward and sealed again.
   const nextStamps: Record<string, PhaseStamp> = {};
 
   // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
@@ -285,6 +287,7 @@ async function buildIntoStaging(args: string[]) {
     }
     fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
     fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
+    sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
     // With the snapshot rather than per phase: both say what this build produced, and a build that failed
     // produced neither. A phase's reads are kept in memory until here so a half-finished build leaves the
     // last complete record in place rather than a partial one

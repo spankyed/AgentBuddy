@@ -1,3 +1,4 @@
+import { sealBuild } from './runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // The packs the app ships are installed packs: the boot installs them into the data dir, so there is one
 // kind of pack on disk and one load path to it. What this pins is when the boot writes and when it does not
@@ -31,6 +32,7 @@ function shipPack(id: string, runtime = `exports.registration = { id: ${JSON.str
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id, name: id, version: '1.0.0' }));
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), runtime);
+  sealBuild(dir);
   return dir;
 }
 
@@ -66,6 +68,7 @@ describe('installing the packs the app ships', () => {
     await installShippedPacks(shipped, packsDir);
 
     fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), 'exports.registration = { id: "shipped-pack", v: 2 };');
+    sealBuild(dir);
     expect(await outcomes()).toEqual(['shipped-pack=updated']);
     expect(fs.readFileSync(path.join(packsDir, 'shipped-pack', PACK_LAYOUT.runtimeEntry), 'utf-8')).toContain('v: 2');
   });
@@ -103,7 +106,7 @@ describe('installing the packs the app ships', () => {
 
     const [result] = await installShippedPacks(shipped, packsDir);
     expect(result).toMatchObject({ id: 'unbuilt-pack', outcome: 'failed' });
-    expect(result!.error).toContain(PACK_LAYOUT.integrity);
+    expect(result!.error).toContain(`dist/${PACK_LAYOUT.runtimeEntry}`);
     expect(fs.existsSync(path.join(packsDir, 'unbuilt-pack'))).toBe(false);
   });
 

@@ -1,3 +1,4 @@
+import { sealBuild } from './runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -52,6 +53,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/content/actions.content.json', '[]');
   write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
+  sealBuild(root);
   return root;
 }
 
@@ -120,6 +122,40 @@ describe('stagePack', () => {
     expect(() => stagePack(root, stage)).toThrow('snapshot.json defs.bad');
     expect(packFileHashes(stage)).toEqual(before);
   });
+  it.each(['runtime/index.cjs', 'runtime/index.cjs.map', 'types/snapshot.json'])('refuses edited output %s without replacing an accepted stage', file => {
+    const root = builtPack();
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    fs.appendFileSync(path.join(root, 'dist', file), '\n');
+    expect(() => stagePack(root, stage)).toThrow(`checksum mismatch ${file}`);
+    expect(packFileHashes(stage)).toEqual(before);
+  });
+
+  it('refuses an output without its producer receipt', () => {
+    const root = builtPack();
+    fs.rmSync(path.join(root, 'dist/integrity.json'));
+    expect(() => stagePack(root, path.join(tmp, 'stage'))).toThrow('no integrity.json');
+  });
+
+  it('refuses bytes changed during copying and preserves the accepted stage', () => {
+    const root = builtPack();
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    const copy = fs.copyFileSync;
+    const spy = vi.spyOn(fs, 'copyFileSync').mockImplementation((from, to, mode) => {
+      copy(from, to, mode);
+      if (String(from).endsWith('/runtime/index.cjs')) fs.appendFileSync(to, '\n// changed during copy');
+    });
+    syncBuiltinESMExports();
+    try {
+      expect(() => stagePack(root, stage)).toThrow('checksum mismatch runtime/index.cjs');
+      expect(packFileHashes(stage)).toEqual(before);
+      expect(fs.readdirSync(tmp).some(file => file.startsWith('.apack-stage-'))).toBe(false);
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+  });
+
 });
 
 describe('packFrontendFiles', () => {
@@ -171,6 +207,7 @@ describe('installed artifact reader', () => {
     const stage = path.join(tmp, 'stage');
     const root = builtPack();
     fs.writeFileSync(path.join(root, 'dist/runtime/index.cjs'), 'throw new Error("discovery executed the runtime");');
+    sealBuild(root);
     stagePack(root, stage);
     const artifact = readPackArtifact(stage);
     expect(artifact.snapshot.manifest.id).toBe('demo-pack');
@@ -189,6 +226,7 @@ describe('installed artifact reader', () => {
     stagePack(root, stage);
     const before = readPackArtifact(stage);
     fs.appendFileSync(path.join(root, 'dist/runtime/index.cjs'), '\n// new build');
+    sealBuild(root);
     stagePack(root, stage);
     const after = readPackArtifact(stage);
     expect(after.snapshot.declarationRevision).toBe(before.snapshot.declarationRevision);
@@ -404,6 +442,7 @@ describe('installPackFromLocal (pack layout path)', () => {
 
     const source = builtPack();
     fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
+    sealBuild(source);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await installPackFromLocal(source, packsDir, { packFormat: appFormat });
@@ -428,6 +467,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     const packsDir = path.join(tmp, 'packs');
     const source = builtPack();
     fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT + 1 }));
+    sealBuild(source);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await installPackFromLocal(source, packsDir);

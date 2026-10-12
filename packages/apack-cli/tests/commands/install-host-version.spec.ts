@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { recordHostCompatibility } from '@apackdev/host/packs';
+import { recordHostCompatibility, sealPackBuild } from '@apackdev/host/packs';
 import { install } from '../../src/commands/pack-install';
 import { uninstall } from '../../src/commands/pack-uninstall';
 import { publishRunningApp, findDatabaseWriter } from '@apackdev/host/database';
@@ -34,6 +34,7 @@ function builtPack(hostVersion: string): string {
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
   return root;
 }
 

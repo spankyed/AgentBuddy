@@ -1,3 +1,4 @@
+import { sealBuild } from './runtime/artifact-fixture.ts';
 // `apack pack dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -40,6 +41,7 @@ function builtPack(): string {
   write('dist/runtime/fe.js', 'export default {};');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
   write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, defs: {} }));
+  sealBuild(root);
   return root;
 }
 

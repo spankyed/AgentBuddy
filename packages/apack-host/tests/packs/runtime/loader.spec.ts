@@ -1,4 +1,4 @@
-import { sealPack } from './artifact-fixture.ts';
+import { sealBuild, sealPack } from './artifact-fixture.ts';
 import { _declarationRevision, type PackManifest } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registry } from './test-host.ts';
@@ -1005,6 +1005,7 @@ describe('contentRevision', () => {
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'content', contentFile('actions')), '[{"label":"same"}]');
 
+    sealBuild(source);
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const { dir } = await installPackFromLocal(source, packsDir);
     const content = path.join(dir, 'runtime', 'content');

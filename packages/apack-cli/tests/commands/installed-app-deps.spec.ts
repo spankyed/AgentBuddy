@@ -1,3 +1,4 @@
+import { sealPackBuild } from '@apackdev/host/packs';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -48,6 +49,7 @@ function builtInPack(snapshot: object = { declarationRevision: _declarationRevis
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
+  sealPackBuild(path.join(dir, 'dist'), JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf8')));
   return dir;
 }
 
@@ -62,6 +64,7 @@ describe('dependency resolution from an installed app', () => {
   it('inspects an installed dependency without executing its runtime, downloading or populating the author cache', async () => {
     const source = builtInPack();
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'throw new Error("Runtime must not execute");');
+    sealPackBuild(path.join(source, 'dist'), JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8')));
     await installPackFromLocal(source, packsDir());
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot);
@@ -150,6 +153,7 @@ describe('dependency resolution from an installed app', () => {
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
     const dir = path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs');
     fs.mkdirSync(dir, { recursive: true });
+    sealPackBuild(path.join(src, 'dist'), JSON.parse(fs.readFileSync(path.join(src, 'apack.json'), 'utf8')));
     await installPackFromLocal(src, dir);
   }
 
@@ -255,6 +259,7 @@ describe('dependency resolution from an installed app', () => {
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
     fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
     const stage = path.join(tmp, `stage-${version}`);
+    sealPackBuild(path.join(src, 'dist'), manifest);
     stagePack(src, stage);
     const archive = await createPackArchive(stage, path.join(tmp, 'releases'));
     return {

@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { EarsQuery } from '@apackdev/ears';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.APACK_ENV = 'test';
@@ -64,6 +64,7 @@ async function installExternalPack(id: string, entityType: string): Promise<void
     (`module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')))}';`,
   );
+  sealPackBuild(path.join(source, 'dist'), JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8')));
   await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });
 }

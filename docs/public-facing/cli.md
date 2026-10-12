@@ -167,7 +167,7 @@ A build resolves the pack's `@apackdev` packages to the `dist` each published pa
 
 #### `apack pack archive [--out <dir>]`
 
-Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
+Verify the build-owned `dist/integrity.json` and stage its recorded files into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses built-in packs, invalid manifests and edited build output; rebuild before archiving changed files.
 
 #### `apack pack dev`
 

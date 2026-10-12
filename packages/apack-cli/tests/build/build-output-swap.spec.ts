@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readPackArtifact, stagePack, verifyPack } from '@apackdev/host/packs';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { generatePackFiles } from '@apackdev/sdk/build';
 
 /**
@@ -141,5 +142,31 @@ describe('a pack whose runtime fails to bundle', () => {
     }
     expect(list(dist)).not.toContain(PACK_LAYOUT.snapshot);
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
+});
+
+
+describe('a completed build', () => {
+  it('publishes verified output and rebuilds damaged reusable files instead of renewing their checksums', async () => {
+    const dir = previousBuild([]);
+    const root = path.dirname(dir);
+    packFixture({ at: root, manifest: { id: 'sealed-build', name: 'Sealed', features: {} }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await build(['--skip-fe']);
+      const first = readPackArtifact(dir);
+      expect(first.integrity.files[PACK_LAYOUT.runtimeEntry]).toMatch(/^[a-f0-9]{64}$/);
+      const reusable = path.join(dir, 'types/pack-types.d.ts');
+      const original = fs.readFileSync(reusable, 'utf8');
+      fs.appendFileSync(reusable, '\nexport type Damaged = never;');
+      expect(() => verifyPack(dir)).toThrow('checksum mismatch types/pack-types.d.ts');
+      await build(['--skip-fe']);
+      expect(fs.readFileSync(reusable, 'utf8')).toBe(original);
+      expect(readPackArtifact(dir).revision).toBe(first.revision);
+      const stage = path.join(root, 'stage');
+      stagePack(root, stage);
+      expect(verifyPack(stage).id).toBe('sealed-build');
+    } finally { process.chdir(cwd); }
   });
 });

@@ -1,3 +1,4 @@
+import { sealBuild } from './artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -46,6 +47,7 @@ function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFil
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
   write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
+  sealBuild(packDir);
 }
 
 function writeManifest(dir: string, manifest: Record<string, unknown>) {

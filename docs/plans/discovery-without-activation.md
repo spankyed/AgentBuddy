@@ -58,9 +58,28 @@ placement. Shipped-copy comparison verifies the installed receipt and bytes befo
 missing, malformed or mismatched integrity and extra links trigger replacement from the shipped artifact.
 
 This verifies the installed tree at the read boundary, not a signature, an immutable filesystem view or
-complete source/dependency freshness. Built source output still needs a producer-owned file inventory
-before staging; production catalog publication, binding membership and accepted frontend asset delivery
+complete source/dependency freshness. Build output now carries a producer-owned file inventory before staging; production catalog publication, binding membership and accepted frontend asset delivery
 must use retained identities rather than rehashing whichever bytes are on disk later. Those remain required.
+
+### Implemented producer-owned output receipts
+
+`apack pack build` writes the canonical manifest and the existing layout `integrity.json` into its
+staged output after all gates and the snapshot, before publishing `dist`. Its receipt covers every
+output file, including source maps and DSL definitions. Reuse verifies the previous output first;
+a damaged tree is rebuilt, preventing cached edited files from receiving renewed checksums.
+
+Source staging and shipped comparisons verify that receipt, the snapshot and the source manifest.
+The installation variant retains the existing runtime/build/types file scope and omits source maps.
+It copies recorded files into a sibling candidate and verifies them against the producer's expected
+checksums before replacing the accepted stage. A copy race cannot manufacture fresh checksums for
+changed bytes. Foreign snapshot formats remain opaque; layout verification still checks their bytes.
+
+Checks cover missing receipts, changed runtime/snapshot/source maps, copy-time mutation retaining the
+old stage and cleaning candidates, and a real build/rebuild whose damaged reusable facade is regenerated.
+This does not yet freeze authored inputs or dependency/tool resolution. DSL compilation still writes
+into the live `dist/defs` before publication, so its failed-build retention path needs extraction into
+the staged build view. Installer placement and frontend asset delivery also need verified accepted
+copy identities; these remain completion requirements, not properties of this receipt checkpoint.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
 asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and

@@ -1,3 +1,4 @@
+import { sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -59,6 +60,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'content', 'flows.content.json'), '[]');
   }
+  sealBuild(dir);
   return dir;
 }
 

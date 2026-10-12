@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
-import { readPackIntegrity } from '@apackdev/host/packs';
+import { readPackIntegrity, sealPackBuild } from '@apackdev/host/packs';
 
 /**
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
@@ -33,6 +33,7 @@ vi.mock('../../src/commands/build', () => ({
     // filesystem's own clock at its full precision
     const runtimeFile = join(builtAt.root, 'dist/runtime/index.cjs');
     writeFileSync(runtimeFile, readFileSync(runtimeFile));
+    sealPackBuild(join(builtAt.root, 'dist'), manifest);
   }),
 }));
 import { buildPackArchive } from '../../src/commands/archive';
@@ -60,6 +61,7 @@ function builtPack(version = '1.2.3'): string {
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
   // Which pack the stand-in build above refreshes
   builtAt.root = root;
   return root;

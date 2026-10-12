@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, packFileHashes } from '../../../src/packs/layout.ts';
+import { sealPackBuild, PACK_LAYOUT, PACK_LAYOUT_VERSION, packFileHashes } from '../../../src/packs/layout.ts';
 
 /** Finish a synthetic installed build after writing its files, exactly as staging records them. */
 export function sealPack(dir: string): void {
@@ -8,4 +8,10 @@ export function sealPack(dir: string): void {
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify({
     formatVersion: PACK_LAYOUT_VERSION, id: manifest.id, version: manifest.version, files: packFileHashes(dir),
   }));
+}
+
+/** Simulate the receipt published by a fixture's completed source build. */
+export function sealBuild(root: string): void {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
+  sealPackBuild(path.join(root, 'dist'), manifest);
 }

@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 let tmpDir: string;
 let previousEnvironment: { channel?: string; userDataDir?: string };
@@ -35,6 +35,7 @@ function writeBuild(dir: string, id: string) {
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  sealPackBuild(path.join(dir, 'dist'), JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf8')));
 }
 
 describe('pack CLI: init', () => {

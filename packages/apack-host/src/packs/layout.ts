@@ -10,14 +10,15 @@
  *   <id>/build/                 build-time code dependents load (step build facets)
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
- * `apack pack build` writes runtime/, build/ and types/ into dist/. Staging adds the
- * manifest and integrity.json. The installer copies a verified stage into
+ * `apack pack build` seals its output with the manifest and integrity.json. Staging verifies
+ * that output and removes source maps. The installer copies a verified stage into
  * the packs directory unchanged, and the host loader reads it as-is.
  */
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
+import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 
@@ -169,85 +170,77 @@ export function packFileHashes(layoutDir: string): Record<string, string> {
     .map(rel => [rel, sha256File(path.join(layoutDir, rel))]));
 }
 
-/**
- * The files a staged pack *would* hold and their hashes, computed from the built pack without copying
- * anything: the sections' files under `dist/`, minus source maps, plus the manifest. Keyed by the path they
- * take in the staged layout.
- *
- * One declaration with `stagePack`, which writes exactly this into `integrity.json`. The boot that installs
- * the packs the app ships compares it against `packFileHashes` of the installed copy — the files as they
- * actually are, not as `integrity.json` remembers them, so one comparison answers both "is this a different
- * build" and "did something change the installed copy".
- */
-export function stagedFileHashes(packRoot: string): Record<string, string> {
-  const dist = path.join(packRoot, 'dist');
-  const files: Record<string, string> = {};
-  for (const section of SECTIONS) {
-    const from = path.join(dist, section);
-    if (!fs.existsSync(from)) continue;
-    for (const rel of listFiles(from)) {
-      if (rel.endsWith('.map')) continue;
-      files[path.join(section, rel)] = sha256File(path.join(from, rel));
-    }
-  }
-  // The manifest is staged re-serialised, so its hash is of what staging would write rather than of the file
-  const manifest = fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8');
-  files[PACK_LAYOUT.manifest] = sha256(JSON.stringify(JSON.parse(manifest), null, 2) + '\n');
-  return files;
+/** Seal completed build output before publishing it as dist. Staging must never renew this receipt. */
+export function sealPackBuild(dir: string, manifest: PackManifest, sdkVersion?: string): PackIntegrity {
+  fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest, null, 2) + '\n');
+  const integrity: PackIntegrity = {
+    formatVersion: PACK_LAYOUT_VERSION, id: manifest.id, version: manifest.version,
+    hostVersion: manifest.hostVersion, sdkVersion, files: packFileHashes(dir),
+  };
+  fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');
+  return verifyPack(dir);
 }
 
-/**
- * Assemble a staged pack directory from a built pack. Throws if the pack hasn't been
- * built in the pack layout. Source maps stay out of staged packs.
- */
+/** The installation variant excludes build source maps and carries the same manifest bytes. */
+function stagedHashes(integrity: PackIntegrity): Record<string, string> {
+  return Object.fromEntries(Object.entries(integrity.files).filter(([file]) =>
+    file === PACK_LAYOUT.manifest || (!file.endsWith('.map') && SECTIONS.some(section => file.startsWith(`${section}/`)))));
+}
+
+/** Verify the producer's output and the source descriptor before computing a shipped update. */
+export function stagedFileHashes(packRoot: string): Record<string, string> {
+  return stagedHashes(readBuiltPackIntegrity(packRoot));
+}
+
+function readBuiltPackIntegrity(packRoot: string, packFormat?: number): PackIntegrity {
+  if (!hasBuiltPackSections(packRoot)) {
+    throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack pack build" first.`);
+  }
+  const manifest: PackManifest = JSON.parse(fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf8'));
+  const dist = path.join(packRoot, 'dist');
+  const { bytes, data } = readSnapshotFile(dist);
+  // A foreign format remains opaque: its matching host owns the grammar.
+  if (packFormat !== undefined) {
+    const mismatch = _snapshotFormatMismatch(data, packFormat);
+    if (mismatch) throw new Error(snapshotFormatProblem(mismatch, packFormat));
+  }
+  if (!_snapshotFormatMismatch(data)) checkedSnapshot(data, manifest);
+  const integrity = verifyPack(dist);
+  if (sha256(bytes) !== integrity.files[PACK_LAYOUT.snapshot]
+    || sha256(JSON.stringify(manifest, null, 2) + '\n') !== integrity.files[PACK_LAYOUT.manifest]) {
+    throw new Error('Source declarations do not match the sealed build; rebuild the complete pack');
+  }
+  return integrity;
+}
+
+/** Stage only verified producer bytes; retain the previous stage if validation or copying fails. */
 export function stagePack(
   packRoot: string,
   stageDir: string,
   options: { sdkVersion?: string; provenance?: PackIntegrity['provenance']; packFormat?: number } = {},
 ): PackIntegrity {
-  if (!hasBuiltPackSections(packRoot)) {
-    throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack pack build" first.`);
-  }
-  // The built manifest, staged as it is. A pack's version reaches an archive by being written before the
-  // build, never by being substituted here: dist/types/snapshot.json is a build artifact copied verbatim,
-  // and a dependent range-checks against the version in it while the app reads apack.json.
-  const manifest: PackManifest = JSON.parse(fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8'));
-
-  // A failed build retains dist. Refuse edited declarations before removing an existing stage.
-  // Foreign formats remain opaque: only their matching app can interpret their grammar.
-  const raw = readSnapshotFile(path.join(packRoot, 'dist')).data;
-  if (options.packFormat !== undefined) {
-    const mismatch = _snapshotFormatMismatch(raw, options.packFormat);
-    if (mismatch) throw new Error(snapshotFormatProblem(mismatch, options.packFormat));
-  }
-  if (!_snapshotFormatMismatch(raw)) checkedSnapshot(raw, manifest);
-
-  fs.rmSync(stageDir, { recursive: true, force: true });
-  fs.mkdirSync(stageDir, { recursive: true });
-  const dist = path.join(packRoot, 'dist');
-  for (const section of SECTIONS) {
-    const from = path.join(dist, section);
-    if (!fs.existsSync(from)) continue;
-    fs.cpSync(from, path.join(stageDir, section), {
-      recursive: true,
-      filter: (src) => !src.endsWith('.map'),
-    });
-  }
-
-  fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.manifest), JSON.stringify(manifest, null, 2) + '\n');
-
-  const files = packFileHashes(stageDir);
+  const built = readBuiltPackIntegrity(packRoot, options.packFormat);
   const integrity: PackIntegrity = {
-    formatVersion: PACK_LAYOUT_VERSION,
-    id: manifest.id,
-    version: manifest.version,
-    hostVersion: manifest.hostVersion,
-    sdkVersion: options.sdkVersion,
-    provenance: options.provenance,
-    files,
+    ...built, sdkVersion: options.sdkVersion ?? built.sdkVersion,
+    provenance: options.provenance ?? built.provenance, files: stagedHashes(built),
   };
-  fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');
-  return integrity;
+  fs.mkdirSync(path.dirname(stageDir), { recursive: true });
+  const incoming = fs.mkdtempSync(path.join(path.dirname(stageDir), '.apack-stage-'));
+  try {
+    const dist = path.join(packRoot, 'dist');
+    for (const file of Object.keys(integrity.files)) {
+      const target = path.join(incoming, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(dist, file), target);
+    }
+    fs.writeFileSync(path.join(incoming, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');
+    // Copy races cannot be re-signed into acceptance: keep the producer's expected checksums.
+    verifyPack(incoming);
+    replaceDir(incoming, stageDir);
+    return integrity;
+  } finally {
+    fs.rmSync(incoming, { recursive: true, force: true });
+  }
 }
 export function readPackIntegrity(dir: string): PackIntegrity {
   const integrityPath = path.join(dir, PACK_LAYOUT.integrity);
@@ -323,7 +316,10 @@ export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_
 
 /** Check format version and that the files on disk are exactly the ones recorded. */
 export function verifyPack(dir: string): PackIntegrity {
-  if (fs.lstatSync(path.join(dir, PACK_LAYOUT.integrity)).isSymbolicLink()) throw new Error('integrity.json must be a file, not a symbolic link');
+  const receipt = fs.lstatSync(path.join(dir, PACK_LAYOUT.integrity), { throwIfNoEntry: false });
+  if (!receipt) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}; rebuild the complete pack`);
+  if (receipt.isSymbolicLink()) throw new Error('integrity.json must be a file, not a symbolic link');
+  if (!receipt.isFile()) throw new Error('integrity.json must be a regular file');
   const integrity = readPackIntegrity(dir);
   if (!integrity || typeof integrity !== 'object' || Array.isArray(integrity)
     || typeof integrity.id !== 'string' || !integrity.id

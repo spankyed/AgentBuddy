@@ -10,7 +10,7 @@ import { loadExternalPacks } from '@apackdev/host/packs/runtime';
 import { init } from '../../src/commands/init';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 // The loader checks each pack's hostVersion against the app version
 startTestRuntime({ appVersion: '1.0.0' });
@@ -42,6 +42,7 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
   write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
   write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  sealPackBuild(path.join(packDir, 'dist'), JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf8')));
 }
 
 describe('pack full lifecycle: init → install → load', () => {
