@@ -963,7 +963,7 @@ ${items.join('\n')}
       ? valueExport('settingsSections', manifest.settingsSections)
       : undefined;
     // Validated Markdown articles embedded into the runtime registration
-    const help = manifest.help ? compileHelp(root, manifest) : undefined;
+    const help = manifest.extensions?.help ? compileHelp(root, manifest) : undefined;
 
     // The machine each system was built from is typed by the contract the manifest names for its feature, and
     // nothing in either file says so: this asserts it where both are in scope.

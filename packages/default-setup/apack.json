@@ -224,6 +224,9 @@
     }
   },
   "extensions": {
+    "help": {
+      "path": "src/extensions/help"
+    },
     "steps": {
       "action": {
         "node": "src/extensions/steps/action/build.ts#actionStepNode",
@@ -715,8 +718,5 @@
       "0.4.0": "src/migrations/0.4.0.ts#migration"
     }
   },
-  "settingsSections": "src/app-settings/index.ts#settingsSections",
-  "help": {
-    "path": "src/extensions/help"
-  }
+  "settingsSections": "src/app-settings/index.ts#settingsSections"
 }

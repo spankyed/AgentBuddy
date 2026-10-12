@@ -98,7 +98,7 @@ describe('parseManifest', () => {
     }
     // Every key the section holds, and the two that moved elsewhere
     expect(Object.keys(_MOVED_ROOT_KEYS).sort())
-      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'packServices', 'services', 'steps']);
+      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'help', 'packServices', 'services', 'steps']);
   });
 
   // The hint is for a key that moved; an unrecognized key that never existed gets the plain message

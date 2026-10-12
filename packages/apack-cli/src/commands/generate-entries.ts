@@ -39,7 +39,7 @@ function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>
   hash.update(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'));
   hash.update(codegenSource());
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')) as PackManifest;
-  if (manifest.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
+  if (manifest.extensions?.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
   const srcDir = path.join(root, 'src');
   for (const file of fs.existsSync(srcDir) ? sourceFiles(srcDir) : []) {
     hash.update(path.relative(root, file));

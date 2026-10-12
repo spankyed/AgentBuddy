@@ -9,14 +9,14 @@ import type { Nodes } from 'mdast';
 
 /** Build help into the registration; installed packs need neither Markdown sources nor a dataset loader. */
 export function compileHelp(root: string, manifest: PackManifest): HelpDocument[] {
-  if (!manifest.help) return [];
-  const dir = path.resolve(root, manifest.help.path);
+  if (!manifest.extensions?.help) return [];
+  const dir = path.resolve(root, manifest.extensions.help.path);
   const inside = (base: string, file: string) => {
     const relative = path.relative(base, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   };
   if (!inside(path.resolve(root), dir) || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory() || !inside(fs.realpathSync(root), fs.realpathSync(dir))) {
-    throw new Error(`Help directory "${manifest.help.path}" must exist inside the pack.`);
+    throw new Error(`Help directory "${manifest.extensions.help.path}" must exist inside the pack.`);
   }
   const files: string[] = [];
   function walk(folder: string): void {

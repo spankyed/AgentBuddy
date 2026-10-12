@@ -103,7 +103,7 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   const srcDir = path.join(root, 'src');
   if (!fs.existsSync(srcDir)) throw new Error(`No ${srcDir} to watch`);
 
-  const helpPath = readValidManifest(root).help?.path;
+  const helpPath = readValidManifest(root).extensions?.help?.path;
   const helpDir = helpPath ? path.resolve(root, helpPath) : undefined;
 
   if (!(await rebuild(root, packId, !!helpDir))) {

@@ -10,9 +10,9 @@ const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 function fixture(files: Record<string, string>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-')); dirs.push(root);
-  fs.mkdirSync(path.join(root, 'src/help'), { recursive: true });
-  for (const [name, text] of Object.entries(files)) { const file = path.join(root, 'src/help', name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
-  const manifest: PackManifest = { id: 'test-pack', name: 'Test', version: '1.0.0', features: { code: {} }, help: { path: 'src/help' } };
+  fs.mkdirSync(path.join(root, 'src/extensions/help'), { recursive: true });
+  for (const [name, text] of Object.entries(files)) { const file = path.join(root, 'src/extensions/help', name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
+  const manifest: PackManifest = { id: 'test-pack', name: 'Test', version: '1.0.0', features: { code: {} }, extensions: { help: { path: 'src/extensions/help' } } };
   return { root, manifest };
 }
 describe('Markdown help compilation', () => {
@@ -26,7 +26,7 @@ describe('Markdown help compilation', () => {
     expect(articles.find(a => a.id === 'welcome')!.body).toContain('https://help.apack.invalid/test-pack/nested%2Fnext');
     const files = generatePackFiles(manifest, { packRoot: root });
     expect(files['src/__generated__/pack-entry.ts']).toContain('"title":"Welcome"');
-    fs.rmSync(path.join(root, 'src/help'), { recursive: true });
+    fs.rmSync(path.join(root, 'src/extensions/help'), { recursive: true });
     expect(files['src/__generated__/pack-entry.ts']).toContain('Details');
   });
   it.each([
@@ -43,9 +43,9 @@ describe('Markdown help compilation', () => {
   });
   it('rejects absent directories and symlinks', () => {
     const { root, manifest } = fixture({});
-    fs.symlinkSync(os.tmpdir(), path.join(root, 'src/help/escape'));
+    fs.symlinkSync(os.tmpdir(), path.join(root, 'src/extensions/help/escape'));
     expect(() => compileHelp(root, manifest)).toThrow(/symbolic/);
-    fs.rmSync(path.join(root, 'src/help'), { recursive: true });
+    fs.rmSync(path.join(root, 'src/extensions/help'), { recursive: true });
     expect(() => compileHelp(root, manifest)).toThrow(/must exist/);
   });
   it('preserves fenced examples instead of resolving their example links', () => {
