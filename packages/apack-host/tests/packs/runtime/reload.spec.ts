@@ -1,3 +1,4 @@
+import { sealPack } from './artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
@@ -8,7 +9,7 @@ import * as path from 'node:path';
 import { registry } from './test-host.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
@@ -34,10 +35,10 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.1', files: {} }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (runtimeSource) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  sealPack(packDir);
 }
 
 const runtime = (services = '') => `
@@ -93,7 +94,6 @@ describe('reloading a pack the app ships', () => {
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
@@ -117,6 +117,7 @@ describe('reloading a pack the app ships', () => {
       };
     `) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+    sealPack(packDir);
     return packDir;
   }
 
@@ -125,6 +126,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     const contentDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir);
     fs.mkdirSync(contentDir, { recursive: true });
     fs.writeFileSync(path.join(contentDir, 'actions.content.json'), content);
+    sealPack(path.dirname(path.dirname(contentDir)));
   }
 
   /** The pack as `applyPacks` takes it: a pack the app ships, with the policy its registration declares */
@@ -315,6 +317,7 @@ describe('reloading a pack', () => {
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, entries: [] }),
     );
+    sealPack(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
 
     await reloadPackById(registry, PACK_ID, bus as never);
 

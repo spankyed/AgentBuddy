@@ -46,10 +46,10 @@ export type { ReleaseCandidate } from './updater.ts';
 // Pack layout (build output, release archive and installed layout)
 export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
-  stagePack, verifyPack, readPackIntegrity, isPackLayout,
+  stagePack, verifyPack, readPackIntegrity, readPackArtifact, isPackLayout,
   packFrontendFiles,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
   staleBuildOutput,
 } from './layout.ts';
-export type { PackIntegrity, LoadedPackEntry } from './layout.ts';
+export type { PackIntegrity, PackArtifact, LoadedPackEntry } from './layout.ts';

@@ -8,7 +8,7 @@ import { _declarationRevision } from '@apackdev/sdk/build';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
 import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, readPackSnapshot, isPackLayout, readPackIntegrity } from '../layout.ts';
+import { PACK_LAYOUT, readPackArtifact, isPackLayout } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -75,20 +75,13 @@ export function loadSingleExternalPack(
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
     return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack pack install or apack pack dev`);
   }
-  try {
-    const integrity = readPackIntegrity(dir);
-    if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
-      return skipped(manifest, `pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
-    }
-  } catch (err) {
-    logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
-    return { problem: `unreadable ${PACK_LAYOUT.integrity}: ${(err as Error).message}` };
-  }
-
   // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
   let declarationRevision: string;
+  let artifactRevision: string;
   try {
-    const snapshot = readPackSnapshot(dir);
+    const artifact = readPackArtifact(dir);
+    const snapshot = artifact.snapshot;
+    artifactRevision = artifact.revision;
     declarationRevision = snapshot.declarationRevision;
     if (declarationRevision !== _declarationRevision(manifest)) return skipped(manifest, 'its manifest does not match its built declarations; rebuild and install the complete pack');
     const hostSdk = getHostSdkVersion();
@@ -115,7 +108,7 @@ export function loadSingleExternalPack(
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, dir, shipped: shippedIds.has(manifest.id), manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, dir, shipped: shippedIds.has(manifest.id), manifest },
   };
 }
 

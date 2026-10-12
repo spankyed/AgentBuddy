@@ -15,6 +15,7 @@ import {
   packBuildProblem,
   packFileHashes,
   readPackSnapshot,
+  readPackArtifact,
   stagePack,
   verifyPack,
 } from '../../src/packs/layout.ts';
@@ -162,6 +163,122 @@ describe('verifyPack', () => {
     const info = readPackIntegrity(stage);
     fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify({ ...info, formatVersion: PACK_LAYOUT_VERSION + 1 }));
     expect(() => verifyPack(stage)).toThrow(/uses format/);
+  });
+});
+
+describe('installed artifact reader', () => {
+  it('reads declarations and a content identity without executing a runtime', () => {
+    const stage = path.join(tmp, 'stage');
+    const root = builtPack();
+    fs.writeFileSync(path.join(root, 'dist/runtime/index.cjs'), 'throw new Error("discovery executed the runtime");');
+    stagePack(root, stage);
+    const artifact = readPackArtifact(stage);
+    expect(artifact.snapshot.manifest.id).toBe('demo-pack');
+    expect(artifact.revision).toMatch(/^[a-f0-9]{64}$/);
+    const copy = path.join(tmp, 'copy');
+    fs.cpSync(stage, copy, { recursive: true });
+    const integrity = readPackIntegrity(copy);
+    integrity.files = Object.fromEntries(Object.entries(integrity.files).reverse());
+    fs.writeFileSync(path.join(copy, 'integrity.json'), JSON.stringify(integrity));
+    expect(readPackArtifact(copy).revision).toBe(artifact.revision);
+  });
+
+  it('changes identity when different bytes are deliberately staged with the same declarations', () => {
+    const stage = path.join(tmp, 'stage');
+    const root = builtPack();
+    stagePack(root, stage);
+    const before = readPackArtifact(stage);
+    fs.appendFileSync(path.join(root, 'dist/runtime/index.cjs'), '\n// new build');
+    stagePack(root, stage);
+    const after = readPackArtifact(stage);
+    expect(after.snapshot.declarationRevision).toBe(before.snapshot.declarationRevision);
+    expect(after.revision).not.toBe(before.revision);
+  });
+
+  it('refuses declarations captured before a different valid artifact replaced them', () => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    const read = fs.readFileSync;
+    let replaced = false;
+    const spy = vi.spyOn(fs, 'readFileSync').mockImplementation((file, options) => {
+      if (file === path.join(stage, 'integrity.json') && !replaced) {
+        replaced = true;
+        const snapshot = JSON.parse(read(path.join(stage, 'types/snapshot.json'), 'utf8'));
+        snapshot.manifest.name = 'New artifact';
+        snapshot.declarationRevision = _declarationRevision(snapshot.manifest);
+        fs.writeFileSync(path.join(stage, 'types/snapshot.json'), JSON.stringify(snapshot));
+        fs.writeFileSync(path.join(stage, 'apack.json'), JSON.stringify(snapshot.manifest));
+        const integrity = JSON.parse(read(path.join(stage, 'integrity.json'), 'utf8'));
+        fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify({ ...integrity, files: packFileHashes(stage) }));
+      }
+      return read(file, options);
+    });
+    syncBuiltinESMExports();
+    try {
+      expect(() => readPackArtifact(stage)).toThrow('Captured declarations do not match');
+      expect(replaced).toBe(true);
+      expect(readPackArtifact(stage).snapshot.manifest.name).toBe('New artifact');
+    } finally {
+      spy.mockRestore();
+      syncBuiltinESMExports();
+    }
+  });
+
+  it('refuses an integrity identity that differs from the descriptor', () => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    const integrity = readPackIntegrity(stage);
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify({ ...integrity, id: 'another-pack' }));
+    expect(() => readPackArtifact(stage)).toThrow('identity does not match');
+  });
+
+  it.each(['id', 'version'] as const)('refuses mismatched integrity %s before replacing an installed pack', async field => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    const packsDir = path.join(tmp, 'installed');
+    const installed = await installPackFromLocal(stage, packsDir);
+    const before = fs.readFileSync(path.join(installed.dir, 'integrity.json'), 'utf8');
+    const integrity = readPackIntegrity(stage);
+    integrity[field] = field === 'id' ? 'another-pack' : '9.9.9';
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(stage, packsDir, { beforePlace })).rejects.toThrow('identity does not match');
+    expect(beforePlace).not.toHaveBeenCalled();
+    expect(fs.readFileSync(path.join(installed.dir, 'integrity.json'), 'utf8')).toBe(before);
+  });
+
+  it.each(['../outside', '/absolute', 'runtime/../index.cjs', 'runtime\\index.cjs', 'integrity.json'])('refuses a nonportable checksum path: %s', file => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    const integrity = readPackIntegrity(stage);
+    integrity.files[file] = 'a'.repeat(64);
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
+    expect(() => readPackArtifact(stage)).toThrow(`invalid checksum entry ${file}`);
+  });
+
+  it.each([null, [], {}, { files: {} }])('refuses malformed integrity data: %j', integrity => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
+    expect(() => readPackArtifact(stage)).toThrow('Invalid integrity.json');
+  });
+
+  it('refuses unrecorded symbolic links instead of silently omitting them', () => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    fs.symlinkSync('index.cjs', path.join(stage, 'runtime/linked.cjs'));
+    expect(() => readPackArtifact(stage)).toThrow('symbolic link: runtime/linked.cjs');
+  });
+
+  it('records an own __proto__ file name instead of losing it to object assignment', () => {
+    const stage = path.join(tmp, 'stage');
+    stagePack(builtPack(), stage);
+    fs.writeFileSync(path.join(stage, '__proto__'), 'data');
+    const integrity = readPackIntegrity(stage);
+    integrity.files = packFileHashes(stage);
+    expect(Object.hasOwn(integrity.files, '__proto__')).toBe(true);
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
+    expect(readPackArtifact(stage).integrity.files.__proto__).toBe(sha256File(path.join(stage, '__proto__')));
   });
 });
 

@@ -6,7 +6,8 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@
 import { resolveName } from '@apackdev/sdk/ids';
 import type { SettingsDefinition } from '@apackdev/sdk/framework';
 import { createContributionCatalog } from '../../src/packs/catalog.ts';
-import { PACK_LAYOUT, readPackSnapshot } from '../../src/packs/layout.ts';
+import { PACK_LAYOUT, readPackArtifact } from '../../src/packs/layout.ts';
+import { sealPack } from './runtime/artifact-fixture.ts';
 
 const app: SettingsDefinition = { schema: { type: 'object', properties: { compact: { type: 'boolean' } }, required: ['compact'], additionalProperties: false }, defaults: { compact: false } };
 const group: SettingsDefinition = { schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false }, defaults: { name: '' } };
@@ -115,9 +116,10 @@ describe('contribution catalog data', () => {
       input.snapshot.declarationRevision = _declarationRevision(input.snapshot.manifest);
       fs.writeFileSync(file, JSON.stringify(input.snapshot));
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(input.snapshot.manifest));
+      sealPack(dir);
       const before = fs.readFileSync(file, 'utf8');
       const catalog = createContributionCatalog(app);
-      catalog.replace([{ snapshot: readPackSnapshot(dir), dir, enabled: false }]);
+      catalog.replace([{ snapshot: readPackArtifact(dir).snapshot, dir, enabled: false }]);
       expect(catalog.packSettings('poisoned').assistant.defaults.name).toBe('');
       expect(catalog.featureSettings(resolveName('poisoned/notes'))?.defaults.name).toBe('');
       expect(fs.readFileSync(file, 'utf8')).toBe(before);

@@ -59,6 +59,14 @@ export interface PackIntegrity {
   files: Record<string, string>;
 }
 
+/** The accepted installed build: declarations and the complete file inventory verified together. */
+export interface PackArtifact {
+  snapshot: PackSnapshot;
+  integrity: PackIntegrity;
+  /** Content identity independent of file enumeration order and installation directory. */
+  revision: string;
+}
+
 export function sha256File(filePath: string): string {
   return sha256(fs.readFileSync(filePath));
 }
@@ -67,13 +75,19 @@ function sha256(content: string | Buffer): string {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
 
-function listFiles(dir: string, base = dir): string[] {
+function listFiles(dir: string, base = dir, rejectLinks = false): string[] {
   const out: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) continue;
-    if (entry.isDirectory()) out.push(...listFiles(full, base));
-    else out.push(path.relative(base, full).split(path.sep).join('/'));
+    if (entry.isSymbolicLink()) {
+      if (rejectLinks) throw new Error(`Pack contains a symbolic link: ${path.relative(base, full)}`);
+      continue;
+    }
+    if (entry.isDirectory()) out.push(...listFiles(full, base, rejectLinks));
+    else {
+      if (rejectLinks && !entry.isFile()) throw new Error(`Pack contains a nonregular file: ${path.relative(base, full)}`);
+      out.push(path.relative(base, full).split(path.sep).join('/'));
+    }
   }
   return out.sort();
 }
@@ -151,12 +165,8 @@ export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, '
  * excluded from it.
  */
 export function packFileHashes(layoutDir: string): Record<string, string> {
-  const files: Record<string, string> = {};
-  for (const rel of listFiles(layoutDir)) {
-    if (rel === PACK_LAYOUT.integrity) continue;
-    files[rel] = sha256File(path.join(layoutDir, rel));
-  }
-  return files;
+  return Object.fromEntries(listFiles(layoutDir).filter(rel => rel !== PACK_LAYOUT.integrity)
+    .map(rel => [rel, sha256File(path.join(layoutDir, rel))]));
 }
 
 /**
@@ -205,7 +215,7 @@ export function stagePack(
 
   // A failed build retains dist. Refuse edited declarations before removing an existing stage.
   // Foreign formats remain opaque: only their matching app can interpret their grammar.
-  const raw = readSnapshotData(path.join(packRoot, 'dist'));
+  const raw = readSnapshotFile(path.join(packRoot, 'dist')).data;
   if (options.packFormat !== undefined) {
     const mismatch = _snapshotFormatMismatch(raw, options.packFormat);
     if (mismatch) throw new Error(snapshotFormatProblem(mismatch, options.packFormat));
@@ -252,7 +262,21 @@ export function readPackIntegrity(dir: string): PackIntegrity {
  * dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
  */
 export function readPackSnapshot(dir: string): PackSnapshot {
-  return checkedSnapshot(readSnapshotData(dir), JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+  return checkedSnapshot(readSnapshotFile(dir).data, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+}
+
+/** Read installed declarations without loading code; refuse changed, missing or additional files. */
+export function readPackArtifact(dir: string): PackArtifact {
+  const { bytes: snapshotBytes, data } = readSnapshotFile(dir);
+  const manifestBytes = fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest));
+  const snapshot = checkedSnapshot(data, JSON.parse(manifestBytes.toString('utf8')));
+  const integrity = verifyPack(dir);
+  for (const [file, bytes] of [[PACK_LAYOUT.snapshot, snapshotBytes], [PACK_LAYOUT.manifest, manifestBytes]] as const) {
+    if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified artifact; retry with the complete pack');
+  }
+  const files = Object.entries(integrity.files).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const revision = sha256(JSON.stringify({ formatVersion: integrity.formatVersion, files }));
+  return { snapshot, integrity, revision };
 }
 
 function checkedSnapshot(raw: unknown, manifest: unknown): PackSnapshot {
@@ -266,8 +290,11 @@ function checkedSnapshot(raw: unknown, manifest: unknown): PackSnapshot {
   return result.snapshot;
 }
 
-function readSnapshotData(dir: string): unknown {
-  try { return JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf-8')); }
+function readSnapshotFile(dir: string): { bytes: Buffer; data: unknown } {
+  try {
+    const bytes = fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot));
+    return { bytes, data: JSON.parse(bytes.toString('utf8')) };
+  }
   catch {
     throw new Error(`${PACK_LAYOUT.snapshot} is missing or unreadable, so nothing says which apack built it: rebuild it with the apack CLI that matches this apack`);
   }
@@ -281,7 +308,7 @@ function snapshotFormatProblem(mismatch: SnapshotFormatMismatch, appFormat: numb
 /** Why an installed build cannot be read, before any executable module is loaded. */
 export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_FORMAT): { kind: 'format' | 'declarations' | 'unreadable'; message: string } | undefined {
   try {
-    const raw = readSnapshotData(dir);
+    const raw = readSnapshotFile(dir).data;
     const mismatch = _snapshotFormatMismatch(raw, appFormat);
     if (mismatch) return { kind: 'format', message: snapshotFormatProblem(mismatch, appFormat) };
     // A matching foreign format is opaque to this CLI; its app interprets the grammar.
@@ -296,20 +323,43 @@ export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_
 
 /** Check format version and that the files on disk are exactly the ones recorded. */
 export function verifyPack(dir: string): PackIntegrity {
+  if (fs.lstatSync(path.join(dir, PACK_LAYOUT.integrity)).isSymbolicLink()) throw new Error('integrity.json must be a file, not a symbolic link');
   const integrity = readPackIntegrity(dir);
+  if (!integrity || typeof integrity !== 'object' || Array.isArray(integrity)
+    || typeof integrity.id !== 'string' || !integrity.id
+    || typeof integrity.version !== 'string' || !integrity.version
+    || typeof integrity.formatVersion !== 'number' || !Number.isFinite(integrity.formatVersion)
+    || !integrity.files || typeof integrity.files !== 'object' || Array.isArray(integrity.files)) {
+    throw new Error('Invalid integrity.json: expected layout version, pack id/version and file checksums');
+  }
   if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
     throw new Error(`Pack ${integrity.id} uses format ${integrity.formatVersion}; this host supports format ${PACK_LAYOUT_VERSION}. Update apack or rebuild the pack.`);
   }
   const problems: string[] = [];
-  const onDisk = new Set(listFiles(dir).filter(f => f !== PACK_LAYOUT.integrity));
+  let manifestBytes: Buffer | undefined;
+  const onDisk = new Set(listFiles(dir, dir, true).filter(f => f !== PACK_LAYOUT.integrity));
   for (const [rel, expected] of Object.entries(integrity.files)) {
+    if (!rel || rel.includes('\\') || rel.split('/').some(part => !part || part === '.' || part === '..')
+      || rel === PACK_LAYOUT.integrity || typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) {
+      problems.push(`invalid checksum entry ${rel}`);
+      continue;
+    }
     if (!onDisk.has(rel)) problems.push(`missing ${rel}`);
-    else if (sha256File(path.join(dir, rel)) !== expected) problems.push(`checksum mismatch ${rel}`);
+    else {
+      const bytes = fs.readFileSync(path.join(dir, rel));
+      if (sha256(bytes) !== expected) problems.push(`checksum mismatch ${rel}`);
+      if (rel === PACK_LAYOUT.manifest) manifestBytes = bytes;
+    }
     onDisk.delete(rel);
   }
   for (const extra of onDisk) problems.push(`unexpected ${extra}`);
   if (problems.length > 0) {
     throw new Error(`Pack ${integrity.id}@${integrity.version} failed verification:\n${problems.map(p => `  - ${p}`).join('\n')}`);
+  }
+  if (!manifestBytes) throw new Error(`Pack is missing ${PACK_LAYOUT.manifest}`);
+  const manifest = JSON.parse(manifestBytes.toString('utf8'));
+  if (integrity.id !== manifest?.id || integrity.version !== manifest?.version) {
+    throw new Error('integrity.json identity does not match its manifest; rebuild and install the complete pack');
   }
   return integrity;
 }

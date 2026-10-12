@@ -79,6 +79,21 @@ describe('installing the packs the app ships', () => {
     expect(fs.readFileSync(path.join(packsDir, 'shipped-pack', PACK_LAYOUT.runtimeEntry), 'utf-8')).toContain('registration');
   });
 
+  it.each(['missing', 'malformed', 'wrong-owner', 'extra-link'])('repairs invalid installed integrity instead of reporting current: %s', async kind => {
+    shipPack('shipped-pack');
+    await installShippedPacks(shipped, packsDir);
+    const dir = path.join(packsDir, 'shipped-pack');
+    const file = path.join(dir, PACK_LAYOUT.integrity);
+    if (kind === 'missing') fs.rmSync(file);
+    else if (kind === 'malformed') fs.writeFileSync(file, '{}');
+    else if (kind === 'wrong-owner') fs.writeFileSync(file, JSON.stringify({ ...readPackIntegrity(dir), id: 'other-pack' }));
+    else fs.symlinkSync('index.cjs', path.join(dir, PACK_LAYOUT.runtimeDir, 'link.cjs'));
+    expect(await outcomes()).toEqual(['shipped-pack=updated']);
+    expect(readPackIntegrity(dir).id).toBe('shipped-pack');
+    expect(fs.existsSync(path.join(dir, PACK_LAYOUT.runtimeDir, 'link.cjs'))).toBe(false);
+    expect(await outcomes()).toEqual(['shipped-pack=current']);
+  });
+
   // Reported rather than thrown, and **not** loaded from `resources/` instead: a read-only second load path
   // is what this change removed, so a pack the app could not install is a pack that is not there
   it('reports a shipped directory that is not a built pack, naming what it lacks', async () => {

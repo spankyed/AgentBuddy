@@ -1,3 +1,4 @@
+import { sealPack } from './artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import './test-host.ts';
@@ -5,7 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /**
  * An installed pack's runtime has no node_modules: every @apackdev/sdk subpath it requires must come
@@ -23,7 +24,6 @@ afterEach(() => {
 describe('external pack runtime', () => {
   it('requires @apackdev/sdk/cron and @apackdev/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'bridge-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
@@ -33,6 +33,7 @@ describe('external pack runtime', () => {
       exports.registration = { id: 'bridge-pack', services: { leaves: { cron: cronToHuman('0 * * * *'), newer: compareVersions('1.1.0', '1.0.0') } } };
     `) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+    sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
     const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }, packDir);
@@ -52,7 +53,6 @@ if (module.exports.registration) module.exports.registration.declarationRevision
    */
   it('requires one lazily, after the load that produced it has returned', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'lazy-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
@@ -60,6 +60,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
       exports.registration = { id: 'lazy-pack', services: { step: { run: () => typeof require('@apackdev/sdk/logger').createLogger } } };
     `) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+    sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
     const pack = loadSingleExternalPack({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }, packDir);

@@ -1,3 +1,4 @@
+import { sealPack } from './artifact-fixture.ts';
 import { _declarationRevision, type PackManifest } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registry } from './test-host.ts';
@@ -35,10 +36,10 @@ function makePack(
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, declarationRevision: '${declarationRevision}', features: ${featuresSource} } };`);
+  sealPack(packDir);
   return packDir;
 }
 
@@ -188,6 +189,7 @@ describe('pack-loader', () => {
         "  sameZod: require('zod/v4') === require('zod/v4'), hostZod: zod === require('zod'),",
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
+      sealPack(packDir);
       const [pack] = loadExternalPacks();
       expect(pack?.origin.id).toBe('zod-pack');
 
@@ -250,11 +252,11 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
     const manifest = { id, name: id, version: '1.0.0', ...manifestExtra };
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
+    sealPack(packDir);
     return packDir;
   }
 
@@ -338,6 +340,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     ));
     fs.writeFileSync(path.join(dir, 'runtime', 'content', 'actions.content.json'), '[]');
 
+    sealPack(dir);
     const packs = loadExternalPacks();
     expect(registerExternalPacks(registry, packs)).toEqual(packs);
     try {
@@ -376,6 +379,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it('refuses stale bindings before passing the compiled directory to the runtime', () => {
     const dir = makeBundledPack('stale-pack', registration('stale-pack'));
     fs.appendFileSync(path.join(dir, 'runtime', 'index.cjs'), '\nmodule.exports.registration.declarationRevision = "previous";');
+    sealPack(dir);
     expect(loadExternalPacks()).toEqual([]);
     expect(require(path.join(dir, 'runtime', 'index.cjs')).compiledDirSeen).toBeUndefined();
   });
@@ -401,6 +405,19 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const problems = new Map<string, string>();
     expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
     expect(problems.get('changed-pack')).toContain('manifest does not match');
+  });
+
+  it.each(['runtime/index.cjs', 'runtime/fe.js', 'runtime/content/settings.json'])('refuses changed artifact bytes before runtime execution: %s', file => {
+    const dir = makeBundledPack('changed-bytes', 'globalThis.apackArtifactExecuted = true;');
+    const target = path.join(dir, file);
+    fs.writeFileSync(target, 'original bytes');
+    // A valid descriptor for these bytes, then an edit without a new build.
+    sealPack(dir);
+    fs.writeFileSync(target, 'globalThis.apackArtifactExecuted = true;');
+    const problems = new Map<string, string>();
+    expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
+    expect(problems.get('changed-bytes')).toContain(`checksum mismatch ${file}`);
+    expect(Reflect.get(globalThis, 'apackArtifactExecuted')).toBeUndefined();
   });
 
   it('refuses a layout version this host does not support', () => {

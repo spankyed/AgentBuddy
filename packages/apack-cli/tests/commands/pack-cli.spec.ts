@@ -1,5 +1,5 @@
 import { _declarationRevision } from '@apackdev/sdk/build';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -8,12 +8,20 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmpDir: string;
+let previousEnvironment: { channel?: string; userDataDir?: string };
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-cli-test-'));
+  previousEnvironment = { channel: process.env.APACK_CLI_CHANNEL, userDataDir: process.env.APACK_USER_DATA_DIR };
+  process.env.APACK_CLI_CHANNEL = 'test';
+  process.env.APACK_USER_DATA_DIR = path.join(tmpDir, 'app-data');
 });
 
 afterEach(() => {
+  for (const [key, value] of [['APACK_CLI_CHANNEL', previousEnvironment.channel], ['APACK_USER_DATA_DIR', previousEnvironment.userDataDir]] as const) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -145,7 +153,7 @@ describe('pack CLI: install', () => {
     await expect(install([noManifest])).rejects.toThrow(/No apack.json/);
   });
 
-  it('symlinks in source directory are skipped during copy', async () => {
+  it('refuses symlinks in built output before replacing the installed copy', async () => {
     const { installPackFromLocal } = await import('@apackdev/host/packs');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
@@ -156,6 +164,10 @@ describe('pack CLI: install', () => {
       version: '1.0.0',
     });
     writeBuild(sourceDir, 'symlink-test');
+    const packsDir = path.join(tmpDir, 'packs');
+    const installed = await installPackFromLocal(sourceDir, packsDir);
+    const entry = path.join(installed.dir, PACK_LAYOUT.runtimeEntry);
+    const before = fs.readFileSync(entry, 'utf8');
 
     const outsideFile = path.join(tmpDir, 'secret.txt');
     fs.writeFileSync(outsideFile, 'secret data');
@@ -163,12 +175,11 @@ describe('pack CLI: install', () => {
 
     expect(fs.lstatSync(path.join(sourceDir, 'dist', 'runtime', 'link.txt')).isSymbolicLink()).toBe(true);
 
-    const packsDir = path.join(tmpDir, 'packs');
-    const result = await installPackFromLocal(sourceDir, packsDir);
-
-    const installedDir = result.dir;
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'link.txt'))).toBe(false);
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(sourceDir, packsDir, { beforePlace })).rejects.toThrow('symbolic link: runtime/link.txt');
+    expect(beforePlace).not.toHaveBeenCalled();
+    expect(fs.readFileSync(entry, 'utf8')).toBe(before);
+    expect(fs.existsSync(path.join(installed.dir, 'runtime', 'link.txt'))).toBe(false);
   });
 
   it('installs from a zip file', async () => {

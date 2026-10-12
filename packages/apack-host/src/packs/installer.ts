@@ -19,7 +19,6 @@ import {
   stagePack,
   verifyPack,
   packBuildProblem,
-  packFileHashes,
   stagedFileHashes,
   type PackIntegrity,
 } from './layout.ts';
@@ -218,7 +217,12 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
     // nothing, which is a first boot
     const installedDir = path.join(packsDir, id);
     const wasInstalled = fs.existsSync(path.join(installedDir, PACK_LAYOUT.manifest));
-    if (wasInstalled && sameHashes(packFileHashes(installedDir), shipped)) {
+    let current = false;
+    if (wasInstalled) {
+      try { current = sameHashes(verifyPack(installedDir).files, shipped); }
+      catch { /* A corrupt installed artifact needs the same replacement as different bytes. */ }
+    }
+    if (current) {
       results.push({ id, outcome: 'current' });
       continue;
     }

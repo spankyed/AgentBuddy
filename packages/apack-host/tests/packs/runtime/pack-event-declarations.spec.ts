@@ -1,3 +1,4 @@
+import { sealPack } from './artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack declares which event types each of its plugins receives, and the bus checks every send against
 // that declaration. It reaches the app on the registration the pack's runtime bundle exports, so what this
@@ -13,7 +14,7 @@ import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/run
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
@@ -32,7 +33,6 @@ function installDeclaringPack(received: string[]) {
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
     features: { memos: { plugin: { entry: 'fe/plugin.ts' } } },
   }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`module.exports = { registration: ${JSON.stringify({
@@ -40,6 +40,7 @@ function installDeclaringPack(received: string[]) {
     features: { memos: { plugin: { receives: received } } },
   })} };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  sealPack(packDir);
 }
 
 beforeEach(() => {

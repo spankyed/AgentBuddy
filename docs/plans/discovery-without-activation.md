@@ -27,7 +27,7 @@ may execute code; their discoverable results must be materialized before install
 
 ## Existing foundation and gaps
 
-### Implemented artifact reader (2026-10-12)
+### Implemented snapshot reader (2026-10-12)
 
 `parseSnapshot` now validates the current build format's manifest, types, definitions, provenance and
 flow helpers as data. Its schema must account for every `PackSnapshot` field; it refuses unknown fields
@@ -42,6 +42,25 @@ Format selection remains separate from interpretation. Dependency resolution can
 candidate and select another compatible release. A CLI staging for a different installed app checks that
 app's format without pretending its own schema describes the other format's grammar. Malformed metadata
 in the current format is a refusal, not permission to fetch a replacement or execute runtime code.
+
+`readPackArtifact` now combines installed snapshot/manifest validation with full `integrity.json`
+verification. The runtime loader uses it before requiring any pack code; previously it checked only the
+layout version and never checked file checksums. The returned SHA-256 artifact revision covers the sorted
+file inventory and layout version, so installation paths and checksum-map enumeration order do not change
+identity, while different bytes with identical declarations do. Active origins retain the accepted revision.
+Captured snapshot/manifest bytes must match the verified inventory, refusing an old declaration read
+paired with a replacement artifact's checksums. Manifest identity is checked from the bytes hashed by the
+verifier, rather than a later reread. A concurrent-replacement regression proves this agreement guard.
+Malformed checksum paths/values, missing/extra files and symbolic links are refused; own `__proto__` file
+names are preserved. The installed catalog fixture reads this same boundary with poisoned executable code.
+The shared verifier also checks integrity id/version against the manifest before installer teardown or
+placement. Shipped-copy comparison verifies the installed receipt and bytes before reporting `current`;
+missing, malformed or mismatched integrity and extra links trigger replacement from the shipped artifact.
+
+This verifies the installed tree at the read boundary, not a signature, an immutable filesystem view or
+complete source/dependency freshness. Built source output still needs a producer-owned file inventory
+before staging; production catalog publication, binding membership and accepted frontend asset delivery
+must use retained identities rather than rehashing whichever bytes are on disk later. Those remain required.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
 asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and

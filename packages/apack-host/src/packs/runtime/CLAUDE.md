@@ -33,6 +33,7 @@ They are installed packs, so they have no loader of their own. `installShippedPa
 - **Discovery** — `discoverPacks(packsDir)` plus the `installed-packs.json` rows, minus the disabled.
 - **Order** — the ids in `shippedIds` first, so a pack depending on one the app ships finds it registered.
 - **Loading** — `runtime/index.cjs` in the pack's own installed directory, written by its `apack pack build`, required with `withHostResolution()`. The api bundle carries no pack's backend, so this is the path packaged and from source alike.
+- Before loading code, `readPackArtifact` validates declarations and verifies the complete installed file inventory. Changed/missing/extra files, malformed checksums and symbolic links are refused. The accepted content identity is retained in the pack origin separately from its declaration revision.
 - A pack with no built runtime, or one whose load throws, has a **load problem recorded** and the rest load.
 - Each loaded module's `setCompiledDir(<pack>/runtime/content)` is called, then `registry.registerPack(mod.registration)`.
 
