@@ -1,8 +1,8 @@
 import {AppModule} from '../AppModule.ts';
-import {ModuleContext} from '../ModuleContext.ts';
+import {MainModuleScope} from '../MainModuleScope.ts';
 
 export abstract class AbstractSecurityRule implements AppModule {
-  enable({app}: ModuleContext): Promise<void> | void {
+  enable({app}: MainModuleScope): Promise<void> | void {
     app.on('web-contents-created', (_, contents) => this.applyRule(contents))
   }
 

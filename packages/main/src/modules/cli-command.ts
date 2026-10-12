@@ -3,13 +3,13 @@ import {execFile} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
-import {getAppContext} from '../app-context.ts';
+import {getAppEnvironment} from '../app-environment.ts';
 
 const BIN_DIR = '/usr/local/bin';
 
 /** Packaged channels install alongside production, so their commands get their own names. */
 export function cliCommandName(): string {
-  const env = getAppContext().env;
+  const env = getAppEnvironment().env;
   return env === 'beta' ? 'apack-beta' : env === 'preview' ? 'apack-preview' : 'apack';
 }
 

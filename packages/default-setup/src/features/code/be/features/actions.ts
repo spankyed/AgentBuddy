@@ -12,7 +12,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodeActionsSystemContext {
   // No local state needed for actions feature
 }
 
@@ -21,11 +21,11 @@ export type Event =
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string };
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodeActionsSystemContext, Event>();
 
 export const actionsSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeActionsSystemContext,
     events: {} as Event,
   },
   actions: handlers.actions({

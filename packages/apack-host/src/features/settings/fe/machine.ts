@@ -4,7 +4,7 @@ import { safeEvents } from '@apackdev/sdk/fe'
 import { type TrailClickEvent } from '@apackdev/sdk/fe'
 import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
-import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services'
+import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services'
 import { sendToSystem } from '../../../events.ts'
 import type { PackContentPreview } from '@apackdev/sdk/build'
 import type { FeatureRef } from '@apackdev/sdk/ids';
@@ -62,7 +62,7 @@ export interface SettingsSave {
 export interface SettingsContext {
   settings: SettingsDocument | null;
   /** The stored API keys, without values */
-  secrets: SecretInfo[];
+  secrets: SecretMetadata[];
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packContentImport: PackContentImport;

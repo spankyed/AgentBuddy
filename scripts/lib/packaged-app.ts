@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readBuildManifest, resolveBuildIdentity } from '../../build/build-metadata.ts';
-import { resolveAppContext } from '../../packages/apack-sdk/src/env/index.ts';
+import { resolveAppEnvironment } from '../../packages/apack-sdk/src/env/index.ts';
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export type Channel = 'production' | 'beta' | 'preview';
@@ -42,7 +42,7 @@ export function selectPackagedApp(options: Options, root = REPO_ROOT, applicatio
   if (!fs.statSync(executable).isFile()) throw new Error(`Missing app executable: ${executable}`);
   fs.accessSync(executable, fs.constants.X_OK);
   const profile = options.dataDir || process.env.APACK_USER_DATA_DIR;
-  const context = resolveAppContext({ env: options.channel, ...(profile ? { userDataDir: path.resolve(profile) } : {}) });
+  const context = resolveAppEnvironment({ env: options.channel, ...(profile ? { userDataDir: path.resolve(profile) } : {}) });
   const logsDir = profile ? path.join(context.appDir, 'logs') : path.join(os.homedir(), 'Library/Logs', context.appName);
   return { appPath, appDir, executable, metadata, context, logsDir, isolated: Boolean(profile) };
 }

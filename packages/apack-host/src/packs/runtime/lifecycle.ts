@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../registry.ts';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
@@ -48,7 +48,7 @@ export function teardownPack(
     }
   }
 
-  const packDir = path.join(resolveAppContext().packsDir, packId);
+  const packDir = path.join(resolveAppEnvironment().packsDir, packId);
   if (fs.existsSync(packDir)) {
     clearPackRequireCache(packDir);
   }
@@ -72,7 +72,7 @@ export function activatePack(
   packId: string,
   busActor: import('xstate').AnyActorRef,
 ): boolean {
-  const { packsDir } = resolveAppContext();
+  const { packsDir } = resolveAppEnvironment();
   const packDir = path.join(packsDir, packId);
 
   const failed = (problem: string, err?: Error): false => {

@@ -1,7 +1,7 @@
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { ApplyResult } from '@apackdev/sdk/utils';
 import type { PackContentPreview } from '@apackdev/sdk/content';
-import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services';
+import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services';
 import type { SettingsDocument } from './store.ts';
 // The settings feature's contract: what its system receives, what it sends its plugin, and its context.
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.
@@ -58,6 +58,6 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
   /** The stored API keys, without values, and how they're protected */
-  | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
+  | { type: 'SECRETS_UPDATED'; secrets: SecretMetadata[]; status: SecretsStatus }
 
 export type SettingsContext = { applied: Record<string, unknown> };

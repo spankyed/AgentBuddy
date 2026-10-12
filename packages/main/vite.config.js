@@ -112,11 +112,11 @@ function handleHotReload() {
        * **Which build the app it spawns will resolve, asked the app's own way.**
        *
        * The `NODE_ENV` check above is the *bundle's* mode and says nothing about this: a source run takes its
-       * environment from `APACK_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
+       * environment from `APACK_ENV` (`_inferElectronAppEnv`, the same function `app-environment.ts` calls), so
        * `APACK_ENV=beta npm run dev` is a beta app. Reading this hook as "development by definition" is what
        * let it push an unauthenticated debug port onto one.
        */
-      const { _inferElectronAppEnv, resolveAppContext } = await import('@apackdev/sdk/env');
+      const { _inferElectronAppEnv, resolveAppEnvironment } = await import('@apackdev/sdk/env');
       const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@apackdev/host/dev-session');
       const env = _inferElectronAppEnv({
         playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
@@ -157,7 +157,7 @@ function handleHotReload() {
           if (debugPortArgsFor(env).length === 0) return;
           // The build this spawn resolves, not a guess: asking with no argument threw here, which published
           // nothing and reported `not attachable` on a run that was otherwise perfectly fine
-          const { userDataDir } = resolveAppContext({ env });
+          const { userDataDir } = resolveAppEnvironment({ env });
           const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
           if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
           // **No fallback to this process's pid.** The field means "the process to signal to end this", and

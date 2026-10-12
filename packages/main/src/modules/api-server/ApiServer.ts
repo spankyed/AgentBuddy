@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { randomBytes, randomUUID } from 'crypto';
 import getPort, { clearLockedPorts } from 'get-port';
 import { AppModule } from '../../AppModule.ts';
-import { ModuleContext } from '../../ModuleContext.ts';
+import { MainModuleScope } from '../../MainModuleScope.ts';
 import { 
   API_CONFIG, 
   API_EVENTS, 
@@ -17,7 +17,7 @@ import {
 } from './config.ts';
 import { ProcessManager, broadcastEvent } from './process-manager.ts';
 import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.ts';
-import { getAppContext } from '../../app-context.ts';
+import { getAppEnvironment } from '../../app-environment.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export class ApiServer implements AppModule {
@@ -61,7 +61,7 @@ export class ApiServer implements AppModule {
     });
   }
 
-  enable(context: ModuleContext): void {
+  enable(context: MainModuleScope): void {
     const { app } = context;
 
     // Log production startup info
@@ -221,7 +221,7 @@ export class ApiServer implements AppModule {
       env: getEnvironment(port, {
         apiToken: this.apiToken,
         startupId: this.startupId,
-        logDir: getAppContext().logsDir,
+        logDir: getAppEnvironment().logsDir,
       }),
       // The fourth entry is an IPC channel the app never sends on: it closes when this process dies, which is how
       // the API hears that its parent is gone (`process.on('disconnect')`) instead of polling for it

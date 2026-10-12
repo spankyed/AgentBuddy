@@ -7,7 +7,7 @@
 // left for its user to close.
 //
 // The connection ending is the only event that means the claimer is gone, and the adapter gives it to
-// `createContext` as an abort signal (it aborts from `client.once('close')`, verified in
+// `createRpcContext` as an abort signal (it aborts from `client.once('close')`, verified in
 // `node_modules/@trpc/server/dist/ws-*.mjs`). These cases pin that, because the failure is invisible: a leaked
 // claim looks like nothing at all until the session after next.
 import { afterEach, describe, expect, it, vi } from 'vitest';

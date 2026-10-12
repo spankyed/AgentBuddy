@@ -340,10 +340,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ArrowLeft, Shield } from 'lucide-vue-next';
-import type { PackInfo } from '@apackdev/host/fe';
+import type { InstalledPackSummary } from '@apackdev/host/fe';
 import SectionHeader from './SectionHeader.vue';
 
-const props = defineProps<{ pack: PackInfo; updating?: boolean }>();
+const props = defineProps<{ pack: InstalledPackSummary; updating?: boolean }>();
 
 defineEmits<{
   back: [];

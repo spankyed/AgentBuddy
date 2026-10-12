@@ -17,7 +17,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodeTerminalSystemContext {
   baseDirectory: string | null
 }
 
@@ -88,11 +88,11 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
 }
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodeTerminalSystemContext, Event>();
 
 export const terminalSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeTerminalSystemContext,
     events: {} as Event,
     input: {} as { baseDirectory: string | null }
   },

@@ -10,7 +10,7 @@ import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/install
 
 const recordedPacks = () => readInstalledPacks();
 
-import { readHostInfo } from '../../src/packs/host-info.ts';
+import { readHostCompatibility } from '../../src/packs/host-info.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 
@@ -144,7 +144,7 @@ describe('prepareHostDataDirs', () => {
 
   it('records the host version and the pack format it reads, atomically', () => {
     prepareHostDataDirs({ userDataDir: root, packsDir, version: '2.1.0' }, { info: vi.fn(), warn: vi.fn() });
-    expect(readHostInfo(root)).toEqual({ version: '2.1.0', packFormat: PACK_SNAPSHOT_FORMAT });
+    expect(readHostCompatibility(root)).toEqual({ version: '2.1.0', packFormat: PACK_SNAPSHOT_FORMAT });
     expect(fs.readdirSync(root).filter((f) => f.endsWith('.tmp'))).toEqual([]);
   });
 });

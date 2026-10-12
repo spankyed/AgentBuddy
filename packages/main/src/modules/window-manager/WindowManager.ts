@@ -1,5 +1,5 @@
 import type {AppModule} from '../../AppModule.ts';
-import {ModuleContext} from '../../ModuleContext.ts';
+import {MainModuleScope} from '../../MainModuleScope.ts';
 import {BrowserWindow, ipcMain, app, dialog, shell} from 'electron';
 import contextMenu from 'electron-context-menu';
 import type {AppInitConfig} from '../../AppInitConfig.ts';
@@ -36,7 +36,7 @@ class WindowManager implements AppModule {
     this.#splashScreen = splashScreen;
   }
 
-  async enable({app}: ModuleContext): Promise<void> {
+  async enable({app}: MainModuleScope): Promise<void> {
     await app.whenReady();
     
     // Set dock icon for macOS in development (production uses bundled icon from Info.plist)

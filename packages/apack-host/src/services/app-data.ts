@@ -2,7 +2,7 @@
 import type { AppDataService, BackupDatabase } from '@apackdev/sdk/services';
 import type { EarsAdmin } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
-import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
+import { exportDatabase, readBackupSummary, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
 import { _getMediaPath } from '@apackdev/sdk/utils';
 import { getAppVersion } from '@apackdev/sdk/env';
@@ -59,8 +59,8 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
         onReplaced();
       }
     },
-    async backupInfo(backupPath) {
-      const info = await getBackupInfo(backupPath);
+    async readBackupSummary(backupPath) {
+      const info = await readBackupSummary(backupPath);
       return info && { ...info, databases: info.databases as BackupDatabase[] };
     },
   };

@@ -25,7 +25,7 @@ import { randomId } from '@apackdev/sdk/utils/pure';
  */
 type ConnectionArgs = { info: { signal: AbortSignal } };
 
-export const createContext = ({ info }: ConnectionArgs) => ({
+export const createRpcContext = ({ info }: ConnectionArgs) => ({
   client: randomId({ prefix: 'c-' }),
   /**
    * Fires when this connection ends, whatever ended it. Anything holding per-connection state releases it here.
@@ -37,4 +37,4 @@ export const createContext = ({ info }: ConnectionArgs) => ({
   closed: info.signal,
 });
 
-export type Context = ReturnType<typeof createContext>;
+export type RpcContext = ReturnType<typeof createRpcContext>;

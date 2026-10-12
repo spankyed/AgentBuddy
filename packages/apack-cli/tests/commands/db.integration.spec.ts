@@ -12,7 +12,7 @@ import { exportDatabase } from '@apackdev/host/backup';
 import { closeEnv, openEnvAt } from '@apackdev/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@apackdev/host/secrets';
 import { _appDataPaths } from '@apackdev/sdk/utils';
-import { _appDirOf, appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
+import { _appDirOf, appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
@@ -236,7 +236,7 @@ describe('naming the data dir', () => {
       for (const [args, env] of [[[], 'production'], [['--profile', 'production'], 'production'], [['--profile', 'development'], 'development'], [['--profile', 'beta'], 'beta']] as const) {
         const target = targetOf([...args]);
         expect(target.env, args.join(' ') || '(no flag)').toBe(env);
-        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ env }).userDataDir);
+        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppEnvironment({ env }).userDataDir);
       }
       // Each names a different app's data, so a swap between them can't pass
       const dirs = [[], ['--profile', 'development'], ['--profile', 'beta']].map((args) => targetOf(args).userDataDir);
@@ -258,7 +258,7 @@ describe('naming the data dir', () => {
     process.env.APACK_USER_DATA_DIR = fromEnv;
     try {
       expect(parseDbArgs(['--data-dir', dir], {}, 'usage').target.userDataDir).toBe(dir);
-      // The app's own data dir, which is what resolveAppContext gives when the variable isn't set
+      // The app's own data dir, which is what resolveAppEnvironment gives when the variable isn't set
       for (const [args, env] of [[['--profile', 'development'], 'development'], [['--profile', 'beta'], 'beta'], [['--profile', 'production'], 'production']] as const) {
         expect(parseDbArgs([...args], {}, 'usage').target.userDataDir, args.join(' ')).toBe(appDataDirFor(env));
       }

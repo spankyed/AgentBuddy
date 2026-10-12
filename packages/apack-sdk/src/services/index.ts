@@ -10,14 +10,14 @@ import type { SecretsService } from './secrets.ts';
 import type { FilesystemService } from './filesystem.ts';
 import type { SettingsService } from './settings.ts';
 
-export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
+export type { AppDataService, BackupDatabase, BackupSummary } from './app-data.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
 export type { SettingsChange, SettingsFeatureName, SettingsService } from './settings.ts';
-export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
-export { _secretRules, _secretProviderLabel, _toSecretInfo } from './secrets-rules.ts';
+export type { SecretMetadata, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
+export { _secretRules, _secretProviderLabel, _toSecretMetadata } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
 const logger = createLogger('log-service');
@@ -118,7 +118,7 @@ const appData: AppDataService = {
   completeOnboarding: () => app('appData').completeOnboarding(),
   exportBackup: (targetPath, name, databases) => app('appData').exportBackup(targetPath, name, databases),
   importBackup: (backupPath, options) => app('appData').importBackup(backupPath, options),
-  backupInfo: (backupPath) => app('appData').backupInfo(backupPath),
+  readBackupSummary: (backupPath) => app('appData').readBackupSummary(backupPath),
 };
 
 const traceStore: TraceStore = {

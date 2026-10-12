@@ -30,7 +30,7 @@ const runtime: HostRuntime = {
   packs: testPacksView(),
   appVersion: '1.2.3',
   services: {
-    appData: { reset: unused, hasOnboarded: unused, completeOnboarding: unused, exportBackup: unused, importBackup: unused, backupInfo: unused },
+    appData: { reset: unused, hasOnboarded: unused, completeOnboarding: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
     traceStore: { entities: unused, getEntityMeta: unused, getAttr: unused, relations: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,

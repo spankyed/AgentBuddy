@@ -1,6 +1,6 @@
 // Registration: the registered packs, an instance per app (the composition root), test file or build
 export { createPackRegistry } from './registry.ts';
-export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './registry.ts';
+export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, InstalledPackSummary, PackOrigin } from './registry.ts';
 
 // Loading pack runtime code on the loader's own @apackdev/sdk
 export { withModuleBridge } from './module-bridge.ts';
@@ -34,7 +34,7 @@ export {
   installPack, installPackFromLocal, installPackFromGitHub, installShippedPacks, type ShippedPackInstall,
   uninstallPack, isHostCompatible,
 } from './installer.ts';
-export { recordHostInfo, readHostInfo, type HostInfo } from './host-info.ts';
+export { recordHostCompatibility, readHostCompatibility, type HostCompatibility } from './host-info.ts';
 export { prepareHostDataDirs } from './staging.ts';
 
 // Updater

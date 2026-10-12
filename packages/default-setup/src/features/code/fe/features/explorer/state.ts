@@ -40,7 +40,7 @@ function getParentDir(filePath: string): string {
   return parts.join('/') || '/'
 }
 
-export interface Context {
+export interface CodeExplorerContext {
   rootFiles: FileInfo[]
   expandedDirs: Set<string>
   dirContents: Record<string, FileInfo[]>
@@ -102,7 +102,7 @@ export type Event =
 
 export const explorerState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeExplorerContext,
     events: {} as Event
   },
   actions: {

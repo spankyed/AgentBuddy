@@ -41,7 +41,7 @@ describe('the bound app', () => {
     expect(services.traceStore.entities()).toEqual([]);
     expect(services.secrets.status().protection).toBeDefined();
     expect(services.secrets.list()).toEqual([]);
-    await expect(services.appData.backupInfo(dataDir)).resolves.toBeNull();
+    await expect(services.appData.readBackupSummary(dataDir)).resolves.toBeNull();
     await expect(services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow(/key/i);
   });
 

@@ -11,7 +11,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodeSearchSystemContext {
   repository: FileSystemRepository | null
   activeSearchController?: AbortController
 }
@@ -33,11 +33,11 @@ export type Event =
   | { type: 'search.UPDATE_BASE_DIRECTORY'; path: string };
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodeSearchSystemContext, Event>();
 
 export const searchSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeSearchSystemContext,
     events: {} as Event,
     input: {} as { baseDirectory: string | null },
   },

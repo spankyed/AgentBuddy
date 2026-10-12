@@ -1,11 +1,11 @@
 // The rules for the user's keys: several labelled keys per provider, at most one selected
 import { describe, expect, it } from 'vitest';
 import { _secretRules } from '../../src/services/secrets-rules.ts';
-import type { SecretInfo } from '../../src/services/secrets.ts';
+import type { SecretMetadata } from '../../src/services/secrets.ts';
 
-const add = (secrets: SecretInfo[], id: string, provider: SecretInfo['provider'], label: string) =>
+const add = (secrets: SecretMetadata[], id: string, provider: SecretMetadata['provider'], label: string) =>
   _secretRules.add(secrets, { id, provider, label, createdAt: 1 });
-const selected = (secrets: SecretInfo[]) => secrets.filter((secret) => secret.selected).map((secret) => secret.id);
+const selected = (secrets: SecretMetadata[]) => secrets.filter((secret) => secret.selected).map((secret) => secret.id);
 
 describe('secret rules', () => {
   it("selects a provider's first key, and not the ones added after it", () => {

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { connect } from 'node:net';
-import { resolveAppContext, appDataDirFor, type AppChannel } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, appDataDirFor, type AppChannel } from '@apackdev/sdk/env';
 import { findRunningApp } from '@apackdev/host/database';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST } from '@apackdev/sdk/utils/pure';
@@ -34,7 +34,7 @@ export async function inspectApp(channel: AppChannel, options: {
 } = {}): Promise<void> {
   const product = PRODUCT_NAMES[channel];
   const bundle = path.join(options.applications ?? '/Applications', `${product}.app`);
-  const context = resolveAppContext({ env: channel, userDataDir: options.dataDir ?? appDataDirFor(channel) });
+  const context = resolveAppEnvironment({ env: channel, userDataDir: options.dataDir ?? appDataDirFor(channel) });
   const checks: { label: string; ok: boolean; message: string }[] = [];
   const check = async (label: string, run: () => string | Promise<string>) => {
     try { checks.push({ label, ok: true, message: await run() }); }

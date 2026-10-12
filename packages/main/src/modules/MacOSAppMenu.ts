@@ -1,6 +1,6 @@
 import {Menu, app} from 'electron';
 import type {AppModule} from '../AppModule.ts';
-import type {ModuleContext} from '../ModuleContext.ts';
+import type {MainModuleScope} from '../MainModuleScope.ts';
 import {cliCommandName, installCliCommand} from './cli-command.ts';
 
 /**
@@ -8,7 +8,7 @@ import {cliCommandName, installCliCommand} from './cli-command.ts';
  * hides the app instead of quitting it.
  */
 class MacOSAppMenu implements AppModule {
-  async enable({app: electronApp}: ModuleContext): Promise<void> {
+  async enable({app: electronApp}: MainModuleScope): Promise<void> {
     if (process.platform !== 'darwin') return;
 
     await electronApp.whenReady();

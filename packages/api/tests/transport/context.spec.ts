@@ -1,10 +1,10 @@
 // The context is one connection's identity, and two things have to hold: it is different per connection, and
 // the signal it carries actually arrives and fires when the socket closes.
 //
-// The first is checked by calling `createContext` directly. The second cannot be — handing it a signal and
+// The first is checked by calling `createRpcContext` directly. The second cannot be — handing it a signal and
 // then asserting the signal is there proves nothing about the adapter, which is the only thing that supplies
 // one in production. So the last case runs a real `applyWSSHandler` over a real socket with this module's own
-// `createContext`, for `encoder.spec.ts`'s reason: the failure is silent. Every participant claim is released
+// `createRpcContext`, for `encoder.spec.ts`'s reason: the failure is silent. Every participant claim is released
 // from `ctx.closed` (`bus.ts`), so a tRPC bump that stopped passing `info.signal` would leak every claim for
 // the life of the process and no unit test would notice.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -14,14 +14,14 @@ import { initTRPC } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
 import { _byDeadline, _whenSatisfied } from '@apackdev/sdk/testing/waiting';
-import { createContext, type Context } from '@/transport/context';
+import { createRpcContext, type RpcContext } from '@/transport/context';
 
-/** A connection as the adapter describes one, which is the only shape `createContext` accepts */
+/** A connection as the adapter describes one, which is the only shape `createRpcContext` accepts */
 const connection = () => ({ info: { signal: new AbortController().signal } });
 
-describe('createContext', () => {
+describe('createRpcContext', () => {
   it('names the connection', () => {
-    expect(createContext(connection()).client).toMatch(/^c-/);
+    expect(createRpcContext(connection()).client).toMatch(/^c-/);
   });
 
   /**
@@ -30,13 +30,13 @@ describe('createContext', () => {
    * would look like it worked for as long as only one window was open.
    */
   it('gives every connection a different name', () => {
-    const ids = Array.from({ length: 50 }, () => createContext(connection()).client);
+    const ids = Array.from({ length: 50 }, () => createRpcContext(connection()).client);
     expect(new Set(ids).size, 'no two connections share an id').toBe(ids.length);
   });
 });
 
 /**
- * What the adapter hands `createContext`, asserted through the adapter.
+ * What the adapter hands `createRpcContext`, asserted through the adapter.
  *
  * The router is a local one so nothing boots — what is under test is the seam, not the app. The procedure
  * reports the context it was given and arms a listener on it, so one call answers all three halves: the signal
@@ -66,7 +66,7 @@ describe('the connection signal the adapter supplies', () => {
   /** The socket a case opened, so a failed case cannot leave the server waiting on it in teardown */
   let open: WebSocket | undefined;
 
-  const t = initTRPC.context<Context>().create();
+  const t = initTRPC.context<RpcContext>().create();
   const router = t.router({
     // Never completes on its own, so stopping it is the test's doing and the connection outlives it
     feed: t.procedure.subscription(() => observable<number>(() => () => {})),
@@ -83,8 +83,8 @@ describe('the connection signal the adapter supplies', () => {
     abortFired = new Promise<void>((resolve) => { fired = resolve; });
     server = http.createServer();
     wss = new WebSocketServer({ server });
-    // This module's own createContext, which is the point: a stub would assert nothing about the adapter
-    applyWSSHandler({ wss, router, createContext });
+    // This module's own createRpcContext, which is the point: a stub would assert nothing about the adapter
+    applyWSSHandler({ wss, router, createContext: createRpcContext });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     port = (server.address() as { port: number }).port;
   });

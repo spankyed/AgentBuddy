@@ -1,5 +1,5 @@
 import {AppModule} from './AppModule.ts';
-import {ModuleContext} from './ModuleContext.ts';
+import {MainModuleScope} from './MainModuleScope.ts';
 import {app} from 'electron';
 
 class ModuleRunner implements PromiseLike<void> {
@@ -17,7 +17,7 @@ class ModuleRunner implements PromiseLike<void> {
     }
 
   init(module: AppModule) {
-    const p = module.enable(this.#createModuleContext());
+    const p = module.enable(this.#createModuleScope());
 
     if (p instanceof Promise) {
       this.#promise = this.#promise.then(() => p);
@@ -26,7 +26,7 @@ class ModuleRunner implements PromiseLike<void> {
     return this;
   }
 
-  #createModuleContext(): ModuleContext {
+  #createModuleScope(): MainModuleScope {
     return {
       app,
     };

@@ -5,13 +5,13 @@ import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 import type { PackFeatureSystem, PackRegistration } from '@apackdev/sdk/framework';
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST } from '../refs.ts';
-import type { PackInfo } from '../packs/registry.ts';
+import type { InstalledPackSummary } from '../packs/registry.ts';
 import { helpSystem, helpEvents } from './help/be/system.ts';
 import { SETTINGS_PLUGIN_EVENT_TYPES } from './settings/be/system.ts';
 
 /** What the host `packs` system sends its plugin */
 export type OutgoingPacksEvents =
-  | { type: 'PACKS_LIST'; packs: PackInfo[] }
+  | { type: 'PACKS_LIST'; packs: InstalledPackSummary[] }
   | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
   | { type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }
   | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }

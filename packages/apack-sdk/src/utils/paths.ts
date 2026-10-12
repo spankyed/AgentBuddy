@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import { _appDirOf, resolveAppContext } from '../env/index.ts'
+import { _appDirOf, resolveAppEnvironment } from '../env/index.ts'
 import { _pathSegmentProblem } from './path-segment.ts'
 
 /** @internal Host-only: the app's stores in a data dir */
@@ -38,7 +38,7 @@ export function _appDataPaths(userDataDir: string): _AppDataPaths {
 
 // === Public API ===
 
-export const getUserDataPath = (): string => resolveAppContext().userDataDir
+export const getUserDataPath = (): string => resolveAppEnvironment().userDataDir
 /** @internal Host-only: the app's database location. */
 export const _getLmdbPath = (): string => _resolvePath('lmdb')
 /** @internal Host-only: the app's database location. */

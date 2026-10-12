@@ -1,5 +1,5 @@
 import {AppModule} from '../AppModule.ts';
-import {ModuleContext} from '../ModuleContext.ts';
+import {MainModuleScope} from '../MainModuleScope.ts';
 import {session} from 'electron';
 import {openExternalUrl} from './shell-access.ts';
 
@@ -12,7 +12,7 @@ import {openExternalUrl} from './shell-access.ts';
  */
 export class ExternalUrls implements AppModule {
 
-  enable({app}: ModuleContext): Promise<void> | void {
+  enable({app}: MainModuleScope): Promise<void> | void {
     app.on('web-contents-created', (_, contents) => {
       // Browser plugin tabs handle their own window.open → new tab
       if (contents.session === session.fromPartition('persist:browser')) return;

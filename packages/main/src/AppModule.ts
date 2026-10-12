@@ -1,5 +1,5 @@
-import type {ModuleContext} from './ModuleContext.ts';
+import type {MainModuleScope} from './MainModuleScope.ts';
 
 export interface AppModule {
-  enable(context: ModuleContext): Promise<void>|void;
+  enable(context: MainModuleScope): Promise<void>|void;
 }

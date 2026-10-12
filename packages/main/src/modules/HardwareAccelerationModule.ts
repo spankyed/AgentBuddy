@@ -1,5 +1,5 @@
 import {AppModule} from '../AppModule.ts';
-import {ModuleContext} from '../ModuleContext.ts';
+import {MainModuleScope} from '../MainModuleScope.ts';
 
 export class HardwareAccelerationModule implements AppModule {
   readonly #shouldBeDisabled: boolean;
@@ -9,7 +9,7 @@ export class HardwareAccelerationModule implements AppModule {
     this.#shouldBeDisabled = !enable;
   }
 
-  enable({app}: ModuleContext): Promise<void> | void {
+  enable({app}: MainModuleScope): Promise<void> | void {
     if (this.#shouldBeDisabled) {
       app.disableHardwareAcceleration();
     }

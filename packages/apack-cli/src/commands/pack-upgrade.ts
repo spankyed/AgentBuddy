@@ -1,19 +1,19 @@
 import semver from 'semver';
-import type { AppContext } from '@apackdev/sdk/env';
+import type { AppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { withPackMutation } from '../app/pack-mutation';
-import { findLatestRelease, installPackFromGitHub, readHostInfo } from '@apackdev/host/packs';
+import { findLatestRelease, installPackFromGitHub, readHostCompatibility } from '@apackdev/host/packs';
 import { packInventory, recordCliInstall } from '../app/installed-packs';
 import { parseStorageProfile, targetDataContext } from '../utils';
 import { packUpdate } from '../app/pack-updates';
 
-export async function upgradePack(context: AppContext, id: string, options: {
+export async function upgradePack(context: AppEnvironment, id: string, options: {
   find?: typeof findLatestRelease;
   install?: typeof installPackFromGitHub;
 } = {}) {
   if (!PACK_ID_PATTERN.test(id)) throw new Error('Specify a valid installed pack ID.');
   return withPackMutation(context, `upgrade ${id}`, async () => {
-    const host = readHostInfo(context.userDataDir);
+    const host = readHostCompatibility(context.userDataDir);
     if (!host.version || host.packFormat === undefined) throw new Error('Open the app with this profile first to record its version and pack format.');
     const inventory = packInventory(context);
     const pack = inventory.find(pack => pack.manifest.id === id);

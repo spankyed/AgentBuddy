@@ -21,14 +21,14 @@ process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
 const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
 const { getDesignated } = await import('@apackdev/sdk/designations');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
-beforeEach(() => fs.rmSync(resolveAppContext().packsDir, { recursive: true, force: true }));
+beforeEach(() => fs.rmSync(resolveAppEnvironment().packsDir, { recursive: true, force: true }));
 
 /** An installed pack that plays `role`, as `apack pack install` leaves one */
 async function installPackPlaying(id: string, role: string): Promise<void> {
@@ -41,7 +41,7 @@ async function installPackPlaying(id: string, role: string): Promise<void> {
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     `module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`,
   );
-  await installPackFromLocal(source, resolveAppContext().packsDir);
+  await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });
 }
 
@@ -50,7 +50,7 @@ async function installPackPlaying(id: string, role: string): Promise<void> {
  * loaded — shipped ones first, which is what keeps a designation theirs
  */
 async function bootPacks(app: ReturnType<typeof openAppStore>) {
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
   return loadAppPacks(app.packs, new Set(installed.map((result) => result.id)));
 }
 

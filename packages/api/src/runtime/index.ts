@@ -6,7 +6,7 @@ import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadAppPacks, startPacks } from '@apackdev/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
@@ -92,7 +92,7 @@ function reportDroppedWrite({ op, key, error }: WriteFailure): void {
 
 export function openAppStore(): AppStore {
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
-  const packs = createPackRegistry({ installedPacksDir: () => resolveAppContext().packsDir });
+  const packs = createPackRegistry({ installedPacksDir: () => resolveAppEnvironment().packsDir });
   const { store, engine } = openDatabaseStore({
     paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,
@@ -120,7 +120,7 @@ export async function setupBackend(): Promise<void> {
 
   // Before anything opens the database: a tool changing it (`apack db`) holds a lock until it's done, and opening
   // now would overwrite its change from this process's memory
-  const appContext = resolveAppContext();
+  const appContext = resolveAppEnvironment();
   assertNoDatabaseWriter(appContext.userDataDir);
 
   // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered

@@ -76,8 +76,8 @@ describe('facade gate', () => {
     const { problems } = await gate('source-only-export', {
       'src/internals.ts': [
         "import type { unbindHost } from '@apackdev/sdk/runtime/internals';",
-        "import type { PackInfo } from '@apackdev/host/packs';",
-        'export const internalsService = { unbind: (): typeof unbindHost | null => null, pack: (): PackInfo | null => null };',
+        "import type { InstalledPackSummary } from '@apackdev/host/packs';",
+        'export const internalsService = { unbind: (): typeof unbindHost | null => null, pack: (): InstalledPackSummary | null => null };',
       ].join('\n'),
       'src/__generated__/pack-types.ts': "import type { internalsService } from '../internals.ts';\nexport type Services = { internals: typeof internalsService };\n",
     });

@@ -1,7 +1,7 @@
 // The app's migrations runners: the host runs them at boot, and again in an app reset
 // (services.appData.reset()). The migrations live with their packs, and the host's own (the app's
 // state) in ./app. The versions they ran to are recorded in AppState.
-import { getAppVersion, resolveAppContext } from '@apackdev/sdk/env';
+import { getAppVersion, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { compareVersions } from '@apackdev/sdk/utils';
 import type { PackMigration } from '@apackdev/sdk/framework';
 import type { PackManifest } from '@apackdev/sdk/build';
@@ -17,7 +17,7 @@ const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
  * migrations are written for the release it's building towards
  */
 function targetCap(appVersion: string): string | undefined {
-  return resolveAppContext().env === 'development' ? undefined : releaseOf(appVersion);
+  return resolveAppEnvironment().env === 'development' ? undefined : releaseOf(appVersion);
 }
 
 /**

@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { _appDirOf, type AppContext } from '@apackdev/sdk/env';
+import { _appDirOf, type AppEnvironment } from '@apackdev/sdk/env';
 import { lockIsHeld, readApiEndpoint, sameWriter, type WriterRecord } from '../process-liveness.ts';
 
 /** What the app process publishes in the data dir for as long as it runs */
@@ -97,6 +97,6 @@ function liveApp(userDataDir: string): RunningApp | null {
  * Why an app is running on the data dir, or `null` when none is: a file or a port file left behind by a
  * process that has exited doesn't count
  */
-export function findRunningApp(context: Pick<AppContext, 'userDataDir' | 'apiPortFile'>): RunningApp | null {
+export function findRunningApp(context: Pick<AppEnvironment, 'userDataDir' | 'apiPortFile'>): RunningApp | null {
   return liveApp(context.userDataDir) ?? liveApi(context.apiPortFile);
 }

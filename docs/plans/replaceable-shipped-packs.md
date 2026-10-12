@@ -90,7 +90,7 @@ explicitly installs the shipped artifact again; enabling alone does not install 
 **The toggle is hidden, not refused.** The Packs view shows no toggle for shipped packs by default; a
 developer-mode switch in Settings reveals it, and then every pack has one. Same gate covers `replace`. The
 CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the view, instead of a
-`canUninstall` predicate threaded through the system, the `PackInfo` payload and the renderer.
+`canUninstall` predicate threaded through the system, the `InstalledPackSummary` payload and the renderer.
 
 **`shipped` retires to provenance.** It describes origin and decides nothing.
 

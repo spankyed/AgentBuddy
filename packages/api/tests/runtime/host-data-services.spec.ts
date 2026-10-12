@@ -68,14 +68,14 @@ describe('services.appData', () => {
   it('reports a backup directory, and null for anything else', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-backup-'));
     dirs.push(dir);
-    expect(await services.appData.backupInfo(dir)).toBeNull();
+    expect(await services.appData.readBackupSummary(dir)).toBeNull();
 
     version.current = '0.4.1';
     try {
       const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
       expect(backup).toBe(path.join(dir, 'probe'));
       // What made it, so a backup folder says where it came from without opening its databases
-      expect(await services.appData.backupInfo(backup)).toEqual({
+      expect(await services.appData.readBackupSummary(backup)).toEqual({
         timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
       });
       const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));

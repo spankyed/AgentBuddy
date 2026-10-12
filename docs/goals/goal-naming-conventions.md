@@ -19,8 +19,8 @@ exports and nullable public registry/service methods. A function-only regex miss
 inferred results and aliases. The original absence-policy cleanup is complete: installed pack records
 are a side table, and liveness predicates answer distinct questions. Do not redo those designs.
 
-`PackInfo` describes installed packs including disabled ones; `RegisteredPack` would misrepresent it.
-`AppEnv` already names the environment-name union, so renaming `AppContext` to it would collide.
+`InstalledPackSummary` describes installed packs including disabled ones; `RegisteredPack` would misrepresent it.
+`AppEnv` already names the environment-name union, so renaming `AppEnvironment` to it would collide.
 Graph edges, logs and execution records legitimately use source. Renaming all such fields would change
 stored shapes without fixing the install-path ambiguity. Context, Data and Manager can describe useful
 concepts; their spelling alone does not prove a defect.
@@ -68,7 +68,9 @@ Done when each retained rename has a semantic reason and focused checks pass; co
   follow that spelling. ModuleContext -> MainModuleScope. Keep AppEnv unchanged.
 - PackInfo -> InstalledPackSummary; PackFeatureInfo -> PackFeatureSummary; HostInfo -> HostCompatibility.
 - ExportInfo -> ModuleExport; BackupInfo -> BackupSummary; SecretInfo -> SecretMetadata.
-- AppHelper -> TestApp; EngineAppHelper -> EngineTestApp.
+  Backup readers become readBackupSummary, matching filesystem inspection.
+- AppHelper -> AppDriver; EngineAppHelper -> EngineAppDriver; appHelper -> createAppDriver.
+  TestApp already names the in-memory harness: keep that distinct from browser automation.
 
 Keep meaningful compiler/execution contexts, lifecycle managers and Data types. Migrate helper names
 that explicitly include renamed types. Regenerate API/facade reports, review and commit.
@@ -121,3 +123,8 @@ Every newly enforceable rule has a firing case; semantic noun choices stay revie
   executeIfFound for the existing optional action execution. Function bodies and absence values are
   unchanged. All typechecks and public-report checks pass; rebuilt default-setup and passed its
   834 tests (two existing skips). The initial test used stale compiled actions; rebuilding fixed it.
+
+- Phase 3: qualified Code and RPC contexts; named resolved paths AppEnvironment; replaced ambiguous
+  summary/metadata types. Chose AppDriver/EngineAppDriver rather than another TestApp, which already
+  names the in-memory harness. Kept native tRPC createContext keys and stored data shapes. All
+  typechecks and 3,799 host-suite tests pass; public API/facade reports were regenerated.

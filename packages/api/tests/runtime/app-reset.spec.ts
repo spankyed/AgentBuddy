@@ -15,7 +15,7 @@ const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
 const { loadAppPacks, startPacks } = await import('@apackdev/host/packs/runtime');
 const { installShippedPacks } = await import('@apackdev/host/packs');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { appState } = await import('@apackdev/host/app-state');
 const { getAppVersion } = await import('@apackdev/sdk/env');
 const { services } = await import('@apackdev/sdk/services');
@@ -39,7 +39,7 @@ let fresh: { settings: unknown; flows: ReturnType<typeof flows> };
 beforeAll(async () => {
   // The API's boot (setup/backend.ts), for the built-in packs
   // The app installs the packs it ships, then loads every installed pack
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
   loadAppPacks(packs, new Set(installed.map((result: { id: string }) => result.id)));
   await store.hydrate();
   startPacks(packs);

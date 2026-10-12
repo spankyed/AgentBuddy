@@ -13,7 +13,7 @@ const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook,
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
 const { loadAppPacks } = await import('../../../src/packs/runtime/loader.ts');
 const { applyPacks } = await import('../../../src/packs/runtime/apply.ts');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@apackdev/sdk/testing');
 const { appliedContent, appState } = await import('../../../src/app-state/index.ts');
@@ -328,7 +328,7 @@ describe('reloading a pack', () => {
 
     await reloadPackById(registry, PACK_ID, bus as never);
 
-    expect(fs.existsSync(resolveAppContext().installedPacksFile), 'no record was written at all').toBe(false);
+    expect(fs.existsSync(resolveAppEnvironment().installedPacksFile), 'no record was written at all').toBe(false);
   });
 
   it('shuts the running pack down and restarts its systems once the rebuild is registered', async () => {

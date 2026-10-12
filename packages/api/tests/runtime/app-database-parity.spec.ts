@@ -16,7 +16,7 @@ const { openAppStore } = await import('@/runtime');
 const { loadAppPacks, startPacks } = await import('@apackdev/host/packs/runtime');
 const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
 const { openAppDatabase } = await import('@apackdev/host/database');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
 const { untypedTx } = await import('@apackdev/ears');
 
@@ -41,7 +41,7 @@ function snapshot(query: EarsQuery) {
  */
 async function bootApi() {
   const app = openAppStore();
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
   loadAppPacks(app.packs, new Set(installed.map((result: { id: string }) => result.id)));
   await app.store.hydrate();
   return app;
@@ -62,7 +62,7 @@ async function installExternalPack(id: string, entityType: string): Promise<void
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     `module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`,
   );
-  await installPackFromLocal(source, resolveAppContext().packsDir);
+  await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });
 }
 

@@ -6,7 +6,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { APP_ENVS, appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
+import { APP_ENVS, appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@apackdev/host/process-liveness';
 import { _pathSegmentProblem, randomId } from '@apackdev/sdk/utils/pure';
 import type { CliDirs } from './pack-host';
@@ -97,7 +97,7 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  * second app over are one question: Electron allows one app per data dir, and taking a dir from a running
  * app does not stop it — it writes the directory back.
  *
- * **The API's port file** is the primary record. Its path comes from `resolveAppContext` rather than a join
+ * **The API's port file** is the primary record. Its path comes from `resolveAppEnvironment` rather than a join
  * of its own: the API writes that file and a second opinion about where it is becomes a refusal that never
  * fires. It read `<dir>/api-port` while the API wrote `<dir>/apack/api-port` for exactly one commit, which
  * made every check answer "no app" — and the spec held the same wrong path, so the suite stayed green. The
@@ -108,7 +108,7 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  * the dir open.
  */
 export function dataDirInUse(dir: string): boolean {
-  return readApiEndpoint(resolveAppContext({ env: 'development', userDataDir: dir }).apiPortFile) !== null
+  return readApiEndpoint(resolveAppEnvironment({ env: 'development', userDataDir: dir }).apiPortFile) !== null
     || chromiumLockHeld(dir);
 }
 

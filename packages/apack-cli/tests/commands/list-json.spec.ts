@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { recordCliInstall } from '../../src/app/installed-packs';
 import { list } from '../../src/commands/list';
 
@@ -12,7 +12,7 @@ it('prints one structured inventory for the selected data directory', async () =
   vi.stubEnv('APACK_USER_DATA_DIR', root);
   vi.stubEnv('APACK_CLI_CHANNEL', 'production');
   try {
-    const context = resolveAppContext({ env: 'production', userDataDir: root });
+    const context = resolveAppEnvironment({ env: 'production', userDataDir: root });
     await list(['--json']);
     expect(JSON.parse(output.mock.calls[0]![0]).packs).toEqual([]);
     expect(fs.existsSync(context.packsDir)).toBe(false);

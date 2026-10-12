@@ -747,6 +747,17 @@ type CodeInboxEvent = {
 
 type CodeSettings = typeof _default$9.defaults;
 
+interface CodeSystemContext {
+    baseDirectory: string | null;
+    /**
+     * The default directory the settings named when this system last heard them. The settings arrive whenever any of
+     * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
+     */
+    defaultBaseDirectory: string | null;
+    gitRepository: GitRepository | null;
+    gitWatcher: GitWatcherService | null;
+}
+
 interface CodeSystemError {
     code: 'FILE_TOO_LARGE' | 'INVALID_PATH' | 'IO_ERROR' | 'NOT_FOUND' | 'PERMISSION_DENIED' | 'SEARCH_ERROR';
     message: string;
@@ -864,17 +875,6 @@ interface ConsumerHandlers {
 
 /** A section of a document's content, as the library compiler parses it from markdown */
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
-
-interface Context {
-    baseDirectory: string | null;
-    /**
-     * The default directory the settings named when this system last heard them. The settings arrive whenever any of
-     * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
-     */
-    defaultBaseDirectory: string | null;
-    gitRepository: GitRepository | null;
-    gitWatcher: GitWatcherService | null;
-}
 
 interface ContextReference {
     refType: ContextReferenceType;
@@ -1011,7 +1011,7 @@ type Contract$j = {
 };
 
 type Contract$k = {
-    context: Context;
+    context: CodeSystemContext;
     incoming: IncomingCodeEvents;
     outgoing: OutgoingCodeEvents;
 };

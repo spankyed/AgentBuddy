@@ -2,10 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { _appDirOf } from '@apackdev/sdk/env';
 
-const hostInfoFile = (userDataDir: string) => path.join(_appDirOf(userDataDir), 'host.json');
+const hostCompatibilityFile = (userDataDir: string) => path.join(_appDirOf(userDataDir), 'host.json');
 
 /** What the apack that last started with a data dir can load, for tools that install packs into it without it running */
-export interface HostInfo {
+export interface HostCompatibility {
   /** Its version, which a pack's `hostVersion` range is checked against */
   version?: string;
   /**
@@ -16,22 +16,22 @@ export interface HostInfo {
 }
 
 /** Records what the apack starting with this data dir can load, so `apack pack install` and `apack pack dev` can check a pack against it. */
-export function recordHostInfo(userDataDir: string, info: Required<HostInfo>): void {
-  const current = readHostInfo(userDataDir);
+export function recordHostCompatibility(userDataDir: string, info: Required<HostCompatibility>): void {
+  const current = readHostCompatibility(userDataDir);
   if (current.version === info.version && current.packFormat === info.packFormat) return;
   fs.mkdirSync(_appDirOf(userDataDir), { recursive: true });
   // Written aside and renamed, so a crash never leaves a truncated host.json
-  const file = hostInfoFile(userDataDir);
+  const file = hostCompatibilityFile(userDataDir);
   const temp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(temp, JSON.stringify({ version: info.version, packFormat: info.packFormat }, null, 2) + '\n');
   fs.renameSync(temp, file);
 }
 
 /** What the apack that last started with this data dir recorded, each field absent when nothing says */
-export function readHostInfo(userDataDir: string): HostInfo {
+export function readHostCompatibility(userDataDir: string): HostCompatibility {
   let recorded: { version?: unknown; packFormat?: unknown };
   try {
-    recorded = JSON.parse(fs.readFileSync(hostInfoFile(userDataDir), 'utf-8')) ?? {};
+    recorded = JSON.parse(fs.readFileSync(hostCompatibilityFile(userDataDir), 'utf-8')) ?? {};
   } catch {
     return {};
   }

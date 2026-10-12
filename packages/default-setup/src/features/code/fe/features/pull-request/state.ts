@@ -51,7 +51,7 @@ export interface ActiveTokenInfo {
   prefix: string
 }
 
-export interface Context {
+export interface CodePullRequestContext {
   // Branch comparison
   /**
    * The files each comparison holds, keyed by `refKey` — the answer's own slot rather than one shared
@@ -214,7 +214,7 @@ export type Event =
 
 export const pullRequestState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodePullRequestContext,
     events: {} as Event
   },
   actions: {

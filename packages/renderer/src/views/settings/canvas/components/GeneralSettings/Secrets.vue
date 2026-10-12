@@ -109,7 +109,7 @@ import { useSelector } from '@xstate/vue'
 import { ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-vue-next'
 import { openLink, secretsClient, usePlugin } from '@apackdev/sdk/fe'
 import { providerLabels } from '@apackdev/sdk/models'
-import type { SecretInfo, SecretProvider } from '@apackdev/sdk/services'
+import type { SecretMetadata, SecretProvider } from '@apackdev/sdk/services'
 import { API_KEY_URLS, REQUIRED_PROVIDERS } from '@/views/settings/constants'
 import CliProviders from './CliProviders.vue'
 import SecretKeyRow from './SecretKeyRow.vue'
@@ -162,7 +162,7 @@ const add = (provider: SecretProvider, label: string, value: string) =>
 
 const allowUnprotected = () => run(() => secretsClient.allowUnprotected())
 
-function confirmDelete(secret: SecretInfo) {
+function confirmDelete(secret: SecretMetadata) {
   if (confirm(`Delete the key "${secret.label}"?`)) run(() => secretsClient.delete(secret.id))
 }
 </script>

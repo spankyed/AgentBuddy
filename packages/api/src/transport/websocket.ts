@@ -4,14 +4,14 @@ import * as path from 'path';
 import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/transport';
-import { createContext } from '@/transport/context';
+import { createRpcContext } from '@/transport/context';
 import { jsonSafeEncoder } from '@/transport/encoder';
 import { createLogger } from '@apackdev/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
 import { reloadPackById } from '@apackdev/host/packs/runtime';
 import { writePrivateFile } from '@apackdev/host/private-file';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { ApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
 
@@ -38,7 +38,7 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
  * for a caller with the API token: `apack pack dev` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
-export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env, token = apiToken()): string | null {
+export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppEnvironment().env, token = apiToken()): string | null {
   if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
   const given = headers[API_TOKEN_HEADER];
   if (!isApiToken(Array.isArray(given) ? given[0] : given, token)) return 'the API token is missing or wrong';
@@ -97,7 +97,7 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
  * own. That file is readable only by the user. Both are removed when the process exits.
  */
 export function publishApiFiles(port: number, token: string): void {
-  const { apiPortFile, apiTokenFile } = resolveAppContext();
+  const { apiPortFile, apiTokenFile } = resolveAppEnvironment();
   try {
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     // With the process id, so a tool can tell a running API from a file a crashed run left behind
@@ -136,7 +136,7 @@ export function createWebSocketServer() {
   const handler = applyWSSHandler({
     wss,
     router: appRouter,
-    createContext,
+    createContext: createRpcContext,
     // In place of the adapter's `JSON.stringify`, which throws on a BigInt or a cycle — and throws from the loop
     // that drains a subscription rather than from the send, so the throw ends the subscription and the window's
     // whole event stream with it. `encoder.ts` has the measurements and what each case becomes.
@@ -154,7 +154,7 @@ export function createWebSocketServer() {
     } catch (error) {
       console.error('[backend] Closing the database failed', error);
     }
-    const { apiPortFile, apiTokenFile } = resolveAppContext();
+    const { apiPortFile, apiTokenFile } = resolveAppEnvironment();
     for (const file of [apiPortFile, apiTokenFile]) {
       try { fs.unlinkSync(file); } catch {}
     }

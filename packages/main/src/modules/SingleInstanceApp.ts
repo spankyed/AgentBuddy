@@ -1,7 +1,7 @@
 import {AppModule} from '../AppModule.ts';
 import * as Electron from 'electron';
 import {publishRunningApp} from '@apackdev/host/database';
-import {getAppContext} from '../app-context.ts';
+import {getAppEnvironment} from '../app-environment.ts';
 
 class SingleInstanceApp implements AppModule {
   enable({app}: {app: Electron.App}): void {
@@ -13,7 +13,7 @@ class SingleInstanceApp implements AppModule {
     // their dirs differ, and a profile is what lets two of one environment coexist.
     const isSingleInstance = app.requestSingleInstanceLock();
     if (!isSingleInstance) {
-      console.log(`[MAIN] Another ${getAppContext().env} instance is already running. Exiting.`);
+      console.log(`[MAIN] Another ${getAppEnvironment().env} instance is already running. Exiting.`);
       app.quit();
       process.exit(0);
     }
@@ -21,7 +21,7 @@ class SingleInstanceApp implements AppModule {
     // This process is using the data dir from here on, and `apack db` refuses to write to one an app is
     // using. Its API publishes a port only once it has booted, and publishes none while a crashed one is
     // being restarted, so between those moments this is the only thing that says the app is here.
-    const stopPublishing = publishRunningApp(getAppContext().userDataDir);
+    const stopPublishing = publishRunningApp(getAppEnvironment().userDataDir);
     app.once('will-quit', stopPublishing);
   }
 }

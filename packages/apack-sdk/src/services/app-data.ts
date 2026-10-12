@@ -2,7 +2,7 @@
 /** A store a backup can hold: the primary database or the volatile trace store. API keys are never backed up. */
 export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
-export interface BackupInfo {
+export interface BackupSummary {
   timestamp: number;
   databases: BackupDatabase[];
   /** Bytes, across the backed-up databases */
@@ -48,7 +48,7 @@ export interface AppDataService {
     unknownEntityTypes: Array<[string, number]>;
   }>;
   /** A backup's metadata, or null when `backupPath` isn't a backup */
-  backupInfo(backupPath: string): Promise<BackupInfo | null>;
+  readBackupSummary(backupPath: string): Promise<BackupSummary | null>;
 }
 
 /**

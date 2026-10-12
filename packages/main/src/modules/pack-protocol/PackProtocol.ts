@@ -2,8 +2,8 @@ import { app, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.ts';
-import type { ModuleContext } from '../../ModuleContext.ts';
-import { getAppContext, shippedPacksDir } from '../../app-context.ts';
+import type { MainModuleScope } from '../../MainModuleScope.ts';
+import { getAppEnvironment, shippedPacksDir } from '../../app-environment.ts';
 import { devServerUrl } from '@apackdev/host/packs/dev-server';
 
 /** A pack id, as the manifest schema defines it (`apack-sdk/src/build/manifest-schema.ts`) */
@@ -71,7 +71,7 @@ export const MIME_TYPES: Record<string, string> = {
 
 
 class PackProtocol implements AppModule {
-  enable(_ctx: ModuleContext): void {
+  enable(_ctx: MainModuleScope): void {
     protocol.registerSchemesAsPrivileged([
       {
         scheme: 'pack',
@@ -104,7 +104,7 @@ class PackProtocol implements AppModule {
         if (!target) return new Response('Forbidden', { status: 403 });
         const { packId, filePath } = target;
 
-        const {packsDir, userDataDir} = getAppContext();
+        const {packsDir, userDataDir} = getAppEnvironment();
 
         let devUrl: string | null;
         try {

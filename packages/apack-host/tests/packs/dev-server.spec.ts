@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { verifyPack } from '../../src/packs/layout.ts';
 import { installPackFromLocal } from '../../src/packs/installer.ts';
 import {
@@ -21,7 +21,7 @@ let packsDir: string;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-server-spec-'));
-  ({ userDataDir, packsDir } = resolveAppContext({ env: 'test', userDataDir: path.join(tmp, 'data') }));
+  ({ userDataDir, packsDir } = resolveAppEnvironment({ env: 'test', userDataDir: path.join(tmp, 'data') }));
 });
 
 afterEach(() => {

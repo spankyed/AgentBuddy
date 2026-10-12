@@ -2,7 +2,7 @@ import { createLogger } from '@apackdev/sdk/logger';
 import { recordUpdateCheck, type PackRecord } from './installed.ts';
 import { installedPacks } from './discovery.ts';
 import * as semver from 'semver';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { isHostCompatible } from './installer.ts';
 import { fetchReleaseAsset, fetchRepoFile, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -90,7 +90,7 @@ export async function findLatestRelease(
 
 function updateChannelIncludesPrereleases(): boolean {
   try {
-    return resolveAppContext().env === 'beta';
+    return resolveAppEnvironment().env === 'beta';
   } catch {
     return false;
   }

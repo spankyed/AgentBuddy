@@ -8,7 +8,7 @@ This module (`packages/apack-testing/src/index.ts`) is the single source of trut
 
 - **`test`** and **`expect`** — Playwright test objects with three custom fixtures (`electronApp`, `appPage`, `app`) pre-configured. Uses auto-detection to find the apack root.
 - **`createTest(options?)`** — Factory function returning `{ test, expect }` with explicit configuration (for when auto-detection isn't enough).
-- **`AppHelper`** — TypeScript interface for the `app` fixture's high-level API.
+- **`AppDriver`** — TypeScript interface for the `app` fixture's high-level API.
 
 ### How the monorepo uses it
 
@@ -395,7 +395,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 
 ### Test setup (`app` fixture, per test)
 
-7. **Provide AppHelper** — wraps the page with high-level methods (`navigate`, `screenshot`, `getState`, etc.). Screenshots go to the resolved `screenshotDir`.
+7. **Provide AppDriver** — wraps the page with high-level methods (`navigate`, `screenshot`, `getState`, etc.). Screenshots go to the resolved `screenshotDir`.
 
 ### Teardown
 
@@ -410,9 +410,9 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 |---------------|--------|-------------|
 | `electronApp` | worker | Launched Electron app (shared across tests in a worker) |
 | `appPage`     | test   | Main renderer Page (waits for `running.connected`, bypasses onboarding) |
-| `app`         | test   | `AppHelper` — high-level API |
+| `app`         | test   | `AppDriver` — high-level API |
 
-### AppHelper methods
+### AppDriver methods
 
 | Method | Description |
 |--------|-------------|
@@ -487,7 +487,7 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 
 - **Electron binary resolution**: for a checkout the fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from its `node_modules`; a packaged app is its own executable. Packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
-- **Data dir alignment**: The fixture installs into `resolveAppContext({ env: 'test', userDataDir: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apackdev/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
+- **Data dir alignment**: The fixture installs into `resolveAppEnvironment({ env: 'test', userDataDir: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apackdev/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm run dev` builds and `npm run build:runtime`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
 - **Dev server marker**: `apack pack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.

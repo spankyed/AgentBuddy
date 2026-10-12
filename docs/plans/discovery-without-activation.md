@@ -167,9 +167,9 @@ those implement behavior beyond discovery.
 
 ### Pack information: stop using registration as an inventory
 
-`features/packs/be/system.ts::toPackInfoList()` joins installed manifests with
+`features/packs/be/system.ts::toInstalledPackSummaries()` joins installed manifests with
 `registry.getPackExtensions()`. Disabled or failed packs therefore lose contribution details.
-`registry.ts::featureInfo()` and the listing part of `getPackExtensions()` duplicate information that
+`registry.ts::featureSummaries()` and the listing part of `getPackExtensions()` duplicate information that
 belongs in the descriptor. Replace these projections and their empty-extension fallback with a catalog
 view joined to host-owned installation records, activation outcomes and applied-content offers.
 

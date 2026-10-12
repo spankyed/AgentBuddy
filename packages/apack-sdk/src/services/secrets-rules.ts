@@ -1,19 +1,19 @@
 // The rules every store of the user's keys keeps: the host's encrypted store and the test host's in-memory one.
 // Pure functions over key metadata; each returns the next list.
-import type { SecretInfo, SecretProvider } from './secrets.ts';
+import type { SecretMetadata, SecretProvider } from './secrets.ts';
 import { providerLabels, type ProviderName } from './models.ts';
 
 /** @internal A provider's display name, for messages and default labels */
 export const _secretProviderLabel = (provider: SecretProvider): string =>
   provider === 'custom' ? 'Custom' : providerLabels[provider as ProviderName];
 
-function find<T extends SecretInfo>(secrets: readonly T[], id: string): T {
+function find<T extends SecretMetadata>(secrets: readonly T[], id: string): T {
   const secret = secrets.find((candidate) => candidate.id === id);
   if (!secret) throw new Error(`No stored key "${id}"`);
   return secret;
 }
 
-function checkLabel(secrets: readonly SecretInfo[], provider: SecretProvider, label: string, exceptId?: string): string {
+function checkLabel(secrets: readonly SecretMetadata[], provider: SecretProvider, label: string, exceptId?: string): string {
   const trimmed = label.trim();
   if (!trimmed) throw new Error('A key needs a label');
   const taken = secrets.some((secret) => secret.id !== exceptId && secret.provider === provider && secret.label.toLowerCase() === trimmed.toLowerCase());
@@ -24,14 +24,14 @@ function checkLabel(secrets: readonly SecretInfo[], provider: SecretProvider, la
 /** @internal */
 export const _secretRules = {
   /** Adds a key; a provider's first key is selected */
-  add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, 'selected' | 'label'> & { label: string }): T[] {
+  add<T extends SecretMetadata>(secrets: readonly T[], secret: Omit<T, 'selected' | 'label'> & { label: string }): T[] {
     const label = checkLabel(secrets, secret.provider, secret.label);
     const selected = !secrets.some((existing) => existing.provider === secret.provider);
     return [...secrets, { ...secret, label, selected } as T];
   },
 
   /** Selects a key, and unselects its provider's others, in one change */
-  select<T extends SecretInfo>(secrets: readonly T[], id: string, now: number): T[] {
+  select<T extends SecretMetadata>(secrets: readonly T[], id: string, now: number): T[] {
     const { provider } = find(secrets, id);
     return secrets.map((secret) => secret.provider !== provider
       ? secret
@@ -40,20 +40,20 @@ export const _secretRules = {
         : secret.selected ? { ...secret, selected: false, updatedAt: now } : secret);
   },
 
-  rename<T extends SecretInfo>(secrets: readonly T[], id: string, label: string, now: number): T[] {
+  rename<T extends SecretMetadata>(secrets: readonly T[], id: string, label: string, now: number): T[] {
     const secret = find(secrets, id);
     const next = checkLabel(secrets, secret.provider, label, id);
     return secrets.map((candidate) => candidate.id === id ? { ...candidate, label: next, updatedAt: now } : candidate);
   },
 
   /** Removes a key; removing the selected key leaves its provider with none selected */
-  remove<T extends SecretInfo>(secrets: readonly T[], id: string): T[] {
+  remove<T extends SecretMetadata>(secrets: readonly T[], id: string): T[] {
     find(secrets, id);
     return secrets.filter((secret) => secret.id !== id);
   },
 
   /** The key a provider uses, or why there's none, naming the fix */
-  selectedFor<T extends SecretInfo>(secrets: readonly T[], provider: ProviderName): T {
+  selectedFor<T extends SecretMetadata>(secrets: readonly T[], provider: ProviderName): T {
     const keys = secrets.filter((secret) => secret.provider === provider);
     const label = _secretProviderLabel(provider);
     if (keys.length === 0) throw new Error(`No ${label} key: add one in Settings → Secrets`);
@@ -64,5 +64,5 @@ export const _secretRules = {
 };
 
 /** @internal A key's metadata, copied out of a store's record */
-export const _toSecretInfo = ({ id, provider, label, selected, createdAt, updatedAt }: SecretInfo): SecretInfo =>
+export const _toSecretMetadata = ({ id, provider, label, selected, createdAt, updatedAt }: SecretMetadata): SecretMetadata =>
   ({ id, provider, label, selected, createdAt, ...(updatedAt !== undefined && { updatedAt }) });

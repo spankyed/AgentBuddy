@@ -13,7 +13,7 @@ vi.mock('@apackdev/host/packs', async (importOriginal) => ({
 let userDataDir: string;
 vi.mock('@apackdev/sdk/env', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@apackdev/sdk/env')>()),
-  resolveAppContext: () => ({
+  resolveAppEnvironment: () => ({
     env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'),
     apiPortFile: path.join(userDataDir, 'api-port'), apiTokenFile: path.join(userDataDir, 'api-token'),
   }),
@@ -29,8 +29,8 @@ afterEach(() => {
 
 describe('apack pack dev', () => {
   it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
-    const { recordHostInfo } = await import('@apackdev/host/packs');
-    recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
+    const { recordHostCompatibility } = await import('@apackdev/host/packs');
+    recordHostCompatibility(userDataDir, { version: '0.9.1', packFormat: 3 });
     const { installToApp } = await import('../../src/commands/dev');
 
     await installToApp('/pack');
@@ -39,10 +39,10 @@ describe('apack pack dev', () => {
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
-    const { recordHostInfo } = await import('@apackdev/host/packs');
+    const { recordHostCompatibility } = await import('@apackdev/host/packs');
     const { installToApp } = await import('../../src/commands/dev');
     await installToApp('/pack');
-    recordHostInfo(userDataDir, { version: '1.0.0', packFormat: 1 });
+    recordHostCompatibility(userDataDir, { version: '1.0.0', packFormat: 1 });
     await installToApp('/pack');
 
     expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([

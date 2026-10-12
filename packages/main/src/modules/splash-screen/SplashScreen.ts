@@ -1,6 +1,6 @@
 import { BrowserWindow, app } from 'electron';
 import { AppModule } from '../../AppModule.ts';
-import { ModuleContext } from '../../ModuleContext.ts';
+import { MainModuleScope } from '../../MainModuleScope.ts';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -11,7 +11,7 @@ export class SplashScreen implements AppModule {
   private isQuitting = false;
 
 
-  async enable({ app }: ModuleContext): Promise<void> {
+  async enable({ app }: MainModuleScope): Promise<void> {
     app.on('before-quit', () => { this.isQuitting = true; });
     await app.whenReady();
     this.createSplashWindow();

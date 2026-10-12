@@ -2,7 +2,7 @@
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { AppContext } from '@apackdev/sdk/env';
+import type { AppEnvironment } from '@apackdev/sdk/env';
 import type { PackManifest, PackSnapshot } from '@apackdev/sdk/build';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
@@ -46,7 +46,7 @@ export interface InstalledSchema extends DatabaseSchema {
 }
 
 /** The directories and files of a data dir the schema is read from */
-export type SchemaContext = Pick<AppContext, 'userDataDir' | 'packsDir' | 'installedPacksFile'>;
+export type SchemaContext = Pick<AppEnvironment, 'userDataDir' | 'packsDir' | 'installedPacksFile'>;
 
 function readJSON<T>(file: string, what: string): T {
   let parsed: unknown;

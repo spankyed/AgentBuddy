@@ -13,9 +13,9 @@ The entry point also installs crash handling: `showAndExit` on uncaught errors i
 
 ## Module runner
 
-`initApp` runs `initAppContext()`, `initializeMainLogCapture()` and a `disable-features` Chromium switch (it stops the macOS Apple Music permission prompt), then chains modules on `createModuleRunner()` (`src/ModuleRunner.ts`):
+`initApp` runs `initAppEnvironment()`, `initializeMainLogCapture()` and a `disable-features` Chromium switch (it stops the macOS Apple Music permission prompt), then chains modules on `createModuleRunner()` (`src/ModuleRunner.ts`):
 
-- A module implements `AppModule.enable({ app })` (`src/AppModule.ts`, `src/ModuleContext.ts`).
+- A module implements `AppModule.enable({ app })` (`src/AppModule.ts`, `src/MainModuleScope.ts`).
 - `init(module)` calls `enable` right away, in registration order. A returned promise is chained, and `await moduleRunner` waits for all of them. Async modules run concurrently from their first `await` (usually `app.whenReady()`), so whatever must happen before `ready`, like `protocol.registerSchemesAsPrivileged`, has to run synchronously in `enable`.
 - `createApiServer()` and `createSplashScreen()` are created before the chain and passed to the window manager as well.
 
@@ -61,13 +61,13 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
   so a list would either block what people open or grow until it approves everything. `tests/shell-access.spec.ts`
   covers both rules, with the app's own links among the accepted ones.
 
-## App context (`src/app-context.ts`)
+## App context (`src/app-environment.ts`)
 
-`initAppContext()` runs first and is the only place the environment is decided:
+`initAppEnvironment()` runs first and is the only place the environment is decided:
 
 - `_inferElectronAppEnv` (`@apackdev/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the channel read from packaged `build-manifest.json`, and `process.env.APACK_ENV`. `build/build-metadata.ts` creates a fresh staging build and one manifest; main and API read that manifest at runtime. Packaging checks file hashes before signing, so no baked-version comparison is needed. See `docs/reference/preview-builds.md`.
-- `resolveAppContext({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
-- Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
+- `resolveAppEnvironment({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
+- Everything else reads it with `getAppEnvironment()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
 ## API server (`src/modules/api-server/`)
 
@@ -85,7 +85,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 - **`reloadApiServer()` is the one public way to replace the API, and it is deliberately not the path above.** It is `ProcessManager.stop()` — awaitable, where `kill()` is not — then `startApiServer()`, then `waitForReady()`. Two properties it has to keep: it **waits for the exit**, because the departing process holds the port the next one prefers and the LMDB store it is about to open; and it **never reaches `handleProcessExit`**, because `stop()` removes the handlers before signalling. That second one is not tidiness — every exit there costs one of three restart attempts, forgiven only 5 s after a launch, so a handful of quick edits would land on `api:stopped { restarting: false }`, the shell's terminal `error` state, and main refusing to start the API again. Calls coalesce, and the readiness it waits for carries `reloaded: true` so the window resubscribes at once instead of waiting out its client's backoff.
 - **`dev-reloader.ts` is what calls it**: a module that watches `dist/server.js` and reloads when it moves, armed only when the build is `development` **and** the launcher said so (`APACK_DEV_RELOAD`, set by `npm run dev`). Both halves are deliberate — `development` alone is true of `apack pack dev` and of a bare `electron .`, and the variable alone must not arm a packaged or `test` app. It is the only file watcher in main. `packages/api/CLAUDE.md` has the loop and its measured cost.
 - Shutdown: `before-quit` (and `window-all-closed` off macOS) sends SIGTERM, then SIGKILL after 5 s.
-- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` beside the main log. Those four go through `appendCappedLine` (`@apackdev/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. All of them, electron-log included, are configured from `getAppContext().logsDir` — importing this module is what decides the context, so the module graph puts that before any log write.
+- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` beside the main log. Those four go through `appendCappedLine` (`@apackdev/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. All of them, electron-log included, are configured from `getAppEnvironment().logsDir` — importing this module is what decides the context, so the module graph puts that before any log write.
 
 ## Windows (`src/modules/window-manager/`)
 
@@ -115,4 +115,4 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 ## Tests
 
-`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.
+`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-environment.spec.ts`), because `vi.resetModules()` gives the module a new one.

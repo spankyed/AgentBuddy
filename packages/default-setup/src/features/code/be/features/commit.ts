@@ -14,7 +14,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodeCommitSystemContext {
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
   /** The code system, which routes a `pr.*` event to its pull request child */
@@ -57,11 +57,11 @@ export type Event =
   | { type: 'CODE_CONNECTED' };
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodeCommitSystemContext, Event>();
 
 export const commitSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeCommitSystemContext,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null; code?: AnyActorRef }
   },

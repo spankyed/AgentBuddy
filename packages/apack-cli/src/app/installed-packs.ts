@@ -1,11 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { AppContext } from '@apackdev/sdk/env';
+import type { AppEnvironment } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { readInstalledPacks, writeInstalledPacks, type PackRecord } from '@apackdev/host/packs';
 import { readValidManifest } from '../utils';
 
-export function packInventory(context: Pick<AppContext, 'packsDir' | 'installedPacksFile'>) {
+export function packInventory(context: Pick<AppEnvironment, 'packsDir' | 'installedPacksFile'>) {
   const records = new Map(readInstalledPacks(context.installedPacksFile, { strict: true }).map(record => [record.id, record]));
   if (!fs.existsSync(context.packsDir)) return [];
   return fs.readdirSync(context.packsDir, { withFileTypes: true })

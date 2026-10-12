@@ -14,11 +14,11 @@
 import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { DRIVE_REF, createSession, type EngineSession, type SessionPage } from './session.ts';
-import { appHelper, waitForAppReady } from '../index.ts';
+import { createAppDriver, waitForAppReady } from '../index.ts';
 import { CLAIM_CONFLICT, connectApiClient, type ApiClient } from './api-client.ts';
 
-/** The `AppHelper` members the engine serves, taken whole rather than one callback at a time */
-export type EngineAppHelper = {
+/** The `AppDriver` members the engine serves, taken whole rather than one callback at a time */
+export type EngineAppDriver = {
   readonly screenshot: (name: string) => Promise<unknown>;
   readonly waitForState: (check: string, timeoutMs?: number) => Promise<unknown>;
   readonly waitForPlugin: (pluginId: string, timeoutMs?: number) => Promise<unknown>;
@@ -58,7 +58,7 @@ async function reloadWindow(page: Page): Promise<void> {
 }
 
 
-export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineWindow): SessionPage => ({
+export const asSessionPage = (page: Page, app: EngineAppDriver, window?: EngineWindow): SessionPage => ({
   evaluateExpression: (source) => page.evaluate(source),
   // Playwright's argument type is `Unboxed<A>`, which unwraps a `JSHandle` into what it points at. The
   // engine never passes one — every argument here is a plain JSON value from a request body — so the two
@@ -174,7 +174,7 @@ export async function attachedSession(options: AttachedSessionOptions): Promise<
     if (message.type() === 'error') errors.push(`[console.error] ${message.text()}`);
   });
 
-  const sessionPage = asSessionPage(page, appHelper(page, options.screenshotDir));
+  const sessionPage = asSessionPage(page, createAppDriver(page, options.screenshotDir));
 
   // Everything opened after the attach is closed again if a later step throws — see `_closingOnFailure`
   const api = await _closingOnFailure(detach, async () => connectApiClient(await apiAddressFromWindow(sessionPage)));

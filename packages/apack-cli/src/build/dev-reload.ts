@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { AppEnv } from '@apackdev/sdk/env';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@apackdev/sdk/utils/pure';
@@ -20,7 +20,7 @@ import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@apackdev/sdk/utils/pu
 /**
  * Where an app is: the build it is, and the profile it keeps its data in.
  *
- * The same pair `resolveAppContext` takes, under the same two words — it is handed straight to it, so a
+ * The same pair `resolveAppEnvironment` takes, under the same two words — it is handed straight to it, so a
  * second vocabulary here would be one translation step for nothing.
  */
 export interface AppPlace {
@@ -30,7 +30,7 @@ export interface AppPlace {
 
 /** The running app's API: its URL and the token it requires, from the files the API writes */
 function findAppApi(place: AppPlace): { api: { url: string; token: string } } | { problem: string } {
-  const { apiPortFile, apiTokenFile } = resolveAppContext(place);
+  const { apiPortFile, apiTokenFile } = resolveAppEnvironment(place);
   const endpoint = readApiEndpoint(apiPortFile);
   if (!endpoint) return { problem: `no running ${place.env} app in ${apiPortFile}` };
   let token: string;

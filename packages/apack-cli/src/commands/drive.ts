@@ -10,7 +10,7 @@ import {
 } from '../app/profiles';
 import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
 import type { DevSession } from '@apackdev/host/dev-session';
-import { appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { fixtureEnv } from './test';
 import { hostEnvironment } from './dev';
@@ -264,7 +264,7 @@ interface AskTarget {
 export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs = cliDirs(), scope: DriveScope = 'app'): AskTarget {
   const secrets = withSecrets ? ['--with-secrets'] : [];
   if (mode.kind === 'shared') {
-    return { dir: resolveAppContext({ env: 'development' }).userDataDir, spawnArgs: [...secrets] };
+    return { dir: resolveAppEnvironment({ env: 'development' }).userDataDir, spawnArgs: [...secrets] };
   }
   if (mode.kind === 'named' && mode.name === 'development' && !mode.rm && !withSecrets) {
     return { dir: appDataDirFor('development'), spawnArgs: ['--profile', 'development'] };
@@ -272,7 +272,7 @@ export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs
   const name = mode.kind === 'named' ? mode.name : freshProfileName();
   const rm = mode.rm ? ['--rm'] : [];
   return {
-    dir: resolveAppContext({ env: 'development', userDataDir: resolveProfileDir(dirs, name) }).userDataDir,
+    dir: resolveAppEnvironment({ env: 'development', userDataDir: resolveProfileDir(dirs, name) }).userDataDir,
     spawnArgs: ['--profile', name, ...rm, ...secrets],
     ...(mode.kind === 'fresh' ? {
       note: `Fresh profile ${name}${mode.rm ? ' — removed when the app closes' : ''}.`

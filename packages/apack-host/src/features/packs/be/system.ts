@@ -9,7 +9,7 @@ import { HOST_PACK_ID, PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../../../packs/installer.ts';
-import type { PackExtensions, PackInfo, PackRegistry } from '../../../packs/registry.ts';
+import type { PackExtensions, InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
 import { packFrontendFiles, PACK_LAYOUT } from '../../../packs/layout.ts';
 import { installedPacks, type InstalledPack } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
@@ -21,7 +21,7 @@ import { applyRecord, importCompiledContent, registeredContentKeys, type Content
 import { appliedContent } from '../../../app-state/index.ts';
 import { contentEntity, contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@apackdev/sdk/content';
 
-export type { PackInfo };
+export type { InstalledPackSummary };
 
 export const packsSpec = defineSystem<Contract>();
 
@@ -33,7 +33,7 @@ function toContentSelection(include: Record<string, string[] | null>): Record<st
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
-function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: PackExtensions | null): PackInfo {
+function mergeExtensions(base: Omit<InstalledPackSummary, keyof PackExtensions>, contrib: PackExtensions | null): InstalledPackSummary {
   return {
     ...base,
     systems: contrib?.systems ?? [],
@@ -72,7 +72,7 @@ function compiledDirOf(packId: string): string {
   return path.join(pack.dir, PACK_LAYOUT.contentDir);
 }
 
-function contentOffersOf(packId: string): Pick<PackInfo, 'contentOffers' | 'contentKept'> {
+function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOffers' | 'contentKept'> {
   const items = Object.entries(appliedContent.get(packId).items).sort(([a], [b]) => a.localeCompare(b));
   return {
     contentOffers: items.flatMap(([key, item]) => (item.offer ? [{ key, label: describeContentKey(key), ...item.offer }] : [])),
@@ -80,7 +80,7 @@ function contentOffersOf(packId: string): Pick<PackInfo, 'contentOffers' | 'cont
   };
 }
 
-function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): PackInfo[] {
+function toInstalledPackSummaries(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): InstalledPackSummary[] {
   return packs.map(({ manifest, dir, record }) => {
     const entities = manifest.entities ?? {};
     const contrib = registry.getPackExtensions(record.id);
@@ -108,7 +108,7 @@ function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUnins
 }
 
 function emitPacksList(registry: PackRegistry, canUninstall: (packId: string) => boolean) {
-  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toPackInfoList(registry, installedPacks(), canUninstall) });
+  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toInstalledPackSummaries(registry, installedPacks(), canUninstall) });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
@@ -116,7 +116,7 @@ export function createPacksSystem(registry: PackRegistry) {
   /**
    * Whether the app would offer to uninstall this pack. False for the host and for whatever this app
    * shipped — the app needs it to run, and an uninstall would leave a user with nothing. The Packs view
-   * reads the same answer as `PackInfo.canUninstall` to decide whether to show the button.
+   * reads the same answer as `InstalledPackSummary.canUninstall` to decide whether to show the button.
    *
    * Flipping a shipped pack to uninstallable is a product decision rather than a refactor, and this is the
    * one place it would be made.

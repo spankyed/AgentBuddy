@@ -1,12 +1,12 @@
 import type { AppModule } from '../../AppModule.ts';
-import type { ModuleContext } from '../../ModuleContext.ts';
+import type { MainModuleScope } from '../../MainModuleScope.ts';
 import { protocol, net } from 'electron';
 import { resolveMediaFilePath } from './paths.ts';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 class MediaProtocol implements AppModule {
-  enable({ app }: ModuleContext): void {
+  enable({ app }: MainModuleScope): void {
     protocol.registerSchemesAsPrivileged([
       {
         scheme: 'media',

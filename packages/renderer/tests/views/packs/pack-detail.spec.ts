@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from 'vue';
-import type { PackInfo } from '@apackdev/host/fe';
+import type { InstalledPackSummary } from '@apackdev/host/fe';
 import PackDetail from '@/views/packs/PackDetail.vue';
 
 /** An installed external pack with nothing declared, and `overrides` */
-const pack = (overrides: Partial<PackInfo> = {}): PackInfo => ({
+const pack = (overrides: Partial<InstalledPackSummary> = {}): InstalledPackSummary => ({
   id: 'memo-pack', name: 'Memos', version: '1.0.0', canUninstall: true, enabled: true,
   entities: {}, relKinds: {}, features: [], services: [], steps: [], artifacts: [], blocks: [], systems: [],
   permissions: [], bootHooks: [], migrationCount: 0, contentOffers: [], contentKept: [],
   ...overrides,
-} as unknown as PackInfo);
+} as unknown as InstalledPackSummary);
 
 let app: App | undefined;
-function render(props: { pack: PackInfo }): HTMLElement {
+function render(props: { pack: InstalledPackSummary }): HTMLElement {
   const el = document.createElement('div');
   app = createApp(PackDetail, props);
   app.mount(el);

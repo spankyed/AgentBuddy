@@ -10,8 +10,17 @@ export const APP_ENVS: readonly ["production", "beta", "preview", "development",
 // @public
 export type AppChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
+// @public
+export function appDataDirFor(env: AppEnv): string;
+
+// @internal
+export const _appDirOf: (userDataDir: string) => string;
+
 // @public (undocumented)
-export interface AppContext {
+export type AppEnv = (typeof APP_ENVS)[number];
+
+// @public (undocumented)
+export interface AppEnvironment {
     apiPortFile: string;
     apiTokenFile: string;
     appDir: string;
@@ -24,15 +33,6 @@ export interface AppContext {
     urlScheme: string;
     userDataDir: string;
 }
-
-// @public
-export function appDataDirFor(env: AppEnv): string;
-
-// @internal
-export const _appDirOf: (userDataDir: string) => string;
-
-// @public (undocumented)
-export type AppEnv = (typeof APP_ENVS)[number];
 
 // @public
 export function getAppVersion(): string;
@@ -49,10 +49,10 @@ export function _inferElectronAppEnv(input: {
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
 // @public
-export function resolveAppContext(input?: {
+export function resolveAppEnvironment(input?: {
     env?: AppEnv;
     userDataDir?: string;
-}): AppContext;
+}): AppEnvironment;
 
 // (No @packageDocumentation comment for this package)
 

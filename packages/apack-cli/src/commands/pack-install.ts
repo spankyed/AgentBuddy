@@ -2,7 +2,7 @@ import { withPackMutation } from '../app/pack-mutation';
 import { recordCliInstall } from '../app/installed-packs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostInfo, readInstalledPacks } from '@apackdev/host/packs';
+import { installPack, installPackFromLocal, readHostCompatibility, readInstalledPacks } from '@apackdev/host/packs';
 import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
@@ -47,7 +47,7 @@ Options:
   const { result, hostVersion } = await withPackMutation(context, 'install', async () => {
     const { packsDir, userDataDir, installedPacksFile } = context;
     readInstalledPacks(installedPacksFile, { strict: true });
-    const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
+    const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
     const kind = detectSource(source);
     const resolvedSource = kind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
     const result = kind === 'local'

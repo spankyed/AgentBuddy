@@ -1,7 +1,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { _inferElectronAppEnv, parseAppEnv, resolveAppContext } from '../../src/env/index.ts';
+import { _inferElectronAppEnv, parseAppEnv, resolveAppEnvironment } from '../../src/env/index.ts';
 
 const saved = { env: process.env.APACK_ENV, userDataDir: process.env.APACK_USER_DATA_DIR };
 
@@ -17,14 +17,14 @@ afterEach(() => {
   }
 });
 
-describe('resolveAppContext', () => {
+describe('resolveAppEnvironment', () => {
   it('throws when the environment is unknown instead of falling back to production', () => {
-    expect(() => resolveAppContext()).toThrow(/App environment unknown/);
+    expect(() => resolveAppEnvironment()).toThrow(/App environment unknown/);
   });
 
   it('uses APACK_ENV and derives paths from the platform data dir', () => {
     process.env.APACK_ENV = 'beta';
-    const ctx = resolveAppContext();
+    const ctx = resolveAppEnvironment();
     expect(ctx.env).toBe('beta');
     expect(ctx.appName).toBe('apack-beta');
     expect(path.basename(ctx.userDataDir)).toBe('apack-beta');
@@ -39,7 +39,7 @@ describe('resolveAppContext', () => {
   it('prefers explicit input over the environment variables', () => {
     process.env.APACK_ENV = 'beta';
     process.env.APACK_USER_DATA_DIR = '/from/env';
-    const ctx = resolveAppContext({ env: 'development', userDataDir: '/explicit' });
+    const ctx = resolveAppEnvironment({ env: 'development', userDataDir: '/explicit' });
     expect(ctx.env).toBe('development');
     expect(ctx.appName).toBe('apack-dev');
     expect(ctx.userDataDir).toBe('/explicit');
@@ -49,30 +49,30 @@ describe('resolveAppContext', () => {
   it('honors APACK_USER_DATA_DIR as the data dir override', () => {
     process.env.APACK_ENV = 'test';
     process.env.APACK_USER_DATA_DIR = '/tmp/isolated';
-    const ctx = resolveAppContext();
+    const ctx = resolveAppEnvironment();
     expect(ctx.appName).toBe('apack-test');
     expect(ctx.appDir).toBe(path.join('/tmp/isolated', 'apack'));
     expect(ctx.packsDir).toBe(path.join('/tmp/isolated', 'apack', 'packs'));
   });
 
   it('maps each environment to its existing app name', () => {
-    expect(resolveAppContext({ env: 'production' }).appName).toBe('apack');
-    expect(resolveAppContext({ env: 'beta' }).appName).toBe('apack-beta');
-    expect(resolveAppContext({ env: 'preview' }).appName).toBe('apack-preview');
-    expect(resolveAppContext({ env: 'development' }).appName).toBe('apack-dev');
-    expect(resolveAppContext({ env: 'test' }).appName).toBe('apack-test');
+    expect(resolveAppEnvironment({ env: 'production' }).appName).toBe('apack');
+    expect(resolveAppEnvironment({ env: 'beta' }).appName).toBe('apack-beta');
+    expect(resolveAppEnvironment({ env: 'preview' }).appName).toBe('apack-preview');
+    expect(resolveAppEnvironment({ env: 'development' }).appName).toBe('apack-dev');
+    expect(resolveAppEnvironment({ env: 'test' }).appName).toBe('apack-test');
   });
 
   it('rejects an invalid APACK_ENV', () => {
     process.env.APACK_ENV = 'prod';
-    expect(() => resolveAppContext()).toThrow(/Invalid app environment "prod"/);
+    expect(() => resolveAppEnvironment()).toThrow(/Invalid app environment "prod"/);
   });
 
   it('keeps preview storage and its URL scheme separate from production and beta', () => {
-    const preview = resolveAppContext({ env: 'preview' });
+    const preview = resolveAppEnvironment({ env: 'preview' });
     expect(path.basename(preview.userDataDir)).toBe('apack-preview');
-    expect(preview.userDataDir).not.toBe(resolveAppContext({ env: 'production' }).userDataDir);
-    expect(preview.userDataDir).not.toBe(resolveAppContext({ env: 'beta' }).userDataDir);
+    expect(preview.userDataDir).not.toBe(resolveAppEnvironment({ env: 'production' }).userDataDir);
+    expect(preview.userDataDir).not.toBe(resolveAppEnvironment({ env: 'beta' }).userDataDir);
     expect(preview.urlScheme).toBe('apack-preview');
   });
 });

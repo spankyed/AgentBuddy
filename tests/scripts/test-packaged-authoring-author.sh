@@ -299,10 +299,10 @@ step "5. @apackdev/testing's published types stand alone"
 cat > tests/types-probe.ts <<'TS'
 import type { PluginEvent, TestApp, FlowRun } from '@apackdev/testing/harness';
 import type { IsolatedDataDir } from '@apackdev/testing/vitest';
-import type { AppHelper } from '@apackdev/testing';
+import type { AppDriver } from '@apackdev/testing';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
-export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
+export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppDriver>] = [false, false, false, false, false];
 TS
 TYPES_STATUS=0
 node_modules/.bin/tsc --noEmit --skipLibCheck false --listFiles --pretty false -p . > "$WORK/types-probe.log" 2>&1 || TYPES_STATUS=$?

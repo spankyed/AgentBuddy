@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { doctorChannel, inspectApp } from '../../src/commands/doctor';
 import { doctor as packDoctor } from '../../src/commands/pack-doctor';
 import { dev, holdSession } from '../../src/commands/dev';
@@ -47,7 +47,7 @@ it('fails for an invalid installation and leaves the bundle intact', async () =>
 });
 
 it('fails when a live API record has an unreachable listener', async () => {
-  const context = resolveAppContext({ env: 'production', userDataDir: dataDir });
+  const context = resolveAppEnvironment({ env: 'production', userDataDir: dataDir });
   fs.mkdirSync(path.dirname(context.apiPortFile), { recursive: true });
   fs.writeFileSync(context.apiPortFile, JSON.stringify({ port: 12345, pid: process.pid }));
   await expect(inspectApp('production', { applications, dataDir, probe: async () => false })).rejects.toThrow('health check failed');

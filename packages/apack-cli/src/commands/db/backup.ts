@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { findRunningApp, holdDatabaseWriteLock } from '@apackdev/host/database';
 import { exportDatabase } from '@apackdev/host/backup';
-import { readHostInfo } from '@apackdev/host/packs';
+import { readHostCompatibility } from '@apackdev/host/packs';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 export const BACKUP_USAGE = [
@@ -40,7 +40,7 @@ export async function dbBackup(args: string[], io: DbIo): Promise<void> {
       stage = fs.mkdtempSync(path.join(path.dirname(destination), '.apack-backup-'));
       const backup = await exportDatabase(db.store, stage, {
         name: 'backup', databases: ['lmdb', 'volatileLmdb'], mediaPath: db.paths.media,
-        appVersion: readHostInfo(target.userDataDir).version,
+        appVersion: readHostCompatibility(target.userDataDir).version,
         log: { info: message => io.err(message), warn: message => io.err(message) },
       });
       verifyBackup(backup);
