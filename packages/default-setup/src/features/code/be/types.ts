@@ -268,7 +268,7 @@ export type CodeConnectedData = {
   settings?: CodeSettings;
 };
 
-export interface Context {
+export interface CodeSystemContext {
   baseDirectory: string | null
   /**
    * The default directory the settings named when this system last heard them. The settings arrive whenever any of

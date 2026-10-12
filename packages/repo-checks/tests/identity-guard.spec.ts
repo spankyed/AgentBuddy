@@ -32,7 +32,7 @@ import { repoFiles } from './_support/repo-files.ts';
  */
 const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> = {
   'packages/apack-sdk/src/env/index.ts': { patterns: ['data-dir', 'env-read'], why: 'the resolver itself' },
-  'packages/main/src/app-context.ts': {
+  'packages/main/src/app-environment.ts': {
     patterns: ['env-read'], why: 'main-process bootstrap: infers the environment once',
   },
   'packages/main/vite.config.js': { patterns: ['env-read'], why: 'development launcher: resolves the environment of the app it spawns' },
@@ -51,7 +51,7 @@ type PatternId = 'data-dir' | 'env-read' | 'channel' | 'node-env';
 
 const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTests?: boolean }> = [
   { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @apackdev/sdk/env' },
-  { id: 'env-read', pattern: /process\.env\.APACK_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
+  { id: 'env-read', pattern: /process\.env\.APACK_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppEnvironment()', allowInTests: true },
   { id: 'channel', pattern: /__APACK_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
   // Deliberately narrower than every NODE_ENV read: a bundler config asking what mode it builds in is not
   // this repo's business, and every one of those compares against 'development' or assigns. What this
@@ -59,7 +59,7 @@ const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTes
   // database lived until 2026-10-01, in a variable the ecosystem uses to mean "optimize this build".
   // The lookahead `env-read` carries is deliberately absent: `(?!\s*=)` swallows the first `=` of `===`
   // and would make this match nothing it is for.
-  { id: 'node-env', pattern: /NODE_ENV\s*[!=]==?\s*['"]production['"]/, why: 'ask resolveAppContext() what this app is, not NODE_ENV', allowInTests: true },
+  { id: 'node-env', pattern: /NODE_ENV\s*[!=]==?\s*['"]production['"]/, why: 'ask resolveAppEnvironment() what this app is, not NODE_ENV', allowInTests: true },
 ];
 
 const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
@@ -119,7 +119,7 @@ describe('environment identity guard', () => {
         }
       });
     }
-    expect(violations, 'Resolve identity via @apackdev/sdk/env (resolveAppContext)').toEqual([]);
+    expect(violations, 'Resolve identity via @apackdev/sdk/env (resolveAppEnvironment)').toEqual([]);
   });
 
   /**

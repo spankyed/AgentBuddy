@@ -4,7 +4,7 @@ import type { ProviderName } from './models.ts';
 export type SecretProvider = ProviderName | 'custom';
 
 /** A stored key, without its value: packs and the frontend never receive values */
-export interface SecretInfo {
+export interface SecretMetadata {
   id: string;
   provider: SecretProvider;
   /** Names the account, e.g. "Work"; unique per provider */
@@ -38,7 +38,7 @@ export interface SecretsStatus {
 export interface SecretsService {
   status(): SecretsStatus;
   /** Every stored key, without values */
-  list(): SecretInfo[];
+  list(): SecretMetadata[];
   /** Makes the key the one its provider uses, and its provider's other keys not */
   select(id: string): void;
   rename(id: string, label: string): void;
@@ -48,6 +48,6 @@ export interface SecretsService {
 
 /** The user's stored keys (without values) and how they're protected */
 export interface SecretsSnapshot {
-  secrets: SecretInfo[];
+  secrets: SecretMetadata[];
   status: SecretsStatus;
 }

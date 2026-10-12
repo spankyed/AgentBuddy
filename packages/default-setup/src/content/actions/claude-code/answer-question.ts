@@ -42,7 +42,7 @@ export async function action(
       : Array.isArray(response) ? response.join(', ')
       : typeof response === 'object' ? Object.values(response).join(', ')
       : String(response ?? '');
-    await services.action.getAndExecute('Claude Code Chat', {
+    await services.action.executeIfFound('Claude Code Chat', {
       threadId,
       text: answerText || 'continue',
     });

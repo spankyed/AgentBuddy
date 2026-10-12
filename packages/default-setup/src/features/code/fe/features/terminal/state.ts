@@ -34,7 +34,7 @@ interface PendingOpen {
   command: string | null
 }
 
-export interface Context {
+export interface CodeTerminalContext {
   terminals: TerminalInfo[]
   terminalError: string | null
   /**
@@ -77,7 +77,7 @@ export type Event =
 
 export const terminalState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeTerminalContext,
     events: {} as Event
   },
   actions: {

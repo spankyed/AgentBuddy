@@ -676,7 +676,7 @@ export const secretsClient: SecretsClient;
 // @public
 export interface SecretsSnapshot {
     // (undocumented)
-    secrets: SecretInfo[];
+    secrets: SecretMetadata[];
     // (undocumented)
     status: SecretsStatus;
 }

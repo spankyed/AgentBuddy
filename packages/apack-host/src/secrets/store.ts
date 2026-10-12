@@ -5,7 +5,7 @@
 // also recorded as a digest, so logs can mask it (`rememberForRedaction`); no plaintext is kept.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
-import { _secretRules, _secretProviderLabel, _toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@apackdev/sdk/services';
+import { _secretRules, _secretProviderLabel, _toSecretMetadata, type ProviderName, type SecretMetadata, type SecretProvider, type SecretsStatus } from '@apackdev/sdk/services';
 import { registerSecretValue } from './redaction.ts';
 import { writePrivateFile } from '../private-file.ts';
 import { dataKeyAccount, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
@@ -14,7 +14,7 @@ const FORMAT = 1;
 const AUTH_TAG_BYTES = 16;
 
 interface EncryptedValue { keyId: string; iv: string; tag: string; data: string }
-interface StoredSecret extends SecretInfo { value: EncryptedValue }
+interface StoredSecret extends SecretMetadata { value: EncryptedValue }
 interface SecretsFile { format: number; protection: 'os-keystore' | 'unprotected'; keyId: string; secrets: StoredSecret[] }
 
 export interface SecretsStoreOptions {
@@ -29,11 +29,11 @@ export interface SecretsStoreOptions {
 
 export interface SecretsStore {
   status(): SecretsStatus;
-  list(): SecretInfo[];
+  list(): SecretMetadata[];
   select(id: string): void;
   rename(id: string, label: string): void;
   delete(id: string): void;
-  add(provider: SecretProvider, label: string, value: string): SecretInfo;
+  add(provider: SecretProvider, label: string, value: string): SecretMetadata;
   replaceValue(id: string, value: string): void;
   /** The selected key's value for a provider; throws naming the fix when there's none or it can't be read */
   keyFor(provider: ProviderName): string;
@@ -210,7 +210,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       if (osVaultUnavailable && vault.protection === 'os-keystore') return { protection: 'unavailable', backend: vault.backend };
       return { protection: vault.protection, backend: vault.backend };
     },
-    list: () => read().secrets.map(_toSecretInfo),
+    list: () => read().secrets.map(_toSecretMetadata),
     select: (id) => change((secrets) => _secretRules.select(secrets, id, now())),
     rename: (id, label) => change((secrets) => _secretRules.rename(secrets, id, label, now())),
     delete: (id) => change((secrets) => _secretRules.remove(secrets, id)),
@@ -222,7 +222,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       const encrypted = encrypt(file, id, provider, value);
       file.secrets = withMeta.map((secret) => secret.id === id ? { ...secret, value: encrypted } : secret);
       write(file);
-      return _toSecretInfo(file.secrets.find((secret) => secret.id === id)!);
+      return _toSecretMetadata(file.secrets.find((secret) => secret.id === id)!);
     },
 
     replaceValue(id, value) {

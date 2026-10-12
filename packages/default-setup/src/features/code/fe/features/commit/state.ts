@@ -21,7 +21,7 @@ export interface GitDiff {
   isImage?: boolean
 }
 
-export interface Context {
+export interface CodeCommitContext {
   gitStatus: GitStatusFile[]
   gitBranch: string
   gitError: string | null
@@ -138,7 +138,7 @@ export type Event =
 
 export const commitState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeCommitContext,
     events: {} as Event
   },
   actions: {

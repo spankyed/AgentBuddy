@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
 import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-host.ts';
@@ -13,7 +13,7 @@ import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 
-export interface AppHelper {
+export interface AppDriver {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
   getState: () => Promise<unknown>;
   getContext: () => Promise<{ activePluginId: string; pluginIds: string[] }>;
@@ -122,7 +122,7 @@ const E2E_VIEWPORT = { width: 1400, height: 900 };
 /** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppEnvironment({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -308,7 +308,7 @@ export function waitForAppReady(page: Page, { state = APP_READY_STATE, timeout =
 }
 
 /**
- * The `AppHelper` over a page, as a free function.
+ * The `AppDriver` over a page, as a free function.
  *
  * **It was only ever a function of a `Page`** — every method is `page.evaluate`, `page.waitForFunction` or
  * `page.screenshot` — and looked fixture-bound because the fixture is where it was constructed. A page that
@@ -318,8 +318,8 @@ export function waitForAppReady(page: Page, { state = APP_READY_STATE, timeout =
  * `screenshotDir` is the one thing it closes over; the report directory is resolved per call, since a run
  * that reports nothing should leave no directory behind.
  */
-export function appHelper(page: Page, screenshotDir: string): AppHelper {
-  const app: AppHelper = {
+export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
+  const app: AppDriver = {
     sendEvent: async (event) => {
       await page.evaluate((e) => {
         (window as any).applicationState.send(e);
@@ -413,7 +413,7 @@ export function createTest(options: CreateTestOptions = {}) {
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
 
   const test = base.extend<
-    { appPage: Page; app: AppHelper },
+    { appPage: Page; app: AppDriver },
     { electronApp: ElectronApplication }
   >({
     // Playwright's signature for a fixture that depends on no other fixture. It always passes an object, and
@@ -468,7 +468,7 @@ export function createTest(options: CreateTestOptions = {}) {
             }
           }
           // Install through the same bundle path users get (stage → verify → place)
-          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
+          const { packsDir } = resolveAppEnvironment({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
@@ -622,7 +622,7 @@ export function createTest(options: CreateTestOptions = {}) {
     },
 
     app: async ({ appPage: page }, use) => {
-      await use(appHelper(page, screenshotDir));
+      await use(createAppDriver(page, screenshotDir));
     },
   });
 

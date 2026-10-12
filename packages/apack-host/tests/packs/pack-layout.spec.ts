@@ -13,7 +13,7 @@ import {
   stagePack,
   verifyPack,
 } from '../../src/packs/layout.ts';
-import { installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
+import { installPack, installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
@@ -52,9 +52,9 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
 describe('stagePack', () => {
   it('assembles the pack layout with the manifest and checksums, without source maps', () => {
     const stage = path.join(tmp, 'stage');
-    const info = stagePack(builtPack(), stage, { sdkVersion: '0.1.0', source: { commit: 'abc' } });
+    const info = stagePack(builtPack(), stage, { sdkVersion: '0.1.0', provenance: { commit: 'abc' } });
 
-    expect(info).toMatchObject({ formatVersion: PACK_LAYOUT_VERSION, id: 'demo-pack', version: '1.2.3', hostVersion: '>=0.3.0', sdkVersion: '0.1.0', source: { commit: 'abc' } });
+    expect(info).toMatchObject({ formatVersion: PACK_LAYOUT_VERSION, id: 'demo-pack', version: '1.2.3', hostVersion: '>=0.3.0', sdkVersion: '0.1.0', provenance: { commit: 'abc' } });
     expect(Object.keys(info.files).sort()).toEqual([
       'apack.json',
       'runtime/content/actions.content.json',
@@ -162,6 +162,17 @@ describe('bundle archives', () => {
 });
 
 describe('installPackFromLocal (pack layout path)', () => {
+  it.each(['directory', 'archive'])('routes a local %s through the sourceKind selector', async (kind) => {
+    let inputPath = builtPack();
+    if (kind === 'archive') {
+      const stage = path.join(tmp, 'stage');
+      stagePack(inputPath, stage);
+      inputPath = (await createPackArchive(stage, path.join(tmp, 'out'))).file;
+    }
+    const result = await installPack(inputPath, 'local', path.join(tmp, 'packs'));
+    expect(result).toMatchObject({ id: 'demo-pack', version: '1.2.3' });
+    expect(verifyPack(result.dir).id).toBe('demo-pack');
+  });
   it('stages a built source pack and installs only the staged pack', async () => {
     const packsDir = path.join(tmp, 'packs');
     const result = await installPackFromLocal(builtPack(), packsDir);
@@ -342,10 +353,10 @@ describe('installPackFromGitHub', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it('installs a release whose published checksum matches the archive', async () => {
+  it.each([undefined, 'github'])('routes a GitHub release with sourceKind %s', async sourceKind => {
     await mockRelease();
 
-    const result = await installPackFromGitHub('acme/pack', path.join(tmp, 'packs'));
+    const result = await installPack('acme/pack', sourceKind, path.join(tmp, 'packs'));
     expect(result.version).toBe('1.2.3');
   });
 
@@ -382,14 +393,14 @@ describe('installPackFromUrl', () => {
     vi.unstubAllGlobals();
   });
 
-  it('downloads the archive under a timeout and installs it', async () => {
+  it.each([undefined, 'url'])('routes a URL with sourceKind %s under a timeout', async sourceKind => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);
     const { file, sha256 } = await createPackArchive(stage, path.join(tmp, 'out'));
     const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(fs.readFileSync(file), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await installPackFromUrl('https://example.test/demo-pack-1.2.3.tgz', path.join(tmp, 'packs'), { sha256 });
+    const result = await installPack('https://example.test/demo-pack-1.2.3.tgz', sourceKind, path.join(tmp, 'packs'), { sha256 });
     expect(result.version).toBe('1.2.3');
     expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
   });

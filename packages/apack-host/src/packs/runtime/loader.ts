@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@apackdev/sdk/logger';
-import { resolveAppContext, getAppVersion } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import type { PackSnapshot } from '@apackdev/sdk/build';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
@@ -170,7 +170,7 @@ export function clearPackRequireCache(packDir: string): void {
  * its registry, so the Packs view can say why an enabled pack isn't running.
  */
 export function loadExternalPacks(problems?: LoadProblemSink, shippedIds: ReadonlySet<string> = new Set()): LoadedPack[] {
-  const { packsDir } = resolveAppContext();
+  const { packsDir } = resolveAppEnvironment();
   const discovered = discoverPacks(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
   forgetPacksExcept(discoveredPackIds(discovered));

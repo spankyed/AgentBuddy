@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { resolveAppContext } from '@apackdev/sdk/env';
-import { recordHostInfo, readInstalledPacks, writeInstalledPacks, type installPackFromGitHub } from '@apackdev/host/packs';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
+import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, type installPackFromGitHub } from '@apackdev/host/packs';
 import { findDatabaseWriter, publishRunningApp } from '@apackdev/host/database';
 import { recordCliInstall } from '../../src/app/installed-packs';
 import { upgradePack } from '../../src/commands/pack-upgrade';
@@ -11,12 +11,12 @@ import { upgradePack } from '../../src/commands/pack-upgrade';
 it('pins the selected tag, validates before replacement, and records only a successful upgrade', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-upgrade-'));
   try {
-    const context = resolveAppContext({ env: 'production', userDataDir: root });
+    const context = resolveAppEnvironment({ env: 'production', userDataDir: root });
     const dir = path.join(context.packsDir, 'demo');
     fs.mkdirSync(dir, { recursive: true });
     const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', features: {} };
     fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest));
-    recordHostInfo(root, { version: '0.4.0', packFormat: 1 });
+    recordHostCompatibility(root, { version: '0.4.0', packFormat: 1 });
     recordCliInstall(context.installedPacksFile, 'demo', 'owner/repo@v1.0.0');
     const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'release-1.1' });
     let incoming = { ...manifest, version: '1.1.0' };

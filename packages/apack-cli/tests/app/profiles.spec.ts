@@ -14,7 +14,7 @@ import {
   renameProfile,
 } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/pack-host';
-import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
+import { APP_ENVS, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { askTarget } from '../../src/commands/drive';
 
 let tmp: string;
@@ -178,7 +178,7 @@ describe('renaming a profile', () => {
   // directory, so moving it leaves the app writing somewhere that no longer exists
   it('refuses while an app has it open', () => {
     const live = openProfile(dirs, 'live');
-    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: live.dir });
+    const { apiPortFile } = resolveAppEnvironment({ env: 'development', userDataDir: live.dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid: process.pid }));
 
@@ -282,7 +282,7 @@ describe('a profile an app still has open', () => {
   // Where the API actually publishes it, asked of the same resolver the app uses — a literal path here is a
   // second guess, and the one time it disagreed with the app this assertion still passed
   const publishApi = (dir: string, pid: number) => {
-    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
+    const { apiPortFile } = resolveAppEnvironment({ env: 'development', userDataDir: dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid }));
   };
@@ -321,7 +321,7 @@ describe("a question's dir and the spawn that opens it", () => {
   const devWouldOpen = (spawnArgs: readonly string[]): string => {
     const { mode } = parseProfileFlags([...spawnArgs]);
     const profile = profileFor(mode, dirs);
-    return resolveAppContext({ env: 'development', ...(profile ? { userDataDir: profile.dir } : {}) }).userDataDir;
+    return resolveAppEnvironment({ env: 'development', ...(profile ? { userDataDir: profile.dir } : {}) }).userDataDir;
   };
 
   it.each([

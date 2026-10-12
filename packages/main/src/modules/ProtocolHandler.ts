@@ -1,12 +1,12 @@
 import {BrowserWindow} from 'electron';
 import type {AppModule} from '../AppModule.ts';
-import type {ModuleContext} from '../ModuleContext.ts';
+import type {MainModuleScope} from '../MainModuleScope.ts';
 
-import {getAppContext} from '../app-context.ts';
+import {getAppEnvironment} from '../app-environment.ts';
 
 class ProtocolHandler implements AppModule {
-  enable({app}: ModuleContext): void {
-    const {env, urlScheme} = getAppContext();
+  enable({app}: MainModuleScope): void {
+    const {env, urlScheme} = getAppEnvironment();
     if (env !== 'test') app.setAsDefaultProtocolClient(urlScheme);
 
     // macOS: URL opened while app is running

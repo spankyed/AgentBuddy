@@ -12,7 +12,7 @@ import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { AppDataService } from '../services/app-data.ts';
-import type { SecretInfo, SecretProvider, SecretsService } from '../services/secrets.ts';
+import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
@@ -55,11 +55,11 @@ testRootEvents.onOutgoing(({ event }) => {
   if (event.type === 'SYSTEM_ERROR') systemErrors.push(event as unknown as SystemErrorEvent);
 });
 
-let testSecrets: SecretInfo[] = [];
+let testSecrets: SecretMetadata[] = [];
 let testSecretCount = 0;
 
 /** Stores a key (no value: unit tests never reach a provider) as Settings → Secrets would; returns it */
-export function addTestSecret(provider: SecretProvider, label: string): SecretInfo {
+export function addTestSecret(provider: SecretProvider, label: string): SecretMetadata {
   const id = `Secret-test-${++testSecretCount}`;
   testSecrets = _secretRules.add(testSecrets, { id, provider, label, createdAt: Date.now() });
   return testSecrets.find((secret) => secret.id === id)!;
@@ -180,7 +180,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         completeOnboarding: () => onboarding.completeOnboarding(),
         exportBackup: unsupported('exportBackup'),
         importBackup: unsupported('importBackup'),
-        backupInfo: async () => null,
+        readBackupSummary: async () => null,
       },
       traceStore: memoryTraceStore(engine),
       // No test reaches a provider: code calling a model fails until the test mocks inference

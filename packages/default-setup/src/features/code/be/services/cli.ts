@@ -30,7 +30,7 @@ export interface CliServiceType {
     getDiff(paths?: string[]): Promise<string>
   }
   gh: {
-    getPRForBranch(branch?: string): Promise<GhPullRequest | null>
+    findPRForBranch(branch?: string): Promise<GhPullRequest | null>
     getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }>
     getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]>
   }
@@ -150,10 +150,10 @@ function createCliService(): CliServiceType {
       },
     },
     gh: {
-      async getPRForBranch(branch?: string): Promise<GhPullRequest | null> {
+      async findPRForBranch(branch?: string): Promise<GhPullRequest | null> {
         const cwd = resolveCwd()
         const branchName = branch || await getGitRepo().getCurrentBranch()
-        return ghCli.getPRForBranch(cwd, branchName)
+        return ghCli.findPRForBranch(cwd, branchName)
       },
       async getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }> {
         const cwd = resolveCwd()
@@ -290,7 +290,7 @@ function createCliService(): CliServiceType {
       },
       async sessionExists(id, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
-        const info = await claudeCode.sessions.get(id, { cwd })
+        const info = await claudeCode.sessions.find(id, { cwd })
         return info !== null
       },
     },

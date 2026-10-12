@@ -22,7 +22,7 @@ export async function action(params: Record<string, any>, services: Services) {
   };
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  const revert = await services.action.getAndExecute('CDX: Handle Revert', {
+  const revert = await services.action.executeIfFound('CDX: Handle Revert', {
     threadId,
     messageId,
     deletedUserMessageCount,

@@ -15,7 +15,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodePullRequestSystemContext {
   gitRepository: GitRepository | null
   /** The code system, which routes a `commit.*` event to its commit child */
   code?: AnyActorRef
@@ -68,7 +68,7 @@ function emitError(message: string) {
 
 /** Run async work that requires a git repository. Guards null repo, handles errors. */
 function withRepo<T>(
-  context: Context,
+  context: CodePullRequestSystemContext,
   work: (repo: GitRepository) => Promise<T>,
   onSuccess: (result: T) => void,
   onError: (error: any) => void = (e) => emitError(e.message)
@@ -78,11 +78,11 @@ function withRepo<T>(
 }
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodePullRequestSystemContext, Event>();
 
 export const pullRequestSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodePullRequestSystemContext,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; code?: AnyActorRef }
   },
@@ -273,7 +273,7 @@ export const pullRequestSystem = setup({
         async repo => {
           const cwd = repo.getWorkingDir()
           const branch = await repo.getCurrentBranch()
-          const pr = await ghCli.getPRForBranch(cwd, branch)
+          const pr = await ghCli.findPRForBranch(cwd, branch)
           if (pr?.body) {
             pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
           }

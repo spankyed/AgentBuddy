@@ -58,7 +58,7 @@ describe('the action sandbox', () => {
   it('runs a stored action through services.action with z and a logger named after the action', async () => {
     vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Say Hi', actionFn: ACTION } as ActionEntity]);
 
-    const result = await actionService.getAndExecute('Say Hi', { name: 'direct' });
+    const result = await actionService.executeIfFound('Say Hi', { name: 'direct' });
 
     const reached = { z: true, flowId: undefined, repository: 'function', param: 'direct' };
     expect(result).toEqual(reached);
@@ -75,7 +75,7 @@ describe('the action sandbox', () => {
     const stop = testRootEvents.onPluginSend((message) => sent.push(message));
 
     try {
-      expect(await actionService.getAndExecute('Summarise Thread', {})).toBe('sent');
+      expect(await actionService.executeIfFound('Summarise Thread', {})).toBe('sent');
     } finally {
       stop();
     }
@@ -93,6 +93,6 @@ describe('the action sandbox', () => {
     const shadowing = "const z = 1; const flowId = 'x'; return { z, flowId };";
     vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Shadow', actionFn: shadowing } as ActionEntity]);
 
-    expect(await actionService.getAndExecute('Shadow', {})).toEqual({ z: 1, flowId: 'x' });
+    expect(await actionService.executeIfFound('Shadow', {})).toEqual({ z: 1, flowId: 'x' });
   });
 });

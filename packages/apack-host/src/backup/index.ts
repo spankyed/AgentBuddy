@@ -170,7 +170,7 @@ export async function importDatabase(
   }
 }
 
-export async function getBackupInfo(backupPath: string) {
+export async function readBackupSummary(backupPath: string) {
   try {
     const metadataPath = path.join(backupPath, 'metadata.json');
     if (!await fs.pathExists(metadataPath)) return null;

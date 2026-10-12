@@ -4,7 +4,7 @@ This chapter covers how packs work under the hood: loading, dependency sharing, 
 
 ## App environment and data directory
 
-Every process resolves its environment and data paths through `resolveAppContext()` (`@apackdev/sdk/env`).
+Every process resolves its environment and data paths through `resolveAppEnvironment()` (`@apackdev/sdk/env`).
 
 - **Environment:** `production`, `beta`, `development` or `test`. The Electron main process decides it once: Playwright runs are `test`, packaged builds use the channel stamped at build time, and source runs use `APACK_ENV` or default to `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. A process that gets neither, and isn't given `{ env }`, throws; nothing falls back to production.
 - **Data directory:** `APACK_USER_DATA_DIR` if set, otherwise the platform's app data dir for the environment's app name (`apack`, `apack-beta`, `apack-dev`, `apack-test`). On macOS that is `~/Library/Application Support/<appName>`.
@@ -45,7 +45,7 @@ Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apack
 ```
 <id>/
   apack.json          # The pack's manifest, as written
-  integrity.json          # Format version, versions, source, sha256 of every file
+  integrity.json          # Format version, versions, provenance, sha256 of every file
   runtime/
     index.cjs          # Backend: exports `registration` and `setCompiledDir`
     fe.js              # Frontend entry

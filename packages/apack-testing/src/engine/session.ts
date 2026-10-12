@@ -86,7 +86,7 @@ export interface SessionPage {
   /**
    * The fixture's own waits, which are what `/wait` is for.
    *
-   * They come from the `AppHelper` rather than being rebuilt here: a `page.waitForFunction` over the
+   * They come from the `AppDriver` rather than being rebuilt here: a `page.waitForFunction` over the
    * snapshot already exists, handles a dotted state path, and resolves on the state arriving. Without a
    * verb for them an agent has only `/state` to re-request in a loop, which is the polling this repo
    * avoids wherever something event-driven exists — and here it does.
@@ -326,7 +326,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
   /**
    * Sends to the window's root actor, which is all `/send` and `/navigate` each do.
    *
-   * `/navigate` does not then wait for the plugin to arrive, unlike `AppHelper.navigate`: a session has `/wait`
+   * `/navigate` does not then wait for the plugin to arrive, unlike `AppDriver.navigate`: a session has `/wait`
    * for that, and pairing them here would make the cheap verb pay for the slow one.
    */
   const sendToApp = (message: Record<string, unknown>): Promise<unknown> =>

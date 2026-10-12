@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { packRecord, packRecords, type PackRecord } from './installed.ts';
 import type { PackManifest } from '@apackdev/sdk/build';
 
@@ -77,7 +77,7 @@ export interface InstalledPack extends DiscoveredPack {
  * What the Packs view lists and what an install, update or toggle acts on. A pack with no row is here
  * like any other: the directory is what makes it installed.
  */
-export function installedPacks(packsDir = resolveAppContext().packsDir): InstalledPack[] {
+export function installedPacks(packsDir = resolveAppEnvironment().packsDir): InstalledPack[] {
   const records = packRecords();
   return discoverPacks(packsDir).map(pack => ({ ...pack, record: packRecord(pack.manifest.id, records) }));
 }

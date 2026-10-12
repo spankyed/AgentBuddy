@@ -12,22 +12,23 @@ apack already has generated schemas and accessors, snapshots, artifact integrity
 host-version checks. Build on these mechanisms. The priority is completing their contracts rather than
 adding fields because another ecosystem has them.
 
-Deliver in this order:
+Completed prerequisite: [naming contracts](../archive/goals/goal-naming-conventions.md), closed in
+`3d389b9c8`. Build on that result; no ongoing naming synchronization is required.
+The [execution goal](../goals/goal-settings-and-pack-contracts.md) owns checkpoints and completion.
 
-1. Finish the in-flight [naming contracts goal](../goals/goal-naming-conventions.md). It has been reworked;
-   its old blanket naming bans are not the current instructions. Rebase subsequent audits on its result.
-2. Close the contribution inventory and establish the common descriptor/catalog foundation, using
+Deliver the remaining work in this order:
+
+1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
-3. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
+2. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
-4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
+3. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
-5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
+4. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
-6. Finish consumed-API contracts, dependency provenance and
+5. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
    on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
-7. Measure boot cost and pursue [lazy activation](lazy-activation.md) only if the evidence warrants it.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
 roadmap; the linked plans hold subsystem design. Do not implement all of them as one manifest rewrite.
@@ -36,13 +37,12 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 
 | Checkpoint | Required result before the next work starts |
 |---|---|
-| Naming | Settled API vocabulary; re-audited paths and callers, without repeating its renames |
+| Naming — complete | Use the completed contracts as the starting baseline; do not repeat their refactors |
 | Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
 | Settings | Host/pack/feature ownership, stored-data migration, schema-backed handles and policy, custom forms and window runtime work on that foundation |
 | Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
 | Navigation and boundaries | Catalog destinations drive entity opening; failing panes/forms leave the shell usable |
 | API consumption, provenance, replacement | Independent follow-ups reuse catalog identities and caller binding; replacement distinguishes update ownership, disable and removal |
-| Lazy activation | Measurement justifies a change, and execution/readiness ordering is proven before adopting it |
 
 The settings and discovery delivery lists are parts of these checkpoints, not competing roadmaps.
 Inventory all contribution kinds up front; migrate one kind at a time with its validation, binding and
@@ -61,7 +61,7 @@ contracts. The following older designs are archived as absorbed/superseded, not 
 | [Manifest redesign goal](../archive/goals/goal-manifest-redesign.md) and its example | Remaining-work ledger below; the example is not a target schema |
 | [Facade naming goal](../archive/goals/goal-defs-naming.md) | Descriptor work owns facade terminology and missing-contract diagnostics |
 
-The [naming contracts goal](../goals/goal-naming-conventions.md) remains active and precedes this work.
+The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete; its contracts are the baseline for this work.
 Do not duplicate its renames in the settings/discovery implementation. Settings-specific names stay in
 the settings plan, as that goal already specifies.
 
@@ -87,6 +87,8 @@ the settings plan, as that goal already specifies.
 
 ### Other tracks and documents to revisit
 
+- [Lazy activation](deferred/lazy-activation.md) is deferred by request, outside the active sequence.
+  Revisit only when boot attribution justifies it; discovery completion does not trigger this work.
 - [Dev-loop freshness](../goals/goal-dev-loop-freshness.md) remains a scoped follow-up; descriptor freshness
   needed by discovery belongs in discovery's checkpoints, not in an unrelated package watcher redesign.
 - [Pack security isolation](../goals/goal-pack-security-isolation.md) remains a separate design-first goal.
@@ -217,10 +219,10 @@ Add frontend error boundaries around pack panes and forms with the pack named in
 recovery path and error reporting. The shell should remain usable when a contributed component throws.
 Follow the frontend workstream of [pack fault isolation](pack-fault-isolation.md), checking what already landed.
 
-Lazy activation is a separate, measurement-gated follow-up: attribute boot cost before changing when
+Lazy activation is deferred, outside the active sequence: attribute boot cost before changing when
 packs run. Derive activation from existing contributions where possible instead of making authors repeat
 command/view declarations in an activation list. Preserve migration/content ordering and event delivery.
-Use [lazy activation](lazy-activation.md) for the measured design.
+If resumed, use the [deferred lazy activation plan](deferred/lazy-activation.md) for the measured design.
 
 Out-of-process backend packs are deferred. Synchronous EARS access makes this a data-contract redesign,
 not simply a process-spawning task.

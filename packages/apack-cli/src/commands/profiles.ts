@@ -19,8 +19,8 @@
  * is the one thing that is safe to do to an environment nothing may remove.
  */
 import * as fs from 'node:fs';
-import { _appDirOf, APP_ENVS, appDataDirFor, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
-import { readHostInfo } from '@apackdev/host/packs';
+import { _appDirOf, APP_ENVS, appDataDirFor, resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
+import { readHostCompatibility } from '@apackdev/host/packs';
 import { readSession } from '@apackdev/host/dev-session';
 import { findRunningApp } from '@apackdev/host/database';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -85,7 +85,7 @@ export function environmentRows(resolve: (env: AppEnv) => string = appDataDirFor
       hasAppData,
       // Absent is a row rather than an omission: that nothing has ever run this channel here is the useful
       // half of the answer, and a missing line reads as a bug in the listing
-      ...(hasAppData ? { version: readHostInfo(dir).version } : {}),
+      ...(hasAppData ? { version: readHostCompatibility(dir).version } : {}),
       inUse: exists && dataDirInUse(dir),
       // The session an attachable app published, so a row says who started the app holding this dir and
       // what ends it. The development dir is where a `drive --spawn` lands by default, which makes this
@@ -332,7 +332,7 @@ export function pidHolding(dir: string): number | undefined {
   // Through the resolver rather than a join of its own, for `dataDirInUse`'s reason: the API writes that
   // file and a second opinion about where it is becomes a refusal that never fires. The runtime environment is immaterial
   // — every path in the context is joined onto the dir it is given
-  const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
+  const { apiPortFile } = resolveAppEnvironment({ env: 'development', userDataDir: dir });
   // Last, the browser's own lock: an app whose session, app lock and port file have all gone is still one
   return findRunningApp({ userDataDir: dir, apiPortFile })?.pid ?? chromiumHolding(dir);
 }

@@ -1,5 +1,5 @@
-import { findLatestRelease, readHostInfo, type ReleaseCandidate } from '@apackdev/host/packs';
-import type { AppContext } from '@apackdev/sdk/env';
+import { findLatestRelease, readHostCompatibility, type ReleaseCandidate } from '@apackdev/host/packs';
+import type { AppEnvironment } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { packInventory } from './installed-packs';
 
@@ -28,8 +28,8 @@ export async function packUpdate(
   }
 }
 
-export async function packUpdates(context: AppContext, find = findLatestRelease) {
-  const hostVersion = readHostInfo(context.userDataDir).version;
+export async function packUpdates(context: AppEnvironment, find = findLatestRelease) {
+  const hostVersion = readHostCompatibility(context.userDataDir).version;
   const results = [];
   for (const pack of packInventory(context)) {
     results.push(await packUpdate(pack, { hostVersion, includePrerelease: context.env === 'beta' }, find));

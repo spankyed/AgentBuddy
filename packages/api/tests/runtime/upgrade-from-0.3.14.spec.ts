@@ -21,7 +21,7 @@ const { store, packs } = openAppStore();
 const { hostRegistration } = await import('@apackdev/host/features');
 const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
 const { installShippedPacks } = await import('@apackdev/host/packs');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { runAppMigrations } = await import('@apackdev/host/migrations');
 const { appliedContent, appState } = await import('@apackdev/host/app-state');
 const { untypedTx, untypedQx } = await import('@apackdev/ears');
@@ -71,7 +71,7 @@ const SETTINGS_0314 = {
 beforeAll(async () => {
   packs.registerPack(hostRegistration());
   // The app installs the packs it ships, then loads every installed pack
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
   loadAppPacks(packs, new Set(installed.map((result: { id: string }) => result.id)));
   await store.hydrate();
   // 0.3.14's data has no AppState row: its state is in the settings

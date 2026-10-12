@@ -51,7 +51,7 @@ APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$E2E_LOG" | head -n 1)
 # What shipped is what ran: the integrity.json inside the archive against the one the app installed. A log
 # line saying it used the archive would only be the fixture agreeing with itself.
 tar -xzOf "$ARCHIVE" demo-pack/integrity.json > "$WORK/archive-integrity.json"
-# The app keeps everything it owns under <data dir>/apack — see AppContext.appDir
+# The app keeps everything it owns under <data dir>/apack — see AppEnvironment.appDir
 diff "$WORK/archive-integrity.json" "$APP_DATA/apack/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
 # Only the data dir this half made: the work dir and the handoff are the author half's declared output, and
 # a step whose output is gone reads as never-built.

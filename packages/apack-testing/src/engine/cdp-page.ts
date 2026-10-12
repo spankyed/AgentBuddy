@@ -4,7 +4,7 @@
  * `_electron` has no `connect`, which is where *"whoever launches owns the page"* came from. But an
  * Electron renderer is Chromium, so `chromium.connectOverCDP` attaches to one that was started with
  * `--remote-debugging-port` and hands back a real `Page` — and every verb is a call on a `Page`, so the
- * same `asSessionPage(page, appHelper(page, dir))` serves a connected page and a launched one with no
+ * same `asSessionPage(page, createAppDriver(page, dir))` serves a connected page and a launched one with no
  * second implementation. That is the whole of what this module adds: the connect, and finding the window.
  *
  * **What an attached page cannot do is reach the main process.** `electronApp.browserWindow(page)` has no

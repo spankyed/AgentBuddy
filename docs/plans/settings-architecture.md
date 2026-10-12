@@ -1,7 +1,7 @@
 # Finish the app settings extraction
 
-Sequencing: the reworked [naming contracts goal](../goals/goal-naming-conventions.md) completes
-before this work. Re-audit names against its result; settings-specific names remain owned here.
+Sequencing: the [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete.
+Re-audit names against its result; settings-specific names remain owned here.
 The [manifest maturity roadmap](manifest-maturity.md) orders this work with the common discovery
 foundation. This plan must not introduce a separate settings-only catalog.
 

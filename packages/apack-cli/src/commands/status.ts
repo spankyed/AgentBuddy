@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { appDataDirFor, resolveAppContext, type AppChannel } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppEnvironment, type AppChannel } from '@apackdev/sdk/env';
 import { findRunningApp } from '@apackdev/host/database';
 import { parseAppChannel } from '../utils';
 import { installedVersion } from '../app/installed-app';
@@ -10,7 +10,7 @@ export const STATUS_USAGE = 'Usage: apack status [--channel production|beta|prev
 
 export function appStatus(channel: AppChannel, options: { applications?: string; dataDir?: string } = {}) {
   const appPath = path.join(options.applications ?? '/Applications', `${PRODUCT_NAMES[channel]}.app`);
-  const context = resolveAppContext({ env: channel, userDataDir: options.dataDir ?? appDataDirFor(channel) });
+  const context = resolveAppEnvironment({ env: channel, userDataDir: options.dataDir ?? appDataDirFor(channel) });
   const running = findRunningApp(context);
   return {
     channel, installed: fs.existsSync(appPath), version: installedVersion(appPath), appPath,

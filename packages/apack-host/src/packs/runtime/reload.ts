@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { resolveAppContext, getAppVersion } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
 import { installShippedPacks } from '../installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -94,7 +94,7 @@ export async function reloadPackById(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<void> {
-  const { packsDir } = resolveAppContext();
+  const { packsDir } = resolveAppEnvironment();
   const packDir = path.join(packsDir, packId);
 
   // A pack the app ships is rebuilt in the checkout and loaded from `packsDir`, so the rebuild reaches the

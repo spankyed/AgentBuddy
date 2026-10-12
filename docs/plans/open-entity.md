@@ -191,7 +191,7 @@ readers; active handlers bind to that account.
 survey is current. Prove short-code resolution, stored-reference round trips and catalog/readiness routing
 before converting callers. Remove `navigate` bindings only after every supported caller migrates.
 
-The resulting navigation API is the input to later lazy activation: a destination is known before it
+The resulting navigation API can support lazy activation if that deferred work is resumed: a destination is known before it
 runs, but opening still waits for the current handler to be ready.
 
 ## What this is not

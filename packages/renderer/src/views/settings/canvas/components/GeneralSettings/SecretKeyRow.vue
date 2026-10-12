@@ -63,12 +63,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Check, Edit2, Eye, EyeOff, Trash2, X } from 'lucide-vue-next'
-import type { SecretInfo } from '@apackdev/sdk/services'
+import type { SecretMetadata } from '@apackdev/sdk/services'
 
 // `select`, `rename` and `replace` resolve whether the change was stored: the row stays open with what was typed until
 // it was, and the radio goes back to the stored selection when selecting fails
 const props = defineProps<{
-  secret: SecretInfo
+  secret: SecretMetadata
   selectable: boolean
   select?: () => Promise<boolean>
   rename: (label: string) => Promise<boolean>

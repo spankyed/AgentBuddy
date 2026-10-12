@@ -93,7 +93,7 @@ export function recordIsStale(file: string, pid: number): boolean {
   return at === null || at < bootTime();
 }
 
-/** What a running API publishes about itself in `AppContext.apiPortFile`, so local tools find it */
+/** What a running API publishes about itself in `AppEnvironment.apiPortFile`, so local tools find it */
 export interface ApiEndpoint {
   port: number;
   /** The API process. A file whose process is gone is one a crash left behind, not a running app */

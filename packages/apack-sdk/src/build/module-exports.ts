@@ -5,7 +5,7 @@ import type * as TS from 'typescript';
 import type { PluginInboxAudiences } from '../fe/plugin.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
-export interface ExportInfo {
+export interface ModuleExport {
   /** The runtime value's kind; undefined when the name exports only a type (or a value through `export type`) */
   value?: 'object' | 'function' | 'class';
   /** Whether the name can be used as a type */
@@ -14,7 +14,7 @@ export interface ExportInfo {
 
 export interface ModuleExports {
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
-  exportOf(file: string, name: string): ExportInfo | undefined;
+  exportOf(file: string, name: string): ModuleExport | undefined;
   /**
    * The `type` literals of the events a system's contract says it sends its plugin, read from the type `name` that
    * `file` declares (`apack.json`'s `features[].system.contract`) — its `outgoing`.

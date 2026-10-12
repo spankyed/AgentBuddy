@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { recordHostInfo } from './host-info.ts';
+import { recordHostCompatibility } from './host-info.ts';
 import { recordIsStale } from '../process-liveness.ts';
 // The naming convention lives with the module that makes one of these directories; this is its reader
 import { OWNED_STAGING_DIR, type StagingKind } from '../replace-dir.ts';
@@ -94,7 +94,7 @@ export function prepareHostDataDirs(
   log: Pick<Console, 'info' | 'warn'> = console,
 ): void {
   try {
-    recordHostInfo(options.userDataDir, { version: options.version, packFormat: PACK_SNAPSHOT_FORMAT });
+    recordHostCompatibility(options.userDataDir, { version: options.version, packFormat: PACK_SNAPSHOT_FORMAT });
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }

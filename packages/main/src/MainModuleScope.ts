@@ -1,3 +1,3 @@
-export type ModuleContext = {
+export type MainModuleScope = {
   readonly app: Electron.App;
 }

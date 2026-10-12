@@ -399,7 +399,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
     git('commit', '-m', `release: v${version}`);
   }
   try {
-    // After the commit, so integrity.json's source.commit is the tagged commit. Which is also why the
+    // After the commit, so integrity.json's provenance.commit is the tagged commit. Which is also why the
     // commit can't be moved later to close the window this resume path exists for.
     const packed = await packRelease();
     if (!existing.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);

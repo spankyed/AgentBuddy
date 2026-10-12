@@ -12,7 +12,7 @@ const pluginId = 'code' as const
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodePromptsSystemContext {
   // No local state needed for prompts feature
 }
 
@@ -21,11 +21,11 @@ export type Event =
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodePromptsSystemContext, Event>();
 
 export const promptsSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodePromptsSystemContext,
     events: {} as Event,
   },
   actions: handlers.actions({

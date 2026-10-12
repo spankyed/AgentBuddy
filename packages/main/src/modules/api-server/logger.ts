@@ -2,11 +2,11 @@ import log from 'electron-log/main';
 import { app } from 'electron';
 import * as path from 'path';
 import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@apackdev/host/logs';
-import { getAppContext } from '../../app-context.ts';
+import { getAppEnvironment } from '../../app-environment.ts';
 
 // Asking for the context is what decides it, so electron-log is configured from the app's answer rather
 // than reaching for its own: this import is the edge that puts the decision before any log write.
-const LOGS_DIR = getAppContext().logsDir;
+const LOGS_DIR = getAppEnvironment().logsDir;
 
 log.transports.file.maxSize = LOG_FILE_MAX_BYTES;
 log.transports.file.resolvePathFn = (variables) => path.join(LOGS_DIR, variables.fileName ?? 'main.log');

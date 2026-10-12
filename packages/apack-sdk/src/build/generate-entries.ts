@@ -8,7 +8,7 @@ import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-e
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './content/items.ts';
 import { resolveContentSources, type ResolvedContentSource } from './content/resolve.ts';
-import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
+import { createModuleExports, type ModuleExport, type ModuleExports } from './module-exports.ts';
 import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
@@ -511,7 +511,7 @@ export function generatePackFiles(
   }
 
   let moduleExports: ModuleExports | undefined;
-  function exportOf(file: string, name: string): ExportInfo | undefined {
+  function exportOf(file: string, name: string): ModuleExport | undefined {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
     return moduleExports.exportOf(file, name);
   }
@@ -837,7 +837,7 @@ ${items.join('\n')}
   }
 
   /** A `"path#exportName"` target that must export a runtime value */
-  function valueExport(label: string, target: string): { source: string; exportName: string; value: NonNullable<ExportInfo['value']> } {
+  function valueExport(label: string, target: string): { source: string; exportName: string; value: NonNullable<ModuleExport['value']> } {
     const { source, exportName, file } = exportTarget(label, target);
     const info = exportOf(file, exportName);
     if (!info) throw new Error(`${label}: ${source} doesn't export "${exportName}"`);

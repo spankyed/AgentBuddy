@@ -3,7 +3,7 @@
 // and one `Contract` per feature would collide there. Codegen reads this without running anything.
 import type { ActionEntity, PromptEntity } from '@apackdev/sdk';
 import type {
-  CodeConnectedData, CodeSystemError, CommitLogEntry, Context, DirectoryContent, FileContent, FileInfo,
+  CodeConnectedData, CodeSystemError, CommitLogEntry, CodeSystemContext, DirectoryContent, FileContent, FileInfo,
   GhPRComment, GhPullRequest, GhReviewThread, GitDiff, GitStatusFile, QuickOpenResult, SearchProgress,
   SearchResult, StashEntry, TerminalInfo, WorktreeEntry,
 } from './types.ts';
@@ -260,7 +260,7 @@ export type OutgoingCodeEvents =
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 
 export type Contract = {
-  context: Context
+  context: CodeSystemContext
   incoming: IncomingCodeEvents
   outgoing: OutgoingCodeEvents
 }

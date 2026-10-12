@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { openEnvAt, closeEnv } from '@apackdev/ears/lmdb';
 import { readBackup, importDatabase } from '@apackdev/host/backup';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { findDatabaseWriter, publishRunningApp, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
 import { db } from '../../src/commands/db';
@@ -33,7 +33,7 @@ it('creates an importable backup with media and run history, and refuses overwri
     closeEnv(copy, () => {});
     await db(['backup', 'verify', out, '--json'], io);
     expect(JSON.parse(io.out.mock.lastCall![0])).toMatchObject({ valid: true, path: out });
-    const restoreContext = resolveAppContext({ env: 'production', userDataDir: path.join(root, 'restored') });
+    const restoreContext = resolveAppEnvironment({ env: 'production', userDataDir: path.join(root, 'restored') });
     const restored = _appDataPaths(restoreContext.userDataDir);
     const { store } = openDatabaseStore({
       paths: { primary: restored.lmdb, volatileBackup: restored.volatileLmdb },

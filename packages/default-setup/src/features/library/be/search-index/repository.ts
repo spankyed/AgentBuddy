@@ -293,7 +293,7 @@ export async function createSearchIndex(
   return searchIndex
 }
 
-export async function getSearchIndex(indexId: EARS.EntityId): Promise<SearchIndex | null> {
+export async function findSearchIndex(indexId: EARS.EntityId): Promise<SearchIndex | null> {
   const indices = qx(indexId).pickAll()
   const indexData = indices[0]
   
@@ -316,7 +316,7 @@ export async function updateSearchIndex(
   indexId: EARS.EntityId,
   config: SearchIndexConfig
 ): Promise<SearchIndex> {
-  const existingIndex = await getSearchIndex(indexId)
+  const existingIndex = await findSearchIndex(indexId)
   if (!existingIndex) {
     throw new Error(`Search index ${indexId} not found`)
   }
@@ -393,7 +393,7 @@ export async function indexDocumentsInFolder(
   indexId: EARS.EntityId,
   folderId: EARS.EntityId | null
 ): Promise<void> {
-  const searchIndex = await getSearchIndex(indexId)
+  const searchIndex = await findSearchIndex(indexId)
   if (!searchIndex) throw new Error(`Search index ${indexId} not found`)
   
   // Get or create index
@@ -436,10 +436,10 @@ export async function indexDocument(
   documentId: EARS.EntityId,
   indexId: EARS.EntityId
 ): Promise<void> {
-  const searchIndex = await getSearchIndex(indexId)
+  const searchIndex = await findSearchIndex(indexId)
   if (!searchIndex) throw new Error(`Search index ${indexId} not found`)
 
-  const document = libraryQueries.getDocument(documentId)
+  const document = libraryQueries.findDocument(documentId)
   if (!document) throw new Error(`Document ${documentId} not found`)
 
   if (searchIndex.excludedDocumentIds.includes(documentId)) return
@@ -474,7 +474,7 @@ export async function removeDocumentFromIndex(
   documentId: EARS.EntityId,
   indexId: EARS.EntityId
 ): Promise<void> {
-  const searchIndex = await getSearchIndex(indexId)
+  const searchIndex = await findSearchIndex(indexId)
   if (!searchIndex) return
   
   let index = indexCache.get(indexId)
@@ -499,7 +499,7 @@ export async function searchInIndex(
   query: string,
   limit: number = 10
 ): Promise<IndexSearchResult[]> {
-  const searchIndex = await getSearchIndex(indexId)
+  const searchIndex = await findSearchIndex(indexId)
   if (!searchIndex) throw new Error(`Search index ${indexId} not found`)
   
   // Get or load the index
@@ -616,7 +616,7 @@ async function getChildCollectionsRecursive(
 }
 
 async function reindexAllDocuments(indexId: EARS.EntityId): Promise<void> {
-  const searchIndex = await getSearchIndex(indexId)
+  const searchIndex = await findSearchIndex(indexId)
   if (!searchIndex) return
   
   // Clean up all old IndexedDoc entities before reindexing
@@ -641,7 +641,7 @@ async function reindexAllDocuments(indexId: EARS.EntityId): Promise<void> {
 
 // Auto-index new documents in folders with indices
 export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<void> {
-  const document = libraryQueries.getDocument(documentId)
+  const document = libraryQueries.findDocument(documentId)
   if (!document) return
   
   // Find all indices that should include this document

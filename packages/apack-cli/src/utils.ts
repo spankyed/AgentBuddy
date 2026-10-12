@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { parseManifest, type PackManifest } from '@apackdev/sdk/build';
 import { cliDirs } from './app/pack-host';
 import { resolveStoredProfile } from './app/profiles';
-import { APP_ENVS, parseAppEnv, resolveAppContext, type AppEnv, type AppChannel } from '@apackdev/sdk/env';
+import { APP_ENVS, parseAppEnv, resolveAppEnvironment, type AppEnv, type AppChannel } from '@apackdev/sdk/env';
 
 /** Data commands may default to the bundled CLI's channel; installed-app commands select production explicitly. */
 export const defaultDataEnv = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
@@ -42,7 +42,7 @@ export function parseStorageProfile(args: string[]) {
 
 /** An explicit namespace uses its canonical storage; an unnamed target may honor a caller's data override. */
 export function targetDataContext(env: AppEnv, profile?: string) {
-  return resolveAppContext({ env, userDataDir: profile === undefined ? undefined : resolveStoredProfile(cliDirs(), profile) });
+  return resolveAppEnvironment({ env, userDataDir: profile === undefined ? undefined : resolveStoredProfile(cliDirs(), profile) });
 }
 
 export function profileLabel(env: AppEnv, profile?: string): string {

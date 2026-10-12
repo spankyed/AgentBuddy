@@ -18,11 +18,11 @@ import {createBrowserModule} from './modules/browser/index.ts';
 import {createProtocolHandler} from './modules/ProtocolHandler.ts';
 import {app} from 'electron';
 import {initializeMainLogCapture} from './modules/api-server/logger.ts';
-import {initAppContext} from './app-context.ts';
+import {initAppEnvironment} from './app-environment.ts';
 
 
 export async function initApp(initConfig: AppInitConfig) {
-  initAppContext();
+  initAppEnvironment();
   initializeMainLogCapture();
 
   // Disable Chromium media features that trigger macOS Apple Music permission prompt

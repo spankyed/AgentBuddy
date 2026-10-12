@@ -8,7 +8,7 @@ import type { FileChangeInfo } from '../services/gitwatcher.ts'
 
 const pluginId = 'code' as const
 
-function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
+function requireRepository(context: CodeExplorerSystemContext, path: string): context is CodeExplorerSystemContext & { repository: FileSystemRepository } {
   if (!context.repository) {
     broadcastToPlugin(pluginId, {
       type: 'explorer.CODE_ERROR',
@@ -27,7 +27,7 @@ function requireRepository(context: Context, path: string): context is Context &
 
 // Outgoing events to frontend
 
-export interface Context {
+export interface CodeExplorerSystemContext {
   baseDirectory: string | null
   repository: FileSystemRepository | null
   gitWatcher: GitWatcherService | null
@@ -52,11 +52,11 @@ export type Event =
   | { type: 'CODE_CONNECTED' };
 
 /** Hands each handler the answer for the message it is handling — see `defineHandlers` */
-const handlers = defineHandlers<Context, Event>();
+const handlers = defineHandlers<CodeExplorerSystemContext, Event>();
 
 export const explorerSystem = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeExplorerSystemContext,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitWatcher?: GitWatcherService | null }
   },

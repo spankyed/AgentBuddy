@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { parseAppChannel } from '../utils';
 
 export function logOptions(args: string[]) {
@@ -14,7 +14,7 @@ export function logOptions(args: string[]) {
   if (positionals.length || !/^\d+$/.test(values.lines!) || !Number.isSafeInteger(Number(values.lines))) {
     throw new Error('Usage: apack logs [--channel production|beta|preview] [--follow] [--lines <count>]');
   }
-  const context = resolveAppContext({ env: channel, userDataDir: appDataDirFor(channel) });
+  const context = resolveAppEnvironment({ env: channel, userDataDir: appDataDirFor(channel) });
   return { file: path.join(os.homedir(), 'Library', 'Logs', context.appName, 'main.log'), lines: values.lines!, follow: Boolean(values.follow) };
 }
 

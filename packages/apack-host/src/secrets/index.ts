@@ -1,6 +1,6 @@
 // The user's secrets, host-internal: the host and the API read and write them here. Packs reach only the metadata,
 // through `services.secrets`, and never import this module.
-import { resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import { _rootEvents } from '@apackdev/sdk/runtime';
 import { _getSecretsFilePath } from '@apackdev/sdk/utils';
 import type { SecretsSnapshot } from '@apackdev/sdk/services';
@@ -33,7 +33,7 @@ let store: SecretsStore | undefined;
 /** The app's store, created on first use (paths and the environment are resolved then) */
 function appStore(): SecretsStore {
   if (store) return store;
-  const context = resolveAppContext();
+  const context = resolveAppEnvironment();
   const filePath = _getSecretsFilePath();
   store = createSecretsStore({
     filePath,

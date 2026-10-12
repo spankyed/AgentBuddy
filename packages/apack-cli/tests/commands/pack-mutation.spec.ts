@@ -2,13 +2,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { findDatabaseWriter, publishRunningApp } from '@apackdev/host/database';
 import { withPackMutation } from '../../src/app/pack-mutation';
 
 it('serializes pack changes with database writes and refuses a running app', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pack-mutation-'));
-  const context = resolveAppContext({ env: 'production', userDataDir: root });
+  const context = resolveAppEnvironment({ env: 'production', userDataDir: root });
   const run = vi.fn();
   try {
     await withPackMutation(context, 'install', async () => {

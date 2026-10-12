@@ -4,13 +4,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
-import { _appDirOf, resolveAppContext } from '@apackdev/sdk/env';
+import { _appDirOf, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
 import { readInstalledPacks } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../../src/packs/installer.ts';
-import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
+import { createPacksSystem, type InstalledPackSummary } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
@@ -76,6 +76,7 @@ async function stubRelease(source: string) {
     if (url.endsWith('.sha256')) return new Response(`${sha256}  ${name}\n`, { status: 200 });
     return new Response(fs.readFileSync(file), { status: 200 });
   }));
+  return sha256;
 }
 
 /** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
@@ -113,7 +114,7 @@ describe('installing over a pack that is already running', () => {
       await installPackFromLocal(packSource('1.0.0'));
       expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
 
-      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), sourceKind: 'local' });
 
       await vi.waitFor(() => {
         const types = emitted(system.sent).map(e => e.type);
@@ -129,6 +130,27 @@ describe('installing over a pack that is already running', () => {
   });
 });
 
+describe('install provenance for updates', () => {
+  it.each([
+    [undefined, 'fixture/pack@v1.0.0', 'fixture/pack@v1.0.0'],
+    ['github', 'fixture/pack@v1.0.0', 'fixture/pack@v1.0.0'],
+    [undefined, 'http-tools/pack', 'http-tools/pack'],
+    ['github', 'https://example.test/release.tgz', undefined],
+    ['url', 'https://example.test/release.tgz', undefined],
+  ])('records the actual route for %s: %s', async (sourceKind, packSlug, installedFrom) => {
+    const sha256 = await stubRelease(packSource('1.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug, sourceKind, sha256 });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_INSTALL_COMPLETE'));
+      expect(readInstalledPacks().find(pack => pack.id === PACK_ID)?.installedFrom).toBe(installedFrom);
+    } finally {
+      system.stop();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('a community release checksum pin', () => {
   it('refuses changed release bytes before replacing the running pack, even when GitHub publishes their checksum', async () => {
     await installPackFromLocal(packSource('1.0.0'));
@@ -140,7 +162,7 @@ describe('a community release checksum pin', () => {
       await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_INSTALL_FAILED'));
       expect(emitted(system.sent).find(event => event.type === 'PACK_INSTALL_FAILED')?.error).toContain('Checksum mismatch');
       expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_INSTALL_COMPLETE');
-      const installed = JSON.parse(fs.readFileSync(path.join(resolveAppContext().packsDir, PACK_ID, 'apack.json'), 'utf8'));
+      const installed = JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf8'));
       expect(installed.version).toBe('1.0.0');
       expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
     } finally {
@@ -210,7 +232,7 @@ describe('a pack that ships with the app', () => {
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {
-      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), sourceKind: 'local' });
 
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED'))
@@ -250,7 +272,7 @@ describe('a pack with nothing recorded about it', () => {
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
       await installPackFromLocal(packSource('1.0.0'));
-      expect(fs.existsSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile)).toBe(false);
+      expect(fs.existsSync(resolveAppEnvironment({ env: 'test', userDataDir: tmpDir }).installedPacksFile)).toBe(false);
 
       system.send({ type: 'GET_INSTALLED_PACKS' });
 
@@ -274,9 +296,9 @@ describe('an installed pack the app could not load', () => {
     // Named rather than dereferenced through `?.`: no PACKS_LIST is the regression this helper exists to
     // catch, and a truncated chain reports it as a TypeError on the next line instead of by name
     expect(list, 'the system emitted no PACKS_LIST').toBeDefined();
-    return (list!.packs as PackInfo[]).find(p => p.id === PACK_ID);
+    return (list!.packs as InstalledPackSummary[]).find(p => p.id === PACK_ID);
   };
-  const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, PACK_LAYOUT.snapshot);
+  const snapshotFile = () => path.join(resolveAppEnvironment().packsDir, PACK_ID, PACK_LAYOUT.snapshot);
 
   it('is listed with why, until a load of it succeeds', async () => {
     await installPackFromLocal(packSource('1.0.0'));
@@ -331,7 +353,7 @@ describe('a decision that could not be saved', () => {
       expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
       takeSystemErrors();
       // A directory where the record goes: the rename onto it fails, whatever is written beside it
-      fs.mkdirSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile, { recursive: true });
+      fs.mkdirSync(resolveAppEnvironment({ env: 'test', userDataDir: tmpDir }).installedPacksFile, { recursive: true });
 
       system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
 
@@ -427,8 +449,8 @@ describe('installing over a pack that is already running', () => {
       const realWarn = console.warn;
       console.warn = (...args: unknown[]) => void warned.push(args.map(String).join(' '));
       try {
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
       } finally {
         console.warn = realWarn;
       }
@@ -490,7 +512,7 @@ describe('reinstalling a pack whose data did not content', () => {
 
     const first = runPacksSystem();
     try {
-      first.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      first.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
       await vi.waitFor(() => expect(outcomes(first.sent)).toHaveLength(1));
       expect(outcomes(first.sent)).toEqual(['PACK_INSTALL_FAILED']);
       expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
@@ -501,7 +523,7 @@ describe('reinstalling a pack whose data did not content', () => {
     // The same pack again, byte for byte: nothing about its data has changed, so nothing is written again
     const second = runPacksSystem();
     try {
-      second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      second.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
       await vi.waitFor(() => expect(outcomes(second.sent)).toHaveLength(1));
 
       expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
@@ -798,7 +820,7 @@ describe('a user answering for one of a pack’s content items', () => {
 
       system.send({ type: 'GET_INSTALLED_PACKS' });
       const lists = emitted(system.sent).filter((e) => e.type === 'PACKS_LIST');
-      const listed = lists[lists.length - 1]?.packs as PackInfo[];
+      const listed = lists[lists.length - 1]?.packs as InstalledPackSummary[];
       const pack = listed.find(p => p.id === CONTENT_PACK);
       expect(pack?.contentOffers, 'nothing outstanding').toEqual([]);
       expect(pack?.contentKept.map(k => k.key), 'and an item to reset to factory').toEqual([ACTION_KEY]);

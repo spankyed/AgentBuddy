@@ -72,7 +72,7 @@ const inCommandsFolder = (doc: DocumentDTO): boolean =>
 export class LibraryService {
   // Lookups
 
-  async get(id: EARS.EntityId): Promise<DocumentDTO | undefined> {
+  async find(id: EARS.EntityId): Promise<DocumentDTO | undefined> {
     if (symlink.isSymlinkId(id)) {
       const resolved = symlink.resolveSymlinkPath(id)
       if (!resolved) return undefined
@@ -84,21 +84,21 @@ export class LibraryService {
         : { type: info.type, text }
       return makeSymlinkDocumentDTO(id, name, [section])
     }
-    const document = repository.libraryQueries.getDocument(id);
+    const document = repository.libraryQueries.findDocument(id);
     return document || undefined;
   }
 
-  async getByCode(shortCode: string): Promise<DocumentDTO | undefined> {
-    const document = repository.libraryQueries.getDocumentByShortCode(shortCode as DocumentShortCode);
+  async findByCode(shortCode: string): Promise<DocumentDTO | undefined> {
+    const document = repository.libraryQueries.findDocumentByShortCode(shortCode as DocumentShortCode);
     return document || undefined;
   }
 
-  async getByName(name: string): Promise<DocumentDTO | undefined> {
+  async findByName(name: string): Promise<DocumentDTO | undefined> {
     const allDocuments = repository.libraryQueries.getDocuments();
     return allDocuments.find((doc: DocumentDTO) => doc.name === name);
   }
 
-  async getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined> {
+  async findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined> {
     const allDocuments = repository.libraryQueries.getDocuments();
     return allDocuments.find((doc: DocumentDTO) => {
       if (doc.name !== name) return false;
@@ -133,7 +133,7 @@ export class LibraryService {
   }
 
   async getText(id: EARS.EntityId): Promise<string | undefined> {
-    const doc = await this.get(id)
+    const doc = await this.find(id)
     if (!doc) return undefined
     return doc.content
       .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')
@@ -211,7 +211,7 @@ export class LibraryService {
     }
 
     // For DB documents, fetch existing to fill in missing fields
-    const existing = repository.libraryQueries.getDocument(id as EARS.EntityId)
+    const existing = repository.libraryQueries.findDocument(id as EARS.EntityId)
     if (!existing) throw new Error(`Document not found: ${id}`)
 
     const name = params.name ?? existing.name
@@ -306,7 +306,7 @@ export class LibraryService {
     }
 
     // For DB items, determine type from existence checks
-    const doc = repository.libraryQueries.getDocument(id as EARS.EntityId)
+    const doc = repository.libraryQueries.findDocument(id as EARS.EntityId)
     if (doc) {
       repository.libraryCommands.updateDocument(
         id as EARS.EntityId,

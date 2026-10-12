@@ -23,7 +23,7 @@ export interface SearchProgress {
   currentFile?: string
 }
 
-export interface Context {
+export interface CodeSearchContext {
   searchQuery: string
   searchResults: SearchResult[]
   isSearching: boolean
@@ -42,7 +42,7 @@ export type Event =
   | { type: 'search.START'; query: string }
   | { type: 'search.CANCEL' }
   | { type: 'search.CLEAR' }
-  | { type: 'search.UPDATE_OPTIONS'; options: Partial<Context['searchOptions']> }
+  | { type: 'search.UPDATE_OPTIONS'; options: Partial<CodeSearchContext['searchOptions']> }
   | { type: 'search.RESULT'; data: SearchResult }
   | { type: 'search.PROGRESS'; data: SearchProgress }
   | { type: 'search.COMPLETE' }
@@ -53,7 +53,7 @@ export type Event =
 
 export const searchState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeSearchContext,
     events: {} as Event
   },
   actions: {
@@ -129,7 +129,7 @@ export const searchState = setup({
 
     updateSearchOptions: assign({
       searchOptions: ({ context, event }) => {
-        const ev = event as { type: 'search.UPDATE_OPTIONS'; options: Partial<Context['searchOptions']> }
+        const ev = event as { type: 'search.UPDATE_OPTIONS'; options: Partial<CodeSearchContext['searchOptions']> }
         return { ...context.searchOptions, ...ev.options }
       }
     }),

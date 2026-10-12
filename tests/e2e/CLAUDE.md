@@ -114,9 +114,9 @@ Three fixtures are provided, each at a different scope:
 |----------------|--------|-------------|
 | `electronApp`  | worker | The launched Electron app (shared across tests in a worker) |
 | `appPage`      | test   | The main renderer Page (waits for `running.connected`, bypasses onboarding) |
-| `app`          | test   | `AppHelper` — high-level API below |
+| `app`          | test   | `AppDriver` — high-level API below |
 
-### AppHelper methods
+### AppDriver methods
 
 ```ts
 app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under

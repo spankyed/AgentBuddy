@@ -97,7 +97,7 @@ export const librarySystem = setup({
     },
     getDocument: async ({ event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
-      const document = await libraryService.get(ev.id as EARS.EntityId)
+      const document = await libraryService.find(ev.id as EARS.EntityId)
       if (document) {
         broadcastToPlugin('library', { type: 'DOCUMENT_LOADED' as const, data: { document } })
       } else {
@@ -406,7 +406,7 @@ export const librarySystem = setup({
         
         if (changed) {
           repository.libraryCommands.updateDocumentTags(doc.id, nextTags)
-          const updated = repository.libraryQueries.getDocument(doc.id)
+          const updated = repository.libraryQueries.findDocument(doc.id)
           if (updated) {
             broadcastToPlugin('library', {
                 type: 'DOCUMENT_UPDATED' as const,

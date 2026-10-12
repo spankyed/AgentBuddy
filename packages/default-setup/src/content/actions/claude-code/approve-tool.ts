@@ -46,7 +46,7 @@ export async function action(
     }
     persistClaudeState(services, threadId, { pendingControlRequest: undefined });
     // Start a new turn that resumes the session — mirrors replayQueuedMessage.
-    await services.action.getAndExecute('Claude Code Chat', {
+    await services.action.executeIfFound('Claude Code Chat', {
       threadId,
       text: 'continue',
       phase: toolName === 'ExitPlanMode' ? 'Edit' : undefined,

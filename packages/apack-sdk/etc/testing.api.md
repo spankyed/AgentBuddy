@@ -33,7 +33,7 @@ import { z } from 'zod';
 import type { ZodType } from 'zod';
 
 // @public
-export function addTestSecret(provider: SecretProvider, label: string): SecretInfo;
+export function addTestSecret(provider: SecretProvider, label: string): SecretMetadata;
 
 // @public
 export function answerTo<E extends {

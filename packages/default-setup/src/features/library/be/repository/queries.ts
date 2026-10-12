@@ -27,7 +27,7 @@ export const libraryQueries = {
       const documentIds = documentsInCollection.map((doc) => doc.id)
       if (documentIds.length === 0) return []
 
-      const documents = documentIds.map((id) => this.getDocument(id as EARS.EntityId))
+      const documents = documentIds.map((id) => this.findDocument(id as EARS.EntityId))
       return documents.filter((doc): doc is DocumentDTO => doc !== null)
     }
 
@@ -61,7 +61,7 @@ export const libraryQueries = {
     return documentsWithDetails
   },
 
-  getDocument(id: EARS.EntityId): DocumentDTO | null {
+  findDocument(id: EARS.EntityId): DocumentDTO | null {
     const documentId = id
     const documents = qx(documentId).pickAll()
     const document = documents[0]
@@ -92,7 +92,7 @@ export const libraryQueries = {
     }
   },
 
-  getDocumentByShortCode(shortCode: DocumentShortCode): DocumentDTO | null {
+  findDocumentByShortCode(shortCode: DocumentShortCode): DocumentDTO | null {
     const documents = qx(EARS.Entity.Document)
       .where('shortCode', shortCode)
       .pickAll()
@@ -101,7 +101,7 @@ export const libraryQueries = {
       return null
     }
     
-    return this.getDocument(documents[0].id as EARS.EntityId)
+    return this.findDocument(documents[0].id as EARS.EntityId)
   },
 
   /** Every document and folder by name, for the reference picker and the panel's stats */
@@ -314,13 +314,13 @@ export const libraryQueries = {
       return []
     }
     
-    const documents = documentIds.map((id) => this.getDocument(id))
+    const documents = documentIds.map((id) => this.findDocument(id))
     
     return documents.filter((doc): doc is DocumentDTO => doc !== null)
   },
 
   getText(id: EARS.EntityId): string | undefined {
-    const doc = this.getDocument(id)
+    const doc = this.findDocument(id)
     if (!doc) return undefined
     return doc.content
       .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')

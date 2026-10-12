@@ -2,7 +2,7 @@
 // (apack db) share, so both hydrate a data dir the same way
 import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@apackdev/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@apackdev/ears/lmdb';
-import { resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import type { _AppDataPaths } from '@apackdev/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
@@ -87,7 +87,7 @@ export interface OpenAppDatabaseOptions {
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
 export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
-  const context = resolveAppContext({ env, userDataDir });
+  const context = resolveAppEnvironment({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
   // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and for

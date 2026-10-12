@@ -1,7 +1,7 @@
 // What every `apack db` command shares: the data dir it targets, and opening its database offline
 import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { resolveAppContext, APP_ENVS, type AppContext, type AppEnv } from '@apackdev/sdk/env';
+import { resolveAppEnvironment, APP_ENVS, type AppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@apackdev/host/database';
 import { consoleEars, type ConsoleScope } from '@apackdev/sdk/database-console';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -34,7 +34,7 @@ export const TARGET_USAGE = [
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
-export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> & {
+export type DbTarget = Pick<AppEnvironment, 'env' | 'userDataDir' | 'apiPortFile'> & {
   /** The command named this data dir (`--data-dir` or `--profile`) rather than taking the default */
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
@@ -66,7 +66,7 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   const userDataDir = dataDir !== undefined ? path.resolve(dataDir)
     : profile !== undefined ? resolveStoredProfile(cliDirs(), profile)
     : undefined;
-  const context = resolveAppContext({ env, ...(userDataDir !== undefined && { userDataDir }) });
+  const context = resolveAppEnvironment({ env, ...(userDataDir !== undefined && { userDataDir }) });
   const target: DbTarget = {
     env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
     ...(schemaFrom !== undefined && { schemaFrom: path.resolve(schemaFrom) }),

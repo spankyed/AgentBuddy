@@ -26,22 +26,22 @@ afterEach(() => {
  */
 async function load() {
   const { app } = await import('./electron-stub.ts');
-  const module = await import('../src/app-context.ts');
+  const module = await import('../src/app-environment.ts');
   return { app, ...module };
 }
 
-const context = async () => (await load()).getAppContext();
+const context = async () => (await load()).getAppEnvironment();
 
 describe('the app context', () => {
   it('reads packaged identity from the manifest rather than the launching environment', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-manifest-'));
     fs.writeFileSync(path.join(dir, 'build-manifest.json'), JSON.stringify({ version: '0.4.0-preview.1', channel: 'preview' }));
-    const { app, getAppContext } = await load();
+    const { app, getAppEnvironment } = await load();
     app.isPackaged = true;
     vi.spyOn(app, 'getAppPath').mockReturnValue(dir);
     try {
-      expect(getAppContext().env).toBe('preview');
-      expect(getAppContext().appName).toBe('apack-preview');
+      expect(getAppEnvironment().env).toBe('preview');
+      expect(getAppEnvironment().appName).toBe('apack-preview');
     } finally {
       app.isPackaged = false;
       vi.restoreAllMocks();
@@ -66,9 +66,9 @@ describe('the app context', () => {
   // Electron has to agree, because electron-log and anything else asking it must get the same answer
   it('tells Electron the directories it decided', async () => {
     process.env.APACK_USER_DATA_DIR = '/tmp/isolated-run';
-    const { app, getAppContext } = await load();
+    const { app, getAppEnvironment } = await load();
 
-    const resolved = getAppContext();
+    const resolved = getAppEnvironment();
 
     expect(app.paths.get('userData')).toBe(resolved.userDataDir);
     expect(app.paths.get('logs')).toBe(resolved.logsDir);
@@ -78,10 +78,10 @@ describe('the app context', () => {
   // Asking for it is what decides it, and asking twice must not decide it again: the modules that read it
   // do so while they are being imported, in whatever order the bundler settles on
   it('decides once, however many times it is asked', async () => {
-    const { app, getAppContext, initAppContext } = await load();
+    const { app, getAppEnvironment, initAppEnvironment } = await load();
 
-    expect(getAppContext()).toBe(getAppContext());
-    expect(initAppContext()).toBe(getAppContext());
+    expect(getAppEnvironment()).toBe(getAppEnvironment());
+    expect(initAppEnvironment()).toBe(getAppEnvironment());
     expect(app.setNameCalls).toHaveLength(1);
   });
 });

@@ -63,7 +63,7 @@ function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
 }
 
 /** What the app lists of a pack's feature (the Packs plugin shows it) */
-export interface PackFeatureInfo {
+export interface PackFeatureSummary {
   id: string;
   designation?: string;
   hasSystem: boolean;
@@ -71,7 +71,7 @@ export interface PackFeatureInfo {
   services: readonly string[];
 }
 
-function featureInfo(reg: PackRegistration): PackFeatureInfo[] {
+function featureSummaries(reg: PackRegistration): PackFeatureSummary[] {
   return featuresOf(reg).map(({ featureId, feature }) => ({
     id: featureId,
     ...(feature.designation ? { designation: feature.designation } : {}),
@@ -90,10 +90,10 @@ export interface PackExtensions {
   relKinds: Record<string, string>;
   migrationCount: number;
   bootHooks: string[];
-  features: PackFeatureInfo[];
+  features: PackFeatureSummary[];
 }
 
-export interface PackInfo extends PackExtensions {
+export interface InstalledPackSummary extends PackExtensions {
   id: string;
   name: string;
   version: string;
@@ -171,8 +171,8 @@ export interface PackOrigin {
   /**
    * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
    * the installed copy came from rather than about the pack. Two things read it, both genuinely about
-   * shipping: a pack released with the app has migrations targeting *app* versions (`runAppMigrations`),
-   * and the app will not offer to uninstall what it needs to run (`PackInfo.canUninstall`).
+   * shipping: the installer updates shipped copies with the app, and the app will not offer to uninstall
+   * what it needs to run (`InstalledPackSummary.canUninstall`). Migration lines are declared by each pack.
    *
    * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
    */
@@ -675,7 +675,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
         // Both lines: the view counts what the pack declares, not what one runner will reach
         migrationCount: MIGRATION_LINES.reduce((n, line) => n + (reg.migrations?.[line]?.length ?? 0), 0),
         bootHooks,
-        features: featureInfo(reg),
+        features: featureSummaries(reg),
       };
     },
 

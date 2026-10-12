@@ -6,7 +6,7 @@ import type { EARS } from '@apackdev/sdk';
 import type { PackMigration } from '@apackdev/sdk/framework';
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST } from '../../refs.ts';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/registry.ts';
@@ -43,7 +43,7 @@ type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPack
 /** The manifests of the external packs installed on disk, whether or not they loaded this boot */
 export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
 
-const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContext().packsDir).map(({ manifest }) => manifest);
+const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppEnvironment().packsDir).map(({ manifest }) => manifest);
 
 /**
  * The migration, over the app's registered packs and the external packs installed on disk. The installed ones count

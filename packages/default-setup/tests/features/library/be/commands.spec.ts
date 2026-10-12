@@ -264,7 +264,7 @@ describe('slash commands from the library commands folder', () => {
 
     expect(commandDocuments().map((document) => document.name)).toContain('Team commands')
     expect(services.library.commands().map((command) => command.name)).toContain('team-standup')
-    expect(repository.libraryQueries.getDocument(mine.id)).toMatchObject({ content: field('mine', 'Untouched'), collectionId: undefined })
+    expect(repository.libraryQueries.findDocument(mine.id)).toMatchObject({ content: field('mine', 'Untouched'), collectionId: undefined })
   })
 
   it('keeps the first definition of a command two documents define', async () => {

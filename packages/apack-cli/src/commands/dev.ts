@@ -16,12 +16,12 @@ import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_US
 import { verifySessionHost } from '../app/drive-attach';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { createDevHold } from '../app/dev-hold.ts';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { AppEnv } from '@apackdev/sdk/env';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
-import { installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
+import { installPackFromLocal, readHostCompatibility } from '@apackdev/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
@@ -78,8 +78,8 @@ function reportReload(result: DevReload, what: string): void {
 
 /** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
 export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
-  const { packsDir, userDataDir } = resolveAppContext(place);
-  const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
+  const { packsDir, userDataDir } = resolveAppEnvironment(place);
+  const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
 }
 
@@ -128,7 +128,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
  * which `readDevToolsPort` reads.
  */
 export function debugPortArgs(place: AppPlace): string[] {
-  return debugPortArgsFor(resolveAppContext(place).env);
+  return debugPortArgsFor(resolveAppEnvironment(place).env);
 }
 
 /** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
@@ -284,7 +284,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   setHostHandoff(app, process.env);
   const profile = sharedDevelopment ? undefined : profileFor(mode, cliDirs());
   const place: AppPlace = { env, ...(profile ? { userDataDir: profile.dir } : {}) };
-  const { userDataDir, apiPortFile } = resolveAppContext(place);
+  const { userDataDir, apiPortFile } = resolveAppEnvironment(place);
 
   /**
    * What this session holds, and what letting go of it means (`app/dev-hold.ts` owns the order).
@@ -457,7 +457,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     return;
   }
 
-  // After the app has started, so `readHostInfo` reads what this app records rather than a previous one's
+  // After the app has started, so `readHostCompatibility` reads what this app records rather than a previous one's
   console.log(`Installing pack to the ${env} app...`);
   const result = await installToApp(pack.root, place);
   console.log(`  ${result.dir}\n`);

@@ -4,14 +4,14 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { breadcrumb, safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '../../../events.ts';
-import type { PackInfo } from '../../../packs/registry.ts';
+import type { InstalledPackSummary } from '../../../packs/registry.ts';
 import { HOST } from '../../../refs.ts';
 import { notifyPluginActor } from '../../../fe/plugin-delivery.ts';
 
-export type { PackInfo };
+export type { InstalledPackSummary };
 
 export interface PacksContext {
-  packs: PackInfo[];
+  packs: InstalledPackSummary[];
   selectedPackId: string | null;
   installing: string | null;
   confirmingUninstall: string | null;
@@ -21,7 +21,7 @@ export interface PacksContext {
 
 type PacksEvent =
   | { type: 'CLIENT_CONNECTED' }
-  | { type: 'PACKS_LIST'; packs: PackInfo[] }
+  | { type: 'PACKS_LIST'; packs: InstalledPackSummary[] }
   | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
   | { type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }
   | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
@@ -32,7 +32,7 @@ type PacksEvent =
   | { type: 'PACK_DEACTIVATED'; packId: string }
   | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
-  | { type: 'UI.INSTALL'; packSlug: string; source?: string }
+  | { type: 'UI.INSTALL'; packSlug: string; sourceKind?: string }
   | { type: 'UI.UNINSTALL'; packId: string }
   | { type: 'UI.CONFIRM_UNINSTALL'; packId: string }
   | { type: 'UI.CANCEL_UNINSTALL' }
@@ -107,7 +107,7 @@ const packsState = setup({
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
+      sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, sourceKind: ev.sourceKind });
     },
 
     promptUninstall: assign({

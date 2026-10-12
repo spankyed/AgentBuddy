@@ -229,11 +229,11 @@ export const databaseSystem = setup({
         }
       );
     },
-    getBackupInfo: async ({ event }) => {
+    readBackupSummary: async ({ event }) => {
       const { path } = databaseSpec.typeOf('GET_BACKUP_INFO', event);
 
       try {
-        const info = await services.appData.backupInfo(path);
+        const info = await services.appData.readBackupSummary(path);
         broadcastToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info
@@ -318,7 +318,7 @@ export const databaseSystem = setup({
           actions: 'importDatabase',
         },
         GET_BACKUP_INFO: {
-          actions: 'getBackupInfo',
+          actions: 'readBackupSummary',
         },
         RESET_DATABASE: {
           actions: 'resetDatabase',

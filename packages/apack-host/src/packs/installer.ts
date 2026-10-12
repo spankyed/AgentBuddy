@@ -5,7 +5,7 @@ import { execFileSync } from 'child_process';
 import { parse, satisfies } from 'semver';
 import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@apackdev/sdk/build';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -52,7 +52,7 @@ export interface InstallOptions {
   /**
    * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
    * passes its own (`PACK_SNAPSHOT_FORMAT`), `apack pack install` and `apack pack dev` the one the app recorded in the data
-   * dir (`readHostInfo`). Without it — no apack that records it has started with the data dir — a build this
+   * dir (`readHostCompatibility`). Without it — no apack that records it has started with the data dir — a build this
    * process can't read is only warned about, and the app's loader decides at its next start.
    */
   packFormat?: number;
@@ -66,7 +66,7 @@ function downloadFailed(url: string) {
 }
 
 function ensurePacksDir(targetDir?: string): string {
-  const dir = targetDir ?? resolveAppContext().packsDir;
+  const dir = targetDir ?? resolveAppEnvironment().packsDir;
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -305,9 +305,9 @@ function validateExpectedChecksum(options: InstallOptions): void {
   }
 }
 
-export async function installPackFromLocal(source: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+export async function installPackFromLocal(inputPath: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   validateExpectedChecksum(options);
-  const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
+  const expanded = inputPath.startsWith('~') ? inputPath.replace('~', os.homedir()) : inputPath;
   const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
     throw new Error(`Path not found: ${resolved}`);
@@ -404,14 +404,18 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
   }
 }
 
-export async function installPack(packSlug: string, source?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
-  if (source === 'local') {
+/** The route the installer will use, also needed when recording whether GitHub updates are available. */
+export function resolveInstallSourceKind(input: string, sourceKind?: string): 'local' | 'url' | 'github' {
+  if (sourceKind === 'local' || sourceKind === 'url') return sourceKind;
+  return input.startsWith('http://') || input.startsWith('https://') ? 'url' : 'github';
+}
+
+export async function installPack(packSlug: string, sourceKind?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  const route = resolveInstallSourceKind(packSlug, sourceKind);
+  if (route === 'local') {
     return installPackFromLocal(packSlug, targetPacksDir, options);
   }
-  if (source === 'url') {
-    return installPackFromUrl(packSlug, targetPacksDir, options);
-  }
-  if (packSlug.startsWith('http://') || packSlug.startsWith('https://')) {
+  if (route === 'url') {
     return installPackFromUrl(packSlug, targetPacksDir, options);
   }
   return installPackFromGitHub(packSlug, targetPacksDir, options);
@@ -420,7 +424,7 @@ export async function installPack(packSlug: string, source?: string, targetPacks
 export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {
   // The id becomes a path that is deleted recursively: `..` would be the data dir, and `''` every pack
   if (!PACK_ID_PATTERN.test(packId)) throw new Error(`"${packId}" is not a pack id`);
-  const packsDir = path.resolve(targetPacksDir ?? resolveAppContext().packsDir);
+  const packsDir = path.resolve(targetPacksDir ?? resolveAppEnvironment().packsDir);
   const packDir = path.resolve(packsDir, packId);
   if (path.dirname(packDir) !== packsDir) throw new Error(`"${packId}" is not a pack in ${packsDir}`);
 

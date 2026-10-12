@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import type { AppModule } from '../../AppModule.ts';
 import type { ApiServer } from './ApiServer.ts';
 import { getApiPaths } from './config.ts';
-import { getAppContext } from '../../app-context.ts';
+import { getAppEnvironment } from '../../app-environment.ts';
 import { logInfo, logError } from './logger.ts';
 
 /** The variable `npm run dev` sets on the Electron it spawns. */
@@ -73,7 +73,7 @@ export function coalescing(work: () => Promise<void>, delayMs: number = DEBOUNCE
 export function createDevApiReloader(apiServer: Pick<ApiServer, 'reloadApiServer'>): AppModule {
   return {
     enable() {
-      if (!devReloadArmed(getAppContext().env, process.env)) return;
+      if (!devReloadArmed(getAppEnvironment().env, process.env)) return;
 
       const paths = getApiPaths();
       // `serverFile` is relative to `apiPath`, as `launchApiServer` spawns it

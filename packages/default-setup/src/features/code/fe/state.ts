@@ -8,10 +8,9 @@ import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-managemen
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, type TabGroupColor, type TabGroup } from '@apackdev/sdk/fe';
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apackdev/sdk/fe';
 import type { CodeSettings } from '#generated/types.ts';
-import type { ActionTab, CodeContext as Context, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract.ts';
+import type { ActionTab, CodeContext, CodeInboxEvent, OpenFile, PanelType, PromptTab, TerminalTab } from './contract.ts';
 export type { OpenFile, TerminalTab, QuickOpenResult, PanelType } from './contract.ts';
-export type { CodeContext as Context } from './contract.ts';
-import type {  } from '#features/code/be/types.ts'
+export type { CodeContext } from './contract.ts';
 import type { OutgoingCodeEvents } from '#features/code/be/contract.ts';
 
 // Import child state machines
@@ -57,7 +56,7 @@ export type Event =
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
   // Generic update event for child actors to update parent state
   | CodeInboxEvent
-  | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
+  | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<CodeContext> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
   // Tab pinning events
@@ -110,7 +109,7 @@ export type Event =
 export type CodeState = ActorRefFrom<typeof codeState>;
 
 // Shared tab removal logic (tab removal + group cleanup + explorer notify)
-function removeTabLogic(context: Context, self: AnyActorRef, path: string) {
+function removeTabLogic(context: CodeContext, self: AnyActorRef, path: string) {
   const file = context.openFiles.find(f => f.path === path)
   const newOpenFiles = context.openFiles.filter(f => f.path !== path)
   const newActiveFilePath = context.activeFilePath === path
@@ -145,7 +144,7 @@ function removeTabLogic(context: Context, self: AnyActorRef, path: string) {
 }
 
 // Close tab with terminal confirmation, then remove
-function closeTabWithConfirmation(context: Context, self: AnyActorRef, path: string) {
+function closeTabWithConfirmation(context: CodeContext, self: AnyActorRef, path: string) {
   const file = context.openFiles.find(f => f.path === path)
 
   if (file && 'isTerminal' in file && (file as any).isTerminal) {
@@ -240,13 +239,13 @@ function prunePersistedTabGroups(
   return groups.filter(group => groupIds.has(group.id))
 }
 
-function persistCodeTabs(context: Context): void {
+function persistCodeTabs(context: CodeContext): void {
   const tabGroups = pruneEmptyTabGroups(context.openFiles, context.tabGroups)
   saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
   saveTabGroups('code-plugin-tab-groups', tabGroups)
 }
 
-function finalizeRestoreState(context: Context): Partial<Context> {
+function finalizeRestoreState(context: CodeContext): Partial<CodeContext> {
   if (context.pendingTabOrder === undefined && context.pendingPersistedMetadata === undefined && context.pendingTerminalTabIds === undefined) {
     return {}
   }
@@ -268,7 +267,7 @@ function finalizeRestoreState(context: Context): Partial<Context> {
 
 const codeState = setup({
   types: {
-    context: {} as Context,
+    context: {} as CodeContext,
     events: {} as Event
   },
   actors: {
@@ -293,7 +292,7 @@ const codeState = setup({
     }),
 
     notifyDirectoryChange: ({ event, context, self }) => {
-      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
+      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<CodeContext> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
         // Swap in the new project's recent files, so Quick Open ranks its files and not
         // the previous project's. Sent as its own event: this action runs before
@@ -329,7 +328,7 @@ const codeState = setup({
       persistCodeTabs(context)
     },
     addTab: assign(({ event, context }) => {
-      const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
+      const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<CodeContext> }
       const enablePreview = context.settings?.enablePreview ?? true
       let openFiles = [...context.openFiles]
 
@@ -416,7 +415,7 @@ const codeState = setup({
       }
     }),
     updateState: assign(({ event, context }) => {
-      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
+      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<CodeContext> }
       const updates = { ...context, ...ev.updates }
 
       // Auto-clean history when tabs are removed
@@ -1449,5 +1448,5 @@ export default codeState;
 // Type definitions for parent-child communication
 export interface StateUpdate {
   type: 'UPDATE_STATE'
-  updates: Partial<Context>
+  updates: Partial<CodeContext>
 }

@@ -2,7 +2,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {getAppContext, shippedPacksDir} from '../../app-context.ts';
+import {getAppEnvironment, shippedPacksDir} from '../../app-environment.ts';
 
 // API Server Configuration
 export const API_CONFIG = {
@@ -101,10 +101,10 @@ export const getEnvironment = (port: number, options: { apiToken: string; startu
     APACK_STARTUP_ID: options.startupId,
     APACK_LOG_DIR: options.logDir,
     SHIPPED_PACKS_DIR: shippedPacksDir(),
-    // Identity for the API process; resolveAppContext() there reads these
-    APACK_ENV: getAppContext().env,
+    // Identity for the API process; resolveAppEnvironment() there reads these
+    APACK_ENV: getAppEnvironment().env,
     APACK_APP_MANIFEST: app.isPackaged ? path.join(app.getAppPath(), 'build-manifest.json') : undefined,
-    APACK_USER_DATA_DIR: getAppContext().userDataDir,
+    APACK_USER_DATA_DIR: getAppEnvironment().userDataDir,
     ELECTRON_RUN_AS_NODE: '1',
   };
 };

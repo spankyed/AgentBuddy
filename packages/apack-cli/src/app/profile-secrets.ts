@@ -28,7 +28,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { appDataDirFor, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import { _appDataPaths } from '@apackdev/sdk/utils';
 import { dataKeyAccount, dataKeyFile, fileKeyVault, osKeyVault, type KeyVault } from '@apackdev/host/secrets';
 import type { OpenedProfile } from './profiles.ts';
@@ -50,7 +50,7 @@ const readFile = (file: string): SecretsFile | undefined => {
 
 /**
  * Where the shared data dir for this environment keeps its secrets. Every *path* here comes from
- * `appDataDirFor` rather than `resolveAppContext().userDataDir`, because that one follows
+ * `appDataDirFor` rather than `resolveAppEnvironment().userDataDir`, because that one follows
  * `APACK_USER_DATA_DIR`: the source has to be the environment's own directory, never whatever an enclosing
  * profile pointed this process at.
  */
@@ -64,13 +64,13 @@ function sourceSecretsFile(env: AppEnv): string {
  * the environment and the user's choice, while a tool reading a store that already exists must use whichever
  * one the file records.
  *
- * The credential store's service is the app name, read through `resolveAppContext` — the same accessor the
+ * The credential store's service is the app name, read through `resolveAppEnvironment` — the same accessor the
  * app's own store uses, so the two cannot drift. Only `appName` is taken from that context: its `userDataDir`
  * would follow `APACK_USER_DATA_DIR`, where every path here comes from `appDataDirFor` instead.
  */
 function vaultFor(file: SecretsFile, secretsFile: string, env: AppEnv): KeyVault {
   if (file.protection === 'unprotected') return fileKeyVault(dataKeyFile(secretsFile));
-  return osKeyVault(resolveAppContext({ env }).appName);
+  return osKeyVault(resolveAppEnvironment({ env }).appName);
 }
 
 export interface SecretCopy {

@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@apackdev/testing';
+import { createAppDriver, attachToApp, waitForAppReady, type AttachedApp } from '@apackdev/testing';
 
 const APP_ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -88,8 +88,8 @@ test.describe('a connected page and a launched one', () => {
 
   test('answer the same verb identically', async () => {
     const dir = path.join(dataDir, 'screenshots');
-    const viaLaunch = appHelper(launched, dir);
-    const viaAttach = appHelper(attached.page, dir);
+    const viaLaunch = createAppDriver(launched, dir);
+    const viaAttach = createAppDriver(attached.page, dir);
 
     // Three answers rather than one, because they read different parts of the app: the machine's state
     // value, the plugins it registered, and an evaluate of this spec's own

@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { getAppContext } from '../../app-context.ts';
+import { getAppEnvironment } from '../../app-environment.ts';
 
 /**
  * The folder the API's `_getMediaPath()` (`@apackdev/sdk/utils`) uses. It used to branch on `app.isPackaged` to
@@ -7,7 +7,7 @@ import { getAppContext } from '../../app-context.ts';
  * a 404. There is one layout now, so both just join onto the directory the app owns.
  */
 export function getMediaBasePath(): string {
-  return join(getAppContext().appDir, 'media');
+  return join(getAppEnvironment().appDir, 'media');
 }
 
 export function resolveMediaFilePath(entityId: string, filename: string): string {

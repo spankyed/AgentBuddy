@@ -2,7 +2,7 @@
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.
 
 export type IncomingPacksEvents =
-  | { type: 'INSTALL_PACK'; packSlug: string; source?: string; sha256?: string }
+  | { type: 'INSTALL_PACK'; packSlug: string; sourceKind?: string; sha256?: string }
   | { type: 'UNINSTALL_PACK'; packId: string }
   | { type: 'TOGGLE_PACK_ENABLED'; packId: string }
   | { type: 'UPDATE_PACK'; packId: string }

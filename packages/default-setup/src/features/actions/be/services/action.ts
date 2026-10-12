@@ -5,7 +5,7 @@ import { runActionCode } from '#extensions/steps/action/sandbox.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export class ActionService {
-  getByLabel(label: string) {
+  findByLabel(label: string) {
     const allActions = repository.actionQueries.all();
     return allActions.find((action: ActionEntity) => action.label === label);
   }
@@ -19,8 +19,8 @@ export class ActionService {
     }
   }
 
-  async getAndExecute(label: string, params: Record<string, any> = {}): Promise<any | undefined> {
-    const action = this.getByLabel(label);
+  async executeIfFound(label: string, params: Record<string, any> = {}): Promise<any | undefined> {
+    const action = this.findByLabel(label);
     if (!action) {
       return undefined;
     }

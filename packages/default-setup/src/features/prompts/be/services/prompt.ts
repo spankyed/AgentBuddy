@@ -2,7 +2,7 @@ import { executeTemplate, createTemplateResolver } from '@apackdev/sdk/templates
 import { repository } from '#generated/repository.ts';
 
 export class PromptService {
-  getByLabel(label: string) {
+  findByLabel(label: string) {
     return repository.promptQueries.byLabel(label);
   }
 
@@ -15,7 +15,7 @@ export class PromptService {
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {
-    const resolver = createTemplateResolver(executeTemplate, (label: string) => this.getByLabel(label));
+    const resolver = createTemplateResolver(executeTemplate, (label: string) => this.findByLabel(label));
     return executeTemplate(templateFn, templateParams, resolver);
   }
 
@@ -28,7 +28,7 @@ export class PromptService {
     label: string, 
     templateParams: Record<string, any>
   ) {
-    const prompt = this.getByLabel(label);
+    const prompt = this.findByLabel(label);
     if (!prompt) {
       return undefined;
     }

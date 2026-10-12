@@ -26,7 +26,7 @@ export type AppEnv = (typeof APP_ENVS)[number];
 /** Channels recorded in a packaged build manifest. */
 export type AppChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
-/** The app's own directory inside Electron's `userData`. See `AppContext.appDir`. */
+/** The app's own directory inside Electron's `userData`. See `AppEnvironment.appDir`. */
 const APP_DIR = 'apack';
 
 const APP_NAMES: Record<AppEnv, string> = {
@@ -37,7 +37,7 @@ const APP_NAMES: Record<AppEnv, string> = {
   test: 'apack-test',
 };
 
-export interface AppContext {
+export interface AppEnvironment {
   /** Runtime environment; independent of the selected data directory */
   env: AppEnv;
   /** Electron app name; also the default data dir name. */
@@ -99,7 +99,7 @@ export function appDataDirFor(env: AppEnv): string {
 }
 
 /**
- * The one directory the app owns inside a data dir. Taken as a function as well as an `AppContext` member
+ * The one directory the app owns inside a data dir. Taken as a function as well as an `AppEnvironment` member
  * because host code is often handed a data dir rather than a context — a lock file, a dev-server marker.
  *
  * @internal Host-only: a pack reaches its own directory through `getDataDirPath` (`#generated/paths`).
@@ -110,7 +110,7 @@ export const _appDirOf = (userDataDir: string): string => path.join(userDataDir,
  * Resolve runtime identity and storage independently. Explicit inputs override the parent's
  * APACK_ENV and APACK_USER_DATA_DIR handoffs; omitted storage uses the environment's default.
  */
-export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
+export function resolveAppEnvironment(input: { env?: AppEnv; userDataDir?: string } = {}): AppEnvironment {
   const env = input.env ?? parseAppEnv(process.env.APACK_ENV);
   if (!env) {
     throw new Error(

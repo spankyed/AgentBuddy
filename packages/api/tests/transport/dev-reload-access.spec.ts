@@ -13,7 +13,7 @@ process.env.APACK_API_TOKEN = 'the-run-token';
 const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/transport/websocket');
 const { API_HOST } = await import('@apackdev/sdk/utils/pure');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/boot/config');
-const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { readApiEndpoint } = await import('@apackdev/host/process-liveness');
 const { API_TOKEN_HEADER } = await import('@apackdev/sdk/utils/pure');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
@@ -91,7 +91,7 @@ it('listens on loopback only', () => {
 });
 
 describe('the files the API publishes', () => {
-  const { apiPortFile, apiTokenFile } = resolveAppContext();
+  const { apiPortFile, apiTokenFile } = resolveAppEnvironment();
   const clear = () => { for (const file of [apiPortFile, apiTokenFile]) fs.rmSync(file, { force: true }); };
 
   it("publishes its port for every run, so a local tool can tell an app is running on the data dir", () => {

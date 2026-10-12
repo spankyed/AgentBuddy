@@ -7,7 +7,7 @@ This is the discovery workstream of [manifest maturity](manifest-maturity.md). I
 [declarative contributions plan](../archive/plans/declarative-contributions.md) as the target for complete discovery.
 The older inventory remains historical evidence. This plan owns the current implementation target;
 [manifest maturity](manifest-maturity.md) records decisions transferred from the other archived designs.
-The reworked [naming contracts goal](../goals/goal-naming-conventions.md) completes first. Re-audit code
+The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete. Re-audit code
 names on that result rather than applying the old naming survey or renaming a surface twice.
 
 ## Goal and boundary
@@ -167,9 +167,9 @@ those implement behavior beyond discovery.
 
 ### Pack information: stop using registration as an inventory
 
-`features/packs/be/system.ts::toPackInfoList()` joins installed manifests with
+`features/packs/be/system.ts::toInstalledPackSummaries()` joins installed manifests with
 `registry.getPackExtensions()`. Disabled or failed packs therefore lose contribution details.
-`registry.ts::featureInfo()` and the listing part of `getPackExtensions()` duplicate information that
+`registry.ts::featureSummaries()` and the listing part of `getPackExtensions()` duplicate information that
 belongs in the descriptor. Replace these projections and their empty-extension fallback with a catalog
 view joined to host-owned installation records, activation outcomes and applied-content offers.
 
@@ -286,7 +286,7 @@ not become a second coordination layer alongside the old shell actions.
 
 ## Delivery sequence
 
-1. **Close the inventory after naming lands.** Map every registration/manifest field and reader to declaration, metadata,
+1. **Close the inventory on the completed naming baseline.** Map every registration/manifest field and reader to declaration, metadata,
    asset or runtime behavior. Record exact remaining gaps and dependency ownership rules here.
 2. **Establish the shared foundation with settings.** Build descriptor validation and the catalog with
    the linked settings plan as the first consumer. Establish checked binding, ownership checks and
@@ -313,7 +313,7 @@ not become a second coordination layer alongside the old shell actions.
 
 Each implementation checkpoint remains usable with migrated callers. Apply the existing snapshot-format
 rule for contract changes; do not bump package release versions. This work does not require making pack
-execution lazy. Link the resulting catalog boundary into the [lazy activation plan](lazy-activation.md)
+execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](deferred/lazy-activation.md)
 without changing migration/content execution order here.
 
 ## Handoff to subsequent plans
@@ -323,7 +323,7 @@ contract. Discovery separates reference metadata from executable navigation bind
 `navigate` callbacks before [entity opening](open-entity.md) migrates their callers. Frontend boundaries
 contain runtime component failures; API consumption extends the existing caller-bound facade; replacement
 uses committed artifact/catalog revisions. None introduces a second contribution inventory. Lazy
-activation remains a measured follow-up; discovery alone does not change when migrations or systems run.
+activation is deferred outside the active roadmap; discovery alone does not change when migrations or systems run.
 
 ## Acceptance: no discovery gaps
 

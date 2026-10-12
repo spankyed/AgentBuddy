@@ -15,7 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 
 const logger = createLogger('installed-packs');
@@ -42,7 +42,7 @@ interface InstalledPacksFile {
 }
 
 function getInstalledPacksPath(): string {
-  return resolveAppContext().installedPacksFile;
+  return resolveAppEnvironment().installedPacksFile;
 }
 
 /**

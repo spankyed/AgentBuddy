@@ -1,7 +1,7 @@
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-18). Resume it with
 > `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
-Status: retained, re-audit after the naming goal. Current dev-mode has API/source watchers and a pack
+Status: retained; re-audit against the completed naming contracts. Current dev-mode has API/source watchers and a pack
 runtime watcher; this older survey must not be treated as their complete inventory. Separate package-dist
 freshness from descriptor/codegen/runtime freshness. The latter is required by
 [discovery](../plans/discovery-without-activation.md): declaration edits must refresh catalog metadata

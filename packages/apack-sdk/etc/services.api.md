@@ -38,7 +38,6 @@ export interface ActionSender {
 
 // @public
 export interface AppDataService {
-    backupInfo(backupPath: string): Promise<BackupInfo | null>;
     completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
     hasOnboarded(): boolean;
@@ -49,6 +48,7 @@ export interface AppDataService {
         missingDatabases: BackupDatabase[];
         unknownEntityTypes: Array<[string, number]>;
     }>;
+    readBackupSummary(backupPath: string): Promise<BackupSummary | null>;
     reset(): Promise<void>;
 }
 
@@ -56,7 +56,7 @@ export interface AppDataService {
 export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 // @public (undocumented)
-export interface BackupInfo {
+export interface BackupSummary {
     appVersion?: string;
     // (undocumented)
     databases: BackupDatabase[];
@@ -184,7 +184,7 @@ export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral
 export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
 
 // @public
-export interface SecretInfo {
+export interface SecretMetadata {
     // (undocumented)
     createdAt: number;
     // (undocumented)
@@ -205,13 +205,13 @@ export const _secretProviderLabel: (provider: SecretProvider) => string;
 
 // @internal (undocumented)
 export const _secretRules: {
-    add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
+    add<T extends SecretMetadata>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
         label: string;
     }): T[];
-    select<T extends SecretInfo>(secrets: readonly T[], id: string, now: number): T[];
-    rename<T extends SecretInfo>(secrets: readonly T[], id: string, label: string, now: number): T[];
-    remove<T extends SecretInfo>(secrets: readonly T[], id: string): T[];
-    selectedFor<T extends SecretInfo>(secrets: readonly T[], provider: ProviderName): T;
+    select<T extends SecretMetadata>(secrets: readonly T[], id: string, now: number): T[];
+    rename<T extends SecretMetadata>(secrets: readonly T[], id: string, label: string, now: number): T[];
+    remove<T extends SecretMetadata>(secrets: readonly T[], id: string): T[];
+    selectedFor<T extends SecretMetadata>(secrets: readonly T[], provider: ProviderName): T;
 };
 
 // @public
@@ -220,7 +220,7 @@ export type SecretsProtection = 'os-keystore' | 'unprotected' | 'unavailable';
 // @public
 export interface SecretsService {
     delete(id: string): void;
-    list(): SecretInfo[];
+    list(): SecretMetadata[];
     // (undocumented)
     rename(id: string, label: string): void;
     select(id: string): void;
@@ -231,7 +231,7 @@ export interface SecretsService {
 // @public
 export interface SecretsSnapshot {
     // (undocumented)
-    secrets: SecretInfo[];
+    secrets: SecretMetadata[];
     // (undocumented)
     status: SecretsStatus;
 }
@@ -268,7 +268,7 @@ export interface SettingsService {
 }
 
 // @internal
-export const _toSecretInfo: (input: SecretInfo) => SecretInfo;
+export const _toSecretMetadata: (input: SecretMetadata) => SecretMetadata;
 
 // @public
 export interface TraceEntityMeta {
