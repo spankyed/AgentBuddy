@@ -46,6 +46,16 @@ the clean target checkout. It pins the committed inputs, merges in a detached wo
 full strict chain. Merge only those tested commits; rerun if any input advances.
 See [worktree development](docs/reference/worktree-development.md).
 
+## Naming
+
+- `find` permits absence; `get` returns the value or throws. Preserve behavior when renaming a nullable lookup.
+- `read` reads disk, `fetch` crosses the network, `load` loads executable code, and `resolve` computes an answer. Collections may be empty.
+- Qualify exported type names by their owner; never export bare `Context`, including aliases.
+- Keep meaningful machine, execution, compiler and RPC contexts. Use `Args` for operation inputs, `Scope` for ambient dependencies and `Environment` for resolved environment/path information.
+- Name the object or its role (`Summary`, `Metadata`, `Snapshot`, `Definition`, lifecycle stage). A suffix alone is not a defect; preserve useful domain/library vocabulary.
+- Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
+- Check measurable contracts, not retired words. The repo naming specs hold nullable owned getters and bare exported `Context` to these rules; noun classification remains review guidance. See [the naming goal](docs/goals/goal-naming-conventions.md).
+
 ## Release metadata
 
 Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
