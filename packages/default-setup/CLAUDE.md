@@ -349,7 +349,7 @@ them — but `kind` is the manifest's and not the folder's: `actions` and `toggl
 
 - **Tiptap plugins** (`src/extensions/tiptap/index.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Carried by `pack-entry-fe.ts`'s registration.
 - **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
-- **References** (`__generated__/references.ts`) — aggregates reference types, categories and item providers from the threads, library and notes features, for the tiptap reference system: which of each feature's things can be linked to from an editor, and how to render and open a link.
+- **References** (`__generated__/references.ts`) — the reference types, categories and item providers of the threads, library and notes features, folded into the one `PackReferences` the frontend entry registers. The tiptap plugin here renders references, but it reads `referenceRegistry` (`@apackdev/sdk/fe/references`) rather than this file, so what it draws, autolinks and lists is **every** registered pack's types, this pack's among them.
 
 ## Migrations
 

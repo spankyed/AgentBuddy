@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
 import { getDslTypes, tiptapPluginRegistry } from '@apackdev/sdk/fe';
+import { referenceRegistry, type PackReferences, type ReferenceTypeConfig } from '@apackdev/sdk/fe/references';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
@@ -157,5 +158,56 @@ describe('tiptap plugins, which have no key', () => {
     tiptapPluginRegistry.getAll().length = 0;
 
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
+  });
+});
+
+/**
+ * Reference types have two identities and both must be unique across packs: the **type name**, which is what
+ * a reference carries (`ReferenceItem.type`, and the editor node's stored attribute), and the **protocol**,
+ * which is what a URL names. They are genuinely different facts — default-setup's `document` type uses the
+ * scheme `doc` — so neither can stand in for the other, and nothing checked either until an external pack's
+ * references could reach the app at all.
+ */
+describe('reference types, which have two identities', () => {
+  const memo: ReferenceTypeConfig = { protocol: 'memo', category: 'memos', icon: {} as never, svgElements: [], navigate: () => {} };
+  const packReferences = (types: Record<string, ReferenceTypeConfig>, category: string): PackReferences => ({
+    types,
+    categories: [{ id: category, label: category, primaryIcon: {} as never }],
+    itemsProviders: [{ category, useItems: () => ({ value: [] }) as never }],
+  });
+
+  it("answers with every registered pack's types, categories and providers", () => {
+    add('memo-pack', { references: packReferences({ memo }, 'memos') });
+    add('card-pack', { references: packReferences({ card: { ...memo, protocol: 'card', category: 'cards' } }, 'cards') });
+
+    expect(Object.keys(referenceRegistry.types())).toEqual(['memo', 'card']);
+    expect(referenceRegistry.protocols()).toEqual(['memo', 'card']);
+    expect(referenceRegistry.categories().map((c) => c.id)).toEqual(['memos', 'cards']);
+    expect(referenceRegistry.itemsProviders().map((p) => p.category)).toEqual(['memos', 'cards']);
+  });
+
+  it('refuses a second pack claiming a type name, naming both packs', () => {
+    add('memo-pack', { references: packReferences({ memo }, 'memos') });
+
+    expect(() => add('other-pack', { references: packReferences({ memo: { ...memo, protocol: 'other' } }, 'memos') }))
+      .toThrow('Reference type collision: "memo" — pack "other-pack" vs "memo-pack"');
+  });
+
+  it('refuses a second pack claiming a protocol, naming both packs', () => {
+    add('memo-pack', { references: packReferences({ memo }, 'memos') });
+
+    expect(() => add('other-pack', { references: packReferences({ sticker: memo }, 'stickers') }))
+      .toThrow('Reference protocol collision: "memo://" — pack "other-pack" vs "memo-pack"');
+  });
+
+  it("loses a pack's types when it unregisters, leaving the other pack's", () => {
+    add('memo-pack', { references: packReferences({ memo }, 'memos') });
+    add('card-pack', { references: packReferences({ card: { ...memo, protocol: 'card', category: 'cards' } }, 'cards') });
+
+    remove('memo-pack');
+
+    expect(referenceRegistry.type('memo')).toBeUndefined();
+    expect(referenceRegistry.type('card')).toBeDefined();
+    expect(referenceRegistry.protocols()).toEqual(['card']);
   });
 });

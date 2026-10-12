@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 import type { PluginDefinition } from './plugin.ts';
 import type { TiptapPlugin } from './tiptap-plugins.ts';
+import type { PackReferences } from './reference-types.ts';
 import type { DslTypeConfig } from './dsl-types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
@@ -31,4 +32,13 @@ export interface PackFERegistration {
   blocks?: BlockDefinition[];
   /** DSL types for the host's code editors, by name (apack.json `dsl` entries with a `monaco` target) */
   dslTypes?: Record<string, DslTypeConfig>;
+  /**
+   * What an editor can link to among this pack's things (apack.json `features[].lifecycle`'s neighbour,
+   * `features[].references`), merged across the pack's features.
+   *
+   * It reaches the app through this registration like every other frontend contribution. It did not: the
+   * member was missing, so four documents said `references` was "built-in packs only" while nothing
+   * enforced that and nothing an external pack declared could reach the editor at all.
+   */
+  references?: PackReferences;
 }

@@ -310,7 +310,7 @@ Other feature fields:
 |---|---|
 | `system.events.incoming` | Event types the app accepts for the system (`sendToSystem`) besides those its machine's transitions name |
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
-| `references` | Built-in packs only; ignored for external packs |
+| `references` | Module declaring which of the feature's things an editor can link to: `referenceTypes`, `categories` and `itemsProviders`. Registered through the pack's frontend entry, so whichever pack provides the editor renders and lists them |
 
 A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
 

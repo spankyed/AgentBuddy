@@ -85,7 +85,7 @@ unrepresentable.
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
-| `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. Built-in packs only: ignored for external packs |
+| `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. It exports `referenceTypes`, `categories` and `itemsProviders`; the build fails naming any it doesn't |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 

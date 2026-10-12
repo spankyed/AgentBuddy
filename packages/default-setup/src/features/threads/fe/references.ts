@@ -24,7 +24,7 @@ export const categories: CategoryConfig[] = [
   { id: 'threads', label: 'Threads', primaryIcon: History },
 ]
 
-export const itemsProvider: CategoryItemsProvider = {
+export const itemsProviders: CategoryItemsProvider[] = [{
   category: 'threads',
   // The plugin's state, as it changes
   useItems: () => usePluginState('threads', (state): ReferenceItem[] => {
@@ -38,4 +38,4 @@ export const itemsProvider: CategoryItemsProvider = {
       type: 'thread' as const,
     }))
   }),
-}
+}]

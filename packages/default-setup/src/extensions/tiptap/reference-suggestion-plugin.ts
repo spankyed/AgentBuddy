@@ -1,7 +1,7 @@
 import { Plugin } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
 import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-plugin-key.ts'
-import { CATEGORIES } from './reference-config.ts'
+import { referenceRegistry } from '@apackdev/sdk/fe/references'
 
 export { referenceSuggestionPluginKey, type ReferenceSuggestionState }
 
@@ -78,7 +78,7 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
 
         if (!prev.active || prev.level === 'category') {
           const categoryCheck = afterHash.endsWith(':') ? afterHash.slice(0, -1) : afterHash
-          if (categoryCheck && !CATEGORIES.some(c => c.label.toLowerCase().includes(categoryCheck.toLowerCase()))) {
+          if (categoryCheck && !referenceRegistry.categories().some(c => c.label.toLowerCase().includes(categoryCheck.toLowerCase()))) {
             return prev.active ? { ...defaultState } : prev
           }
         }

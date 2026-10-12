@@ -335,7 +335,7 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: z.record(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
-  references: z.string().describe('Path to a module declaring which of this feature\'s things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs.').optional(),
+  references: z.string().describe('Path to a module declaring which of this feature\'s things are linkable from an editor. It exports `referenceTypes` (each with a protocol, category, icon and navigate), `categories` and `itemsProviders`. Registered through the pack\'s frontend entry, so whichever pack provides the editor renders them.').optional(),
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);

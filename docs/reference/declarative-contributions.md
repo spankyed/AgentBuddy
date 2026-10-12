@@ -22,7 +22,7 @@ the pack's contributions sit, as against what it is made of (`features`) or what
 
 | key | what it declares |
 |---|---|
-| `features` | `{ <id>: { designation?, settings?, system?, plugin?, services?, repositories? } }` |
+| `features` | `{ <id>: { designation?, settings?, system?, plugin?, services?, repositories?, lifecycle?, references? } }` |
 | `extensions.steps` | `{ <type>: { kind?, build \| trigger, fe?, runtime?, dsl? } }` |
 | `extensions.blocks` | `{ <type>: { kind?, fe?, be? } }` |
 | `extensions.artifacts` | `{ <type>: { icon, fe? } }` |

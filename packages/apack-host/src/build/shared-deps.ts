@@ -197,6 +197,9 @@ export interface SdkFeModule {
 
 export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
   '@apackdev/sdk/fe':           { globalKey: 'sdkFe' },
+  // Shared because `referenceRegistry` reads the bound frontend host: a pack inlining it would hold its own
+  // copy, which no app has bound, and see none of the other packs' reference types
+  '@apackdev/sdk/fe/references': { globalKey: 'sdkFeReferences' },
   '@apackdev/sdk/runtime':      { globalKey: 'sdkRuntime' },
   '@apackdev/sdk/steps':        { globalKey: 'sdkSteps' },
   '@apackdev/sdk/artifacts':    { globalKey: 'sdkArtifacts' },

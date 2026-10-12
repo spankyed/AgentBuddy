@@ -58,7 +58,7 @@ export const categories: CategoryConfig[] = [
   { id: 'notes', label: 'Notes', primaryIcon: NotebookText },
 ]
 
-export const itemsProvider: CategoryItemsProvider = {
+export const itemsProviders: CategoryItemsProvider[] = [{
   category: 'notes',
   // The plugin's state, as it changes
   useItems: () => usePluginState('notes', (state): ReferenceItem[] => {
@@ -72,4 +72,4 @@ export const itemsProvider: CategoryItemsProvider = {
         type: NOTE_TYPE_TO_REFERENCE_TYPE[n.noteType] as string,
       }))
   }),
-}
+}]

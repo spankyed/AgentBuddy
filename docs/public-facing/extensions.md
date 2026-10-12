@@ -542,7 +542,24 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 | `tiptapPlugins` | `extensions.fe.tiptapPlugins` |
 | `appExtensions` | `extensions.fe.appExtensions` |
 | `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
+| `references` | Every feature's `references` module, folded into one (`__generated__/references.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features.<id>.references` (`ReferenceTypeConfig`s from `@apackdev/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+### References
+
+`features.<id>.references` names a module saying which of the feature's things an editor can link to. It exports
+three things, and the build fails naming any it doesn't:
+
+- `referenceTypes` — a `ReferenceTypeConfig` (`@apackdev/sdk/fe/references`) per type, keyed by the type name a
+  reference carries: its URL `protocol`, the `category` it is listed under, an `icon`, the `svgElements` its pill
+  is drawn with, and `navigate(refId)`, which opens the thing it names.
+- `categories` — the groups the `@` picker offers.
+- `itemsProviders` — one per category, each a composable giving that category's items from the owning plugin's
+  state.
+
+The type name and the protocol are separate facts — default-setup's `document` type uses the scheme `doc` — and
+both must be unique across packs: a second pack claiming either is refused, naming both packs.
+
+They are registered through your pack's frontend entry, so whichever pack provides the editor renders your type's
+pill, autolinks its protocol and lists its items. That is every pack's, not only the app's own.

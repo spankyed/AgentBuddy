@@ -36,7 +36,7 @@ export const categories: CategoryConfig[] = [
   { id: 'documents', label: 'Library', primaryIcon: Library },
 ]
 
-export const itemsProvider: CategoryItemsProvider = {
+export const itemsProviders: CategoryItemsProvider[] = [{
   category: 'documents',
   // The plugin's state, as it changes
   useItems: () => usePluginState('library', (state): ReferenceItem[] => {
@@ -58,4 +58,4 @@ export const itemsProvider: CategoryItemsProvider = {
 
     return [...folderItems, ...docItems]
   }),
-}
+}]

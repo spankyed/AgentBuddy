@@ -490,6 +490,7 @@ export function generatePackFiles(
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
       ...features.flatMap((f) => Object.values(f.lifecycle ?? {})),
+      ...features.flatMap((f) => (f.references ? [f.references] : [])),
       ...Object.values(manifest.extensions?.services ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
@@ -1093,6 +1094,10 @@ ${contractCheck}`;
     const regProps: string[] = [];
     if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
     if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
+    if (packFeatures(manifest).some((f) => f.references)) {
+      extraImports.push(`import { references } from './references.ts';`);
+      regProps.push(`  references,`);
+    }
     if (appExt.length) {
       const extObj = appExt.map(([key]) => `${key}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);
@@ -1658,36 +1663,58 @@ export type { Repositories } from './repository.ts';
 `;
   }
 
+  /** The three exports a references module names, which codegen imports by convention and so checks */
+  const REFERENCE_EXPORTS = ['referenceTypes', 'categories', 'itemsProviders'] as const;
+
+  /**
+   * The module a feature's `references` names, with its three exports checked. The names are this
+   * convention rather than the manifest's, so a renamed export used to reach the author as a missing
+   * binding inside a generated file, naming neither the manifest key nor what was expected.
+   */
+  function referencesModule(feature: PackFeature): string {
+    const label = `Feature "${feature.id}": references`;
+    const file = sourceFileOf(feature.references!);
+    if (!file) throw new Error(`${label}: no module found at ${feature.references} (.ts or /index.ts)`);
+    for (const name of REFERENCE_EXPORTS) {
+      if (!exportOf(file, name)?.value) {
+        throw new Error(`${label}: ${feature.references} doesn't export "${name}" (${REFERENCE_EXPORTS.map((n) => `\`${n}\``).join(', ')} are all required)`);
+      }
+    }
+    return feature.references!;
+  }
+
   function generateReferences(): string {
     const features = packFeatures(manifest);
     const referenceFeatures = features.filter(f => f.references);
 
     const imports = referenceFeatures.map((f, i) => {
-      const importPath = toImportPath(root, f.references!);
-      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${importPath}';`;
+      const importPath = toImportPath(root, referencesModule(f));
+      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProviders as itemsProviders${i} } from '${importPath}';`;
     }).join('\n');
 
     const typesSpread = referenceFeatures.map((_, i) => `  ...types${i},`).join('\n');
     const categoriesSpread = referenceFeatures.map((_, i) => `  ...categories${i},`).join('\n');
-    const providersEntries = referenceFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
+    const providersSpread = referenceFeatures.map((_, i) => `  ...itemsProviders${i},`).join('\n');
 
     return `${HEADER}
-import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
+import type { PackReferences } from '@apackdev/sdk/fe/references';
 ${imports}
 
-export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
+/**
+ * What an editor can link to among this pack's things. The generated frontend entry registers it, so it
+ * reaches the app rather than only this pack's own frontend.
+ */
+export const references: PackReferences = {
+  types: {
 ${typesSpread}
-};
-
-export const CATEGORIES: CategoryConfig[] = [
+  },
+  categories: [
 ${categoriesSpread}
-];
-
-export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
-${providersEntries}
-];
-
-export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
+  ],
+  itemsProviders: [
+${providersSpread}
+  ],
+};
 
 export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 `;

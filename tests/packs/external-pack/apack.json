@@ -33,7 +33,8 @@
       "lifecycle": {
         "onInit": "src/features/memos/be/lifecycle.ts#onInit",
         "onShutdown": "src/features/memos/be/lifecycle.ts#onShutdown"
-      }
+      },
+      "references": "src/features/memos/fe/references.ts"
     },
     "notes": {
       "settings": "src/features/notes/settings.ts",

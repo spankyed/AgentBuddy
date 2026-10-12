@@ -252,7 +252,7 @@
           },
           "references": {
             "type": "string",
-            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
+            "description": "Path to a module declaring which of this feature's things are linkable from an editor. It exports `referenceTypes` (each with a protocol, category, icon and navigate), `categories` and `itemsProviders`. Registered through the pack's frontend entry, so whichever pack provides the editor renders them."
           }
         },
         "additionalProperties": false

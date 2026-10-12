@@ -531,6 +531,7 @@ export interface PackFERegistration {
     dslTypes?: Record<string, DslTypeConfig>;
     features?: Record<string, PackFEFeature>;
     id: string;
+    references?: PackReferences;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
