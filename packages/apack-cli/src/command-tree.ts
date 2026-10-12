@@ -32,6 +32,7 @@ export const COMMANDS = {
       'facade-report': { usage: '[--update] [--skip-generate]', description: 'Check or update the pack facade report', load: async () => (await import('./commands/facade-report')).facadeReport },
       'install': { usage: '<source> [--profile <name>]', description: 'Install a pack into an app', load: async () => (await import('./commands/pack-install')).install, detailedHelp: true },
       'uninstall': { usage: '<id> [--profile <name>]', description: 'Remove an installed pack', load: async () => (await import('./commands/pack-uninstall')).uninstall },
+      'upgrade': { usage: '<id> [--profile <name>]', description: 'Upgrade an installed pack to a compatible GitHub release', load: async () => (await import('./commands/pack-upgrade')).upgrade },
       'outdated': { usage: '[--profile <name>] [--json]', description: 'Check installed packs for compatible GitHub releases', load: async () => (await import('./commands/pack-outdated')).outdated },
       'list': { usage: '[--profile <name>]', description: 'List installed packs', load: async () => (await import('./commands/list')).list },
       'dev': { usage: '[--host <path|beta>] [profile flags]', description: 'Build, install, and watch this pack in an app', load: async () => (await import('./commands/dev')).dev, detailedHelp: true },

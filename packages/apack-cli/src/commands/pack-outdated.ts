@@ -3,10 +3,11 @@ import type { AppContext } from '@apackdev/sdk/env';
 import { packInventory } from '../app/installed-packs';
 import { parseStorageProfile, targetDataContext } from '../utils';
 
-export async function packUpdates(context: AppContext, find = findLatestRelease) {
+export async function packUpdates(context: AppContext, find = findLatestRelease, packId?: string) {
   const hostVersion = readHostInfo(context.userDataDir).version;
   const results = [];
   for (const { manifest, record } of packInventory(context)) {
+    if (packId !== undefined && manifest.id !== packId) continue;
     const base = { id: manifest.id, currentVersion: manifest.version, source: record.installedFrom ?? null };
     if (manifest.builtIn || !record.installedFrom) {
       results.push({ ...base, status: 'unmanaged' as const, reason: manifest.builtIn ? 'ships with the app' : 'no recorded GitHub source', candidate: null });
