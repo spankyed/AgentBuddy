@@ -57,7 +57,7 @@ async function installExternalPack(id: string, entityType: string): Promise<void
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     `module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`,

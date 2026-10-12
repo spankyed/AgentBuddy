@@ -3,12 +3,11 @@ import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
-import type { PackSnapshot } from '@apackdev/sdk/build';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
 import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, readPackIntegrity } from '../layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, readPackSnapshot, isPackLayout, readPackIntegrity } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -86,25 +85,19 @@ export function loadSingleExternalPack(
   }
 
   // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
-  const formatProblem = buildFormatProblem(dir);
-  if (formatProblem) return skipped(manifest, formatProblem);
-
-  const snapshotPath = path.join(dir, PACK_LAYOUT.snapshot);
-  if (fs.existsSync(snapshotPath)) {
-    try {
-      const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
-      const hostSdk = getHostSdkVersion();
-      if (snapshot.sdkVersion && hostSdk) {
-        const packMajor = snapshot.sdkVersion.split('.')[0];
-        const hostMajor = hostSdk.split('.')[0];
-        if (packMajor !== hostMajor) {
-          logger.warn(
-            `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
-          );
-        }
+  try {
+    const snapshot = readPackSnapshot(dir);
+    const hostSdk = getHostSdkVersion();
+    if (snapshot.sdkVersion && hostSdk) {
+      const packMajor = snapshot.sdkVersion.split('.')[0];
+      const hostMajor = hostSdk.split('.')[0];
+      if (packMajor !== hostMajor) {
+        logger.warn(
+          `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
+        );
       }
-    } catch {}
-  }
+    }
+  } catch (error) { return skipped(manifest, (error as Error).message); }
 
   const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
   if ('problem' in registration) return registration;

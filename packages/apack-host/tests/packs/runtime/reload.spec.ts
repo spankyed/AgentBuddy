@@ -34,7 +34,7 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }
 
@@ -92,7 +92,7 @@ describe('reloading a pack the app ships', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, entries: [] }));

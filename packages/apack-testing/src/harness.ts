@@ -30,7 +30,7 @@ import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, parseSnapshot, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
 import { untypedQx } from '@apackdev/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
@@ -215,9 +215,12 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
     if (!fs.existsSync(snapshotFile)) {
       throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`apack pack build\` once to fetch dependencies.`);
     }
-    const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8')) as PackSnapshot;
-    const mismatch = _snapshotFormatMismatch(snapshot);
+    const raw: unknown = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8'));
+    const mismatch = _snapshotFormatMismatch(raw);
     if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${_cliFormatMismatchMessage(mismatch)}. Run \`apack pack build\` to fetch it again.`);
+    const result = parseSnapshot(raw);
+    if (!result.snapshot) throw new Error(`Dependency "${depId}" in ${snapshotFile}: ${result.diagnostics.map(issue => issue.message).join('; ')}`);
+    const snapshot = result.snapshot;
     const buildDir = path.join(dir, 'build');
     dependencies.set(depId, { snapshot, dir, manifest: snapshot.manifest, ...(fs.existsSync(buildDir) && { buildDir }) });
   }

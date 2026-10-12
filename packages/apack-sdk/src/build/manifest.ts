@@ -110,13 +110,14 @@ export interface SnapshotFormatMismatch {
  * @internal Host-only: the apack CLI, the pack test harness, the pack installer and the app's pack loader.
  */
 export function _snapshotFormatMismatch(
-  snapshot: { format?: unknown; sdkVersion?: string },
+  snapshot: unknown,
   readerFormat: number = PACK_SNAPSHOT_FORMAT,
 ): SnapshotFormatMismatch | undefined {
-  const { format } = snapshot;
+  const format = snapshot && typeof snapshot === 'object' && 'format' in snapshot ? snapshot.format : undefined;
   if (format === readerFormat) return undefined;
   const newer = typeof format === 'number' && format > readerFormat;
-  const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
+  const sdkVersion = snapshot && typeof snapshot === 'object' && 'sdkVersion' in snapshot ? snapshot.sdkVersion : undefined;
+  const builtWith = typeof sdkVersion === 'string' && sdkVersion ? ` (SDK ${sdkVersion})` : '';
   return {
     newer,
     problem: `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${newer ? 'a newer' : 'an older'} apack CLI${builtWith}`,

@@ -52,7 +52,7 @@ function installTestPack() {
     formatVersion: PACK_LAYOUT_VERSION, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');

@@ -24,7 +24,7 @@ describe('external pack runtime', () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'bridge-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       const { cronToHuman } = require('@apackdev/sdk/cron');
@@ -52,7 +52,7 @@ describe('external pack runtime', () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'lazy-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       exports.registration = { id: 'lazy-pack', services: { step: { run: () => typeof require('@apackdev/sdk/logger').createLogger } } };

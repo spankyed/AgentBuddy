@@ -43,7 +43,7 @@ function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFil
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
   write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
 }
 

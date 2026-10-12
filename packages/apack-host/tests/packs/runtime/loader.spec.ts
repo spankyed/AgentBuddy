@@ -35,7 +35,7 @@ function makePack(
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
   return packDir;
 }
@@ -69,6 +69,22 @@ describe('pack-loader', () => {
       fs.mkdirSync(path.join(_appDirOf(tmpDir), 'packs'), { recursive: true });
       const result = loadExternalPacks();
       expect(result).toEqual([]);
+    });
+
+    it('refuses malformed snapshot declarations before executing the runtime', () => {
+      const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'broken-data', { id: 'broken-data', name: 'Broken', version: '1.0.0' });
+      const marker = path.join(tmpDir, 'runtime-executed');
+      fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');`);
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: { id: 'broken-data' } }));
+      const warnings: string[] = [];
+      const unsubscribe = rootEvents.onLog(event => {
+        if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
+      });
+      try {
+        expect(loadExternalPacks()).toEqual([]);
+        expect(warnings.some(message => message.includes('snapshot.json manifest.name'))).toBe(true);
+        expect(fs.existsSync(marker)).toBe(false);
+      } finally { unsubscribe(); }
     });
 
     it('discovers and loads a valid pack, with the system events its manifest adds', () => {
@@ -233,7 +249,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: { id, name: id, version: '1.0.0' }, types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
   }

@@ -32,7 +32,7 @@ function builtPack(hostVersion: string): string {
   };
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   return root;
 }
 

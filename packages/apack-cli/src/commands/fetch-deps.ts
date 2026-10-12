@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@apackdev/sdk/build';
+import { CONTENT_INDEX_FILE, parseSnapshot, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
@@ -47,9 +47,20 @@ export interface DepFiles {
   contentDir?: string;
 }
 
+class SnapshotFormatError extends Error {
+  constructor(file: string, readonly mismatch: SnapshotFormatMismatch) {
+    super(`${file}: ${_cliFormatMismatchMessage(mismatch)}`);
+  }
+}
+
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
   if (fs.existsSync(filePath)) {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const mismatch = _snapshotFormatMismatch(raw);
+    if (mismatch) throw new SnapshotFormatError(filePath, mismatch);
+    const result = parseSnapshot(raw);
+    if (!result.snapshot) throw new Error(`${filePath}: ${result.diagnostics.map(issue => issue.message).join('; ')}`);
+    return result.snapshot;
   }
   return null;
 }
@@ -109,7 +120,7 @@ function resolveFromLocal(root: string, depId: string): DepFiles | null {
  * inside an apack checkout (a test fixture, say) builds against that checkout's packages rather
  * than an installed app's older copy.
  */
-async function resolveFromWorkspace(root: string, depId: string): Promise<DepFiles | null> {
+async function resolveFromWorkspace(root: string, depId: string, rejected: Rejected): Promise<DepFiles | null> {
   for (let dir = path.dirname(path.resolve(root)); ; dir = path.dirname(dir)) {
     for (const candidate of [path.join(dir, 'packages', depId), path.join(dir, depId)]) {
       // **A build of the dependency renames its `dist`, so a read taken during that swap finds no build dir
@@ -117,7 +128,7 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<DepFil
       // dependency's content compiler coming back unresolved, naming the wrong cause. Waiting costs an
       // `existsSync` per candidate when no build is running, which is every ordinary resolution.
       await waitForPackBuild(candidate, { onWait: (holder) => console.error(`Waiting for ${holder} to finish...`) });
-      const found = findDepFiles(candidate);
+      const found = readCandidate(() => findDepFiles(candidate), 'workspace', rejected);
       if (found) return found;
     }
     if (path.dirname(dir) === dir) return null;
@@ -139,19 +150,19 @@ function inRange(artifacts: DepFiles, range: string): boolean {
  */
 type Rejected = Array<{ where: string; message: string; newer: boolean }>;
 
-/**
- * Whether a found build is one this pack can use: in the declared range, and in the snapshot format this
- * CLI reads. The format is a selection criterion like the range, so a mismatched installed channel or
- * cache entry gives way to one that matches instead of being generated against.
- */
-function usable(found: DepFiles | null, range: string, where: string, rejected: Rejected): found is DepFiles {
-  if (!found) return false;
-  const mismatch = _snapshotFormatMismatch(found.snapshot);
-  if (mismatch) {
-    rejected.push({ where, message: _cliFormatMismatchMessage(mismatch), newer: mismatch.newer });
-    return false;
+/** Whether a validated candidate satisfies the declared version range. */
+function usable(found: DepFiles | null, range: string): found is DepFiles {
+  return found !== null && inRange(found, range);
+}
+
+/** A newer build is a rejected candidate, not malformed data; resolution may try another source. */
+function readCandidate(read: () => DepFiles | null, where: string, rejected: Rejected): DepFiles | null {
+  try { return read(); }
+  catch (error) {
+    if (!(error instanceof SnapshotFormatError)) throw error;
+    rejected.push({ where, message: _cliFormatMismatchMessage(error.mismatch), newer: error.mismatch.newer });
+    return null;
   }
-  return inRange(found, range);
 }
 
 function unusable(depId: string, rejected: Rejected): Error {
@@ -161,20 +172,21 @@ function unusable(depId: string, rejected: Rejected): Error {
 /** A pack installed in an apack's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of APP_ENVS) {
-    const found = findDepFiles(path.join(resolveAppEnvironment({ env }).packsDir, depId));
-    if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
+    const found = readCandidate(() => findDepFiles(path.join(resolveAppEnvironment({ env }).packsDir, depId)), `installed app (${env})`, rejected);
+    if (usable(found, range)) return { ...found, env };
   }
   return null;
 }
 
 /** Built-in packs of the app this pack is built against: a named one, or the checkout behind it. */
-async function resolveFromConfiguredHost(root: string, depId: string, pinned = false, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { label: string }) | null> {
+async function resolveFromConfiguredHost(root: string, depId: string, rejected: Rejected, pinned = false, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { label: string }) | null> {
   let hostVersion: string | undefined;
   try { hostVersion = readManifest(root).hostVersion; } catch {}
   const app = await configuredHostPackagesDir({ hostVersion, from: root, readOnly: options.readOnly });
   if (!app) return null;
   const dir = path.join(app.dir, depId);
-  const found = findDepFiles(dir);
+  const found = readCandidate(() => findDepFiles(dir), app.label, rejected);
+  if (pinned && rejected.length) throw unusable(depId, rejected);
   if (pinned && !found && fs.existsSync(path.join(dir, PACK_LAYOUT.manifest))) {
     throw new Error(`Selected host dependency "${depId}" has no built snapshot in ${dir}. Build that host's pack before using it.`);
   }
@@ -299,13 +311,13 @@ async function downloadAndExtract(
       console.warn(`  ${asset.name} contains pack "${bundle.id}", not ${depId}`);
       return null;
     }
-    const artifacts = findDepFiles(extracted);
+    const rejectedBefore = rejected.length;
+    const artifacts = readCandidate(() => findDepFiles(extracted), `github release ${version}`, rejected);
     if (!artifacts) {
+      if (rejected.length > rejectedBefore) return null;
       console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
       return null;
     }
-    // Checked before caching, so a release this CLI can't read never replaces a cached one it can
-    if (!usable(artifacts, '*', `github release ${version}`, rejected)) return null;
     // The temp dir is removed below; persist into the cache first
     cacheDep(root, depId, artifacts);
     return resolveFromLocal(root, depId);
@@ -381,10 +393,10 @@ function copyContent(from: string, to: string): void {
 async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   const pinned = Boolean(process.env.APACK_HOST_ROOT || process.env.APACK_HOST_EXECUTABLE || process.env.APACK_HOST);
   if (pinned) {
-    const configured = await resolveFromConfiguredHost(root, depId, true, options);
+    const configured = await resolveFromConfiguredHost(root, depId, rejected, true, options);
     if (configured) {
       const version = configured.snapshot.manifest.version;
-      if (!usable(configured, range, configured.label, rejected)) {
+      if (!usable(configured, range)) {
         if (rejected.length) throw unusable(depId, rejected);
         throw new Error(`Selected host dependency "${depId}" version ${version} does not satisfy ${range}.`);
       }
@@ -392,11 +404,11 @@ async function resolveFromMachine(root: string, depId: string, range: string, re
       return { ...artifacts, resolvedFrom: label };
     }
   }
-  const workspace = await resolveFromWorkspace(root, depId);
-  if (usable(workspace, range, 'workspace', rejected)) return { ...workspace, resolvedFrom: 'workspace' };
+  const workspace = await resolveFromWorkspace(root, depId, rejected);
+  if (usable(workspace, range)) return { ...workspace, resolvedFrom: 'workspace' };
 
-  const configured = pinned ? null : await resolveFromConfiguredHost(root, depId, false, options);
-  if (configured && usable(configured, range, configured.label, rejected)) {
+  const configured = pinned ? null : await resolveFromConfiguredHost(root, depId, rejected, false, options);
+  if (configured && usable(configured, range)) {
     const { label, ...artifacts } = configured;
     return { ...artifacts, resolvedFrom: label };
   }
@@ -426,10 +438,11 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
   const { github, filePath, range } = parseDepValue(depValue);
 
   if (filePath) {
-    const found = resolveFromFile(root, filePath);
     const where = `file:${path.resolve(root, filePath)}`;
-    if (usable(found, range, where, rejected)) return { ...found, resolvedFrom: where };
-    if (!found) console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
+    const rejectedBefore = rejected.length;
+    const found = readCandidate(() => resolveFromFile(root, filePath), where, rejected);
+    if (usable(found, range)) return { ...found, resolvedFrom: where };
+    if (!found && rejected.length === rejectedBefore) console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
     return null;
   }
 
@@ -479,8 +492,8 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
   // A cache hit carries no source: cacheDep writes the snapshot, defs, build code and runtime, and
   // nothing about where they came from. Recording provenance in .apack/deps would cover this, and
   // isn't worth a new cache artifact until a hedged message proves annoying in practice.
-  const cached = resolveFromLocal(root, depId);
-  if (usable(cached, range, 'the .apack/deps cache', rejected)) return cached;
+  const cached = readCandidate(() => resolveFromLocal(root, depId), 'the .apack/deps cache', rejected);
+  if (usable(cached, range)) return cached;
 
   if (options.readOnly) {
     if (rejected.length) throw unusable(depId, rejected);

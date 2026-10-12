@@ -9,6 +9,7 @@ import {
   CONTENT_COMPILERS_FILE,
   _buildProvenance,
   packFeatures,
+  parseSnapshot,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -294,6 +295,8 @@ async function buildIntoStaging(args: string[]) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
+    const validation = parseSnapshot(snapshot);
+    failures.push(...validation.diagnostics.map(issue => issue.message));
     if (failures.length > 0) {
       throw new Error(`Build failed, so no snapshot was written:\n${failures.map((f) => `  - ${f}`).join('\n')}`);
     }

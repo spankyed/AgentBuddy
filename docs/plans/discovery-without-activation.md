@@ -1,6 +1,6 @@
 # Discover every declared contribution without activating a pack
 
-Status: planned. Written 2026-10-12 on `AS/feature-settings-rework`.
+Status: implementation in progress. Written 2026-10-12 on `AS/feature-settings-rework`.
 
 This is the discovery workstream of [manifest maturity](manifest-maturity.md). It builds on the
 [settings extraction](settings-architecture.md) and replaces the older
@@ -26,6 +26,34 @@ execute migrations/content appliers, query a pack's live provider, or write user
 may execute code; their discoverable results must be materialized before installation.
 
 ## Existing foundation and gaps
+
+### Implemented artifact reader (2026-10-12)
+
+`parseSnapshot` now validates the current build format's manifest, types, definitions, provenance and
+flow helpers as data. Its schema must account for every `PackSnapshot` field; it refuses unknown fields
+instead of silently stripping a contribution. Validated records preserve names such as `__proto__` and
+`constructor`, which Zod's parsed-object merge would otherwise lose. Build publication, CLI dependency
+resolution, the test harness and the runtime loader use this validator before consuming a snapshot.
+Entity-name and SDK-ownership checks now run on original manifest records before decoding; a regression
+test reproduced the `__proto__` alias bypass and both schema-refusal and original-name guard mutations
+are caught. Existing fixture builders now write complete snapshots; their lifecycle assertions remain.
+
+Format selection remains separate from interpretation. Dependency resolution can reject a newer-format
+candidate and select another compatible release. A CLI staging for a different installed app checks that
+app's format without pretending its own schema describes the other format's grammar. Malformed metadata
+in the current format is a refusal, not permission to fetch a replacement or execute runtime code.
+
+This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
+asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and
+the database tool's explicit `--schema-from` reader still need to move onto the common catalog boundary.
+
+Validation: 118 focused snapshot/manifest/format checks and six doc-link checks passed. The final strict
+chain passed with `npm run chain -- --strict --cores 1` (152.3s, 23 cached), including external-pack and
+packaged-authoring app scenarios; evidence `node_modules/.cache/apack-chain/runs/2026-10-12T12-51-44Z-96251`.
+An earlier integration run failed a process-cleanup assertion immediately after parent termination;
+its four isolated checks and the final chain passed without changing the assertion.
+
+### Remaining descriptor work
 
 The manifest already names many contributions and implementation references. Codegen produces backend
 and frontend registrations, contracts and snapshots; content is compiled; pack staging records integrity.

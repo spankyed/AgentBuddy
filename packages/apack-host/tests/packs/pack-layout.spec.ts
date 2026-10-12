@@ -44,7 +44,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/content/actions.content.json', '[]');
-  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   return root;
 }
@@ -207,7 +207,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
 
     const source = builtPack();
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {}, format: appFormat }));
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await installPackFromLocal(source, packsDir, { packFormat: appFormat });
@@ -237,7 +237,9 @@ describe('installPackFromLocal (pack layout path)', () => {
       await installPackFromLocal(source, packsDir);
 
       expect(fs.existsSync(path.join(packsDir, 'demo-pack', 'apack.json'))).toBe(true);
-      expect(warn.mock.calls.flat().join('\n')).toMatch(/"demo-pack" may not load: .*apack loads it only if it reads the pack's format/);
+      const warning = warn.mock.calls.flat().join('\n');
+      expect(warning).toContain(`"demo-pack" may not load: its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}`);
+      expect(warning).toContain("which one apack reads isn't recorded");
     } finally {
       warn.mockRestore();
     }

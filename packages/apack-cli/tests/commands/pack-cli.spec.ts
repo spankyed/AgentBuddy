@@ -25,7 +25,7 @@ function writeBuild(dir: string, id: string) {
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
 }
 
 describe('pack CLI: init', () => {

@@ -598,7 +598,7 @@ export function loadFlowsFromDir(flowsDir: string): Promise<{
 }>;
 
 // @public (undocumented)
-export const ManifestSchema: z.ZodEffects<z.ZodObject<{
+export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
     $manifestVersion: z.ZodOptional<z.ZodLiteral<1>>;
     id: z.ZodEffects<z.ZodString, string, string>;
@@ -610,8 +610,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license: z.ZodOptional<z.ZodString>;
     dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
-    entities: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>, Record<string, string>, Record<string, string>>>;
-    relKinds: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
+    entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    relKinds: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     entityShapes: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         source: z.ZodString;
         type: z.ZodString;
@@ -763,13 +763,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 defaultLabel: z.ZodOptional<z.ZodString>;
                 custom: z.ZodOptional<z.ZodLiteral<true>>;
             }, "strict", z.ZodTypeAny, {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             }, {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             node: string;
@@ -788,9 +788,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }, {
             node: string;
@@ -809,9 +809,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }>, {
             node: string;
@@ -830,9 +830,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }, {
             node: string;
@@ -851,9 +851,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }>>>;
         artifacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
@@ -949,9 +949,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -999,9 +999,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -1284,6 +1284,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1295,8 +1297,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1334,9 +1334,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -1417,6 +1417,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1428,8 +1430,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1467,9 +1467,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -1550,6 +1550,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1561,8 +1563,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1600,9 +1600,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -1683,6 +1683,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }> | undefined;
     description?: string | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1694,8 +1696,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1733,9 +1733,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }> | undefined;
         artifacts?: Record<string, {
@@ -1791,7 +1791,140 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         app?: Record<string, string> | undefined;
         pack?: Record<string, string> | undefined;
     } | undefined;
-}>;
+}>, {
+    name: string;
+    id: string;
+    version: string;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: string | undefined;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
+    }> | undefined;
+    description?: string | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
+    }> | undefined;
+    extensions?: {
+        services?: Record<string, string> | undefined;
+        fe?: {
+            tiptapPlugins?: string | undefined;
+            appExtensions?: Record<string, string> | undefined;
+        } | undefined;
+        dsl?: Record<string, {
+            entry: string;
+            targets: "monaco"[];
+            prefix?: string | undefined;
+            globals?: Record<string, string> | undefined;
+            inline?: string[] | undefined;
+        }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
+        steps?: Record<string, {
+            node: string;
+            trigger?: {
+                facet: string;
+                register?: string | undefined;
+            } | undefined;
+            kind?: "step" | "trigger" | undefined;
+            build?: string | undefined;
+            fe?: string | undefined;
+            runtime?: {
+                isAsync?: true | undefined;
+                handler?: string | undefined;
+                sync?: true | undefined;
+                waits?: true | undefined;
+                spawnsSubflow?: true | undefined;
+            } | undefined;
+            dsl?: {
+                custom?: true | undefined;
+                primaryField?: string | undefined;
+                defaultLabel?: string | undefined;
+            } | undefined;
+        }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
+        }> | undefined;
+        blocks?: Record<string, {
+            kind?: "display" | "input" | undefined;
+            fe?: string | undefined;
+            be?: string | undefined;
+        }> | undefined;
+        commands?: Record<string, {
+            placeholder: string;
+        }> | undefined;
+    } | undefined;
+    settingsSections?: string | undefined;
+    boot?: {
+        hooks?: string | undefined;
+    } | undefined;
+    content?: {
+        sources?: Record<string, string | {
+            path?: string | undefined;
+            format?: string | undefined;
+            applier?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }> | undefined;
+        datasets?: Record<string, {
+            path?: string | undefined;
+            format?: string | undefined;
+            applier?: string | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
+        }> | undefined;
+        formats?: Record<string, {
+            format?: "markdown-tree" | "json" | undefined;
+            fields?: Record<string, {
+                from: string;
+                type?: "string" | undefined;
+                default?: unknown;
+            }> | undefined;
+            entity?: string | string[] | undefined;
+            compiler?: string | undefined;
+            identity?: string[] | undefined;
+            tree?: {
+                branch?: string | undefined;
+                branchEntity?: string | undefined;
+                relKind?: string | undefined;
+            } | undefined;
+            media?: string | undefined;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
+    migrations?: {
+        app?: Record<string, string> | undefined;
+        pack?: Record<string, string> | undefined;
+    } | undefined;
+}, unknown>;
 
 // @public
 export interface MarkdownItem {
@@ -1963,6 +2096,11 @@ export interface PackSnapshot {
 }
 
 // @public (undocumented)
+export type PackSnapshotValidation = PackValidation & {
+    snapshot?: PackSnapshot;
+};
+
+// @public (undocumented)
 export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
 
 // @public (undocumented)
@@ -1994,6 +2132,9 @@ export function parseMarkdownFile(text: string, file?: string): {
     frontmatter: Record<string, unknown>;
     body: string;
 };
+
+// @public
+export function parseSnapshot(raw: unknown): PackSnapshotValidation;
 
 // @public (undocumented)
 export interface PromptMeta {
@@ -2094,10 +2235,7 @@ export interface SnapshotFormatMismatch {
 }
 
 // @internal
-export function _snapshotFormatMismatch(snapshot: {
-    format?: unknown;
-    sdkVersion?: string;
-}, readerFormat?: number): SnapshotFormatMismatch | undefined;
+export function _snapshotFormatMismatch(snapshot: unknown, readerFormat?: number): SnapshotFormatMismatch | undefined;
 
 // @public
 export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler>;
@@ -2129,13 +2267,13 @@ export const StepDSLMetaSchema: z.ZodObject<{
     defaultLabel: z.ZodOptional<z.ZodString>;
     custom: z.ZodOptional<z.ZodLiteral<true>>;
 }, "strict", z.ZodTypeAny, {
+    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
-    custom?: true | undefined;
 }, {
+    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
-    custom?: true | undefined;
 }>;
 
 // @public (undocumented)
@@ -2193,13 +2331,13 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaultLabel: z.ZodOptional<z.ZodString>;
         custom: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     }, {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     node: string;
@@ -2218,9 +2356,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }, {
     node: string;
@@ -2239,9 +2377,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }>, {
     node: string;
@@ -2260,9 +2398,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }, {
     node: string;
@@ -2281,9 +2419,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }>;
 

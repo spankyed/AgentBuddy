@@ -26,6 +26,24 @@ const keysAreTypeNames = (declared: Record<string, string>, ctx: z.RefinementCtx
   }
 };
 
+/** Check names before Zod decodes records: its object merge discards an own __proto__ key. */
+function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_REL_KINDS]] as const) {
+    const declared = (raw as Record<string, unknown>)[field];
+    if (!declared || typeof declared !== 'object' || Array.isArray(declared)
+      || !Object.values(declared).every(value => typeof value === 'string')) continue;
+    const names = declared as Record<string, string>;
+    const atField: z.RefinementCtx = {
+      path: [...ctx.path, field],
+      addIssue: issue => ctx.addIssue({ ...issue, path: [field, ...(issue.path ?? [])] }),
+    };
+    notSdkOwned(reserved)(names, atField);
+    if (field === 'entities') keysAreTypeNames(names, atField);
+  }
+  return raw;
+}
+
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
 /** A named export of a pack source file */
@@ -464,7 +482,7 @@ export type _MigrationLinesMatchRegistration = _Asserted<
     : ['the manifest declares a line the registration does not', Exclude<MigrationLine, keyof PackMigrations>]
 >;
 
-export const ManifestSchema = z.object({
+export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),
   $manifestVersion: z.literal(1).optional()
     .describe('Schema version. Enables future format evolution.'),
@@ -482,11 +500,8 @@ export const ManifestSchema = z.object({
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   entities: z.record(z.string(), z.string())
-    .superRefine(notSdkOwned(SDK_ENTITIES))
-    .superRefine(keysAreTypeNames)
     .describe(`EARS entity types this pack registers, each key equal to its value, the type name ({ "Memo": "Memo" }). The SDK defines ${Object.keys(SDK_ENTITIES).join(', ')}.`).optional(),
   relKinds: z.record(z.string(), z.string())
-    .superRefine(notSdkOwned(SDK_REL_KINDS))
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
@@ -536,4 +551,4 @@ export const ManifestSchema = z.object({
       ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares in "entities" can have one` });
     }
   }
-});
+}));

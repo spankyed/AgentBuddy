@@ -28,7 +28,7 @@ function shipPack(id: string, runtime = `exports.registration = { id: ${JSON.str
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeDir), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.typesDir), { recursive: true });
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id, name: id, version: '1.0.0' }));
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), runtime);
   return dir;
 }

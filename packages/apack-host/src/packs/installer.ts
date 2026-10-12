@@ -7,7 +7,7 @@ import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
-import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@apackdev/sdk/build';
+import { parseManifest } from '@apackdev/sdk/build';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { PackManifest } from '@apackdev/sdk/build';
 import {
@@ -18,7 +18,7 @@ import {
   isPackLayout,
   stagePack,
   verifyPack,
-  buildFormatProblem,
+  packBuildProblem,
   packFileHashes,
   stagedFileHashes,
   type PackIntegrity,
@@ -281,11 +281,10 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
     }
     const integrity = verifyPack(layoutDir);
     // Refused here rather than at the app's next start, where the loader would skip it
-    if (options.packFormat !== undefined) {
-      const formatProblem = buildFormatProblem(layoutDir, options.packFormat);
-      if (formatProblem) throw new Error(`Pack "${integrity.id}" can't be installed: ${formatProblem}`);
-    } else if (buildFormatProblem(layoutDir)) {
-      log.warn(`Pack "${integrity.id}" may not load: its build format isn't the one this apack reads (${PACK_SNAPSHOT_FORMAT}), and which one apack reads isn't recorded in its data dir. apack loads it only if it reads the pack's format, and otherwise skips it at startup, saying why in its Packs view`);
+    const buildProblem = packBuildProblem(layoutDir, options.packFormat);
+    if (buildProblem) {
+      if (options.packFormat !== undefined) throw new Error(`Pack "${integrity.id}" can't be installed: ${buildProblem}`);
+      log.warn(`Pack "${integrity.id}" may not load: ${buildProblem}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
     }
 
     const manifest = readValidManifest(layoutDir);

@@ -51,7 +51,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
@@ -314,7 +314,7 @@ describe('an installed pack the app could not load', () => {
         loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
-      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
       await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();

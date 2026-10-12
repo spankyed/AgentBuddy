@@ -3,7 +3,7 @@ export interface PackDiagnostic {
   code: string;
   severity: 'error' | 'warning';
   packId?: string;
-  /** Address in apack.json; an empty path concerns the whole pack. */
+  /** Address in the declared source (apack.json by default); an empty path concerns the whole pack. */
   path: readonly (string | number)[];
   message: string;
   source?: string;
