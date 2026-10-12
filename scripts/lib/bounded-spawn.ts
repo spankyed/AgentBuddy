@@ -44,6 +44,7 @@ const GRACE_MS = 2_000;
  */
 const liveGroups = new Set<number>();
 let reaperInstalled = false;
+let stopping = false;
 
 function reapOnExit(): void {
   if (reaperInstalled) return;
@@ -59,15 +60,30 @@ function reapOnExit(): void {
   // which keeps the exit status honest (130 for SIGINT) instead of turning a Ctrl-C into a clean 0.
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
     process.on(signal, () => {
+      if (stopping) return;
+      stopping = true;
+      // Keep the snapshot after a shell exits: its grandchildren can still hold the process group.
+      const groups = [...liveGroups];
+      const kill = () => {
+        for (const pid of groups) {
+          try { process.kill(-pid, 'SIGKILL'); } catch { /* already gone */ }
+        }
+      };
+      process.once('exit', kill);
       reap('SIGTERM');
-      process.removeAllListeners(signal);
-      process.kill(process.pid, signal);
+      setTimeout(() => {
+        kill();
+        process.removeAllListeners(signal);
+        process.kill(process.pid, signal);
+      }, GRACE_MS);
     });
   }
 }
 
 export interface BoundedOptions {
   readonly cwd?: string;
+  /** Required for command wrappers such as npm.cmd on Windows. */
+  readonly shell?: boolean;
   /** Inherit stdio instead of capturing it: what a direct run wants, where output is read as it happens */
   readonly stream?: boolean;
   /**
@@ -90,13 +106,13 @@ export function boundedSpawn(command: string, args: readonly string[], budgetMs:
   const { cwd = process.cwd(), stream = false, env = process.env, signal } = options;
   const started = Date.now();
   reapOnExit();
-  if (signal?.aborted === true) {
+  if (stopping || signal?.aborted === true) {
     return Promise.resolve({ code: 1, output: '', ms: 0, aborted: true });
   }
   return new Promise((resolve) => {
     // Its own process group, so one kill reaches the whole tree rather than orphaning it
     const child = spawn(command, [...args], {
-      cwd, env, detached: true,
+      cwd, env, detached: true, shell: options.shell,
       stdio: stream ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'pipe'],
     });
     if (child.pid !== undefined) liveGroups.add(child.pid);
@@ -129,19 +145,31 @@ export function boundedSpawn(command: string, args: readonly string[], budgetMs:
      * process ends as soon as the child closes. A child that ignores SIGTERM would then have survived the
      * run that started it, which is the whole failure this exists to prevent.
      */
+    let terminating = false;
     const terminate = () => {
+      if (terminating) return;
+      terminating = true;
+      clearTimeout(budget);
       killGroup('SIGTERM');
       setTimeout(() => { killGroup('SIGKILL'); done(); }, GRACE_MS);
     };
 
     const budget = setTimeout(() => { timedOut = true; terminate(); }, budgetMs);
     budget.unref();
-    signal?.addEventListener('abort', () => { aborted = true; terminate(); }, { once: true });
+    const abort = () => { aborted = true; terminate(); };
+    signal?.addEventListener('abort', abort, { once: true });
+
+    child.on('error', (error) => {
+      output += `${error.message}\n`;
+      if (stream) console.error(error.message);
+      closed = 1;
+    });
 
     child.on('close', (code) => {
       clearTimeout(budget);
+      signal?.removeEventListener('abort', abort);
       if (child.pid !== undefined) liveGroups.delete(child.pid);
-      closed = code;
+      closed ??= code;
       // On a timeout or an abort the escalation resolves, so the group is hard-killed before this returns
       if (!timedOut && !aborted) done();
     });

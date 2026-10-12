@@ -1,7 +1,9 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { tsImport } from 'tsx/esm/api';
+import { primaryWorktree } from './lib/worktrees.mjs';
 
 /** @param {string} root @param {string[]} args */
 function git(root, args) {
@@ -10,8 +12,7 @@ function git(root, args) {
 
 /** Worktrees live outside the main checkout; dependencies and generated output are never shared. @param {string} root */
 function worktreesRoot(root) {
-  const common = realpathSync(git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
-  const main = path.dirname(common);
+  const main = primaryWorktree(root);
   const dir = path.join(path.dirname(main), `${path.basename(main)}-worktrees`);
   mkdirSync(dir, { recursive: true });
   return dir;
@@ -45,23 +46,16 @@ export function prepareIntegration(root, refs) {
 
 /** @param {string} dir @param {string[]} args */
 async function npm(dir, args) {
-  await new Promise((resolve, reject) => {
-    const child = spawn('npm', args, {
-      cwd: dir, stdio: 'inherit', shell: process.platform === 'win32',
-      env: { ...process.env, NODE_ENV: 'development' },
-    });
-    const interrupt = () => {};
-    const terminate = () => child.kill('SIGTERM');
-    process.on('SIGINT', interrupt);
-    process.on('SIGTERM', terminate);
-    child.once('error', reject);
-    child.once('exit', (code, signal) => {
-      process.removeListener('SIGINT', interrupt);
-      process.removeListener('SIGTERM', terminate);
-      if (code === 0) resolve(undefined);
-      else reject(new Error(`npm ${args.join(' ')} failed (${signal ?? code}). Checkout retained at ${dir}.`));
-    });
+  const { boundedSpawn } = await tsImport('./lib/bounded-spawn.ts', import.meta.url);
+  const { TIMEOUT_MS } = await tsImport('./lib/step-timeouts.ts', import.meta.url);
+  const budget = args.includes('chain') ? TIMEOUT_MS.scenario.ms : TIMEOUT_MS.suite.ms;
+  const result = await boundedSpawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, budget, {
+    cwd: dir, stream: true, shell: process.platform === 'win32', env: { ...process.env, NODE_ENV: 'development' },
   });
+  if (result.code !== 0) {
+    const why = result.timedOut ? 'timed out' : `failed (exit ${result.code})`;
+    throw new Error(`npm ${args.join(' ')} ${why}. Checkout retained at ${dir}.`);
+  }
 }
 
 /** A cold checkout needs API declarations and pack codegen before typechecks or a built app launch. @param {string} dir */
@@ -73,7 +67,7 @@ async function setup(dir) {
 
 async function main() {
   const [operation, ...args] = process.argv.slice(2);
-  if (args.includes('--help') || !operation) {
+  if (args.includes('--help') || args.includes('-h') || !operation) {
     console.log(`npm run session:new -- <name> [base-ref]
   Creates session/<name> in a separate worktree and installs/builds its own dependencies and app.
 npm run session:check -- <branch> [branch...]

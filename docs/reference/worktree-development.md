@@ -11,6 +11,8 @@ The command creates `session/settings-help` at the current HEAD in a sibling
 selects another base ref. Continue the agent or terminal session **in the printed directory**.
 The command does not transfer uncommitted changes from the original checkout.
 If setup fails, the new checkout is retained. Retry the failed command there.
+Setup commands have a five-minute deadline; combined validation has a fifteen-minute deadline.
+Interrupting the command stops its child process groups and retains the checkout for inspection.
 
 Each checkout owns its dependencies, build output, watcher processes and validation caches.
 Do not symlink `node_modules` to another checkout: workspace package links would resolve its source.

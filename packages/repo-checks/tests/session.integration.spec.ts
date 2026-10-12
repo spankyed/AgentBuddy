@@ -32,7 +32,7 @@ function branch(name: string, file = `${name}.txt`, value = name) {
 }
 
 /** Real Git and process boundaries, with only the expensive dependency install/chain replaced. */
-function check(mode = '') {
+function check(mode = '', args = ['check', 'first']) {
   const bin = path.join(dir, 'bin');
   fs.mkdirSync(bin);
   const npm = path.join(bin, 'npm');
@@ -40,6 +40,7 @@ function check(mode = '') {
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
 fs.appendFileSync(process.env.SESSION_COMMANDS, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2) }) + '\\n');
+if (process.env.SESSION_MODE === 'setup-fail') process.exit(9);
 if (process.argv[3] === 'chain') {
   if (process.env.SESSION_MODE === 'fail') process.exit(9);
   if (process.env.SESSION_MODE === 'drift') fs.writeFileSync('unexpected.txt', 'changed');
@@ -47,7 +48,7 @@ if (process.argv[3] === 'chain') {
 }
 `);
   fs.chmodSync(npm, 0o755);
-  return spawnSync(process.execPath, [path.join(REPO_ROOT, 'scripts/session.mjs'), 'check', 'first'], {
+  return spawnSync(process.execPath, [path.join(REPO_ROOT, 'scripts/session.mjs'), ...args], {
     cwd: repo, encoding: 'utf8', env: {
       ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`,
       SESSION_MODE: mode, SESSION_COMMANDS: path.join(dir, 'commands'), SESSION_SOURCE: repo,
@@ -77,6 +78,25 @@ describe('isolated editing sessions', () => {
     expect(() => createSession(repo, '../escape')).toThrow('session name');
   });
 
+  it('identifies the primary checkout with separately stored Git metadata', () => {
+    git(repo, 'init', '--separate-git-dir', path.join(dir, 'metadata'));
+    git(repo, 'config', 'core.worktree', repo);
+    expect(checkoutProfile(repo)).toBe('development');
+    const session = createSession(repo, 'separate');
+    expect(session).toBe(fs.realpathSync(path.join(dir, 'repo-worktrees', 'separate')));
+    expect(checkoutProfile(session)).toMatch(/^worktree-/);
+    expect(createSession(session, 'from-linked')).toBe(path.join(path.dirname(session), 'from-linked'));
+  });
+
+  it('inserts profile options before the positional delimiter', () => {
+    expect(withCheckoutProfile(repo, ['export', '--', 'backup'], {}))
+      .toEqual(['export', '--profile', 'development', '--', 'backup']);
+    expect(withCheckoutProfile(repo, ['--', '--profile=filename'], {}))
+      .toEqual(['--profile', 'development', '--', '--profile=filename']);
+    expect(withCheckoutProfile(repo, ['--profile', 'custom', '--', 'backup'], {}))
+      .toEqual(['--profile', 'custom', '--', 'backup']);
+  });
+
   it('merges committed branches in a detached candidate without touching source branches or indexes', () => {
     branch('first');
     branch('second');
@@ -99,6 +119,16 @@ describe('isolated editing sessions', () => {
     expect(() => prepareIntegration(repo, ['first', 'second'])).toThrow('Merge failed');
     expect(git(repo, 'status', '--porcelain')).toBe('');
     expect(fs.readFileSync(path.join(repo, 'base.txt'), 'utf8')).toBe('base');
+  });
+
+  it('prepares a new session and retains it when dependency setup fails', () => {
+    const result = check('setup-fail', ['new', 'review']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Checkout retained');
+    expect(result.stdout).not.toContain('Ready.');
+    const session = path.join(dir, 'repo-worktrees', 'review');
+    expect(git(session, 'branch', '--show-current')).toBe('session/review');
+    expect(git(repo, 'status', '--porcelain')).toBe('');
   });
 
   it('runs dependency installation and the full strict gate in the candidate', () => {
