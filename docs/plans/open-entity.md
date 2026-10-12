@@ -1,5 +1,11 @@
 # Opening an entity is one verb, and no caller names a plugin
 
+Status: retained; revise against [discovery without activation](discovery-without-activation.md)
+after the naming goal. The catalog owns declared entity-to-feature destinations; activation binds the
+handler. Keep one `openEntity` verb, but do not implement the old registry lookup as a second inventory.
+The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
+that it was already removed is not a current-code assertion.
+
 ## Context
 
 "Show the user this thing" is done **eleven times in six vocabularies**, and every one of them names a
@@ -71,7 +77,7 @@ the type: `entityTypeOf` (`apack-ears/src/attribute-storage.ts:21`) reads it, an
 rule — *"the `entityType` attribute is a denormalised copy of it, so the two must never disagree."* It is
 module-exported and not in the public barrel; this promotes it.
 
-**2. `opens` is a contract field, not a new manifest key.** A contract is a declared type that codegen reads
+**2. `opens` is a contract field, not a new manifest key.** A contract can be a declared build input that codegen reads
 with `declaredTypeOf` (`apack-sdk/src/build/module-exports.ts`) without resolving the machine, and
 `apack.json` already names it at `features[].plugin.contract`. So the fact is readable at build time, lands
 in the snapshot, and the host reads it with no pack code and no TypeScript — which is what manifest-driven
@@ -106,7 +112,8 @@ own internal event; what changes is that nothing outside sends them. Dropping th
 - The six `navigate` closures, which are each `openPlugin(<own plugin>, { type: <constant>, <field>: refId })`
   with no branching — six declarations, none of which needed a function.
 
-Both fields are already removed on `AS/attachable-dev-session`; this plan is what replaces them.
+The original branch survey reported these fields removed. Re-audit the implementation: `navigate`
+exists in the current reference type. Remove obsolete fields only as their callers migrate.
 
 ## Phases
 
@@ -146,7 +153,7 @@ the rule "a feature declares the entities it is the home of, not the entities it
 - **Inner loop** `npm run spec -- <file>`; `npm run packages:ensure` before any pack-suite run.
 - **The typecheck is the main instrument**: `opens` is checked against `EntityName`, and every converted call
   site loses its event name, so a wrong one cannot be written.
-- **A derived guard**, in the shape this repo asks for: the subject is every registered plugin's declared
+- **A derived guard**, in the shape this repo asks for: the subject is every catalog destination's declared
   `opens`, asserted non-empty, and each entity type resolves to exactly one plugin. Mutate it in the test by
   dropping one feature's `opens` and asserting the answer flips, because a check that reports nothing may
   have looked at nothing.
@@ -158,19 +165,20 @@ the rule "a feature declares the entities it is the home of, not the entities it
 - **End-to-end by eye**: `npm run dev:drive`, open a thread holding a note reference, click it.
 - **`npm run chain`** per phase. Phase 1 touches `@apackdev/sdk/src` and codegen, so expect a cold run;
   `api:update` for `PackFERegistration`, the plugin contract types and `@apackdev/ears`' barrel.
-- **No `schema:update`** — no manifest key moves. **`PACK_SNAPSHOT_FORMAT`** bumps, because a dependent pack
-  reads `opens` from the snapshot and an older CLI would misread it.
+- Regenerate the schema if authoring fields change. Check `PACK_SNAPSHOT_FORMAT` under the current
+  repository rule when adding destination metadata; coordinate with discovery rather than prescribe
+  an independent bump.
 
 ## Risks
 
-**The snapshot format is the published contract.** Bumping it is the one irreversible-ish step, and it should
-happen once: if the manifest redesign (`docs/goals/goal-manifest-redesign.md`) is landing in the same release,
-these share the bump.
+**The snapshot format is the artifact contract.** Coordinate this change with the discovery descriptor
+under the current format rules. The archived manifest-redesign goal is not an independent workstream;
+do not force a release/version bump merely because its old plan prescribed one.
 
-**`opens` is an opt-in list, and the redesign may make it a flag.** The redesign moves entity declarations
-onto the feature that owns them, at which point "is this entity openable" belongs beside its shape, as
-`volatile: true` does. That is a narrowing of this field, not a replacement of it, and the contract is the
-right home either way — but do not add a second place to say it.
+**Destination ownership must be declared once.** Discovery materializes the build-checked destination
+contract in the descriptor. Do not infer that every entity-owning feature can open its entities, or
+copy destination facts into both manifest flags and contract types. Normalize them once for catalog
+readers; active handlers bind to that account.
 
 **Phase 4 is a behaviour change at eleven call sites in code with little coverage.** The reference subsystem
 has **no spec at all** — not the generated aggregate, not the click handler, not the popup, not markdown

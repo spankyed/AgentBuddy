@@ -1,3 +1,5 @@
+> **Absorbed, 2026-10-12.** [Discovery without activation](../../plans/discovery-without-activation.md) owns the complete inventory, catalog and checked binding. This historical survey is not current implementation guidance.
+
 # What a pack contributes should be readable without running it
 
 Compiled 2026-10-08 on `AS/one-action-cache`. **An inventory first, then a decision** — the work is not

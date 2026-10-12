@@ -1,5 +1,12 @@
 # A shipped pack is replaceable, and nothing special-cases it
 
+Status: retained; implement after [settings architecture](settings-architecture.md) and the
+[discovery catalog](discovery-without-activation.md). Re-audit the original survey on the naming result.
+Publish replacement as one committed descriptor/outcome change; a failed replacement retains the prior
+valid view and bindings without a transient removal. Preserve owner IDs and stored settings overrides.
+Keep migration version lines independent of update provenance. The planned catalog default-navigation policy
+supersedes the old first-plugin survey below.
+
 ## Context
 
 `goal-one-kind-of-pack` made the pack the app ships an installed pack like any other — one build path, one
@@ -17,9 +24,9 @@ Today that cannot work. Three facts stack:
   (`apack-cli/src/commands/pack.ts:42`), which is the one live reader of that field — so you cannot even
   package a clone of `default-setup`.
 
-And commit `b530a4899` (2026-10-08) made it worse by refusing an install that takes a shipped pack's id. It
-was written on an inference — that `canUninstall: false` promised the pack could not be replaced — which was
-never a requirement. **It is reverted first.**
+The earlier survey named `b530a4899` as the source of a replacement refusal. Audit the current refusal
+and implement explicit replacement behavior; do not revert an old commit whose surrounding code has
+changed merely because the original plan named it.
 
 **The requirements, as given:** a shipped pack should not be easy to remove through the UI; it should be
 replaceable, because an external dev may want their own version; and the app should not brick when one is
@@ -63,9 +70,10 @@ rather than inventing a restore verb.
 
 **Absence means `'user'`.** The app only overwrites what it can prove it placed. That also means the CLI
 never has to start writing records — a CLI install is a user install, which is simply true — and it means
-no stored-data migration to land this, because absence is the correct reading of every file on disk today.
+no new settings migration merely to default this field. Renaming the record file does require a
+stored-data migration, and existing install ownership needs the reconciliation described below.
 
-**Replacement is an explicit act, not an inference.** `apack replace <id> <source>` and the UI's
+**Replacement is an explicit act, not an inference.** Proposed `apack pack replace <id> <source>` and the UI's
 "Replace default"; a plain install onto a shipped id is refused and points at `replace`. Inferring intent
 from an id collision would let a pack whose manifest happens to claim `default-setup` silently become the
 user's choice.
@@ -85,18 +93,19 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
 
 ## The work
 
-1. **Revert `b530a4899`.** It refuses the install this plan requires.
+1. **Support deliberate replacement.** Re-audit the current install refusal and replace it with explicit intent checks; do not blindly revert historical commits.
 2. **Rename `installed-packs.json` to `pack-records.json`** and add `updatesWith`. The file's own header
    opens by denying its name (*"not the list of installed packs — `packs/<id>/` is"*), and the code already
    says record (`PackRecord`, `recordInstalled`, `packRecord`). Read the old file once if present, write the
-   new name, delete the old — three lines, not a migration, because the only loss would be a re-enabled pack.
+   new name through an idempotent stored-data migration, preserving enabled choices and provenance.
+   A file rename is optional if the current naming goal already settles the record terminology.
 3. **Boot:** install when the id is absent *unless* the record says `enabled: false`; re-install on app
    version change only where `updatesWith === 'app'`. Stop hash-comparing on every boot. Reconcile existing
    installs once — equal hashes mean the app placed it, so mark those `'app'`, or every current install
    silently becomes a fork.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
    author lives in. Verify that `apack pack dev` in the fork's own directory is the path that serves them.
-5. **`apack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
+5. **Proposed `apack pack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
    refused. Uninstall of an app-owned pack records `enabled: false`.
 6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `apack pack archive`'s
    refusal, which is its only reader and actively blocks packaging a fork. **Drop `canUninstall`** in both

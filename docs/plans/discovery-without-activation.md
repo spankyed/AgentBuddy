@@ -3,9 +3,12 @@
 Status: planned. Written 2026-10-12 on `AS/feature-settings-rework`.
 
 This is the discovery workstream of [manifest maturity](manifest-maturity.md). It builds on the
-[settings extraction](declarative-settings-sections.md) and replaces the older
-[declarative contributions plan](declarative-contributions.md) as the target for complete discovery.
-The older inventory remains useful evidence, but must be checked against the current implementation.
+[settings extraction](settings-architecture.md) and replaces the older
+[declarative contributions plan](../archive/plans/declarative-contributions.md) as the target for complete discovery.
+The older inventory remains historical evidence. This plan owns the current implementation target;
+[manifest maturity](manifest-maturity.md) records decisions transferred from the other archived designs.
+The reworked [naming contracts goal](../goals/goal-naming-conventions.md) completes first. Re-audit code
+names on that result rather than applying the old naming survey or renaming a surface twice.
 
 ## Goal and boundary
 
@@ -165,8 +168,8 @@ those implement behavior beyond discovery.
 ### Pack information: stop using registration as an inventory
 
 `features/packs/be/system.ts::toPackInfoList()` joins installed manifests with
-`registry.getPackExtensions()`. Disabled or failed packs therefore lose contribution details.
-`registry.ts::featureInfo()` and the listing part of `getPackExtensions()` duplicate information that
+`registry.findPackExtensions()`. Disabled or failed packs therefore lose contribution details.
+`registry.ts::featureInfo()` and the listing part of `findPackExtensions()` duplicate information that
 belongs in the descriptor. Replace these projections and their empty-extension fallback with a catalog
 view joined to host-owned installation records, activation outcomes and applied-content offers.
 
@@ -175,7 +178,7 @@ states explicit; frontend and backend outcomes may differ, including between win
 catalog into another persisted installed-packs list: directories remain installation evidence and
 `installed-packs.json` remains the side table for user choices/update provenance.
 
-There is a runtime caller to migrate before deleting `getPackExtensions()`:
+There is a runtime caller to migrate before deleting `findPackExtensions()`:
 `runtime/lifecycle.ts::teardownPack()` uses its systems list. Use the existing
 `getRegisteredPackSystemIds()` for teardown, because stopping systems means stopping actual bindings,
 not every declared system. Keep `loadedPacks()` for genuine execution callers where needed; replace only
@@ -283,11 +286,14 @@ not become a second coordination layer alongside the old shell actions.
 
 ## Delivery sequence
 
-1. **Close the inventory.** Map every registration/manifest field and reader to declaration, metadata,
+1. **Close the inventory after naming lands.** Map every registration/manifest field and reader to declaration, metadata,
    asset or runtime behavior. Record exact remaining gaps and dependency ownership rules here.
-2. **Complete the settings data contract.** Deliver the linked settings plan; use its schema/default/form
-   distinction as the worked example. Do not maintain a separate discovery schema for settings.
-3. **Extend the snapshot descriptor.** Add the necessary static metadata and asset indexes, deriving them
+2. **Establish the shared foundation with settings.** Build descriptor validation and the catalog with
+   the linked settings plan as the first consumer. Complete its ownership/migration and schema/default/form
+   contract on that foundation. Do not build separate settings and contribution catalogs.
+3. **Extend the snapshot descriptor.** Resolve facade terminology and required-facade diagnostics from
+   the absorbed [facade goal](../archive/goals/goal-defs-naming.md) in this checkpoint. Add the necessary
+   static metadata and asset indexes, deriving them
    from declarations. Start with plugin navigation, reference types and anonymous editor contribution lists.
    Materialize help/step metadata and API/lifecycle contracts until the inventory has no executable reads.
 4. **Build catalog readers and move consumers.** Validate installed descriptors; expose data to frontend
@@ -295,7 +301,11 @@ not become a second coordination layer alongside the old shell actions.
    and ownership behavior. Follow the audited removal checkpoints above: settings/pack details/help,
    then shell navigation and editor/palette readers. Delete superseded glue in each checkpoint. Report
    incomplete/unavailable packs without trying to activate them.
-5. **Bind against declarations.** Adapt generated runtime registrations and host loaders; reject added,
+5. **Bind against declarations and keep builds fresh.** Audit watch/codegen/snapshot invalidation with
+   [dev-loop freshness](../goals/goal-dev-loop-freshness.md). A source/declaration edit must update its
+   descriptor and executable bindings consistently; never pair new runtime code with stale metadata.
+   Preserve the last valid catalog on a failed rebuild and report it as stale. Adapt generated runtime
+   registrations and host loaders; reject added,
    missing or inconsistent bindings where the declaration requires them. Preserve rollback and reload.
 6. **Prove completeness and update contracts.** Exercise every contribution and consumer, update snapshots,
    schema/API reports, public authoring docs, templates and fixtures, and remove obsolete metadata exports.

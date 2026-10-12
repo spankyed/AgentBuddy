@@ -1,3 +1,5 @@
+> **Superseded, 2026-10-12.** [Discovery](../../plans/discovery-without-activation.md) keeps the complete built descriptor; filesystem-derived contribution existence is not the target. Remaining decisions live in [manifest maturity](../../plans/manifest-maturity.md). This is the historical proposal, not completed work.
+
 # The manifest names the exceptions, and the build writes the inventory
 
 Compiled 2026-10-10 on `AS/declarative-extensions`, after the keyed-map work landed

@@ -1,231 +1,65 @@
-# Declarative contributions: what a pack could say about itself without running
+# Declarative contributions: current boundary and planned discovery
 
-Why this is a reference and not a plan: what remains open here has not been decided, and the measurement
-that would decide it has not been taken. What is here is the shape of the question — today's three layers,
-where each one fails, what a declarative contract would look like against this pack's real manifest, and the
-footguns the industry has already found. Read it before proposing lazy pack activation, install-time
-collision checks, or any tooling that wants to describe a pack without loading it.
+Status: current-code reference, revised 2026-10-12. The implementation target is
+[discovery without activation](../plans/discovery-without-activation.md); ordering and transferred
+manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Re-audit exact API names
+after the in-flight naming goal. This reference is not a competing implementation plan.
 
-**The item inventories are answered; what a pack cannot say without running is still its events.** Every
-extension point is a keyed map of individual declarations, each naming its own facets by `"path#export"`,
-so the host learns which steps, blocks and artifacts a pack has from the manifest alone. What it still
-cannot learn is the one thing the section below is really about: which events a plugin accepts.
+## What is already data
 
-The sibling reference is [`recorded-artifacts.md`](recorded-artifacts.md), because every field this document
-proposes lifting becomes a member of the derivation family it describes. That is the whole cost.
+`apack.json` names features, dependencies, host compatibility, entity/relation names and many keyed
+extensions: steps, artifacts, blocks, commands, services, DSL and frontend slots. Built snapshots carry
+manifests, facade/type artifacts and partial provenance. Compiled content and integrity indexes already
+exist. Offline database tooling reads schema data without pack runtime imports.
 
-## Today's three layers
+This is partial discovery, not an absence of discovery. A keyed declaration identifies a contribution;
+its executable path is a binding reference, not a reason to execute it when listing its existence.
+See [extension authoring](../public-facing/extensions.md) for the current manifest grammar.
 
-**1. `apack.json` — one shape for every contribution key, and one section holding them.** Each is a keyed
-map whose entries declare *what the items are* and name *where each facet's code is*; `extensions` is where
-the pack's contributions sit, as against what it is made of (`features`) or what data it ships (`content`):
+## What still depends on executable registration
 
-| key | what it declares |
-|---|---|
-| `features` | `{ <id>: { designation?, settings?, system?, plugin?, services?, repositories? } }` |
-| `extensions.steps` | `{ <type>: { kind?, build \| trigger, fe?, runtime?, dsl? } }` |
-| `extensions.blocks` | `{ <type>: { kind?, fe?, be? } }` |
-| `extensions.artifacts` | `{ <type>: { icon, fe? } }` |
-| `extensions.dsl` | `{ <name>: { entry, targets, prefix?, globals? } }` |
-| `extensions.commands` | `{ <name>: { placeholder } }` |
-| `extensions.services`, `extensions.fe` | the rest of what the pack gives the app |
+Generated backend/frontend entries import implementation modules and assemble registration objects.
+Some static facts are embedded in those objects rather than exposed in a complete data artifact:
 
-See [`extensions.md`](../public-facing/extensions.md) for each. The key is the item's identity, which is
-what makes a duplicate unrepresentable: JSON cannot hold one key twice, so nothing has to check for one and
-nothing can forget to.
+- Plugin labels, icons, default-navigation claims and pane metadata.
+- Feature settings schemas/defaults and globally merged `settingsSections`.
+- Reference protocols/categories and anonymous editor contribution lists.
+- Help articles, some step palette metadata and generated event contracts.
 
-**2. `generate-entries` — the compiler.** It reads the manifest and each feature's declared *leaf* modules
-(`be/contract.ts`, `fe/contract.ts`), then emits `src/__generated__/pack-entry.ts`: a static import graph
-over every system machine, settings module, declared facet, migration list, applier and content writer,
-assembling one `PackRegistration` literal.
+Current readers combine installed declarations with runtime registration: settings unions installed and
+registered feature refs, pack details lose extension information while inactive, and shell navigation
+learns destinations/default claims as frontend imports finish. The discovery plan records the exact
+consumer/refactor inventory. The old claim that events are the only remaining gap is incorrect.
 
-**3. `PackRegistration` — the runtime object.** `registerPack` (`apack-host/src/packs/registry.ts`) checks
-collisions against it, then walks a `contributions` table (`packs/extensions.ts`) where each entry hands back
-an undo.
+## The intended boundary, not yet implemented
 
-**The fact worth seeing before anything else.** The generated entry contains lines like
+Build produces a complete validated descriptor plus indexed static data/assets. A host catalog exposes
+those facts for installed packs without importing executable modules. Activation binds implementations
+to already-known declarations; it cannot silently add another inventory. Definitions are authored once
+and generate both views. Build-time code evaluation is distinct from discovery-time execution.
 
-```ts
-plugin: { receives: ['NOTE.OPEN', 'NOTES_CONNECTED', 'NOTE_CREATED', /* … */] },
-```
+Settings use the common catalog with the ownership/schema/access contract from
+[settings architecture](../plans/settings-architecture.md). Static metadata is available while
+inactive; forms, actors, providers and handlers require actual execution. The catalog reports declared,
+eligible and active status separately.
 
-That is static data, already derived from a declared type, compiled into a JS object literal inside a 928 KB
-bundle. The information was never dynamic. Only its delivery is: the host learns which events the notes
-plugin accepts by `require`-ing a bundle that statically imports eleven XState machines.
+## Checks move earlier; rollback remains
 
-## Where today's shape fails
+Descriptor ownership and compatibility checks can run before activation. Runtime binding checks still
+protect against mismatched artifacts, and executable registration can fail after acquiring resources.
+Keep owned contribution stores, undo logs, teardown and replacement rollback. Knowing an actor's address
+or event contract does not make the actor ready; catalog discovery cannot replace delivery handshakes.
 
-- **Discovery requires execution.** `loadAppPacks` must load the whole backend to learn anything, so there is
-  no lazy activation and boot pays for every installed pack whether or not it is used.
-- **Collision detection is at boot, and needs rollback.** `registry.ts` throws on EARS, service, repository
-  and designation collisions; the `Contribution`/`UndoLog` machinery exists because *"an entry can throw
-  partway through its own items"*. That apparatus is downstream of discovering contributions by performing
-  them.
-- **Two sources that can disagree silently.** The manifest names `features[].plugin.contract`; codegen bakes
-  `receives: [...]` into the entry. Stale codegen means the registration describes a contract the sources no
-  longer have — and codegen's staleness hash covers *every file under `src/`*, because it reads sources.
-- **Tooling sees two fields.** `readInstalledSchema` reads `manifest.entities` and `manifest.relKinds` and
-  nothing else: that is the entire set of things the host can learn about an installed pack without running
-  it. It is load-bearing — `apack db` opens a data dir with no pack code at all — and it is the existence
-  proof that the declarative path works.
-- **Failure is late and all-or-nothing.** A pack whose module throws on import contributes nothing, and the
-  app finds out at boot.
+Dynamic provider results, component rendering, migration effects and user-specific applied rows remain
+runtime behavior. In-process contract enforcement is not a security sandbox. Follow the separate
+[security design](../goals/goal-pack-security-isolation.md) for confinement and permissions.
 
-## The example, against this pack's real manifest
+## Contracts to maintain
 
-### Authored today
+Descriptor/codegen/runtime freshness must agree, including in source/HMR workflows. A failed rebuild
+retains the last valid committed view and reports staleness. Installed descriptor inspection must never
+activate code to fill a missing field. Unsupported/malformed artifacts receive explicit diagnostics.
 
-```jsonc
-{
-  "id": "default-setup",
-  "entities": { "Note": "Note", "Document": "Document", "Collection": "Collection" },
-  "relKinds": { "MENTIONS": "mentions" },
-
-  "features": {
-    "notes": {
-      "settings": "src/features/notes/settings.ts",
-      "system": {
-        "entry": "src/features/notes/be/system.ts",
-        "contract": "src/features/notes/be/contract.ts#Contract"
-      },
-      "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts",
-        "contract": "src/features/notes/fe/contract.ts#Contract"
-      },
-      "references": "src/features/notes/fe/references",
-      "services": {},
-      "repositories": {
-        "noteQueries":  "src/features/notes/be/repository/index.ts#noteQueries",
-        "noteCommands": "src/features/notes/be/repository/index.ts#noteCommands"
-      }
-    }
-  },
-
-  "extensions": {
-    "steps": {
-      "llm": {
-        "build":   "src/extensions/steps/llm/build.ts#llmStepBuild",
-        "fe":      "src/extensions/steps/llm/fe.ts#llmStepFE",
-        "runtime": { "handler": "src/extensions/steps/llm/runtime.ts#handler", "isAsync": true },
-        "dsl":     { "primaryField": "prompt" }
-      }
-    }
-  }
-}
-```
-
-What the host cannot learn from this: which events the notes plugin accepts. Every *inventory* is here —
-the features, the step, block and artifact types, each naming its own facets — so what is left is the one
-thing below that is derived from a type rather than written.
-
-Note what is **absent**, and should stay absent: there is no `activationEvents` key. Activation is derived
-from the contributions — see the footgun below.
-
-### What a build could generate from it, and this is the half that matters
-
-`plugin.receives` must never be hand-written: it is derived from the plugin's `Contract` and a hand copy would
-drift on the first edit. So the build resolves the authored manifest into an artifact the host reads, beside
-the `manifest` the snapshot already carries:
-
-```jsonc
-// dist/runtime/contributions.json — @generated by `apack pack build`, held by a derivation check
-{
-  "id": "default-setup",
-  "format": 1,
-  "entities": { "Note": "Note", "Document": "Document", "Collection": "Collection" },
-  "relKinds": { "MENTIONS": "mentions" },
-
-  "features": {
-    "notes": {
-      "designation": null,
-      "services": [],
-      "repositories": ["noteQueries", "noteCommands"],
-      // derived from fe/contract.ts#Contract — the literal baked into pack-entry.ts
-      // today, lifted out of the bundle
-      "plugin": { "receives": ["NOTE.OPEN", "NOTES_CONNECTED", "NOTE_CREATED", "NOTE_UPDATED"] },
-      // derived from be/contract.ts#Contract
-      "system": { "receives": ["CREATE_NOTE", "DELETE_NOTE", "SEARCH_NOTES", "UPDATE_NOTE"] },
-      // where the behaviour is, resolved only on activation
-      "load": { "system": "#system/notes", "plugin": "#plugin/notes", "settings": "#settings/notes" }
-    }
-  },
-
-  "steps":     [{ "type": "action", "kind": "step", "dsl": { "custom": true }, "load": "#step/action" }],
-  "blocks":    [{ "type": "markdown", "kind": "display", "load": "#block/markdown" }],
-  "artifacts": [{ "type": "todo", "load": "#artifact/todo" }],
-  "commands":  { "pr2md": { "placeholder": "PR number or GitHub URL (optional)" } }
-}
-```
-
-`load` is an opaque key into the pack's bundle: the one thing that still requires executing code, and only
-when something needs that contribution.
-
-## What moved, and the test that decides each field
-
-The test for any field is **does something outside the pack need to know this before the pack runs?**
-
-| | before | after | why |
-|---|---|---|---|
-| block / artifact types | inside a 928 KB bundle | declared per item | the renderer routes on the type; it should not need the component to know one exists |
-| `plugin.receives` | generated literal *in* the bundle | generated *into* the artifact | the bus validates every send against it |
-| collision inputs (entities, services, repositories, designations) | discovered by registering | readable at install | moves the throw from boot-with-rollback to an install-time refusal |
-| activation | implicit "load everything" | derived from contributions | see the footgun below |
-| machines, step `build:default-setup`, components | in code | **still in code**, behind `load` | only the host needs them, and only when activating |
-
-## Footguns
-
-- **The drift tax is the whole cost.** Every lifted field is a second thing that can disagree with the
-  implementation, so each one needs codegen *from* the source plus a check — never a hand-written
-  declaration. `contributions.json` would be a fifth member of the family in
-  [`recorded-artifacts.md`](recorded-artifacts.md). Hand-writing `plugin.receives` would be strictly worse
-  than today.
-- **Declare activation, or derive it — never both.** VS Code shipped explicit `activationEvents`
-  (`onCommand:foo`), watched them rot against `contributes`, and from v1.74 derives activation implicitly
-  from the contribution points. Declaring both guarantees drift.
-- **Lazy activation moves failure from boot to first use.** Today a broken pack is a load problem the Packs
-  view shows at startup; lazily it surfaces mid-flow. The answer is probably: validate the manifest eagerly at
-  install, load behaviour lazily, and treat a load failure as a pack-level fault.
-- **Roles must resolve without activation.** `getDesignated('brain')` has to answer before the brain pack's
-  code runs, or lazy activation deadlocks on itself. Designations are already declarative; that is the
-  invariant to protect.
-- **Entity types must stay eager.** Every pack registers before `store.hydrate()` so the partition policy sees
-  all types. Entities are already declarative, which is why this works — and why entity declaration can never
-  become lazy.
-- **The module bridge has to be permanent.** Loading pack code at arbitrary later moments means
-  `Module._resolveFilename` must resolve `@apackdev/*` whenever a pack lazily requires one. A bridge scoped to a
-  boot-time load cannot survive lazy activation (`packs/runtime/bridge.ts`'s
-  `keepHostModulesResolvable` is that shape).
-- **The undo log stays.** Packs are removed and reloaded at runtime, so `Contribution`/`UndoLog` is still
-  needed. Declaring contributions removes the rollback-on-partial-failure case, not the mechanism.
-- **"Declarative" will not mean pure JSON.** `settingsSections?: () => Record<string, unknown>` and
-  `help?: () => HelpEntry[]` are already **thunks**, called lazily so a pack whose defaults come from compiled
-  content can read them at call time — a micro-version of the same problem, already solved the same way. The
-  end state is a manifest of metadata plus lazily-resolvable references, not data.
-
-## Industry fit
-
-- **VS Code** — `contributes` in `package.json` declares commands, menus, languages, grammars, settings and
-  views; code loads on activation. The closest analogue, and the source of the activation footgun above.
-- **Eclipse** — `plugin.xml` extension points with lazy class loading. The same idea, twenty years older.
-- **npm itself** — an `exports` map is pure data, resolvable without executing the package. This repo already
-  leans hard on that (the `@apackdev/source` condition, `stagePublishTree`).
-- **Kubernetes CRDs** — declare the schema, validate at admission, implement in a controller: the
-  collisions-at-install move, generalised.
-- **The deliberate counter-example** — ESLint flat config, Vite and webpack configs are *code*, chosen for
-  expressiveness, and they pay for it in tooling that cannot introspect them. Worth knowing because the trade
-  is real and sometimes runs the other way. Those are configuration, though, not a contribution registry a
-  host must index across many parties.
-
-The principle underneath all of them: **declare what another party must know about you; implement what only
-you must know.**
-
-## What would decide it
-
-This buys a **capability** — lazy activation and install-time validation — not less code. It adds members to
-the derivation family and removes none.
-
-So the input that decides scope is a measurement nobody has taken: **what boot currently spends executing
-pack backends.** It is 928 KB for the one pack that exists today. If that is 150 ms, the collision-timing and
-tooling wins alone probably do not justify a contract migration; if it is seconds and grows per installed
-pack, the case makes itself. Take that number before scoping anything, and lift fields one at a time against
-the test above rather than converting the contract wholesale.
+[Recorded artifacts](recorded-artifacts.md) documents artifact derivation rules. The discovery plan owns
+coverage fixtures, import-time-throw proof, consumer regressions and format/API checks. Historical plans
+in the archive preserve earlier proposals; their example manifests are not current schema instructions.

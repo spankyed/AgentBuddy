@@ -1,3 +1,5 @@
+> **Superseded in part and absorbed, 2026-10-12.** The [remaining-work ledger](../../plans/manifest-maturity.md#remaining-work-ledger-from-the-archived-designs) records adopted/deferred/rejected decisions; [settings](../../plans/settings-architecture.md) and [discovery](../../plans/discovery-without-activation.md) own implementation. Some original phases landed; archiving does not mark the remainder complete. The text and example below are historical.
+
 > **Written in session** `23ab84ee-4c28-4dde-8ea9-641d6aa004cd` (Claude Code, 2026-09-19). Resume it with `claude -r 23ab84ee-4c28-4dde-8ea9-641d6aa004cd`.
 
 ```
@@ -115,9 +117,9 @@ schema 22 — against 552 and 23/28 at the survey.
 facets by `"path#export"`. The step, block and artifact barrels and the step `index.ts` files are gone,
 a duplicate id or type is unrepresentable, and a contribution key found at the root is refused with the
 name it moved to (`_MOVED_ROOT_KEYS`, `manifest-schema.ts`).
-[`docs/reference/declarative-contributions.md`](../reference/declarative-contributions.md) records the
-shape; [`extensions.md`](../public-facing/extensions.md) and
-[`manifest.md`](../public-facing/manifest.md) document each key.
+[`docs/reference/declarative-contributions.md`](../../reference/declarative-contributions.md) records the
+shape; [`extensions.md`](../../public-facing/extensions.md) and
+[`manifest.md`](../../public-facing/manifest.md) document each key.
 
 **A second plan proposes a different answer to part of this**, and the two should not be implemented
 blind to each other: [`manifest-convention-first.md`](../plans/manifest-convention-first.md) replaces
@@ -439,7 +441,7 @@ The phase proves the generated `ears.ts` is unchanged.
 **5. `partitionPolicy` becomes `volatile` on the entity that is volatile, and every pack may use it.**
 
 > **This decision's subject no longer exists.**
-> [`goal-one-kind-of-pack`](../archive/goals/goal-one-kind-of-pack.md)'s Decision 5 deleted `partitionPolicy` outright —
+> [`goal-one-kind-of-pack`](goal-one-kind-of-pack.md)'s Decision 5 deleted `partitionPolicy` outright —
 > the manifest field, `PackEARS.partitionPolicy`, `getRegisteredEARSPolicy` and the registry's policy
 > member. `appPartitionPolicy()` survives as a constant in `apack-host/src/database/open.ts` over
 > `SDK_EXCLUDED_ENTITY_TYPES`, and no pack contributes to it. So this is no longer *moving* a capability
@@ -632,7 +634,7 @@ file is not at the conventional path.
 > **Updated 2026-09-22.** This decision named two more annotations when it was written, and neither
 > survives. `outgoingEventsType` no longer exists in `manifest-schema.ts` — it was removed after this
 > doc was written, and no pack in the repo carries one. `sendsTo` is deleted by
-> [`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) (its Decision 2), which has **landed**:
+> [`goal-plugin-inbox.md`](goal-plugin-inbox.md) (its Decision 2), which has **landed**:
 > a plugin declares the events it accepts, so the inverse index `sendsTo` supplied is gone from every
 > manifest, from `SystemSchema` and from `apack.schema.json`. Nothing here has to remove it.
 
@@ -651,7 +653,7 @@ names none of them. Measured again on 2026-09-22, the annotations are rarer stil
 24 `system` and `plugin` declarations, **three carry anything beyond the entry**: `threads.plugin`
 (`default: true`), `actions.system` (`sendsTo: ["flows"]`) and `settings.system`
 (`sendsTo: ["host/application"]`) — and **none** overrode the path. Re-measured on 2026-09-23, after
-[`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) deleted `sendsTo`,
+[`goal-plugin-inbox.md`](goal-plugin-inbox.md) deleted `sendsTo`,
 **`threads.plugin.default` is the only annotation left in the pack**; `events` and the `entry` override
 exist for external packs rather than for anything here. The `entry` override exists for an external pack with a different layout, not because
 anything here needs it.
@@ -686,7 +688,7 @@ entities exactly: a feature-level home, and a pack-level one for what no feature
 > listed above, but nothing in the reasoning below was written with it in mind.
 >
 > **`content.sourcesPolicy` no longer exists** (removed 2026-10-08,
-> [`goal-boot-content-imports-entities.md`](../archive/goals/goal-boot-content-imports-entities.md)): every key a pack
+> [`goal-boot-content-imports-entities.md`](goal-boot-content-imports-entities.md)): every key a pack
 > declares is imported, and the applier itself leaves a row the user trashed alone. So there is no `policy`
 > to move, here or in Phase 3.
 
@@ -1056,7 +1058,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 - Keep `system`/`plugin` as optional sibling annotations carrying `events`, the plugin's `default`
   claim, its `contract` and an `entry` override, and make `validate` reject one whose name is absent
   from `provides` (Decision 8). `sendsTo` is not among them:
-  [`goal-plugin-inbox.md`](../archive/goals/goal-plugin-inbox.md) already deleted it.
+  [`goal-plugin-inbox.md`](goal-plugin-inbox.md) already deleted it.
 - ~~Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `PluginSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
 - Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
   `provides`, not the three

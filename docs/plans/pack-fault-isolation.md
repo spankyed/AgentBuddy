@@ -1,5 +1,11 @@
 # A pack that breaks should cost its own feature, not the app
 
+Status: two workstreams. Frontend pane/form error boundaries are retained and follow catalog consumer
+migration; out-of-process execution remains deferred to the design-first
+[security isolation goal](../goals/goal-pack-security-isolation.md). Discovery moves static checks earlier
+but does not remove runtime undo logs, owned binding stores or error containment. Re-audit the survey
+below before choosing mechanisms; separate crash containment from security confinement.
+
 Compiled 2026-10-08 on `AS/one-action-cache`. **Conditional: this is not work for today.** Its trigger is
 named below, and until that trips, the cheap half is worth doing and the expensive half is not.
 
@@ -26,11 +32,9 @@ than security: a wedged or crashing extension must not take the window down.
 
 ## The trigger
 
-**Packs this repo did not write, installed by users.** Today `resolveFromRemoteRegistry`
-(`apack-cli/src/commands/install.ts:17`) throws for every name, so every pack in existence is in this tree
-and a crash is a bug to fix rather than a hazard to contain. When third-party distribution is real, so is
-this plan — and `declared-capabilities.md` becomes its prerequisite rather than its sibling, because
-containment without a declared surface is containment of nothing in particular.
+Re-audit actual installation paths and the trust model. Registry availability alone does not establish
+whether users can install external code. Frontend error boundaries have an independent stability payoff;
+process isolation needs its own threat-model and synchronous EARS design in the security goal.
 
 A second trigger, weaker but earlier: a crash report that names a pack's frontend as the cause of a blank
 window. That is the cheap half's evidence.

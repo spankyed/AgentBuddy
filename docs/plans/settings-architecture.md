@@ -1,5 +1,10 @@
 # Finish the app settings extraction
 
+Sequencing: the reworked [naming contracts goal](../goals/goal-naming-conventions.md) completes
+before this work. Re-audit names against its result; settings-specific names remain owned here.
+The [manifest maturity roadmap](manifest-maturity.md) orders this work with the common discovery
+foundation. This plan must not introduce a separate settings-only catalog.
+
 Status: planned. Revised 2026-10-12 on `AS/feature-settings-rework`.
 
 This replaces the earlier plan to make globally named settings sections exclusive. The work is an

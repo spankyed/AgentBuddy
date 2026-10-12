@@ -14,14 +14,76 @@ adding fields because another ecosystem has them.
 
 Deliver in this order:
 
-1. Finish the [settings extraction](declarative-settings-sections.md).
-2. Make declarations and diagnostics consistent.
-3. Declare consumed APIs and construct the corresponding access surface.
-4. Preserve dependency resolution provenance.
-5. Audit lifecycle behavior and contain frontend failures.
+1. Finish the in-flight [naming contracts goal](../goals/goal-naming-conventions.md). It has been reworked;
+   its old blanket naming bans are not the current instructions. Rebase subsequent audits on its result.
+2. Close the contribution inventory and establish the common descriptor/catalog foundation, using
+   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation
+   and diagnostics. Do not create a temporary settings-only catalog.
+3. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
+   custom forms and the independent window runtime.
+4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
+   Include descriptor/codegen freshness and checked binding, not just more manifest fields.
+5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
+   [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
+6. Finish consumed-API contracts, dependency provenance and
+   [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
+   on committed catalog update/rollback; consumed APIs need not wait for replacement.
+7. Measure boot cost and pursue [lazy activation](lazy-activation.md) only if the evidence warrants it.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
 roadmap; the linked plans hold subsystem design. Do not implement all of them as one manifest rewrite.
+
+## Plan ownership and supersession
+
+This document owns ordering and remaining manifest decisions. Settings and discovery own their detailed
+contracts. The following older designs are archived as absorbed/superseded, not marked implemented:
+
+| Historical document | Current owner / disposition |
+|---|---|
+| [Convention-first manifest](../archive/plans/manifest-convention-first.md) and its example | Discovery keeps the complete generated descriptor; implicit contribution existence is rejected |
+| [Declarative contributions](../archive/plans/declarative-contributions.md) | Discovery owns its inventory, data boundary and checked binding |
+| [Manifest redesign goal](../archive/goals/goal-manifest-redesign.md) and its example | Remaining-work ledger below; the example is not a target schema |
+| [Facade naming goal](../archive/goals/goal-defs-naming.md) | Descriptor work owns facade terminology and missing-contract diagnostics |
+
+The [naming contracts goal](../goals/goal-naming-conventions.md) remains active and precedes this work.
+Do not duplicate its renames in the settings/discovery implementation. Settings-specific names stay in
+the settings plan, as that goal already specifies.
+
+### Remaining-work ledger from the archived designs
+
+| Item | Decision and destination |
+|---|---|
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor |
+| Conventional implementation paths | Optional later authoring convenience; a declared contribution with a missing implementation fails, never silently disappears |
+| `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
+| Entity names/shapes and feature ownership | Re-audit in the inventory; preserve typed EARS behavior and use one normalized projection for all readers. Moving storage syntax is not a prerequisite |
+| Relation identity maps | Defer syntax simplification until a concrete reader benefits; preserve wire values and generated contracts |
+| `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
+| `boot`/`lifecycle` metadata | Discovery owns static hook presence and descriptions. Lifecycle audit owns execution/order; a rename alone does not establish the contract |
+| Module-reference syntax | Share resolution/checking where it overlaps; retain deliberate component/default versus named-export differences. No blanket encoding rewrite |
+| Schema descriptions, moved-key hints, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
+| Default navigation and feature descriptions | Discovery owns static metadata and stable selection policy; avoid duplicate claims in runtime objects |
+| `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
+| Build/check configuration and sidecars | Preserve landed build structure. Re-audit remaining check configuration with authoring diagnostics; no exact root-key count/order gate |
+| `extensions.fe` and `hostVersion` cosmetic alternatives | Deferred; existing names remain until a contract change provides a concrete reason to change them |
+| Snapshot `defs` versus DSL definitions | Settle facade field/cache terminology while extending the descriptor. Reject missing required facade contracts with a rebuild remedy; keep DSL vocabulary distinct |
+| Format/version assumptions | Follow current artifact-format rules, coordinate related changes and regenerate consumers. Do not bump release versions or treat older example formats as authoritative |
+
+### Other tracks and documents to revisit
+
+- [Dev-loop freshness](../goals/goal-dev-loop-freshness.md) remains a scoped follow-up; descriptor freshness
+  needed by discovery belongs in discovery's checkpoints, not in an unrelated package watcher redesign.
+- [Pack security isolation](../goals/goal-pack-security-isolation.md) remains a separate design-first goal.
+  Reconcile its frontend isolation input there; security confinement is not required to discover data.
+- [LMDB-only](../goals/goal-lmdb-only.md), console transactions and advisory locks remain a separate storage
+  track. Settle their overlapping transaction/lock decisions together before changing persistence.
+- Plugins-to-surfaces, logs extraction and distribution remain deferred. Re-audit their APIs after the
+  earlier contract changes; none is a prerequisite here. [Stretch-projection removal](drop-the-stretch-projection.md)
+  is independent tooling cleanup, not part of the manifest workstream.
+
+Update affected active docs at each checkpoint; archive a completed plan with evidence then. Preserve
+historical text in the archive, with status and successor links. Public docs describe shipped/current
+behavior until the corresponding implementation lands, not merely because a plan changed.
 
 ## 1. Complete discovery without activation
 
@@ -40,8 +102,8 @@ from it. Avoid a second handwritten contribution inventory. Reuse the existing b
 provenance machinery instead of building a generic extension framework.
 
 Targets: SDK manifest schema, snapshot model, `generate-entries.ts`, host registration and frontend
-contribution loading. Reconcile the older [declarative contributions plan](declarative-contributions.md)
-and its reference inventory against the current implementation before taking its remaining tasks literally.
+contribution loading. The [reference inventory](../reference/declarative-contributions.md) explains the
+current gap; the discovery plan is the implementation contract, not the archived contribution plan.
 
 Evidence: a pack with a runtime that throws on import can still be described from its built declarations.
 The declared names, generated registration and discovery result agree. Existing pack behavior survives.

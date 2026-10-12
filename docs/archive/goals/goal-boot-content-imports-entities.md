@@ -326,7 +326,7 @@ reviewing. It stays because the way out that `settings` took is closed to it: `d
 module a pack can import, and FAQ sources are markdown that needs a compiler, which `content.sources` is the only
 manifest key that runs. So the invariant below is stated with that exception named rather than as a clean
 sweep, and closing it means a manifest key for compiled artifacts nothing imports — a decision, which
-[`goal-manifest-redesign.md`](../../goals/goal-manifest-redesign.md) is the place for.
+[`goal-manifest-redesign.md`](goal-manifest-redesign.md) is the place for.
 
 **The rule holds for three of the five shipped content keys, not all of them, and the claim as first written
 — here, in `content.md` and in Phase 1's commit message — was an overclaim.** The applier's half is general:

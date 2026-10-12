@@ -1,5 +1,11 @@
 # Goal docs
 
+For the current settings/manifest work, follow the priority order in
+[manifest maturity](../plans/manifest-maturity.md). The reworked
+[naming contracts goal](goal-naming-conventions.md) is in flight and finishes before that implementation.
+The roadmap records absorbed goals and separates the storage/security tracks; an archive entry does
+not imply that a superseded proposal was implemented.
+
 A goal doc is a plan an agent can pick up later and carry out without the conversation that produced it. It holds the prompt to run it with, the facts behind the plan, the decisions already made, the work in phases with checks, and the rules for doing it. When the work is done, the doc records what happened and moves to the archive.
 
 This file describes how to write one. The best current examples are [`goal-package-boundaries.md`](../archive/goals/goal-package-boundaries.md) (a finished goal with its outcome) and [`goal-lmdb-only.md`](goal-lmdb-only.md) (a goal with spike results and open decisions).

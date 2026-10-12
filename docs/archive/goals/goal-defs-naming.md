@@ -1,3 +1,5 @@
+> **Absorbed, 2026-10-12.** The descriptor checkpoint in [discovery](../../plans/discovery-without-activation.md) owns facade naming and missing-contract diagnostics; [manifest maturity](../../plans/manifest-maturity.md) records the disposition. The rename is not marked implemented.
+
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-19), from a review of
 > the notes left by `AS/external-pack-authoring`. Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 

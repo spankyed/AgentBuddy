@@ -32,7 +32,7 @@ but do not contain arbitrary code sharing the host's execution environment. The 
 field is descriptive metadata, not an enforced grant.
 
 The [manifest maturity plan](../plans/manifest-maturity.md) separates declared consumed APIs from
-security permissions. [Settings extraction](../plans/declarative-settings-sections.md) defines shared
+security permissions. [Settings extraction](../plans/settings-architecture.md) defines shared
 cross-pack mutation by default, with optional owner-only mutation through the supported API. The
 [discovery plan](../plans/discovery-without-activation.md) makes declared surfaces inspectable without
 loading code. None establishes a sandbox for malicious pack code.

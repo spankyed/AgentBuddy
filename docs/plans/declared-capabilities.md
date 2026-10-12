@@ -1,12 +1,25 @@
 # A pack declares what it consumes, not just what it provides
 
+Status: retained as a consumed-API contract plan; re-audit before implementation after naming and the
+settings/discovery foundation. [Manifest maturity](manifest-maturity.md) owns its sequence. The service
+list and paths below are survey evidence, not a frozen capability inventory.
+
+Settings keep [shared cross-pack read/write/reset by default](settings-architecture.md), with
+opt-in owner-only mutation. Consuming the settings API and satisfying a target's mutation policy are
+separate checks. Reuse trustworthy caller binding established by settings; do not introduce a competing
+caller identity or silently make dependency settings readonly. Inventory host and dependency consumption
+before choosing pack/feature granularity for generated services.
+
+Constructed facades and supported import checks enforce the authoring API, not arbitrary in-process
+JavaScript confinement. [Pack security isolation](../goals/goal-pack-security-isolation.md) owns the
+stronger threat model, sensitive-operation boundaries and frontend/backend isolation design.
+
 Compiled 2026-10-08 on `AS/one-action-cache`, from reading how a pack reaches the host's services after
 `goal-one-kind-of-pack`. Every location below was checked against the tree on that date.
 
-**This is the one item on the extension-host list whose cost grows with delay.** Retrofitting permissions
-onto packs that assume ambient access is painful, and right now there is **one pack** to migrate and no
-third-party pack to break — `resolveFromRemoteRegistry` (`apack-cli/src/commands/install.ts:17`) still
-throws for every name.
+Re-audit all in-tree packs, fixtures and supported local/URL installation paths. Lack of registry
+resolution is not proof that third-party code cannot be installed. This work declares API consumption;
+security permissions and isolation follow the separate security goal.
 
 ## Context
 
@@ -101,15 +114,14 @@ Restricting the data layer contradicts a documented affordance. Either:
 
 ### The cheap piece worth doing either way
 
-**A pack's compiled content may only create entity types the pack declares** — derivable at build time from
-`apack.json`'s `ears.entities` against the `record.entity` values in the compiled content data, and refused by
-`apack pack validate` and `apack pack build`. It closes the content path without touching runtime queries or the
-untyped affordance, and it is the same shape as the externals subset check `goal-one-kind-of-pack` landed
-(`apack-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
-refusal.
+**Validate compiled content entity targets against supported declarations and dependencies.** Derive
+the check from normalized entity contracts and compiled records, using the same rule in validation and
+build. Shared SDK/dependency entities require an explicit supported rule, not blanket rejection. This
+check leaves runtime query affordances unchanged.
 
-It is worth doing whichever way the decision above goes, because a pack applying another pack's entity types
-is a bug under either model.
+Validate content targets against the supported ownership/dependency contract, including shared SDK
+entities. Do not assume every legitimate content row has a type declared by the applying pack; inventory
+existing appliers before choosing the rule. This check diagnoses content contracts, not runtime confinement.
 
 ## Steps
 
@@ -118,7 +130,7 @@ is a bug under either model.
 2. `generate-entries` builds `services` rather than casting it.
 3. `check:specifiers` rule, with its firing case.
 4. The registry gate, with a case that an undeclared service is absent.
-5. default-setup declares what it uses — which is the migration, and the only pack to migrate.
+5. Migrate default-setup, fixture packs, scaffolds and every current consumer found by the inventory.
 6. The apply-ownership check above, which is independent of 1-5 and can land first.
 
 ## Verification

@@ -1,7 +1,12 @@
 # Activate a pack when something needs it, not because the app booted
 
+Sequencing: after naming and complete [discovery](discovery-without-activation.md), and only after
+boot attribution shows a worthwhile gain. Catalog completeness enables lazy loading but does not
+implement it. Derive triggers from existing declarations; preserve migrations/content ordering and
+message readiness. The original eager-runtime design below is research input, not the selected end state.
+
 Compiled 2026-10-08 on `AS/one-action-cache`. **Measurement-gated: do not start this without step 0.** The
-design below is sound and the size of the prize is unknown, which is the wrong way round to begin.
+design below needs re-audit on the catalog boundary, and the size of the prize is still unknown.
 
 ## Context
 
@@ -47,7 +52,7 @@ is sequenced yet.
   in this app's data has no reason to be running. This is derivable from the written flows and the registry.
 - **A role on demand.** `sendToSystem({ role })` already resolves a role to a system; it becomes the trigger
   that starts that system's pack rather than assuming it is up.
-- **A plugin the user opens.** The renderer already loads a pack's frontend lazily through `pack://`;
+- **A plugin the user opens.** The renderer imports pack frontends dynamically through `pack://`, currently during startup;
   the backend half could follow the same signal (`pluginVisibility` and `lastActivePlugin` are in `AppState`
   already).
 
@@ -59,9 +64,8 @@ or they move behind the same predicate and the ordering guarantees in `applyPack
 
 ## Depends on
 
-`declarative-contributions.md`, partly: you cannot lazily activate what you can only discover by running.
-How much of a pack's contribution is declarative today decides how much of this is reachable, so read that
-plan's inventory before designing the predicate.
+[Discovery without activation](discovery-without-activation.md) provides the complete descriptor and
+catalog. Re-measure and redesign activation on that boundary; the archived contribution plan is history.
 
 ## Verification
 
@@ -84,6 +88,6 @@ For a local app that is usually the right trade; measure it rather than assume.
 
 ## What this is not
 
-- Not lazy *loading* of a pack's module. That is a separate and larger change: the registration is what
-  declares the activation predicate, so the module is read either way until contributions are fully
-  declarative.
+- The original proposal deferred lazy module loading because registration supplied metadata. After
+  discovery lands that limitation is removed. Decide which loading/activation work to defer from measured
+  cost and readiness behavior; do not preserve eager imports solely to rediscover catalog facts.

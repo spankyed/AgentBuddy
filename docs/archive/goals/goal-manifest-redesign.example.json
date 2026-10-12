@@ -548,7 +548,7 @@
           "getAllEntities": "typeof _dsl.getAllEntities",
           "getAll": "typeof _dsl.getAll",
           "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
-          "getAttr": "typeof _dsl.getAttr",
+          "findAttr": "typeof _dsl.findAttr",
           "getAttrs": "typeof _dsl.getAttrs",
           "getRoles": "typeof _dsl.getRoles",
           "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
