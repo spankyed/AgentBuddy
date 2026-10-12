@@ -102,7 +102,8 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
    opens by denying its name (*"not the list of installed packs — `packs/<id>/` is"*), and the code already
    says record (`PackRecord`, `recordInstalled`, `packRecord`). Read the old file once if present, write the
    new name through an idempotent stored-data migration, preserving enabled choices and provenance.
-   A file rename is optional if the current naming goal already settles the record terminology.
+   Use the record terminology established by the completed naming goal; rename the file only if
+   the remaining contract requires it.
 3. **Boot:** install when the id is absent *unless* the record suppresses automatic installation; re-install on shipped
    artifact revision change only where `updatesWith === 'app'`. Stop hash-comparing on every boot. Reconcile existing
    installs once — copies matching the shipped artifact may be adopted as app-managed, so mark those `'app'`, or every current install

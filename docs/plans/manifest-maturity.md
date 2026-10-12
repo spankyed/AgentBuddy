@@ -12,19 +12,21 @@ apack already has generated schemas and accessors, snapshots, artifact integrity
 host-version checks. Build on these mechanisms. The priority is completing their contracts rather than
 adding fields because another ecosystem has them.
 
-Deliver in this order:
+Completed prerequisite: [naming contracts](../archive/goals/goal-naming-conventions.md), closed in
+`3d389b9c8`. Build on that result; no ongoing naming synchronization is required.
+The [execution goal](../goals/goal-settings-and-pack-contracts.md) owns checkpoints and completion.
 
-1. Build on the completed [naming contracts goal](../archive/goals/goal-naming-conventions.md). It replaced the old survey;
-   its old blanket naming bans are not the current instructions. Rebase subsequent audits on its result.
-2. Close the contribution inventory and establish the common descriptor/catalog foundation, using
+Deliver the remaining work in this order:
+
+1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
-3. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
+2. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
-4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
+3. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
-5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
+4. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
-6. Finish consumed-API contracts, dependency provenance and
+5. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
    on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
 
@@ -35,7 +37,7 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 
 | Checkpoint | Required result before the next work starts |
 |---|---|
-| Naming | Settled API vocabulary; re-audited paths and callers, without repeating its renames |
+| Naming — complete | Use the completed contracts as the starting baseline; do not repeat their refactors |
 | Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
 | Settings | Host/pack/feature ownership, stored-data migration, schema-backed handles and policy, custom forms and window runtime work on that foundation |
 | Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
@@ -59,7 +61,7 @@ contracts. The following older designs are archived as absorbed/superseded, not 
 | [Manifest redesign goal](../archive/goals/goal-manifest-redesign.md) and its example | Remaining-work ledger below; the example is not a target schema |
 | [Facade naming goal](../archive/goals/goal-defs-naming.md) | Descriptor work owns facade terminology and missing-contract diagnostics |
 
-The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete and precedes this work.
+The [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete; its contracts are the baseline for this work.
 Do not duplicate its renames in the settings/discovery implementation. Settings-specific names stay in
 the settings plan, as that goal already specifies.
 

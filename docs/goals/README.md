@@ -1,7 +1,8 @@
 # Goal docs
 
-For the current settings/manifest work, follow the priority order in
-[manifest maturity](../plans/manifest-maturity.md). The reworked
+For the current settings/manifest work, use the
+[settings and pack contracts goal](goal-settings-and-pack-contracts.md) for execution and
+[manifest maturity](../plans/manifest-maturity.md) for the remaining priority order. The reworked
 [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete. Build on its resulting APIs.
 The roadmap records absorbed goals and separates the storage/security tracks; an archive entry does
 not imply that a superseded proposal was implemented.

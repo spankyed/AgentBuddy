@@ -4,8 +4,9 @@
 # Goal: complete settings and discoverable pack contracts
 
 Implement docs/goals/goal-settings-and-pack-contracts.md. Read CLAUDE.md, Background, Decisions,
-Integration workflow, Phases and Constraints first. The surveyed base is cf8bc7c1b on
-session/naming-contracts; start from the current committed state of that branch, not master.
+Working setup and checkpoint workflow, Phases and Constraints first. The updated base is 3d389b9c8 on
+session/naming-contracts, which completes naming. Start from a committed state containing that work
+and this goal; master is suitable only once it contains both.
 Create a dedicated branch and worktree as explicitly requested. Preserve the source checkout's
 uncommitted work; never share dependencies, generated output or the index between worktrees.
 
@@ -13,10 +14,10 @@ Follow the linked subsystem plans without duplicating their designs here. This g
 checkpoints and completion; manifest-maturity owns the roadmap and subsystem plans own contracts.
 Audit actual code before implementation. Record evidence-based corrections in the owning plan.
 
-Commit each validated implementation checkpoint before beginning the next. After every checkpoint,
-check session/naming-contracts for newer commits. Merge tested committed updates, resolve conflicts
-and validate the combined result before proceeding, following Integration workflow. Do not reimplement
-naming changes independently. Naming must be complete, validated and integrated at final sign-off.
+Naming conventions are complete. Verify that completed baseline once at kickoff; do not poll or merge
+the naming branch after each checkpoint. Follow Working setup and checkpoint workflow. Commit each
+validated implementation checkpoint before beginning the next; apply the settled naming conventions
+to new APIs without reopening the completed naming project.
 
 Finished when:
 - Phases 0–7 meet their Done when conditions, including all three Phase 6 workstreams.
@@ -25,45 +26,39 @@ Finished when:
   generated bindings, catalog identities, updates and source-build freshness agree.
 - Entity navigation, frontend boundaries, supported consumed APIs, dependency provenance and
   explicit shipped-pack replacement satisfy their linked plans and external-pack checks.
-- The latest agreed naming completion commit is an ancestor of this branch, its validation is recorded,
-  and no naming merge/conflict or required implementation remains deferred to a later integration pass.
+- The completed naming baseline is included and recorded; no naming integration remains outstanding.
 - Changed public schemas, API reports, templates and docs agree; final validation passes.
 - Record outcomes, corrections and validation, then archive this goal and completed subsystem plans
   with repaired links. Deferred work remains deferred.
 
-Commit as you go, including integration resolutions. Do not push, tag, open/merge PRs, publish,
+Commit as you go, including any required kickoff integration resolution. Do not push, tag, open/merge PRs, publish,
 trigger release workflows or edit release/version metadata unless separately requested. Follow the
 Constraints for isolated test data, typed EARS, migrations and validation. No compatibility shims.
 ```
 
 # Complete settings and discoverable pack contracts
 
-Status: planned. This is the execution goal for the six active items in
-[manifest maturity](../plans/manifest-maturity.md); lazy activation is deferred.
+Status: planned; naming conventions are complete. This executes the five remaining work items in
+[manifest maturity](../plans/manifest-maturity.md), building on the completed naming prerequisite.
+Lazy activation is deferred.
 
-## Background (2026-10-12, at cf8bc7c1b on session/naming-contracts)
+## Background (2026-10-12, at 3d389b9c8 on session/naming-contracts)
 
-The settings and discovery designs have been reconciled but are not implemented. Their documentation
-commits were moved to master and the naming branch rebased onto them. The current committed naming
-branch contains the resulting plans and successive naming refactors, so branching from master would
-omit the naming API baseline used by this work.
+The [naming goal](../archive/goals/goal-naming-conventions.md) is complete and archived, with its outcome
+and validation recorded. Commit `3d389b9c8` closes that work. The settings/discovery plans and this goal
+are already on its branch; use that completed state or a later integration containing it as the baseline.
+Do not restart naming implementation or require ongoing synchronization with the finished branch.
 
-The naming goal is moving from its active location to
-[the archive](../archive/goals/goal-naming-conventions.md). Its current status says implementation complete,
-final validation pending. An archive path alone is not evidence of completion. Recheck both locations
-and actual committed outcomes at kickoff; do not import uncommitted source changes or claim validation
-from a moving working tree.
-
-The six items are naming integration, shared foundation, settings, full discovery, navigation/fault
-boundaries, and API consumption/provenance/replacement. The last item contains three distinct deliverables.
-Current code paths and names must be re-audited after each naming integration. The linked plans contain
-historical surveys alongside target contracts; a survey is not a claim about the current tree.
+The settings and discovery designs are reconciled but remain unimplemented. Five work items remain:
+shared foundation, settings, full discovery, navigation/fault boundaries, and API consumption/provenance/
+replacement. The last item contains three distinct deliverables. Audit current paths and interfaces
+against the completed naming result; historical surveys in the linked plans are not current-code claims.
 
 ## Decisions
 
-1. **One working branch, isolated from naming development.** Fork the current committed naming state
-   in a dedicated worktree. Naming continues on its source branch; integrate updates throughout this goal.
+1. **One isolated working branch.** Fork the completed naming baseline in a dedicated worktree.
    The user explicitly authorized branching/worktree creation and incremental commits for execution.
+   Naming integration is a kickoff prerequisite, not an ongoing workstream.
 2. **One shared foundation.** Inventory all supported contribution kinds before designing the catalog.
    Extend the existing snapshot/build pipeline, with settings as the first catalog projection. No second
    authored inventory, settings-only catalog or runtime fallback for missing declaration metadata.
@@ -74,8 +69,8 @@ historical surveys alongside target contracts; a survey is not a claim about the
    `extensions.settings`; features use their own settings definitions. JSON Schema describes values and
    validation; forms remain custom. Shared dependency read/write/reset is the default, with opt-in
    owner-only mutation enforced through trusted caller binding. Preserve user overrides and lifecycle state.
-5. **Integrate naming rather than duplicate it.** Merge its tested commits, adapt this branch's new APIs
-   to the resulting conventions and fix conflicts immediately. Do not apply retired blanket naming bans.
+5. **Build on completed naming.** Verify the baseline once, follow its resulting contracts for new APIs
+   and retain its regression checks. Do not apply retired blanket naming bans or repeat its refactors.
 6. **Finish the whole active scope.** Phase 6 has separate API, provenance and replacement checkpoints.
    None is silently dropped because the settings/discovery work is substantial. Strong security isolation,
    general lazy activation and speculative package-manager work remain outside this goal.
@@ -83,60 +78,47 @@ historical surveys alongside target contracts; a survey is not a claim about the
    docs at each checkpoint; regenerate affected schemas/API reports then. Stored user data requires
    idempotent migration under the repository's current migration rules; code needs no compatibility aliases.
 
-## Integration workflow
+## Working setup and checkpoint workflow
 
 ### Kickoff
 
-Record the current committed source tip and branch name (`session/naming-contracts`), the goal branch,
-worktree path and naming tip already incorporated. Use the repository session workflow:
+Pin the chosen starting commit and verify it contains the completed naming work (`3d389b9c8`) and this
+goal. Record the base SHA, naming completion SHA, goal branch and worktree path. If naming was merged
+with preserved history, verify ancestry. If squash/rebase changed its commit identity, record the landing
+commit and verify the resulting contracts and archived validation instead of insisting on the old SHA.
+Master is a suitable base once that integration has landed; do not branch from a tree missing naming.
+
+Create the dedicated worktree through the repository session workflow:
 
 ```sh
-npm run session:new -- settings-pack-contracts <pinned-source-commit>
+npm run session:new -- settings-pack-contracts <pinned-base-commit>
 ```
 
-This creates `session/settings-pack-contracts` with its own dependencies and builds. Continue all edits,
-validation and commits there. If that name is already in use, resume the matching goal worktree or choose
-an unused explicit name; do not overwrite a branch. The goal doc must be committed and present in the
-chosen starting state before execution. Existing source-checkout changes belong to their author.
+Continue all edits, validation and commits there with its own dependencies and outputs. If the name is
+already in use, resume the matching goal worktree or choose an unused explicit name. Preserve other
+checkouts' uncommitted work. The goal doc must be committed and present in the selected starting tree.
 
-### After every implementation checkpoint
+If an existing goal branch lacks naming, integrate the completed commits once through the repository's
+`session:check` workflow before implementation. Resolve conflicts and validate the combined candidate,
+then incorporate only the tested result. No repeating naming-branch fetch/merge loop is required.
 
-1. Run the checkpoint's checks, inspect the staged diff and commit its logical changes. The goal worktree
-   must be clean before integration. Record the implementation commit and evidence in Progress.
-2. Resolve the naming source to an exact committed SHA and compare ancestry with the goal branch.
-   If its tip is already an ancestor, record “no new commits” and continue. Never copy its dirty files.
-   If it is distributed remotely, fetch its configured remote and check that its local/remote tips agree;
-   handle divergence explicitly instead of guessing which is authoritative.
-3. For new commits, follow `npm run session:check -- <pinned-naming-sha>` from the clean goal checkout.
-   This tests a detached combined candidate under the repository's strict integration workflow.
-   If refs advance during validation, pin the new tip and recheck. Do not mix tested and untested commits.
-4. If conflict-free validation passes, merge that tested naming SHA into the goal branch. If the candidate
-   conflicts, resolve the conflicts in the candidate and inspect semantic changes. Install/build its own
-   dependencies and outputs (the helper stops before setup on a merge conflict), then run its full strict
-   chain following the session helper’s setup/validation commands. Record both pinned parents and the validated resolution commit.
-   Fast-forward the clean goal branch to that tested merge commit only while its original HEAD is unchanged.
-   Never merge conflict markers, stage unrelated work or weaken an assertion merely to combine branches.
-5. Confirm the merged naming tip is an ancestor, record the integration commit and checks, and ensure the
-   worktree is clean. Check the naming tip again before starting the next checkpoint; repeat if it advanced.
+### Each implementation checkpoint
 
-Apply this loop to sub-checkpoints inside large phases, not just the six umbrella items. Integrations are
-committed as they happen. Do not rewrite or push the naming source branch as part of this workflow.
+Run focused checks and the required checkpoint validation, inspect the staged diff, and commit a usable
+logical change before starting the next. Record its commit and evidence in Progress. Large phases have
+multiple checkpoints; Phase 6's three workstreams each have their own commits and evidence.
 
-### Final naming closure
-
-Repeat the loop at final sign-off. Confirm the naming goal's implementation and validation are complete,
-then record the exact naming completion SHA and prove it is an ancestor of the goal branch. If naming
-remains unfinished, continue useful independent work but keep this goal open; an early archive is not a
-substitute for completion. If a new naming commit arrives during final checks, integrate and revalidate
-before closing. A later unrelated branch update does not invalidate a recorded completion boundary.
+Apply settled naming rules to new interfaces as ordinary implementation review. If separately authorized
+integration work later becomes necessary, follow CLAUDE.md's pinned integration validation; the completed
+naming branch is not an automatic source of future changes.
 
 ## Phases
 
 ### Phase 0 — Isolate the work and establish the baseline
 
-Create the worktree from the current committed naming state. Inspect the linked plans against that code,
-record current contribution/setting entry points and naming completion status, and perform an initial
-integration check. Use existing isolated fixtures for stored-data and app checks.
+Create the worktree from a committed state containing completed naming and this goal. Inspect the
+linked plans against that code, record current contribution/setting entry points, and verify the naming
+baseline once. Use existing isolated fixtures for stored-data and app checks.
 
 **Done when:** the branch/worktree and source SHA are recorded, setup succeeds, source work is untouched,
 and baseline failures or stale survey claims are investigated and accounted for before affected work starts.
@@ -206,7 +188,7 @@ isolation or change the security model here.
 
 ### Phase 6 — Finish the three contract workstreams
 
-Deliver these independently, committing and synchronizing naming after each logical checkpoint:
+Deliver these independently, committing each validated logical checkpoint:
 
 | Workstream | Implementation owner | Done when |
 |---|---|---|
@@ -224,9 +206,8 @@ templates and public contracts updated. No workstream is merely marked “follow
 
 ### Phase 7 — Final review and completion
 
-Perform final naming closure, then review the entire implemented diff for correctness and completeness
-against the inventory and each plan's acceptance criteria. Fix omissions and bugs, commit them, and repeat
-the integration loop when needed. Check failure paths, artifact revisions, dependency ownership, import
+Review the entire implemented diff for correctness and completeness
+against the inventory and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, artifact revisions, dependency ownership, import
 migration, multiple windows, disable/uninstall/reinstall, and external authoring.
 
 Run focused checks as changes are made, `npm run chain` at validated checkpoints, and the full strict
@@ -262,11 +243,12 @@ contract or failing acceptance check keeps the goal open; document blockers inst
 
 ## Progress
 
-Record implementation and integration as work proceeds:
+Record the completed naming baseline at kickoff, then implementation evidence as work proceeds:
 
-| Checkpoint | Implementation commit / evidence | Naming SHA integrated | Integration commit / evidence |
-|---|---|---|---|
-| Kickoff | Pending | Pending | Pending |
+| Checkpoint | Commit | Validation / outcome |
+|---|---|---|
+| Naming prerequisite | `3d389b9c8` | Complete; verify inclusion at kickoff and record the chosen base |
+| Kickoff | Pending | Pending |
 
 ## Outcome
 

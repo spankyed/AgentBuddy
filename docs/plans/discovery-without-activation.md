@@ -286,7 +286,7 @@ not become a second coordination layer alongside the old shell actions.
 
 ## Delivery sequence
 
-1. **Close the inventory after naming lands.** Map every registration/manifest field and reader to declaration, metadata,
+1. **Close the inventory on the completed naming baseline.** Map every registration/manifest field and reader to declaration, metadata,
    asset or runtime behavior. Record exact remaining gaps and dependency ownership rules here.
 2. **Establish the shared foundation with settings.** Build descriptor validation and the catalog with
    the linked settings plan as the first consumer. Establish checked binding, ownership checks and

@@ -8,7 +8,7 @@ Status: planned after settings and complete discovery, as ordered by
 The manifest declares provided services, but consumption of host and dependency APIs is mostly implicit.
 Generated service types alone do not restrict runtime objects. The 2026-10-08 survey found a per-pack
 facade casting an ambient SDK object, direct SDK service imports, and `permissions` used as display
-metadata. Re-audit those paths after naming and discovery before choosing the declaration syntax.
+metadata. Re-audit those paths against completed naming and discovery before choosing the declaration syntax.
 
 Authors need an accurate answer to which supported APIs their pack requires, actionable failures when a
 provider is unavailable, and tests that can supply just those dependencies. This does not establish what
