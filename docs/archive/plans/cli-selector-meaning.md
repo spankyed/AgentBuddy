@@ -1,6 +1,6 @@
 # CLI selectors: consistent meaning across commands
 
-Status: implementation and cleanup verified; final review complete; ready for commit.
+Status: completed and committed; archived as the implementation and review record.
 
 ## Purpose
 

@@ -88,7 +88,7 @@ Every other caller is host or above: `database/running.ts` (host), `apack-cli/sr
 CLI, which inlines host), `api/tests/unit/dev-reload-access.spec.ts` (the API, which depends on host). The
 `ApiEndpoint` type's only writer is `api/src/setup/websocket.ts`, which publishes the file.
 
-So the blocker in `docs/plans/external-pack-authoring-followups.md` — "blocked on removing that script's
+So the blocker in `docs/archive/plans/external-pack-authoring-followups.md` — "blocked on removing that script's
 need to discover the API first, which is its own change" — is smaller than recorded. The script doesn't
 need to discover the API. It needs a port number.
 
@@ -154,7 +154,7 @@ still each fail the right test from their new home.
 `npm run api:update` (the SDK loses four exported names; `@apackdev/ui`'s stamp follows). Then the root
 `CLAUDE.md` (`@apackdev/sdk/env`'s one-line role), `apack-host/CLAUDE.md` (its "Process liveness
 (`@apackdev/sdk/env`)" section and module map), `apack-sdk/CLAUDE.md` (the `env/` bullet), and
-`docs/plans/external-pack-authoring-followups.md`, whose deferred entry this closes.
+`docs/archive/plans/external-pack-authoring-followups.md`, whose deferred entry this closes.
 
 **Done when:** `npm run api:check` passes and no doc places these names in the SDK.
 

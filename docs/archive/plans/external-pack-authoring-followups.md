@@ -1,3 +1,7 @@
+> **Archived historical review.** The 22 ready items are complete. Remaining deferred and unverified
+> work is tracked in [the deferred checklist](../../plans/deferred/external-pack-authoring.md).
+> Paths, line numbers, and unresolved diagnoses below describe the original review.
+
 # External pack authoring: remaining action items
 
 Compiled 2026-09-19 on `AS/external-pack-authoring`, from the branch's own review notes plus two later
