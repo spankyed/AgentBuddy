@@ -424,7 +424,7 @@ interface BrainContext$1 {
     startError?: Error;
     /** Whether the start error was reported (a toast in every open window): once per failed start */
     startErrorReported: boolean;
-    /** Whether a client has connected: before that, nothing receives what the brain sends */
+    /** Whether a client has been seen since this backend started; not current connection presence */
     clientConnected: boolean;
     /** The root flow the running brain started with; undefined while it's stopped */
     runningRootFlowId?: EARS.EntityId;
@@ -2630,12 +2630,6 @@ type IncomingThreadsEvents = {
     cursor: string;
 } | {
     type: 'CLIENT_CONNECTED';
-} | {
-    type: 'BIRTH_FLOW_START';
-}
-/** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
- | {
-    type: 'SECRETS_CHANGED';
 } | {
     type: 'THREAD_DELETED';
     threadId: string;

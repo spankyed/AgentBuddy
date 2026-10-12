@@ -111,9 +111,20 @@ export const brainSystem = setup({
           data
         });
       });
+      enqueue('notifyClientReady');
     }),
-    
-    setClientConnected: assign({ clientConnected: true }),
+
+    // A root run receives readiness once: on the first client, or when restarted after that client.
+    notifyClientReady: enqueueActions(({ context, enqueue }) => {
+      if (!context.clientConnected || !context.brainActor) return;
+      // Address this actor instance, so delayed or paused delivery cannot reach a replacement root.
+      enqueue.sendTo(context.brainActor, { type: 'client.ready' }, { delay: 0 });
+    }),
+    setClientConnected: enqueueActions(({ context, enqueue }) => {
+      if (context.clientConnected) return;
+      enqueue.assign({ clientConnected: true });
+      enqueue('notifyClientReady');
+    }),
 
     /** A client connected while the brain is stopped: it stays stopped with its start error unless a root flow exists by now */
     refreshStartError: assign({
@@ -230,6 +241,7 @@ export const brainSystem = setup({
           startError: undefined,
         };
       });
+      enqueue('notifyClientReady');
     }),
     sendPluginData: ({ context, event, self }) => {
       // Use provided flowTNodeId or fall back to root

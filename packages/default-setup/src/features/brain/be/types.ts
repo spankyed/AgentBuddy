@@ -142,7 +142,7 @@ export interface BrainContext {
   startError?: Error;
   /** Whether the start error was reported (a toast in every open window): once per failed start */
   startErrorReported: boolean;
-  /** Whether a client has connected: before that, nothing receives what the brain sends */
+  /** Whether a client has been seen since this backend started; not current connection presence */
   clientConnected: boolean;
   /** The root flow the running brain started with; undefined while it's stopped */
   runningRootFlowId?: EARS.EntityId;

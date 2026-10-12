@@ -493,9 +493,6 @@ export type IncomingThreadsEvents =
   | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
 
   | { type: 'CLIENT_CONNECTED' }
-  | { type: 'BIRTH_FLOW_START' }
-  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
-  | { type: 'SECRETS_CHANGED' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
   | { type: 'COMMANDS_CHANGED' }

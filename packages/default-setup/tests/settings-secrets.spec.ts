@@ -1,7 +1,7 @@
 // API keys in default-setup: the settings system refreshes its plugin when the host's stored keys change
-// (never with values) and starts the assistant's birth flow once a required provider has a key, CLI paths live in
+// (never with values). CLI paths live in
 // the code plugin.
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { addTestSecret, startApp, takeSystemErrors } from '@apackdev/testing/harness';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
@@ -18,34 +18,6 @@ describe('settings and stored API keys', () => {
     const updated = app.emitted('host/settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)!;
     expect(updated).toMatchObject({ secrets: [{ id: work.id, provider: 'anthropic', label: 'Work', selected: true }], status: { protection: 'os-keystore' } });
     expect(JSON.stringify(updated)).not.toContain('value');
-  });
-
-  // The assistant's first flow is the threads feature's, so its trigger is too: the app only says the keys changed,
-  // and every system that takes `SECRETS_CHANGED` hears it
-  it("starts the birth flow once a required provider has a selected key, and not after the assistant's birth", async () => {
-    const app = await startApp({ systems: ['threads', 'host/settings'] });
-    // Only the events reaching threads matter here: what threads does with them (the birth flow) runs on the brain
-    const threads = vi.spyOn(app.system('threads'), 'send');
-    await app.connect();
-    // Connecting births the assistant on its own; this covers the other way in, a key arriving later
-    services.settings.setInSection('assistant', ['birthdate'], null);
-    threads.mockClear();
-    const births = () => threads.mock.calls.filter(([event]) => (event as { type: string }).type === 'BIRTH_FLOW_START').length;
-
-    addTestSecret('google', 'Work');
-    await app.send('threads', { type: 'SECRETS_CHANGED' });
-    await app.settle();
-    expect(births(), 'a provider the assistant cannot call a model with is not enough').toBe(0);
-
-    addTestSecret('anthropic', 'Work');
-    await app.send('threads', { type: 'SECRETS_CHANGED' });
-    await app.settle();
-    expect(births()).toBe(1);
-
-    services.settings.setInSection('assistant', ['birthdate'], new Date().toISOString());
-    await app.send('threads', { type: 'SECRETS_CHANGED' });
-    await app.settle();
-    expect(births()).toBe(1);
   });
 
   it("stores a CLI path override on the code plugin's settings", async () => {

@@ -2,7 +2,7 @@ import type { SettingsData } from '#app-settings/types.ts'
 
 const settings: SettingsData = {
   features: {},
-  assistant: { name: '', birthdate: null }
+  assistant: { name: '' }
 }
 
 export default settings

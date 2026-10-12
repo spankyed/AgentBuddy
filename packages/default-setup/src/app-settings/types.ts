@@ -6,5 +6,4 @@ export interface SettingsData {
 
 export interface AssistantSettings {
   name: string;
-  birthdate: string | null;
 }

@@ -1,9 +1,7 @@
 import { settings as featureSettings } from '#generated/settings.ts';
 
-import type { AssistantSettings } from '#app-settings/types.ts';
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
-import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
 import { answer } from './answer.ts';
 import { defineSystem } from '@apackdev/sdk/framework';
@@ -22,15 +20,6 @@ import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('threads');
-/**
- * De-duplicates the birth flow within one process, and nothing more: the durable answer is
- * `services.appData.hasOnboarded()` (the app's `AppState` row), which `checkOnboarding` reads first. So a
- * pack reload resetting this to `false` is correct rather than a bug — the guard falls back to the stored
- * answer and starts onboarding only for a user who really has not onboarded. It would become one if the
- * durable half were ever dropped from that condition, leaving this flag as the only gate.
- */
-let birthFlowStarted = false;
-
 export const threadsSpec = defineSystem<Contract>();
 
 function reportThreadOperationError(
@@ -362,50 +351,6 @@ export const threadsSystem = setup({
       }
     },
 
-    // ---- Chat/agent actions (merged from agent system) ----
-    checkOnboarding: () => {
-      if (!services.appData.hasOnboarded() && !birthFlowStarted) {
-        birthFlowStarted = true;
-        const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
-        if (!assistantSettings.birthdate) {
-          const birthdate = new Date().toISOString();
-          services.settings.setInSection('assistant', ['birthdate'], birthdate);
-          logger.info('Assistant birthdate set', { birthdate });
-        }
-        sendToSystem('brain', {
-          type: 'TRIGGER_BRAIN_EVENT',
-          eventType: 'onboarding.start',
-          payload: {},
-        });
-      }
-    },
-    /**
-     * The assistant's first flow runs once it can call a model, so the keys changing is what may start it. It waits
-     * here rather than with the settings view because the birth flow, the assistant and its birthdate are this
-     * feature's; the app only says that the user's keys changed.
-     */
-    startBirthFlowOnceKeyed: () => {
-      const keyed = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
-      if (keyed && !services.settings.getSection<AssistantSettings>('assistant').birthdate) {
-        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
-      }
-    },
-
-    startBirthFlow: () => {
-      const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
-
-      if (!assistantSettings.birthdate) {
-        const birthdate = new Date().toISOString();
-        services.settings.setInSection('assistant', ['birthdate'], birthdate);
-        logger.info('Assistant birthdate set', { birthdate });
-      }
-
-      sendToSystem('brain', {
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'onboarding.start',
-        payload: {},
-      });
-    },
     // Sends the chat the commands when they differ from what it was last sent
     sendCommands: assign(({ context }) => {
       const commands = services.library.commands();
@@ -894,10 +839,9 @@ export const threadsSystem = setup({
       SEND_STATE: {
         actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'sendCommands'],
       },
-      // Kept as a fact: neither is describing what this system holds. `checkOnboarding` starts a flow, and
-      // it is a client arriving that should start it — not a pack changing or the data being replaced
+      // Record which commands the client receives, so later updates only send changes.
       CLIENT_CONNECTED: {
-        actions: ['rememberSentCommands', 'checkOnboarding'],
+        actions: 'rememberSentCommands',
       },
       FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
@@ -911,12 +855,6 @@ export const threadsSystem = setup({
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
-      },
-      BIRTH_FLOW_START: {
-        actions: 'startBirthFlow',
-      },
-      SECRETS_CHANGED: {
-        actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
         actions: 'sendCommands',

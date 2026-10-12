@@ -843,3 +843,28 @@ Acceptance must assert actual workflow counts, creation/resumption, preserved pr
 opening and lifecycle sequencing. A spy counting sent requests cannot establish delivery. Record the
 flow event in public authoring docs; it does not change the manifest settings owner model or replace the
 required catalog/handle/frontend-runtime work.
+
+### Onboarding readiness implementation (2026-10-12)
+
+Brain sends `client.ready` directly to the current root actor instance after its existing first-client
+fact, and sends it to a new root when starting/restarting after readiness. No new actor, durable flag,
+progress entity or timer cancellation registry is introduced. Delayed and paused work belongs to that
+actor instance, so replacing it cannot deliver old readiness into the replacement. The authored root
+runs `Check Onboarding` against host completion before spawning the existing onboarding workflow.
+Threads no longer starts onboarding or handles provider changes; the module guard, birth-start event,
+provider list and editable timestamp are removed. No historical field conversion accompanies removal.
+
+Real workflow tests cover startup without keys, reconnect and actor counts, preferences reset, late root,
+pause/resume, replacement followed by explicit restart, completion, custom-root opt-out and consecutive
+restarts. A real LMDB export/import test runs installed pack code on the API bus: restore stops the old
+root, preserves the same thread/progress and completion fact, and explicit restart opens the existing
+thread once. Public flow docs, event facade and content snapshots were updated for the deliberate changes.
+These backend checks do not substitute for actual multi-window rendering or pack-reload acceptance.
+
+Focused settings/event/lifecycle checks passed (38), as did real API reset/restore checks (3) and content
+checks (145). Removing the first-client guard produced three workflows; removing readiness replay lost
+initialization when the root started late. Both temporary mutations failed their targeted assertions and
+were restored. Strict validation initially caught an unused event payload rejected by XState's event
+type; removing it fixed the contract. The final strict chain passed in 225.5s (16 cached), including the
+external-pack app check, with unchanged smoke and packaged checks reused. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-12T19-35-10Z-62769`.

@@ -358,3 +358,16 @@ and progress in the authored workflow. No assistant feature/entity, historical t
 onboarding policy is needed. Probes did not establish real multi-window, pack reload or database restore
 acceptance; those remain implementation gates. Temporary broken-behavior assertions were removed after
 retaining probe sources/log outside the checkout. All goal phases remain unfinished as previously recorded.
+
+### Onboarding readiness checkpoint
+
+The authored root now checks host completion on actor-bound `client.ready`. Brain remembers its existing
+first-client fact and replays readiness to a new root; Threads no longer contains onboarding/provider
+policy, a process-wide start guard or a historical timestamp. No assistant feature/entity or old-field
+conversion is introduced. Real workflow tests cover reconnect, pause, late root, replacement/restart,
+completion and custom roots; real LMDB restore preserves progress and requires explicit restart.
+Focused checks (38), API reset/restore checks (3), content checks (145) and two guard mutations passed.
+Strict chain passed (225.5s, 16 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-12T19-35-10Z-62769`. An earlier typecheck failure exposed an
+unnecessary event payload, which was removed. Multi-window and pack-reload acceptance remain outstanding,
+along with the catalog, settings handles/frontend runtime and later phases; no plan is ready to archive.

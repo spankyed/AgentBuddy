@@ -339,6 +339,16 @@ A flow file's default export is a `FlowDSL` (`@apackdev/sdk/build`): flow name â
 
 Every other flow runs as a subflow that a running flow spawned: default-setup's `Root Flow` spawns its long-running work modes from its entry track. An event reaches every running flow (see `fire`'s `scope`).
 
+The root also receives `client.ready` once per run after this pack's frontend has become available.
+If the frontend was already seen when a root starts or restarts, that new root receives readiness too.
+This is a lifecycle signal to that root actor, not a broadcast or a count of live connections. Reconnects
+and additional windows do not repeat it in the same run. A paused root defers the signal; replacing or
+stopping the root discards its pending delivery. A data restore leaves the root stopped until explicitly
+started. Default-setup's authored root uses readiness to check host onboarding completion and start or
+resume its onboarding workflow; a custom root need not do so. Backend flow entry can run before any
+frontend exists, when frontend sends are ignored, so presentation-dependent startup belongs behind
+readiness rather than an unconditional entry track.
+
 **A worked example of the exported form** lives in the apack repo at
 `packages/default-setup/tests/extensions/steps/__golden__/exported-flows.json` â€” what
 `exportFlowsToDSL` writes for a flow that uses every step default-setup registers, including a
