@@ -85,6 +85,11 @@ describe('settingsProblems', () => {
     expect(problem).toContain('general, assistant');
   });
 
+  it('refuses unchanged unknown sections and malformed declared sections', () => {
+    const data = { obsolete: {}, general: 'invalid' };
+    expect(check(data, data)).toHaveLength(2);
+  });
+
   it('refuses a section that is not an object', () => {
     expect(check({ general: 'nope' })).toEqual(['"general" must be an object']);
   });
@@ -93,7 +98,7 @@ describe('settingsProblems', () => {
     expect(check('nope')).toEqual(['The settings must be a JSON object']);
   });
 
-  it('requires every plugin key to be a ref', () => {
+  it('requires every feature key to be a ref', () => {
     expect(check({ features: { threads: { x: 1 } } })).toEqual([
       '"threads" isn\'t a ref: a feature\'s settings are stored under "<packId>/<featureId>"',
     ]);

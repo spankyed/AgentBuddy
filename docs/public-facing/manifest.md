@@ -163,7 +163,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
 
 The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use JSON Schema draft-07 for validation; values are never coerced, transformed or populated from schema annotations. References stay within the value schema.
 
-Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Unchanged legacy values remain available for migrations and can be removed or corrected. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
+Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
 ## Steps
 

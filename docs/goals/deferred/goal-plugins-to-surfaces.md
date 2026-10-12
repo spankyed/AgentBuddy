@@ -143,12 +143,8 @@ Final.
      `builtInPacksPlugin`, `hostSharedModulesPlugin`, `tailwindInjectPlugin`, `rejectHostImportsPlugin`,
      `stubFrontendAssetsPlugin`, `collect-bare-imports`;
    - `pack`, which is the extension unit and is not this concept;
-   - **already-shipped migrations and their specs**, which describe a state of the world that was.
-     `packages/apack-host/src/migrations/app/0.4.0.ts` holds `addressPluginKeys`, `pluginRefOf`,
-     `movePluginSettings`, `PluginOwners` and reads a stored `lastActivePlugin`; its specs are
-     `tests/migrations/plugin-keys-0.4.0.spec.ts` and `plugin-settings-0.4.0.spec.ts`. Renaming them
-     would make them describe a move that never happened under those names. They stay, and the guard
-     allows them the way `removed-names-in-docs.spec.ts` allows `docs/archive`.
+   Historical pre-0.4 backend conversion has been removed. Do not add migration-name exceptions or
+   recreate old-format readers; update current callers and fixtures together.
 
    A blind find-and-replace over `plugin` breaks all four. Phase 1's guard is what keeps the boundary
    after the rename, since the two vocabularies now live side by side on purpose.
@@ -225,22 +221,12 @@ finds nothing outside `docs/archive`.
 one `pluginId` behind in the renderer's routing fails an event-validation or E2E spec rather than
 passing silently — if it doesn't, add the spec that catches it.
 
-### Phase 4 — stored user data
+### Phase 4 — current stored identities
 
-- Rename `AppState.pluginVisibility` → `surfaceVisibility` and `lastActivePlugin` → `lastActiveSurface`,
-  with a host app migration (Decision 4) that moves an existing row's values.
-- Those two fields are the whole of it, checked at `8b9d62114`: per-feature settings are keyed by
-  feature and read through `forFeature` (54 call sites), not by plugin, and the frontend's own
-  `apack-last-active-plugin` key was already removed by
-  `packages/apack-host/src/fe/migrations/0.4.0.ts`. Don't re-hunt for more stored plugin data; if the
-  0.4.0 migration's own reads of `lastActivePlugin` need touching, that is Decision 2's allowance,
-  not a rename.
-- Spec it the way `tests/migrations/app-state-0.4.0.spec.ts` specs the earlier move: a row in the old
-  shape, migrated, then migrated again to prove idempotence.
-
-**Done when:** the migration spec passes, including the second run; `npm test -w @apackdev/host` and
-`npm test -w @app/api` pass. Mutation: dropping the guard that skips an already-migrated row fails the
-idempotence case.
+Rename AppState visibility and last-active fields with their owned consumers, fixtures and tests.
+Do not add backwards compatibility for historical names. Current-format backup/import and reset must
+retain their behavior; any developer-backup conversion is a separate explicit operation on a copy.
+The frontend's existing window-storage cleanup is a separate concern from backend settings conversion.
 
 ### Phase 5 — docs, and turn the guard on
 

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, expect, it } from 'vitest';
 import { untypedQx, untypedTx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
@@ -7,8 +7,6 @@ import { generateSettingsTypes } from '@apackdev/sdk/build';
 import { registry } from '../../packs/runtime/test-host.ts';
 import { appSettingsDefinition } from '../../../src/features/settings/be/app-definition.ts';
 import { createSettingsStore } from '../../../src/features/settings/be/store.ts';
-import { migration } from '../../../src/migrations/app/0.4.0.ts';
-import { moveAppSettings } from '../../../src/migrations/app/app-settings.ts';
 
 const id = 'Settings-app' as EARS.EntityId;
 beforeEach(() => resetTestData());
@@ -44,48 +42,23 @@ it.each([
   expect(settings.getStored()).toEqual({});
 });
 
-it('allows editing valid fields around unchanged invalid restored values', () => {
-  untypedTx(id, true).put('entityType', 'Settings').put('data', { app: { projects: 'old-invalid' } });
+it('refuses writes retaining invalid app values, including an unchanged replacement', () => {
+  const data = { app: { projects: 'invalid' } };
+  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
   const settings = store();
+  const heard: string[] = [];
+  settings.onChange(change => heard.push(change));
+  expect(() => settings.setSectionValue('app', ['personal', 'name'], 'Ada')).toThrow('App');
+  expect(() => settings.replaceAll(settings.getAll())).toThrow('App');
+  expect(settings.getStored()).toEqual(data);
+  expect(heard).toEqual([]);
+  settings.removeStored(['app', 'projects']);
   settings.setSectionValue('app', ['personal', 'name'], 'Ada');
-  expect(settings.getStored()).toEqual({ app: { personal: { name: 'Ada' }, projects: 'old-invalid' } });
-  expect(() => settings.setSectionValue('app', ['projects'], 1)).toThrow('App');
+  expect(settings.getStored()).toEqual({ app: { personal: { name: 'Ada' } } });
 });
 
 it('does not accept pack defaults for app preferences', () => {
   expect(() => registry.registerPack({ id: 'app-claim', settingsSections: () => ({ app: {} }) })).toThrow('App preferences belong to the host');
-});
-
-describe('0.4.0 app ownership migration', () => {
-  it('preserves destination choices, orphan owners and project/directory order, idempotently', () => {
-    const projects = [{ name: 'Two', directories: ['/second', '/first'], color: 'blue' }, { name: 'One', directories: [], color: 'red' }];
-    const data = {
-      general: { personal: { name: 'Old', phoneNumber: '123' }, projects: { projects }, application: { hotkeys: { switchPluginUp: { key: 'k' } }, openLinksInApp: false }, orphan: { x: 1 } },
-      app: { personal: { name: 'New' }, hotkeys: { switchPluginUp: { key: 'n' } } },
-      features: { 'uninstalled/feature': { orphan: true } }, packs: { uninstalled: { group: { x: 2 } } }, assistant: { birthdate: 'then' },
-    };
-    const next = moveAppSettings(data);
-    expect(next).toEqual({
-      ...data, general: { application: { openLinksInApp: false }, orphan: { x: 1 } },
-      app: { personal: { name: 'New', phoneNumber: '123' }, hotkeys: { switchPluginUp: { key: 'n' } }, projects },
-    });
-    expect(moveAppSettings(next)).toEqual(next);
-    expect(data.general.projects).toEqual({ projects });
-  });
-
-  it('moves raw overrides through the real host migration before the writer validates', () => {
-    untypedTx(id, true).put('entityType', 'Settings').put('data', {
-      general: { personal: { name: 'Ada' }, projects: [], application: { hotkeys: appSettingsDefinition.defaults.hotkeys } },
-      features: { 'orphan/notes': { x: 1 } },
-    });
-    migration(registry, () => []).up();
-    const settings = store();
-    expect(settings.getStored()).toEqual({ app: { personal: { name: 'Ada' } }, features: { 'orphan/notes': { x: 1 } } });
-    settings.setSectionValue('app', ['personal', 'phoneNumber'], '123');
-    const before = settings.getStored();
-    migration(registry, () => []).up();
-    expect(settings.getStored()).toEqual(before);
-  });
 });
 
 it('refuses newly missing required fields in feature arrays too', () => {
@@ -101,10 +74,12 @@ it('refuses newly missing required fields in feature arrays too', () => {
   } finally { registry.unregisterPack('array-settings'); }
 });
 
-it('resets a legacy orphan field without accepting new writes to the orphan section', () => {
-  untypedTx(id, true).put('entityType', 'Settings').put('data', { general: { application: { openLinksInApp: false }, orphan: { x: 1 } } });
+it('refuses unknown root sections even when unchanged', () => {
+  const data = { obsolete: { value: true } };
+  untypedTx(id, true).put('entityType', 'Settings').put('data', data);
   const settings = store();
-  settings.removeStored(['general', 'application', 'openLinksInApp']);
-  expect(settings.getStored()).toEqual({ general: { application: {}, orphan: { x: 1 } } });
-  expect(() => settings.setSectionValue('general', ['orphan', 'x'], 2)).toThrow('settings section');
+  expect(() => settings.setSectionValue('app', ['personal', 'name'], 'Ada')).toThrow('settings section');
+  expect(settings.getStored()).toEqual(data);
+  settings.removeStored(['obsolete']);
+  expect(settings.getStored()).toEqual({});
 });

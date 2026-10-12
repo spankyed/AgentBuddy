@@ -1,12 +1,10 @@
 // The app's migrations runners: the host runs them at boot, and again in an app reset
-// (services.appData.reset()). The migrations live with their packs, and the host's own (the app's
-// state) in ./app. The versions they ran to are recorded in AppState.
+// (services.appData.reset()). Migrations live with their packs; versions are recorded in AppState.
 import { getAppVersion, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { compareVersions } from '@apackdev/sdk/utils';
 import type { PackMigration } from '@apackdev/sdk/framework';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { appState } from '../app-state/index.ts';
-import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 
 /** A version without its prerelease part: a beta (`0.4.0-beta.2`) runs its release's (`0.4.0`) migrations */
@@ -41,7 +39,7 @@ function runPending(migrations: readonly PackMigration[], stored: string, cap: s
 }
 
 /**
- * The app's migrations: the host's own first, then every registered pack's `app` migrations, each run when
+ * Every registered pack's `app` migrations, each run when
  * `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's). A prerelease counts as
  * its release; a development build runs every pending migration. Nothing runs again while the recorded version
  * is the app's, except in development.
@@ -50,8 +48,7 @@ function runPending(migrations: readonly PackMigration[], stored: string, cap: s
  * (`apack.json`'s `migrations.app`), so a pack the app ships is here for the same reason an external one
  * is — it declared one — rather than for having been shipped. The pack line is `runPackMigrations`.
  *
- * Data without a recorded version runs the host's migrations (which move a version stored before AppState
- * existed); if there's still none, the data is new and at the app version, and no pack migration runs.
+ * Data without a recorded version is new and at the app version; no pack app-line migration runs.
  *
  * A failed migration stops the rest and leaves the recorded version as it was, so the next boot retries from it.
  * Returns whether every migration ran.
@@ -61,8 +58,6 @@ export function runAppMigrations(registry: PackRegistry): boolean {
   const cap = targetCap(appVersion);
   const recorded = appState.get().version;
   if (cap !== undefined && recorded === appVersion) return true;
-
-  if (!runPending(appMigrations(registry), recorded ?? '0.0.0', cap, ':app')) return false;
 
   const current = appState.get().version ?? appVersion;
   const packsOnAppLine = registry.packMigrationTargets('app').flatMap(({ migrations }) => migrations ?? []);
@@ -75,8 +70,7 @@ export function runAppMigrations(registry: PackRegistry): boolean {
 /**
  * Packs' `pack`-line migrations, each pack's run when `stored pack version < target <= manifest version`,
  * recording the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`,
- * which moves the versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded
- * version.
+ * which records the app version. A pack that is not loaded (disabled) keeps its recorded version.
  */
 /**
  * What running a pack's migrations needs: which pack, at which version, and the migrations.

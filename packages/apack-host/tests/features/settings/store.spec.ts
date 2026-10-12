@@ -219,15 +219,18 @@ describe('schema validation at every write', () => {
     expect(store.getStored()).toEqual(before);
   });
 
-  it('allows unrelated edits and removal of untouched legacy fields, but refuses changing them', () => {
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { legacy: true, limit: 'old invalid value' } } });
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    expect(store.getFeatureSettings(THREADS as never)).toMatchObject({ legacy: true, limit: 'old invalid value', sort: 'oldest' });
-    expect(() => store.setFeatureSetting(THREADS as never, ['legacy'], false)).toThrow(SettingsRefusedError);
-    expect(() => store.setFeatureSetting(THREADS as never, ['limit'], 'new invalid value')).toThrow(SettingsRefusedError);
-    store.removeStored(['features', THREADS, 'legacy']);
-    store.removeStored(['features', THREADS, 'limit']);
+  it('refuses writes retaining invalid declared values and permits replacing the invalid slice', () => {
+    const data = { features: { [THREADS]: { unknown: true, limit: 'invalid' } } };
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    const heard: string[] = [];
+    store.onChange(change => heard.push(change));
+    expect(() => store.setFeatureSetting(THREADS as never, ['sort'], 'oldest')).toThrow(SettingsRefusedError);
+    expect(() => store.removeStored(['features', THREADS, 'unknown'])).toThrow(SettingsRefusedError);
+    expect(store.getStored()).toEqual(data);
+    expect(heard).toEqual([]);
+    store.setFeatureSetting(THREADS as never, [], { sort: 'oldest' });
     expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
+    expect(heard).toEqual(['written']);
   });
 });
 

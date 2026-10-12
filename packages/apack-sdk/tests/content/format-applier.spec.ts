@@ -361,8 +361,7 @@ describe('an entity we wrote with no recorded parts', () => {
    * **It is adopted: written once and re-stamped**, which is the one branch of the merge that can overwrite
    * something the user typed. Every entity written before anything recorded *which part* we wrote is in
    * this state, so the alternative is freezing all of them for good — a user who upgrades would then never
-   * get a fix again. It is the rule that replaced a migration doing the same thing by hand
-   * (`default-setup/src/migrations/0.4.0.ts`).
+   * get a fix again. The merge records ownership on adoption, so subsequent applies can distinguish user edits.
    */
   it('is written once, and its edits are honoured from then on', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));

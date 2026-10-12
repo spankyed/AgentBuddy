@@ -77,7 +77,7 @@ export interface SettingsCheck {
 
 /**
  * What's wrong with `next` as the stored settings, nothing when it may be stored: it must be an object; a section that
- * changes must be `features` or one of `sections`, and an object; every feature's settings are keyed by a ref, and with
+ * must be `features` or one of `sections`, and an object; every feature's settings are keyed by a ref, and with
  * `keyProblem`, a slice that changes must be an installed feature's with settings. A slice left as it was stays: an
  * uninstalled pack's settings are there for its reinstall.
  */
@@ -86,7 +86,6 @@ export function settingsProblems(next: unknown, { before, sections, keyProblem }
   const known = [FEATURES_SECTION, ...sections];
   const problems: string[] = [];
   for (const [section, value] of Object.entries(next)) {
-    if (isEqual(value, ownValue(before, section))) continue;
     if (!known.includes(section)) problems.push(`"${section}" isn't a settings section: the settings hold ${known.join(', ')}`);
     else if (!isPlainObject(value)) problems.push(`"${section}" must be an object`);
   }

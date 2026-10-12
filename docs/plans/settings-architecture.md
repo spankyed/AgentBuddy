@@ -761,3 +761,36 @@ the current stored-document contract and common JSON Schema definitions together
 feature ownership and custom forms. Do not
 add generated forms, preference scopes/profiles, general lazy activation, a generic registry framework,
 or project-domain functionality unsupported by the audit.
+
+### Current-contract writer and historical conversion cleanup (2026-10-12)
+
+Removed the prior-problem comparison and unchanged-section bypass from the working writer. Available
+app/feature schemas validate the complete candidate; unchanged invalid values are no longer exempt.
+Refused writes publish neither stored changes nor notifications. An invalid slice can be replaced or
+reset to produce a valid candidate. Owner-qualified unchanged overrides whose declaration is unavailable
+remain supported lifecycle data, distinct from obsolete root sections.
+
+Focused settings checks passed: 72 tests across seven files. The strict chain stopped at host unit checks
+with two failures (3,892 tests passed): `upgrade-from-0.3.14.spec.ts` and the old-backup conversion case
+in `host-data-services.spec.ts`. Both depend on automatic historical conversion and demonstrate that
+writer cleanup and old conversion removal must land coherently. Do not restore exemptions to pass them.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-12T18-55-47Z-4254`.
+
+Removed obsolete host/pack conversions, their historical helpers/default snapshots and conversion-only
+tests. Default-setup declares no migrations; host app startup has no historical conversion branch or
+empty migration scaffold. Existing pack app/pack-line runners and their failure/version tests remain.
+The replacement real backup test restores current app preferences, onboarding completion and unavailable
+feature overrides, permits a later valid edit and restores the same backup again. Updated runtime guides,
+public settings prose and affected deferred plans to remove instructions for deleted migration helpers.
+
+Focused host settings/runner/lifecycle checks passed (81); real API backup checks passed (7). The first
+API attempt lost its sandboxed worker IPC channel; the elevated run and strict chain passed. Strict
+validation passed in 351.5s (six cached steps), including full host/pack unit suites, integration,
+external-pack contract/app, smoke and packaged authoring/app checks. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-12T19-03-47Z-16723`.
+
+This checkpoint does not establish full import preflight validation: the raw database importer still
+restores rows before consumers use the settings writer. Integrate current-contract preflight with the
+common installed catalog and preserve atomic refusal rather than adding format conversion or validating
+after replacing the live database. Catalog-fed validators, pack handles, onboarding readiness and the
+complete three-owner route remain unfinished.

@@ -119,41 +119,36 @@ describe('services.appData', () => {
       .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
-  it("moves the app's state out of the settings of a backup from before AppState", async () => {
+  it('restores current preferences, onboarding completion and unavailable feature overrides', async () => {
     const { appState } = await import('@apackdev/host/app-state');
-    // The release that moves it
     version.current = '0.4.0';
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-current-backup-'));
     dirs.push(dir);
-    // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
     engine.admin.clear();
-    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', {
-      internal: { hasOnboarded: true, version: '0.3.14' },
-      general: { personal: { name: 'Old', phoneNumber: '123' }, projects: { projects: [
+    const settings = {
+      app: { personal: { name: 'Ada', phoneNumber: '123' }, projects: [
         { name: 'Restored', directories: ['/second', '/first'], color: 'blue' },
-      ] } },
-      app: { personal: { name: 'New' } },
-      features: { 'removed/feature': { orphan: true } }, packs: { removed: { group: { orphan: true } } },
-    });
+      ] },
+      features: { 'removed/feature': { retained: true } },
+    };
+    appState.update({ hasOnboarded: true, version: '0.4.0' });
+    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', settings);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
-    expect(appState.exists()).toBe(false);
+    const backup = await services.appData.exportBackup(dir, 'current', ['lmdb']);
 
     try {
+      appState.update({ hasOnboarded: false });
+      services.settings.reset();
       await services.appData.importBackup(backup);
-
       expect(services.appData.hasOnboarded()).toBe(true);
       expect(appState.get().version).toBe('0.4.0');
-      expect(services.settings.getStored()).toEqual({
-        // Default-setup's existing migration still clears this legacy copy when that pack is present.
-        internal: { hasOnboarded: true, version: '0.3.14' },
-        app: { personal: { name: 'New', phoneNumber: '123' }, projects: [
-          { name: 'Restored', directories: ['/second', '/first'], color: 'blue' },
-        ] },
-        features: { 'removed/feature': { orphan: true } }, packs: { removed: { group: { orphan: true } } },
-      });
+      expect(services.settings.getStored()).toEqual(settings);
       services.settings.setInSection('app', ['personal', 'name'], 'Edited after restore');
       expect(services.settings.getSection<{ personal: { name: string } }>('app').personal.name).toBe('Edited after restore');
+      expect(services.settings.getStored().features).toEqual(settings.features);
+      await services.appData.importBackup(backup);
+      expect(services.settings.getStored()).toEqual(settings);
+      expect(services.appData.hasOnboarded()).toBe(true);
     } finally {
       version.current = undefined;
     }

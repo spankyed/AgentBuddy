@@ -178,12 +178,14 @@ and failed rebuilds are covered before consumer migration. Mutation checks prove
 ### Phase 2 — Complete settings ownership and interfaces
 
 Implement the remaining [settings architecture](../plans/settings-architecture.md) checkpoints in
-reviewable slices: host app ownership and migration; pack groups and handles; feature-schema conversion;
+reviewable slices: host app ownership and current-document validation; pack groups and handles; feature-schema conversion;
 onboarding state/preferences separation; window runtime; custom forms and product surface.
 
 Use the existing draft helper, request correlation and typed paths. Fix Projects snapshot mutation,
 disposal and stale-array writes. Validate defaults and overrides consistently; preserve orphaned overrides.
-Migrate stored documents before the new writer validates them, including import/restore paths.
+Validate the current document through the common installed catalog, including import/restore paths.
+Do not add automatic historical-format conversion; backup preflight must refuse invalid candidates
+before replacing live data.
 
 **Done when:** the settings plan's acceptance checks pass for all three owners; host settings work with
 no default-setup; disabled definitions remain readable/validated; shared/owner policies hold through typed
@@ -334,3 +336,14 @@ readers, invalid-value exemptions and historical timestamp scaffolding. Preserve
 export/import and unavailable-pack override lifecycle behavior. The tested developer backup stays
 untouched; any necessary conversion is separately invoked on a copy, outside normal runtime behavior.
 All Phases 0–7 and the three Phase 6 workstreams remain in scope.
+
+### Current settings contract cleanup
+
+Removed host/default-setup historical conversions and their fixtures/tests. Writes validate complete
+available app/feature values, without unchanged-invalid exemptions or unchanged-unknown-root acceptance.
+Real current-format restore covers app preferences, onboarding completion and unavailable feature
+retention. Migration version-line infrastructure remains for deliberate future changes. Focused host
+checks (81), API backup checks (7), and strict chain passed (351.5s, six cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-12T19-03-47Z-16723`, including external and packaged app
+checks. Raw import preflight, catalog-fed settings definitions, owner handles, onboarding readiness and
+all later phases remain unfinished. No subsystem plan is complete or ready to archive.

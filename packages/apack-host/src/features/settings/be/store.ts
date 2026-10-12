@@ -8,9 +8,9 @@
 // Pack sections remain transitional until pack-group handles replace them.
 import { untypedTx, untypedQx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
-import { deepMerge, hasOwn } from '@apackdev/sdk/utils/pure';
+import { deepMerge } from '@apackdev/sdk/utils/pure';
 import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apackdev/sdk/ids';
-import { _compileSettingsDefinition, type SettingsValidator, type SettingsProblem, getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
 import { changesFrom, isEqual, FEATURES_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
 // The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
 import { appSettingsDefinition } from './app-definition.ts';
@@ -39,23 +39,6 @@ export interface SettingsStoreOptions {
 }
 
 export type SettingsStore = ReturnType<typeof createSettingsStore>;
-
-/** Own properties only: a settings path is data, including keys such as __proto__. */
-function at(value: unknown, path: readonly (string | number)[]): unknown {
-  for (const key of path) {
-    if (value === null || typeof value !== 'object' || !hasOwn(value, key)) return undefined;
-    value = (value as Record<string, unknown>)[key];
-  }
-  return value;
-}
-
-/** Retain only problems already present at an unchanged value, never a newly missing required field. */
-function newProblems(validator: SettingsValidator, before: unknown, after: unknown): SettingsProblem[] {
-  const previous = validator.validate(before);
-  return validator.validate(after).filter(issue => issue.keyword === 'json'
-    || !isEqual(at(before, issue.path), at(after, issue.path))
-    || !previous.some(old => old.keyword === issue.keyword && old.message === issue.message && isEqual(old.path, issue.path)));
-}
 
 const appValidator = _compileSettingsDefinition(appSettingsDefinition);
 
@@ -93,25 +76,24 @@ export function createSettingsStore({ defaults: packDefaults }: SettingsStoreOpt
    * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
    * stored: every write goes through here, so none stores a document of the wrong shape.
    */
-  function write(next: unknown, removingSection?: string): void {
-    const problems = settingsProblems(next, { before: stored(), sections: removingSection ? [...sections(), removingSection] : sections() });
+  function write(next: unknown): void {
+    const problems = settingsProblems(next, { before: stored(), sections: sections() });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     const current = effective();
     const effectiveNext = deepMerge(defaults(), next) as SettingsDocument;
-    if (!isEqual(effectiveNext.app, current.app)) {
-      for (const issue of newProblems(appValidator, current.app, effectiveNext.app)) {
-        problems.push(`App ${issue.path.join('.') || 'settings'}: ${issue.message}`);
-      }
+    for (const issue of appValidator.validate(effectiveNext.app)) {
+      problems.push(`App ${issue.path.join('.') || 'settings'}: ${issue.message}`);
     }
     const validators = getPackSettingsDefaults().validators;
     for (const [ref, slice] of Object.entries(effectiveNext.features ?? {})) {
-      if (isEqual(slice, current.features?.[ref])) continue;
       const validator = validators[ref];
       if (!validator) {
+        // Preserve unchanged owner-qualified overrides while their pack is unavailable.
+        if (isEqual(slice, current.features?.[ref])) continue;
         problems.push(`Feature "${ref}" does not declare a settings schema`);
         continue;
       }
-      for (const issue of newProblems(validator, current.features?.[ref], slice)) {
+      for (const issue of validator.validate(slice)) {
         problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
       }
     }
@@ -184,7 +166,7 @@ export function createSettingsStore({ defaults: packDefaults }: SettingsStoreOpt
       const before = stored();
       const next = removeIn(before, path);
       // Reset may remove an orphan override even when its declaration is absent.
-      if (next !== before) write(next, path[0]);
+      if (next !== before) write(next);
     },
 
     /** Forgets every change the user made, so the defaults apply again */
