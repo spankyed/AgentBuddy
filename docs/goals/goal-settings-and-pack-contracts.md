@@ -347,3 +347,14 @@ checks (81), API backup checks (7), and strict chain passed (351.5s, six cached)
 `node_modules/.cache/apack-chain/runs/2026-10-12T19-03-47Z-16723`, including external and packaged app
 checks. Raw import preflight, catalog-fed settings definitions, owner handles, onboarding readiness and
 all later phases remain unfinished. No subsystem plan is complete or ready to archive.
+
+### Onboarding design evidence
+
+Six real-flow characterization probes confirm lost initialization before a usable root, missing workflow
+resumption after data replacement/restart, and duplicate live workflows behind idempotent thread reuse.
+Root-entry initialization alone loses frontend thread-opening effects because pre-client output is
+ignored. The settings plan now selects generic once-per-root-run `client.ready` delivery, with eligibility
+and progress in the authored workflow. No assistant feature/entity, historical timestamp or Brain
+onboarding policy is needed. Probes did not establish real multi-window, pack reload or database restore
+acceptance; those remain implementation gates. Temporary broken-behavior assertions were removed after
+retaining probe sources/log outside the checkout. All goal phases remain unfinished as previously recorded.

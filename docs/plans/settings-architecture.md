@@ -794,3 +794,52 @@ restores rows before consumers use the settings writer. Integrate current-contra
 common installed catalog and preserve atomic refusal rather than adding format conversion or validating
 after replacing the live database. Catalog-fed validators, pack handles, onboarding readiness and the
 complete three-owner route remain unfinished.
+
+### Real onboarding runtime audit (2026-10-12)
+
+Six isolated characterization probes compiled the shipped actions and executed the real Onboarding
+Flow against a small root flow. They used actual Brain/Threads actors, repositories, persisted thread
+progress and workflow traces; no receiver or initialization action was mocked. The first run used an
+incorrect `undefined` assertion for a repository returning `null`; corrected probes all passed.
+The temporary tests are not retained as regressions asserting broken behavior. Raw execution evidence
+is `/private/tmp/apack-onboarding-probes.log`; sources were retained outside the checkout for diagnosis.
+
+| Probe | Observed behavior | Design consequence |
+|---|---|---|
+| Root ready, first connection, reconnect | One initialized onboarding thread and one child workflow; later connections do not create another | Preserve behavior, replace the module flag with root-run readiness delivery |
+| Client before root | Timestamp written with no workflow execution; creating/starting a root and reconnecting still creates no thread | Do not consume a guard or write a lifecycle fact before execution; starting a later root must observe existing readiness |
+| Paused root, then connection/resume | No thread before resume; timestamp already written; queued event executes on resume | Retain existing runtime pause/queue behavior, remove timestamp authority |
+| `DATA_REPLACED`, explicit restart, reconnect | Old actors stop; existing welcome progress remains; new root has no onboarding child | Replay readiness into the new run and resume from existing thread progress |
+| Completed host onboarding | No thread created | Workflow eligibility reads host completion, not settings or provider keys |
+| Explicit second initialization request | Same thread/progress, but two live onboarding workflow actors | Idempotent thread creation is not workflow deduplication; remove repeated startup requests |
+| Authored root entry before any client | Thread/progress initialized without keys; no Threads frontend sends delivered; after connection only startup state arrives, without `LOAD_CHAT_THREAD` | Root-entry initialization alone loses presentation effects; the bus drops pre-client output rather than buffering it |
+
+The replacement probe delivers the real data-replacement fact without importing a different database.
+Repeated `connect()` exercises event sequencing, not two actual renderer windows. These probes establish
+runtime behavior and the missing delivery contract; real restore, reload and multi-window acceptance
+still belong to the implementation checks.
+
+**Selected boundary:** expose first frontend readiness to the authored root as a generic flow event,
+`client.ready`, once per root run. This means the pack's frontend has become available to that backend
+runtime, not that a particular connection remains live. The existing bus/Brain only remember that a
+client has been seen; do not claim current connection presence or invent disconnect tracking.
+
+A first client arriving at a running root delivers this event. A client arriving while there is no
+usable root updates readiness without consuming a delivery; a later start/restart delivers the same
+readiness to that new root. A root stopped by replacement stays stopped until explicitly restarted.
+Repeated connection in one run emits no second readiness event. Pause respects the existing event queue;
+stopped/replaced runs do not receive delayed work from the prior run. Use the existing readiness fact
+and root lifecycle, with real ordering tests; do not add a durable delivery flag, another actor, a
+singleton-flow registry or a second progress record.
+
+The default root's authored listener checks host onboarding completion, then starts/resumes the existing
+Onboarding Flow. Its initialization action retains thread/progress reuse. A custom root that does not
+listen must not start onboarding. Remove Threads' startup/provider branches, `BIRTH_FLOW_START`, the
+module guard, `assistant.birthdate` and the obsolete provider list together. The generic Brain path must
+never inspect onboarding state, assistant settings or provider keys. No automatic compatibility behavior
+or historical timestamp destination accompanies the removal.
+
+Acceptance must assert actual workflow counts, creation/resumption, preserved progress, frontend thread
+opening and lifecycle sequencing. A spy counting sent requests cannot establish delivery. Record the
+flow event in public authoring docs; it does not change the manifest settings owner model or replace the
+required catalog/handle/frontend-runtime work.
