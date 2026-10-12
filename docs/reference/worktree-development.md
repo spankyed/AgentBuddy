@@ -1,6 +1,7 @@
 # Isolated development sessions
 
-Start each editing session with its own branch and worktree:
+Use the current checkout by default. When requested, or when isolation is clearly needed (for example,
+concurrent editing sessions), start a separate branch and worktree:
 
 ```sh
 npm run session:new -- settings-help

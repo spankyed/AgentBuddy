@@ -33,9 +33,11 @@ Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
 ## Parallel editing sessions
 
-Use one branch and worktree per editing session. Start with `npm run session:new -- <name>`
-(or an explicit `git worktree add` outside the main checkout) and continue all edits, staging and
-validation there. Never share `node_modules`, generated output or the staging index between worktrees.
+Use the current checkout by default. Create a separate branch and worktree when requested or when
+isolation is clearly needed, such as concurrent editing sessions or work that must stay separate from
+the active branch. For an isolated session, start with `npm run session:new -- <name>` (or an explicit
+`git worktree add` outside the main checkout) and continue all edits, staging and validation there.
+Never share `node_modules`, generated output or the staging index between worktrees.
 Repository dev, drive and database scripts default to a separate profile in linked worktrees;
 explicit profile/storage overrides are intentional sharing, so use them only when requested.
 
