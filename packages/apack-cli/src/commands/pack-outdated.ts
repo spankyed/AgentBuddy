@@ -13,7 +13,7 @@ export async function packUpdates(context: AppContext, find = findLatestRelease,
       results.push({ ...base, status: 'unmanaged' as const, reason: manifest.builtIn ? 'ships with the app' : 'no recorded GitHub source', candidate: null });
       continue;
     }
-    if (!/^[\w.-]+\/[\w.-]+(?:@[^\s/]+)?$/.test(record.installedFrom)) {
+    if (!/^[\w.-]+\/[\w.-]+(?:@[^\s@]+)?$/.test(record.installedFrom)) {
       results.push({ ...base, status: 'error' as const, reason: 'source is not a GitHub slug', candidate: null });
       continue;
     }

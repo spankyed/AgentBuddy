@@ -36,7 +36,7 @@ For app contributors working in the apack source monorepo, see the
 
 ### App operations and reports
 
-`apack status [--channel production|beta|preview] [--json]` reports the installed app version, running state, and paths without launching it.
+`apack status [--channel production|beta|preview] [--json]` reports the installed app version, paths, and whether its default data profile is in use, without launching it. For running apps on custom profiles, use `apack profiles`.
 
 `apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
 
@@ -46,7 +46,7 @@ For app contributors working in the apack source monorepo, see the
 
 `apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
 
-`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, and dependency availability are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
+`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, enabled dependencies, and installed packs that depend on it are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
 
 `apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
 
@@ -552,6 +552,8 @@ Remove an installed pack by ID. Restart the app after uninstalling.
 Show installed packs.
 
 `pack install`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. These commands do not select or launch an executable.
+
+Close the app using the selected profile before installing, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
 
 ### App
 

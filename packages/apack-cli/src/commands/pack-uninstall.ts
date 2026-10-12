@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { withPackMutation } from '../app/pack-mutation';
 import { forgetCliInstall } from '../app/installed-packs';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { uninstallPack, readInstalledPacks } from '@apackdev/host/packs';
@@ -13,19 +14,24 @@ export async function uninstall(args: string[]) {
     throw new Error('Usage: apack pack uninstall <pack-id> [--profile <name>]');
   }
 
-  const { packsDir, installedPacksFile } = targetDataContext(env, profile);
-  readInstalledPacks(installedPacksFile, { strict: true });
-  const manifestPath = path.join(packsDir, packId, 'apack.json');
-  let name = packId;
-  if (fs.existsSync(manifestPath)) {
-    try {
-      name = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).name ?? packId;
-    } catch {}
-  }
+  const context = targetDataContext(env, profile);
+  const name = await withPackMutation(context, 'uninstall', async () => {
+    const { packsDir, installedPacksFile } = context;
+    readInstalledPacks(installedPacksFile, { strict: true });
+    const manifestPath = path.join(packsDir, packId, 'apack.json');
+    let name = packId;
+    if (fs.existsSync(manifestPath)) {
+      try {
+        name = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).name ?? packId;
+      } catch {}
+    }
 
-  await uninstallPack(packId, packsDir);
-  forgetCliInstall(installedPacksFile, packId);
+    await uninstallPack(packId, packsDir);
+    forgetCliInstall(installedPacksFile, packId);
+
+    return name;
+  });
 
   console.log(`Uninstalled "${name}"${profileLabel(env, profile)}`);
-  console.log(`\nRestart apack to apply changes.`);
+  console.log(`\nOpen apack to apply changes.`);
 }

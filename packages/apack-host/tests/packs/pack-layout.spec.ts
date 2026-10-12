@@ -349,6 +349,12 @@ describe('installPackFromGitHub', () => {
     expect(result.version).toBe('1.2.3');
   });
 
+  it('encodes release tags as a single URL component', async () => {
+    await mockRelease();
+    await installPackFromGitHub('acme/pack@release/v1.2.3', path.join(tmp, 'packs'));
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('https://api.github.com/repos/acme/pack/releases/tags/release%2Fv1.2.3');
+  });
+
   it('refuses a release with no checksum asset, naming how to publish one', async () => {
     const { name } = await mockRelease(null);
 

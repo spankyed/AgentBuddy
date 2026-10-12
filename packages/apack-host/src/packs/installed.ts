@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppContext } from '@apackdev/sdk/env';
+import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 
 const logger = createLogger('installed-packs');
 
@@ -57,11 +58,14 @@ export function readInstalledPacks(installedPacksPath = getInstalledPacksPath(),
   try {
     const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
     if (strict && (!data || !Array.isArray(data.packs) || data.packs.some(e =>
-      !e || typeof e.id !== 'string'
+      !e || typeof e.id !== 'string' || !PACK_ID_PATTERN.test(e.id)
       || (e.enabled !== undefined && typeof e.enabled !== 'boolean')
       || (e.installedFrom !== undefined && typeof e.installedFrom !== 'string'),
     ))) {
       throw new Error('Invalid installed pack records');
+    }
+    if (strict && new Set(data.packs.map(e => e.id)).size !== data.packs.length) {
+      throw new Error('Duplicate installed pack records');
     }
     return (data.packs ?? []).map(e => ({ ...e, enabled: e.enabled ?? true }));
   } catch (err) {

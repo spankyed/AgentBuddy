@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppContext } from '@apackdev/sdk/env';
-import { recordHostInfo, readInstalledPacks, type installPackFromGitHub } from '@apackdev/host/packs';
+import { recordHostInfo, readInstalledPacks, writeInstalledPacks, type installPackFromGitHub } from '@apackdev/host/packs';
 import { findDatabaseWriter, publishRunningApp } from '@apackdev/host/database';
 import { recordCliInstall } from '../../src/app/installed-packs';
 import { upgradePack } from '../../src/commands/pack-upgrade';
@@ -38,9 +38,25 @@ it('pins the selected tag, validates before replacement, and records only a succ
       throw new Error('must not reach placement');
     }) as typeof installPackFromGitHub;
     await expect(upgradePack(context, 'demo', { find, install: incompatible })).rejects.toThrow('Install a compatible missing');
+    const dependentDir = path.join(context.packsDir, 'dependent');
+    fs.mkdirSync(dependentDir);
+    fs.writeFileSync(path.join(dependentDir, 'apack.json'), JSON.stringify({
+      id: 'dependent', name: 'Dependent', version: '1.0.0', features: {}, dependencies: { demo: '~1.0.0' },
+    }));
+    await expect(upgradePack(context, 'demo', { find, install })).rejects.toThrow('dependent requires demo ~1.0.0');
+    fs.rmSync(dependentDir, { recursive: true });
+    const disabledDir = path.join(context.packsDir, 'disabled');
+    fs.mkdirSync(disabledDir);
+    fs.writeFileSync(path.join(disabledDir, 'apack.json'), JSON.stringify({ id: 'disabled', name: 'Disabled', version: '1.0.0', features: {} }));
+    writeInstalledPacks([...readInstalledPacks(context.installedPacksFile), { id: 'disabled', enabled: false }], context.installedPacksFile);
+    const needsDisabled = vi.fn(async (_source, _dir, options) => {
+      options?.beforePlace?.({ ...incoming, dependencies: { disabled: '^1.0.0' } });
+      throw new Error('must not reach placement');
+    }) as typeof installPackFromGitHub;
+    await expect(upgradePack(context, 'demo', { find, install: needsDisabled })).rejects.toThrow('Install a compatible disabled');
     expect(await upgradePack(context, 'demo', { find, install })).toEqual({ id: 'demo', version: '1.1.0', upgraded: true });
     expect(install).toHaveBeenLastCalledWith('owner/repo@release-1.1', context.packsDir, expect.objectContaining({ hostVersion: '0.4.0', packFormat: 1 }));
-    expect(readInstalledPacks(context.installedPacksFile)[0]?.installedFrom).toBe('owner/repo@release-1.1');
+    expect(readInstalledPacks(context.installedPacksFile).find(record => record.id === 'demo')?.installedFrom).toBe('owner/repo@release-1.1');
     find.mockResolvedValue(null);
     expect(await upgradePack(context, 'demo', { find, install })).toMatchObject({ upgraded: false });
     await expect(upgradePack(context, '../demo', { find, install })).rejects.toThrow('valid installed pack ID');

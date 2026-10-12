@@ -16,17 +16,23 @@ it('checks recorded sources against the explicit host and leaves records untouch
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', features: {} }));
     }
-    recordCliInstall(context.installedPacksFile, 'remote', 'owner/repo@v1.0.0');
+    recordCliInstall(context.installedPacksFile, 'remote', 'owner/repo@release/v1.0.0');
     recordHostInfo(root, { version: '0.4.0', packFormat: 1 });
     const before = fs.readFileSync(context.installedPacksFile, 'utf8');
     const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'v1.1.0' });
     expect(await packUpdates(context, find)).toMatchObject([{ id: 'local', status: 'unmanaged' }, { id: 'remote', status: 'outdated' }]);
-    expect(find).toHaveBeenCalledWith('owner/repo@v1.0.0', { hostVersion: '0.4.0', installedVersion: '1.0.0', includePrerelease: true });
+    expect(find).toHaveBeenCalledWith('owner/repo@release/v1.0.0', { hostVersion: '0.4.0', installedVersion: '1.0.0', includePrerelease: true });
     expect(fs.readFileSync(context.installedPacksFile, 'utf8')).toBe(before);
     find.mockRejectedValue(new Error('rate limited'));
     expect((await packUpdates(context, find))[1]).toMatchObject({ status: 'error', reason: 'rate limited' });
     forgetCliInstall(context.installedPacksFile, 'remote');
     expect(readInstalledPacks(context.installedPacksFile, { strict: true })).toEqual([]);
+    fs.writeFileSync(context.installedPacksFile, JSON.stringify({ packs: [
+      { id: 'remote', enabled: true }, { id: 'remote', enabled: false },
+    ] }));
+    expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Duplicate');
+    fs.writeFileSync(context.installedPacksFile, JSON.stringify({ packs: [{ id: '../remote' }] }));
+    expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Invalid');
     fs.writeFileSync(context.installedPacksFile, '{broken');
     expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Cannot read');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

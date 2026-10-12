@@ -24,5 +24,5 @@ export async function status(args: string[]): Promise<void> {
   if (process.platform !== 'darwin') throw new Error('Installed app status currently supports macOS only.');
   const result = appStatus(channel);
   if (rest.includes('--json')) console.log(JSON.stringify(result));
-  else console.log(`${PRODUCT_NAMES[channel]}: ${result.installed ? result.version ?? 'version unreadable' : 'not installed'}\nState: ${result.running ? 'running' : 'closed'}\nApp: ${result.appPath}\nData: ${result.dataDir}`);
+  else console.log(`${PRODUCT_NAMES[channel]}: ${result.installed ? result.version ?? 'version unreadable' : 'not installed'}\nDefault profile: ${result.running ? 'running' : 'closed'}\nApp: ${result.appPath}\nData: ${result.dataDir}`);
 }
