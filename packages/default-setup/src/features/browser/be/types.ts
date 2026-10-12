@@ -45,11 +45,7 @@ export interface SavedBookmark {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface BrowserSettings {
-  showBookmarksBar: boolean;
-  /** Whether a link opens in the browser plugin rather than the user's own browser; defaults to true */
-  openLinksInApp?: boolean;
-}
+export type BrowserSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingBrowserEvents =
   | { type: 'SYNC_TABS'; tabs: SavedTab[] }

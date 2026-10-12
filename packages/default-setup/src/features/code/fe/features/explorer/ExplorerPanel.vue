@@ -89,9 +89,7 @@
 <script setup lang="ts">
 import { usePlugin } from '@apackdev/sdk/fe'
 
-import type { CodeSettings } from '#generated/types.ts'
-import { useFeatureSettings } from '@apackdev/sdk/fe'
-import { ref as featureRef } from '#generated/ref.ts'
+import { useSettings } from '#generated/settings-fe.ts'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '#features/code/fe/state.ts'
@@ -200,7 +198,8 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
+const codeSettings = useSettings('code')
+const storedCodeSettings = codeSettings.value
 const mdEditorDefault = computed(() => storedCodeSettings.value?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 
@@ -296,7 +295,6 @@ const cancelDelete = () => {
   showDeleteDialog.value = false
   fileToDelete.value = null
 }
-
 
 const handleCreateNewFolder = () => {
   // Determine target directory: first selected directory, or baseDirectory

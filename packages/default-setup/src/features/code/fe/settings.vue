@@ -453,12 +453,13 @@
 </template>
 
 <script setup lang="ts">
+import { X, Plus } from 'lucide-vue-next'
 import { reactive, ref, computed } from 'vue'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import DirectorySelect from '@apackdev/ui/design/DirectorySelect'
-import { X, Plus } from 'lucide-vue-next'
+
 import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
@@ -474,7 +475,7 @@ interface Project {
 }
 
 interface Props {
-  settings?: CodeSettings
+  settings?: SettingsOf<'code'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -482,7 +483,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'code'>]
 }>()
 
 // State - initialize directly from props with defaults

@@ -1,5 +1,5 @@
 import type { TNodeEntity } from '@apackdev/sdk/steps';
-import type { KeyboardShortcut } from '@apackdev/sdk/types';
+
 import { EARS } from '#generated/ears.ts';
 
 export interface DatabaseQueryResult {
@@ -35,11 +35,7 @@ export interface DatabaseStartupData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface DatabaseSettings {
-  hotkeys: {
-    executeQuery?: KeyboardShortcut;
-  };
-}
+export type DatabaseSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingDatabaseEvents =
   | { type: 'EXECUTE_QUERY'; code: string }

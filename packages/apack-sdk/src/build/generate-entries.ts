@@ -1164,9 +1164,50 @@ export const {
 `;
   }
 
-  // `ref(name)`, the ref a name in this pack's code stands for, bound to the pack as the generated sends are, so
-  // pack code never supplies its own pack id. It takes only the names the pack can write, so a misspelled one doesn't
-  // compile (a FeatureRef is accepted wherever a send takes one). Frontend-safe: it imports only `@apackdev/sdk/ids`.
+  // Settings schemas remain backend-only: frontend accessors import their inferred shapes as types.
+  function generateSettings(): string {
+    const features = packFeatures(manifest).filter(f => f.settings);
+    const imports = features.map((f, i) => `import type declaration${i} from '${toImportPath(root, f.settings!)}';`);
+    const entries = features.map((f, i) => `  '${f.id}': FeatureSettingsValue<typeof declaration${i}>;`);
+    const deps = depTypeImports('PackFeatureSettings');
+    const qualified = depIds.map(id => `{ [K in keyof ${depAlias(id, 'PackFeatureSettings')} & string as \`${id}/\${K}\`]: ${depAlias(id, 'PackFeatureSettings')}[K] }`);
+    return `${HEADER}
+import type { ${features.length ? 'FeatureSettingsValue, ' : ''}FeatureSettingUpdate } from '@apackdev/sdk/types';
+import { _featureSettings } from '@apackdev/sdk/services';
+import { services } from './services.ts';
+import { ref } from './ref.ts';
+${imports.join('\n')}
+${deps.imports}
+
+type Declarations = {
+${entries.join('\n')}
+};
+export type PackFeatureSettings = {
+  [K in keyof Declarations as Declarations[K] extends never ? never : K]: Declarations[K];
+};
+type AvailableSettings = PackFeatureSettings${qualified.map(t => ` & ${t}`).join('')};
+export type SettingsName = keyof AvailableSettings & string;
+export type SettingsOf<K extends keyof AvailableSettings> = AvailableSettings[K];
+export type SettingUpdate<K extends keyof AvailableSettings> = FeatureSettingUpdate<SettingsOf<K>>;
+
+export const settings = {
+  forFeature: <K extends keyof AvailableSettings & string>(name: K) => _featureSettings<SettingsOf<K>>(ref(name), () => services.settings),
+};
+`;
+  }
+
+  function generateSettingsFe(): string {
+    return `${HEADER}
+import { _useFeatureSettings } from '@apackdev/sdk/fe';
+import { ref } from './ref.ts';
+import type { SettingsOf, SettingsName } from './settings.ts';
+export type { SettingsOf, SettingUpdate } from './settings.ts';
+
+export const useSettings = <K extends SettingsName>(name: K) =>
+  _useFeatureSettings<SettingsOf<K>>(ref(name));
+`;
+  }
+
   function generateRef(): string {
     const names = [...new Set([
       ...packFeatures(manifest).map((f) => f.id),
@@ -1632,6 +1673,7 @@ export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.ts';
 export type { PackPluginEvents, PackSystemEvents } from './events.ts';
 ${hasPlugins ? "export type { PackPluginState } from './fe.ts';\n" : ''}export type { Services } from './services.ts';
 export type { Repositories } from './repository.ts';
+export type { PackFeatureSettings } from './settings.ts';
 `;
   }
 
@@ -1954,6 +1996,8 @@ ${entries.join('\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/ref.ts', generateRef()],
     ['src/__generated__/paths.ts', generatePaths()],
+    ['src/__generated__/settings.ts', generateSettings()],
+    ['src/__generated__/settings-fe.ts', generateSettingsFe()],
     ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],

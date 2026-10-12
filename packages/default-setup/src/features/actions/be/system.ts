@@ -1,5 +1,5 @@
-import type { ActionsSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 // Cross-plugin send: the flows plugin also receives action events
 import { setup } from 'xstate';
@@ -13,7 +13,6 @@ import { repository } from '#generated/repository.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@apackdev/sdk/utils';
 import { exportActions } from './repository/export-actions.ts';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -47,7 +46,7 @@ export const actionsSystem = setup({
   actions: actionsSpec.actions({
     sendActionsStartupData: () => {
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
+      const actionsSettings = featureSettings.forFeature('actions').get();
       
       broadcastToPlugin('actions', { 
         type: 'ACTIONS_LISTED',
@@ -208,7 +207,7 @@ export const actionsSystem = setup({
 
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
+      const actionsSettings = featureSettings.forFeature('actions').get();
       broadcastToPlugin(pluginId, {
         type: 'ACTIONS_LISTED',
         data: {
@@ -260,7 +259,7 @@ export const actionsSystem = setup({
       
       // Fallback to first available category or 'Utility'
       const firstCategoryName = (): string | undefined =>
-        services.settings.forFeature<ActionsSettings>(ref('actions'))?.categories?.[0]?.name || 'Utility';
+        featureSettings.forFeature('actions').get()?.categories?.[0]?.name || 'Utility';
 
       for (const a of repository.actionQueries.all()) {
         const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);

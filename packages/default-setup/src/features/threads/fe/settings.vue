@@ -683,31 +683,24 @@
 </template>
 
 <script setup lang="ts">
+import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
-import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
+
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
-import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
+
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import type { ThreadsState } from './state.ts'
-import type {
-  ThreadsSettings,
-  ThreadStatusOption,
-  ThreadTagOption,
-  ChatStateConfig,
-  AgentSettings,
-  AgentMode,
-  AgentPhase,
-  QuickPrompt,
-} from '#generated/types.ts'
+import type { ThreadStatusOption, ThreadTagOption, ChatStateConfig, AgentSettings, AgentMode, AgentPhase, QuickPrompt } from '#generated/types.ts'
 
 interface Props {
-  settings?: ThreadsSettings
+  settings?: SettingsOf<'threads'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -715,7 +708,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'threads'>]
 }>()
 
 // State - initialize directly from props with defaults
@@ -735,7 +728,7 @@ const skipArchiveConfirm = ref(props.settings?.skipArchiveConfirm ?? false)
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
-const recentThreadsSortOrder = ref<string>(props.settings?.recentThreadsSortOrder ?? 'created')
+const recentThreadsSortOrder = ref<SettingsOf<'threads'>['recentThreadsSortOrder']>(props.settings?.recentThreadsSortOrder ?? 'created')
 const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes ?? 3)
 
 // ---- Chat (agent) settings ----

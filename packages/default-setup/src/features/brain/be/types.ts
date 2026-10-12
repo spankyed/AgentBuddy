@@ -29,7 +29,6 @@ export interface TNodeUpdate {
   eventTNodeId?: EARS.EntityId;
 }
 
-
 /** ── Schema definition types ────────────────────────────────────────────── */
 export interface FieldSchema {
   name: string;
@@ -94,9 +93,7 @@ export interface EventReceived {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface BrainSettings {
-  inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
-}
+export type BrainSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }

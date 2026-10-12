@@ -197,8 +197,9 @@
 </template>
 
 <script setup lang="ts">
+import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
@@ -206,14 +207,13 @@ const HOST_SETTINGS = resolveName('settings', 'host')
 import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
-import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import type { FlowsSettings } from '#generated/types.ts'
+
 import { useSelector } from '@xstate/vue'
 import { type FlowsState } from './state.ts'
 import { ref as featureRef } from '#generated/ref.ts'
 
 interface Props {
-  settings?: FlowsSettings
+  settings?: SettingsOf<'flows'>
   allSettings?: any
 }
 
@@ -223,7 +223,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'flows'>]
 }>()
 
 // State

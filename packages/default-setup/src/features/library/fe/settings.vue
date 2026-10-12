@@ -193,11 +193,12 @@
 </template>
 
 <script setup lang="ts">
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
-import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
@@ -209,12 +210,8 @@ interface LibraryTagOption {
   color?: string
 }
 
-interface LibrarySettings {
-  tags?: LibraryTagOption[]
-}
-
 interface Props {
-  settings?: LibrarySettings
+  settings?: SettingsOf<'library'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -222,7 +219,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'library'>]
 }>()
 
 // State - initialize directly from props with defaults

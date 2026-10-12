@@ -5,8 +5,6 @@ import { EARS } from '#generated/ears.ts';
 
 import type { Category } from '#generated/types.ts';
 
-
-
 import type { PromptEntity } from '@apackdev/sdk';
 
 /**
@@ -22,9 +20,7 @@ export interface PromptsConnectedData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface PromptsSettings {
-  categories: Category[];
-}
+export type PromptsSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingPromptEvents =
   | { type: 'PROMPT_SELECT'; promptId: string }

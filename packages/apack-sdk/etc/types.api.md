@@ -6,6 +6,7 @@
 
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
+import type { ZodType } from 'zod';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -128,6 +129,27 @@ export namespace EARS {
     export type RoleKind = EARS_2.RoleKind;
 }
 
+// @public
+export interface FeatureSettingsAccess<T> {
+    // (undocumented)
+    get(): T;
+    // (undocumented)
+    reset(): void;
+    // (undocumented)
+    set(update: FeatureSettingUpdate<T>): void;
+}
+
+// @public
+export type FeatureSettingsValue<D> = D extends {
+    schema: ZodType<infer T>;
+} ? T : never;
+
+// @public
+export type FeatureSettingUpdate<T> = SettingsPath<T> extends infer P ? P extends readonly string[] ? {
+    path: P;
+    value: SettingsValue<T, P>;
+} : never : never;
+
 // @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
@@ -239,6 +261,14 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
 };
+
+// @public
+export type SettingsPath<T, Depth extends unknown[] = []> = Depth['length'] extends 6 ? never : {
+    [K in keyof T & string]: readonly [K] | (NonNullable<T[K]> extends readonly unknown[] ? never : NonNullable<T[K]> extends object ? readonly [K, ...SettingsPath<NonNullable<T[K]>, [...Depth, unknown]>] : never);
+}[keyof T & string];
+
+// @public (undocumented)
+export type SettingsValue<T, P extends readonly string[]> = P extends readonly [infer K, ...infer Rest] ? K extends keyof NonNullable<T> ? Rest extends readonly string[] ? Rest extends [] ? NonNullable<T>[K] : SettingsValue<NonNullable<T>[K], Rest> : never : never : never;
 
 // @public (undocumented)
 export interface TemplateInput {

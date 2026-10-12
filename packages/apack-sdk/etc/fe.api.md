@@ -848,6 +848,13 @@ export function updateSettings(target: SettingsTarget, path: readonly string[], 
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
 
 // @public
+export function _useFeatureSettings<T>(feature: FeatureRef): {
+    value: Readonly<Ref<T | undefined>>;
+    set(update: FeatureSettingUpdate<T>): void;
+    reset(): void;
+};
+
+// @public
 export function usePlugin<T>(): T;
 
 // @public

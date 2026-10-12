@@ -31,7 +31,7 @@ export { getDesignated, hasDesignation } from '../designations/index.ts'
 
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 export {
-  resetSettings, updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
+  _useFeatureSettings, resetSettings, updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
   type SettingsPort, type SettingsSaveStatus, type SettingsTarget, type SettingUpdate,
 } from './settings.ts'
 

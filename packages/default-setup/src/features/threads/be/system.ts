@@ -1,4 +1,5 @@
-import type { ThreadsSettings } from '#generated/types.ts'
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import type { AssistantSettings } from '#app-settings/types.ts';
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
@@ -17,7 +18,6 @@ import { importThreads } from './import-threads.ts';
 import { runThreadTeardown } from './thread-teardown.ts';
 import { generateAsideText } from './services/chat.ts';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
-import { ref } from '#generated/ref.ts';
 
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
@@ -30,7 +30,6 @@ const logger = createLogger('threads');
  * durable half were ever dropped from that condition, leaving this flag as the only gate.
  */
 let birthFlowStarted = false;
-
 
 export const threadsSpec = defineSystem<Contract>();
 
@@ -66,7 +65,7 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: () => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
+      const threadsSettings = featureSettings.forFeature('threads').get();
 
       broadcastToPlugin('threads', {
         type: 'THREAD_CONNECTED',
@@ -151,7 +150,7 @@ export const threadsSystem = setup({
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
+            settings: featureSettings.forFeature('threads').get() ?? null,
           },
         });
         // Also refresh archived threads list so the change is visible immediately
@@ -201,10 +200,9 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ event }) => {
       const firstStatusLabel = (): string | undefined =>
-        services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
+        featureSettings.forFeature('threads').get()?.statuses?.[0]?.label;
 
       const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
-
 
       if (changes) {
         const sBlock = changes.statuses as ChangeBlock | undefined;
@@ -251,7 +249,7 @@ export const threadsSystem = setup({
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
+                  settings: featureSettings.forFeature('threads').get() ?? null,
                 },
               });
           }
@@ -280,7 +278,7 @@ export const threadsSystem = setup({
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
+          settings: featureSettings.forFeature('threads').get() ?? null,
         },
       });
     },
@@ -346,7 +344,7 @@ export const threadsSystem = setup({
         });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
+        const threadsSettings = featureSettings.forFeature('threads').get();
 
         broadcastToPlugin('threads', {
           type: 'THREAD_CONNECTED',

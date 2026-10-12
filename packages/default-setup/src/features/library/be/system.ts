@@ -1,6 +1,7 @@
+import { settings as featureSettings } from '#generated/settings.ts';
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import type { Contract } from './contract.ts';
-import { services } from '#generated/services.ts';
+
 import { setup } from 'xstate'
 import { defineSystem } from '@apackdev/sdk/framework'
 import type { EARS } from '#generated/ears.ts'
@@ -17,7 +18,6 @@ import { toMap, toIdentifierSet, mapArray } from '@apackdev/sdk/utils'
 import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
 import type { CommandItem } from '#generated/types.ts';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -167,7 +167,7 @@ export const librarySystem = setup({
       notifyIfCommandsChanged(commandsBefore)
     },
     sendInitialData: async () => {
-      const librarySettings = services.settings.forFeature(ref('library'))
+      const librarySettings = featureSettings.forFeature('library').get()
 
       broadcastToPlugin('library', {
           type: 'LIBRARY_CONNECTED' as const,
@@ -349,7 +349,7 @@ export const librarySystem = setup({
           })
 
         // Refresh library data
-        const librarySettings = services.settings.forFeature(ref('library'))
+        const librarySettings = featureSettings.forFeature('library').get()
 
         broadcastToPlugin('library', {
             type: 'LIBRARY_CONNECTED' as const,

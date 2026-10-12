@@ -103,3 +103,16 @@ export function updateSettings(target: SettingsTarget, path: readonly string[], 
 export function resetSettings(target?: SettingsTarget): void {
   port().reset(target);
 }
+
+/** A schema-typed feature handle, used by generated pack composables. */
+export function _useFeatureSettings<T>(feature: FeatureRef): {
+  value: Readonly<Ref<T | undefined>>;
+  set(update: import('../types/settings.ts').FeatureSettingUpdate<T>): void;
+  reset(): void;
+} {
+  return {
+    value: useFeatureSettings<T>(feature),
+    set: ({ path, value }) => port().update({ feature }, path, value),
+    reset: () => port().reset({ feature }),
+  };
+}

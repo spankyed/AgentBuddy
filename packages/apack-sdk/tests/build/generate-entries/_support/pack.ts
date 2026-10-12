@@ -110,6 +110,7 @@ export const FACADE_DEFAULTS = {
   PackStepNodes: 'never',
   PackPluginEvents: '{}',
   PackSystemEvents: '{}',
+  PackFeatureSettings: '{}',
   Services: '{}',
   Repositories: '{}',
 };

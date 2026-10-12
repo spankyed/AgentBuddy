@@ -73,6 +73,7 @@
         <PluginScope :plugin="selectedFeature.id" :key="selectedFeature.id">
           <component
             :is="selectedFeature.settings"
+            v-if="currentFeatureSettings"
             :settings="currentFeatureSettings"
             :all-settings="settings"
             @update-setting="handleUpdateSetting"

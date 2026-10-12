@@ -17,11 +17,7 @@ export interface LogsState {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface LogsSettings {
-  maxLogs: number; // Maximum number of logs to keep in memory
-  excludedSources: string[]; // Array of source patterns to exclude from display
-  showAppEvents?: boolean; // When false/undefined, hide `app-events` source logs from the list
-}
+export type LogsSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingLogEvents =
   | { type: 'CLEAR_LOGS' }

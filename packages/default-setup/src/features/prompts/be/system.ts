@@ -1,5 +1,5 @@
-import type { PromptsSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
@@ -12,7 +12,6 @@ import { repository } from '#generated/repository.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@apackdev/sdk/utils';
 import { exportPrompts } from './repository/export-prompts.ts';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -34,7 +33,7 @@ export const promptsSystem = setup({
   actions: promptsSpec.actions({
     sendPromptsConnectedData: () => {
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
+      const promptsSettings = featureSettings.forFeature('prompts').get();
       
       broadcastToPlugin('prompts', { 
         type: 'PROMPTS_CONNECTED',
@@ -197,7 +196,7 @@ export const promptsSystem = setup({
 
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
+      const promptsSettings = featureSettings.forFeature('prompts').get();
       broadcastToPlugin(pluginId, {
         type: 'PROMPTS_CONNECTED',
         data: {

@@ -103,14 +103,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
-import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import { X } from 'lucide-vue-next'
-import type { LogsSettings } from '#generated/types.ts'
+import { ref, watch } from 'vue'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
 interface Props {
-  settings?: LogsSettings
+  settings?: SettingsOf<'logs'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -118,7 +117,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'logs'>]
 }>()
 
 // State

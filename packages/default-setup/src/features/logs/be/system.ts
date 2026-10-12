@@ -1,4 +1,5 @@
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
@@ -9,14 +10,12 @@ import { randomId } from '@apackdev/sdk/utils';
 import { onLog, type LogEvent } from '@apackdev/sdk/logger';
 import type { LogsSettings } from '#generated/types.ts';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils.ts';
-import { ref } from '#generated/ref.ts';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
   const base = settings?.excludedSources ?? [];
   return settings?.showAppEvents ? base : [...base, 'app-events'];
 }
-
 
 export const logsSpec = defineSystem<Contract>();
 
@@ -51,7 +50,7 @@ export const logsSystem = setup({
         const updatedLogs = [newLog, ...context.logs];
         
         // Keep only the last maxLogs entries
-        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
+        const settings = featureSettings.forFeature('logs').get();
 
         if (updatedLogs.length > (settings?.maxLogs || 1000)) {
           return updatedLogs.slice(0, settings?.maxLogs || 1000);
@@ -62,7 +61,7 @@ export const logsSystem = setup({
     }),
     sendLogsConnected: ({ context }) => {
       // Get current settings
-      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
+      const settings = featureSettings.forFeature('logs').get();
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
@@ -78,7 +77,7 @@ export const logsSystem = setup({
       const newLog = context.logs[0];
 
       // Get current settings from repository
-      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
+      const settings = featureSettings.forFeature('logs').get();
       const excludedSources = effectiveExcludedSources(settings);
 
       // Check if new log should be excluded
@@ -93,7 +92,7 @@ export const logsSystem = setup({
     },
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
-      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
+      const settings = featureSettings.forFeature('logs').get();
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
@@ -112,7 +111,7 @@ export const logsSystem = setup({
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
-        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
+        const settings = featureSettings.forFeature('logs').get();
         if (context.logs.length > (settings?.maxLogs || 1000)) {
           return context.logs.slice(context.logs.length - (settings?.maxLogs || 1000));
         }
