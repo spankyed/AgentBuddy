@@ -76,8 +76,9 @@ against the completed naming result; historical surveys in the linked plans are 
    None is silently dropped because the settings/discovery work is substantial. Strong security isolation,
    general lazy activation and speculative package-manager work remain outside this goal.
 7. **Contracts are maintained when they change.** Migrate all owned callers, fixtures, templates and public
-   docs at each checkpoint; regenerate affected schemas/API reports then. Stored user data requires
-   idempotent migration under the repository's current migration rules; code needs no compatibility aliases.
+   docs at each checkpoint; regenerate affected schemas/API reports then. There are no users to support
+   through old-format compatibility. Normal boot/import use the current settings contract only; the
+   developer backup is a separate explicit operation if conversion proves necessary.
 
 ## Working setup and checkpoint workflow
 
@@ -122,7 +123,7 @@ This is an architectural disposition, not a claim that all 220 changed files hav
 | Change family | Requirement / current evidence | Disposition and next proof |
 |---|---|---|
 | JSON Schema/defaults and generated settings types (`839dec923`, `b6ec616b0`, `74a48e0f3`) | One declarative value contract; shipped definitions are data and types derive from schemas | Retain as candidate foundation. Review defaults/override/reset semantics and supported schema behavior through the same live writer for all three owners. |
-| Host app ownership (`29431f57b`) | App defaults and validation work without a pack; known legacy app preferences migrate through boot/import | Retain as candidate foundation. Verify complete orphan preservation, malformed data and default-versus-explicit-choice semantics; existing tests are not whole-goal acceptance. |
+| Host app ownership (`29431f57b`) | App defaults and validation work without a pack; prior changes also added old-format boot/import conversion | Retain host ownership as candidate foundation. Remove unnecessary historical-format accommodation; verify current-format lifecycle preservation and explicit-choice semantics through the integrated writer. |
 | Snapshot reader and declaration stamps (`d801b5580`, `23b4b026a`, `b085edd3d`) | Discovery requires data matching generated implementations | Review as one boundary: declaration identity is distinct from executable bytes. Binding membership/completeness remains unfinished. |
 | Publication, receipt, staging and copy checks (`44cc56fb1`, `b7d1d10fe`, `8f137ced9`, `20c8194e7`, `ccc9e605f`) | Failed or mismatched builds must not replace the accepted artifact | Review each check against a named publication/copy transition. Consolidate duplicate policy; retain verification where copying or mutable inputs can change bytes. Frozen dependency/tool inputs and frontend delivery remain incomplete. |
 | Catalog prototype (`18116c99a`) | Installed settings must be discoverable without activation | Exported/tested, but no production consumer. Do not call discovery delivered. Connect the common catalog to a complete settings path before expanding further abstractions. |
@@ -130,10 +131,11 @@ This is an architectural disposition, not a claim that all 220 changed files hav
 
 For each family, inspect authoritative readers, writers, failure paths and behavioral coverage; record
 concrete findings in its owning plan. Green tests demonstrate only what their assertions exercise.
-The source audit confirms a preservation defect: host `moveFeatureSettings` filters unresolved bare
-keys out, then deletes the old root. Preserve their values and identities without inferring an owner.
-The settings writer also still takes validators from runtime registration; catalog-only tests do not
-prove disabled settings behavior. Record these fixes and their acceptance in the settings plan.
+The source audit found old-format migration complexity and missing live validators. The user clarified
+that there are no users and no backwards compatibility is required. Do not repair obsolete-key handling
+by creating more compatibility storage or reader branches. Current-format overrides for disabled or
+uninstalled packs still need preservation. The settings writer currently takes validators from runtime
+registration; catalog-only tests do not prove disabled settings behavior.
 
 The next implementation must demonstrate the full settings route: host app preference, two same-named
 pack groups and a feature preference, all through declarations -> installed common catalog -> effective
@@ -141,9 +143,9 @@ values -> trusted owner-bound access -> edit/reset -> notifications -> export/im
 or activation-failed pack, a restricted dependency, and an unavailable custom form. This is the first
 integrated checkpoint, not a reduction of the goal or a substitute for remaining contribution kinds.
 
-Before that implementation, settle the existing onboarding record's historical timestamp migration and
-real root/client readiness semantics in the settings plan. Do not substitute moving domain-specific logic
-into Brain for designing the boundary. All Phases 0–7 and all three Phase 6 workstreams remain required.
+The rejected assistant draft has been removed and bindings regenerated. Before further implementation,
+settle real root/client readiness semantics in the settings plan. Do not invent a lifecycle field to
+retain the obsolete timestamp or move domain-specific logic into Brain instead of designing the boundary. All Phases 0–7 and all three Phase 6 workstreams remain required.
 
 ## Phases
 
@@ -266,14 +268,15 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 ## Constraints
 
 Follow root and package CLAUDE instructions, including isolated test storage, bounded process cleanup,
-change-controlled typed EARS behavior and stored-data migrations. Do not touch production app data,
+change-controlled typed EARS behavior and the current data contract. Do not touch production app data,
 release metadata or unrelated concurrent work. Install dependencies and generate output independently
 in each worktree. Fix failing checks rather than relax assertions; mutation-check new contract guards.
 
 Commit usable logical checkpoints with explicit paths and reviewed staged diffs. No pushes, publishing,
-release workflows or PR operations without separate authorization. No compatibility aliases or a
-permanent legacy settings/discovery path after migrating callers and stored data. An unresolved required
-contract or failing acceptance check keeps the goal open; document blockers instead of calling it complete.
+release workflows or PR operations without separate authorization. No compatibility aliases or
+old-format settings/discovery paths, including temporary boot/import fallback or invalid-value exemptions.
+An unresolved required contract or failing acceptance check keeps the goal open; document blockers
+instead of calling it complete.
 
 ## Progress
 
@@ -313,10 +316,21 @@ The review does not clear the whole PR or establish completion of any remaining 
 The rejected draft's strict chain passed in 416.1s, evidence
 `node_modules/.cache/apack-chain/runs/2026-10-12T18-24-24Z-53935`; this is explicitly insufficient design
 acceptance because its restore assertion mocked the stopped receiver. No assistant implementation is
-committed. Further implementation starts with the corrected real-runtime and migration probes, followed
+committed. Further implementation starts with rejected-draft cleanup and real-runtime probes, followed
 by a complete settings route; rejected draft cleanup must preserve unrelated work.
 
 ## Outcome
 
 Pending implementation. At completion, record each phase's results, evidence, design corrections,
 final naming completion SHA and any genuinely out-of-scope follow-ups.
+
+### Compatibility correction (2026-10-12)
+
+The lead developer explicitly rejected backwards compatibility for a product with no users. This
+correction supersedes historical-format preservation and automatic settings conversion requirements
+in earlier plan text and progress evidence. Those recorded checks describe prior work, not acceptance
+criteria to retain. Target one current contract, update all owned callers together, and remove obsolete
+readers, invalid-value exemptions and historical timestamp scaffolding. Preserve current-format
+export/import and unavailable-pack override lifecycle behavior. The tested developer backup stays
+untouched; any necessary conversion is separately invoked on a copy, outside normal runtime behavior.
+All Phases 0–7 and the three Phase 6 workstreams remain in scope.

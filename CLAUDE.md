@@ -72,9 +72,12 @@ for every name it is given — so every pack that exists is in this tree, where 
 proves you finished. Weighing a design against packs that might be installed weighs it against nothing, and that
 caution has a real cost: it is how a repo with no users takes on the constraints of one.
 
-**The exception is stored user data**, which does exist on disk. A renamed `AppState` field, settings key or entity
-attribute moves with a migration (`packages/apack-host/src/migrations/CLAUDE.md`); a renamed function or type does
-not, because nothing has one saved.
+**Stored developer data is not a compatibility requirement.** Normal boot, writes and imports use the
+current contract. Do not add fallback reads, invalid-value grandfathering, old-format conversion or new
+entities to preserve obsolete fields. The lead developer's backed-up data is a separate operational task:
+if conversion is necessary, perform it explicitly on a copy, outside normal runtime behavior. Preserve
+current-format overrides when a pack is disabled or uninstalled; that is supported lifecycle behavior.
+Versioned migrations for future deliberate data changes are separate from supporting obsolete formats.
 
 **Revisit this when a third-party pack can actually be installed from a registry.** That is the condition. Until it
 holds, "an installed pack might depend on this" has no subject, and a plan that treats it as a constraint should say

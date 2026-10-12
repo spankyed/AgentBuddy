@@ -207,8 +207,8 @@ help and tooling. This does not introduce generated forms.
 JSON Schema `default` is an annotation and does not populate missing values. Keep actual defaults in
 `defaults`; do not maintain a second baseline through nested schema defaults. Disable coercion, default
 insertion and removal of additional properties. Check the declared baseline against its schema, then
-validate each candidate effective value without modifying it. Retain the existing handling of unchanged
-invalid legacy values, with consistent issue paths for all owners.
+validate each candidate effective value without modifying it. Apply the current schema consistently to
+all supported writes and imports. Do not grandfather invalid values or accept an obsolete document shape.
 
 Generated types describe structure, optionality and representable alternatives. Numeric ranges, patterns
 and other constraints remain runtime checks; do not promise that every invalid value is a compile error.
@@ -385,27 +385,24 @@ data reset remains separate.
 
 ### Onboarding design correction (2026-10-12)
 
-The uncommitted assistant feature/actor/entity draft is rejected. It is still present in the working tree
-and must not be committed as a usable checkpoint. Registering a backend actor through a feature is a
+The uncommitted assistant feature/actor/entity draft was rejected and removed from the working tree.
+Its manifest entries, source, tests and facade changes were removed and bindings regenerated. Registering a backend actor through a feature is a
 framework mechanism, not a reason to introduce a product capability. A settings group does not imply a
 feature, system, event address or entity. Moving the same onboarding-specific branches into Brain would
 relocate the coupling rather than resolve it.
 
 The audited old `assistant.birthdate` is written before sending an initialization request; it does not
-prove a flow started, and no audited product view displays it as assistant identity. Preserve that
-historical fact without using it as completion, progress or delivery authority. The proposed destination
-is `AppState.onboardingRequestedAt`, alongside the existing app-wide completion fact, rather than a new
-AssistantState entity. Verify destination precedence, legacy rows without an onboarding thread, and
-malformed values in a migration probe before implementing this field. Host structural migration must
-work without executing default-setup. Existing destination data wins; malformed legacy data remains
-available for diagnosis instead of being silently erased.
+prove a flow started, and no audited product view displays it as assistant identity. Remove it from
+preferences without inventing a replacement field or entity to preserve obsolete semantics. Current
+onboarding needs only the existing host completion fact and the existing thread's workflow progress.
+A new lifecycle fact requires a current behavioral consumer, not a historical field to accommodate.
 
 Responsibility is explicit:
 
 | Concern | Owner | Required behavior |
 |---|---|---|
 | Assistant display name | Default-setup pack settings group | Ordinary editable/resettable preference |
-| App onboarding completion and historical request timestamp | Host AppState | Survive preference resets; no settings writer can change them |
+| App onboarding completion | Host AppState | Survive preference resets; no settings writer can change them |
 | Onboarding steps, eligibility and conversation | Default-setup's authored workflow/actions | Reuse the existing thread and progress; no duplicate progress store |
 | Root flow availability, pause/stop/restart and delivery | Existing flow runtime | Generic lifecycle facts; no hardcoded onboarding/provider policy in Brain |
 
@@ -469,7 +466,7 @@ independently of its directories, not because the UI calls the bookmark a projec
 
 Validate structural types and new edits consistently, including nonempty directory strings and duplicate
 directory policy. Establish that policy from current intended behavior: the form rejects duplicates,
-while Code's direct add does not. Preserve existing imported configurations under the legacy-value policy.
+while Code's direct add does not. Imports must satisfy the same current schema as ordinary writes.
 Do not require paths to exist during import or normalize symlinks/case by guessing filesystem identity.
 Resetting this configuration clears the bookmarks; it does not delete directories, threads or repositories.
 
@@ -571,6 +568,10 @@ parity spec preventing drift. Default-setup no longer supplies app values. Activ
 custom forms read the new location; the host supplies defaults even with no pack registered. Pack root
 sections cannot claim `app`. Section access is still transitional until owner-bound handles are wired.
 
+**Historical implementation evidence, superseded by the no-compatibility decision below.** The
+following migration and invalid-value exemptions describe committed code to remove, not the target
+contract. Host ownership and current-format editing/lifecycle behavior remain required.
+
 The host's stored 0.4.0 migration moves raw known overrides, unwraps the legacy projects wrapper,
 preserves order and destination overrides, and leaves unknown/orphan data intact. Copied 0.3.14 app
 defaults are pruned against a historical baseline, not current defaults. Real boot and backup-import
@@ -595,11 +596,11 @@ These are current-code findings, not a completed review of the whole PR:
 
 | Finding | Evidence | Required correction |
 |---|---|---|
-| Unresolved legacy feature settings are erased | Host `migrations/app/0.4.0.ts` `moveFeatureSettings` filters addressed keys through `splitRef`, then removes the entire `plugins` root | Preserve unresolved values and original identities as migration data; never guess an owner. They must survive repeated migration, backup/import and later manual diagnosis without becoming a compatibility reader or an additional preference owner. Choose the stored representation in the migration probe before switching writers. |
+| Old-format migration complexity | Host `migrations/app/0.4.0.ts` addresses old `plugins` keys; the draft proposed additional unresolved-key storage | No users require this compatibility contract. Remove old-format accommodation from the settings redesign rather than adding a migration-data store. Current-format overrides for temporarily unavailable packs remain a separate, supported lifecycle requirement. |
 | Disabled declarations do not supply the live validators | `features/settings/be/store.ts` obtains validators from `getPackSettingsDefaults`; registry populates that store during runtime registration | Compile definitions from the accepted installed catalog. Enablement/activation may remove behavior and custom forms, not defaults, validation or override access. |
 | Pack section defaults still have silent global collisions | `packs/backend-extensions.ts` merges thunk results through `sections[name] = value` | Remove the thunk/global root-section contract when pack groups and consumers switch together. Qualified pack/group identity prevents two packs' `assistant` groups from overwriting one another. |
 | Catalog has no production reader | `createContributionCatalog` is exported and called by catalog specs only | Prove production boot/install/disable/refresh wiring and the same accepted revision in writer/readers before claiming discovery. |
-| Targeted and whole-document writes have different explicit-choice semantics | Targeted updates store a value; whole-document replacement computes `changesFrom(defaults, values)` | Settle import/advanced editor behavior explicitly. A user choice equal to today's default must not be erased accidentally; reset alone opts into future defaults. Historical copied-default pruning is a separate migration decision. |
+| Targeted and whole-document writes have different explicit-choice semantics | Targeted updates store a value; whole-document replacement computes `changesFrom(defaults, values)` | Settle import/advanced editor behavior explicitly. A user choice equal to today's default must not be erased accidentally; reset alone opts into future defaults. Do not infer an explicit choice from historical copied defaults in the normal writer. |
 
 The next settings checkpoint must use one source of definitions for host, pack and feature values,
 including disabled packs. It must demonstrate reads, trusted writes, restricted refusals, resets,
@@ -626,7 +627,8 @@ and refresh path must agree. This does not require finishing other contribution 
    publication; extend these mechanisms as pack and feature declarations migrate.
 2. **Establish app ownership and the target document.** Define SDK types and host defaults/validation;
    teach the existing engine the three owners. Remove default-setup's responsibility for built-in
-   preferences. Add the stored-data migration in the same working change so existing data can boot.
+   preferences. Update all owned consumers and fixtures to the current document in the same working change;
+   do not add automatic old-format conversion to boot or import.
 3. **Declare pack preferences and typed handles.** Replace the root `settingsSections` thunk with
    inline `extensions.settings` declarations;
    derive registration, types and qualified discovery from the manifest. Migrate default-setup assistant
@@ -637,8 +639,8 @@ and refresh path must agree. This does not require finishing other contribution 
    JSON Schema data declaration, update generated accessors and snapshots, and migrate all feature
    callers/tests. Retain custom forms and navigation metadata. Compare representative valid and invalid
    values against the old definitions, then remove the temporary Zod settings path.
-5. **Separate preferences from existing onboarding state.** Prove the historical timestamp migration
-   into existing host onboarding state before removing its editable field. Keep progress in the existing
+5. **Separate preferences from existing onboarding state.** Remove the obsolete editable timestamp
+   without adding a replacement historical field. Keep completion in AppState and progress in the existing
    onboarding record. Settle generic root/client readiness and authored workflow eligibility through the
    real event-sequence checks above; introduce no assistant feature and no onboarding policy in Brain.
    Remove the obsolete provider-key gate and Threads startup assumptions only with replacement behavior
@@ -654,30 +656,26 @@ and refresh path must agree. This does not require finishing other contribution 
    prose. Move default-setup's remaining pack definitions/forms out of the misleading `app-settings`
    directory when host app ownership is extracted; choose paths by the definitions/forms they contain.
 
-Each step ends with a usable, validated implementation. Internal working stages may span the steps;
-commit checkpoints must not leave old data unreadable or consumers using incompatible contracts.
-Do not retain aliases or dual-read compatibility paths after migrating all callers and stored data.
+Each step ends with a usable, validated implementation. Update consumers, tests, fixtures, templates
+and docs together. No aliases, fallback reads, compatibility readers, invalid-value grandfathering or
+old-format acceptance remain in the completed settings path.
 
-## Stored-data migration
+## Existing developer data
 
-Migrate stored overrides, not effective settings:
+There are no external users or packs to support. The lead developer's tested backup is an operational
+input, not an architecture constraint. Normal boot, settings writes and imports accept the current
+contract only. Do not add automatic conversion, guessed ownership, unresolved legacy storage or a new
+lifecycle entity to accommodate the backup.
 
-- `general.application.hotkeys` -> `app.hotkeys`.
-- `general.personal` -> `app.personal`.
-- `general.projects` -> `app.projects`, preserving entry and directory order.
-- `assistant.name` -> `packs['default-setup'].assistant.name`.
-- `assistant.birthdate` -> existing host onboarding state, using the audited historical-request meaning above.
+If retaining particular personal data requires conversion, first compare the actual backup with the
+finished contract. A separately invoked, one-time operation on a copy may be warranted; it is not a
+required runtime feature or a reason to preserve obsolete fields. Do not touch production data or
+silently discard the backup. Existing migration infrastructure for future versioned changes remains a
+separate concern; this redesign does not require supporting previous settings formats.
 
-Audit other stored fields before removing old roots. Preserve unknown/orphaned pack and feature overrides
-through export/import and uninstall; do not discard them because their declaration is currently absent.
-Define deterministic precedence if both old and new paths exist; existing destination overrides win,
-with old values filling only missing destinations. Make the migration idempotent.
-
-The host owns migration of app/document structure and app-wide onboarding facts; default-setup owns
-its assistant preference group and authored onboarding workflow.
-Check boot and import migration ordering: legacy documents must be transformed before the new writer
-refuses their old paths, and onboarding state must be moved before workflow startup observes it. Keep
-0.4.0 as the target, preserve package versions, and test against a copied backup rather than production data.
+Current-format overrides survive pack disable/uninstall and export/import. That is supported lifecycle
+behavior, not backwards compatibility: absence of a declaration does not rename or invalidate an
+otherwise well-formed owner-qualified override.
 
 ## Evidence required to finish
 
@@ -703,8 +701,9 @@ refuses their old paths, and onboarding state must be moved before workflow star
   edits cannot mutate the source snapshot; disposal clears pending debounce work. A stale array save
   cannot erase another writer's edit and does not lose the refused draft.
 - Reset restores current defaults without clearing app onboarding facts or workflow progress, or restarting onboarding.
-- Migrating/importing legacy stored data preserves personal details, shortcuts, projects, assistant
-  preferences and lifecycle facts. Repeating the migration makes no further changes.
+- Current-format export/import preserves personal details, shortcuts, projects, pack and feature
+  overrides, host completion and workflow progress. Obsolete shapes are refused explicitly; no runtime
+  compatibility branch, historical timestamp destination or invalid-value exemption remains.
 - Removing/reinstalling a pack preserves its overrides; unrelated owners remain unchanged.
 - Definitions, defaults, overrides, effective values and snapshots have distinct contracts. Backend and
   frontend selectors return handles consistently, all write/reset targets use explicit owner IDs, and
@@ -758,7 +757,7 @@ by apack; changing feature storage solely for visual symmetry offers no correspo
 ## Scope
 
 Finish ownership, declarations, typed access, frontend service extraction, custom-form integration and
-stored-data migration and common JSON Schema definitions together. Retain the persistence engine,
+the current stored-document contract and common JSON Schema definitions together. Retain the persistence engine,
 feature ownership and custom forms. Do not
 add generated forms, preference scopes/profiles, general lazy activation, a generic registry framework,
 or project-domain functionality unsupported by the audit.
