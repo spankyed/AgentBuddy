@@ -76,8 +76,7 @@ changed bytes. Foreign snapshot formats remain opaque; layout verification still
 
 Checks cover missing receipts, changed runtime/snapshot/source maps, copy-time mutation retaining the
 old stage and cleaning candidates, and a real build/rebuild whose damaged reusable facade is regenerated.
-This does not yet freeze authored inputs or dependency/tool resolution. DSL output staging is implemented below. Installer placement and frontend asset delivery also need verified accepted
-copy identities; these remain completion requirements, not properties of this receipt checkpoint.
+This does not yet freeze authored inputs or dependency/tool resolution. DSL output staging is implemented below. Installed-copy verification is implemented below; frontend delivery still needs accepted identities.
 
 ### Implemented staged DSL generation and frontend resolution
 
@@ -91,8 +90,37 @@ A real cold build, changed-definition build with a later runtime failure, recove
 rebuild verify that the accepted artifact/receipt, read record and cache survive failure; recovered
 frontend and declarations agree; and both definition and frontend phases reuse unchanged output.
 A separate missing-staged-definition check proves the older published copy cannot mask absence.
-Frozen authored/dependency/tool inputs, installer placement/frontend delivery identities, production
-catalog publication and contribution binding membership remain required.
+Frozen authored/dependency/tool inputs, frontend delivery identities, production catalog publication
+and contribution binding membership remain required; installed-copy verification follows below.
+
+### Implemented verified installation candidates
+
+Installation copies the complete accepted layout into a private candidate on the destination filesystem.
+It verifies candidate bytes and exact receipt equality, including provenance metadata, before checking
+the copied descriptor's schema, host compatibility and snapshot. A source changed after the initial
+manifest hint cannot silently change pack ownership or evade compatibility checks. Only then does the
+teardown hook run, with its own descriptor copy, followed by directory replacement.
+
+Checks cover changed/unsealed bytes, a different valid receipt, changed provenance, source edits during
+teardown, raced ownership/compatibility, hook metadata edits and refusal cleanup. Failures in copy or
+validation leave the installed artifact and skip teardown. Hook refusals retain files and clean the
+candidate; directory replacement's existing rollback remains. None of these guards rolls back arbitrary
+hook/activation effects or proves transactional catalog publication.
+
+### Remaining accepted frontend asset delivery audit
+
+`getLoadedPackEntries` still discovers frontend files and rehashes their current on-disk bytes instead
+of projecting the accepted origin/catalog artifact. `pack://` still reads the current filesystem and
+can fall back from an installed pack to shipped `dist`. A replaced/missing installed file can therefore
+be supplied by a different artifact. The entry's query-string revision also does not propagate to a
+relative chunk import: that chunk can be read from a newer tree beneath an older entry module.
+
+The catalog delivery checkpoint must retain asset membership/checksums and the full accepted artifact
+identity, project frontend metadata from it, and carry identity through the module URL base so relative
+chunks and stylesheet assets share it. Serving must verify the requested bytes and refuse another
+artifact or source fallback. Coordinate eligibility/unload and stale frontend completion with the same
+catalog revision. Preserve source/HMR as an explicit development path; do not build a second runtime
+asset inventory or use disk rehashing to manufacture a new identity for an already accepted backend.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
 asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and

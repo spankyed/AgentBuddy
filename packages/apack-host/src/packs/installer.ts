@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
+import { isDeepStrictEqual } from 'node:util';
 import { parse, satisfies } from 'semver';
 import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
@@ -42,12 +43,13 @@ export interface InstallOptions {
   /** Expected sha256 of a downloaded archive. */
   sha256?: string;
   /**
-   * Called with the verified manifest of what is about to be placed, before the pack's directory is
+   * Called after the private candidate copy, receipt, declarations and compatibility are verified,
+   * with the manifest of that candidate, before the pack's directory is
    * touched. The last moment a caller can act on the copy that is still there: the running app tears an
    * installed pack down here, so it is never left running on files that have been replaced underneath it.
    * The pack's id isn't known before this — a GitHub slug or a URL doesn't carry one.
    */
-  beforePlace?: (manifest: PackManifest) => void;
+  beforePlace?: (manifest: Readonly<PackManifest>) => void;
   /**
    * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
    * passes its own (`PACK_SNAPSHOT_FORMAT`), `apack pack install` and `apack pack dev` the one the app recorded in the data
@@ -68,21 +70,6 @@ function ensurePacksDir(targetDir?: string): string {
   const dir = targetDir ?? resolveAppEnvironment().packsDir;
   fs.mkdirSync(dir, { recursive: true });
   return dir;
-}
-
-function copyDir(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
 }
 
 function extractZip(zipPath: string, destDir: string): void {
@@ -242,24 +229,19 @@ function sameHashes(a: Record<string, string>, b: Record<string, string>): boole
   return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
-/**
- * Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind.
- *
- * What is this function's own is the copy: `sourceDir` is a staged pack in a temp dir that may be on another
- * filesystem, so it is copied into a sibling of the destination first — a rename out of `os.tmpdir()` would
- * fail with `EXDEV`. The swap itself is `replaceDir`, shared with the builds that publish a `dist`.
- */
-function placePack(sourceDir: string, packsDir: string, id: string): string {
-  const destDir = path.join(packsDir, id);
-  const incoming = fs.mkdtempSync(path.join(packsDir, `.${id}.installing-${process.pid}-`));
+/** Copy across filesystems into a private candidate, retaining the exact accepted receipt. */
+function preparePack(sourceDir: string, packsDir: string, expected: PackIntegrity): string {
+  const incoming = fs.mkdtempSync(path.join(packsDir, `.${expected.id}.installing-${process.pid}-`));
   try {
-    copyDir(sourceDir, incoming);
+    fs.cpSync(fs.realpathSync(sourceDir), incoming, { recursive: true });
+    if (!isDeepStrictEqual(verifyPack(incoming), expected)) {
+      throw new Error('Pack changed while preparing installation; retry with the complete pack');
+    }
+    return incoming;
   } catch (err) {
     fs.rmSync(incoming, { recursive: true, force: true });
     throw err;
   }
-  replaceDir(incoming, destDir);
-  return destDir;
 }
 
 /**
@@ -273,6 +255,7 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
   let layoutDir = dir;
   let stageRoot: string | undefined;
+  let incoming: string | undefined;
   try {
     if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
       stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-stage-'));
@@ -284,20 +267,26 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
       throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "apack pack build" first.`);
     }
     const integrity = verifyPack(layoutDir);
+    if (integrity.id !== manifestSource.id) throw new Error('Pack identity changed while preparing installation; retry with the complete pack');
+    incoming = preparePack(layoutDir, packsDir, integrity);
+    const manifest = readValidManifest(incoming);
+    assertHostCompatible(manifest, options.hostVersion);
     // Refused here rather than at the app's next start, where the loader would skip it
-    const buildProblem = packBuildProblem(layoutDir, options.packFormat);
+    const buildProblem = packBuildProblem(incoming, options.packFormat);
     if (buildProblem) {
       if (options.packFormat !== undefined || buildProblem.kind !== 'format') throw new Error(`Pack "${integrity.id}" can't be installed: ${buildProblem.message}`);
       log.warn(`Pack "${integrity.id}" may not load: ${buildProblem.message}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
     }
 
-    const manifest = readValidManifest(layoutDir);
-    options.beforePlace?.(manifest);
-    const destDir = placePack(layoutDir, packsDir, manifest.id);
+    options.beforePlace?.(structuredClone(manifest));
+    const destDir = path.join(packsDir, manifest.id);
+    replaceDir(incoming, destDir);
+    incoming = undefined;
     const missingDependencies = checkDependencies(manifest, packsDir);
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
     return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, integrity };
   } finally {
+    if (incoming) fs.rmSync(incoming, { recursive: true, force: true });
     if (stageRoot) fs.rmSync(stageRoot, { recursive: true, force: true });
   }
 }

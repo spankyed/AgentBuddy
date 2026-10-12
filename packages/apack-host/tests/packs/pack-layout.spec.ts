@@ -344,6 +344,118 @@ describe('bundle archives', () => {
   });
 });
 
+describe('verified installation candidate', () => {
+  it.each(['unsealed-change', 'valid-replacement', 'changed-provenance'])('refuses %s during copying before teardown or replacement', async kind => {
+    const packsDir = path.join(tmp, 'packs');
+    const installed = await installPackFromLocal(builtPack(), packsDir);
+    const before = readPackArtifact(installed.dir).revision;
+    const source = path.join(tmp, 'incoming-layout');
+    stagePack(builtPack({ version: '2.0.0' }), source);
+    const copy = fs.cpSync;
+    const spy = vi.spyOn(fs, 'cpSync').mockImplementation((from, to, options) => {
+      if (String(from) === fs.realpathSync(source)) {
+        const receipt = readPackIntegrity(source);
+        if (kind === 'changed-provenance') receipt.provenance = { commit: 'different-origin' };
+        else fs.appendFileSync(path.join(source, 'runtime/index.cjs'), '\n// changed during copying');
+        if (kind === 'valid-replacement') receipt.files = packFileHashes(source);
+        fs.writeFileSync(path.join(source, 'integrity.json'), JSON.stringify(receipt));
+      }
+      copy(from, to, options);
+    });
+    syncBuiltinESMExports();
+    const beforePlace = vi.fn();
+    try {
+      await expect(installPackFromLocal(source, packsDir, { beforePlace })).rejects.toThrow(
+        kind === 'unsealed-change' ? 'checksum mismatch runtime/index.cjs' : 'Pack changed while preparing installation');
+      expect(beforePlace).not.toHaveBeenCalled();
+      expect(readPackArtifact(installed.dir).revision).toBe(before);
+      expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+  });
+
+  it('keeps the verified candidate independent of changes to the source during teardown', async () => {
+    const source = path.join(tmp, 'incoming-layout');
+    stagePack(builtPack(), source);
+    const expected = readPackArtifact(source);
+    const result = await installPackFromLocal(source, path.join(tmp, 'packs'), { beforePlace: manifest => {
+      expect(manifest.id).toBe(expected.snapshot.manifest.id);
+      fs.appendFileSync(path.join(source, 'runtime/index.cjs'), '\n// changed after candidate acceptance');
+      const receipt = readPackIntegrity(source);
+      receipt.files = packFileHashes(source);
+      fs.writeFileSync(path.join(source, 'integrity.json'), JSON.stringify(receipt));
+    } });
+    expect(readPackArtifact(result.dir).revision).toBe(expected.revision);
+    expect(result.integrity).toEqual(expected.integrity);
+    expect(readPackArtifact(source).revision).not.toBe(expected.revision);
+  });
+
+  it.each(['hostVersion', 'id'] as const)('checks copied %s when the source changed after its initial hint was read', async field => {
+    const packsDir = path.join(tmp, 'packs');
+    const installed = await installPackFromLocal(builtPack(), packsDir);
+    const before = readPackArtifact(installed.dir).revision;
+    const source = path.join(tmp, 'incoming-layout');
+    stagePack(builtPack({ version: '2.0.0' }), source);
+    const read = fs.readFileSync;
+    let changed = false;
+    const spy = vi.spyOn(fs, 'readFileSync').mockImplementation((file, options) => {
+      if (file === path.join(source, 'integrity.json') && !changed) {
+        changed = true;
+        const manifest = JSON.parse(read(path.join(source, 'apack.json'), 'utf8'));
+        manifest[field] = field === 'hostVersion' ? '>=9.0.0' : 'other-pack';
+        const snapshot = JSON.parse(read(path.join(source, 'types/snapshot.json'), 'utf8'));
+        snapshot.manifest = manifest;
+        snapshot.declarationRevision = _declarationRevision(manifest);
+        fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify(manifest));
+        fs.writeFileSync(path.join(source, 'types/snapshot.json'), JSON.stringify(snapshot));
+        const receipt = readPackIntegrity(source);
+        receipt[field] = manifest[field];
+        receipt.files = packFileHashes(source);
+        fs.writeFileSync(path.join(source, 'integrity.json'), JSON.stringify(receipt));
+      }
+      return read(file, options);
+    });
+    syncBuiltinESMExports();
+    const beforePlace = vi.fn();
+    try {
+      await expect(installPackFromLocal(source, packsDir, { hostVersion: '0.3.14', beforePlace })).rejects.toThrow(field === 'hostVersion' ? '>=9.0.0' : 'Pack identity changed');
+      expect(changed).toBe(true);
+      expect(beforePlace).not.toHaveBeenCalled();
+      expect(readPackArtifact(source).snapshot.manifest[field]).toBe(field === 'hostVersion' ? '>=9.0.0' : 'other-pack');
+      expect(readPackArtifact(installed.dir).revision).toBe(before);
+      expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+  });
+
+  it('does not let hook-owned metadata edits change the installation target or result', async () => {
+    const source = path.join(tmp, 'incoming-layout');
+    stagePack(builtPack({ dependencies: { dep: '*' } }), source);
+    const expected = readPackArtifact(source);
+    const result = await installPackFromLocal(source, path.join(tmp, 'packs'), { beforePlace: manifest => {
+      const editable = manifest as { id: string; version: string; dependencies: Record<string, string> };
+      editable.id = '../outside';
+      editable.version = 'changed';
+      editable.dependencies = { other: '*' };
+    } });
+    expect(result.id).toBe('demo-pack');
+    expect(result.version).toBe('1.2.3');
+    expect(result.missingDependencies).toEqual(['dep']);
+    expect(result.dir).toBe(path.join(tmp, 'packs/demo-pack'));
+    expect(readPackArtifact(result.dir).revision).toBe(expected.revision);
+    expect(fs.existsSync(path.join(tmp, 'outside'))).toBe(false);
+  });
+
+  it('cleans the private candidate and retains the installed artifact if teardown refuses', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const installed = await installPackFromLocal(builtPack(), packsDir);
+    const before = readPackArtifact(installed.dir).revision;
+    await expect(installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { beforePlace: () => {
+      throw new Error('teardown refused');
+    } })).rejects.toThrow('teardown refused');
+    expect(readPackArtifact(installed.dir).revision).toBe(before);
+    expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+  });
+});
+
 describe('installPackFromLocal (pack layout path)', () => {
   it('removes its temporary staging directory when declaration validation refuses the source', async () => {
     const root = builtPack();

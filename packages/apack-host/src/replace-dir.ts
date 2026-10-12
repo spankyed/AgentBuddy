@@ -1,7 +1,7 @@
 // Putting a built directory in place of the one before it, without a moment where neither is there.
 //
 // The mechanism, not the policy: where a caller stages its work and what it calls the staging directory are
-// the caller's. `placePack` is one (an installed pack replaced by a newly staged one), the package builds are
+// the caller's. installer publication is one (an installed pack replaced by a newly staged one), the package builds are
 // another (`dist` and the staged publish tree), and `apack pack build` a third (a pack's own `dist`).
 //
 // **Why anything needs this.** A tree that is cleared and refilled does not exist for the length of the
@@ -48,7 +48,7 @@ export function stagingDirName(id: string, kind: StagingKind): string {
  * for a pack's — whereas the directory holding `dest` is usually tracked, and a `.dist.previous-*` appearing
  * there for the length of two renames is a directory that `git ls-files -co` reports: the population eight of
  * this repo's specs derive from. Beside `staged` it is on the same filesystem by the same argument as above
- * and ignored by the one the caller already made. For `placePack` the two are the same directory anyway.
+ * and ignored by the one the caller already made. For installer publication the two are the same directory anyway.
  *
  * Throws with `staged` removed and `dest` untouched, so a failed build leaves the previous one in place —
  * which is the half that makes this worth doing rather than merely tidier.
