@@ -64,17 +64,17 @@ describe('the 0.4.0 migration', () => {
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
     // As 0.3.14 stored them, once the host's 0.4.0 migration moved them onto the plugins' refs
     untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
-      plugins: {
+      features: {
         'default-setup/flows': { rootFlowId: 'Flow-1', enableFlowPreview: false },
         'default-setup/brain': { runningRootFlowId: 'Flow-1', inspectEnabled: true },
       },
     })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
+    expect(stored()).toEqual({ features: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
+    expect(stored()).toEqual({ features: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
   })
 
   const excludedSources = () => (services.settings.forFeature(ref('logs')) as any).excludedSources
@@ -107,7 +107,8 @@ describe('the 0.4.0 migration', () => {
      */
     function rowOf0314(changes: (row: any) => void) {
       const row = structuredClone(DEFAULT_SETTINGS_0314) as any
-      row.plugins = Object.fromEntries(Object.entries(row.plugins).map(([id, slice]) => [`default-setup/${id}`, slice]))
+      row.features = Object.fromEntries(Object.entries(row.plugins).map(([id, slice]) => [`default-setup/${id}`, slice]))
+      delete row.plugins
       row.internal = { hasOnboarded: true, version: '0.3.14', contentRevision: 'abc123', lastInteractionTimestamp: null }
       changes(row)
       untypedTx('Settings-app' as SdkEARS.EntityId).update('data', row)
@@ -120,7 +121,7 @@ describe('the 0.4.0 migration', () => {
         application: { hotkeys: { toggleInspectionPanel: { key: 'i' } } },
       },
       assistant: { name: 'Buddy' },
-      plugins: {
+      features: {
         // A value changed deep inside a default object, the rest of which goes
         'default-setup/code': { hotkeys: { saveFile: { modifiers: ['ctrl'] } }, maxTerminals: 40 },
         // An array the user changed is kept whole
@@ -138,12 +139,12 @@ describe('the 0.4.0 migration', () => {
       row.general.personal = { name: 'Ada' }
       row.general.application.hotkeys.toggleInspectionPanel = { key: 'i', modifiers: ['cmd'] }
       row.assistant.name = 'Buddy'
-      row.plugins['default-setup/code'].hotkeys.saveFile = { key: 's', modifiers: ['ctrl'] }
-      row.plugins['default-setup/code'].maxTerminals = 40
-      row.plugins['default-setup/threads'].recentThreadsLimit = 12
-      row.plugins['default-setup/threads'].tags.push({ name: 'Mine', color: '#000000' })
-      row.plugins['default-setup/logs'].excludedSources = ['brain']
-      row.plugins['memo-pack/memos'] = { enabled: true, tags: [] }
+      row.features['default-setup/code'].hotkeys.saveFile = { key: 's', modifiers: ['ctrl'] }
+      row.features['default-setup/code'].maxTerminals = 40
+      row.features['default-setup/threads'].recentThreadsLimit = 12
+      row.features['default-setup/threads'].tags.push({ name: 'Mine', color: '#000000' })
+      row.features['default-setup/logs'].excludedSources = ['brain']
+      row.features['memo-pack/memos'] = { enabled: true, tags: [] }
     }
 
     it("keeps only the user's changes, and a second run changes nothing", () => {
@@ -167,8 +168,8 @@ describe('the 0.4.0 migration', () => {
       })
 
       expect(() => migration.up()).not.toThrow()
-      expect((stored().plugins as Record<string, any>)['default-setup/threads'].recentThreadsLimit).toBe(12)
-      expect((stored().plugins as Record<string, any>)['default-setup/threads'].clickToChat).toBe(true)
+      expect((stored().features as Record<string, any>)['default-setup/threads'].recentThreadsLimit).toBe(12)
+      expect((stored().features as Record<string, any>)['default-setup/threads'].clickToChat).toBe(true)
     })
 
     it('drops a row that changed nothing down to nothing, so every default applies', () => {
@@ -187,17 +188,17 @@ describe('the 0.4.0 migration', () => {
       rowOf0314((row) => {
         // A settings editor may write an object back with its keys in another order: still 0.3.14's default, inside an
         // array too, which is compared whole
-        row.plugins['default-setup/code'].hotkeys.quickOpen = { modifiers: ['cmd'], key: 'p' }
-        row.plugins['default-setup/threads'].statuses = row.plugins['default-setup/threads'].statuses
+        row.features['default-setup/code'].hotkeys.quickOpen = { modifiers: ['cmd'], key: 'p' }
+        row.features['default-setup/threads'].statuses = row.features['default-setup/threads'].statuses
           .map(({ label, color }: { label: string; color: string }) => ({ color, label }))
-        row.plugins['default-setup/code'].hotkeys.openTerminalTab = { key: '`', modifiers: ['shift', 'ctrl'] }
+        row.features['default-setup/code'].hotkeys.openTerminalTab = { key: '`', modifiers: ['shift', 'ctrl'] }
       })
 
       // What the migration itself keeps, before the settings drop what equals today's defaults too
       const replace = vi.spyOn(services.settings, 'replaceAll')
       migration.up()
 
-      const kept = { plugins: { 'default-setup/code': { hotkeys: { openTerminalTab: { modifiers: ['shift', 'ctrl'] } } } } }
+      const kept = { features: { 'default-setup/code': { hotkeys: { openTerminalTab: { modifiers: ['shift', 'ctrl'] } } } } }
       expect(replace).toHaveBeenLastCalledWith(kept)
       expect(stored()).toEqual(kept)
     })
@@ -207,21 +208,21 @@ describe('the 0.4.0 migration', () => {
   describe('the keys 0.3.14 moved but left behind', () => {
     it("drops the code plugin's lastDirectoryOpened, keeping the baseDirectory the user has", () => {
       untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: { 'default-setup/code': { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
+        features: { 'default-setup/code': { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
       })
 
       migration.up()
       migration.up()
 
-      expect((stored().plugins as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/chosen' })
+      expect((stored().features as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/chosen' })
     })
 
     it('copies lastDirectoryOpened to baseDirectory when the user has none stored', () => {
-      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { 'default-setup/code': { lastDirectoryOpened: '/work' } } })
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', { features: { 'default-setup/code': { lastDirectoryOpened: '/work' } } })
 
       migration.up()
 
-      expect((stored().plugins as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/work' })
+      expect((stored().features as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/work' })
     })
 
     it("moves openLinksInApp to the browser plugin's settings unless the user set it there", () => {
@@ -230,11 +231,11 @@ describe('the 0.4.0 migration', () => {
       migration.up()
       migration.up()
 
-      expect(stored()).toEqual({ plugins: { 'default-setup/browser': { openLinksInApp: false } } })
+      expect(stored()).toEqual({ features: { 'default-setup/browser': { openLinksInApp: false } } })
 
       untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
         general: { application: { openLinksInApp: false } },
-        plugins: { 'default-setup/browser': { openLinksInApp: true } },
+        features: { 'default-setup/browser': { openLinksInApp: true } },
       })
 
       migration.up()

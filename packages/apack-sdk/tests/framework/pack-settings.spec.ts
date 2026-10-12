@@ -1,23 +1,34 @@
-// What a feature's settings may set; the host's registry refuses a pack whose features set more
+import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
-import { checkFeatureSettings } from '../../src/framework/pack-settings.ts';
+import { checkFeatureSettings, defineFeatureSettings } from '../../src/framework/pack-settings.ts';
 
-describe('checkFeatureSettings', () => {
-  it("accepts a feature's own plugin slice and whether its tab shows", () => {
-    expect(checkFeatureSettings('memos', { plugins: { memos: { sort: 'newest' } }, visible: false })).toEqual([]);
-    expect(checkFeatureSettings('memos', {})).toEqual([]);
+describe('feature settings declarations', () => {
+  it('derives defaults from the schema and validates declarations', () => {
+    const settings = defineFeatureSettings({ schema: z.object({ limit: z.number().int().min(1).default(10) }).strict(), visible: false });
+    expect(settings.defaults).toEqual({ limit: 10 });
+    expect(checkFeatureSettings('memos', settings)).toEqual([]);
+    expect(settings.schema.safeParse({ limit: -1 }).success).toBe(false);
+    expect(settings.schema.safeParse({ limit: 10, typo: true }).success).toBe(false);
+    expect(checkFeatureSettings('memos', { visible: false })).toEqual([]);
   });
 
-  it("rejects the app's settings, other plugins', and anything else", () => {
-    expect(checkFeatureSettings('memos', {
-      general: { theme: 'dark' },
-      plugins: { threads: {}, _meta: { visibility: { memos: false } } },
-    })).toEqual([
-      expect.stringContaining('set "general"'),
-      expect.stringContaining('set "plugins.threads"'),
-      expect.stringContaining('set "plugins._meta"'),
+  it('refuses undeclared sections, invalid defaults, and a missing schema', () => {
+    expect(checkFeatureSettings('memos', { general: {}, plugins: {} })).toEqual([
+      expect.stringContaining('set "general"'), expect.stringContaining('set "plugins"'),
     ]);
+    expect(checkFeatureSettings('memos', { defaults: {} })).toEqual([expect.stringContaining('defaults require a schema')]);
+    expect(checkFeatureSettings('memos', { defaults: { count: 'oops' }, schema: z.object({ count: z.number() }) }))
+      .toEqual([expect.stringContaining('count: Expected number')]);
     expect(checkFeatureSettings('memos', { visible: 'yes' })).toEqual([expect.stringContaining('"visible" must be true or false')]);
     expect(checkFeatureSettings('memos', undefined)).toEqual([expect.stringContaining('must default-export an object')]);
+  });
+
+  it('refuses defaults that are transformed or silently stripped', () => {
+    const transformed = defineFeatureSettings({ schema: z.object({ count: z.number().default(1).transform(n => n + 1) }) });
+    expect(checkFeatureSettings('memos', transformed)).toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { schema: transformed.schema })).toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { defaults: { count: 1, typo: true }, schema: z.object({ count: z.number() }) }))
+      .toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { defaults: { count: 1 }, schema: z.object({ count: z.number() }) })).toEqual([]);
   });
 });

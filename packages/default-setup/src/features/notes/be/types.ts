@@ -1,6 +1,5 @@
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 
-
 export const REFERENCES = EARS.RelKind.Custom('references');
 
 export interface NoteEntity extends BaseEntity {
@@ -55,10 +54,7 @@ export interface NotesConnectedData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export interface NotesSettings {
-  tasklistPanelPosition: 'left' | 'right'
-  showCollapseIcon: boolean
-}
+export type NotesSettings = typeof import('../settings.ts').default.defaults;
 
 export type IncomingNoteEvents =
   | { type: 'CREATE_NOTE'; title: string; content?: string; icon?: string | null; parentId?: string; skipContentSync?: boolean; noteType?: 'document' | 'tasklist' | 'task'; completed?: boolean; displayOrder?: number }

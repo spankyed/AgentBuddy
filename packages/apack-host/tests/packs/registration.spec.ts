@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@apackdev/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
@@ -153,7 +154,7 @@ describe('registerPack designations', () => {
 });
 
 describe('registered addresses', () => {
-  it("lists every pack's systems and plugins at their refs", () => {
+  it("lists every pack's systems and features at their refs", () => {
     registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, plugin: { receives: [] } } } });
     registered.push('ext');
     expect(systemIds()).toContain('ext/notes');
@@ -211,16 +212,16 @@ describe('registerPack entities', () => {
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
+  const memos = { settings: { visible: false, defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } };
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };
-    const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
+    const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
-      .toThrow('Feature "memos" settings set "plugins.threads"');
+      .toThrow('Feature "memos" settings');
     expect(getPackExtensions('bad-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
   });
 });
 
@@ -275,12 +276,12 @@ describe('registerPack commands', () => {
   });
 
   it("rolls its commands back when a later part of the registration is refused", () => {
-    const invalid = { settings: { plugins: { threads: { hidden: true } } } };
+    const invalid = { settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } };
 
     expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
 
     expect(getPackCommands()).toEqual([]);
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
   });
 });
 

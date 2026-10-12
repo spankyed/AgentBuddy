@@ -8,6 +8,8 @@
 //
 // One of five files split from a 1,365-line original; `_support/pack.ts` holds the fixture and why.
 import * as fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
@@ -49,7 +51,7 @@ function sharedHost(options: ts.CompilerOptions): ts.CompilerHost {
   return compilerHost;
 }
 
-function typecheck(files: Record<string, string>, names: string[]): string[] {
+function typecheck(files: Record<string, string>, names: string[], noUnusedLocals = false): string[] {
   for (const [file, content] of Object.entries(files)) if (content) write(file, content);
   write('package.json', JSON.stringify({ type: 'module' }));
   const sdk = path.resolve(import.meta.dirname, '../../..');
@@ -69,6 +71,7 @@ function typecheck(files: Record<string, string>, names: string[]): string[] {
     allowImportingTsExtensions: true,
     verbatimModuleSyntax: true,
     strict: true,
+    noUnusedLocals,
     skipLibCheck: true,
     noEmit: true,
     types: [],
@@ -144,4 +147,82 @@ describe('generated sends compile', () => {
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
+});
+
+
+describe('generated settings compile', () => {
+  it('pairs schema-derived paths and values in backend accessors and custom forms', () => {
+    write('src/settings.ts', `import { z } from 'zod';
+      import { defineFeatureSettings } from '@apackdev/sdk/framework';
+      export default defineFeatureSettings({ schema: z.object({
+        enabled: z.boolean().default(true),
+        paths: z.record(z.string()).default({}),
+        chat: z.object({ mode: z.string().optional() }).default({}),
+        items: z.array(z.string()).default([]),
+      }).strict() });`);
+    write('src/visibility.ts', 'export default { visible: false };');
+    const files = generatePackFiles(manifest({ features: [
+      { id: 'notes', settings: 'src/settings.ts' },
+      { id: 'hidden', settings: 'src/visibility.ts' },
+    ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
+      features: [{ id: 'calendar', settings: 'src/settings.ts' }],
+    }, facade({ PackFeatureSettings: "{ calendar: { weekStartsOn: number } }" }))]]) });
+    write('src/probe.ts', `
+      import { settings, type SettingUpdate } from './__generated__/settings.ts';
+      import { useSettings } from './__generated__/settings-fe.ts';
+      const notes = settings.forFeature('notes');
+      const enabled: boolean = notes.get().enabled;
+      notes.set({ path: ['enabled'], value: enabled });
+      notes.set({ path: ['enabled'] as const, value: false });
+      notes.set({ path: ['paths', 'claude'], value: '/usr/bin/claude' });
+      notes.set({ path: ['chat', 'mode'], value: undefined });
+      notes.set({ path: ['items'], value: ['one'] });
+      notes.reset();
+      settings.forFeature('base-pack/calendar').set({ path: ['weekStartsOn'], value: 1 });
+      useSettings('base-pack/calendar').set({ path: ['weekStartsOn'], value: 2 });
+      const update: SettingUpdate<'notes'> = { path: ['enabled'], value: false };
+      useSettings('notes').set(update);
+      // @ts-expect-error boolean field cannot accept a string
+      notes.set({ path: ['enabled'], value: 'false' });
+      // @ts-expect-error array elements are not independently addressable
+      notes.set({ path: ['items', '0'], value: 'one' });
+      // @ts-expect-error undeclared setting
+      notes.set({ path: ['missing'], value: true });
+      // @ts-expect-error undeclared feature
+      settings.forFeature('missing');
+      // @ts-expect-error visibility-only declaration has no settings schema
+      settings.forFeature('hidden');
+      // @ts-expect-error frontend enforces the same value type
+      useSettings('notes').set({ path: ['enabled'], value: 1 });
+    `);
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+    expect(files['src/__generated__/settings-fe.ts']).not.toContain('sdk/services');
+    expect(files['src/__generated__/settings-fe.ts']).not.toContain('src/settings.ts');
+  });
+});
+
+
+it('emits settings modules that compile with unused-import checking for a pack without settings', () => {
+  const files = generatePackFiles(manifest({}), { packRoot: root });
+  const diagnostics = typecheck(files, ['src/__generated__/settings.ts', 'src/__generated__/settings-fe.ts'], true);
+  expect(diagnostics.filter(d => /^src\/__generated__\/settings(?:-fe)?\.ts:/.test(d))).toEqual([]);
+});
+
+
+it('allows feature services to create settings handles during module initialization', () => {
+  write('src/settings.ts', `import { z } from 'zod';
+    export default { schema: z.object({ limit: z.number().default(10) }) };`);
+  write('src/service.ts', `import { settings } from './__generated__/settings.ts';
+    export const notesService = { settings: settings.forFeature('notes') };`);
+  const files = generatePackFiles(manifest({ features: [{
+    id: 'notes', settings: 'src/settings.ts', services: { notes: 'src/service.ts#notesService' },
+  }] }), { packRoot: root });
+  write('src/probe.ts', `import './__generated__/services.ts';
+    import { notesService } from './service.ts';
+    if (typeof notesService.settings.get !== 'function') throw new Error('Missing settings handle');`);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
 });

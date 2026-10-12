@@ -61,8 +61,8 @@ const menuItems = computed<MenuItem[]>(() => {
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
       action: () => untypedOpenPlugin(HOST.settings, [
-        { type: 'TAB.SELECT', tab: 'plugins' },
-        { type: 'PLUGIN.SELECT', pluginId: plugin.id },
+        { type: 'TAB.SELECT', tab: 'features' },
+        { type: 'FEATURE.SELECT', featureId: plugin.id },
       ]),
     },
   ];

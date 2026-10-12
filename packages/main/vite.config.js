@@ -89,7 +89,7 @@ function handleHotReload() {
     },
 
     async writeBundle() {
-      if (process.env.NODE_ENV !== 'development') {
+      if (!rendererWatchServer) {
         return;
       }
 

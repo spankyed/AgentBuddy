@@ -12,8 +12,10 @@ import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
+import type { output } from 'zod';
 import type { ParameterizedObject } from 'xstate';
 import { z } from 'zod';
+import type { ZodType } from 'zod';
 
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
@@ -28,6 +30,15 @@ export interface DeclaredMigration {
     // (undocumented)
     up: () => void;
 }
+
+// @public
+export function defineFeatureSettings<S extends ZodType<Record<string, unknown>>>(definition: {
+    schema: S;
+    visible?: boolean;
+}): FeatureSettings<output<S>> & {
+    schema: ZodType<output<S>>;
+    defaults: output<S>;
+};
 
 // @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
@@ -51,9 +62,11 @@ export type DiffResult<T> = null | {
 };
 
 // @public
-export interface FeatureSettings {
+export interface FeatureSettings<T extends Record<string, unknown> = Record<string, unknown>> {
     // (undocumented)
-    plugins?: Record<string, unknown>;
+    defaults?: T;
+    // (undocumented)
+    schema?: ZodType<T>;
     // (undocumented)
     visible?: boolean;
 }
@@ -232,8 +245,11 @@ export interface PackRegistration {
 export interface PackSettingsDefaults {
     // (undocumented)
     revision: number;
+    // (undocumented)
+    schemas: Record<string, ZodType<Record<string, unknown>>>;
+    // (undocumented)
     settings: {
-        plugins: Record<string, unknown>;
+        features: Record<string, unknown>;
         [section: string]: unknown;
     };
     // (undocumented)

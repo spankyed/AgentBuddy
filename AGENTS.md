@@ -1,4 +1,4 @@
 Read [CLAUDE.md](CLAUDE.md) for repository architecture, implementation rules and validation commands.
 
-Each editing session must use its own branch and worktree. Follow its **Parallel editing sessions**
-workflow before changing files; run every edit, Git operation, app and check from that worktree.
+Use the current checkout by default. Use a separate branch and worktree upon request or when isolation
+is clearly needed; follow the **Parallel editing sessions** workflow in CLAUDE.md in those cases.

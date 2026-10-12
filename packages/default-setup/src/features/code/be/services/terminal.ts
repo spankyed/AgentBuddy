@@ -1,5 +1,5 @@
-import type { CodeSettings } from '#features/code/be/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { tx } from '#generated/ears.ts';
 import * as pty from 'node-pty'
 import * as os from 'os'
@@ -9,7 +9,6 @@ import type { TerminalInfo, TerminalCreate } from '../types.ts'
 import { EARS } from '#generated/ears.ts'
 import { repository } from '#generated/repository.ts';
 import { createLogger } from '@apackdev/sdk/logger';
-import { ref } from '#generated/ref.ts';
 
 const logger = createLogger('terminal');
 
@@ -56,7 +55,7 @@ class TerminalService {
 
   create(options: TerminalCreate): TerminalInfo {
     // Check terminal limit (0 = no limit)
-    const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
+    const codeSettings = featureSettings.forFeature('code').get()
     const maxTerminals = codeSettings?.maxTerminals ?? 0
     if (maxTerminals > 0 && this.terminals.size >= maxTerminals) {
       throw new Error(`Maximum number of terminals (${maxTerminals}) reached`)
@@ -93,7 +92,7 @@ class TerminalService {
       })
 
       // Send shell integration setup commands based on shell type (if enabled)
-      const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
+      const codeSettings = featureSettings.forFeature('code').get()
       if (codeSettings?.enableShellIntegration !== false) {
         this.injectShellIntegration(ptyProcess, shell)
       }
@@ -349,7 +348,7 @@ class TerminalService {
     const persistedTerminals = repository.terminalQueries.active()
 
     // Check if shell integration is enabled
-    const codeSettings = services.settings.forFeature<CodeSettings>(ref('code'))
+    const codeSettings = featureSettings.forFeature('code').get()
     const shellIntegrationEnabled = codeSettings?.enableShellIntegration !== false
 
     for (const persistedTerminal of persistedTerminals) {

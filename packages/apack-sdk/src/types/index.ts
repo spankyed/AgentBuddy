@@ -8,3 +8,4 @@ export { ROOT_FLOW_ROLE } from './sdk-entities.ts';
 export { SDK_ENTITIES, SDK_REL_KINDS, SDK_EXCLUDED_ENTITY_TYPES } from './sdk-entities.ts';
 export { _reservedEntries } from './reserved-names.ts';
 export type { KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from './keyboard.ts';
+export type { FeatureSettingsValue, FeatureSettingUpdate, SettingsPath, SettingsValue, FeatureSettingsAccess } from './settings.ts';

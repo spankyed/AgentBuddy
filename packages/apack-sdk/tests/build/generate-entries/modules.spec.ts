@@ -428,7 +428,7 @@ describe('the snapshot format', () => {
         plugin: ['receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
-      facadeImports: ['PackEntityShapes', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });
 });

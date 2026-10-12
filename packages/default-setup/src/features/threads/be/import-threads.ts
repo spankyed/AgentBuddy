@@ -1,5 +1,5 @@
-import type { ThreadsSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { tx } from '#generated/ears.ts';
 /**
  * Thread Import
@@ -16,7 +16,7 @@ import { hasIdCollision } from '@apackdev/ears';
 import { restoreJsonMediaRefs } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts';
 import type { ExportedThreadsData } from './export-types.ts'
-import { ref } from '#generated/ref.ts';
+
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 interface ImportResult {
@@ -59,7 +59,7 @@ export function importThreads(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
   // Get valid statuses and tags from settings
-  const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'))
+  const threadsSettings = featureSettings.forFeature('threads').get()
   const validStatuses = new Set(threadsSettings?.statuses?.map((s: any) => s.label) || [])
   const validTags = new Set(threadsSettings?.tags?.map((t: any) => t.name) || [])
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'

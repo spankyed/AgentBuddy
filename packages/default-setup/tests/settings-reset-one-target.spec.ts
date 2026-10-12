@@ -18,33 +18,33 @@ const SETTINGS = 'host/settings'
 const WINDOW = 'c-window'
 
 const sortOf = (feature: 'threads' | 'notes') =>
-  services.settings.forFeature<{ sort?: string }>(ref(feature))?.sort
+  services.settings.forFeature<Record<string, unknown>>(ref(feature))?.[feature === 'threads' ? 'recentThreadsSortOrder' : 'tasklistPanelPosition']
 
 describe('a reset naming one feature', () => {
   it('forgets that feature\'s changes and leaves every other feature\'s alone', async () => {
     const app = await startApp({ systems: [SETTINGS] })
     await app.connect()
-    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest')
-    services.settings.setForFeature(ref('notes'), ['sort'], 'oldest')
+    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
+    services.settings.setForFeature(ref('notes'), ['tasklistPanelPosition'], 'right')
     const defaults = { threads: sortOf('threads'), notes: sortOf('notes') }
-    expect(defaults.threads, 'the change the case rests on was not stored').toBe('oldest')
+    expect(defaults.threads, 'the change the case rests on was not stored').toBe('created')
 
     const call = await app.send(SETTINGS, {
-      type: 'RESET_SETTINGS', target: { entityType: 'plugin', label: ref('threads') },
+      type: 'RESET_SETTINGS', target: { entityType: 'feature', label: ref('threads') },
     }, { sender: SETTINGS, client: WINDOW })
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
 
     expect(answer).toMatchObject({ type: 'SETTINGS_SAVED' })
-    expect(sortOf('threads'), 'its default applies again').not.toBe('oldest')
-    expect(sortOf('notes'), 'another feature was reset too').toBe('oldest')
+    expect(sortOf('threads'), 'its default applies again').not.toBe('created')
+    expect(sortOf('notes'), 'another feature was reset too').toBe('right')
   })
 
   /** With no target it is the reset it always was: every change the user made, whatever it was about */
   it('forgets all of them when it names none', async () => {
     const app = await startApp({ systems: [SETTINGS] })
     await app.connect()
-    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest')
-    services.settings.setForFeature(ref('notes'), ['sort'], 'oldest')
+    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
+    services.settings.setForFeature(ref('notes'), ['tasklistPanelPosition'], 'right')
 
     const call = await app.send(SETTINGS, { type: 'RESET_SETTINGS' }, { sender: SETTINGS, client: WINDOW })
     await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
@@ -58,7 +58,7 @@ describe('a reset naming one section', () => {
     const app = await startApp({ systems: [SETTINGS] })
     await app.connect()
     services.settings.setInSection('general', ['application', 'theme'], 'dark')
-    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest')
+    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
 
     const call = await app.send(SETTINGS, {
       type: 'RESET_SETTINGS', target: { entityType: 'section', label: 'general' },
@@ -67,6 +67,6 @@ describe('a reset naming one section', () => {
 
     const stored = services.settings.getStored<{ general?: unknown }>()
     expect(stored.general, 'the section the reset named').toBeUndefined()
-    expect(sortOf('threads'), 'a feature was reset with the section').toBe('oldest')
+    expect(sortOf('threads'), 'a feature was reset with the section').toBe('created')
   })
 })

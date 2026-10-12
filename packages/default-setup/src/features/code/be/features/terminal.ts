@@ -1,13 +1,13 @@
+import { settings as featureSettings } from '#generated/settings.ts';
 import type { OutgoingTerminalEvents } from '../contract.ts'
-import { services } from '#generated/services.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { terminalService } from '../services/terminal.ts'
-import type { TerminalInfo, CodeSettings } from '../types.ts'
+import type { TerminalInfo } from '../types.ts'
 import { createLogger } from '@apackdev/sdk/logger';
-import { ref } from '#generated/ref.ts';
 
 const logger = createLogger('terminal');
 
@@ -98,7 +98,7 @@ export const terminalSystem = setup({
   },
   actors: {
     restoreTerminalsActor: fromPromise(async () => {
-      const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
+      const codeSettings = featureSettings.forFeature('code').get()
       if (codeSettings?.restoreTerminals === false) {
         logger.info('Terminal restoration disabled by settings')
         return

@@ -148,7 +148,7 @@ Steps:
 1. Validates `apack.json` and fails on an invalid manifest
 2. Clears `dist/`
 3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
-4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
+4. Checks each feature's `settings` file exists and declares only valid `schema`, `defaults` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack pack facade-report`)
@@ -262,7 +262,7 @@ operation failed — a `4xx` means nothing ran at all.
 | `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
 | `/viewport` | GET | — | the size the app is rendering into |
 | `/set-viewport` | POST | `{ width, height }` | changes it |
-| `/set-setting` | POST | `{ plugin } or { section }`, `{ path, value }` | writes one setting |
+| `/set-setting` | POST | `{ feature } or { section }`, `{ path, value }` | writes one setting |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
@@ -283,7 +283,7 @@ while a backup is being imported — and `/set-setting` waits for that answer ra
 accepted. It used to resolve on the send, so every refusal read as success.
 
 **`/set-setting` writes either half of that document.** A feature's settings live under its ref
-(`{"plugin":"default-setup/code"}`) and a pack's section lives at the top of it
+(`{"feature":"default-setup/code"}`) and a pack's section lives at the top of it
 (`{"section":"general"}`) — one of the two, never both, as `/wait` takes one of its two. Writing only
 features left `general` and `assistant` readable and unwritable.
 

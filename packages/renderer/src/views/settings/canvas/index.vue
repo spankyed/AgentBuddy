@@ -21,7 +21,7 @@
     <!-- Tab Content -->
     <div class="flex-1 overflow-hidden">
       <GeneralTab v-if="activeTab === 'general'" />
-      <PluginsTab v-if="activeTab === 'plugins'" />
+      <FeaturesTab v-if="activeTab === 'features'" />
       <HelpTab v-if="activeTab === 'help'" />
     </div>
   </div>
@@ -32,7 +32,7 @@ import { usePlugin } from '@apackdev/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
-import PluginsTab from './tabs/PluginsTab.vue'
+import FeaturesTab from './tabs/FeaturesTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
 import type { SettingsState } from '@apackdev/host/fe'
 
@@ -42,12 +42,12 @@ const activeTab = useSelector(actor, (state) => state.context.activeTab)
 
 const tabs = [
   { id: 'general', label: 'General' },
-  { id: 'plugins', label: 'Plugins' },
+  { id: 'features', label: 'Features' },
   { id: 'help', label: 'Help' },
 ]
 
 const selectTab = (tabId: string) => {
-  actor.send({ type: 'TAB.SELECT', tab: tabId as 'general' | 'plugins' | 'help' })
+  actor.send({ type: 'TAB.SELECT', tab: tabId as 'general' | 'features' | 'help' })
 }
 </script>
 

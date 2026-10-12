@@ -236,13 +236,13 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
 - **The row holds only what the user changed.** What the store reads back is the defaults with those changes over
   them, so a changed default, or a pack's feature settings coming and going, applies to every key the user never
   set. An app at its defaults has no row at all; the first change writes it.
-- **The host owns the document's structure, not its content.** It knows one section, `plugins`, one slice per
+- **The host owns the document's structure, not its content.** It knows one section, `features`, one slice per
   installed feature with settings keyed by its ref. Every other section is a pack's contribution
   (`PackRegistration.settingsSections`, `apack.json` `settingsSections`) and opaque here — nothing in this package
   knows what is in default-setup's `general` or `assistant`.
 - **One writer.** Every write, whoever makes it (the system, a feature through `services.settings`, an action, a
   applier, a migration), goes through `store.write()`, which checks the whole next document once
-  (`be/document.ts`'s `settingsProblems`) and throws `SettingsRefusedError` otherwise, then tells its listeners.
+  (`be/document.ts`'s `settingsProblems` and each registered feature's schema) and throws `SettingsRefusedError` otherwise, then tells its listeners.
   The system turns that into one `FEATURE_SETTINGS_UPDATED` per feature whose settings changed, and answers the
   sender `SETTINGS_SAVED` or `SETTINGS_REFUSED` with the store's reasons — **reply or broadcast, never both**
   (`be/answer.ts`), which takes the answer as an argument: `reply` where the write named a sender, and a

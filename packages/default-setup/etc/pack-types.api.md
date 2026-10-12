@@ -10,13 +10,14 @@ import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@apackdev/sdk/fe';
+import * as _apackdev_sdk_framework from '@apackdev/sdk/framework';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/models';
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
 import { FlowEdge } from '@apackdev/sdk/repositories';
 import { HostServices } from '@apackdev/sdk/services';
 import { ExecutionContext, FieldMapping, StepRuntimeError, TNodeEntity, TrackTree } from '@apackdev/sdk/steps';
-import { KeyboardShortcut } from '@apackdev/sdk/types';
+import { FeatureSettingsValue } from '@apackdev/sdk/types';
 import { BinaryOperator } from '@apackdev/sdk/utils';
 import { z } from 'zod';
 
@@ -167,19 +168,7 @@ interface AgentPhase {
     color?: string;
 }
 
-interface AgentSettings {
-    modes: AgentMode[];
-    hotkeys: {
-        textToSpeech?: KeyboardShortcut | null;
-        switchMode?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    quickPrompts?: QuickPrompt[];
-    quickPromptNumberKeyInserts?: boolean;
-    skipRevertConfirm?: boolean;
-    defaultMode?: string;
-    defaultPhase?: string;
-}
+type AgentSettings = ThreadsSettings['chat'];
 
 type AgentThreadData = {
     id?: ThreadEntity['id'];
@@ -511,11 +500,7 @@ type BrowserInboxEvent = {
     url?: string;
 };
 
-interface BrowserSettings {
-    showBookmarksBar: boolean;
-    /** Whether a link opens in the browser plugin rather than the user's own browser; defaults to true */
-    openLinksInApp?: boolean;
-}
+type BrowserSettings = typeof _default$7.defaults;
 
 interface BrowserTab {
     id: number;
@@ -566,13 +551,6 @@ interface Category {
 }
 
 type ChatState = 'error' | 'idle' | 'paused' | 'success' | 'working';
-
-interface ChatStateConfig {
-    id: string;
-    label: string;
-    color: string;
-    busy: boolean;
-}
 
 interface CliServiceType {
     git: {
@@ -767,33 +745,7 @@ type CodeInboxEvent = {
     promptId: EARS.EntityId;
 };
 
-interface CodeSettings {
-    hotkeys: {
-        openTerminal?: KeyboardShortcut | null;
-        openTerminalTab?: KeyboardShortcut | null;
-        navigatePrevPanel?: KeyboardShortcut | null;
-        navigateNextPanel?: KeyboardShortcut | null;
-        focusSearch?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    restoreTerminals?: boolean;
-    defaultBaseDirectory?: string | null;
-    baseDirectory?: string | null;
-    enableShellIntegration?: boolean;
-    confirmTerminalClose?: boolean;
-    closeTerminalOnTabClose?: boolean;
-    maxTerminals?: number;
-    mdEditorDefault?: boolean;
-    enablePreview?: boolean;
-    autoFetchRemote?: boolean;
-    autoFetchIntervalSeconds?: number;
-    terminalScripts?: TerminalScript[];
-    showStashes?: boolean;
-    showCommits?: boolean;
-    showWorktrees?: boolean;
-    /** Paths to the CLIs the app runs; blank or missing means auto-detect */
-    cliPaths?: Partial<Record<'claude-code' | 'codex' | 'copilot' | 'gh', string>>;
-}
+type CodeSettings = typeof _default$9.defaults;
 
 interface CodeSystemError {
     code: 'FILE_TOO_LARGE' | 'INVALID_PATH' | 'IO_ERROR' | 'NOT_FOUND' | 'PERMISSION_DENIED' | 'SEARCH_ERROR';
@@ -1264,15 +1216,25 @@ interface DatabaseSchemaInfo {
     }>;
 }
 
-interface DatabaseSettings {
-    hotkeys: {
-        executeQuery?: KeyboardShortcut;
-    };
-}
+type DatabaseSettings = typeof _default$2.defaults;
 
 interface DatabaseStartupData {
     schema: DatabaseSchemaInfo;
 }
+
+type Declarations = {
+    'threads': FeatureSettingsValue<typeof _default$a>;
+    'code': FeatureSettingsValue<typeof _default$9>;
+    'notes': FeatureSettingsValue<typeof _default$8>;
+    'browser': FeatureSettingsValue<typeof _default$7>;
+    'library': FeatureSettingsValue<typeof _default>;
+    'flows': FeatureSettingsValue<typeof _default$6>;
+    'actions': FeatureSettingsValue<typeof _default$5>;
+    'prompts': FeatureSettingsValue<typeof _default$4>;
+    'brain': FeatureSettingsValue<typeof _default$3>;
+    'database': FeatureSettingsValue<typeof _default$2>;
+    'logs': FeatureSettingsValue<typeof _default$1>;
+};
 
 interface DirectoryContent {
     path: string;
@@ -2939,11 +2901,7 @@ type LogsInternalEvents = {
     log: Omit<LogEntry, 'id' | 'timestamp'>;
 };
 
-interface LogsSettings {
-    maxLogs: number;
-    excludedSources: string[];
-    showAppEvents?: boolean;
-}
+type LogsSettings = typeof _default$1.defaults;
 
 interface MarkdownContent {
     type: 'markdown';
@@ -3100,10 +3058,7 @@ type NotesInboxEvent = {
     noteId: string;
 };
 
-interface NotesSettings {
-    tasklistPanelPosition: 'left' | 'right';
-    showCollapseIcon: boolean;
-}
+type NotesSettings = typeof _default$8.defaults;
 
 interface OpenFile {
     path: string;
@@ -4279,6 +4234,10 @@ type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSy
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
+type PackFeatureSettings = {
+    [K in keyof Declarations as Declarations[K] extends never ? never : K]: Declarations[K];
+};
+
 /**
  * Feature id → the `public` half of the inbox this pack's plugin declares (dependents name it
  * `default-setup/<feature>`). Neither its own system's events nor its `pack` audience are here: the first is
@@ -4730,11 +4689,6 @@ interface QuickOpenResult$1 {
     score?: number;
 }
 
-interface QuickPrompt {
-    id: string;
-    text: string;
-}
-
 type RateLimitLine = z.infer<typeof RateLimitLineSchema>;
 
 /** Rate limit warnings. */
@@ -5106,12 +5060,6 @@ interface TerminalInfo {
     rows: number;
 }
 
-interface TerminalScript {
-    id: string;
-    label: string;
-    command: string;
-}
-
 interface TerminalTab extends OpenFile {
     isTerminal: true;
     terminalInfo: TerminalInfo;
@@ -5259,11 +5207,6 @@ interface ThreadStartParams {
     approvalsReviewer?: 'auto_review' | 'user';
 }
 
-interface ThreadStatusOption {
-    label: string;
-    color: string;
-}
-
 interface ThreadTabGroup {
     id: string;
     name: string;
@@ -5377,18 +5320,7 @@ type ThreadsInboxEvent = {
     type: 'VIEW_DASHBOARD';
 };
 
-interface ThreadsSettings {
-    statuses: ThreadStatusOption[];
-    tags: ThreadTagOption[];
-    chatStates: ChatStateConfig[];
-    showOnlyRootThreads: boolean;
-    clickToChat: boolean;
-    recentThreadsLimit: number;
-    recentThreadsSortOrder: 'created' | 'message' | 'visited';
-    recordingLimitMinutes: number;
-    skipArchiveConfirm?: boolean;
-    chat?: AgentSettings;
-}
+type ThreadsSettings = typeof _default$a.defaults;
 
 type TokenKind = 'classic-pat' | 'fine-grained-pat' | 'oauth' | 'unknown';
 
@@ -5655,6 +5587,501 @@ type __public_notes = PublicPluginInboxOf<Contract$8>;
 type __public_prompts = PublicPluginInboxOf<Contract$3>;
 
 type __public_threads = PublicPluginInboxOf<Contract$a>;
+
+declare const _default: _apackdev_sdk_framework.FeatureSettings<{
+    tags: {
+        name: string;
+        color?: string | undefined;
+    }[];
+}> & {
+    schema: z.ZodType<{
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+    }, z.ZodTypeDef, {
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+    }>;
+    defaults: {
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+    };
+};
+
+declare const _default$1: _apackdev_sdk_framework.FeatureSettings<{
+    maxLogs: number;
+    excludedSources: string[];
+    showAppEvents: boolean;
+}> & {
+    schema: z.ZodType<{
+        maxLogs: number;
+        excludedSources: string[];
+        showAppEvents: boolean;
+    }, z.ZodTypeDef, {
+        maxLogs: number;
+        excludedSources: string[];
+        showAppEvents: boolean;
+    }>;
+    defaults: {
+        maxLogs: number;
+        excludedSources: string[];
+        showAppEvents: boolean;
+    };
+};
+
+declare const _default$2: _apackdev_sdk_framework.FeatureSettings<{
+    hotkeys: Record<string, {
+        key: string;
+        modifiers: string[];
+        global?: boolean | undefined;
+    } | null>;
+}> & {
+    schema: z.ZodType<{
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+    }, z.ZodTypeDef, {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+    }>;
+    defaults: {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+    };
+};
+
+declare const _default$3: _apackdev_sdk_framework.FeatureSettings<{
+    inspectEnabled: boolean;
+}> & {
+    schema: z.ZodType<{
+        inspectEnabled: boolean;
+    }, z.ZodTypeDef, {
+        inspectEnabled: boolean;
+    }>;
+    defaults: {
+        inspectEnabled: boolean;
+    };
+};
+
+declare const _default$4: _apackdev_sdk_framework.FeatureSettings<{
+    categories: {
+        name: string;
+        color: string;
+    }[];
+}> & {
+    schema: z.ZodType<{
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    }, z.ZodTypeDef, {
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    }>;
+    defaults: {
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    };
+};
+
+declare const _default$5: _apackdev_sdk_framework.FeatureSettings<{
+    categories: {
+        name: string;
+        color: string;
+    }[];
+}> & {
+    schema: z.ZodType<{
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    }, z.ZodTypeDef, {
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    }>;
+    defaults: {
+        categories: {
+            name: string;
+            color: string;
+        }[];
+    };
+};
+
+declare const _default$6: _apackdev_sdk_framework.FeatureSettings<{
+    enableFlowPreview: boolean;
+}> & {
+    schema: z.ZodType<{
+        enableFlowPreview: boolean;
+    }, z.ZodTypeDef, {
+        enableFlowPreview: boolean;
+    }>;
+    defaults: {
+        enableFlowPreview: boolean;
+    };
+};
+
+declare const _default$7: _apackdev_sdk_framework.FeatureSettings<{
+    showBookmarksBar: boolean;
+    openLinksInApp: boolean;
+}> & {
+    schema: z.ZodType<{
+        showBookmarksBar: boolean;
+        openLinksInApp: boolean;
+    }, z.ZodTypeDef, {
+        showBookmarksBar: boolean;
+        openLinksInApp: boolean;
+    }>;
+    defaults: {
+        showBookmarksBar: boolean;
+        openLinksInApp: boolean;
+    };
+};
+
+declare const _default$8: _apackdev_sdk_framework.FeatureSettings<{
+    tasklistPanelPosition: "left" | "right";
+    showCollapseIcon: boolean;
+}> & {
+    schema: z.ZodType<{
+        tasklistPanelPosition: "left" | "right";
+        showCollapseIcon: boolean;
+    }, z.ZodTypeDef, {
+        tasklistPanelPosition: "left" | "right";
+        showCollapseIcon: boolean;
+    }>;
+    defaults: {
+        tasklistPanelPosition: "left" | "right";
+        showCollapseIcon: boolean;
+    };
+};
+
+declare const _default$9: _apackdev_sdk_framework.FeatureSettings<{
+    hotkeys: Record<string, {
+        key: string;
+        modifiers: string[];
+        global?: boolean | undefined;
+    } | null>;
+    restoreTerminals: boolean;
+    defaultBaseDirectory: string | null;
+    baseDirectory: string | null;
+    enableShellIntegration: boolean;
+    confirmTerminalClose: boolean;
+    closeTerminalOnTabClose: boolean;
+    maxTerminals: number;
+    mdEditorDefault: boolean;
+    enablePreview: boolean;
+    autoFetchRemote: boolean;
+    autoFetchIntervalSeconds: number;
+    terminalScripts: {
+        id: string;
+        label: string;
+        command: string;
+    }[];
+    showStashes: boolean;
+    showCommits: boolean;
+    showWorktrees: boolean;
+    cliPaths: Record<string, string>;
+}> & {
+    schema: z.ZodType<{
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            id: string;
+            label: string;
+            command: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    }, z.ZodTypeDef, {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            id: string;
+            label: string;
+            command: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    }>;
+    defaults: {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            id: string;
+            label: string;
+            command: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    };
+};
+
+declare const _default$a: _apackdev_sdk_framework.FeatureSettings<{
+    chat: {
+        modes: {
+            id: string;
+            name: string;
+            description: string;
+            hidden?: boolean | undefined;
+            phases?: {
+                id: string;
+                name: string;
+                description: string;
+                color?: string | undefined;
+            }[] | undefined;
+            disabled?: boolean | undefined;
+        }[];
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        defaultMode?: string | undefined;
+        defaultPhase?: string | undefined;
+        quickPrompts?: {
+            id: string;
+            text: string;
+        }[] | undefined;
+        quickPromptNumberKeyInserts?: boolean | undefined;
+        skipRevertConfirm?: boolean | undefined;
+    };
+    statuses: {
+        color: string;
+        label: string;
+    }[];
+    tags: {
+        name: string;
+        color?: string | undefined;
+    }[];
+    chatStates: {
+        id: string;
+        color: string;
+        label: string;
+        busy: boolean;
+    }[];
+    showOnlyRootThreads: boolean;
+    clickToChat: boolean;
+    recentThreadsLimit: number;
+    recentThreadsSortOrder: "created" | "message" | "visited";
+    recordingLimitMinutes: number;
+    skipArchiveConfirm: boolean;
+}> & {
+    schema: z.ZodType<{
+        chat: {
+            modes: {
+                id: string;
+                name: string;
+                description: string;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    name: string;
+                    description: string;
+                    color?: string | undefined;
+                }[] | undefined;
+                disabled?: boolean | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                id: string;
+                text: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            color: string;
+            label: string;
+        }[];
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chatStates: {
+            id: string;
+            color: string;
+            label: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    }, z.ZodTypeDef, {
+        chat: {
+            modes: {
+                id: string;
+                name: string;
+                description: string;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    name: string;
+                    description: string;
+                    color?: string | undefined;
+                }[] | undefined;
+                disabled?: boolean | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                id: string;
+                text: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            color: string;
+            label: string;
+        }[];
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chatStates: {
+            id: string;
+            color: string;
+            label: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    }>;
+    defaults: {
+        chat: {
+            modes: {
+                id: string;
+                name: string;
+                description: string;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    name: string;
+                    description: string;
+                    color?: string | undefined;
+                }[] | undefined;
+                disabled?: boolean | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                id: string;
+                text: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            color: string;
+            label: string;
+        }[];
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chatStates: {
+            id: string;
+            color: string;
+            label: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    };
+};
 
 declare const actionCommands: {
     readonly create: (data: _apackdev_sdk_repositories.ActionInput) => ActionEntity;
@@ -6527,5 +6954,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackFeatureSettings, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

@@ -8,7 +8,7 @@ export const migration: DeclaredMigration = {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would
     // write every default mode into the user's stored settings. The host's 0.4.0 migration, which runs before every
     // pack migration, has moved them onto the threads plugin's ref, and dropped Hermes's settings, which no plugin owns.
-    const stored = (services.settings.getStored().plugins ?? {}) as Record<string, any>;
+    const stored = (services.settings.getStored().features ?? {}) as Record<string, any>;
     const storedModes = stored[ref('threads')]?.chat?.modes;
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> | undefined =
       storedModes && structuredClone(storedModes);

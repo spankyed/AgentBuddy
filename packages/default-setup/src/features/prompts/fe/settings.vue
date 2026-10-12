@@ -164,20 +164,21 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
-import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import ColorPicker from '@apackdev/ui/design/ColorPicker'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
-import type { PromptsSettings, Category } from '#generated/types.ts'
+import type { Category } from '#generated/types.ts'
 import { useSelector } from '@xstate/vue'
 import type { PromptsState } from './state.ts'
 
 interface Props {
-  settings?: PromptsSettings
+  settings?: SettingsOf<'prompts'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -185,15 +186,10 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'prompts'>]
 }>()
 
-// State - use settings or empty array (defaults come from backend)
-const categories = ref<Category[]>(
-  props.settings?.categories && props.settings.categories.length > 0
-    ? [...props.settings.categories]
-    : []
-)
+const categories = useSettingsDraft(() => props.settings?.categories ?? [])
 
 // Save function
 const saveCategories = () => {

@@ -1,5 +1,5 @@
-import type { ThreadsSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { assign, setup, type AnyActorRef } from 'xstate'
@@ -7,7 +7,6 @@ import { assign, setup, type AnyActorRef } from 'xstate'
 import { GitRepository, StashConflictError } from '../services/git.ts'
 import { GitWatcherService } from '../services/gitwatcher.ts'
 import { requireGitRepository } from '../utils/git-helpers.ts'
-import { ref } from '#generated/ref.ts';
 
 const pluginId = 'code' as const
 
@@ -485,7 +484,7 @@ export const commitSystem = setup({
         const repoDir = context.gitRepository!.getWorkingDir()
         const repoName = repoDir.split('/').pop() || ''
 
-        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as any
+        const threadsSettings = featureSettings.forFeature('threads').get()
         const provider = threadsSettings?.chat?.defaultMode || 'Claude Code'
 
         sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 

@@ -4,16 +4,16 @@
 // The row stores only what the user changed. The settings in effect are the defaults with those changes over them,
 // so a changed default, or a pack's feature settings coming and going, applies to every key the user didn't set.
 //
-// The host owns the document's structure and not its content (`document.ts`): it knows `plugins`, one slice per
+// The host owns the document's structure and not its content (`document.ts`): it knows `features`, one slice per
 // installed feature with settings keyed by its ref, and takes every other section as opaque. Which sections exist,
 // and what they default to, come from `defaults` — whoever composes the app supplies it, so no pack's shape reaches
 // this module.
 import { untypedTx, untypedQx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
-import { deepMerge } from '@apackdev/sdk/utils/pure';
+import { deepMerge, hasOwn } from '@apackdev/sdk/utils/pure';
 import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apackdev/sdk/ids';
-import { getFeaturesWithSettings } from '@apackdev/sdk/framework';
-import { changesFrom, PLUGINS_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
+import { getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
+import { changesFrom, isEqual, FEATURES_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
 // The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
 import type { SettingsChange } from '@apackdev/sdk/services';
 export type { SettingsChange };
@@ -24,9 +24,9 @@ export const SETTINGS_ENTITY = 'Settings';
 // A fixed id without a hyphen: "Settings-app" with one had a bug where updates didn't persist
 const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
 
-/** A settings document: the `plugins` slices the host knows, and whatever sections the app registered */
+/** A settings document: the `features` slices the host knows, and whatever sections the app registered */
 export interface SettingsDocument {
-  [PLUGINS_SECTION]: Record<string, unknown>;
+  [FEATURES_SECTION]: Record<string, unknown>;
   [section: string]: unknown;
 }
 
@@ -34,12 +34,21 @@ export interface SettingsDocument {
 export interface SettingsStoreOptions {
   /**
    * The settings in effect before the user changed anything: the registered sections with their defaults, and the
-   * installed features' own under `plugins`. Read on each call, since a pack registering or unregistering changes it.
+   * installed features' own under `features`. Read on each call, since a pack registering or unregistering changes it.
    */
   defaults: () => SettingsDocument;
 }
 
 export type SettingsStore = ReturnType<typeof createSettingsStore>;
+
+/** Own properties only: a settings path is data, including keys such as __proto__. */
+function at(value: unknown, path: readonly (string | number)[]): unknown {
+  for (const key of path) {
+    if (value === null || typeof value !== 'object' || !hasOwn(value, key)) return undefined;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value;
+}
 
 export function createSettingsStore({ defaults }: SettingsStoreOptions) {
   const listeners = new Set<(change: SettingsChange) => void>();
@@ -61,12 +70,12 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
   }
 
   /** The settings in effect: the defaults with the stored changes over them */
-  const effective = (): SettingsDocument => deepMerge(defaults(), stored()) as SettingsDocument;
+  const effective = (): SettingsDocument => structuredClone(deepMerge(defaults(), stored())) as SettingsDocument;
 
-  /** The sections a document may hold besides `plugins`, as the defaults name them */
-  const sections = (): string[] => Object.keys(defaults()).filter((section) => section !== PLUGINS_SECTION);
+  /** The sections a document may hold besides `features`, as the defaults name them */
+  const sections = (): string[] => Object.keys(defaults()).filter((section) => section !== FEATURES_SECTION);
 
-  /** How a plugin's name is looked up: among the installed features with settings, a disabled pack's included */
+  /** How a feature's name is looked up: among the installed features with settings, a disabled pack's included */
   const lookup = (): RefLookup => ({ registered: getFeaturesWithSettings(), among: 'installed' });
 
   /**
@@ -75,6 +84,31 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
    */
   function write(next: unknown): void {
     const problems = settingsProblems(next, { before: stored(), sections: sections() });
+    if (problems.length > 0) throw new SettingsRefusedError(problems);
+    const current = effective();
+    const effectiveNext = deepMerge(defaults(), next) as SettingsDocument;
+    const schemas = getPackSettingsDefaults().schemas;
+    for (const [ref, slice] of Object.entries(effectiveNext.features ?? {})) {
+      if (isEqual(slice, current.features?.[ref])) continue;
+      const schema = schemas[ref];
+      if (!schema) {
+        problems.push(`Feature "${ref}" does not declare a settings schema`);
+        continue;
+      }
+      const checked = schema.safeParse(slice);
+      if (checked.success && !isEqual(checked.data, slice)) {
+        problems.push(`Feature "${ref}" settings schema must validate without transforming values`);
+      }
+      if (!checked.success) {
+        for (const issue of checked.error.issues) {
+          const paths = issue.code === 'unrecognized_keys'
+            ? issue.keys.map(key => [...issue.path, key]) : [issue.path];
+          // A declaration changing must not trap existing data: only new or changed invalid values are refused.
+          if (paths.every(path => isEqual(at(current.features?.[ref], path), at(slice, path)))) continue;
+          problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
+        }
+      }
+    }
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     // The first change is what creates the row, so it is written here rather than by whoever read the settings first.
     // treatAsNew gives it a createdAt, and the entity type is what makes it findable as a Settings row.
@@ -99,7 +133,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     getSection: <T = unknown>(section: string): T => effective()[section] as T,
 
     /** A feature's settings in effect, by its ref */
-    getFeatureSettings: <T = unknown>(feature: FeatureRef): T => (effective()[PLUGINS_SECTION][feature] ?? {}) as T,
+    getFeatureSettings: <T = unknown>(feature: FeatureRef): T => (effective()[FEATURES_SECTION][feature] ?? {}) as T,
 
     /**
      * The ref of the installed feature with settings `name` stands for. Where a name arrives as a string — a client's
@@ -114,7 +148,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
 
     /** Sets `value` at `path` in a feature's settings, by its ref */
     setFeatureSetting(feature: FeatureRef, path: readonly string[], value: unknown): void {
-      write(setIn(stored(), [PLUGINS_SECTION, feature, ...path], value));
+      write(setIn(stored(), [FEATURES_SECTION, feature, ...path], value));
     },
 
     /** Sets `value` at `path` in a registered section */

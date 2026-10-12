@@ -128,7 +128,7 @@ describe('openPlugin', () => {
   it("takes this pack's plugins by feature id, and nothing it can't name", () => {
     expectTypeOf(() => {
       openPlugin('notes');
-      untypedOpenPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'plugins' });
+      untypedOpenPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'features' });
       // @ts-expect-error a misspelled ref names no plugin
       openPlugin('default-setp/notes');
       // @ts-expect-error nor does a misspelled feature id

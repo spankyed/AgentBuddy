@@ -205,3 +205,5 @@ export const services: HostServices & Record<string, unknown> = new Proxy({} as 
     if (prop in s) return { configurable: true, enumerable: true, value: s[prop as string] };
   },
 });
+
+export { _featureSettings } from './feature-settings.ts';

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
 import * as fs from 'node:fs';
@@ -307,7 +308,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { plugin: { receives: [] }, settings: { plugins: { notes: { from: 'incumbent' } } } } },
+      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: z.record(z.unknown()) } } },
     });
 
     // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
@@ -319,7 +320,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { plugin: { receives: [] }, settings: { plugins: { cards: {} } } } },
+      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } },
     })).toThrow('Command collision');
 
     // Nothing of the refused pack survives
@@ -328,7 +329,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(importCompiledContent({ compiledDir: contentOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused/cards');
+    expect(getPackSettingsDefaults().settings.features).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -336,7 +337,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_contentWriterRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('incumbent/notes');
+    expect(getPackSettingsDefaults().settings.features).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
@@ -354,7 +355,7 @@ describe('a pack whose registration is refused', () => {
 });
 
 describe('feature settings defaults', () => {
-  const memos = { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'newest' } } } };
+  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } };
   const cards = { plugin: { receives: [] }, settings: { visible: false } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
@@ -364,16 +365,16 @@ describe('feature settings defaults', () => {
 
     add({ id: 'memo-pack', features: { memos } });
     add({ id: 'card-pack', features: { cards } });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { sort: 'newest' } } });
     expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     expect(getPackSettingsDefaults().revision).toBeGreaterThan(before);
     expect(changed).toHaveBeenCalled();
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
     expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
 
     // after unsubscribing, a further change tells this listener nothing
     const afterRemoving = changed.mock.calls.length;

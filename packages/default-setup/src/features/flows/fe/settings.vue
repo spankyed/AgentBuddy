@@ -197,8 +197,9 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
+import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
@@ -206,14 +207,13 @@ const HOST_SETTINGS = resolveName('settings', 'host')
 import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
-import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import type { FlowsSettings } from '#generated/types.ts'
+
 import { useSelector } from '@xstate/vue'
 import { type FlowsState } from './state.ts'
 import { ref as featureRef } from '#generated/ref.ts'
 
 interface Props {
-  settings?: FlowsSettings
+  settings?: SettingsOf<'flows'>
   allSettings?: any
 }
 
@@ -223,11 +223,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'flows'>]
 }>()
 
 // State
-const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
+const enableFlowPreview = useSettingsDraft(() => props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
 const flowsActor: FlowsState = usePlugin()
@@ -274,12 +274,6 @@ watch(rootFlowId, (newValue) => {
   selectedRootFlowId.value = newValue || ''
 })
 
-watch(() => props.settings?.enableFlowPreview, (newValue) => {
-  if (newValue !== undefined) {
-    enableFlowPreview.value = newValue ?? true
-  }
-})
-
 // Methods
 const handleFlowPreviewChange = () => {
   emit('update-setting', {
@@ -294,7 +288,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  untypedOpenPlugin(HOST_SETTINGS, { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
+  untypedOpenPlugin(HOST_SETTINGS, { type: 'FEATURE.SELECT', featureId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

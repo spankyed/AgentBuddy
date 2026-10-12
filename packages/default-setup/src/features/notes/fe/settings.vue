@@ -192,30 +192,24 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
-
-import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
+
+import { ref } from 'vue'
+
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
 import type { NotesState } from './state.ts'
 
-interface NotesSettings {
-  tasklistPanelPosition: 'left' | 'right'
-  showCollapseIcon: boolean
-}
-
 interface Props {
-  settings?: NotesSettings
+  settings: SettingsOf<'notes'>
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  settings: undefined
-})
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'notes'>]
 }>()
 
 const positionOptions = [
@@ -223,15 +217,8 @@ const positionOptions = [
   { value: 'right' as const, label: 'Right' },
 ]
 
-const panelPosition = ref<'left' | 'right'>(props.settings?.tasklistPanelPosition || 'left')
-const showCollapseIcon = ref(props.settings?.showCollapseIcon ?? false)
-
-watch(() => props.settings, (newSettings) => {
-  if (newSettings) {
-    panelPosition.value = newSettings.tasklistPanelPosition
-    showCollapseIcon.value = newSettings.showCollapseIcon ?? false
-  }
-}, { deep: true })
+const panelPosition = useSettingsDraft(() => props.settings.tasklistPanelPosition)
+const showCollapseIcon = useSettingsDraft(() => props.settings.showCollapseIcon)
 
 const saveShowCollapseIconSetting = () => {
   emit('update-setting', {

@@ -1,4 +1,5 @@
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { tx, findById, findAll, qx } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts';
@@ -15,9 +16,8 @@ import type {
   ThreadConnectedData,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
 } from '../types.ts';
-import type { ThreadsSettings, ThreadTagOption } from '#generated/types.ts';
+import type { ThreadTagOption } from '#generated/types.ts';
 import type { ArtifactItem } from '@apackdev/sdk/artifacts';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Threads Repository
@@ -119,7 +119,7 @@ export const threadQueries = {
     });
 
     // Get tags from settings
-    const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as ThreadsSettings | undefined;
+    const threadsSettings = featureSettings.forFeature('threads').get();
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
 
     // Build chat states map from thread entities directly
@@ -160,7 +160,7 @@ export const threadCommands = {
       ? tx(input.id as EARS.EntityId, true).id()
       : tx(EARS.Entity.Thread).id();
 
-    const status = input.status || services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses[0]?.label || '';
+    const status = input.status || featureSettings.forFeature('threads').get()?.statuses[0]?.label || '';
     tx(id).updateBatch({
       status,
       shortCode: shortCode,
@@ -333,14 +333,14 @@ const THREAD_TOPIC_MAX_LENGTH = 40;
 const RECENT_THREADS_FALLBACK_LIMIT = 7;
 
 function getConfiguredRecentThreadsLimit(): number {
-  const configured = services.settings.forFeature<ThreadsSettings>(ref('threads'))?.recentThreadsLimit;
+  const configured = featureSettings.forFeature('threads').get()?.recentThreadsLimit;
   return typeof configured === 'number' && configured > 0
     ? configured
     : RECENT_THREADS_FALLBACK_LIMIT;
 }
 
 function getConfiguredSortOrder(): 'created' | 'visited' | 'message' {
-  const configured = services.settings.forFeature<ThreadsSettings>(ref('threads'))?.recentThreadsSortOrder;
+  const configured = featureSettings.forFeature('threads').get()?.recentThreadsSortOrder;
   return configured === 'visited' || configured === 'message' ? configured : 'created';
 }
 
@@ -554,7 +554,7 @@ export const chatQueries = {
       });
     }
 
-    const chatSettings = (services.settings.forFeature<ThreadsSettings>(ref('threads')) as ThreadsSettings).chat;
+    const chatSettings = featureSettings.forFeature('threads').get().chat;
 
     return {
       currentThread,

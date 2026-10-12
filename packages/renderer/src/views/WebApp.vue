@@ -157,7 +157,7 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
     {
       label: 'Settings',
       icon: SettingsIcon,
-      event: { type: 'APP_OPEN_PLUGIN_SETTINGS', pluginId: currentPluginId.value },
+      event: { type: 'APP_OPEN_FEATURE_SETTINGS', featureId: currentPluginId.value },
     },
     {
       label: 'Show Canvas',
@@ -208,10 +208,10 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
 
   if (event.type === 'APP_OPEN_PLUGIN_HELP' && typeof event.pluginId === 'string') { openFeatureHelp(event.pluginId); return; }
 
-  if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
+  if (event.type === 'APP_OPEN_FEATURE_SETTINGS') {
     untypedOpenPlugin(HOST.settings, [
-      { type: 'TAB.SELECT', tab: 'plugins' },
-      { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
+      { type: 'TAB.SELECT', tab: 'features' },
+      { type: 'FEATURE.SELECT', featureId: event.featureId }
     ])
     return
   }

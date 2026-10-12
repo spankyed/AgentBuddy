@@ -13,7 +13,7 @@ beforeEach(() => sent.mockClear())
 
 function readySettingsPlugin() {
   const actor = createActor(createSettingsMachine({ restart: () => {}, report: () => {} })).start()
-  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } })
+  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, features: {}, assistant: {} } })
   return actor
 }
 
@@ -21,7 +21,7 @@ const save = (actor: ReturnType<typeof readySettingsPlugin>) => actor.getSnapsho
 
 it('sends the replacement to the settings system, and is saving until the store answers', () => {
   const actor = readySettingsPlugin()
-  const data = { general: {}, plugins: { 'default-setup/code': { maxTerminals: 3 } } }
+  const data = { general: {}, features: { 'default-setup/code': { maxTerminals: 3 } } }
 
   actor.send({ type: 'SETTINGS.REPLACE', data })
 
@@ -52,16 +52,31 @@ it("is refused with the store's reasons, and a later save starts over", () => {
 it("is saving while a plugin's settings change is with the store, and refused with its reasons", () => {
   const actor = readySettingsPlugin()
 
-  actor.send({ type: 'SETTINGS.UPDATE', entityType: 'plugin', label: 'memo-pack/memos' as never, path: ['sort'], value: 'oldest' })
+  actor.send({ type: 'SETTINGS.UPDATE', entityType: 'feature', label: 'memo-pack/memos' as never, path: ['sort'], value: 'oldest' })
 
   expect(save(actor)).toEqual({ status: 'saving', problems: [] })
   expect(sent).toHaveBeenCalledWith({
     to: 'host/settings',
     from: 'host',
     call: expect.any(String), 
-    event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['sort'], value: 'oldest' },
+    event: { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/memos', path: ['sort'], value: 'oldest' },
   })
 
   actor.send({ type: 'SETTINGS_REFUSED', problems: ['No installed feature with settings is named "memo-pack/memos"'] })
   expect(save(actor)).toEqual({ status: 'refused', problems: ['No installed feature with settings is named "memo-pack/memos"'] })
+})
+
+
+it.each(['SETTINGS_UPDATED', 'SETTINGS_RESET'] as const)('accepts %s snapshots without stopping the settings actor', (type) => {
+  const actor = readySettingsPlugin()
+  const data = { general: {}, features: { 'default-setup/code': { restoreTerminals: true } } }
+  try {
+    actor.send({ type, data })
+    expect(actor.getSnapshot().status).toBe('active')
+    expect(actor.getSnapshot().context.settings).toEqual(data)
+    actor.send({ type: 'SETTINGS_SAVED' })
+    expect(save(actor)).toEqual({ status: 'saved', problems: [] })
+  } finally {
+    actor.stop()
+  }
 })

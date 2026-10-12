@@ -1773,7 +1773,7 @@ describe('findCrossFeatureImports', () => {
     writeAt(`${src}/features/code/fe/panel.ts`, [
       "import { codeChild } from '#features/code/fe/utils/parent-communication.ts';",
       "import { usePluginState } from '#generated/fe.ts';",
-      "import { pluginSettings } from '#features/settings/plugin-settings.ts';",
+      "import { featureSettings } from '#features/settings/feature-settings.ts';",
       "import type { ActionEntity } from '#features/actions/be/types.ts';",
     ].join('\n'));
     writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");

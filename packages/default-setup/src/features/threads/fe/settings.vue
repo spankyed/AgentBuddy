@@ -283,7 +283,7 @@
               label="Text to Speech"
               container-class="flex-1"
               :show-reset-button="true"
-              @change="saveHotkeys"
+              @change="saveHotkey('textToSpeech')"
             />
             <p class="mt-1.5 text-xs text-neutral-600">
               Convert agent responses to speech (currently a stub feature)
@@ -297,7 +297,7 @@
               label="Switch Mode"
               container-class="flex-1"
               :show-reset-button="true"
-              @change="saveHotkeys"
+              @change="saveHotkey('switchMode')"
             />
             <p class="mt-1.5 text-xs text-neutral-600">
               Cycle through available chat modes
@@ -683,31 +683,24 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
-
-import { ref, reactive, computed, nextTick, type Directive } from 'vue'
+import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
+
+import { ref, computed, nextTick, type Directive } from 'vue'
+
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
-import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
+
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import type { ThreadsState } from './state.ts'
-import type {
-  ThreadsSettings,
-  ThreadStatusOption,
-  ThreadTagOption,
-  ChatStateConfig,
-  AgentSettings,
-  AgentMode,
-  AgentPhase,
-  QuickPrompt,
-} from '#generated/types.ts'
+import type { ThreadStatusOption, ThreadTagOption, AgentPhase } from '#generated/types.ts'
 
 interface Props {
-  settings?: ThreadsSettings
+  settings?: SettingsOf<'threads'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -715,43 +708,29 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'threads'>]
 }>()
 
-// State - initialize directly from props with defaults
-const statuses = ref<ThreadStatusOption[]>(
-  props.settings?.statuses ? [...props.settings.statuses] : []
-)
-
-const tags = ref<ThreadTagOption[]>(
-  props.settings?.tags ? [...props.settings.tags] : []
-)
-
-const chatStateConfigs = ref<ChatStateConfig[]>(
-  props.settings?.chatStates ? props.settings.chatStates.map(s => ({ ...s })) : []
-)
-
-const skipArchiveConfirm = ref(props.settings?.skipArchiveConfirm ?? false)
-const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
-const clickToChat = ref(props.settings?.clickToChat || false)
-const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
-const recentThreadsSortOrder = ref<string>(props.settings?.recentThreadsSortOrder ?? 'created')
-const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes ?? 3)
+const statuses = useSettingsDraft(() => props.settings?.statuses ?? [])
+const tags = useSettingsDraft(() => props.settings?.tags ?? [])
+const chatStateConfigs = useSettingsDraft(() => props.settings?.chatStates ?? [])
+const skipArchiveConfirm = useSettingsDraft(() => props.settings?.skipArchiveConfirm ?? false)
+const showOnlyRootThreads = useSettingsDraft(() => props.settings?.showOnlyRootThreads ?? false)
+const clickToChat = useSettingsDraft(() => props.settings?.clickToChat ?? true)
+const recentThreadsLimit = useSettingsDraft(() => props.settings?.recentThreadsLimit ?? 7)
+const recentThreadsSortOrder = useSettingsDraft(() => props.settings?.recentThreadsSortOrder ?? 'visited')
+const recordingLimitMinutes = useSettingsDraft(() => props.settings?.recordingLimitMinutes ?? 3)
 
 // ---- Chat (agent) settings ----
-const chatSettings = props.settings?.chat
-const skipRevertConfirm = ref(chatSettings?.skipRevertConfirm ?? false)
-const quickPromptNumberKeyInserts = ref(chatSettings?.quickPromptNumberKeyInserts ?? true)
-const modes = ref<AgentMode[]>(chatSettings?.modes ? chatSettings.modes.map(m => ({ ...m, phases: m.phases ? [...m.phases] : undefined })) : [])
+const skipRevertConfirm = useSettingsDraft(() => props.settings?.chat.skipRevertConfirm ?? false)
+const quickPromptNumberKeyInserts = useSettingsDraft(() => props.settings?.chat.quickPromptNumberKeyInserts ?? true)
+const modes = useSettingsDraft(() => props.settings?.chat.modes ?? [])
 const selectedModeName = ref<string>(modes.value.find(m => !m.hidden)?.name || '')
 const selectedMode = computed(() => modes.value.find(m => m.name === selectedModeName.value))
-const quickPrompts = ref<QuickPrompt[]>(chatSettings?.quickPrompts ? [...chatSettings.quickPrompts] : [])
-const hotkeys = reactive<AgentSettings['hotkeys']>({
-  textToSpeech: chatSettings?.hotkeys?.textToSpeech || null,
-  switchMode: chatSettings?.hotkeys?.switchMode || null,
-})
-const defaultMode = ref<string>(chatSettings?.defaultMode ?? '')
-const defaultPhase = ref<string>(chatSettings?.defaultPhase ?? '')
+const quickPrompts = useSettingsDraft(() => props.settings?.chat.quickPrompts ?? [])
+const hotkeys = useSettingsDraft(() => props.settings?.chat.hotkeys ?? {})
+const defaultMode = useSettingsDraft(() => props.settings?.chat.defaultMode ?? '')
+const defaultPhase = useSettingsDraft(() => props.settings?.chat.defaultPhase ?? '')
 const modesValidationMessage = ref('')
 
 const selectableDefaultModes = computed(() =>
@@ -879,16 +858,16 @@ const saveQuickPrompts = () => {
   emit('update-setting', { path: ['chat', 'quickPrompts'], value: quickPrompts.value })
 }
 
-const saveHotkeys = () => {
-  emit('update-setting', { path: ['chat', 'hotkeys'], value: hotkeys })
+const saveHotkey = (key: string) => {
+  emit('update-setting', { path: ['chat', 'hotkeys', key], value: hotkeys.value[key] ?? null })
 }
 
 const saveDefaultMode = () => {
-  emit('update-setting', { path: ['chat', 'defaultMode'], value: defaultMode.value || undefined })
+  emit('update-setting', { path: ['chat', 'defaultMode'], value: defaultMode.value })
 }
 
 const saveDefaultPhase = () => {
-  emit('update-setting', { path: ['chat', 'defaultPhase'], value: defaultPhase.value || undefined })
+  emit('update-setting', { path: ['chat', 'defaultPhase'], value: defaultPhase.value })
 }
 
 const onDefaultModeChange = () => {

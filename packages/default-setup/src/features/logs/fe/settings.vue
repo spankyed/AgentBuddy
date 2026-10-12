@@ -103,14 +103,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
-import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
+import { useSettingsDraft } from '@apackdev/sdk/fe'
 import { X } from 'lucide-vue-next'
-import type { LogsSettings } from '#generated/types.ts'
+import { ref } from 'vue'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
 interface Props {
-  settings?: LogsSettings
+  settings?: SettingsOf<'logs'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -118,12 +118,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'logs'>]
 }>()
 
 // State
-const maxLogs = ref<number>(props.settings?.maxLogs || 1000)
-const excludedSources = ref<string[]>(props.settings?.excludedSources || [])
+const maxLogs = useSettingsDraft(() => props.settings?.maxLogs || 1000)
+const excludedSources = useSettingsDraft(() => props.settings?.excludedSources || [])
 const newExclusion = ref<string>('')
 
 // Common exclusion patterns
@@ -135,14 +135,6 @@ const commonExclusions = [
   'verbose.*',
   'system.*'
 ]
-
-// Watch for settings changes from backend
-watch(() => props.settings, (newSettings) => {
-  if (newSettings) {
-    maxLogs.value = newSettings.maxLogs
-    excludedSources.value = [...newSettings.excludedSources]
-  }
-}, { deep: true })
 
 // Methods
 const handleMaxLogsChange = () => {

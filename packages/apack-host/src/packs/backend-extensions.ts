@@ -44,26 +44,29 @@ export function createApplierStore() {
 }
 
 /**
- * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and whether its
+ * Registered packs' feature settings, merged into the defaults: each feature's own slice and whether its
  * tab shows (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or
- * go. A manifest names the feature; its settings land under the plugin's ref, which the renderer reads by.
+ * go. A manifest names the feature; its settings land under the feature's ref, which the renderer reads by.
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
   /** Each pack's settings sections, read the first time the defaults are, then kept until the pack changes */
   const sectionsByPack = new Map<string, () => Record<string, unknown>>();
   const listeners = new Set<() => void>();
-  let current: PackSettingsDefaults = { revision: 0, settings: { plugins: {} }, visibility: {} };
+  let current: PackSettingsDefaults = { revision: 0, settings: { features: {} }, schemas: {}, visibility: {} };
 
   function rebuild(): void {
-    const plugins: Record<string, unknown> = {};
+    const features: Record<string, unknown> = {};
+    const schemas: PackSettingsDefaults['schemas'] = {};
     const visibility: Record<string, boolean> = {};
-    for (const [packId, features] of byPack) {
-      for (const { id, settings } of features) {
-        const own = settings.plugins ?? {};
-        const pluginId = resolveName(id, packId);
-        if (id in own) plugins[pluginId] = own[id];
-        if (settings.visible !== undefined) visibility[pluginId] = settings.visible;
+    for (const [packId, declarations] of byPack) {
+      for (const { id, settings } of declarations) {
+        const ref = resolveName(id, packId);
+        if (settings.schema) {
+          features[ref] = settings.schema.parse(settings.defaults ?? {});
+          schemas[ref] = settings.schema;
+        }
+        if (settings.visible !== undefined) visibility[ref] = settings.visible;
       }
     }
     const sections: Record<string, unknown> = {};
@@ -74,12 +77,12 @@ export function createSettingsDefaultsStore() {
         throw new Error(`Pack "${packId}" could not read its settings sections: ${(error as Error).message}`);
       }
     }
-    current = { revision: current.revision + 1, settings: { ...sections, plugins }, visibility };
+    current = { revision: current.revision + 1, settings: { ...sections, features }, schemas, visibility };
     for (const listener of listeners) listener();
   }
 
   return {
-    /** Throws when a feature sets anything but its own plugin's settings, registering none of the pack's */
+    /** Validates each declaration before registering the pack's defaults and schemas */
     register(packId: string, features: ReadonlyArray<{ id: string; settings?: FeatureSettings }>, sections?: () => Record<string, unknown>): void {
       const withSettings = features.filter((feature): feature is { id: string; settings: FeatureSettings } => feature.settings !== undefined);
       const problems = withSettings.flatMap(({ id, settings }) => checkFeatureSettings(id, settings));

@@ -1,5 +1,5 @@
-import type { NotesSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { qx } from '#generated/ears.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
@@ -17,7 +17,6 @@ import { exportNotes } from './export-notes.ts';
 import { importNotes } from './import-notes.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { NoteEntity } from '#features/notes/be/types.ts';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -49,7 +48,7 @@ export const notesSystem = setup({
   actions: notesSpec.actions({
     sendNotesConnectedData: () => {
       const connectedData = repository.noteQueries.connectedData();
-      const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
+      const settings = featureSettings.forFeature('notes').get();
       broadcastToPlugin('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
@@ -392,7 +391,7 @@ export const notesSystem = setup({
 
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
-        const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
+        const settings = featureSettings.forFeature('notes').get();
         broadcastToPlugin('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },

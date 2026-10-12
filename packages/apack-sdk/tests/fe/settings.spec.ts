@@ -3,7 +3,7 @@
 // start outside a scope, where nothing would ever stop them.
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { effectScope } from 'vue'
-import { updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection } from '../../src/fe/settings.ts'
+import { _useFeatureSettings, updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection } from '../../src/fe/settings.ts'
 import { fakeSettings, type FakeSettings } from '../../src/testing/fake-settings.ts'
 import { startFeTestRuntime } from '../../src/testing/fe-runtime.ts'
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts'
@@ -14,7 +14,7 @@ const CODE = 'default-setup/code' as FeatureRef
 let settings: FakeSettings
 
 beforeEach(() => {
-  settings = fakeSettings({ general: { projects: ['one'] }, plugins: { [CODE]: { mdEditorDefault: true } } })
+  settings = fakeSettings({ general: { projects: ['one'] }, features: { [CODE]: { mdEditorDefault: true } } })
   bindFeHost({ application: {} as never, secrets: {} as never, settings, client: {} as never, packs: {} as never })
 })
 afterEach(() => unbindFeHost())
@@ -98,4 +98,16 @@ it('names fakeSettings when a test reaches for settings it did not pass', () => 
     .toThrow('pass settings: fakeSettings({ … }) from @apackdev/sdk/testing to startFeTestRuntime')
 
   stopRuntime()
+})
+
+
+it('typed handles follow their feature, write through the port and reset its overrides', () => {
+  const { value: code, stop } = inScope(() => _useFeatureSettings<{ mdEditorDefault: boolean }>(CODE))
+  code.set({ path: ['mdEditorDefault'], value: false })
+  expect(code.value.value).toEqual({ mdEditorDefault: false })
+  code.reset()
+  expect(code.value.value).toBeUndefined()
+  stop()
+  settings.set({ features: { [CODE]: { mdEditorDefault: true } } })
+  expect(code.value.value).toBeUndefined()
 })

@@ -1,4 +1,5 @@
-import type { ThreadsSettings } from '#generated/types.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 // Untyped for now: a typed `reply` needs an `answers` field on the contract and a codegen reader, which
 // stays deferred. `onConnected`/`onIncoming` come from here for the same reason.
@@ -14,7 +15,7 @@ import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace
 import { createLogger } from '@apackdev/sdk/logger';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
-import { ref } from '#generated/ref.ts';
+
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('database');
@@ -101,7 +102,7 @@ export const databaseSystem = setup({
         return;
       }
 
-      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads')) as any;
+      const threadsSettings = featureSettings.forFeature('threads').get();
       const provider = threadsSettings?.chat?.defaultMode || 'Claude Code';
 
       sendToSystem('brain', {

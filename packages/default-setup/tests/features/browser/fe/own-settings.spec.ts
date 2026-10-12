@@ -25,8 +25,8 @@ describe("the browser plugin's own settings", () => {
   it('keeps the last settings the app sent', () => {
     const actor = started();
 
-    actor.send({ type: 'FEATURE_SETTINGS_UPDATED', settings: { showBookmarksBar: true } });
-    actor.send({ type: 'FEATURE_SETTINGS_UPDATED', settings: { showBookmarksBar: false } });
+    actor.send({ type: 'FEATURE_SETTINGS_UPDATED', settings: { showBookmarksBar: true, openLinksInApp: true } });
+    actor.send({ type: 'FEATURE_SETTINGS_UPDATED', settings: { showBookmarksBar: false, openLinksInApp: true } });
 
     expect(actor.getSnapshot().context.settings.showBookmarksBar).toBe(false);
     actor.stop();

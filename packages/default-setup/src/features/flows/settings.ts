@@ -1,8 +1,11 @@
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+export default defineFeatureSettings({
   visible: false,
-  plugins: {
-    flows: {
-      enableFlowPreview: true
-    }
-  }
-}
+  schema: z
+    .object({
+      enableFlowPreview: z.boolean().default(true),
+    })
+    .strict(),
+});

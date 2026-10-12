@@ -1,4 +1,5 @@
-import type { BrainSettings } from '#generated/types.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
@@ -12,8 +13,6 @@ import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorId
 import { setBrainPausedState } from './utils/brain-pause.ts';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain.ts';
 import { services } from '#generated/services.ts';
-import { ref } from '#generated/ref.ts';
-
 
 export const brainSpec = defineSystem<Contract>();
 export const brainRuntime = 'brain-runtime' as const;
@@ -77,7 +76,6 @@ export const brainSystem = setup({
         enqueue.assign(stopWithoutRootFlow(context));
         return;
       }
-
 
       // Start new brain and assign to context
       enqueue.assign(({ spawn, self }) => {
@@ -276,7 +274,7 @@ export const brainSystem = setup({
       // Restore inspect state from persisted settings. Default ON in dev so
       // switch/action/flow transitions are visible out of the box; the
       // persisted setting wins once the user has toggled it.
-      const brainSettings = services.settings.forFeature<BrainSettings>(ref('brain'));
+      const brainSettings = featureSettings.forFeature('brain').get();
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
       broadcastToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
@@ -334,7 +332,7 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      services.settings.setForFeature(ref('brain'), ['inspectEnabled'], newState);
+      featureSettings.forFeature('brain').set({ path: ['inspectEnabled'], value: newState });
 
       // Send confirmation back to frontend
       broadcastToPlugin('brain', {

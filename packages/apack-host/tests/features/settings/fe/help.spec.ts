@@ -3,7 +3,7 @@ import { createActor } from 'xstate';
 import { startFeTestRuntime } from '@apackdev/sdk/testing';
 import { createSettingsMachine } from '../../../../src/features/settings/fe/machine.ts';
 
-const settings = { general: {}, plugins: {}, assistant: {} };
+const settings = { general: {}, features: {}, assistant: {} };
 afterAll(startFeTestRuntime({ client: { send() {} } }));
 function startSettings() {
   return createActor(createSettingsMachine({ restart() {}, report() {} })).start();

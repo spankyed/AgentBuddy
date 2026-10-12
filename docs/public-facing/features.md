@@ -214,7 +214,7 @@ export default bookmarksPlugin;
 | `canvas` | `Component \| Record<string, Component>` | no | Main content area: one component, or route name → component for a plugin with several views |
 | `panel` | `Component` | no | Side panel component |
 | `chat` | `Component` | no | Chat area component; the app renders the default plugin's |
-| `settings` | `Component` | no | Shown in Settings → Plugins; plugins without one aren't listed there |
+| `settings` | `Component` | no | Shown in Settings → Features; features without one aren't listed there |
 | `isPinned` | `boolean` | no | Lists the plugin in the toolbar's pinned group |
 | `hotkeys` | `PluginHotkeyDefinition[]` | no | `{ action, global? }` per hotkey action. The active plugin's machine gets every hotkey event; other plugins' machines get only their `global` actions |
 | `options` | `{ headerClass?: string }` | no | Class for the canvas header |
@@ -258,26 +258,54 @@ import { breadcrumbWithParams } from '@apackdev/sdk/fe'; // Parameterized naviga
 
 ## Settings
 
-Each feature declares its default settings slice:
+Each feature declares a schema with defaults; its settings forms remain custom:
 
 ```typescript
 // src/features/bookmarks/settings.ts
-export default {
-  visible: true,  // Show in sidebar
-  plugins: {
-    bookmarks: {
-      // Feature-specific defaults
-      syncInterval: 300,
-    }
-  }
-}
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+const settings = defineFeatureSettings({
+  visible: true,
+  schema: z.object({
+    syncInterval: z.number().int().positive().default(300),
+  }).strict(),
+});
+
+export default settings;
+export type BookmarkSettings = typeof settings.defaults;
 ```
 
 - `visible` controls whether the plugin's sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
-- Feature-specific settings go under the plugin ID key.
-- A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `apack pack build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
+- The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
+- A feature declares only `schema`, optional `defaults`, and `visible`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Use synchronous validation schemas without coercions or transforms. See [Feature settings](manifest.md#feature-settings).
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
-- Read them at runtime with the app's settings service, `services.settings.forFeature('<packId>/<feature id>')`, which returns the user's values over the defaults; `setForFeature('<packId>/<feature id>', path, value)` changes one. Both take the feature's ref and throw for a bare name, naming the ref they likely meant. In a component, `useFeatureSettings(ref('<feature id>'))` from `@apackdev/sdk/fe` follows them, and `useSettingsSave()` gives the same change with whether the store stored it.
+- Codegen derives the read and write types from the schema. Backend code uses `settings.forFeature('bookmarks')` from `#generated/settings.ts`; components use `useSettings('bookmarks')` from `#generated/settings-fe.ts`. Own features use bare IDs; dependencies use `<packId>/<featureId>`. Only features declaring a settings schema are accepted. The frontend module loads no schemas or backend services.
+
+```typescript
+import { settings } from '#generated/settings.ts';
+const bookmarks = settings.forFeature('bookmarks');
+const interval = bookmarks.get().syncInterval; // number
+bookmarks.set({ path: ['syncInterval'], value: 600 });
+bookmarks.reset(); // removes overrides; applies the current defaults
+```
+
+In a component, `useSettings('bookmarks')` returns a reactive `value` (undefined until loaded), typed `set`, and `reset`. It must run in a component or effect scope; disposal stops its subscription. `useSettingsSave()` from `@apackdev/sdk/fe` reports the shared save status. Custom forms type their props with `SettingsOf<'bookmarks'>` and their `update-setting` payload with `SettingUpdate<'bookmarks'>`, both from `#generated/settings-fe.ts`. Paths address object fields, including record keys, up to six levels; replace arrays as a whole. Each path is paired with its field's value type. Runtime validation remains authoritative.
+
+Custom forms can use `useSettingsDraft` from `@apackdev/sdk/fe` for an editable copy of a JSON settings field:
+
+```typescript
+import { useSettingsDraft } from '@apackdev/sdk/fe';
+const tags = useSettingsDraft(() => props.settings.tags);
+// Save explicitly: emit('update-setting', { path: ['tags'], value: tags.value });
+```
+
+Draft edits never mutate the settings snapshot. A persisted change to the selected field replaces its draft,
+including after a reset; unrelated or equivalent snapshots preserve pending edits, regardless of object key order.
+Array order is significant. Values must be JSON-compatible (or `undefined`). The composable requires a component
+or effect scope; disposal stops its watcher. It does not save automatically.
+
+The host's raw `services.settings` and frontend settings port support migrations, app-wide sections, and transport. Ordinary feature code uses the generated accessors.
 - When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
 
 ## Manifest entry

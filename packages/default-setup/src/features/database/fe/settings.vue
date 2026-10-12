@@ -11,7 +11,7 @@
             v-model="hotkeys.executeQuery"
             id="execute-query"
             label="Execute Query"
-            @change="saveHotkeys"
+            @change="saveHotkey"
             container-class="flex-1"
             :show-reset-button="true"
           />
@@ -63,18 +63,17 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import type { SettingUpdate } from '@apackdev/sdk/fe'
-import { reactive } from 'vue'
+import { HardDriveDownload } from 'lucide-vue-next'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
-import { HardDriveDownload } from 'lucide-vue-next'
-import type { DatabaseSettings } from '#generated/types.ts'
+
 import { openPlugin } from '#generated/fe.ts'
 import type { DatabaseState } from './state.ts'
 
 interface Props {
-  settings?: DatabaseSettings
+  settings?: SettingsOf<'database'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,20 +81,13 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
+  'update-setting': [SettingUpdate<'database'>]
 }>()
 
-// State - initialize directly from props with defaults
-const hotkeys = reactive<DatabaseSettings['hotkeys']>({
-  executeQuery: props.settings?.hotkeys?.executeQuery || undefined
-})
+const hotkeys = useSettingsDraft(() => props.settings?.hotkeys ?? {})
 
-// Save function
-const saveHotkeys = () => {
-  emit('update-setting', {
-    path: ['hotkeys'],
-    value: hotkeys
-  })
+const saveHotkey = () => {
+  emit('update-setting', { path: ['hotkeys', 'executeQuery'], value: hotkeys.value.executeQuery ?? null })
 }
 
 // Open backup & restore page

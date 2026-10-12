@@ -17,8 +17,8 @@ it('opens Settings on the Logs plugin from the Logs link', async () => {
 
   // What the Logs toolbar's link does (features/logs/fe/canvas.vue, goToExcludedSourcesSettings)
   untypedOpenPlugin(resolveName('settings', 'host'), [
-    { type: 'TAB.SELECT', tab: 'plugins' },
-    { type: 'PLUGIN.SELECT', pluginId: ref('logs') },
+    { type: 'TAB.SELECT', tab: 'features' },
+    { type: 'FEATURE.SELECT', featureId: ref('logs') },
   ]);
 
   // The shell stays on Logs: the app's Settings plugin isn't one this pack's test shell spawns

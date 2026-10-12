@@ -71,7 +71,7 @@ export async function addFeature(args: string[], root: string) {
   // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
   const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
-    [path.join(featureDir, 'settings.ts'), renderTemplate('pack/src/features/feature/settings.ts', { ID: name })],
+    [path.join(featureDir, 'settings.ts'), renderTemplate('pack/src/features/feature/settings.ts')],
     [path.join(featureDir, 'be', 'system.ts'), renderTemplate('pack/src/features/feature/be/system.ts', { NAME: v.NAME, CAMEL: v.CAMEL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
     [path.join(featureDir, 'be', 'types.ts'), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
     [path.join(featureDir, 'be', 'contract.ts'), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],

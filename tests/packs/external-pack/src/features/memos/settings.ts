@@ -1,6 +1,7 @@
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+export default defineFeatureSettings({
   visible: false,
-  plugins: {
-    memos: { listTitle: 'Memos' }
-  }
-}
+  schema: z.object({ listTitle: z.string().default('Memos') }).strict(),
+});

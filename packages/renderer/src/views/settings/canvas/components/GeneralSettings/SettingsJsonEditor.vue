@@ -84,8 +84,8 @@ function problemsIn(text: string): string[] {
   } catch (e) {
     return [(e as Error).message]
   }
-    // The sections a pack registered are whatever the stored document holds beside the plugins' slices
-  const sections = Object.keys((settings.value ?? {}) as Record<string, unknown>).filter((name) => name !== 'plugins')
+    // The sections a pack registered are whatever the stored document holds beside the features' slices
+  const sections = Object.keys((settings.value ?? {}) as Record<string, unknown>).filter((name) => name !== 'features')
   return settingsProblems(data, { before: settings.value, sections })
 }
 

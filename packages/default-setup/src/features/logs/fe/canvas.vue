@@ -484,8 +484,8 @@ const copyLogs = async () => {
 
 const goToExcludedSourcesSettings = () => {
   untypedOpenPlugin(HOST_SETTINGS, [
-    { type: 'TAB.SELECT', tab: 'plugins' },
-    { type: 'PLUGIN.SELECT', pluginId: featureRef('logs') }
+    { type: 'TAB.SELECT', tab: 'features' },
+    { type: 'FEATURE.SELECT', featureId: featureRef('logs') }
   ]);
 };
 

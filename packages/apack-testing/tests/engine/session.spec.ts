@@ -396,11 +396,11 @@ describe('settings', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const { sent, result } = await write(session, send, answer, { plugin: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
+    const { sent, result } = await write(session, send, answer, { feature: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
 
     expect(sent).toMatchObject({
       to: 'host/settings',
-      event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['personal', 'name'], value: 'Ada' },
+      event: { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: ['personal', 'name'], value: 'Ada' },
     });
     expect(result).toEqual({ ok: true, value: undefined });
   });

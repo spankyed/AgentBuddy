@@ -1,4 +1,3 @@
-import type { KeyboardShortcut } from '@apackdev/sdk/types';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "#features/code/be/services/claude-code/types.ts";
@@ -460,32 +459,9 @@ export interface ChatStateConfig {
   busy: boolean;
 }
 
-export interface ThreadsSettings {
-  statuses: ThreadStatusOption[];
-  tags: ThreadTagOption[];
-  chatStates: ChatStateConfig[];
-  showOnlyRootThreads: boolean;
-  clickToChat: boolean;
-  recentThreadsLimit: number;
-  recentThreadsSortOrder: 'created' | 'visited' | 'message';
-  recordingLimitMinutes: number;
-  skipArchiveConfirm?: boolean;
-  chat?: AgentSettings;
-}
+export type ThreadsSettings = typeof import('../settings.ts').default.defaults;
 
-export interface AgentSettings {
-  modes: AgentMode[];
-  hotkeys: {
-    textToSpeech?: KeyboardShortcut | null;
-    switchMode?: KeyboardShortcut | null;
-    [key: string]: KeyboardShortcut | null | undefined;
-  };
-  quickPrompts?: QuickPrompt[];
-  quickPromptNumberKeyInserts?: boolean;
-  skipRevertConfirm?: boolean;
-  defaultMode?: string;
-  defaultPhase?: string;
-}
+export type AgentSettings = ThreadsSettings['chat'];
 
 // System-private entity type
 

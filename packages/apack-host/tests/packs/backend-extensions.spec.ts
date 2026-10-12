@@ -1,3 +1,4 @@
+import { z } from 'zod';
 // The backend registry's command and feature settings stores: what a registry does with a pack's declared
 // commands and feature settings when it registers and unregisters
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -82,18 +83,19 @@ describe('the feature settings defaults store', () => {
     const before = getPackSettingsDefaults().revision;
 
     packSettingsRegistry.register('memo-pack', [
-      { id: 'memos', settings: { visible: false, plugins: { memos: { sort: 'newest' } } } },
+      { id: 'memos', settings: { visible: false, defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } },
       { id: 'no-settings' },
     ]);
-    packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { plugins: { todos: { done: true } } } }]);
+    packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { defaults: { done: true }, schema: z.record(z.unknown()) } }]);
     expect(getPackSettingsDefaults()).toEqual({
       revision: before + 2,
-      settings: { plugins: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
+      settings: { features: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
+      schemas: { 'memo-pack/memos': expect.any(z.ZodType), 'todo-pack/todos': expect.any(z.ZodType) },
       visibility: { 'memo-pack/memos': false },
     });
 
     packSettingsRegistry.unregister('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'todo-pack/todos': { done: true } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'todo-pack/todos': { done: true } } });
     expect(listener).toHaveBeenCalledTimes(3);
 
     unsubscribe();
@@ -103,8 +105,8 @@ describe('the feature settings defaults store', () => {
 
   it("rejects a pack whose feature sets another plugin's settings, registering nothing", () => {
     const before = getPackSettingsDefaults();
-    expect(() => packSettingsRegistry.register('bad-pack', [{ id: 'memos', settings: { plugins: { threads: { hidden: true } } } }]))
-      .toThrow(/Pack "bad-pack" has invalid feature settings:\n {2}Feature "memos" settings set "plugins.threads"/);
+    expect(() => packSettingsRegistry.register('bad-pack', [{ id: 'memos', settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } }]))
+      .toThrow(/invalid feature settings/);
     expect(getPackSettingsDefaults()).toBe(before);
   });
 });

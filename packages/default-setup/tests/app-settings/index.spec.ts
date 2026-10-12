@@ -7,7 +7,7 @@
  * itself is an import of its own source.
  */
 import { describe, expect, it } from 'vitest';
-import { assertNoPluginSlice, getBaseSettings, settingsSections } from '#app-settings/index.ts';
+import { assertNoFeatureSlice, getBaseSettings, settingsSections } from '#app-settings/index.ts';
 
 describe('the base settings', () => {
   it('are this pack\'s own source, with no compiled content on disk to read', () => {
@@ -21,25 +21,25 @@ describe('the base settings', () => {
   });
 
   /** A feature's own defaults come from the registry under its ref; a copy here is one only a stale reader finds */
-  it('hold no plugin\'s slice', () => {
-    expect(getBaseSettings().plugins ?? {}).toEqual({});
+  it('hold no feature\'s slice', () => {
+    expect(getBaseSettings().features ?? {}).toEqual({});
   });
 });
 
-describe('a base file that sets a plugin\'s slice', () => {
+describe('a base file that sets a feature\'s slice', () => {
   it('is refused, named, and told where a feature declares its own', () => {
-    expect(() => assertNoPluginSlice({ plugins: { memos: { sort: 'newest' } } }, 'base.ts'))
-      .toThrow('base.ts sets a plugin\'s settings: a feature declares its own, and whether its tab shows, in features[].settings');
+    expect(() => assertNoFeatureSlice({ features: { memos: { sort: 'newest' } } }, 'base.ts'))
+      .toThrow('base.ts sets a feature\'s settings: a feature declares its own, and whether its tab shows, in features[].settings');
   });
 
   // The app shell's old `_meta` too: which tabs show is each feature's `visible`, and the host's state
-  it('is refused for anything under plugins, not only a feature id', () => {
-    expect(() => assertNoPluginSlice({ plugins: { _meta: { visibility: {} } } }, 'base.ts'))
-      .toThrow("sets a plugin's settings");
+  it('is refused for anything under features, not only a feature id', () => {
+    expect(() => assertNoFeatureSlice({ features: { _meta: { visibility: {} } } }, 'base.ts'))
+      .toThrow("sets a feature's settings");
   });
 
-  it('passes an empty plugins map, and a base with none at all', () => {
-    expect(() => assertNoPluginSlice({ general: {}, plugins: {} }, 'base.ts')).not.toThrow();
-    expect(() => assertNoPluginSlice({ general: {} }, 'base.ts')).not.toThrow();
+  it('passes an empty features map, and a base with none at all', () => {
+    expect(() => assertNoFeatureSlice({ general: {}, features: {} }, 'base.ts')).not.toThrow();
+    expect(() => assertNoFeatureSlice({ general: {} }, 'base.ts')).not.toThrow();
   });
 });

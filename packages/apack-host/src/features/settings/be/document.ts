@@ -3,14 +3,14 @@
 // checks with it before saving, so both refuse the same document. The operations build new objects from own keys
 // (spreads and `Object.fromEntries`, never assignment), so a key such as `__proto__` is data and reaches no prototype.
 //
-// The host owns the document's structure, not its content: it knows `plugins`, one slice per installed feature with
+// The host owns the document's structure, not its content: it knows `features`, one slice per installed feature with
 // settings keyed by its ref, and takes every other section as opaque — whoever registered a section knows its shape.
 // So the sections a document may hold are the caller's to name, not a list here.
 import { splitRef } from '@apackdev/sdk/ids';
 import { hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 
 /** The section every settings document has: one slice per installed feature with settings, keyed by ref */
-export const PLUGINS_SECTION = 'plugins';
+export const FEATURES_SECTION = 'features';
 
 const ownValue = (object: unknown, key: string): unknown =>
   isPlainObject(object) && hasOwn(object, key) ? object[key] : undefined;
@@ -56,21 +56,21 @@ export function changesFrom(defaults: unknown, settings: unknown): unknown {
   return changed.length > 0 ? Object.fromEntries(changed) : undefined;
 }
 
-/** How a plugin settings key is looked up among the installed features with settings (`refProblem`) */
+/** How a feature settings key is looked up among the installed features with settings (`refProblem`) */
 export const SETTINGS_KIND = 'feature with settings';
 
 export interface SettingsCheck {
-  /** The document `next` replaces: a section or plugin slice equal to its value there isn't a change */
+  /** The document `next` replaces: a section or feature slice equal to its value there isn't a change */
   before: unknown;
   /**
-   * The sections this document may hold besides `plugins`, as the packs that registered them named. The host knows
-   * only `plugins`, so a caller that doesn't name a section makes it unknown — which is what refuses a typo rather
+   * The sections this document may hold besides `features`, as the packs that registered them named. The host knows
+   * only `features`, so a caller that doesn't name a section makes it unknown — which is what refuses a typo rather
    * than storing it under a name nothing reads.
    */
   sections: readonly string[];
   /**
-   * Why a plugin key whose slice changes can't be written, where the installed features with settings are known: the
-   * store gives it for a replacement, the one edge with arbitrary keys; every other write names its plugin by a ref its
+   * Why a feature key whose slice changes can't be written, where the installed features with settings are known: the
+   * store gives it for a replacement, the one edge with arbitrary keys; every other write names its feature by a ref its
    * caller already parsed. Without it, a key only has to be a ref.
    */
   keyProblem?: (key: string) => string | undefined;
@@ -78,27 +78,27 @@ export interface SettingsCheck {
 
 /**
  * What's wrong with `next` as the stored settings, nothing when it may be stored: it must be an object; a section that
- * changes must be `plugins` or one of `sections`, and an object; every plugin's settings are keyed by a ref, and with
+ * changes must be `features` or one of `sections`, and an object; every feature's settings are keyed by a ref, and with
  * `keyProblem`, a slice that changes must be an installed feature's with settings. A slice left as it was stays: an
  * uninstalled pack's settings are there for its reinstall.
  */
 export function settingsProblems(next: unknown, { before, sections, keyProblem }: SettingsCheck): string[] {
   if (!isPlainObject(next)) return ['The settings must be a JSON object'];
-  const known = [PLUGINS_SECTION, ...sections];
+  const known = [FEATURES_SECTION, ...sections];
   const problems: string[] = [];
   for (const [section, value] of Object.entries(next)) {
     if (isEqual(value, ownValue(before, section))) continue;
     if (!known.includes(section)) problems.push(`"${section}" isn't a settings section: the settings hold ${known.join(', ')}`);
     else if (!isPlainObject(value)) problems.push(`"${section}" must be an object`);
   }
-  const plugins = ownValue(next, PLUGINS_SECTION);
-  if (!isPlainObject(plugins)) return problems;
-  const previous = ownValue(before, PLUGINS_SECTION);
-  for (const [key, slice] of Object.entries(plugins)) {
+  const features = ownValue(next, FEATURES_SECTION);
+  if (!isPlainObject(features)) return problems;
+  const previous = ownValue(before, FEATURES_SECTION);
+  for (const [key, slice] of Object.entries(features)) {
     const changed = !isEqual(slice, ownValue(previous, key));
     const problem = changed && keyProblem
       ? keyProblem(key)
-      : splitRef(key) ? undefined : `"${key}" isn't a ref: a plugin's settings are stored under "<packId>/<featureId>"`;
+      : splitRef(key) ? undefined : `"${key}" isn't a ref: a feature's settings are stored under "<packId>/<featureId>"`;
     if (problem) problems.push(problem);
   }
   return problems;

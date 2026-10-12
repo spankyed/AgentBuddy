@@ -119,7 +119,7 @@ export interface PackRegistration {
   /** Display name used for this pack's contributions. */
   name?: string;
   /**
-   * Sections of the app's settings this pack owns, with their defaults, beside the `plugins` section the app keeps
+   * Sections of the app's settings this pack owns, with their defaults, beside the `features` section the app keeps
    * itself (apack.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a
    * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
    * knowing what is in it.

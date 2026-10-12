@@ -92,19 +92,27 @@ A feature can have just a system (backend-only), just a plugin (frontend-only), 
 
 ### Feature settings
 
-The `settings` module default-exports the feature's defaults, which the generated entry puts in the pack's registration, and the app reads when the pack loads. It may set only the feature's own plugin settings and its sidebar visibility:
+The `settings` module default-exports a feature's schema and sidebar visibility. `defineFeatureSettings` derives defaults and the settings type from the schema:
 
 ```typescript
 // src/features/bookmarks/settings.ts
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+const settings = defineFeatureSettings({
   visible: true,
-  plugins: {
-    bookmarks: { sortBy: 'date' },
-  },
-};
+  schema: z.object({
+    syncInterval: z.number().int().positive().default(300),
+  }).strict(),
+});
+
+export default settings;
+export type BookmarkSettings = typeof settings.defaults;
 ```
 
-Any other key (a top-level key other than `plugins` and `visible`, another plugin's `plugins.<id>`, or a `visible` that isn't a boolean) fails `apack pack build`.
+The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use synchronous schemas for validation, without coercions or transforms: parsed values are not substituted for user input.
+
+A declaration may contain only `schema`, `defaults` and `visible`. Defaults must pass the schema before the pack builds or registers. `{ visible: false }` is sufficient for a feature with no configurable settings. Unchanged legacy values remain available for migrations and can be removed or corrected. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
 ## Steps
 

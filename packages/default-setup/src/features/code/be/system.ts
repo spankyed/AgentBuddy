@@ -1,3 +1,4 @@
+import { settings as featureSettings } from '#generated/settings.ts';
 /**
  * Directory State Management:
  *
@@ -46,7 +47,6 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 // Union all outgoing events from child systems  
 // Import only the type needed for broadcast event
 import type { CodeConnectedData, CodeSettings } from './types.ts'
-import { ref } from '#generated/ref.ts';
 
 export const codeSpec = defineSystem<Contract>();
 
@@ -146,7 +146,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          services.settings.setForFeature(ref('code'), ['baseDirectory'], ev.path)
+          featureSettings.forFeature('code').set({ path: ['baseDirectory'], value: ev.path })
         }
         return ev.path
       },
@@ -157,7 +157,7 @@ export const systemMachine = setup({
           context.gitRepository.clearCache()
         }
         const repo = new GitRepository(ev.path)
-        const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
+        const codeSettings = featureSettings.forFeature('code').get()
         repo.setFetchConfig(
           codeSettings?.autoFetchRemote ?? false,
           codeSettings?.autoFetchIntervalSeconds ?? 180
@@ -213,9 +213,9 @@ export const systemMachine = setup({
 
       if (!isCliName(provider)) return answer({ success: false, error: `Unknown CLI provider: ${provider}` });
 
-      const paths = (services.settings.forFeature<CodeSettings>(ref('code'))?.cliPaths ?? {}) as Record<string, string | undefined>;
+      const paths = featureSettings.forFeature('code').get().cliPaths;
       void testCli(provider, paths[provider]).then((result) => {
-        if (result.success) services.settings.setForFeature(ref('code'), ['cliPaths'], { ...paths, [provider]: result.resolvedPath });
+        if (result.success) featureSettings.forFeature('code').set({ path: ['cliPaths', provider], value: result.resolvedPath });
         else cliLogger.error(`CLI test failed for "${provider}"`, { error: result.error });
         answer(result);
       });
@@ -258,7 +258,7 @@ export const systemMachine = setup({
       child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
-      const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings;
+      const codeSettings = featureSettings.forFeature('code').get();
 
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
@@ -319,7 +319,7 @@ export const systemMachine = setup({
   id: 'code',
   initial: 'idle',
   context: () => {
-    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings
+    const codeSettings = featureSettings.forFeature('code').get()
     const projects = services.settings.getSection<GeneralSettings>('general').projects
 
     // Resolve initial directory using priority chain

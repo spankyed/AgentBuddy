@@ -31,6 +31,7 @@ import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
 import type { transcribe } from 'ai';
 import { z } from 'zod';
+import type { ZodType } from 'zod';
 
 // @public
 export function bindFeHost(runtime: FeHostRuntime): void;

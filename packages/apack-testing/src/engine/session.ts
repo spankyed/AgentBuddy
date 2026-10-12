@@ -251,7 +251,7 @@ export type WaitTarget = { readonly state: string } | { readonly plugin: string 
  * The settings document has both and `/settings` reads all of it, so a write that could only reach features
  * left `general` and `assistant` readable and unwritable. Exactly one, as `WaitTarget` is.
  */
-export type SettingsTarget = { readonly plugin: string } | { readonly section: string };
+export type SettingsTarget = { readonly feature: string } | { readonly section: string };
 
 export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
@@ -639,8 +639,8 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
       SETTINGS_SYSTEM,
       {
         type: 'UPDATE_SETTINGS',
-        entityType: 'plugin' in target ? 'plugin' : 'section',
-        label: 'plugin' in target ? target.plugin : target.section,
+        entityType: 'feature' in target ? 'feature' : 'section',
+        label: 'feature' in target ? target.feature : target.section,
         path: at.split('.'),
         value,
       },

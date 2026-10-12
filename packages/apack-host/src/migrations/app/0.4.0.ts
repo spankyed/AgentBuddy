@@ -1,5 +1,5 @@
 // The app's own state moves out of the built-in pack's settings: before 0.4.0 it was stored in the
-// Settings row's `internal` section, which resetting settings erased. And every pack's stored plugin settings move
+// Settings row's `internal` section, which resetting settings erased. And every pack's stored feature settings move
 // onto their plugins' refs, before any pack's own migration reads them.
 import { untypedTx, untypedQx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
@@ -13,7 +13,7 @@ import type { PackRegistry } from '../../packs/registry.ts';
 import { discoverPacks } from '../../packs/discovery.ts';
 import { deepMerge } from '@apackdev/sdk/utils/pure';
 
-/** The settings row: where the app's state was stored before 0.4.0, and where the plugin settings still are */
+/** The settings row: where the app's state was stored before 0.4.0, and where the feature settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
 /** The app's state row, addressed here because the rename below reads fields `appState` no longer knows */
@@ -27,7 +27,7 @@ interface LegacyInternal {
 }
 
 /** The settings row's data as stored, read untyped: it's in the shape from before 0.4.0 */
-function storedSettings(): { internal?: LegacyInternal; plugins?: Record<string, unknown> } | undefined {
+function storedSettings(): { internal?: LegacyInternal; plugins?: Record<string, unknown>; features?: Record<string, unknown> } | undefined {
   return (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: ReturnType<typeof storedSettings> } | undefined)?.data;
 }
 
@@ -52,15 +52,15 @@ const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContex
  */
 export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
   target: '0.4.0',
-  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the records each pack's applied content replaced",
+  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's feature settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the records each pack's applied content replaced",
   up: () => {
     renameStateRecords();
     renameContentAttributes();
     moveAppState();
     const owners = ownersIn(registry, installed());
     moveShellState(owners);
-    // Every pack's plugin settings too, the built-in packs' included, before any pack's migration reads them
-    movePluginSettings(owners);
+    // Every pack's feature settings too, the built-in packs' included, before any pack's migration reads them
+    moveFeatureSettings(owners);
   },
 });
 
@@ -318,16 +318,16 @@ function moveShellState(owners: PluginOwners): void {
 }
 
 /**
- * Every pack's plugin settings, stored under their features' bare ids before 0.4.0, onto their refs. A bare key no
- * installed pack owns, or that two external packs share, is dropped: the app reads plugin settings only by ref, so it
+ * Every pack's feature settings, stored under their features' bare ids before 0.4.0, onto their refs. A bare key no
+ * installed pack owns, or that two external packs share, is dropped: the app reads feature settings only by ref, so it
  * would sit where nothing reads it and fail every save of the settings that carried it back.
  */
-function movePluginSettings(owners: PluginOwners): void {
+function moveFeatureSettings(owners: PluginOwners): void {
   const data = storedSettings();
   if (!data?.plugins) return;
   const addressed = addressPluginKeys(data.plugins, owners).record;
-  const plugins = Object.fromEntries(Object.entries(addressed).filter(([key]) => splitRef(key)));
-  if (addressed !== data.plugins || Object.keys(plugins).length !== Object.keys(addressed).length) {
-    untypedTx(SETTINGS_ID).put('data', { ...data, plugins });
-  }
+  const migrated = Object.fromEntries(Object.entries(addressed).filter(([key]) => splitRef(key)));
+  // Existing feature values win, so retrying a migration never undoes a user's newer choices.
+  const { plugins: _legacy, ...rest } = data;
+  untypedTx(SETTINGS_ID).put('data', { ...rest, features: deepMerge(migrated, data.features ?? {}) });
 }

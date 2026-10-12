@@ -246,6 +246,19 @@ describe('the chain reads every source file', () => {
     expect(missing, 'lint:check walks these and declares none of them, so it caches over their changes').toEqual([]);
   });
 
+  it('rebuilds the app when its host implementations change', () => {
+    const step = CHAIN_STEPS.find(candidate => candidate.name === 'build:runtime')!;
+    const host = 'packages/apack-host/';
+    const reached = closureOf([
+      path.join(REPO_ROOT, host, 'src/fe/index.ts'),
+      path.join(REPO_ROOT, host, 'src/services/index.ts'),
+    ], file => !file.startsWith(host)).filter(file => file.startsWith(host));
+    expect(reached).toContain(host + 'src/features/settings/fe/machine.ts');
+    expect(reached).toContain(host + 'src/features/settings/be/store.ts');
+    const covered = coveredBy([step]);
+    expect(reached.filter(file => !covered.has(file))).toEqual([]);
+  });
+
   it('gives every step the files its script reaches', () => {
     const all = rootScripts();
     const missing = CHAIN_STEPS.flatMap((step) => {

@@ -192,9 +192,7 @@
 <script setup lang="ts">
 import { usePlugin } from '@apackdev/sdk/fe'
 
-import type { CodeSettings } from '#generated/types.ts'
-import { updateSettings, useFeatureSettings } from '@apackdev/sdk/fe'
-import { ref as featureRef } from '#generated/ref.ts'
+import { useSettings } from '#generated/settings-fe.ts'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -237,7 +235,8 @@ const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTer
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
 const terminals = useSelector(terminalActor, (state) => state.context.terminals)
 
-const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
+const featureSettings = useSettings('code')
+const storedCodeSettings = featureSettings.value
 const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
 const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
@@ -415,7 +414,7 @@ const runScriptInNewTerminal = (script: TerminalScript) => {
 }
 
 const updateScripts = (scripts: TerminalScript[]) => {
-  updateSettings({ feature: featureRef('code') }, ['terminalScripts'], scripts)
+  featureSettings.set({ path: ['terminalScripts'], value: scripts })
 }
 
 const killAllTerminals = () => {

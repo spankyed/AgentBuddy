@@ -8,7 +8,7 @@
       :error="error"
       :success-message="successMessage"
       :mode="mode"
-      :execute-query="settings?.hotkeys?.executeQuery"
+      :execute-query="settings?.hotkeys?.executeQuery ?? undefined"
       :is-ai-prompt-open="showAiPrompt"
       @execute="handleExecute"
       @clear="handleClear"

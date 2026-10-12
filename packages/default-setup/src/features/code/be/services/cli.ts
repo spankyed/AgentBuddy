@@ -1,4 +1,5 @@
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { GitRepository } from '#features/code/be/services/git.ts'
 import * as ghCli from '#features/code/be/services/gh-cli.ts'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '#features/code/be/types.ts'
@@ -13,12 +14,6 @@ import { configDir } from './claude-code/sessions.ts'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { ref } from '#generated/ref.ts';
-
-interface CodeSettings {
-  defaultBaseDirectory?: string | null
-  baseDirectory?: string | null
-}
 
 export interface CliServiceType {
   git: {
@@ -103,7 +98,7 @@ function createCliService(): CliServiceType {
   let lastCwd: string | null = null
 
   function resolveCwd(): string {
-    const codeSettings = services.settings.forFeature(ref('code')) as CodeSettings | undefined
+    const codeSettings = featureSettings.forFeature('code').get()
     let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
@@ -130,7 +125,7 @@ function createCliService(): CliServiceType {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
-      const storedPath = (services.settings.forFeature(ref('code')) as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
+      const storedPath = featureSettings.forFeature('code').get().cliPaths[provider];
       return testCli(provider, storedPath);
     },
     git: {

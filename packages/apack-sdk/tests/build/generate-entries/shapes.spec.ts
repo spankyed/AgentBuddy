@@ -71,7 +71,7 @@ describe('generated entity shapes', () => {
 
 describe('generated feature settings', () => {
   it("passes each feature's settings module to its registration, which registers them as defaults", () => {
-    write('src/features/memos/settings.ts', 'export default { plugins: { memos: {} } };\n');
+    write('src/features/memos/settings.ts', 'export default { visible: true };\n');
     const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import __settings_Memos from '../features/memos/settings.ts';");
     expect(entry).toContain("    'memos': {\n      system: packSystem(__system_memos),\n      services: [],\n      settings: __settings_Memos,\n    }");

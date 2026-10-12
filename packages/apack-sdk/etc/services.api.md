@@ -74,6 +74,9 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
 export function _createInferenceService(resolveModel: _ResolveModel): InferenceService;
 
 // @public
+export function _featureSettings<T>(feature: FeatureRef, service: () => SettingsService): FeatureSettingsAccess<T>;
+
+// @public
 export interface FileEntry {
     // (undocumented)
     isDirectory: boolean;

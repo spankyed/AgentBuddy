@@ -1,5 +1,5 @@
-import type { FlowsSettings } from '#generated/types.ts';
-import { services } from '#generated/services.ts';
+import { settings as featureSettings } from '#generated/settings.ts';
+
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
 import type { Reply } from '@apackdev/sdk/events';
@@ -13,7 +13,6 @@ import { FLOW_ROLES } from './repository/index.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@apackdev/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@apackdev/sdk/build';
-import { ref } from '#generated/ref.ts';
 
 /**
  * Answers whoever asked for this, and tells every window when nobody did.
@@ -80,7 +79,7 @@ function sendConnectedData(): void {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
-      settings: services.settings.forFeature<FlowsSettings>(ref('flows')) || {},
+      settings: featureSettings.forFeature('flows').get() || {},
     },
   });
 }

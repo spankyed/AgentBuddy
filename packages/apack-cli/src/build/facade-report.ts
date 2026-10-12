@@ -86,6 +86,31 @@ export interface FacadeReportComparison {
   readonly problem?: string;
 }
 
+/** TypeScript can reorder inferred object properties; their order is not part of a type's contract. */
+function comparableReport(report: string): string {
+  return report.replace(/```ts\n([\s\S]*?)\n```/, (_block, declarations: string) => {
+    const file = ts.createSourceFile('facade.d.ts', declarations, ts.ScriptTarget.Latest, true);
+    const result = ts.transform(file, [context => {
+      const visit: ts.Visitor = node => {
+        const visited = ts.visitEachChild(node, visit, context);
+        if (!ts.isTypeLiteralNode(visited) || !visited.members.every(ts.isPropertySignature)) return visited;
+        const members = [...visited.members];
+        const names = members.map(member => member.name.getText(file));
+        // Duplicate names and overloads can have order-dependent meaning: leave them alone.
+        if (new Set(names).size !== names.length) return visited;
+        members.sort((a, b) => a.name.getText(file).localeCompare(b.name.getText(file)));
+        return ts.factory.updateTypeLiteralNode(visited, ts.factory.createNodeArray(members));
+      };
+      return node => ts.visitNode(node, visit) as ts.SourceFile;
+    }]);
+    try {
+      return '```ts\n' + ts.createPrinter().printFile(result.transformed[0]) + '```';
+    } finally {
+      result.dispose();
+    }
+  });
+}
+
 /**
  * The committed report against the facade `next` describes. Three states rather than a boolean, because
  * "there is no report" and "the report is wrong" are different answers and only one of them is a diff.
@@ -93,7 +118,7 @@ export interface FacadeReportComparison {
 export function compareFacadeReport(packDir: string, next: string): FacadeReportComparison {
   const reportFile = facadeReportFile(packDir);
   const current = fs.existsSync(reportFile) ? fs.readFileSync(reportFile, 'utf-8') : undefined;
-  if (current === next) return { state: 'current' };
+  if (current === next || (current !== undefined && comparableReport(current) === comparableReport(next))) return { state: 'current' };
   const fix = 'If the facade change is intended, run npm run facade:update and commit the report.';
   return current === undefined
     ? { state: 'missing', problem: `${shownPath(reportFile)} doesn't exist. ${fix}` }

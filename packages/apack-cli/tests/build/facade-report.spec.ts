@@ -82,6 +82,15 @@ describe('compareFacadeReport', () => {
     expect(compareFacadeReport(dir, next)).toEqual({ state: 'current' });
   });
 
+  it('ignores reordered inferred properties but detects changed types and overload order', () => {
+    const report = (body: string) => facadeReportText(body, dir, 'demo');
+    record(report('type T = { hidden?: boolean; phases?: { name: string; color?: string }[]; disabled?: boolean };'));
+    expect(compareFacadeReport(dir, report('type T = { disabled?: boolean; hidden?: boolean; phases?: { color?: string; name: string }[] };')).state).toBe('current');
+    expect(compareFacadeReport(dir, report('type T = { disabled?: string; hidden?: boolean; phases?: { color?: string; name: string }[] };')).state).toBe('stale');
+    record(report('type T = { (value: string): number; (value: unknown): string };'));
+    expect(compareFacadeReport(dir, report('type T = { (value: unknown): string; (value: string): number };')).state).toBe('stale');
+  });
+
   /** Missing and stale are different answers, and only one of them is a diff */
   it('reports a missing report as missing rather than as a difference', () => {
     const comparison = compareFacadeReport(dir, 'anything');

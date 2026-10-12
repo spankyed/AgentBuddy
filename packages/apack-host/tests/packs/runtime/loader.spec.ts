@@ -239,6 +239,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   }
 
   const registration = (id: string, extra = '') => `
+    const { z } = require('zod');
     let compiledDir = null;
     const machine = { id: 'widget', events: ['PING'], config: {} };
     module.exports = {
@@ -282,14 +283,14 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
-      features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, plugins: { widget: { size: 3 } } } } },
+      features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, defaults: { size: 3 }, schema: z.record(z.unknown()) } } },
     `));
 
     const [pack] = loadExternalPacks();
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_contentWriterRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 } } });
+      expect(getPackSettingsDefaults().settings).toEqual({ features: { 'settings-pack/widget': { size: 3 } } });
       expect(getPackSettingsDefaults().visibility).toEqual({ 'settings-pack/widget': false });
     } finally {
       registry.unregisterPack('settings-pack');

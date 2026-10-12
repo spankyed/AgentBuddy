@@ -50,7 +50,7 @@ test('content memos from apack.json: a markdown entry and a compiler module', as
 /** The memos plugin's settings, as the app's settings plugin holds them, keyed by the id it runs under */
 const memoSettings = (page: import('@playwright/test').Page) => () =>
   page.evaluate(() => (window as any).applicationState.system.get('host/settings')
-    .getSnapshot().context.settings?.plugins?.['e2e-fixture/memos']);
+    .getSnapshot().context.settings?.features?.['e2e-fixture/memos']);
 
 test("the pack's feature settings are defaults in the app", async ({ appPage, app }) => {
   await app.waitForPlugin('memos');
@@ -95,15 +95,15 @@ test('writes through @apackdev/ears and reads back through the SDK, on the app\'
   await expect.poll(noteFor, { timeout: 10_000 }).toMatchObject({ text, note: { title: text } });
 });
 
-// A pack's plugin settings are stored under the plugin's ref, whichever pack's settings plugin stores them: changed
+// A pack's feature settings are stored under the plugin's ref, whichever pack's settings plugin stores them: changed
 // in Settings, the value lands at `e2e-fixture/memos`, never at the settings plugin's own pack's `default-setup/memos`
 test("the pack's own settings, changed in Settings, are stored under its plugin's ref", async ({ appPage, app }) => {
   await app.waitForPlugin('memos');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');
-    settings.send({ type: 'TAB.SELECT', tab: 'plugins' });
-    settings.send({ type: 'PLUGIN.SELECT', pluginId: 'e2e-fixture/memos' });
+    settings.send({ type: 'TAB.SELECT', tab: 'features' });
+    settings.send({ type: 'FEATURE.SELECT', featureId: 'e2e-fixture/memos' });
   });
 
   const title = appPage.getByTestId('memos-list-title');
@@ -114,6 +114,6 @@ test("the pack's own settings, changed in Settings, are stored under its plugin'
 
   await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Renamed memos' });
   const settingsKeys = () => appPage.evaluate(() => Object.keys((window as any).applicationState.system.get('host/settings')
-    .getSnapshot().context.settings?.plugins ?? {}));
+    .getSnapshot().context.settings?.features ?? {}));
   expect(await settingsKeys()).not.toContain('default-setup/memos');
 });
