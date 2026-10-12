@@ -245,6 +245,20 @@
     "extensions": {
       "type": "object",
       "properties": {
+        "help": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false,
+          "description": "Directory of Markdown help articles, bundled into the pack runtime."
+        },
         "steps": {
           "type": "object",
           "additionalProperties": {
@@ -512,21 +526,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types and frontend extensions."
-    },
-    "help": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "path"
-      ],
-      "additionalProperties": false,
-      "description": "Directory of Markdown help articles, bundled into the pack runtime."
+      "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
     },
     "settingsSections": {
       "type": "string",

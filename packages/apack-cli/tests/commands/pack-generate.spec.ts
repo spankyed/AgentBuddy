@@ -245,7 +245,7 @@ describe('the inputs stamp', () => {
 });
 
 it('regenerates help for Markdown edits, additions and removals, keeping valid output after an invalid edit', async () => {
-  writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', help: { path: 'docs/help' } });
+  writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', extensions: { help: { path: 'docs/help' } } });
   const help = path.join(tmpDir, 'docs/help');
   fs.mkdirSync(help, { recursive: true });
   const file = path.join(help, 'start.md');

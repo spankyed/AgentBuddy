@@ -702,6 +702,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
+        help: z.ZodOptional<z.ZodObject<{
+            path: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            path: string;
+        }, {
+            path: string;
+        }>>;
         steps: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
             kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
             node: z.ZodString;
@@ -919,6 +926,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -966,6 +976,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -1000,13 +1013,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    }>>;
-    help: z.ZodOptional<z.ZodObject<{
-        path: z.ZodString;
-    }, "strict", z.ZodTypeAny, {
-        path: string;
-    }, {
-        path: string;
     }>>;
     settingsSections: z.ZodOptional<z.ZodString>;
     boot: z.ZodOptional<z.ZodObject<{
@@ -1305,6 +1311,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -1339,9 +1348,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    help?: {
-        path: string;
     } | undefined;
     settingsSections?: string | undefined;
     boot?: {
@@ -1438,6 +1444,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -1472,9 +1481,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    help?: {
-        path: string;
     } | undefined;
     settingsSections?: string | undefined;
     boot?: {
@@ -1571,6 +1577,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -1605,9 +1614,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    help?: {
-        path: string;
     } | undefined;
     settingsSections?: string | undefined;
     boot?: {
@@ -1704,6 +1710,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
+        help?: {
+            path: string;
+        } | undefined;
         steps?: Record<string, {
             node: string;
             trigger?: {
@@ -1738,9 +1747,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    help?: {
-        path: string;
     } | undefined;
     settingsSections?: string | undefined;
     boot?: {

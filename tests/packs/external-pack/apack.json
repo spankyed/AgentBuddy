@@ -40,6 +40,9 @@
     }
   },
   "extensions": {
+    "help": {
+      "path": "src/extensions/help"
+    },
     "steps": {
       "stamp": {
         "node": "src/extensions/steps/stamp/build.ts#stampStepNode",
@@ -128,8 +131,5 @@
         ]
       }
     }
-  },
-  "help": {
-    "path": "src/help"
   }
 }

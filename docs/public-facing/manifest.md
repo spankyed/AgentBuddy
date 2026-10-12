@@ -456,7 +456,9 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 Declare a directory of Markdown articles:
 
 ```json
-"help": { "path": "src/help" }
+"extensions": {
+  "help": { "path": "src/extensions/help" }
+}
 ```
 
 The first H1 is the article title; the remaining Markdown is its body. Optional frontmatter:

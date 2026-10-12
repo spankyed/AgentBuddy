@@ -374,6 +374,8 @@ function extensionPoint<T extends z.ZodTypeAny>(
  * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
 const ExtensionsSchema = z.object({
+  help: z.object({ path: z.string().min(1) }).strict()
+    .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
@@ -386,7 +388,7 @@ const ExtensionsSchema = z.object({
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   fe: FEConfigSchema.optional(),
-}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types and frontend extensions.');
+}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
 
 
 /**
@@ -491,8 +493,6 @@ export const ManifestSchema = z.object({
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
-  help: z.object({ path: z.string().min(1) }).strict()
-    .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   settingsSections: ExportTargetSchema
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "features" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
   boot: BootConfigSchema.optional(),

@@ -30,7 +30,7 @@ Each feature has a `settings.ts` (`src/features/<name>/settings.ts`, `features[]
 
 **`content.sources` is for entries that import rows into the database**, and that is the test for a new one: an entry needing a policy to say "do not import this" is not one. A `.ts` source the pack reads back itself is not one either — a pack imports its own source, which is what `default-settings.ts` does.
 
-Help articles live in `src/help` and are bundled directly from the manifest’s `help.path`; they are not content datasets.
+Help articles live in `src/extensions/help` and are bundled directly from the manifest’s `extensions.help.path`; they are not content datasets.
 
 The settings hold the user's settings only: the app's own state (onboarding, versions, content hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@apackdev/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
