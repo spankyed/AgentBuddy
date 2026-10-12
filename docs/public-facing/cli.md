@@ -18,7 +18,12 @@ Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack ha
 |---|---|
 | `apack open` | Open the installed production app; `--channel beta` or `--channel preview` selects another installed app |
 | `apack install`, `upgrade`, `uninstall` | Manage published production/beta apps |
-| `apack doctor` | Read-only installed-app diagnostics, without debugging |
+| `apack status` | Installed app version, running state, and paths; supports `--json` |
+| `apack logs` | Recent installed-app logs; `--follow` streams new output |
+| `apack doctor` | Read-only installed-app diagnostics; supports `--json` |
+| `apack db backup`, `db backup verify` | Create and check restorable database/media backups |
+| `apack profiles` | List stored profiles; supports `--json`, `--all`, and `--sizes` |
+| `apack pack list`, `pack outdated`, `pack upgrade` | Inspect installed packs, check releases, and upgrade GitHub-installed packs |
 | `apack pack dev` | Build, install, and watch a pack in a development host |
 | `apack pack drive`, `pack test` | Automate or test a pack in its host |
 
@@ -28,6 +33,28 @@ and `--profile` selects stored data. Development is a data namespace, not a rele
 Debugging connections are enabled only for source development launches.
 For app contributors working in the apack source monorepo, see the
 [repository development guide](../../README.md#development) and [app automation guide](../../drive/README.md).
+
+### App operations and reports
+
+`apack status [--channel production|beta|preview] [--json]` reports the installed app version, running state, and paths without launching it.
+
+`apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
+
+`apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. The backup directory is accessible only to its owner. Existing destinations and destinations inside the source data directory are refused.
+
+`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import.
+
+`apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
+
+`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, and dependency availability are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
+
+`apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
+
+`apack profiles --json [--all] [--sizes]` emits `environments` and `profiles` arrays, including their paths and running state. Temporary profiles require `--all`; numeric byte sizes require `--sizes`. JSON is supported for listings only.
+
+`apack pack list --json [--profile <name>]` emits one object containing the selected profile, packs directory, and installed packs with their identity, version, enabled state, dependencies, and recorded update source. Unreadable manifests or installation records fail explicitly.
+
+Reporting commands emit one JSON object on stdout when `--json` is selected. Errors go to stderr and exit nonzero. Human-readable output remains the default.
 
 ### Scaffolding
 
@@ -725,23 +752,3 @@ apack install --channel beta                    # Latest beta, installed separat
 These commands manage `/Applications/apack.app` (or `apack Beta.app` with `--channel beta`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
 
 Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.
-
-`apack status [--channel production|beta|preview] [--json]` reports the installed app version, running state, and paths without launching it.
-
-`apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
-
-`apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. Existing destinations and destinations inside the source data directory are refused.
-
-`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import.
-
-`apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs now record their source for subsequent checks.
-
-`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, and dependency availability are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
-
-`apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
-
-`apack profiles --json [--all] [--sizes]` emits `environments` and `profiles` arrays, including their paths and running state. Temporary profiles require `--all`; numeric byte sizes require `--sizes`. JSON is supported for listings only.
-
-`apack pack list --json [--profile <name>]` emits one object containing the selected profile, packs directory, and installed packs with their identity, version, enabled state, dependencies, and recorded update source. Unreadable manifests or installation records fail explicitly.
-
-Reporting commands emit one JSON object on stdout when `--json` is selected. Errors go to stderr and exit nonzero. Human-readable output remains the default.

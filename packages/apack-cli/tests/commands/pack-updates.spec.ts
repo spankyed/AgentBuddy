@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import { recordHostInfo, readInstalledPacks } from '@apackdev/host/packs';
-import { recordCliInstall } from '../../src/app/installed-packs';
+import { recordCliInstall, forgetCliInstall } from '../../src/app/installed-packs';
 import { packUpdates } from '../../src/commands/pack-outdated';
 
 it('checks recorded sources against the explicit host and leaves records untouched', async () => {
@@ -25,6 +25,8 @@ it('checks recorded sources against the explicit host and leaves records untouch
     expect(fs.readFileSync(context.installedPacksFile, 'utf8')).toBe(before);
     find.mockRejectedValue(new Error('rate limited'));
     expect((await packUpdates(context, find))[1]).toMatchObject({ status: 'error', reason: 'rate limited' });
+    forgetCliInstall(context.installedPacksFile, 'remote');
+    expect(readInstalledPacks(context.installedPacksFile, { strict: true })).toEqual([]);
     fs.writeFileSync(context.installedPacksFile, '{broken');
     expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Cannot read');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

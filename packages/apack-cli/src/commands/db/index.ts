@@ -1,6 +1,7 @@
 // apack db: the app's database, opened offline (@apackdev/host/database)
 import { CLEAR_SETTINGS_USAGE, dbClearSettings, dbImport, dbReset, IMPORT_USAGE, RESET_USAGE } from './destructive';
 import { dbExec, dbQuery, EXEC_USAGE, QUERY_USAGE } from './code';
+import { VERIFY_USAGE } from './backup-verify';
 import { dbBackup, BACKUP_USAGE } from './backup';
 import { dbExport, EXPORT_USAGE } from './export';
 import { dbInspect, INSPECT_USAGE } from './inspect';
@@ -56,7 +57,7 @@ export async function db(args: string[], io: DbIo = processIo): Promise<void> {
   const entry = COMMANDS[command];
   if (!entry) throw new Error(`Unknown db command: ${command}\n\n${DB_USAGE}`);
   if (rest.includes('--help') || rest.includes('-h')) {
-    io.out(entry.usage);
+    io.out(command === 'backup' && rest[0] === 'verify' ? VERIFY_USAGE : entry.usage);
     return;
   }
   await entry.run(rest, io);

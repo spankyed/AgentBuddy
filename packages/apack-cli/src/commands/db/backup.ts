@@ -44,6 +44,7 @@ export async function dbBackup(args: string[], io: DbIo): Promise<void> {
         log: { info: message => io.err(message), warn: message => io.err(message) },
       });
       readBackup(backup);
+      fs.chmodSync(backup, 0o700);
       // Exclusive reservation prevents overwriting a destination created while the snapshot was copied.
       fs.mkdirSync(destination);
       reserved = true;
