@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -30,7 +31,7 @@ describe('dependency artifact reading', () => {
       fs.mkdirSync(path.join(dir, 'types'));
       fs.mkdirSync(path.join(dir, 'runtime'));
       fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), 'throw new Error("runtime was executed");');
-      fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({
+      fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
         format: PACK_SNAPSHOT_FORMAT,
         manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
         types: { entities: {}, relKinds: {} }, defs: malformed ? { 'pack-types': false } : {},

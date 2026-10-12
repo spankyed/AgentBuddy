@@ -89,6 +89,8 @@ export interface PackFeature {
 
 export interface PackRegistration {
   id: string;
+  /** Generated bindings identify their declaration data; trusted host registrations have no artifact. */
+  declarationRevision?: string;
   /**
    * The pack's features by id. The app runs each at `<packId>/<featureId>` and derives the rest from here:
    * the systems it starts and the events each accepts, the plugins and what each receives, the roles.

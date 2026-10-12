@@ -381,6 +381,9 @@ export const ContentSourceSchema: z.ZodObject<{
 // @public (undocumented)
 export type ContentTreeSpec = NonNullable<ContentFormatConfig['tree']>;
 
+// @internal
+export function _declarationRevision(manifest: PackManifest): string;
+
 // @public
 export function defaultSourceHash(record: ContentItem): string;
 
@@ -2082,6 +2085,7 @@ export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, strin
 
 // @public (undocumented)
 export interface PackSnapshot {
+    declarationRevision: string;
     // (undocumented)
     defs: Record<string, string>;
     flowHelpers?: PackFlowHelpers;

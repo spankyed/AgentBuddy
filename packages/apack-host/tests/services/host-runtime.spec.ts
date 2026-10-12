@@ -38,7 +38,7 @@ afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 const newEngine = () => createEarsEngine({ isEntityType: () => false });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
-const externalOrigin = (id: string, name: string) => ({
+const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fixture-revision',
   id, name, version: '1.0.0', dir: '/nowhere', shipped: false,
   manifest: { id, name, version: '1.0.0' },
 });
@@ -84,7 +84,7 @@ describe('createHostRuntime', () => {
     packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
     // A pack the app ships, with a content policy — written by the same call as the installed one
     packs.registerPack({ id: 'written-pack' },
-      { id: 'written-pack', name: 'Written', version: '1.0.0', dir: '/packs/written-pack', shipped: true } as never);
+      { declarationRevision: 'fixture-revision', id: 'written-pack', name: 'Written', version: '1.0.0', dir: '/packs/written-pack', shipped: true } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
       await runtime.services.appData.reset();

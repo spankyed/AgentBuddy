@@ -179,6 +179,12 @@ export interface PackCommand {
     placeholder: string;
 }
 
+// @internal
+export function _packDeclarationProblem(expected: {
+    id: string;
+    declarationRevision: string;
+}, binding: unknown): string | undefined;
+
 // @public (undocumented)
 export interface PackEARS {
     // (undocumented)
@@ -228,6 +234,7 @@ export interface PackRegistration {
     boot?: PackBootHooks;
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
+    declarationRevision?: string;
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;

@@ -92,12 +92,13 @@ describe('loadPackFEEntry', () => {
 
 describe("a pack's frontend", () => {
   it('registers what its entry exports, and answers with the plugins it added', async () => {
-    const { io } = fakeIO({ 'pack://memo-pack/runtime/fe.js': { features: { memos: { plugin: {} } } } });
+    const registration = { id: 'memo-pack', declarationRevision: 'current', features: { memos: { plugin: {} } } };
+    const { io } = fakeIO({ 'pack://memo-pack/runtime/fe.js': registration });
     const { registry, registered } = fakeRegistry();
 
-    const plugins = await createPackFrontends(io, registry).load({ id: 'memo-pack', name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
+    const plugins = await createPackFrontends(io, registry).load({ id: 'memo-pack', declarationRevision: 'current', name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
 
-    expect(registered).toEqual([{ features: { memos: { plugin: {} } } }]);
+    expect(registered).toEqual([registration]);
     expect(plugins).toEqual([{ id: 'memo-pack/memos' }]);
   });
 
@@ -105,17 +106,17 @@ describe("a pack's frontend", () => {
     const { io } = fakeIO();
     const { registry, registered } = fakeRegistry();
 
-    expect(await createPackFrontends(io, registry).load({ id: 'backend-only', name: 'B', version: '1.0.0' })).toBeNull();
+    expect(await createPackFrontends(io, registry).load({ id: 'backend-only', declarationRevision: 'current', name: 'B', version: '1.0.0' })).toBeNull();
     expect(registered).toEqual([]);
   });
 
   it('adds its stylesheet once however often it loads, and takes it out when the pack goes', async () => {
-    const { io, styles } = fakeIO({ 'pack://ext/runtime/fe.js': { features: {} } });
+    const { io, styles } = fakeIO({ 'pack://ext/runtime/fe.js': { id: 'ext', declarationRevision: 'current', features: {} } });
     const { registry, unregistered } = fakeRegistry();
     const frontends = createPackFrontends(io, registry);
     // Its revision is in the stylesheet's URL too: a browser caches a stylesheet by URL, so an updated pack's
     // styles would be served from the cache without it
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js', feRevision: 'abc123' };
+    const pack = { id: 'ext', declarationRevision: 'current', name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js', feRevision: 'abc123' };
 
     await frontends.load(pack);
     await frontends.load(pack);
@@ -124,5 +125,30 @@ describe("a pack's frontend", () => {
     frontends.unload('ext');
     expect(styles).toEqual([]);
     expect(unregistered).toEqual(['ext']);
+  });
+
+  it('loads styles-only packs without executing or registering a frontend', async () => {
+    const { io, styles, imported } = fakeIO();
+    const { registry, registered } = fakeRegistry();
+    expect(await createPackFrontends(io, registry).load({
+      id: 'theme', declarationRevision: 'current', name: 'Theme', version: '1.0.0', feStyles: 'runtime/fe.css',
+    })).toBeNull();
+    expect(styles).toEqual([{ packId: 'theme', href: 'pack://theme/runtime/fe.css' }]);
+    expect(imported).toEqual([]);
+    expect(registered).toEqual([]);
+  });
+
+  it.each([
+    undefined,
+    { id: 'other', declarationRevision: 'current', features: {} },
+    { id: 'ext', declarationRevision: 'previous', features: {} },
+  ])('rejects mismatched frontend bindings without registration or styles: %j', async registration => {
+    const { io, styles } = fakeIO({ 'pack://ext/runtime/fe.js': registration });
+    const { registry, registered } = fakeRegistry();
+    await expect(createPackFrontends(io, registry).load({
+      id: 'ext', declarationRevision: 'current', name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
+    })).rejects.toThrow('Pack "ext"');
+    expect(registered).toEqual([]);
+    expect(styles).toEqual([]);
   });
 });

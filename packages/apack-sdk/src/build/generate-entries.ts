@@ -1,4 +1,5 @@
 import { compileHelp } from './help.ts';
+import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { dirname, extname, join } from 'path';
@@ -998,6 +999,7 @@ ${sections ? `import { ${sections.exportName} as __settingsSections } from '${to
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
+  declarationRevision: '${_declarationRevision(manifest)}',
   features: {${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}},
   services: featureServices,
 ${hasRepositories() ? '  repositories,' : ''}
@@ -1089,6 +1091,7 @@ ${extraImports.join('\n')}
 
 export default {
   id: '${manifest.id}',
+  declarationRevision: '${_declarationRevision(manifest)}',
   features: {${featureEntries ? `\n${featureEntries}  ` : ''}},
 ${regProps.join('\n')}
 } satisfies PackFERegistration;

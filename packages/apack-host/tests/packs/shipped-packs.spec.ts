@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // The packs the app ships are installed packs: the boot installs them into the data dir, so there is one
 // kind of pack on disk and one load path to it. What this pins is when the boot writes and when it does not
 // — a copy it has already installed must not be re-installed on every start, and one that differs must be.
@@ -28,7 +29,7 @@ function shipPack(id: string, runtime = `exports.registration = { id: ${JSON.str
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeDir), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.typesDir), { recursive: true });
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id, name: id, version: '1.0.0' }));
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), runtime);
   return dir;
 }

@@ -1,3 +1,4 @@
+import { _declarationRevision } from '../../../../src/build/declaration-revision.ts';
 /**
  * The fixture every `generate-entries` spec shares: a temp pack root per case, and the helpers that write
  * manifests, dependencies and entries into it.
@@ -132,7 +133,7 @@ export function withPluginState(defs: Record<string, string>): Record<string, st
 }
 
 export function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
+  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
 export function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {

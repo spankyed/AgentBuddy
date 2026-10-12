@@ -3,7 +3,8 @@ import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
-import type { PackRegistration } from '@apackdev/sdk/framework';
+import { _packDeclarationProblem, type PackRegistration } from '@apackdev/sdk/framework';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
 import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
@@ -85,8 +86,11 @@ export function loadSingleExternalPack(
   }
 
   // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
+  let declarationRevision: string;
   try {
     const snapshot = readPackSnapshot(dir);
+    declarationRevision = snapshot.declarationRevision;
+    if (declarationRevision !== _declarationRevision(manifest)) return skipped(manifest, 'its manifest does not match its built declarations; rebuild and install the complete pack');
     const hostSdk = getHostSdkVersion();
     if (snapshot.sdkVersion && hostSdk) {
       const packMajor = snapshot.sdkVersion.split('.')[0];
@@ -99,7 +103,7 @@ export function loadSingleExternalPack(
     }
   } catch (error) { return skipped(manifest, (error as Error).message); }
 
-  const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
+  const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision);
   if ('problem' in registration) return registration;
 
   // The one thing the app adds to what a pack registered: the entity types its manifest declares, for a
@@ -111,7 +115,7 @@ export function loadSingleExternalPack(
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, dir, shipped: shippedIds.has(manifest.id), manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, dir, shipped: shippedIds.has(manifest.id), manifest },
   };
 }
 
@@ -123,11 +127,14 @@ function loadBundledRuntime(
   manifest: PackManifest,
   dir: string,
   runtimeEntry: string,
+  declarationRevision: string,
 ): PackRegistration | PackLoadProblem {
-  let registration: PackRegistration;
+  let registration: PackRegistration | PackLoadProblem;
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
+      const problem = _packDeclarationProblem({ id: manifest.id, declarationRevision }, mod.registration);
+      if (problem) return { problem };
       mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.contentDir));
       return mod.registration;
     });
@@ -135,24 +142,17 @@ function loadBundledRuntime(
     logger.error(`Failed to load ${manifest.id} runtime (${PACK_LAYOUT.runtimeEntry}): ${(err as Error).message}`, err as Error);
     return { problem: `its runtime (${PACK_LAYOUT.runtimeEntry}) threw: ${(err as Error).message}` };
   }
-  if (!registration) {
-    const problem = `${PACK_LAYOUT.runtimeEntry} does not export \`registration\``;
-    logger.error(`Pack ${manifest.id}: ${problem}`);
-    return { problem };
-  }
-  if (registration.id !== manifest.id) {
-    const problem = `runtime registration id "${registration.id}" does not match its manifest`;
-    logger.error(`Pack ${manifest.id}: ${problem}`);
-    return { problem };
-  }
+  if ('problem' in registration) return registration;
 
   return { ...registration };
 }
 
 export function clearPackRequireCache(packDir: string): void {
-  const prefix = packDir + path.sep;
+  // Node keys its cache by real path; callers may name the installed tree through a symlink.
+  const prefixes = [path.resolve(packDir), ...(fs.existsSync(packDir) ? [fs.realpathSync(packDir)] : [])]
+    .map(dir => dir + path.sep);
   for (const key of Object.keys(esmRequire.cache)) {
-    if (key.startsWith(prefix)) {
+    if (prefixes.some(prefix => key.startsWith(prefix))) {
       delete esmRequire.cache[key];
     }
   }

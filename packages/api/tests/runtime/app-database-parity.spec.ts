@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // The API's boot and a tool opening the data dir (openAppDatabase, which apack db uses) hydrate the same entities,
 // relations and roles: both open the store through @apackdev/host/database, and the tool reads the installed packs'
 // manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run build:default-setup).
@@ -57,10 +58,11 @@ async function installExternalPack(id: string, entityType: string): Promise<void
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
-    `module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`,
+    (`module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')))}';`,
   );
   await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });

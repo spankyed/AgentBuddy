@@ -67,7 +67,7 @@ describe('the order external packs content in', () => {
 // because the sort reports a dependency cycle and acting on one pack shouldn't re-log a cycle between two
 // others.
 describe('the order the registry hands out', () => {
-  const origin = (id: string, ...deps: string[]) => ({
+  const origin = (id: string, ...deps: string[]) => ({ declarationRevision: 'fixture-revision',
     id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped: false,
     manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) },
   });

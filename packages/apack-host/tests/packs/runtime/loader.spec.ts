@@ -1,9 +1,10 @@
+import { _declarationRevision, type PackManifest } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { clearPackRequireCache, loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { applyPacks, contentRevision, type PackContentTarget } from '../../../src/packs/runtime/apply.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
@@ -30,13 +31,14 @@ function makePack(
   manifest: Record<string, unknown>,
   featuresSource = '{}',
 ) {
+  const declarationRevision = _declarationRevision(manifest as PackManifest);
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, declarationRevision: '${declarationRevision}', features: ${featuresSource} } };`);
   return packDir;
 }
 
@@ -182,7 +184,7 @@ describe('pack-loader', () => {
         "const { z } = require('zod/v4');",
         "const { createMachine } = require('xstate');",
         "const { and } = require('xstate/guards');",
-        "module.exports = { registration: { id: 'zod-pack' }, parsed: z.string().parse('ok'),",
+        `module.exports = { registration: { id: 'zod-pack', declarationRevision: '${_declarationRevision({ id: 'zod-pack', name: 'Zod', version: '1.0.0' })}' }, parsed: z.string().parse('ok'),`,
         "  sameZod: require('zod/v4') === require('zod/v4'), hostZod: zod === require('zod'),",
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
@@ -249,8 +251,10 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: { id, name: id, version: '1.0.0' }, types: { entities: {}, relKinds: {} }, defs: {} }));
-    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
+    const manifest = { id, name: id, version: '1.0.0', ...manifestExtra };
+    const declarationRevision = _declarationRevision(manifest);
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
+    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
     return packDir;
   }
 
@@ -368,6 +372,36 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it('refuses a runtime whose registration id does not match the manifest', () => {
     makeBundledPack('real-id', registration('other-id'));
     expect(loadExternalPacks()).toEqual([]);
+  });
+
+  it('refuses stale bindings before passing the compiled directory to the runtime', () => {
+    const dir = makeBundledPack('stale-pack', registration('stale-pack'));
+    fs.appendFileSync(path.join(dir, 'runtime', 'index.cjs'), '\nmodule.exports.registration.declarationRevision = "previous";');
+    expect(loadExternalPacks()).toEqual([]);
+    expect(require(path.join(dir, 'runtime', 'index.cjs')).compiledDirSeen).toBeUndefined();
+  });
+
+  it('clears runtime modules loaded through a symlink without clearing a sibling pack', () => {
+    const dir = makeBundledPack('linked-pack', registration('linked-pack'));
+    const sibling = makeBundledPack('linked-pack-other', registration('linked-pack-other'));
+    const link = path.join(tmpDir, 'runtime-link');
+    fs.symlinkSync(dir, link, 'dir');
+    const entry = path.join(link, 'runtime', 'index.cjs');
+    const otherEntry = path.join(sibling, 'runtime', 'index.cjs');
+    require(entry);
+    require(otherEntry);
+    expect(require.cache[require.resolve(entry)]).toBeDefined();
+    clearPackRequireCache(link);
+    expect(require.cache[require.resolve(entry)]).toBeUndefined();
+    expect(require.cache[require.resolve(otherEntry)]).toBeDefined();
+  });
+
+  it('refuses a changed manifest before executing runtime code', () => {
+    const dir = makeBundledPack('changed-pack', 'throw new Error("runtime must not execute")');
+    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'changed-pack', name: 'Changed', version: '1.0.0' }));
+    const problems = new Map<string, string>();
+    expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
+    expect(problems.get('changed-pack')).toContain('manifest does not match');
   });
 
   it('refuses a layout version this host does not support', () => {
@@ -1021,20 +1055,20 @@ describe('loaded packs: the packs.loaded entries', () => {
     const shipped = path.join(tmpDir, 'shipped');
     fs.mkdirSync(path.join(shipped, 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(shipped, 'runtime', 'fe.js'), '');
-    const pack = (id: string, dir: string) => ({ id, name: id, version: '2.0.0', dir, shipped: false });
+    const pack = (id: string, dir: string) => ({ declarationRevision: 'fixture-revision', id, name: id, version: '2.0.0', dir, shipped: false });
     const loaded = {
       loadedPacks: () => [
-        { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: shipped, shipped: true },
+        { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: shipped, shipped: true },
         pack('with-fe', withFrontend),
         pack('be-only', backendOnly),
       ],
     };
 
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
-      { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
+      { id: 'shipped-pack', declarationRevision: 'fixture-revision', name: 'Shipped', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
+      { id: 'with-fe', declarationRevision: 'fixture-revision', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
       // Listed with no frontend files: it has systems the renderer must know are running
-      { id: 'be-only', name: 'be-only', version: '2.0.0' },
+      { id: 'be-only', declarationRevision: 'fixture-revision', name: 'be-only', version: '2.0.0' },
     ]);
   });
 
@@ -1044,7 +1078,7 @@ describe('loaded packs: the packs.loaded entries', () => {
     const dir = path.join(tmpDir, 'with-fe');
     fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default {};');
-    const loaded = { shippedPacks: () => [], loadedPacks: () => [{ id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, shipped: false }] };
+    const loaded = { shippedPacks: () => [], loadedPacks: () => [{ declarationRevision: 'fixture-revision', id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, shipped: false }] };
     const revision = () => getLoadedPackEntries(loaded)[0].feRevision;
 
     const first = revision();

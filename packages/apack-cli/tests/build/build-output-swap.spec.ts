@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { generatePackFiles } from '@apackdev/sdk/build';
 
 /**
  * **`apack pack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
@@ -35,6 +36,27 @@ const list = (dir: string): string[] => fs.existsSync(dir)
 
 describe('a build that fails', () => {
   const PREVIOUS = ['flows.content.json', 'content.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
+
+  it('refuses stale generated declarations and retains the previous artifact', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, manifest: { id: 'stale-codegen', name: 'Before', features: {} } });
+    const manifestFile = path.join(root, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+    for (const [file, source] of Object.entries(generatePackFiles(manifest, { packRoot: root }))) {
+      const target = path.join(root, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, source);
+    }
+    fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'After' }));
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow('pack-entry.ts does not match the manifest');
+    } finally { process.chdir(cwd); }
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
 
   it('leaves the whole of the previous build in place, and no staging tree', async () => {
     const dir = previousBuild(PREVIOUS);

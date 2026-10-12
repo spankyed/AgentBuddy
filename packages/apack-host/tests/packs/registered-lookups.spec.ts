@@ -342,7 +342,7 @@ describe('a pack whose registration is refused', () => {
 
   it('leaves no origin behind either', () => {
     add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
-    const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', shipped: false };
+    const origin = { declarationRevision: 'fixture-revision', id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', shipped: false };
 
     expect(() => registry.registerPack(
       { id: 'refused-pack', commands: [{ name: 'standup', placeholder: 'Theirs' }] },

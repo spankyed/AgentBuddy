@@ -44,7 +44,7 @@ const move = (installed: InstalledManifests = () => []) => {
 };
 
 beforeAll(() => {
-  const origin = (id: string, shipped: boolean) => ({ id, name: id, version: '1.0.0', dir: `packs/${id}`, shipped });
+  const origin = (id: string, shipped: boolean) => ({ declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir: `packs/${id}`, shipped });
   // `notes` is the built-in pack's feature too: before 0.4.0 the built-in plugin ran under it
   registry.registerPack({ id: 'memo-pack', features: withPlugins('memos', 'board', 'notes') }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', features: withPlugins('notes', 'threads', 'code') }, origin('built-in', true));

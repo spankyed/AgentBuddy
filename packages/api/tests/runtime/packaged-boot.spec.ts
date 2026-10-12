@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // The app's boot, over the real packs it ships: each one installed into the data dir and then loaded from
 // there, which is the one path for every pack (`npm run build:default-setup` writes the build it is installed from). A
 // packaged app's api bundle carries no pack's backend, so this is the path in a packaged build and from
@@ -36,10 +37,11 @@ async function installPackPlaying(id: string, role: string): Promise<void> {
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
-    `module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`,
+    (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')))}';`,
   );
   await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });

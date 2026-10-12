@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -32,7 +33,7 @@ function builtPack(hostVersion: string): string {
   };
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   return root;
 }
 

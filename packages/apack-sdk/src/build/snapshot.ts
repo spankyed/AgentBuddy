@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { ManifestSchema } from './manifest-schema.ts';
 import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type ProvenanceKind } from './manifest.ts';
 import { packValidation, type PackValidation } from './diagnostics.ts';
+import { _declarationRevision } from './declaration-revision.ts';
 
 /** The complete data artifact; executable pack modules are never needed to validate it. */
 const SnapshotShape = {
+  declarationRevision: z.string().regex(/^[a-f0-9]{64}$/, 'Must be a SHA-256 declaration revision'),
   format: z.number().int().nonnegative(),
   sdkVersion: z.string().optional(),
   manifest: ManifestSchema,
@@ -30,6 +32,11 @@ export function parseSnapshot(raw: unknown): PackSnapshotValidation {
     code: `snapshot.${issue.code}`, severity: 'error', path: issue.path, source: 'snapshot.json',
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
+  const snapshot = raw as PackSnapshot;
+  if (snapshot.declarationRevision !== _declarationRevision(snapshot.manifest)) return packValidation([{
+    code: 'snapshot.declarations', severity: 'error', path: ['declarationRevision'], source: 'snapshot.json',
+    message: 'snapshot.json declarations do not match their revision; rebuild the complete pack',
+  }]);
   // Zod's object merge drops __proto__ keys in records. Validation must preserve every declared name.
-  return { ...packValidation(), snapshot: raw as PackSnapshot };
+  return { ...packValidation(), snapshot };
 }

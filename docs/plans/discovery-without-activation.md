@@ -53,6 +53,40 @@ packaged-authoring app scenarios; evidence `node_modules/.cache/apack-chain/runs
 An earlier integration run failed a process-cleanup assertion immediately after parent termination;
 its four isolated checks and the final chain passed without changing the assertion.
 
+### Implemented declaration/runtime agreement (2026-10-12)
+
+The snapshot and generated BE/FE registrations now carry `declarationRevision`, a SHA-256 identity of
+the manifest's JSON serialization. Publication checks the generated entry literals without importing
+pack code, including builds using `--skip-generate`. The loader checks the installed manifest against
+the snapshot, then checks runtime ownership and revision before passing the compiled directory or
+registering contributions. The frontend checks the backend-retained identity before registration and
+stylesheet installation. Retaining it in the active origin avoids reading a newly replaced snapshot as
+though an older running backend had already accepted it. `feRevision` remains a separate byte-cache key.
+
+These guards exposed an existing reload defect: require-cache cleanup used the requested directory,
+while Node caches the resolved path. Cleanup now covers both paths and a symlink regression verifies
+that sibling packs remain cached.
+
+This identity currently covers manifest data only. It is not yet a complete artifact revision: compiled
+settings definitions, static contribution metadata, asset hashes, resolved dependency identities and
+binding membership still need to join the descriptor contract. Generated-entry inspection checks the
+generated modules, not arbitrary custom frontend entry implementations. Runtime checks refuse such
+an entry when it exports a different identity; build-time checking of every supported binding remains
+part of the descriptor checkpoint. No settings/discovery reader has switched to a catalog yet.
+
+The next descriptor checkpoint must also validate staging/install inputs against the built descriptor.
+Keeping the prior `dist` after a failed build does not by itself prevent staging a subsequently edited
+source manifest beside those older bytes. Do not treat the runtime refusal as pre-publication rollback.
+
+Validation: 87 focused declaration/codegen/frontend/build checks, 150 runtime lifecycle checks and six
+doc-link checks passed. Removing the snapshot identity, binding identity, generated-entry comparison or
+resolved-path cache cleanup was caught by its regression tests; each mutation was restored. SDK API
+reports were regenerated and reviewed. The stable strict chain passed with
+`npm run chain -- --strict --cores 1` (259.9s, nine cached), including real external-pack and packaged
+authoring checks; evidence `node_modules/.cache/apack-chain/runs/2026-10-12T13-39-03Z-69678`.
+The first broad run correctly refused published-package freshness after a source edit during that run;
+the successful rerun held source inputs unchanged.
+
 ### Remaining descriptor work
 
 The manifest already names many contributions and implementation references. Codegen produces backend

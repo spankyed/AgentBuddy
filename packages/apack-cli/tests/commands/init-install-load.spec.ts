@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack `apack pack init` scaffolds installs, and the app's pack loader loads it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -38,8 +39,9 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
     fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
-  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
 }
 
 describe('pack full lifecycle: init → install → load', () => {

@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack declares which event types each of its plugins receives, and the bus checks every send against
 // that declaration. It reaches the app on the registration the pack's runtime bundle exports, so what this
 // pins is that loading a pack doesn't lose it: a plugin with no declaration is read as one whose pack was
@@ -33,11 +34,12 @@ function installDeclaringPack(received: string[]) {
   }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: ${JSON.stringify({
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
     features: { memos: { plugin: { receives: received } } },
-  })} };`);
+  })} };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
 }
 
 beforeEach(() => {

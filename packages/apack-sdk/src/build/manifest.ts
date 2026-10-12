@@ -66,6 +66,8 @@ export interface PackTypeManifest {
 }
 
 export interface PackSnapshot {
+  /** Identifies the same declared data in generated backend/frontend bindings. */
+  declarationRevision: string;
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;

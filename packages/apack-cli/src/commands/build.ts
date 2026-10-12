@@ -10,6 +10,7 @@ import {
   _buildProvenance,
   packFeatures,
   parseSnapshot,
+  _declarationRevision,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -18,6 +19,7 @@ import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
+import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
 import { bundleDslDefs } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -290,11 +292,13 @@ async function buildIntoStaging(args: string[]) {
    */
   const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
   const snapshot: PackSnapshot = {
+    declarationRevision: _declarationRevision(manifest),
     types, defs, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
     ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
+    failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));
     const validation = parseSnapshot(snapshot);
     failures.push(...validation.diagnostics.map(issue => issue.message));
     if (failures.length > 0) {

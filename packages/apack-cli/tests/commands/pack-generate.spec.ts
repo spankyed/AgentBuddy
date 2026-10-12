@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -136,7 +137,7 @@ describe('apack pack generate-entries', () => {
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
-    const snapshot: PackSnapshot = {
+    const snapshot: PackSnapshot = { declarationRevision: _declarationRevision({ id: 'dep-pack', name: 'Dep Pack', version: '0.1.0' }),
       format: PACK_SNAPSHOT_FORMAT,
       types: {
         entities: { DepWidget: 'DepWidget' },

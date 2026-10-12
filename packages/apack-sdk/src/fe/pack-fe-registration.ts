@@ -20,6 +20,8 @@ export interface PackFEFeature {
 
 /** What a pack's generated FE entry registers with the host. */
 export interface PackFERegistration {
+  /** Generated bindings identify the same declarations as the installed artifact. */
+  declarationRevision?: string;
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;
   /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each plugin runs at `<packId>/<featureId>` */

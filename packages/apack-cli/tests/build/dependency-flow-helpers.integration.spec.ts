@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -87,7 +88,7 @@ beforeAll(async () => {
   }
   const bundled = await bundlePackFlowHelpers(base, path.join(base, 'dist', 'types'));
   if (!bundled.success) throw new Error(bundled.error);
-  snapshot = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
+  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
   for (const [file, content] of Object.entries(generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {

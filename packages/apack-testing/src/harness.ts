@@ -30,7 +30,7 @@ import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, parseSnapshot, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
 import { untypedQx } from '@apackdev/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
@@ -231,7 +231,7 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
 function originOf(manifest: PackManifest, dir: string): PackOrigin {
   // `shipped` is about the app having installed this copy, which a test app never did — and nothing a pack's
   // own tests exercise reads it
-  return { id: manifest.id, name: manifest.name, version: manifest.version, dir, shipped: false, manifest };
+  return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, shipped: false, manifest };
 }
 
 /** A content runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */

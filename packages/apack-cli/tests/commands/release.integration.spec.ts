@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -54,7 +55,7 @@ function builtPack(version = '1.2.3'): string {
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   // Which pack the stand-in build above refreshes
   builtAt.root = root;
   return root;

@@ -164,6 +164,8 @@ export type PluginEventTypes = Set<string>;
  */
 export interface PackOrigin {
   id: string;
+  /** The declarations validated for this active runtime, retained across filesystem changes. */
+  declarationRevision: string;
   name: string;
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */

@@ -91,6 +91,8 @@ export function hasBuiltPackSections(packRoot: string): boolean {
 /** A pack whose frontend the renderer loads (the API's `packs.loaded`) */
 export interface LoadedPackEntry {
   id: string;
+  /** Declaration identity of the active backend; frontend bindings must match it. */
+  declarationRevision: string;
   name: string;
   version: string;
   /** The pack's runtime/fe.js, when it has one */
@@ -122,16 +124,16 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
-  return registry.loadedPacks().map(({ id, name, version, dir }) => {
+  return registry.loadedPacks().map(({ id, name, version, dir, declarationRevision }) => {
     const { entry, styles } = packFrontendFiles(dir);
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
-    if (!entry && !styles) return { id, name, version };
+    if (!entry && !styles) return { id, name, version, declarationRevision };
     const feRevision = crypto.createHash('sha256')
       .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
       .digest('hex').slice(0, 16);
-    return { id, name, version, feEntry: entry, feStyles: styles, feRevision };
+    return { id, name, version, declarationRevision, feEntry: entry, feStyles: styles, feRevision };
   });
 }
 

@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -50,8 +51,9 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
@@ -174,7 +176,7 @@ describe('a community release checksum pin', () => {
 
 // The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
 describe('a pack that ships with the app', () => {
-  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
+  const shipped = { declarationRevision: 'fixture-revision', id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
 
   it.each([['a pack the app ships', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
     registry.registerPack({ id: PACK_ID }, shipped);
@@ -314,7 +316,7 @@ describe('an installed pack the app could not load', () => {
         loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
-      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
       await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
@@ -582,7 +584,7 @@ describe('updating to a release that holds another pack', () => {
   // Refused for the same reason as any other id, and worded the same: the release is for a different pack
   // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
   it("is refused the same way when that pack is one the app ships, and the installed copy runs again", async () => {
-    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
+    registry.registerPack({ id: 'shipped-pack' }, { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
 
     const sent = await updateTo('shipped-pack');
 

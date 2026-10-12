@@ -47,6 +47,16 @@ describe('generated frontend names', () => {
 });
 
 describe('generated frontend entry', () => {
+  it('uses one declaration identity for the backend and frontend bindings', () => {
+    const files = generate({ features: [] });
+    const identity = (file: string) => files[file].match(/declarationRevision: '([a-f0-9]{64})'/)?.[1];
+    const backend = identity('src/__generated__/pack-entry.ts');
+    expect(backend).toMatch(/^[a-f0-9]{64}$/);
+    expect(identity('src/__generated__/pack-entry-fe.ts')).toBe(backend);
+    const changed = generate({ name: 'Different declarations', features: [] });
+    expect(changed['src/__generated__/pack-entry.ts']).not.toContain(`declarationRevision: '${backend}'`);
+  });
+
   // Keyed by feature, as the backend entry is: each plugin with its feature's role
   it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", () => {
     const files = generate({ features: [

@@ -94,7 +94,7 @@ beforeAll(async () => {
   // **With a `manifest`**, as every origin the loader builds has one: both lines are answered through the
   // packs' dependency order, which is read from their manifests, so an origin without one is in neither
   const builtInManifest = { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION };
-  registry.registerPack(registration, { ...builtInManifest, dir: packDir, shipped: true, manifest: builtInManifest as never });
+  registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...builtInManifest, dir: packDir, shipped: true, manifest: builtInManifest as never });
 });
 
 afterAll(() => {

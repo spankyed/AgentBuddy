@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,8 +35,9 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (runtimeSource) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
 }
 
 const runtime = (services = '') => `
@@ -92,11 +94,11 @@ describe('reloading a pack the app ships', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, entries: [] }));
-    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
+    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       let compiledDir = '';
       module.exports = {
         setCompiledDir(dir) { compiledDir = dir; },
@@ -113,7 +115,8 @@ describe('reloading a pack the app ships', () => {
           },
         },
       };
-    `);
+    `) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
     return packDir;
   }
 
@@ -292,7 +295,7 @@ describe('reloading a pack', () => {
 
   // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
   it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
-    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), shipped: false };
+    const origin = { declarationRevision: 'fixture-revision', id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), shipped: false };
     unregisterPack(PACK_ID);
     registerPack(running, origin);
     registerPack({ id: 'service-owner', services: { taken: {} } });

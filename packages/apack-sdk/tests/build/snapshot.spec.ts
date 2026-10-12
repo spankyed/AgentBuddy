@@ -1,14 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, type PackSnapshot } from '../../src/build/manifest.ts';
 import { parseSnapshot } from '../../src/build/snapshot.ts';
+import { _declarationRevision } from '../../src/build/declaration-revision.ts';
 
 const snapshot = (): PackSnapshot => ({
+  declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
   format: PACK_SNAPSHOT_FORMAT,
   manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
   types: { entities: {}, relKinds: {} }, defs: {},
 });
 
 describe('snapshot data reader', () => {
+  it('rejects a manifest changed without rebuilding its bindings', () => {
+    const data = snapshot();
+    data.manifest.name = 'Changed';
+    expect(parseSnapshot(data).diagnostics).toMatchObject([{ code: 'snapshot.declarations' }]);
+    data.declarationRevision = _declarationRevision(data.manifest);
+    expect(parseSnapshot(data).status).toBe('valid');
+  });
+
+  it.each([undefined, 'old', 'a'.repeat(63)])('requires a complete declaration identity: %j', declarationRevision => {
+    expect(parseSnapshot({ ...snapshot(), declarationRevision }).status).toBe('invalid');
+  });
+
   it('reads all supported fields without changing the artifact', () => {
     const data: PackSnapshot = {
       ...snapshot(), sdkVersion: '0.4.0',
@@ -46,6 +60,7 @@ describe('snapshot data reader', () => {
   it('checks entity-name and SDK-ownership rules on original record keys', () => {
     const data = snapshot();
     data.manifest.entities = JSON.parse('{"__proto__":"__proto__"}');
+    data.declarationRevision = _declarationRevision(data.manifest);
     expect(parseSnapshot(data).status).toBe('valid');
     data.manifest.entities = JSON.parse('{"__proto__":"Memo"}');
     expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes("an entity's key must be its type name"))).toBe(true);

@@ -1,3 +1,4 @@
+import { _declarationRevision } from '../../../src/build/declaration-revision.ts';
 // The generated modules' own surface.
 //
 // What the generated modules import and re-export: a diamond dependency resolved once, the EARS facade,
@@ -29,7 +30,7 @@ setupPackFixture();
 // A → B and A → C, both of which depend on D. Nothing exercised two dependencies converging, which
 // is where a collision is silent rather than obvious: each dependency is fine on its own.
 describe('a diamond dependency', () => {
-  const surfacing = (id: string, owner: string) => ({
+  const surfacing = (id: string, owner: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
     defs: facade(),
     provenance: { entities: { Memo: owner } },
@@ -72,7 +73,7 @@ describe('a diamond dependency', () => {
   });
 
   it("accepts an ancestor's entity named __proto__ arriving through both sides", () => {
-    const side = (id: string) => ({
+    const side = (id: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
       defs: facade(),
         provenance: JSON.parse(JSON.stringify(_buildProvenance(
@@ -334,6 +335,7 @@ describe('generated flow helpers', () => {
 describe('the snapshot format', () => {
   // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
+    declarationRevision: true,
     types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
@@ -363,6 +365,7 @@ describe('the snapshot format', () => {
   const FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
+    declarationRevision: true,
     id: true, name: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
     artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settingsSections: true,
   };
@@ -405,7 +408,7 @@ describe('the snapshot format', () => {
       facadeImports: facadeImports(),
     }).toEqual({
       format: 1,
-      fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
           '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
@@ -422,7 +425,7 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
+        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['receives'],

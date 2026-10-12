@@ -2,6 +2,7 @@
 // unloading takes back. The two things only a window can do — import a module and add a stylesheet — arrive as
 // `PackFrontendIO`, so the rules hold wherever this runs and the browser's part stays the renderer's.
 import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
+import { _packDeclarationProblem } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
@@ -94,13 +95,21 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
       const packBaseUrl = `pack://${pack.id}`;
       // Served from source, the pack's styles come through its own module graph with the rest of it
       const source = io.devFrontends?.[pack.id];
-      if (pack.feStyles && !source) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
+      const loadStyles = async () => {
+        if (pack.feStyles && !source) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
+      };
       // A pack served from source has a frontend whatever its built manifest says, since the map holds only
       // packs whose codegen wrote one
-      if (!pack.feEntry && !source) return null;
+      if (!pack.feEntry && !source) {
+        await loadStyles();
+        return null;
+      }
 
       const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, pack.feRevision, source);
-      if (!registration) return [];
+      if (!registration) throw new Error(`Pack "${pack.id}" has no frontend registration`);
+      const problem = _packDeclarationProblem(pack, registration);
+      if (problem) throw new Error(problem);
+      await loadStyles();
       return packs.registerPackFE(registration);
     },
 

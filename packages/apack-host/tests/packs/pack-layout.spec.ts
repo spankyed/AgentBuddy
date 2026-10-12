@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -44,7 +45,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/content/actions.content.json', '[]');
-  write('dist/types/snapshot.json', JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   return root;
 }
@@ -207,7 +208,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
 
     const source = builtPack();
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, defs: {}, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), format: appFormat }));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await installPackFromLocal(source, packsDir, { packFormat: appFormat });

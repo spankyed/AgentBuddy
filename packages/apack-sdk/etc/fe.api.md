@@ -528,6 +528,7 @@ export interface PackFERegistration {
     artifacts?: ArtifactDefinition[];
     // (undocumented)
     blocks?: BlockDefinition[];
+    declarationRevision?: string;
     dslTypes?: Record<string, DslTypeConfig>;
     features?: Record<string, PackFEFeature>;
     id: string;

@@ -6,4 +6,5 @@ export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, typ
 export { defineFeatureSettings, checkFeatureSettings, getFeaturesWithSettings, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type FeatureSettings, type PackSettingsDefaults } from './pack-settings.ts';
 export { getPackCommands, type PackCommand } from './pack-commands.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
+export { _packDeclarationProblem } from './declaration-binding.ts';
 export { _compileSettingsDefinition } from './settings-validation.ts';

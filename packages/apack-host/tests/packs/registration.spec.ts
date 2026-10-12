@@ -287,7 +287,7 @@ describe('registerPack commands', () => {
 
 describe('packContentTargets', () => {
   const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
-    ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
+    ({ declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
   // **A pack is writable because it is somewhere.** Its compiled content is files in its directory, which the
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
