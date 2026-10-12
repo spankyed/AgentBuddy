@@ -152,7 +152,7 @@ export async function getPRComments(cwd: string, number: number): Promise<GhPRCo
   return parsed.comments ?? []
 }
 
-export async function getPRForBranch(cwd: string, branch: string): Promise<GhPullRequest | null> {
+export async function findPRForBranch(cwd: string, branch: string): Promise<GhPullRequest | null> {
   try {
     const output = await runGh([
       'pr', 'list',

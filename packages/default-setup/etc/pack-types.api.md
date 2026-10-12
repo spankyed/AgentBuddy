@@ -31,12 +31,12 @@ interface ActionNode extends NodeBase {
 }
 
 declare class ActionService {
-    getByLabel(label: string): ActionEntity | undefined;
+    findByLabel(label: string): ActionEntity | undefined;
     /** Runs action code; `label` names its logger (`action:<label>`) */
     executeAction(actionFn: string, params?: Record<string, any>, { label }?: {
         label?: string;
     }): Promise<any>;
-    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
+    executeIfFound(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
 
 interface ActionTab {
@@ -567,7 +567,7 @@ interface CliServiceType {
         getDiff(paths?: string[]): Promise<string>;
     };
     gh: {
-        getPRForBranch(branch?: string): Promise<GhPullRequest | null>;
+        findPRForBranch(branch?: string): Promise<GhPullRequest | null>;
         getPRDetails(number: number, repo?: {
             owner: string;
             name: string;
@@ -2783,10 +2783,10 @@ interface LibraryIndex {
 type LibraryItem = FolderItem | DocumentItem;
 
 declare class LibraryService {
-    get(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
-    getByCode(shortCode: string): Promise<DocumentDTO | undefined>;
-    getByName(name: string): Promise<DocumentDTO | undefined>;
-    getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
+    find(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
+    findByCode(shortCode: string): Promise<DocumentDTO | undefined>;
+    findByName(name: string): Promise<DocumentDTO | undefined>;
+    findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
     /**
      * The chat's slash commands: the ones registered packs declare (apack.json `commands`, in
      * registration order), then the field sections of every document in the commands folder, in document
@@ -4383,7 +4383,7 @@ type Predicate = {
 } | ((context: any) => boolean);
 
 declare class PromptService {
-    getByLabel(label: string): _apackdev_sdk.PromptEntity | undefined;
+    findByLabel(label: string): _apackdev_sdk.PromptEntity | undefined;
     /**
      * Execute a template with prompt context for accessing other prompts
      * @param templateFn - The template function body
@@ -6567,8 +6567,8 @@ declare const libraryCommands: {
 
 declare const libraryQueries: {
     readonly getDocuments: (collectionId?: string) => DocumentDTO[];
-    readonly getDocument: (id: EARS.EntityId) => DocumentDTO | null;
-    readonly getDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
+    readonly findDocument: (id: EARS.EntityId) => DocumentDTO | null;
+    readonly findDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
     /** Every document and folder by name, for the reference picker and the panel's stats */
     readonly getIndex: () => LibraryIndex;
     readonly getCollections: () => CollectionDTO[];

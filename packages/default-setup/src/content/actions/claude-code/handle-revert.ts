@@ -12,7 +12,7 @@
  * Variant paths (file rewind via `--rewind-files`, or `/compact`
  * summarization) live in sibling actions — `CC: Handle Rewind` and
  * `CC: Handle Summarize` — which delegate the common setup back to this
- * action via `services.action.getAndExecute`.
+ * action via `services.action.executeIfFound`.
  */
 
 import type { ActionMeta } from '@apackdev/sdk/build';

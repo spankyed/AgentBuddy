@@ -34,7 +34,7 @@ export async function action(params: Record<string, any>, services: Services) {
   updateChatState(services, threadId as EntityId, 'working');
 
   // Start a new plan turn with feedback — stays in plan mode for refinement
-  await services.action.getAndExecute('Codex Chat', {
+  await services.action.executeIfFound('Codex Chat', {
     threadId,
     text: feedbackText,
     mode: 'Codex',

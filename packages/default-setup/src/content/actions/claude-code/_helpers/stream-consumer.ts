@@ -394,7 +394,7 @@ export async function consumeStream(
           let planPR: string | undefined;
           try {
             planBranch = await services.cli.git.getCurrentBranch();
-            const pr = await services.cli.gh.getPRForBranch(planBranch);
+            const pr = await services.cli.gh.findPRForBranch(planBranch);
             if (pr?.number) planPR = String(pr.number);
           } catch { /* non-critical */ }
           createPlanDraft(services, threadId, parsed.plan, undefined, {
@@ -801,7 +801,7 @@ export async function replayQueuedMessage(
   }
 
   try {
-    await services.action.getAndExecute('Claude Code Chat', {
+    await services.action.executeIfFound('Claude Code Chat', {
       threadId,
       text: queued.text,
       mode: queued.mode,

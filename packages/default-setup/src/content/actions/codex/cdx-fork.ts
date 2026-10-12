@@ -62,7 +62,7 @@ async function handleFork(
     upToMessageId: lastAssistant.id,
   });
 
-  await services.action.getAndExecute('CDX: Handle Fork', {
+  await services.action.executeIfFound('CDX: Handle Fork', {
     sourceThreadId: threadId,
     sourceMessageId: lastAssistant.id,
     newThreadId,

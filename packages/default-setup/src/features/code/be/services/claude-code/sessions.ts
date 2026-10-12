@@ -253,7 +253,7 @@ export async function viewByFile(
 }
 
 /** Load basic metadata about a single session. */
-export async function get(
+export async function find(
   id: string,
   opts: { cwd?: string } = {},
 ): Promise<SessionInfo | null> {

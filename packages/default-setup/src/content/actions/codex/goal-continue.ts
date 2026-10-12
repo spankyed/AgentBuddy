@@ -45,7 +45,7 @@ export async function action(params: Record<string, any>, services: Services) {
   });
 
   try {
-    await services.action.getAndExecute('Codex Chat', {
+    await services.action.executeIfFound('Codex Chat', {
       threadId,
       text: 'Continue working toward the goal.',
       mode: 'Codex',

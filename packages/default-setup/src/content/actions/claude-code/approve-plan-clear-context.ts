@@ -85,7 +85,7 @@ export async function action(
   updateChatState(services, newThreadId as EntityId, 'working');
 
   // 8. Fire chat action on new thread (fresh CLI session, no resume)
-  await services.action.getAndExecute('Claude Code Chat', {
+  await services.action.executeIfFound('Claude Code Chat', {
     threadId: newThreadId,
     text: planPrompt,
   });

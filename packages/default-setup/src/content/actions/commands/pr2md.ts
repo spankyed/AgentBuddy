@@ -114,7 +114,7 @@ export async function action(
       repo = parsed.repo;
       pr = await services.cli.gh.getPRDetails(parsed.number, repo);
     } else {
-      const branchPR = await services.cli.gh.getPRForBranch();
+      const branchPR = await services.cli.gh.findPRForBranch();
       if (!branchPR) {
         const branch = await services.cli.git.getCurrentBranch();
         if (threadId) {

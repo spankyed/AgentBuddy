@@ -33,7 +33,7 @@ export async function action(params: Record<string, any>, services: Services) {
   persistCodexState(services, threadId, { pendingDirectorySelect: undefined } as any);
   services.chat.updateMessageState(pendingDirectorySelect.pickerMessageId as EntityId, { responseTimestamp: Date.now(), blockResponse: response } as any);
 
-  await services.action.getAndExecute('Codex Chat', {
+  await services.action.executeIfFound('Codex Chat', {
     threadId, text: pendingDirectorySelect.text, mode: pendingDirectorySelect.mode || 'codex',
     phase: pendingDirectorySelect.phase,
     model: pendingDirectorySelect.model, messageId: pendingDirectorySelect.messageId, references: pendingDirectorySelect.references,

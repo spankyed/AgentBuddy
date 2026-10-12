@@ -45,7 +45,7 @@ export const libraryCommands = {
       tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
     }
 
-    const document = libraryQueries.getDocument(documentId)
+    const document = libraryQueries.findDocument(documentId)
 
     // [SEARCH_INDEX_FF] Auto-index in search indices (fire and forget)
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
@@ -103,7 +103,7 @@ export const libraryCommands = {
     }
     // If collectionId is undefined, we keep the document in its current collection
 
-    const document = libraryQueries.getDocument(documentId)
+    const document = libraryQueries.findDocument(documentId)
 
     // [SEARCH_INDEX_FF] Re-index in search indices (fire and forget)
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
@@ -291,7 +291,7 @@ export const libraryCommands = {
       tx(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
     }
 
-    const document = libraryQueries.getDocument(docId)
+    const document = libraryQueries.findDocument(docId)
     return document!
   },
 
@@ -305,7 +305,7 @@ export const libraryCommands = {
     })
     
     if (type === 'document') {
-      const doc = libraryQueries.getDocument(entityId)
+      const doc = libraryQueries.findDocument(entityId)
       if (!doc) {
         throw new Error(`Document ${entityId} not found`)
       }

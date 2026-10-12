@@ -273,7 +273,7 @@ export const pullRequestSystem = setup({
         async repo => {
           const cwd = repo.getWorkingDir()
           const branch = await repo.getCurrentBranch()
-          const pr = await ghCli.getPRForBranch(cwd, branch)
+          const pr = await ghCli.findPRForBranch(cwd, branch)
           if (pr?.body) {
             pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
           }

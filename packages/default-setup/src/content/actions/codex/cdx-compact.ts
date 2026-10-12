@@ -30,7 +30,7 @@ export async function action(
   }
 
   try {
-    const result = await services.action.getAndExecute('CDX: Handle Summarize', { threadId });
+    const result = await services.action.executeIfFound('CDX: Handle Summarize', { threadId });
     if (!result?.success) {
       return {
         success: false,

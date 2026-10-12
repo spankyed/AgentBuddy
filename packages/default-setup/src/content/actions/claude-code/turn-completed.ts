@@ -126,7 +126,7 @@ export async function action(
       ].join('\n');
 
       try {
-        await services.action.getAndExecute('Claude Code Chat', {
+        await services.action.executeIfFound('Claude Code Chat', {
           threadId,
           text: prompt,
         });

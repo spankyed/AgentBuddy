@@ -6,7 +6,7 @@
  * one-shot `claude --resume <sessionId> --rewind-files <userCliUuid>`
  * to restore files on disk to their state at the reverted user message.
  *
- * Reuses `CC: Handle Revert` via `services.action.getAndExecute` for the
+ * Reuses `CC: Handle Revert` via `services.action.executeIfFound` for the
  * common setup (CLI kill, cliUuid lookup, persistClaudeState,
  * updateChatState) so the two paths stay in sync.
  *
@@ -90,7 +90,7 @@ export async function action(
   const sessionId = priorState?.sessionId;
 
   // Common setup (kill CLI, find cliUuid, persist revertTo, idle state).
-  await services.action.getAndExecute('CC: Handle Revert', { threadId, messageId });
+  await services.action.executeIfFound('CC: Handle Revert', { threadId, messageId });
 
   // Nothing more to do without a session.
   if (!sessionId) {

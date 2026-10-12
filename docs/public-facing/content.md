@@ -103,7 +103,7 @@ export async function action(
 
 ### How an action runs
 
-The compiled body of `action` runs in one sandbox, whether a flow's action step runs it or another action calls it through `services.action` (`executeAction`, `getAndExecute`). It receives:
+The compiled body of `action` runs in one sandbox, whether a flow's action step runs it or another action calls it through `services.action` (`executeAction`, `executeIfFound`). It receives:
 
 - `params`: the step's resolved input (or the params the caller passed)
 - `services`: the object below, with `services.logger` named `action:<label>`, so the Logs view shows which action logged
@@ -121,9 +121,9 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
 | `services.threads` | Thread chat state (`updateChatState`) |
 | `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
-| `services.library` | Library documents and folders (`get`, `getByCode`, `getByName`, `getByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`; see [Slash commands](#slash-commands)) |
-| `services.prompt` | Prompt templates (`usePrompt`, `getByLabel`, `executeTemplate`) |
-| `services.action` | Look up and run actions (`getById`, `getByLabel`, `getByCategory`, `executeAction`, `getAndExecute`) |
+| `services.library` | Library documents and folders (`find`, `findByCode`, `findByName`, `findByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`; see [Slash commands](#slash-commands)) |
+| `services.prompt` | Prompt templates (`usePrompt`, `findByLabel`) |
+| `services.action` | Look up and run actions (`findByLabel`, `executeAction`, `executeIfFound`) |
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
 | `services.scheduler` | Cron schedules for flow triggers (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) |
 | `services.database` | Live-data schema and topology context for AI query generation (`buildQueryContext`) |
@@ -152,7 +152,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 
 | Field | Type | Description |
 |---|---|---|
-| `label` | `string` | The action's name: flow `action` steps and `services.action.getByLabel` find it by label. Two actions with one label fail the build |
+| `label` | `string` | The action's name: flow `action` steps and `services.action.findByLabel` find it by label. Two actions with one label fail the build |
 | `description` | `string?` | Shown in the Actions UI |
 | `category` | `string?` | Groups the action in the Actions UI (`apack pack add action --category`, default the pack id) |
 | `input` | `Record<string, ActionParameter>` | The parameters, by name |
@@ -164,7 +164,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 
 The build keeps only the function's body, and the runtime calls it with fixed parameter names, so keep them named `params`, `services`, `z` and `flowId`:
 
-| Parameter | From a flow `action` step | From `services.action.executeAction(actionFn, params)` / `getAndExecute(label, params)` |
+| Parameter | From a flow `action` step | From `services.action.executeAction(actionFn, params)` / `executeIfFound(label, params)` |
 |---|---|---|
 | `params` | The step's `params`, overridden by its resolved `map` (see [Mappings](#mappings)) | `params` |
 | `services` | The app's `services` | The app's `services` |

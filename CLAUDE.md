@@ -48,13 +48,13 @@ See [worktree development](docs/reference/worktree-development.md).
 
 ## Naming
 
-- `find` permits absence; `get` returns the value or throws. Preserve behavior when renaming a nullable lookup.
+- Name operations by their API family. Keep conventional `get` / `set` / `delete` for keyed stores and property accessors; `get` may return absence. Use `find` for searches and domain queries, and an explicit name such as `getOrThrow` when absence throws. Return types and documentation state the absence contract.
 - `read` reads disk, `fetch` crosses the network, `load` loads executable code, and `resolve` computes an answer. Collections may be empty.
 - Qualify exported type names by their owner; never export bare `Context`, including aliases.
 - Keep meaningful machine, execution, compiler and RPC contexts. Use `Args` for operation inputs, `Scope` for ambient dependencies and `Environment` for resolved environment/path information.
 - Name the object or its role (`Summary`, `Metadata`, `Snapshot`, `Definition`, lifecycle stage). A suffix alone is not a defect; preserve useful domain/library vocabulary.
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
-- Check measurable contracts, not retired words. The repo naming specs hold nullable owned getters and bare exported `Context` to these rules; noun classification remains review guidance. See [the naming goal](docs/goals/goal-naming-conventions.md).
+- Check measurable contracts, not retired words. Bare exported `Context` is mechanically checkable; verb and noun choices require reviewing the operation and its API family. See [the naming goal](docs/goals/goal-naming-conventions.md).
 
 ## Release metadata
 

@@ -123,7 +123,7 @@ export async function action(
   // chat action's setRunning(true) execute in the same microtask).
   try {
     setRunning(services, threadId, false);
-    await services.action.getAndExecute('Claude Code Chat', {
+    await services.action.executeIfFound('Claude Code Chat', {
       threadId,
       text: '/compact',
       messageId: synth.id,
@@ -133,7 +133,7 @@ export async function action(
     // (e.g. between setRunning(true) and the query), isRunning would be
     // stuck true forever. Normalise state and surface the failure.
     const errMsg = err?.message || 'Summarize dispatch failed';
-    log.error('summarize getAndExecute failed', { message: errMsg, stack: err?.stack });
+    log.error('summarize executeIfFound failed', { message: errMsg, stack: err?.stack });
     persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
     updateChatState(services, threadId as EntityId, 'idle');
     services.chat.sendBlockMessage({

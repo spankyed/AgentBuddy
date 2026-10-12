@@ -554,7 +554,7 @@ export async function replayQueuedMessage(
   }
 
   try {
-    await services.action.getAndExecute('Codex Chat', {
+    await services.action.executeIfFound('Codex Chat', {
       threadId,
       text: queued.text,
       mode: queued.mode || 'Codex',

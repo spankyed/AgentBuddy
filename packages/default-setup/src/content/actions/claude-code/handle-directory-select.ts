@@ -68,7 +68,7 @@ export async function action(
   } as any);
 
   // Re-invoke the chat action with the original params.
-  await services.action.getAndExecute('Claude Code Chat', {
+  await services.action.executeIfFound('Claude Code Chat', {
     threadId,
     text: pendingDirectorySelect.text,
     mode: pendingDirectorySelect.mode,
