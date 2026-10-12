@@ -58,6 +58,62 @@ This table is the starting audit, not a second author-maintained manifest. Befor
 it against the current types and codegen, including frontend-only contributions and the dependency tree.
 Every supported field must either have a discovery representation or be explicitly an executable binding.
 
+### Registration coverage audit (2026-10-12, master d7e77829a)
+
+Read the current SDK registration interfaces, manifest schema, codegen and host stores before extending
+artifacts. The following is implementation audit evidence, not another author-maintained declaration.
+Each grouped row accounts for its named fields; new fields must extend the eventual coverage guard.
+
+| Current fields | Data / executable boundary and ownership |
+|---|---|
+| `PackRegistration.id`, `name`; FE `id` | Pack identity from the manifest; host origin/update choices are separate |
+| BE/FE `features` keys | Pack-local IDs resolved to feature refs; one normalized account for both processes |
+| BE/FE feature `designation` | Declared role and owner; cross-pack role conflict checked before binding |
+| BE feature `system.machine`, `system.receives` | Machine executable; generated incoming-event names/contracts become descriptor data |
+| BE feature `plugin.receives` | Generated outgoing/inbox event contract data, not a component import |
+| BE feature `services`; BE `services`, `repositories` | Declared API names/contracts plus checked executable object bindings; service and repository names retain their actual collision rules |
+| BE feature `settings`; BE `settingsSections` | Replace executable Zod/thunk declarations with the settings plan's schema/default/form data; remove registration-derived defaults |
+| BE `ears.entities`, `ears.relKinds`; manifest `entityShapes` | Declared names/wire values and generated type artifacts; preserve SDK/host reserved names and typed EARS behavior |
+| BE `boot.onInit`, `boot.onShutdown` | Hook presence in data; invocation and side effects remain runtime |
+| BE `migrations.app`, `migrations.pack` | Version line, target and description data; `up` remains executable; never infer line from shipping provenance |
+| BE/FE `steps` | Identity and available facets from keyed declarations; intentional multi-owner facet composition, not last-wins flattening |
+| Step `type`, `kind`, `dsl` | Static identity/kind/DSL metadata, already largely declared |
+| Step `node.label`, `defaultLabel`, `defaults` | Materialize initial values/static presentation; classify any per-node label function as execution |
+| Step `build` | Compile/validate/decompile/branches callbacks execute; relation metadata is discoverable |
+| Step `runtime` | Handler executes; async/subflow/waits flags are data |
+| Step `fe.nodeConfig`, `colorKey`, `layout`, `handlePrefix` | Materialize static palette/connection metadata; per-node layout calculations remain execution |
+| Step `fe.components`, `loadComponents` | Component availability/binding in data; no discovery-time component loader call |
+| Step `trigger` | Track field/persistence/query fields and callback presence in data; compile/decompile/register/validation callbacks execute |
+| BE/FE `artifacts`; artifact `type`, `fe.icon`, `fe.component` | Manifest icon identifier and viewer presence become data; icon/viewer objects bind on activation |
+| BE/FE `blocks`; block `type`, `kind`, `fe.component`, `be.generateAsideText` | Identity/kind/facet availability in data; component and transcript callback execute |
+| BE `contentWriters`, `appliers` | Owned entity/content-key identities and hook availability in data; callbacks execute, with existing cleanup |
+| BE `commands` | Key/placeholder data; keep user-content commands and their live notifications separate |
+| BE `help` | Materialize article identity/title/body/order/feature filters into readable data assets, not just source directory paths |
+| FE feature `default` | Static claim; deterministic catalog selection independent of import completion |
+| FE plugin `id`, `label`, `isPinned`, `icon`, `hotkeys`, `options.headerClass` | Feature ref, presentation and shortcut descriptors become data; icon objects resolve only when rendering |
+| FE plugin `state`, `canvas`, `panel`, `chat`, `settings` | Actor/component/route presence and stable references in data; concrete implementations execute. Form ownership follows the settings plan |
+| FE plugin `fallbackPanel.label`, `toggle`, `isShown` | Label/event contract discoverable; state predicate executes and is not a discovery eligibility check |
+| FE `appExtensions` | Named slot/component references, retaining actual slot composition/ownership policy |
+| FE `tiptapPlugins.extensions`, `popups`, `isSuggestionActive` | Give anonymous contributions stable declared identities; availability in data, extension/component/predicate objects executable |
+| FE `dslTypes.prefix`, `schema`, `globals`, `language` | Static editor declarations/assets; read without executing generated frontend imports |
+| Feature `references`; reference `protocol`, `category`, `icon`, `svgElements`, `navigate` | Protocol/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
+| Reference categories `id`, `label`, `primaryIcon`; provider `category`, `useItems` | Category/provider identity and icon data discoverable; live reactive items require that provider's execution and disposal |
+| Content sources/datasets/formats and compiled `content.json` | Declared keys, formats, entity targets and compiled indexes/assets; rows written by appliers are not discovery results |
+| Manifest `typesEntry`, plugin/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
+| Manifest `build`, `$schema`, `$manifestVersion`, license/description/version/dependencies/host range | Build options are authoring inputs; compatibility/identity metadata is data; descriptive permissions do not establish grants |
+
+Current consumers confirmed: backend registration/defaults stores, frontend registration/default selection,
+reference aggregate/provider initialization, CLI validate/build, and installed-layout/offline readers.
+`validateCodegen()` still returns no issues when dependency resolution throws; validation must report an
+incomplete check rather than “Pack is valid.” `PackSnapshot` currently holds manifest/types/facade/provenance
+but not all hidden metadata above. Extend it; do not add a second descriptor file authored independently.
+
+The eleven default-setup feature settings modules use Zod objects with explicit defaults, strict objects,
+arrays, optional fields, records, enums, nullable values and numeric constraints. The audited modules and
+shared hotkey schema contain no refine/transform/preprocess hooks. Prove equivalent validation/defaults
+for these concrete shapes before removing the executable declarations; do not generalize that observation
+to unrelated Zod APIs or uninspected pack fixtures.
+
 ## Architecture
 
 ```text
