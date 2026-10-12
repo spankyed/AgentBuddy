@@ -717,6 +717,6 @@
   },
   "settingsSections": "src/app-settings/index.ts#settingsSections",
   "help": {
-    "path": "src/help"
+    "path": "src/extensions/help"
   }
 }

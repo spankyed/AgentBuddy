@@ -36,7 +36,8 @@ src/
     blocks/                # Message block definitions (display + input)
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
-    Welcome.vue            # Welcome screen app extension
+    app/                   # Welcome screen app extension
+    help/                  # Bundled Markdown help articles
   content/                   # Content sources: actions, prompts, flows, library, notes, default settings (+ the settings applier)
   migrations/              # Version-targeted data migrations
 ```
@@ -253,7 +254,7 @@ Content sources compiled to JSON by `apack pack build`, as `apack.json` `content
 - `default-settings.ts` — the `general` and `assistant` sections' defaults, **not a content item**: `src/app-settings/index.ts` imports it (`getBaseSettings`, which refuses a base file setting a plugin's slice — a feature's own defaults are its `settings.ts`, which the registry holds under its ref) and the pack's registration contributes it, so nothing about settings is compiled, written to disk or imported into the database
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
 - `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `apack.json` `extensions.commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
-- `src/help/` — Markdown articles contributed through `apack.json` `help.path`, bundled into the runtime and displayed by the host Help feature
+- `src/extensions/help/` — Markdown articles contributed through `apack.json` `help.path`, bundled into the runtime and displayed by the host Help feature
 - `_compilers/` — the formats' compiler modules, bundled into `dist/build/content-compilers.mjs` so dependents can use the formats
 - `writers/` — content writers for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `content.writers` in `apack.json`. Collection is a `container`, so a dependent pack's documents nest in this pack's folders instead of forking them, and both `find`s match a name within its parent folder
 
@@ -349,7 +350,8 @@ them — but `kind` is the manifest's and not the folder's: `actions` and `toggl
 ## Extensions
 
 - **Tiptap plugins** (`src/extensions/tiptap/index.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Carried by `pack-entry-fe.ts`'s registration.
-- **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
+- **Help articles** (`src/extensions/help/`) — Markdown contributed through `apack.json` `help.path` and shown in Settings → Help.
+- **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `help/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
 - **References** (`__generated__/references.ts`) — aggregates reference types, categories and item providers from the threads, library and notes features, for the tiptap reference system: which of each feature's things can be linked to from an editor, and how to render and open a link.
 
 ## Migrations
