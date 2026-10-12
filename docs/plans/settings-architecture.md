@@ -378,11 +378,71 @@ remains after conversion.
 
 ## Preferences, state and projects
 
-Move assistant `name` to default-setup's pack settings. Put assistant initialization timestamp and
-onboarding progress in an explicit persisted state owner, outside settings. Default-setup owns assistant
-lifecycle behavior independently of Threads; Threads can trigger or display it. Host app onboarding
-state remains the host's. Establish what each existing flag means before combining or removing it.
-A preferences reset must leave those facts intact; a deliberate whole-app data reset remains separate.
+Move assistant `name` to default-setup's pack settings. Onboarding is an existing workflow, not a new
+assistant feature. Its completion is the host's `AppState.hasOnboarded`; its progress is already persisted
+in the onboarding thread's context. A preferences reset must leave both intact. A deliberate whole-app
+data reset remains separate.
+
+### Onboarding design correction (2026-10-12)
+
+The uncommitted assistant feature/actor/entity draft is rejected. It is still present in the working tree
+and must not be committed as a usable checkpoint. Registering a backend actor through a feature is a
+framework mechanism, not a reason to introduce a product capability. A settings group does not imply a
+feature, system, event address or entity. Moving the same onboarding-specific branches into Brain would
+relocate the coupling rather than resolve it.
+
+The audited old `assistant.birthdate` is written before sending an initialization request; it does not
+prove a flow started, and no audited product view displays it as assistant identity. Preserve that
+historical fact without using it as completion, progress or delivery authority. The proposed destination
+is `AppState.onboardingRequestedAt`, alongside the existing app-wide completion fact, rather than a new
+AssistantState entity. Verify destination precedence, legacy rows without an onboarding thread, and
+malformed values in a migration probe before implementing this field. Host structural migration must
+work without executing default-setup. Existing destination data wins; malformed legacy data remains
+available for diagnosis instead of being silently erased.
+
+Responsibility is explicit:
+
+| Concern | Owner | Required behavior |
+|---|---|---|
+| Assistant display name | Default-setup pack settings group | Ordinary editable/resettable preference |
+| App onboarding completion and historical request timestamp | Host AppState | Survive preference resets; no settings writer can change them |
+| Onboarding steps, eligibility and conversation | Default-setup's authored workflow/actions | Reuse the existing thread and progress; no duplicate progress store |
+| Root flow availability, pause/stop/restart and delivery | Existing flow runtime | Generic lifecycle facts; no hardcoded onboarding/provider policy in Brain |
+
+The current onboarding actions use CLI discovery/import and do not require inference-provider keys.
+The old OpenAI/Anthropic secret-change gate is not a requirement to preserve. Do not create a replacement
+actor or carry that gate forward unless a concrete current consumer needs it.
+
+Before modifying startup behavior, specify and exercise the real event sequence for: connection before
+and after root startup, two windows, reconnect, paused/stopped Brain, restart, pack reload, preferences
+reset, and backup restore. A root run must receive sufficient generic client-readiness information for
+its authored workflow to start once or resume. Whether the existing lifecycle machinery can express this
+without extension is still unproven; inspect it before adding an event or flag. A request sent to a stopped
+Brain is not successful delivery and must not consume a deduplication guard. Restore deliberately stops
+Brain today; preserve that explicit restart policy until a separate product decision changes it.
+
+The behavioral contract to prove is:
+
+| Sequence | Required outcome |
+|---|---|
+| Client attaches before a root can run | Wait for real readiness; no successful-delivery flag or new initialization fact |
+| Root is ready before a client attaches | The authored workflow can initialize after the client becomes available |
+| Second window or reconnect in the same root run | Reuse the current workflow/progress; no second onboarding run |
+| Root is paused | Respect runtime queue/pause semantics; do not mistake a queued event for executed onboarding |
+| Root is stopped or replaced | No onboarding execution in the stopped run; discard stale delivery work |
+| Root restarts with a client already attached | Supply current client availability to the new run; reuse unfinished progress |
+| Preferences reset | Defaults change; onboarding facts, progress and current run stay intact |
+| Backup restore | Restore facts/progress, stop the old run, and await the existing explicit restart policy |
+| Whole-app reset | Clear user data; a fresh root/client sequence can begin onboarding again |
+
+This table fixes behavior before mechanism. A small real-runtime probe must show whether existing lifecycle
+facts suffice and exactly where replay/deduplication belongs. Do not add generic hooks or singleton-flow
+machinery merely because they look reusable; add only what these sequences demonstrate is missing.
+
+The draft's mocked restore test concealed this failure. Acceptance must use the real root and onboarding
+flow, inspect actual execution/progress, and prove another connection cannot spawn a second onboarding
+run. A passing broad chain is regression evidence, not proof of this design. Pack app-line migration
+catch-up when a pack was absent during an upgrade remains required by the replacement work.
 
 ### Projects audit: keep `app.projects` as configured directory bookmarks
 
@@ -498,7 +558,7 @@ decode JSON data rather than emitting object literals, preserving own `__proto__
 cover both protections and the refusal of non-JSON writes.
 
 The common catalog now projects feature definitions by qualified ref, including disabled packs, without
-loading their runtime. Its production wiring, host app extraction, pack group handles, trusted caller
+loading their runtime. Its production wiring, pack group handles, trusted caller
 policies, forms and stored-document migration remain unfinished. Current registration-driven defaults are
 still transitional; discovery metadata does not imply an activated actor or a bound custom form.
 
@@ -525,9 +585,27 @@ copy incoming arrays and directory arrays before editing, tolerate a restored mi
 and cancel pending debounce timers when disposed. Window-owned requests/subscriptions, the other forms
 and CAS/stale array protection remain required.
 
-Assistant declarations/lifecycle, pack-group handles, trusted policies, catalog-fed defaults and window
+Assistant pack-group declarations, typed handles, trusted policies, catalog-fed defaults and window
 runtime/product composition are unfinished. This checkpoint does not establish the complete three-owner
 document or claim discovery without activation for all settings consumers.
+
+## Architectural review findings (2026-10-12)
+
+These are current-code findings, not a completed review of the whole PR:
+
+| Finding | Evidence | Required correction |
+|---|---|---|
+| Unresolved legacy feature settings are erased | Host `migrations/app/0.4.0.ts` `moveFeatureSettings` filters addressed keys through `splitRef`, then removes the entire `plugins` root | Preserve unresolved values and original identities as migration data; never guess an owner. They must survive repeated migration, backup/import and later manual diagnosis without becoming a compatibility reader or an additional preference owner. Choose the stored representation in the migration probe before switching writers. |
+| Disabled declarations do not supply the live validators | `features/settings/be/store.ts` obtains validators from `getPackSettingsDefaults`; registry populates that store during runtime registration | Compile definitions from the accepted installed catalog. Enablement/activation may remove behavior and custom forms, not defaults, validation or override access. |
+| Pack section defaults still have silent global collisions | `packs/backend-extensions.ts` merges thunk results through `sections[name] = value` | Remove the thunk/global root-section contract when pack groups and consumers switch together. Qualified pack/group identity prevents two packs' `assistant` groups from overwriting one another. |
+| Catalog has no production reader | `createContributionCatalog` is exported and called by catalog specs only | Prove production boot/install/disable/refresh wiring and the same accepted revision in writer/readers before claiming discovery. |
+| Targeted and whole-document writes have different explicit-choice semantics | Targeted updates store a value; whole-document replacement computes `changesFrom(defaults, values)` | Settle import/advanced editor behavior explicitly. A user choice equal to today's default must not be erased accidentally; reset alone opts into future defaults. Historical copied-default pruning is a separate migration decision. |
+
+The next settings checkpoint must use one source of definitions for host, pack and feature values,
+including disabled packs. It must demonstrate reads, trusted writes, restricted refusals, resets,
+notifications and restored overrides in that running system. Tests of the prototype alone do not satisfy
+this boundary. Retain the full discovery inventory and subsequent goal phases; this checkpoint establishes
+the shared route that those consumers will use rather than replacing their requirements.
 
 ## Delivery sequence
 
@@ -559,9 +637,12 @@ and refresh path must agree. This does not require finishing other contribution 
    JSON Schema data declaration, update generated accessors and snapshots, and migrate all feature
    callers/tests. Retain custom forms and navigation metadata. Compare representative valid and invalid
    values against the old definitions, then remove the temporary Zod settings path.
-5. **Separate lifecycle state.** Migrate assistant initialization facts and move their behavior out of
-   Threads into the pack's explicit lifecycle owner. Test onboarding before and after migration, including
-   runs waiting on provider keys. Remove obsolete preference fields and Threads ownership assumptions.
+5. **Separate preferences from existing onboarding state.** Prove the historical timestamp migration
+   into existing host onboarding state before removing its editable field. Keep progress in the existing
+   onboarding record. Settle generic root/client readiness and authored workflow eligibility through the
+   real event-sequence checks above; introduce no assistant feature and no onboarding policy in Brain.
+   Remove the obsolete provider-key gate and Threads startup assumptions only with replacement behavior
+   proved against actual flow execution.
 6. **Make frontend access independent of the view.** Bind the frontend port to the window settings
    runtime; move reads, subscriptions and correlated writes there. Update the Settings view and SDK
    composables to consume that interface. Retain the draft helper for explicit custom-form editing.
@@ -585,16 +666,17 @@ Migrate stored overrides, not effective settings:
 - `general.personal` -> `app.personal`.
 - `general.projects` -> `app.projects`, preserving entry and directory order.
 - `assistant.name` -> `packs['default-setup'].assistant.name`.
-- `assistant.birthdate` -> the assistant lifecycle state destination established above.
+- `assistant.birthdate` -> existing host onboarding state, using the audited historical-request meaning above.
 
 Audit other stored fields before removing old roots. Preserve unknown/orphaned pack and feature overrides
 through export/import and uninstall; do not discard them because their declaration is currently absent.
 Define deterministic precedence if both old and new paths exist; existing destination overrides win,
 with old values filling only missing destinations. Make the migration idempotent.
 
-The host owns migration of app/document structure; default-setup owns migration of assistant semantics.
+The host owns migration of app/document structure and app-wide onboarding facts; default-setup owns
+its assistant preference group and authored onboarding workflow.
 Check boot and import migration ordering: legacy documents must be transformed before the new writer
-refuses their old paths, and assistant data must be moved before lifecycle startup observes it. Keep
+refuses their old paths, and onboarding state must be moved before workflow startup observes it. Keep
 0.4.0 as the target, preserve package versions, and test against a copied backup rather than production data.
 
 ## Evidence required to finish
@@ -620,7 +702,7 @@ refuses their old paths, and assistant data must be moved before lifecycle start
 - Custom forms keep detached drafts, save explicitly, and reflect resets and imported data. Projects
   edits cannot mutate the source snapshot; disposal clears pending debounce work. A stale array save
   cannot erase another writer's edit and does not lose the refused draft.
-- Reset restores current defaults without clearing assistant lifecycle state or restarting onboarding.
+- Reset restores current defaults without clearing app onboarding facts or workflow progress, or restarting onboarding.
 - Migrating/importing legacy stored data preserves personal details, shortcuts, projects, assistant
   preferences and lifecycle facts. Repeating the migration makes no further changes.
 - Removing/reinstalling a pack preserves its overrides; unrelated owners remain unchanged.

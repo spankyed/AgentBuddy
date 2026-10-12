@@ -109,6 +109,42 @@ Apply settled naming rules to new interfaces as ordinary implementation review. 
 integration work later becomes necessary, follow CLAUDE.md's pinned integration validation; the completed
 naming branch is not an automatic source of future changes.
 
+## Design review before further implementation (2026-10-12)
+
+The user requested a design review after the assistant draft introduced an unjustified feature, actor,
+entity and event contract. Implementation is held at `29431f57b`; the uncommitted draft is not an accepted
+checkpoint. Continue the full goal, beginning with this review rather than building on that draft.
+See the corrected responsibility and lifecycle requirements in
+[settings architecture](../plans/settings-architecture.md#onboarding-design-correction-2026-10-12).
+
+This is an architectural disposition, not a claim that all 220 changed files have been reviewed:
+
+| Change family | Requirement / current evidence | Disposition and next proof |
+|---|---|---|
+| JSON Schema/defaults and generated settings types (`839dec923`, `b6ec616b0`, `74a48e0f3`) | One declarative value contract; shipped definitions are data and types derive from schemas | Retain as candidate foundation. Review defaults/override/reset semantics and supported schema behavior through the same live writer for all three owners. |
+| Host app ownership (`29431f57b`) | App defaults and validation work without a pack; known legacy app preferences migrate through boot/import | Retain as candidate foundation. Verify complete orphan preservation, malformed data and default-versus-explicit-choice semantics; existing tests are not whole-goal acceptance. |
+| Snapshot reader and declaration stamps (`d801b5580`, `23b4b026a`, `b085edd3d`) | Discovery requires data matching generated implementations | Review as one boundary: declaration identity is distinct from executable bytes. Binding membership/completeness remains unfinished. |
+| Publication, receipt, staging and copy checks (`44cc56fb1`, `b7d1d10fe`, `8f137ced9`, `20c8194e7`, `ccc9e605f`) | Failed or mismatched builds must not replace the accepted artifact | Review each check against a named publication/copy transition. Consolidate duplicate policy; retain verification where copying or mutable inputs can change bytes. Frozen dependency/tool inputs and frontend delivery remain incomplete. |
+| Catalog prototype (`18116c99a`) | Installed settings must be discoverable without activation | Exported/tested, but no production consumer. Do not call discovery delivered. Connect the common catalog to a complete settings path before expanding further abstractions. |
+| Uncommitted assistant draft | Preserve onboarding state outside preferences | Reject its new feature/actor/entity. The real Brain stops after restore; the mock concealed lost delivery. Reuse existing owners and prove the corrected event sequence. |
+
+For each family, inspect authoritative readers, writers, failure paths and behavioral coverage; record
+concrete findings in its owning plan. Green tests demonstrate only what their assertions exercise.
+The source audit confirms a preservation defect: host `moveFeatureSettings` filters unresolved bare
+keys out, then deletes the old root. Preserve their values and identities without inferring an owner.
+The settings writer also still takes validators from runtime registration; catalog-only tests do not
+prove disabled settings behavior. Record these fixes and their acceptance in the settings plan.
+
+The next implementation must demonstrate the full settings route: host app preference, two same-named
+pack groups and a feature preference, all through declarations -> installed common catalog -> effective
+values -> trusted owner-bound access -> edit/reset -> notifications -> export/import. Include a disabled
+or activation-failed pack, a restricted dependency, and an unavailable custom form. This is the first
+integrated checkpoint, not a reduction of the goal or a substitute for remaining contribution kinds.
+
+Before that implementation, settle the existing onboarding record's historical timestamp migration and
+real root/client readiness semantics in the settings plan. Do not substitute moving domain-specific logic
+into Brain for designing the boundary. All Phases 0–7 and all three Phase 6 workstreams remain required.
+
 ## Phases
 
 ### Phase 0 — Isolate the work and establish the baseline
@@ -141,7 +177,7 @@ and failed rebuilds are covered before consumer migration. Mutation checks prove
 
 Implement the remaining [settings architecture](../plans/settings-architecture.md) checkpoints in
 reviewable slices: host app ownership and migration; pack groups and handles; feature-schema conversion;
-assistant lifecycle separation; window runtime; custom forms and product surface.
+onboarding state/preferences separation; window runtime; custom forms and product surface.
 
 Use the existing draft helper, request correlation and typed paths. Fix Projects snapshot mutation,
 disposal and stale-array writes. Validate defaults and overrides consistently; preserve orphaned overrides.
@@ -264,7 +300,21 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 | Staged DSL generation / frontend definition coherence | `20c8194e7` | DSL bundling writes directly into staged output; the frontend resolves and hashes that same definition tree. A real cold/failing/recovered/reused/removed-definition build proves preservation of the accepted artifact, receipts, read record and cache, matching frontend/declarations, reuse and removal of obsolete output. Missing staged definitions refuse the older published copy. Focused unit/docs checks (34), DSL integration (7) and three restored guard mutations passed. Strict chain passed (295.0s, one cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-03-47Z-41045`, including external-pack, smoke and packaged authoring/app. The live DSL output write gap is closed; frozen authored/dependency/tool inputs, accepted placement/frontend copies, production catalog wiring and checked contribution bindings remain required, as do settings ownership and all later phases. |
 | Verified installation candidates | `ccc9e605f` | Copies and verifies the complete accepted layout before teardown, compares the exact receipt including provenance, rechecks copied compatibility/ownership, and gives hooks an independent descriptor. Copy/validation refusals retain the prior files and skip teardown; hook refusal cleans the candidate without promising rollback of arbitrary hook effects. Broad host/CLI checks passed (476 tests, 36 files); five restored guard mutations failed their targeted assertions. An initial parallel chain hit the process-cleanup grandchild assertion; all four process tests passed unchanged in isolation. Strict serial chain passed (118.4s, 26 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-30-08Z-25422`; external-pack, smoke and packaged checks passed in the earlier run `2026-10-12T17-26-16Z-81782` and were reused. Frontend delivery/catalog publication, frozen inputs, checked binding completeness and settings ownership/migration remain unfinished. |
 
-| Host app ownership / stored app migration | This checkpoint | Host JSON Schema/defaults and schema-derived SDK types now own hotkeys, personal info and ordered projects at `app`; default-setup no longer supplies them, and all active app consumers/forms use the new location. The host 0.4.0 raw migration preserves destination choices, orphan data and project/directory order, prunes copied historical defaults and handles the legacy projects wrapper. Real boot, reset and backup import checks passed. Fixed the shared writer admitting newly missing required fields and allowed removal of existing orphan section fields without new undeclared writes. Host/CLI lifecycle checks passed (546), rebuilt migration/settings checks passed (74), real import/docs checks passed (25), shipped migration/event checks passed (51), and the full shipped suite passed (834, two already skipped). Project form interaction checks passed (3); eight restored guard mutations were caught, with disposal strengthened after Vue's unmounted emit suppression hid the first probe. Reviewed public SDK API report and generated type parity. Strict chain passed (188.4s, 16 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-57-59Z-93144`, including external-pack app, smoke and packaged authoring/app. The final strengthened-test chain passed (64.7s, 21 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T18-02-21Z-20394`, reusing unchanged accepted app outputs. The earlier strict run identified an external fixture still asserting general; it was migrated and independently verified. Pack groups/handles, trusted policies, assistant lifecycle, window settings runtime/CAS, full catalog/binding/freshness and later phases remain unfinished. |
+| Host app ownership / stored app migration | `29431f57b` | Host JSON Schema/defaults and schema-derived SDK types now own hotkeys, personal info and ordered projects at `app`; default-setup no longer supplies them, and all active app consumers/forms use the new location. The host 0.4.0 raw migration preserves destination choices, orphan data and project/directory order, prunes copied historical defaults and handles the legacy projects wrapper. Real boot, reset and backup import checks passed. Fixed the shared writer admitting newly missing required fields and allowed removal of existing orphan section fields without new undeclared writes. Host/CLI lifecycle checks passed (546), rebuilt migration/settings checks passed (74), real import/docs checks passed (25), shipped migration/event checks passed (51), and the full shipped suite passed (834, two already skipped). Project form interaction checks passed (3); eight restored guard mutations were caught, with disposal strengthened after Vue's unmounted emit suppression hid the first probe. Reviewed public SDK API report and generated type parity. Strict chain passed (188.4s, 16 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-57-59Z-93144`, including external-pack app, smoke and packaged authoring/app. The final strengthened-test chain passed (64.7s, 21 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T18-02-21Z-20394`, reusing unchanged accepted app outputs. The earlier strict run identified an external fixture still asserting general; it was migrated and independently verified. Pack groups/handles, trusted policies, assistant lifecycle, window settings runtime/CAS, full catalog/binding/freshness and later phases remain unfinished. |
+
+### Design review checkpoint
+
+Reviewed the responsibility boundaries at `29431f57b` plus the uncommitted draft. Source inspection
+exposed an obsolete provider-key assumption and lost delivery to a stopped Brain. This checkpoint
+records those corrections, the requirement-to-change-family disposition,
+the confirmed unresolved-key preservation defect, and the missing live catalog/validator integration.
+The review does not clear the whole PR or establish completion of any remaining phase.
+
+The rejected draft's strict chain passed in 416.1s, evidence
+`node_modules/.cache/apack-chain/runs/2026-10-12T18-24-24Z-53935`; this is explicitly insufficient design
+acceptance because its restore assertion mocked the stopped receiver. No assistant implementation is
+committed. Further implementation starts with the corrected real-runtime and migration probes, followed
+by a complete settings route; rejected draft cleanup must preserve unrelated work.
 
 ## Outcome
 
