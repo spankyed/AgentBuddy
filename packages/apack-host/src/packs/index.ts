@@ -10,6 +10,8 @@ export {
   discoverPacks, enabledExternalPacks, installedPacks,
 } from './discovery.ts';
 export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
+export { createContributionCatalog } from './catalog.ts';
+export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot } from './catalog.ts';
 
 // Installed packs (JSON file CRUD)
 export {

@@ -444,13 +444,32 @@ Generation keeps optionality, nullable values, enums, records, arrays and local 
 `title` remains presentation metadata; a cloned schema uses the requested generated export name, so a
 heading cannot rename the author-facing type. Numeric and other constraints remain runtime checks.
 Focused specs typecheck generated declarations and invalid-use examples; defaults and external-reference
-guard mutations are caught. Catalog/build integration, trusted caller binding and legacy feature conversion
-remain unfinished; this kernel does not yet switch any settings reader or writer.
+guard mutations are caught. Full catalog/build integration, trusted caller binding and legacy feature
+conversion remain unfinished; this kernel does not yet switch any production settings reader or writer.
 
 Bundled CLI/testing packages also declare Ajv 8 directly: their bundles inline SDK code but externalize
 Ajv, so checkout execution must resolve the same major as the published dependency metadata, rather
 than the unrelated tooling's root Ajv 6. The strict checkpoint chain passed serially; concurrent native
 app scenarios had Electron teardown timeouts after passing their assertions, and isolated retries passed.
+
+### Implemented pack declarations and catalog prototype
+
+`extensions.settings` now accepts inline `SettingsDefinition` data and runs the common compiler during
+manifest/snapshot validation. Invalid defaults retain their exact owner/value paths through structured
+errors; diagnostics do not infer fields from error prose. The generated editor schema references the
+draft-07 meta-schema for the inline value schema. Explicit defaults remain authoritative.
+
+The host's `createContributionCatalog` owns immutable validated snapshots, host-supplied app definitions
+and enablement independent of activation. Its pack-settings projection reads the snapshot directly;
+there is no second defaults inventory. Same-named groups remain pack-local. Publication validates the
+whole candidate before replacing the revision/map; failure retains the previous catalog and sends no
+notification. Readers receive readonly views, and a throwing subscriber cannot undo publication or
+prevent later subscribers from observing it. A poisoned installed runtime still yields its settings data.
+
+This is the foundation prototype, not the completed runtime integration. Production boot does not yet
+populate the catalog; host preference extraction, feature declaration conversion, typed group handles,
+trusted caller binding, access enforcement, form bindings and stored-data migration remain required.
+Do not switch the writer until those contracts and staging/source freshness checks are in place.
 
 ## Delivery sequence
 

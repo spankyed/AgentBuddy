@@ -87,6 +87,21 @@ authoring checks; evidence `node_modules/.cache/apack-chain/runs/2026-10-12T13-3
 The first broad run correctly refused published-package freshness after a source edit during that run;
 the successful rerun held source inputs unchanged.
 
+### Implemented catalog prototype
+
+`createContributionCatalog` retains validated snapshot data and host-owned enablement independently
+of executable registrations. Host app definitions are supplied explicitly and survive an empty pack
+list. `packSettings(packId)` projects inline `extensions.settings` declarations directly from each
+snapshot, including disabled packs. Duplicate pack IDs refuse the whole candidate and identify both
+directories; group IDs are local to their owner. Immutable copies/readonly views protect the accepted
+catalog from input and reader mutation. Failed candidates preserve its revision and lookup map.
+
+The installed poison-runtime fixture proves this projection performs data reads without executing pack
+code or changing artifacts. Semantic-definition, atomic-publication and owned-copy guard mutations are
+caught. This prototype is not wired into production boot or existing discovery/settings readers yet.
+Feature schemas, static metadata/assets for the remaining kinds, staging validation, checked form/runtime
+bindings, full artifact revisions and trusted caller binding remain on the completion inventory.
+
 ### Remaining descriptor work
 
 The manifest already names many contributions and implementation references. Codegen produces backend

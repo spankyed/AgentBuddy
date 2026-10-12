@@ -3,6 +3,8 @@ import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
+import { _compileSettingsDefinition, _SettingsDefaultsError } from '../framework/settings-validation.ts';
+import type { SettingsDefinition } from '../framework/settings-definition.ts';
 import type { PackMigrations } from '../framework/pack-registration.ts';
 
 export { FEATURE_ID_PATTERN };
@@ -48,6 +50,28 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
 
 /** A named export of a pack source file */
 const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+
+const SettingsDefinitionShape = {
+  schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
+  defaults: z.record(z.unknown()).describe('Complete explicit baseline values, validated without coercion or schema default population.'),
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  form: z.string().min(1).describe('Source path of the custom settings form; its default export is a component.').optional(),
+  access: z.enum(['shared', 'owner']).describe('Shared with declared dependents by default; owner restricts writes and resets.').optional(),
+} satisfies Record<keyof SettingsDefinition, z.ZodTypeAny>;
+
+const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
+  // Validate original JSON: record decoding can discard an own __proto__ default before semantic checks.
+  if (raw && typeof raw === 'object' && 'schema' in raw && 'defaults' in raw) {
+    try { _compileSettingsDefinition(raw as SettingsDefinition); }
+    catch (error) {
+      if (error instanceof _SettingsDefaultsError) {
+        for (const problem of error.problems) ctx.addIssue({ code: 'custom', path: ['defaults', ...problem.path], message: problem.message });
+      } else ctx.addIssue({ code: 'custom', path: ['schema'], message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  return raw;
+}, z.object(SettingsDefinitionShape).strict());
 
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
@@ -392,6 +416,8 @@ function extensionPoint<T extends z.ZodTypeAny>(
  * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
 const ExtensionsSchema = z.object({
+  settings: z.record(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
+    .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
   help: z.object({ path: z.string().min(1) }).strict()
     .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),

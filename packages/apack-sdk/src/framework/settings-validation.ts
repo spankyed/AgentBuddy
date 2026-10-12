@@ -2,6 +2,13 @@ import { Ajv, type ErrorObject } from 'ajv';
 import type { SettingsDefinition, SettingsProblem, SettingsSchema, SettingsValidator } from './settings-definition.ts';
 import { hasOwn } from '../utils/shared.ts';
 
+/** @internal Preserve value paths when build tools report invalid declared defaults. */
+export class _SettingsDefaultsError extends Error {
+  constructor(readonly problems: readonly SettingsProblem[]) {
+    super(`Invalid settings defaults: ${problems.map(problem => `${problem.path.join('.') || 'root'}: ${problem.message}`).join('; ')}`);
+  }
+}
+
 /**
  * @internal Host/build-only: compile once when declarations change, with no pack execution or I/O.
  * Each definition has its own reference registry, so two packs may use the same schema identifier.
@@ -9,7 +16,7 @@ import { hasOwn } from '../utils/shared.ts';
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator {
   const schemaProblems = jsonProblems(definition.schema);
   if (schemaProblems.length) throw new Error(`Settings schema must be JSON data: ${schemaProblems[0].message}`);
-  if (definition.schema.type !== 'object') throw new Error('Settings schema must declare an object at its root');
+  if (definition.schema?.type !== 'object') throw new Error('Settings schema must declare an object at its root');
   checkReferences(definition.schema);
   const ajv = new Ajv({ strict: true, allErrors: true, useDefaults: false, coerceTypes: false, removeAdditional: false });
   const validate = ajv.compile(definition.schema);
@@ -25,7 +32,7 @@ export function _compileSettingsDefinition(definition: SettingsDefinition): Sett
   };
   const problems = validator.validate(definition.defaults);
   if (problems.length) {
-    throw new Error(`Invalid settings defaults: ${problems.map(problem => `${problem.path.join('.') || 'root'}: ${problem.message}`).join('; ')}`);
+    throw new _SettingsDefaultsError(problems);
   }
   return validator;
 }

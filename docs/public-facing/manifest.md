@@ -39,12 +39,45 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `blocks` | `Record<string, { kind?, fe?, be? }>` | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
 | `commands` | `{ <name>: { placeholder } }` | Slash commands the pack adds to the chat, keyed by the name typed after the `/` (`^[a-z][a-z0-9-]*$`). A pack cannot declare one twice, the name being the key; across packs it must still be unique, and `apack pack build` fails when a dependency, or anything it depends on, declares it. `placeholder` is what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
+| `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
 | `fe` | `object` | Frontend contributions; see [Frontend configuration](#frontend-configuration) |
 
 **A setting that only changes what `apack pack build` produces is not one of these**: it goes in `build`, which
 holds `opaqueDeps` and `bundleUi`. `extensions` is what the pack gives the app, and a packaging choice gives
 it nothing.
+
+### Pack settings declarations
+
+Pack groups are keyed by a local ID: a lowercase letter followed by letters or digits. The catalog
+keeps each group's owner, so two packs can both declare `assistant` independently.
+
+```json
+{
+  "extensions": {
+    "settings": {
+      "assistant": {
+        "title": "Assistant",
+        "schema": {
+          "type": "object",
+          "properties": { "name": { "type": "string" } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "defaults": { "name": "" }
+      }
+    }
+  }
+}
+```
+
+Require explicit `schema` and `defaults`. Schemas use draft-07 and document-local references; validation
+does not coerce values, populate schema default annotations or remove properties. Optional metadata is
+`title`, `description`, `form` (a custom component's source path), and `access` (`shared` or `owner`).
+
+Current implementation: declarations are validated and readable as catalog data without activation.
+Pack group value handles, access enforcement and custom-form binding are still being integrated.
+The feature settings interface below remains the current feature API until its migration is complete.
 
 ## Features
 

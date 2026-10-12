@@ -347,7 +347,7 @@ describe('the snapshot format', () => {
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
-    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, help: true, services: true, steps: true,
+    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, help: true, services: true, settings: true, steps: true,
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
@@ -415,7 +415,7 @@ describe('the snapshot format', () => {
           'entities', 'entityShapes', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
           'permissions', 'relKinds', 'settingsSections', 'version',
         ],
-        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'steps'],
+        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
