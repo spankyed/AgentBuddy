@@ -741,3 +741,7 @@ Downloads must have a matching published SHA-256 checksum. An incomplete latest 
 `apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
 
 `apack profiles --json [--all] [--sizes]` emits `environments` and `profiles` arrays, including their paths and running state. Temporary profiles require `--all`; numeric byte sizes require `--sizes`. JSON is supported for listings only.
+
+`apack pack list --json [--profile <name>]` emits one object containing the selected profile, packs directory, and installed packs with their identity, version, enabled state, dependencies, and recorded update source. Unreadable manifests or installation records fail explicitly.
+
+Reporting commands emit one JSON object on stdout when `--json` is selected. Errors go to stderr and exit nonzero. Human-readable output remains the default.
