@@ -76,6 +76,7 @@ async function stubRelease(source: string) {
     if (url.endsWith('.sha256')) return new Response(`${sha256}  ${name}\n`, { status: 200 });
     return new Response(fs.readFileSync(file), { status: 200 });
   }));
+  return sha256;
 }
 
 /** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
@@ -125,6 +126,27 @@ describe('installing over a pack that is already running', () => {
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
     } finally {
       system.stop();
+    }
+  });
+});
+
+describe('install provenance for updates', () => {
+  it.each([
+    [undefined, 'fixture/pack@v1.0.0', 'fixture/pack@v1.0.0'],
+    ['github', 'fixture/pack@v1.0.0', 'fixture/pack@v1.0.0'],
+    [undefined, 'http-tools/pack', 'http-tools/pack'],
+    ['github', 'https://example.test/release.tgz', undefined],
+    ['url', 'https://example.test/release.tgz', undefined],
+  ])('records the actual route for %s: %s', async (sourceKind, packSlug, installedFrom) => {
+    const sha256 = await stubRelease(packSource('1.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug, sourceKind, sha256 });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_INSTALL_COMPLETE'));
+      expect(readInstalledPacks().find(pack => pack.id === PACK_ID)?.installedFrom).toBe(installedFrom);
+    } finally {
+      system.stop();
+      vi.unstubAllGlobals();
     }
   });
 });

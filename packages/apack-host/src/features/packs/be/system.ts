@@ -8,7 +8,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { HOST_PACK_ID, PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
-import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../../../packs/installer.ts';
+import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
 import type { PackExtensions, InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
 import { packFrontendFiles, PACK_LAYOUT } from '../../../packs/layout.ts';
 import { installedPacks, type InstalledPack } from '../../../packs/discovery.ts';
@@ -49,18 +49,6 @@ function mergeExtensions(base: Omit<InstalledPackSummary, keyof PackExtensions>,
 }
 
 /**
- * The packs the view lists, read from one place: the installed packs, which is all of them, since the app
- * installs the packs it ships. So every pack's version comes from its own manifest and every one has an
- * install date — a second list built from the registry could give neither.
- */
-/**
- * The decisions the last apply left the user about this pack's content, oldest key first so the list is
- * stable between asks.
- *
- * Derived from the pack's `AppliedContent` on every list, rather than kept anywhere a second time: the
- * record is where an unresolved offer lives, and an apply between two lists is why one of them is shorter.
- */
-/**
  * Where a pack's compiled content is: under the directory it is installed in, which the host put it in.
  *
  * A pack does not say where its data is, here as in `applyPacks`, so restoring one item reads the same
@@ -72,6 +60,7 @@ function compiledDirOf(packId: string): string {
   return path.join(pack.dir, PACK_LAYOUT.contentDir);
 }
 
+/** The last apply's unresolved offers and kept items, derived from AppliedContent in stable key order. */
 function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOffers' | 'contentKept'> {
   const items = Object.entries(appliedContent.get(packId).items).sort(([a], [b]) => a.localeCompare(b));
   return {
@@ -80,6 +69,7 @@ function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOff
   };
 }
 
+/** The view lists installed packs, including disabled ones; the registry supplies runtime contributions. */
 function toInstalledPackSummaries(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): InstalledPackSummary[] {
   return packs.map(({ manifest, dir, record }) => {
     const entities = manifest.entities ?? {};
@@ -281,7 +271,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         broadcastToPlugin('packs', { type: 'PACK_INSTALL_STARTED' as const, packSlug });
 
-        const isGitHub = !ev.sourceKind && !packSlug.startsWith('http') && packSlug.includes('/');
+        const isGitHub = resolveInstallSourceKind(packSlug, ev.sourceKind) === 'github';
         // The id of the running pack this install tore down, which a slug or a URL doesn't carry
         let replacedId: string | undefined;
 

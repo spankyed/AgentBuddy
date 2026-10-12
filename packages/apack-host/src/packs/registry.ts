@@ -171,8 +171,8 @@ export interface PackOrigin {
   /**
    * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
    * the installed copy came from rather than about the pack. Two things read it, both genuinely about
-   * shipping: a pack released with the app has migrations targeting *app* versions (`runAppMigrations`),
-   * and the app will not offer to uninstall what it needs to run (`InstalledPackSummary.canUninstall`).
+   * shipping: the installer updates shipped copies with the app, and the app will not offer to uninstall
+   * what it needs to run (`InstalledPackSummary.canUninstall`). Migration lines are declared by each pack.
    *
    * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
    */

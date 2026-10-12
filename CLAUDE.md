@@ -54,7 +54,7 @@ See [worktree development](docs/reference/worktree-development.md).
 - Keep meaningful machine, execution, compiler and RPC contexts. Use `Args` for operation inputs, `Scope` for ambient dependencies and `Environment` for resolved environment/path information.
 - Name the object or its role (`Summary`, `Metadata`, `Snapshot`, `Definition`, lifecycle stage). A suffix alone is not a defect; preserve useful domain/library vocabulary.
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
-- Check measurable contracts, not retired words. Bare exported `Context` is mechanically checkable; verb and noun choices require reviewing the operation and its API family. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
+- Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
 ## Release metadata
 

@@ -404,14 +404,18 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
   }
 }
 
+/** The route the installer will use, also needed when recording whether GitHub updates are available. */
+export function resolveInstallSourceKind(input: string, sourceKind?: string): 'local' | 'url' | 'github' {
+  if (sourceKind === 'local' || sourceKind === 'url') return sourceKind;
+  return input.startsWith('http://') || input.startsWith('https://') ? 'url' : 'github';
+}
+
 export async function installPack(packSlug: string, sourceKind?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
-  if (sourceKind === 'local') {
+  const route = resolveInstallSourceKind(packSlug, sourceKind);
+  if (route === 'local') {
     return installPackFromLocal(packSlug, targetPacksDir, options);
   }
-  if (sourceKind === 'url') {
-    return installPackFromUrl(packSlug, targetPacksDir, options);
-  }
-  if (packSlug.startsWith('http://') || packSlug.startsWith('https://')) {
+  if (route === 'url') {
     return installPackFromUrl(packSlug, targetPacksDir, options);
   }
   return installPackFromGitHub(packSlug, targetPacksDir, options);

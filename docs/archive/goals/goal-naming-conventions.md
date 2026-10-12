@@ -8,7 +8,7 @@ Implement this goal on the naming-contracts branch in the main checkout. Read CL
 Preserve behavior and stored user-data shapes. Migrate all owned callers, fixtures, templates and
 public reports together; add no compatibility aliases. Commit each completed phase independently.
 Do not publish, push, tag, change release versions or touch production data.
-Finish with focused checks, updated API/facade reports and the full chain. Record outcomes and guards,
+Finish with focused checks, updated API/facade reports and the full chain. Record outcomes,
 then archive this goal and repair links. Settings extraction resumes after this goal completes.
 ```
 
@@ -40,8 +40,9 @@ concepts; their spelling alone does not prove a defect.
 - Keep settings-specific renames in the settings plan; do not rename that surface twice.
 - Distinguish install dispatch kind, local input path and integrity provenance. Keep unrelated source
   fields and persisted value shapes unchanged. Check artifact-format implications independently.
-- Guard bare Context exports. Do not enforce a universal nullable-getter ban: it contradicts familiar
-  key-value and accessor APIs. Verb choices require API-family review, not a spelling check.
+- Review exported Context names and API families in context. Do not enforce a universal nullable-getter
+  ban: it contradicts familiar key-value and accessor APIs. Naming stays review guidance; a compiler
+  scan for one stylistic convention did not justify its cost or maintenance burden.
 
 ## Phases
 
@@ -82,12 +83,11 @@ integrity source and staging options to provenance. Update writers/readers and f
 without aliases. Preserve dispatch and URL inference behavior. Do not touch package release versions.
 Done when local/archive/URL/GitHub dispatch and provenance round-trip tests pass; commit.
 
-### 5. Guard and finish
+### 5. Review and finish
 
-Put the bare Context export check in the existing repository-check suite, including aliases and Vue
-scripts; exclude dependency declarations. Test firing cases and demonstrate enforcement fails when
-the guard is disabled. Review verb choices by API family; do not replace that judgment with a
-nullable-return ban.
+Review exported types, aliases and Vue scripts for owner-qualified names. Review verb choices by API
+family; do not replace that judgment with a nullable-return ban. The initial compiler-backed naming
+guard was removed during follow-up review at the user’s request.
 
 Regenerate affected reports/facade, run focused specs and the full chain including external-pack and
 packaged-authoring checks, review the final diff, record outcomes and archive the goal. Commit.
@@ -104,7 +104,7 @@ Do not use a passing typecheck as proof that a name is a better design.
 - Missing lookup results and runtime side effects are unchanged; required getters still throw.
 - Coherent store, registry and accessor APIs retain conventional getter names. Search/domain-query
   renames have a concrete semantic reason; nullability alone is insufficient.
-- A bare exported Context alias is detected. Qualified RPC/compiler/XState contexts are allowed.
+- Exported Context types and aliases are owner-qualified. Meaningful RPC/compiler/XState contexts remain.
 - Directory/archive, URL and GitHub installs retain routing; provenance survives staging/release.
 - Reports, templates, fixtures and docs use the actual APIs. No compatibility aliases remain.
 - Existing data values and settings behavior are unchanged. No production data is used in tests.
@@ -136,10 +136,10 @@ Every newly enforceable rule has a firing case; semantic noun choices stay revie
   stripping test and 27 real release/archive tests pass, including explicit/inferred URL and GitHub
   routing and local directory/archive routing. The review caught and fixed the renderer’s install field.
 
-- Phase 5: the repository guard checks bare exported Context types, aliases, barrels and Vue scripts,
-  including owned declarations, package tests and untracked owned sources. All five guard tests and scripts typechecks pass. Disabling
-  enforcement makes the three negative tests fail; restoring it makes the suite pass. Getter naming
-  remains semantic review guidance. Final review fixed two stale main environment paths in CLAUDE.md.
+- Phase 5: initially added and tested a compiler-backed Context export guard. Follow-up review found
+  its alias-resolution complexity and several-second repository scan disproportionate to one naming
+  convention; removed the helper and integration spec at the user’s request. Naming remains review
+  guidance. Final review fixed two stale main environment paths in CLAUDE.md.
 
 ## Completion audit
 
@@ -152,8 +152,19 @@ Every newly enforceable rule has a firing case; semantic noun choices stay revie
   behavior and release versions are unchanged. Only optional archive provenance metadata was renamed.
 - `npm run chain -- --all` passed all 30 gated steps in 214.3 seconds, including API/facade reports,
   both unit pools, integration, smoke, external-pack contract/app and packaged-authoring author/app.
-  The opt-in driving harness is outside the regression chain. The final broader guard scan passes
-  all five fixtures/repository checks. The final affected-chain rerun passed seven gates
+  The opt-in driving harness is outside the regression chain. Before the follow-up review, the
+  affected-chain rerun passed seven gates
   in 30.9 seconds, with the other 23 cached from the full run.
 - Archived here and repaired incoming links in CLAUDE.md, the goal index and active roadmap plans.
   Settings-specific naming remains in the settings workstream. No production data was used.
+
+## Follow-up review
+
+- The installer and update tracking used separate source-kind inference. Explicit GitHub installs
+  and GitHub owners starting with `http` installed correctly but lost `installedFrom`, preventing
+  update checks. Both now use one routing resolver. Five regression cases cover explicit/inferred
+  GitHub and URL routing; all 75 focused install/layout tests pass. Stored field names are unchanged.
+- Removed the naming guard and its integration spec. Corrected a stale migration-ownership comment
+  and moved misplaced pack-summary documentation to the functions it describes.
+- Final validation after these fixes and guard removal: `npm run chain` passed all gates (10 run,
+  20 cached), including both unit pools, integration and packaged-authoring author/app checks.
