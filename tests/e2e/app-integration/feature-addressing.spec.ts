@@ -4,7 +4,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '@apackdev/testing';
 
-type SettingsUpdate = { entityType: 'plugin'; label: `${string}/${string}`; path: string[]; value: unknown };
+type SettingsUpdate = { entityType: 'feature'; label: `${string}/${string}`; path: string[]; value: unknown };
 
 /** Changes a setting the way the Settings UI does: through the settings plugin, naming the plugin by its ref */
 async function updateSetting(page: Page, update: SettingsUpdate): Promise<void> {
@@ -28,7 +28,7 @@ async function recordEvents(page: Page, pluginId: string): Promise<() => Promise
 // The settings system tells the feature's system and plugin; the harness specs see the system half
 test("a plugin setting changed in Settings reaches the feature's plugin, once", async ({ appPage }) => {
   const events = await recordEvents(appPage, 'default-setup/code');
-  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+  await updateSetting(appPage, { entityType: 'feature', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
   await expect.poll(async () => (await events()).filter((type) => type === 'FEATURE_SETTINGS_UPDATED').length).toBe(1);
   await appPage.waitForTimeout(300);
   expect((await events()).filter((type) => type === 'FEATURE_SETTINGS_UPDATED')).toHaveLength(1);
@@ -37,7 +37,7 @@ test("a plugin setting changed in Settings reaches the feature's plugin, once", 
 // Settings → Secrets shows the code plugin's CLI path overrides, read from the settings by the plugin's name
 test('a plugin setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
   const override = `/e2e/addressing/${Date.now()}/claude`;
-  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { 'claude-code': override } });
+  await updateSetting(appPage, { entityType: 'feature', label: 'default-setup/code', path: ['cliPaths'], value: { 'claude-code': override } });
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('host/settings');
@@ -53,15 +53,15 @@ test('a plugin setting changed in Settings is what its canvas reads', async ({ a
 // only the running app shows: the Logs canvas renders the link once a source is excluded, and clicking it navigates
 test('a link to another plugin opens it and hands it the events', async ({ app, appPage }) => {
   // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs plugin
-  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/logs', path: ['excludedSources'], value: ['e2e-excluded'] });
+  await updateSetting(appPage, { entityType: 'feature', label: 'default-setup/logs', path: ['excludedSources'], value: ['e2e-excluded'] });
   await app.navigate('default-setup/logs');
   await appPage.getByTitle('Click to manage excluded sources').click();
 
   await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.activePlugin.id))
     .toBe('host/settings');
   const settings = () => appPage.evaluate(() => {
-    const { activeTab, selectedPluginId } = (window as any).applicationState.system.get('host/settings').getSnapshot().context;
-    return { activeTab, selectedPluginId };
+    const { activeTab, selectedFeatureId } = (window as any).applicationState.system.get('host/settings').getSnapshot().context;
+    return { activeTab, selectedFeatureId };
   });
-  await expect.poll(settings).toEqual({ activeTab: 'plugins', selectedPluginId: 'default-setup/logs' });
+  await expect.poll(settings).toEqual({ activeTab: 'features', selectedFeatureId: 'default-setup/logs' });
 });

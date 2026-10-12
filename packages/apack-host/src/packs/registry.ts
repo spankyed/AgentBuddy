@@ -307,7 +307,7 @@ function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unkno
   if (typeof id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];
   return Object.entries(features as Record<string, { settings?: unknown; plugin?: unknown } | null>)
     .flatMap(([featureId, feature]) => {
-      const ref = feature && (feature.settings || feature.plugin) ? `${id}/${featureId}` : undefined;
+      const ref = feature && feature.settings ? `${id}/${featureId}` : undefined;
       return ref && splitRef(ref) ? [ref as FeatureRef] : [];
     });
 }
@@ -550,9 +550,9 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return map;
   }
 
-  /** The refs of the registered features that can have settings: those declaring defaults, and those with a plugin */
+  /** The refs of the registered features that can have settings: those declaring settings */
   const registeredSettingsRefs = derived(() =>
-    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings || feature.plugin).map(({ ref }) => ref)));
+    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)));
   /** The same of every pack in the packs dir, from its manifest: read again only when the dir's entries change */
   const installedSettingsRefs = derived(
     () => {

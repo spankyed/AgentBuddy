@@ -1,3 +1,4 @@
+import { z } from 'zod';
 // Registries are instances: two in one process hold their own packs, and the SDK's lookups read the bound one.
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
@@ -19,7 +20,7 @@ const pack = (id: string, role: string, step: string, service: string, featureId
       designation: role,
       system: { machine: {} as never, receives: [] },
       plugin: { receives: [] },
-      settings: { plugins: { [featureId]: { from: id } } },
+      settings: { defaults: { from: id }, schema: z.record(z.unknown()) },
     },
   },
 });
@@ -43,8 +44,8 @@ describe('two registries in one process', () => {
     expect(Object.keys(bound.getRegisteredServices())).toEqual(['memoService']);
     expect(Object.keys(other.getRegisteredServices())).toEqual(['cardService']);
 
-    expect(bound.settingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { from: 'memo-pack' } } });
-    expect(other.settingsDefaults().settings).toEqual({ plugins: { 'card-pack/cards': { from: 'card-pack' } } });
+    expect(bound.settingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
+    expect(other.settingsDefaults().settings).toEqual({ features: { 'card-pack/cards': { from: 'card-pack' } } });
   });
 
   it('let the SDK read only the bound one', () => {
@@ -54,7 +55,7 @@ describe('two registries in one process', () => {
     expect(stepRegistry.has('card_step')).toBe(false);
     expect(services.memoService).toEqual({ from: 'memo-pack' });
     expect(services.cardService).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { from: 'memo-pack' } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
   });
 
   it("hold their own loaded packs, not one list between them", () => {

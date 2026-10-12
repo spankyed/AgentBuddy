@@ -6,7 +6,7 @@ import type { SettingsData } from './types.ts';
 import baseSettings from '../content/default-settings.ts';
 
 /**
- * The base settings this pack contributes: its `general` and `assistant` sections, with no plugin's slice.
+ * The base settings this pack contributes: its `general` and `assistant` sections, with no feature's slice.
  *
  * **An import, because this is this pack's own source, and not a content entry.** `content.sources` is for entries
  * that import rows into the database, and these are never written to one: the settings row holds only what
@@ -14,24 +14,24 @@ import baseSettings from '../content/default-settings.ts';
  * pack compiling its own content to disk only to read it back needs the build to have run before the app
  * can start, which is the cost an import avoids.
  *
- * `assertNoPluginSlice` travels with it, being a claim about this file rather than about compiling: a
+ * `assertNoFeatureSlice` travels with it, being a claim about this file rather than about compiling: a
  * feature declares its own settings, and whether its tab shows, in `features[].settings`.
  */
 export function getBaseSettings(): SettingsData {
-  assertNoPluginSlice(baseSettings, 'src/content/default-settings.ts');
+  assertNoFeatureSlice(baseSettings, 'src/content/default-settings.ts');
   return baseSettings;
 }
 
 /**
- * Refuses base settings that set a plugin's slice, including the app shell's old `_meta`.
+ * Refuses base settings that set a feature's slice, including the app shell's old `_meta`.
  *
  * A function rather than two lines inside the getter, because the getter reads a static import and a spec has
  * no way to hand it a bad one: the claim is about any base file, so it is checked where it can be asked.
  */
-export function assertNoPluginSlice(settings: unknown, source: string): void {
-  const plugins = isPlainObject(settings) ? (settings as { plugins?: unknown }).plugins : undefined;
-  if (isPlainObject(plugins) && Object.keys(plugins).length > 0) {
-    throw new Error(`${source} sets a plugin's settings: a feature declares its own, and whether its tab `
+export function assertNoFeatureSlice(settings: unknown, source: string): void {
+  const features = isPlainObject(settings) ? (settings as { features?: unknown }).features : undefined;
+  if (isPlainObject(features) && Object.keys(features).length > 0) {
+    throw new Error(`${source} sets a feature's settings: a feature declares its own, and whether its tab `
       + 'shows, in features[].settings');
   }
 }

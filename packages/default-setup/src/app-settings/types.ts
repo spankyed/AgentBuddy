@@ -5,7 +5,7 @@ import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 
 export interface SettingsData {
   general: GeneralSettings;
-  plugins: PluginSettings;
+  features: FeatureSettingsData;
   assistant: AssistantSettings;
 }
 
@@ -43,8 +43,8 @@ export interface Project {
   color: string
 }
 
-export interface PluginSettings {
-  [pluginRef: string]: any;
+export interface FeatureSettingsData {
+  [featureRef: string]: any;
 }
 
 export interface AssistantSettings {

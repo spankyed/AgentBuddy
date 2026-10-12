@@ -494,7 +494,7 @@ export const ManifestSchema = z.object({
   help: z.object({ path: z.string().min(1) }).strict()
     .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   settingsSections: ExportTargetSchema
-    .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
+    .describe('Sections of the app settings this pack owns, with their defaults, beside the "features" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),

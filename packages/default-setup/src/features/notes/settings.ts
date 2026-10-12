@@ -1,9 +1,12 @@
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+export default defineFeatureSettings({
   visible: false,
-  plugins: {
-    notes: {
-      tasklistPanelPosition: 'left',
-      showCollapseIcon: true,
-    }
-  }
-}
+  schema: z
+    .object({
+      tasklistPanelPosition: z.enum(['left', 'right']).default('left'),
+      showCollapseIcon: z.boolean().default(true),
+    })
+    .strict(),
+});

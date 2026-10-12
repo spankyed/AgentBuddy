@@ -119,7 +119,7 @@ The Settings tab, laid out as the Packs view is: the canvas, its three tabs (Gen
 components, over the host's `createSettingsMachine` (`@apackdev/host/fe`). The settings themselves are the app's
 (`packages/apack-host/src/features/settings/`) — this is only what draws them. Two sections a pack contributes,
 `general` and `assistant`, are default-setup's content; the components read them as data and the host stores them
-opaquely. `plugin-settings.ts` reads a slice by name from settings in hand, `save.ts` is the composable the forms
+opaquely. `feature-settings.ts` reads a slice by name from settings in hand, `save.ts` is the composable the forms
 use for a change and whether the store stored it, and the Plugins tab renders each plugin's own `settings` component
 in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin it configures.
 

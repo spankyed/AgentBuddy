@@ -14,11 +14,11 @@ describe('resetting settings', () => {
   it("keeps the app's own state", () => {
     services.appData.completeOnboarding();
     untypedTx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('failedAgainst', { 'memo-pack': 'provider:' });
-    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest');
+    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created');
 
     services.settings.reset();
 
-    expect(services.settings.forFeature(ref('threads'))).not.toMatchObject({ sort: 'oldest' });
+    expect(services.settings.forFeature(ref('threads'))).not.toMatchObject({ recentThreadsSortOrder: 'created' });
     expect(appState()).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },

@@ -42,6 +42,7 @@ function dependentPack(spec: string): string {
 import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
   write(root, 'tests/setup.ts', `
+import { z } from 'zod';
 import { setupPackTests } from '@apackdev/testing/harness';
 import { memos } from './memos-system';
 await setupPackTests({
@@ -52,7 +53,7 @@ await setupPackTests({
       // A hand-written registration declares what its plugin receives, as a generated one does: the bus
       // drops a send to a plugin nothing declares
       memos: { system: { machine: memos, receives: ['SAVE', 'NOTIFY'] }, plugin: { receives: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] } },
-      widgets: { settings: { plugins: { widgets: { size: 3 } } } },
+      widgets: { settings: { defaults: { size: 3 }, schema: z.record(z.unknown()) } },
     },
   },
 });`);
@@ -93,12 +94,12 @@ it("connects to default-setup's notes and the app's settings", async () => {
   const connected = await app.nextEmit('default-setup/notes', 'NOTES_CONNECTED');
   expect(connected.data).toBeDefined();
   const loaded = await app.nextEmit('host/settings', 'SETTINGS_LOADED');
-  expect(loaded.data).toMatchObject({ general: expect.any(Object), plugins: expect.any(Object) });
+  expect(loaded.data).toMatchObject({ general: expect.any(Object), features: expect.any(Object) });
   expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach the app's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @apackdev/ears and services.repository alike
-  expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack/widgets']).toEqual({ size: 3 });
+  expect((loaded.data as { features: Record<string, unknown> }).features['dependent-pack/widgets']).toEqual({ size: 3 });
   const noteQueries = Reflect.get(repository, 'noteQueries');
   expect(noteQueries).toBeDefined();
   expect(Reflect.get(services.repository, 'noteQueries')).toBe(noteQueries);

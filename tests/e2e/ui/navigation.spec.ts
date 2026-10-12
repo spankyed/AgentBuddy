@@ -20,9 +20,9 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
   const withSettings: string[] = await appPage.evaluate(() =>
     (window as any).applicationState.getSnapshot().context.plugins.filter((p: any) => p.settings).map((p: any) => p.id));
   expect(withSettings.length).toBeGreaterThan(5);
-  await appPage.evaluate((ref) => (window as any).applicationState.system.get(ref).send({ type: 'TAB.SELECT', tab: 'plugins' }), settings);
+  await appPage.evaluate((ref) => (window as any).applicationState.system.get(ref).send({ type: 'TAB.SELECT', tab: 'features' }), settings);
   for (const pluginId of withSettings) {
-    await appPage.evaluate(([ref, id]) => (window as any).applicationState.system.get(ref).send({ type: 'PLUGIN.SELECT', pluginId: id }), [settings, pluginId]);
+    await appPage.evaluate(([ref, id]) => (window as any).applicationState.system.get(ref).send({ type: 'FEATURE.SELECT', featureId: id }), [settings, pluginId]);
     await appPage.waitForTimeout(150);
   }
 

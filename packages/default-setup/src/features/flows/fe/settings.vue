@@ -294,7 +294,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  untypedOpenPlugin(HOST_SETTINGS, { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
+  untypedOpenPlugin(HOST_SETTINGS, { type: 'FEATURE.SELECT', featureId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

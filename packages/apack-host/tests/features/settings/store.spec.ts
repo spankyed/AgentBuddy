@@ -1,13 +1,14 @@
+import { z } from 'zod';
 // The one Settings row and the one writer to it. What the store guarantees: the row holds only the user's changes,
 // the settings in effect are the defaults with those over them, every write is checked once, and the listeners hear
 // each change in the order it happened — including the two that bracket a wholesale replacement.
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { untypedQx } from '@apackdev/ears';
+import { untypedQx, untypedTx } from '@apackdev/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import type { EARS } from '@apackdev/sdk';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { registry } from '../../packs/runtime/test-host.ts';
-import { PLUGINS_SECTION, SettingsRefusedError } from '../../../src/features/settings/be/document.ts';
+import { FEATURES_SECTION, SettingsRefusedError } from '../../../src/features/settings/be/document.ts';
 import { createSettingsStore, SETTINGS_ENTITY, type SettingsDocument } from '../../../src/features/settings/be/store.ts';
 
 const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
@@ -17,14 +18,14 @@ const THREADS = 'default-setup/threads';
 // accept one — the same lookup the app uses (`getFeaturesWithSettings`)
 const pack: PackRegistration = {
   id: 'default-setup',
-  features: { threads: { plugin: { receives: [] }, settings: { plugins: { threads: { limit: 10, sort: 'newest' } } } } },
+  features: { threads: { plugin: { receives: [] }, settings: { defaults: { limit: 10, sort: 'newest' }, schema: z.object({ limit: z.number().int().positive(), sort: z.enum(['newest', 'oldest']) }).strict() } } },
 };
 registry.registerPack(pack);
 afterAll(() => registry.unregisterPack(pack.id));
 
 /** The defaults the app composes: one registered section, and one feature's own settings */
 const DEFAULTS = (): SettingsDocument => ({
-  [PLUGINS_SECTION]: { [THREADS]: { limit: 10, sort: 'newest' } },
+  [FEATURES_SECTION]: { [THREADS]: { limit: 10, sort: 'newest' } },
   general: { application: { hotkeys: {} } },
 });
 
@@ -48,12 +49,12 @@ describe('what is stored and what is in effect', () => {
 
     expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
     // the row keeps only the change, so a changed default still applies to `limit`
-    expect(store.getStored()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+    expect(store.getStored()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
   });
 
   it('follows a default that changes for a key the user never set', () => {
     let limit = 10;
-    const moving = createSettingsStore({ defaults: () => ({ [PLUGINS_SECTION]: { [THREADS]: { limit } }, general: {} }) });
+    const moving = createSettingsStore({ defaults: () => ({ [FEATURES_SECTION]: { [THREADS]: { limit } }, general: {} }) });
     moving.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
 
     limit = 50;
@@ -76,7 +77,7 @@ describe('the one writer', () => {
   });
 
   it('refuses a replacement whose feature key is not installed', () => {
-    expect(() => store.replaceAll({ [PLUGINS_SECTION]: { 'gone/notes': { x: 1 } } })).toThrow(SettingsRefusedError);
+    expect(() => store.replaceAll({ [FEATURES_SECTION]: { 'gone/notes': { x: 1 } } })).toThrow(SettingsRefusedError);
     expect(store.getStored()).toEqual({});
   });
 
@@ -90,9 +91,9 @@ describe('the one writer', () => {
   });
 
   it('keeps only what a replacement changes from the defaults', () => {
-    store.replaceAll({ [PLUGINS_SECTION]: { [THREADS]: { limit: 10, sort: 'oldest' } }, general: { application: { hotkeys: {} } } });
+    store.replaceAll({ [FEATURES_SECTION]: { [THREADS]: { limit: 10, sort: 'oldest' } }, general: { application: { hotkeys: {} } } });
 
-    expect(store.getStored()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+    expect(store.getStored()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
   });
 
   it('removes a stored value so its default applies again, and does nothing when there is none', () => {
@@ -100,10 +101,10 @@ describe('the one writer', () => {
     const changes: unknown[] = [];
     store.onChange((change) => changes.push(change));
 
-    store.removeStored([PLUGINS_SECTION, THREADS, 'missing']);
+    store.removeStored([FEATURES_SECTION, THREADS, 'missing']);
     expect(changes).toEqual([]); // nothing was there, so nothing was written
 
-    store.removeStored([PLUGINS_SECTION, THREADS, 'sort']);
+    store.removeStored([FEATURES_SECTION, THREADS, 'sort']);
     expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'newest' });
     expect(changes).toEqual(['written']);
   });
@@ -180,7 +181,7 @@ describe('listeners', () => {
     store.onChange(() => { throw new Error('listener blew up'); });
 
     expect(() => store.setFeatureSetting(THREADS as never, ['sort'], 'oldest')).toThrow('listener blew up');
-    expect(rowData()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+    expect(rowData()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
   });
 });
 
@@ -189,7 +190,7 @@ describe('the row', () => {
   // make every reader a writer
   it('is not created by reading the settings', () => {
     expect(store.getStored()).toEqual({});
-    expect(store.getAll()).toMatchObject({ [PLUGINS_SECTION]: {} });
+    expect(store.getAll()).toMatchObject({ [FEATURES_SECTION]: {} });
 
     expect(untypedQx(SETTINGS_ID).pickOne(['data'])).toBeNull();
   });
@@ -198,6 +199,35 @@ describe('the row', () => {
     store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
 
     expect(untypedQx('Settings').ids()).toEqual([SETTINGS_ID]);
-    expect(rowData()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+    expect(rowData()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+  });
+});
+
+
+describe('schema validation at every write', () => {
+  it.each([['limit', '10'], ['limit', -1], ['sort', 'random'], ['unknown', true]])('refuses invalid %s without writing or notifying', (key, value) => {
+    const heard: string[] = [];
+    store.onChange(change => heard.push(change));
+    expect(() => store.setFeatureSetting(THREADS as never, [key], value)).toThrow(SettingsRefusedError);
+    expect(rowData()).toBeUndefined();
+    expect(heard).toEqual([]);
+  });
+
+  it('refuses an invalid JSON replacement atomically', () => {
+    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
+    const before = store.getStored();
+    expect(() => store.replaceAll({ features: { [THREADS]: { limit: 'bad' } }, general: { application: { hotkeys: {} } } })).toThrow(SettingsRefusedError);
+    expect(store.getStored()).toEqual(before);
+  });
+
+  it('allows unrelated edits and removal of untouched legacy fields, but refuses changing them', () => {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { legacy: true, limit: 'old invalid value' } } });
+    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
+    expect(store.getFeatureSettings(THREADS as never)).toMatchObject({ legacy: true, limit: 'old invalid value', sort: 'oldest' });
+    expect(() => store.setFeatureSetting(THREADS as never, ['legacy'], false)).toThrow(SettingsRefusedError);
+    expect(() => store.setFeatureSetting(THREADS as never, ['limit'], 'new invalid value')).toThrow(SettingsRefusedError);
+    store.removeStored(['features', THREADS, 'legacy']);
+    store.removeStored(['features', THREADS, 'limit']);
+    expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
   });
 });

@@ -1,9 +1,12 @@
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+export default defineFeatureSettings({
   visible: false,
-  plugins: {
-    browser: {
-      showBookmarksBar: true,
-      openLinksInApp: true,
-    }
-  }
-}
+  schema: z
+    .object({
+      showBookmarksBar: z.boolean().default(true),
+      openLinksInApp: z.boolean().default(true),
+    })
+    .strict(),
+});

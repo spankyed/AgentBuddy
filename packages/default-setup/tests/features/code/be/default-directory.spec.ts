@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 const setCodeSetting = (key: string, value: unknown) =>
-  app!.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: [key], value });
+  app!.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: [key], value });
 const explorerDirectory = () => (app!.system('code').getSnapshot().context as { baseDirectory: string | null }).baseDirectory;
 
 describe("the code explorer's directory", () => {

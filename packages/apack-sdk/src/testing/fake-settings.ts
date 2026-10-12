@@ -44,14 +44,14 @@ function setIn(node: Record<string, unknown>, path: readonly string[], value: un
  * A `SettingsPort` over an in-memory document, for a test that renders a component using `useSettingsSection`,
  * `useFeatureSettings`, `useSettingsSave` or `updateSettings`:
  *
- *     const settings = fakeSettings({ general: { projects: [] }, plugins: {} });
+ *     const settings = fakeSettings({ general: { projects: [] }, features: {} });
  *     afterAll(startFeTestRuntime({ settings }));
  *
  * A change reaches the document it holds, so what a component writes is what the next read returns, and `updates`
  * records each one as it was addressed.
  */
 export function fakeSettings(document: Record<string, unknown> = {}): FakeSettings {
-  let doc = { plugins: {}, ...document } as Record<string, unknown>;
+  let doc = { features: {}, ...document } as Record<string, unknown>;
   let save: SettingsSaveStatus = { status: 'idle', problems: [] };
   const updates: FakeSettingsUpdate[] = [];
   const resets: FakeSettingsReset[] = [];
@@ -62,7 +62,7 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
     updates,
     resets,
     section: <T,>(name: string) => doc[name] as T | undefined,
-    feature: <T,>(ref: FeatureRef) => (doc.plugins as Record<string, unknown> | undefined)?.[ref] as T | undefined,
+    feature: <T,>(ref: FeatureRef) => (doc.features as Record<string, unknown> | undefined)?.[ref] as T | undefined,
     saveStatus: () => save,
     subscribe(listener) {
       listeners.add(listener);
@@ -70,7 +70,7 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
     },
     update(target, path, value) {
       updates.push({ target, path: [...path], value });
-      const at = 'section' in target ? [target.section, ...path] : ['plugins', target.feature, ...path];
+      const at = 'section' in target ? [target.section, ...path] : ['features', target.feature, ...path];
       doc = setIn(doc, at, value);
       save = { status: 'saved', problems: [] };
       tell();
@@ -82,17 +82,17 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
      */
     reset(target) {
       resets.push({ ...(target && { target }) });
-      if (!target) doc = { plugins: {} };
+      if (!target) doc = { features: {} };
       else if ('section' in target) doc = Object.fromEntries(Object.entries(doc).filter(([key]) => key !== target.section));
       else {
-        const plugins = Object.entries((doc.plugins ?? {}) as Record<string, unknown>).filter(([ref]) => ref !== target.feature);
-        doc = { ...doc, plugins: Object.fromEntries(plugins) };
+        const features = Object.entries((doc.features ?? {}) as Record<string, unknown>).filter(([ref]) => ref !== target.feature);
+        doc = { ...doc, features: Object.fromEntries(features) };
       }
       save = { status: 'saved', problems: [] };
       tell();
     },
     set(next) {
-      doc = { plugins: {}, ...next };
+      doc = { features: {}, ...next };
       tell();
     },
     answer(status) {

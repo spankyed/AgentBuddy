@@ -17,7 +17,7 @@ const document = (): Record<string, unknown> =>
 export const settingsPort: SettingsPort = {
   section: <T,>(name: string) => document()[name] as T | undefined,
 
-  feature: <T,>(ref: FeatureRef) => (document().plugins as Record<string, unknown> | undefined)?.[ref] as T | undefined,
+  feature: <T,>(ref: FeatureRef) => (document().features as Record<string, unknown> | undefined)?.[ref] as T | undefined,
 
   saveStatus: (): SettingsSaveStatus =>
     (view()?.getSnapshot()?.context?.save as SettingsSaveStatus | undefined) ?? { status: 'idle', problems: [] },
@@ -39,8 +39,8 @@ export const settingsPort: SettingsPort = {
 };
 
 /** The view's own event shape: a section by its name, a feature by its ref */
-function addressed(target: SettingsTarget): { entityType: 'section' | 'plugin'; label: string } {
+function addressed(target: SettingsTarget): { entityType: 'section' | 'feature'; label: string } {
   return 'section' in target
     ? { entityType: 'section', label: target.section }
-    : { entityType: 'plugin', label: target.feature };
+    : { entityType: 'feature', label: target.feature };
 }

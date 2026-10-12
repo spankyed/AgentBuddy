@@ -1,3 +1,4 @@
+import { z } from 'zod';
 // What bus.send accepts: each registered system's incoming events, kept current by registration itself.
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
@@ -109,7 +110,7 @@ describe('a pack registering', () => {
     });
     registry.registerPack({
       id: 'memo-pack',
-      features: { memos: { ...plugin(['MEMO_ADDED']), settings: { plugins: { memos: { sort: 'newest' } } } } },
+      features: { memos: { ...plugin(['MEMO_ADDED']), settings: { defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } } },
     });
     stop();
     expect(seen).toEqual(receives('MEMO_ADDED'));

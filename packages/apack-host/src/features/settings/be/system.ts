@@ -9,7 +9,7 @@ import { detectAllArrayChanges, errorMessage } from '@apackdev/sdk/utils/pure';
 import { services } from '@apackdev/sdk/services';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
-import { PLUGINS_SECTION, SettingsRefusedError } from './document.ts';
+import { FEATURES_SECTION, SettingsRefusedError } from './document.ts';
 import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
 
@@ -21,7 +21,7 @@ const APP_HOTKEYS_PATH = ['general', 'application', 'hotkeys'] as const;
 
 
 /**
- * The application hotkeys, from the `general` section a pack contributes. Every section but `plugins` is a pack's
+ * The application hotkeys, from the `general` section a pack contributes. Every section but `features` is a pack's
  * and opaque to the host, so `unknown` is what it can read and this is where it takes the pack's word for the
  * shape. Absent reads as none, rather than as `undefined` wearing the type the shell's context declares.
  */
@@ -49,7 +49,7 @@ function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 
 }
 
 /** Each plugin's settings as they apply: what features were last told */
-const appliedPluginSettings = (): Record<string, unknown> => ({ ...services.settings.getAll<SettingsDocument>().plugins });
+const appliedFeatureSettings = (): Record<string, unknown> => ({ ...services.settings.getAll<SettingsDocument>().features });
 
 /** What each feature was last told of its settings, by plugin ref */
 /**
@@ -103,7 +103,7 @@ export const settingsSystem = setup({
       sendSecrets();
     },
     
-    rememberAppliedSettings: assign({ applied: () => appliedPluginSettings() }),
+    rememberAppliedSettings: assign({ applied: () => appliedFeatureSettings() }),
 
     /**
      * Tells each feature whose settings now differ from what it was last told, whatever changed them: a setting, the
@@ -111,7 +111,7 @@ export const settingsSystem = setup({
      */
     tellChangedFeatures: assign({
       applied: ({ context }) => {
-        const now = appliedPluginSettings();
+        const now = appliedFeatureSettings();
         for (const feature of new Set([...Object.keys(context.applied), ...Object.keys(now)])) {
           const [before, after] = [context.applied[feature], now[feature]];
           if (!splitRef(feature) || JSON.stringify(before) === JSON.stringify(after)) continue;
@@ -132,7 +132,7 @@ export const settingsSystem = setup({
      */
     tellEveryFeature: assign({
       applied: () => {
-        const now = appliedPluginSettings();
+        const now = appliedFeatureSettings();
         for (const [feature, settings] of Object.entries(now)) {
           if (!splitRef(feature)) continue;
           const to = feature as FeatureRef;
@@ -177,7 +177,7 @@ export const settingsSystem = setup({
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       const outcome = ((): SettingsAnswer => {
         try {
-          if (ev.entityType === 'plugin') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
+          if (ev.entityType === 'feature') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
           else services.settings.setInSection(ev.label, ev.path, ev.value);
         } catch (error) {
           return refusal(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
@@ -215,7 +215,7 @@ export const settingsSystem = setup({
           // it — and it is why this needs no new capability: `removeStored` has always been the narrow door,
           // reached until now only by migrations.
           if (!target) services.settings.reset();
-          else if (target.entityType === 'plugin') services.settings.removeStored([PLUGINS_SECTION, target.label]);
+          else if (target.entityType === 'feature') services.settings.removeStored([FEATURES_SECTION, target.label]);
           else services.settings.removeStored([target.label]);
         } catch (error) {
           return refusal(error, target

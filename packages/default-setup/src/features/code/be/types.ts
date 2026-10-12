@@ -1,7 +1,6 @@
 import type { GitRepository } from './services/git.ts';
 import type { GitWatcherService } from './services/gitwatcher.ts';
 import { EARS } from '#generated/ears.ts'
-import type { KeyboardShortcut } from '@apackdev/sdk/types'
 
 export interface FileInfo {
   name: string
@@ -262,33 +261,7 @@ export interface TerminalScript {
 }
 
 // Settings types
-export interface CodeSettings {
-  hotkeys: {
-    openTerminal?: KeyboardShortcut | null;
-    openTerminalTab?: KeyboardShortcut | null;
-    navigatePrevPanel?: KeyboardShortcut | null;
-    navigateNextPanel?: KeyboardShortcut | null;
-    focusSearch?: KeyboardShortcut | null;
-    [key: string]: KeyboardShortcut | null | undefined;
-  };
-  restoreTerminals?: boolean;
-  defaultBaseDirectory?: string | null;
-  baseDirectory?: string | null;
-  enableShellIntegration?: boolean;
-  confirmTerminalClose?: boolean;
-  closeTerminalOnTabClose?: boolean;
-  maxTerminals?: number;
-  mdEditorDefault?: boolean;
-  enablePreview?: boolean;
-  autoFetchRemote?: boolean;
-  autoFetchIntervalSeconds?: number;
-  terminalScripts?: TerminalScript[];
-  showStashes?: boolean;
-  showCommits?: boolean;
-  showWorktrees?: boolean;
-  /** Paths to the CLIs the app runs; blank or missing means auto-detect */
-  cliPaths?: Partial<Record<'copilot' | 'claude-code' | 'codex' | 'gh', string>>;
-}
+export type CodeSettings = typeof import('../settings.ts').default.defaults;
 
 export type CodeConnectedData = {
   baseDirectory: string | null;

@@ -2,21 +2,21 @@
   <div class="flex h-full">
     <!-- Navigation Sidebar -->
     <div ref="sidebarRef" class="w-64 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
-      <h3 class="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Plugins with Settings</h3>
-      <div v-if="pluginsWithSettings.length === 0" class="px-3 py-6 text-center">
-        <p class="text-sm text-neutral-500">No plugins have settings configured yet</p>
+      <h3 class="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Features with Settings</h3>
+      <div v-if="featuresWithSettings.length === 0" class="px-3 py-6 text-center">
+        <p class="text-sm text-neutral-500">No features have settings configured yet</p>
       </div>
       <div
-        v-for="plugin in pluginsWithSettings"
+        v-for="plugin in featuresWithSettings"
         :key="plugin.id"
-        :data-active="selectedPlugin?.id === plugin.id"
+        :data-active="selectedFeature?.id === plugin.id"
         class="flex items-center gap-1 mb-0.5"
       >
         <button
-          @click="selectPlugin(plugin.id)"
+          @click="selectFeature(plugin.id)"
           :class="[
             'flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-            selectedPlugin?.id === plugin.id
+            selectedFeature?.id === plugin.id
               ? 'bg-blue-500/20 text-blue-400'
               : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
           ]"
@@ -47,14 +47,14 @@
 
     <!-- Content Area -->
     <div class="flex-1 p-8 overflow-auto">
-      <div v-if="selectedPlugin">
+      <div v-if="selectedFeature">
         <div class="flex items-center gap-3 mb-6">
-          <h2 class="text-xl font-semibold text-white">{{ selectedPlugin.label }} Settings</h2>
-          <button data-testid="feature-help" :aria-label="`Help for ${selectedPlugin.label}`" v-if="hasHelp(selectedPlugin.id)" @click="openFeatureHelp(selectedPlugin.id)" class="text-sm text-neutral-400 underline">Help</button>
+          <h2 class="text-xl font-semibold text-white">{{ selectedFeature.label }} Settings</h2>
+          <button data-testid="feature-help" :aria-label="`Help for ${selectedFeature.label}`" v-if="hasHelp(selectedFeature.id)" @click="openFeatureHelp(selectedFeature.id)" class="text-sm text-neutral-400 underline">Help</button>
           <button
-            v-if="selectedPlugin.id !== settingsPluginId"
-            @click="goToPlugin(selectedPlugin.id)"
-            title="Go to plugin"
+            v-if="selectedFeature.id !== settingsPluginId"
+            @click="goToPlugin(selectedFeature.id)"
+            title="Open feature"
             class="p-1 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
           >
             <ExternalLink class="w-4 h-4" />
@@ -63,17 +63,17 @@
                cannot tell whether the user stored anything — and a reset with nothing stored is a no-op -->
           <button
             @click="showResetDialog = true"
-            title="Reset this plugin's settings to their defaults"
+            title="Reset this feature's settings to their defaults"
             class="ml-auto p-1 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
           >
             <RotateCcw class="w-4 h-4" />
           </button>
         </div>
         <!-- A plugin's settings render as part of that plugin, so usePlugin() there is the plugin's own -->
-        <PluginScope :plugin="selectedPlugin.id" :key="selectedPlugin.id">
+        <PluginScope :plugin="selectedFeature.id" :key="selectedFeature.id">
           <component
-            :is="selectedPlugin.settings"
-            :settings="currentPluginSettings"
+            :is="selectedFeature.settings"
+            :settings="currentFeatureSettings"
             :all-settings="settings"
             @update-setting="handleUpdateSetting"
           />
@@ -94,20 +94,20 @@
       </div>
       <div v-else class="flex flex-col items-center justify-center h-full">
         <Package class="w-16 h-16 text-neutral-700 mb-4" />
-        <p class="text-neutral-400">Select a plugin to configure its settings</p>
+        <p class="text-neutral-400">Select a feature to configure its settings</p>
       </div>
     </div>
 
     <!-- Resetting is removing what the user stored, after which the pack's current defaults apply again — so
          the copy says "defaults" rather than naming values, and a pack whose defaults moved resets to those -->
     <ConfirmationDialog
-      v-if="selectedPlugin"
+      v-if="selectedFeature"
       v-model="showResetDialog"
       title="Reset settings"
-      :description="`Forget your changes to ${selectedPlugin.label}'s settings? Its defaults will apply again.`"
+      :description="`Forget your changes to ${selectedFeature.label}'s settings? Its defaults will apply again.`"
       confirm-text="Reset"
       variant="danger"
-      @confirm="resetSelectedPlugin"
+      @confirm="resetSelectedFeature"
     />
   </div>
 </template>
@@ -130,7 +130,7 @@ const shell = useShell()
 const actor: SettingsState = usePlugin()
 const allPlugins = shell.plugins
 
-const selectedPluginId = useSelector(actor, (state) => state.context.selectedPluginId)
+const selectedFeatureId = useSelector(actor, (state) => state.context.selectedFeatureId)
 const settings = useSelector(actor, (state) => state.context.settings)
 
 const showResetDialog = ref(false)
@@ -138,9 +138,9 @@ const showResetDialog = ref(false)
  * Forgets what the user stored for this plugin. Sent to the view's own actor rather than through
  * `@apackdev/sdk/fe`'s `resetSettings`: that is the door for a pack's component, and this *is* the view.
  */
-function resetSelectedPlugin() {
-  if (!selectedPlugin.value) return
-  actor.send({ type: 'SETTINGS.RESET', target: { entityType: 'plugin', label: selectedPlugin.value.id } })
+function resetSelectedFeature() {
+  if (!selectedFeature.value) return
+  actor.send({ type: 'SETTINGS.RESET', target: { entityType: 'feature', label: selectedFeature.value.id } })
 }
 
 const sidebarRef = ref<HTMLElement | null>(null)
@@ -153,32 +153,32 @@ onUpdated(scrollToActive)
 // Use the settings save status composable
 const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
-// Compute current plugin settings
-const currentPluginSettings = computed(() => {
-  if (!selectedPlugin.value || !settings.value?.plugins) return null
-  return settings.value.plugins[selectedPlugin.value.id]
+// Compute current feature settings
+const currentFeatureSettings = computed(() => {
+  if (!selectedFeature.value || !settings.value?.features) return null
+  return settings.value.features[selectedFeature.value.id]
 })
 
-const pluginsWithSettings = computed(() => {
+const featuresWithSettings = computed(() => {
   return allPlugins.value.filter((plugin) => plugin.settings)
 })
 
 // The first plugin with settings until one is picked
-const selectedPlugin = computed(() =>
-  pluginsWithSettings.value.find((p) => p.id === selectedPluginId.value) ?? pluginsWithSettings.value[0] ?? null
+const selectedFeature = computed(() =>
+  featuresWithSettings.value.find((p) => p.id === selectedFeatureId.value) ?? featuresWithSettings.value[0] ?? null
 )
 
 // A confirmation names the plugin it was opened for, so a change of selection closes it rather than
 // retargeting the reset at whatever is selected when it is confirmed
 watch(
-  () => selectedPlugin.value?.id,
+  () => selectedFeature.value?.id,
   () => {
     showResetDialog.value = false
   }
 )
 
-const selectPlugin = (pluginId: FeatureRef) => {
-  actor.send({ type: 'PLUGIN.SELECT', pluginId })
+const selectFeature = (featureId: FeatureRef) => {
+  actor.send({ type: 'FEATURE.SELECT', featureId })
 }
 
 // `pluginId` is a registered plugin's id: data, so it opens through the checked door
@@ -202,12 +202,12 @@ const togglePluginVisibility = (pluginId: string) => {
 
 // Handle update events from child components
 const handleUpdateSetting = (event: SettingUpdate) => {
-  if (!selectedPlugin.value) return
+  if (!selectedFeature.value) return
 
   updateSettings({
-    entityType: 'plugin',
+    entityType: 'feature',
     // A registered plugin's id is its ref
-    label: selectedPlugin.value.id,
+    label: selectedFeature.value.id,
     path: event.path,
     value: event.value
   })

@@ -10,6 +10,7 @@ import { ArtifactItem } from '@apackdev/sdk/artifacts';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@apackdev/sdk/fe';
+import * as _apackdev_sdk_framework from '@apackdev/sdk/framework';
 import { Simplify as Simplify$1 } from '@apackdev/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@apackdev/sdk/models';
 import * as _apackdev_sdk_repositories from '@apackdev/sdk/repositories';
@@ -167,19 +168,7 @@ interface AgentPhase {
     color?: string;
 }
 
-interface AgentSettings {
-    modes: AgentMode[];
-    hotkeys: {
-        textToSpeech?: KeyboardShortcut | null;
-        switchMode?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    quickPrompts?: QuickPrompt[];
-    quickPromptNumberKeyInserts?: boolean;
-    skipRevertConfirm?: boolean;
-    defaultMode?: string;
-    defaultPhase?: string;
-}
+type AgentSettings = ThreadsSettings['chat'];
 
 type AgentThreadData = {
     id?: ThreadEntity['id'];
@@ -567,13 +556,6 @@ interface Category {
 
 type ChatState = 'error' | 'idle' | 'paused' | 'success' | 'working';
 
-interface ChatStateConfig {
-    id: string;
-    label: string;
-    color: string;
-    busy: boolean;
-}
-
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
@@ -767,33 +749,7 @@ type CodeInboxEvent = {
     promptId: EARS.EntityId;
 };
 
-interface CodeSettings {
-    hotkeys: {
-        openTerminal?: KeyboardShortcut | null;
-        openTerminalTab?: KeyboardShortcut | null;
-        navigatePrevPanel?: KeyboardShortcut | null;
-        navigateNextPanel?: KeyboardShortcut | null;
-        focusSearch?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    restoreTerminals?: boolean;
-    defaultBaseDirectory?: string | null;
-    baseDirectory?: string | null;
-    enableShellIntegration?: boolean;
-    confirmTerminalClose?: boolean;
-    closeTerminalOnTabClose?: boolean;
-    maxTerminals?: number;
-    mdEditorDefault?: boolean;
-    enablePreview?: boolean;
-    autoFetchRemote?: boolean;
-    autoFetchIntervalSeconds?: number;
-    terminalScripts?: TerminalScript[];
-    showStashes?: boolean;
-    showCommits?: boolean;
-    showWorktrees?: boolean;
-    /** Paths to the CLIs the app runs; blank or missing means auto-detect */
-    cliPaths?: Partial<Record<'claude-code' | 'codex' | 'copilot' | 'gh', string>>;
-}
+type CodeSettings = typeof _default.defaults;
 
 interface CodeSystemError {
     code: 'FILE_TOO_LARGE' | 'INVALID_PATH' | 'IO_ERROR' | 'NOT_FOUND' | 'PERMISSION_DENIED' | 'SEARCH_ERROR';
@@ -4730,11 +4686,6 @@ interface QuickOpenResult$1 {
     score?: number;
 }
 
-interface QuickPrompt {
-    id: string;
-    text: string;
-}
-
 type RateLimitLine = z.infer<typeof RateLimitLineSchema>;
 
 /** Rate limit warnings. */
@@ -5106,12 +5057,6 @@ interface TerminalInfo {
     rows: number;
 }
 
-interface TerminalScript {
-    id: string;
-    label: string;
-    command: string;
-}
-
 interface TerminalTab extends OpenFile {
     isTerminal: true;
     terminalInfo: TerminalInfo;
@@ -5259,11 +5204,6 @@ interface ThreadStartParams {
     approvalsReviewer?: 'auto_review' | 'user';
 }
 
-interface ThreadStatusOption {
-    label: string;
-    color: string;
-}
-
 interface ThreadTabGroup {
     id: string;
     name: string;
@@ -5377,18 +5317,7 @@ type ThreadsInboxEvent = {
     type: 'VIEW_DASHBOARD';
 };
 
-interface ThreadsSettings {
-    statuses: ThreadStatusOption[];
-    tags: ThreadTagOption[];
-    chatStates: ChatStateConfig[];
-    showOnlyRootThreads: boolean;
-    clickToChat: boolean;
-    recentThreadsLimit: number;
-    recentThreadsSortOrder: 'created' | 'message' | 'visited';
-    recordingLimitMinutes: number;
-    skipArchiveConfirm?: boolean;
-    chat?: AgentSettings;
-}
+type ThreadsSettings = typeof _default$1.defaults;
 
 type TokenKind = 'classic-pat' | 'fine-grained-pat' | 'oauth' | 'unknown';
 
@@ -5655,6 +5584,316 @@ type __public_notes = PublicPluginInboxOf<Contract$8>;
 type __public_prompts = PublicPluginInboxOf<Contract$3>;
 
 type __public_threads = PublicPluginInboxOf<Contract$a>;
+
+declare const _default: _apackdev_sdk_framework.FeatureSettings<{
+    hotkeys: Record<string, {
+        key: string;
+        modifiers: string[];
+        global?: boolean | undefined;
+    } | null>;
+    restoreTerminals: boolean;
+    defaultBaseDirectory: string | null;
+    baseDirectory: string | null;
+    enableShellIntegration: boolean;
+    confirmTerminalClose: boolean;
+    closeTerminalOnTabClose: boolean;
+    maxTerminals: number;
+    mdEditorDefault: boolean;
+    enablePreview: boolean;
+    autoFetchRemote: boolean;
+    autoFetchIntervalSeconds: number;
+    terminalScripts: {
+        command: string;
+        id: string;
+        label: string;
+    }[];
+    showStashes: boolean;
+    showCommits: boolean;
+    showWorktrees: boolean;
+    cliPaths: Record<string, string>;
+}> & {
+    schema: z.ZodType<{
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            command: string;
+            id: string;
+            label: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    }, z.ZodTypeDef, {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            command: string;
+            id: string;
+            label: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    }>;
+    defaults: {
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        restoreTerminals: boolean;
+        defaultBaseDirectory: string | null;
+        baseDirectory: string | null;
+        enableShellIntegration: boolean;
+        confirmTerminalClose: boolean;
+        closeTerminalOnTabClose: boolean;
+        maxTerminals: number;
+        mdEditorDefault: boolean;
+        enablePreview: boolean;
+        autoFetchRemote: boolean;
+        autoFetchIntervalSeconds: number;
+        terminalScripts: {
+            command: string;
+            id: string;
+            label: string;
+        }[];
+        showStashes: boolean;
+        showCommits: boolean;
+        showWorktrees: boolean;
+        cliPaths: Record<string, string>;
+    };
+};
+
+declare const _default$1: _apackdev_sdk_framework.FeatureSettings<{
+    tags: {
+        name: string;
+        color?: string | undefined;
+    }[];
+    chat: {
+        modes: {
+            id: string;
+            description: string;
+            name: string;
+            disabled?: boolean | undefined;
+            hidden?: boolean | undefined;
+            phases?: {
+                id: string;
+                description: string;
+                name: string;
+                color?: string | undefined;
+            }[] | undefined;
+        }[];
+        hotkeys: Record<string, {
+            key: string;
+            modifiers: string[];
+            global?: boolean | undefined;
+        } | null>;
+        defaultMode?: string | undefined;
+        defaultPhase?: string | undefined;
+        quickPrompts?: {
+            text: string;
+            id: string;
+        }[] | undefined;
+        quickPromptNumberKeyInserts?: boolean | undefined;
+        skipRevertConfirm?: boolean | undefined;
+    };
+    statuses: {
+        label: string;
+        color: string;
+    }[];
+    chatStates: {
+        id: string;
+        label: string;
+        color: string;
+        busy: boolean;
+    }[];
+    showOnlyRootThreads: boolean;
+    clickToChat: boolean;
+    recentThreadsLimit: number;
+    recentThreadsSortOrder: "created" | "message" | "visited";
+    recordingLimitMinutes: number;
+    skipArchiveConfirm: boolean;
+}> & {
+    schema: z.ZodType<{
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chat: {
+            modes: {
+                id: string;
+                description: string;
+                name: string;
+                disabled?: boolean | undefined;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    description: string;
+                    name: string;
+                    color?: string | undefined;
+                }[] | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                text: string;
+                id: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            label: string;
+            color: string;
+        }[];
+        chatStates: {
+            id: string;
+            label: string;
+            color: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    }, z.ZodTypeDef, {
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chat: {
+            modes: {
+                id: string;
+                description: string;
+                name: string;
+                disabled?: boolean | undefined;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    description: string;
+                    name: string;
+                    color?: string | undefined;
+                }[] | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                text: string;
+                id: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            label: string;
+            color: string;
+        }[];
+        chatStates: {
+            id: string;
+            label: string;
+            color: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    }>;
+    defaults: {
+        tags: {
+            name: string;
+            color?: string | undefined;
+        }[];
+        chat: {
+            modes: {
+                id: string;
+                description: string;
+                name: string;
+                disabled?: boolean | undefined;
+                hidden?: boolean | undefined;
+                phases?: {
+                    id: string;
+                    description: string;
+                    name: string;
+                    color?: string | undefined;
+                }[] | undefined;
+            }[];
+            hotkeys: Record<string, {
+                key: string;
+                modifiers: string[];
+                global?: boolean | undefined;
+            } | null>;
+            defaultMode?: string | undefined;
+            defaultPhase?: string | undefined;
+            quickPrompts?: {
+                text: string;
+                id: string;
+            }[] | undefined;
+            quickPromptNumberKeyInserts?: boolean | undefined;
+            skipRevertConfirm?: boolean | undefined;
+        };
+        statuses: {
+            label: string;
+            color: string;
+        }[];
+        chatStates: {
+            id: string;
+            label: string;
+            color: string;
+            busy: boolean;
+        }[];
+        showOnlyRootThreads: boolean;
+        clickToChat: boolean;
+        recentThreadsLimit: number;
+        recentThreadsSortOrder: "created" | "message" | "visited";
+        recordingLimitMinutes: number;
+        skipArchiveConfirm: boolean;
+    };
+};
 
 declare const actionCommands: {
     readonly create: (data: _apackdev_sdk_repositories.ActionInput) => ActionEntity;

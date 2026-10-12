@@ -1,5 +1,5 @@
 // Testing a CLI provider belongs to the code feature: `resolve-cli` is its own, and so are the stored paths
-// (`plugins['default-setup/code'].cliPaths`). The Settings view asks for it and is told the result, which is why
+// (`features['default-setup/code'].cliPaths`). The Settings view asks for it and is told the result, which is why
 // the settings plugin declares it in its inbox (`accepts`, beside the plugin). It lived in the settings system until settings
 // became the app's.
 //

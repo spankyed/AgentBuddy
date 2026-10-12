@@ -51,7 +51,7 @@ describe('settings and stored API keys', () => {
   it("stores a CLI path override on the code plugin's settings", async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
     expect(services.settings.forFeature(ref('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
@@ -59,17 +59,17 @@ describe('settings and stored API keys', () => {
   it('tells the plugin whose settings changed', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
     const updated = await app.nextEmit('code', 'FEATURE_SETTINGS_UPDATED');
     expect(updated).toMatchObject({ type: 'FEATURE_SETTINGS_UPDATED', settings: { mdEditorDefault: false } });
   });
 
   // The frontend resolves a plugin's name to its address before sending; a bare label reaching the system
   // would be written under a key no plugin reads, so it is reported and nothing is saved
-  it('refuses plugin settings labelled with a bare name, saving nothing', async () => {
+  it('refuses feature settings labelled with a bare name, saving nothing', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
     // The sender's mistake to fix, which its form shows: not a system error
     expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',

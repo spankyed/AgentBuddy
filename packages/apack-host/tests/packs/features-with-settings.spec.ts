@@ -1,4 +1,5 @@
-// The features whose plugin settings may be written: every installed feature that declares settings. A registered
+import { z } from 'zod';
+// The features whose feature settings may be written: every installed feature that declares settings. A registered
 // pack's come from its registration; a pack in the packs dir that isn't registered (disabled, or one that didn't load)
 // keeps its settings, so its features come from its manifest. The answer is kept until the registrations or the dir's
 // entries change: a settings call on every chat message reads it.
@@ -13,7 +14,7 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 const memoPack: PackRegistration = {
   id: 'memo-pack',
   features: {
-    memos: { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'new' } } } },
+    memos: { plugin: { receives: [] }, settings: { defaults: { sort: 'new' }, schema: z.record(z.unknown()) } },
     // A plugin with no declared defaults: its settings form may still write its slice
     board: { plugin: { receives: [] } },
     // No settings file and no plugin, so nothing may be written for it
@@ -38,7 +39,7 @@ describe('featuresWithSettings', () => {
     const registry = createPackRegistry();
     registry.registerPack(memoPack);
 
-    expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos', 'memo-pack/board']);
+    expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos']);
 
     registry.unregisterPack('memo-pack');
     expect(registry.featuresWithSettings()).toEqual([]);
@@ -54,13 +55,13 @@ describe('featuresWithSettings', () => {
     install('garbled-pack', '{ not json');
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
 
-    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'memo-pack/board', 'idle-pack/idle']));
-    expect(registry.featuresWithSettings()).toHaveLength(3);
+    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'idle-pack/idle']));
+    expect(registry.featuresWithSettings()).toHaveLength(2);
 
     // Registered, its registration counts too, and a feature both name is listed once
-    registry.registerPack({ ...memoPack, features: { memos: memoPack.features!.memos, board: { plugin: { receives: [] }, settings: {} } } });
-    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'memo-pack/board', 'idle-pack/idle']));
-    expect(registry.featuresWithSettings()).toHaveLength(3);
+    registry.registerPack({ ...memoPack, features: { memos: memoPack.features!.memos, board: { plugin: { receives: [] } } } });
+    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'idle-pack/idle']));
+    expect(registry.featuresWithSettings()).toHaveLength(2);
   });
 
   it("keeps its answer until the dir's entries change, and sees a pack installed or removed then", () => {

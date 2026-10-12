@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -201,7 +202,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     registry.registerPack({
       id: 'stuck-pack',
-      features: { stuck: { plugin: { receives: [] }, settings: { plugins: { stuck: { a: 1 } } } } },
+      features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: z.record(z.unknown()) } } },
     });
     const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
 

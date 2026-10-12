@@ -39,8 +39,8 @@ export const migration: DeclaredMigration = {
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
     // Copies of both kept in the settings are no longer read or written.
-    services.settings.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
-    services.settings.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
+    services.settings.removeStored(['features', `${PACK_ID}/flows`, 'rootFlowId']);
+    services.settings.removeStored(['features', `${PACK_ID}/brain`, 'runningRootFlowId']);
 
     // ── `general.projects` is the array, not a wrapper around one ──
     // It was `{ projects: [...] }` once, and the Settings view read both shapes on every render to cope. Moving
@@ -86,15 +86,15 @@ function unwrapStoredProjects(): void {
 function dropDefaultsOf0314(): void {
   const stored = services.settings.getStored() as Record<string, unknown>;
   // 0.3.14's slices are keyed by bare feature id; the host's 0.4.0 migration moved the stored ones onto refs
-  const plugins: Record<string, unknown> = {};
+  const features: Record<string, unknown> = {};
   for (const [id, slice] of Object.entries(DEFAULT_SETTINGS_0314.plugins)) {
     const at = refOf0314Feature(id);
-    if (at) plugins[at] = slice;
+    if (at) features[at] = slice;
   }
-  const defaults = { ...DEFAULT_SETTINGS_0314, plugins };
+  const defaults = { ...DEFAULT_SETTINGS_0314, features };
 
   const next: Record<string, unknown> = { ...stored };
-  for (const section of ['general', 'assistant', 'plugins'] as const) {
+  for (const section of ['general', 'assistant', 'features'] as const) {
     if (!(section in stored)) continue;
     const kept = withoutDefaults(stored[section], defaults[section]);
     if (kept === undefined) delete next[section];
@@ -172,18 +172,18 @@ function addressStoredLinkBlocks(): number {
  * 0.3.14 copied the code plugin's `lastDirectoryOpened` to `baseDirectory` and the app's `openLinksInApp` to the
  * browser plugin, but left the old keys stored, where nothing reads them. Each is dropped, copied first when the
  * user has nothing stored under the new key and the old one holds something other than 0.3.14's default. The host's
- * 0.4.0 migration ran first, so only the refs hold plugin settings.
+ * 0.4.0 migration ran first, so only the refs hold feature settings.
  */
 function dropKeysMovedBy0314(): void {
   const stored = services.settings.getStored();
-  const slice = (feature: FeatureName) => (stored.plugins?.[ref(feature)] ?? {}) as Record<string, unknown>;
+  const slice = (feature: FeatureName) => (stored.features?.[ref(feature)] ?? {}) as Record<string, unknown>;
 
   const code = slice('code');
   if (code.lastDirectoryOpened !== undefined) {
     if (code.baseDirectory === undefined) {
       services.settings.setForFeature(ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
-    services.settings.removeStored(['plugins', ref('code'), 'lastDirectoryOpened']);
+    services.settings.removeStored(['features', ref('code'), 'lastDirectoryOpened']);
   }
 
   const storedGeneral = stored.general as { application?: Record<string, unknown> } | undefined;

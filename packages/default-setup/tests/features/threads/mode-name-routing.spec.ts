@@ -5,7 +5,7 @@ import threadSettings from '#features/threads/settings.ts'
 import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'
 import { phaseTipPromptLabel } from '../../../src/content/actions/claude-code/chat.ts'
 
-const chat = threadSettings.plugins.threads.chat
+const chat = threadSettings.defaults.chat
 
 describe('mode name routing', () => {
   it('uses display names for default mode and phase settings', () => {

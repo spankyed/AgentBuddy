@@ -14,7 +14,7 @@ const CODE = 'default-setup/code' as FeatureRef
 let settings: FakeSettings
 
 beforeEach(() => {
-  settings = fakeSettings({ general: { projects: ['one'] }, plugins: { [CODE]: { mdEditorDefault: true } } })
+  settings = fakeSettings({ general: { projects: ['one'] }, features: { [CODE]: { mdEditorDefault: true } } })
   bindFeHost({ application: {} as never, secrets: {} as never, settings, client: {} as never, packs: {} as never })
 })
 afterEach(() => unbindFeHost())

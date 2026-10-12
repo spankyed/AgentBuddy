@@ -22,7 +22,7 @@ describe('the 0.3.0 migration', () => {
     migration.up()
     migration.up()
 
-    expect(modeIds()).toEqual(threadsSettings.plugins.threads.chat.modes.map((m) => m.id))
+    expect(modeIds()).toEqual(threadsSettings.defaults.chat.modes.map((m) => m.id))
     expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
   })
 
@@ -30,18 +30,18 @@ describe('the 0.3.0 migration', () => {
     // As a pre-0.3.0 user stored them, once the host's 0.4.0 migration, which runs before any pack's, moved them onto
     // the plugins' refs and dropped `hermes`, which no pack has
     storeAsBefore({
-      plugins: {
-        [ref('threads')]: { chat: { modes: [{ id: 'claude-code', name: 'Claude Code' }, { id: 'hermes', name: 'Hermes' }, { id: 'manager', name: 'Manager' }] } },
+      features: {
+        [ref('threads')]: { chat: { modes: [{ id: 'claude-code', name: 'Claude Code', description: '' }, { id: 'hermes', name: 'Hermes', description: '' }, { id: 'manager', name: 'Manager', description: '' }] } },
       },
     })
 
     migration.up()
     migration.up()
 
-    const modes = (stored().plugins as any)[ref('threads')].chat.modes
+    const modes = (stored().features as any)[ref('threads')].chat.modes
     expect(modes.map((m: { id: string }) => m.id)).toEqual(['claude-code', 'codex', 'manager'])
     expect(modes[1].phases.map((p: { id: string }) => p.id)).toEqual(['plan', 'default'])
     // Only what the user had and what the migration changed: no default is written into the stored settings
-    expect(Object.keys(stored().plugins as object)).toEqual([ref('threads')])
+    expect(Object.keys(stored().features as object)).toEqual([ref('threads')])
   })
 })

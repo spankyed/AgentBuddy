@@ -12,7 +12,7 @@ const settings: SettingsData = {
     },
     projects: []
   },
-  plugins: {},
+  features: {},
   assistant: {
     name: '',
     birthdate: null

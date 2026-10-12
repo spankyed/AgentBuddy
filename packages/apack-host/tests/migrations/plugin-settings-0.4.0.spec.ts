@@ -102,7 +102,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
       { id: 'b-pack', features: { board: {} } },
     ] as ReturnType<InstalledManifests>);
 
-    expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true } } });
+    expect(settings()).toEqual({ features: { 'draft-pack/drafts': { wrap: true } } });
   });
 
   it('drops a tab choice no installed pack has', () => {
@@ -117,7 +117,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
 
     move(() => [{ id: 'draft-pack', features: { drafts: {} } }]);
 
-    expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true } } });
+    expect(settings()).toEqual({ features: { 'draft-pack/drafts': { wrap: true } } });
     expect(appState.get().pluginVisibility).toEqual({ 'draft-pack/drafts': false });
   });
 
@@ -133,7 +133,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
       { id: 'draft-pack', features: { drafts: {} } },
     ]);
 
-    expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'memo-pack/memos': { sort: 'oldest' } } });
+    expect(settings()).toEqual({ features: { 'draft-pack/drafts': { wrap: true }, 'memo-pack/memos': { sort: 'oldest' } } });
   });
 
   // Before 0.4.0 the host's plugins ran under bare ids too, so a bare id it shares with an external feature was its;
@@ -143,7 +143,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
 
     move(() => [{ id: 'ext-pack', features: { packs: {}, bus: {} } }]);
 
-    expect(settings()).toEqual({ plugins: { 'host/packs': { sort: 'name' }, 'ext-pack/bus': { mode: 'x' } } });
+    expect(settings()).toEqual({ features: { 'host/packs': { sort: 'name' }, 'ext-pack/bus': { mode: 'x' } } });
   });
 
   it('moves the settings of a feature with no plugin', () => {
@@ -151,7 +151,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
 
     move();
 
-    expect(settings()).toEqual({ plugins: { 'sync-pack/sync': { interval: 5 } } });
+    expect(settings()).toEqual({ features: { 'sync-pack/sync': { interval: 5 } } });
   });
 
   // Before any pack's migration reads them: the built-in pack's migrations run after the host's
@@ -160,8 +160,24 @@ describe('the 0.4.0 app migration, for plugins', () => {
 
     expect(settings()).toEqual({
       general: { application: { openLinksInApp: false } },
-      plugins: { 'memo-pack/memos': { sort: 'newest' }, 'built-in/notes': { fontSize: 14 } },
+      features: { 'memo-pack/memos': { sort: 'newest' }, 'built-in/notes': { fontSize: 14 } },
     });
+  });
+
+  it('merges legacy settings into features while preserving newer values', () => {
+    untypedTx(SETTINGS_ID).put('data', {
+      plugins: { notes: { fontSize: 14, wrap: true }, 'external/custom': { enabled: true } },
+      features: { 'built-in/notes': { fontSize: 18 }, 'external/other': { count: 3 } },
+    });
+    move();
+    expect(settings()).toEqual({ features: {
+      'built-in/notes': { fontSize: 18, wrap: true },
+      'external/custom': { enabled: true },
+      'external/other': { count: 3 },
+    } });
+    const before = settings();
+    move();
+    expect(settings()).toEqual(before);
   });
 
   it('changes nothing when it runs again', () => {
@@ -191,7 +207,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
     move();
 
     expect(appState.get().lastActivePlugin).toBe('host/packs');
-    expect(settings()).toEqual({ plugins: {} });
+    expect(settings()).toEqual({ features: {} });
   });
 
   it('does nothing without stored plugin settings', () => {
@@ -242,7 +258,7 @@ describe('the 0.4.0 app migration, over the packs installed on disk', () => {
     const migration = appMigrations(registry).find((m) => m.target === '0.4.0')!;
     migration.up();
 
-    expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'idle-pack/idle': { quiet: true } } });
+    expect(settings()).toEqual({ features: { 'draft-pack/drafts': { wrap: true }, 'idle-pack/idle': { quiet: true } } });
     expect(appState.get().pluginVisibility).toEqual({ 'draft-pack/drafts': false, 'idle-pack/idle': true });
   });
 });

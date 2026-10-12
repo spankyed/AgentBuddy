@@ -52,10 +52,10 @@ it('opens a registered plugin and hands it the events, once it is open', async (
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] });
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
 
   expect(opened()).toBe('default-setup/settings');
-  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: true }]);
+  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'FEATURE.SELECT', open: true }]);
 });
 
 it("waits for a plugin whose pack's frontend is still loading, and opens it with the events once it arrives", async () => {
@@ -120,11 +120,11 @@ it('hands a registered plugin its events without opening it', async () => {
   await connectLoading([]);
   await settle();
 
-  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] });
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] });
   await settle();
 
   expect(opened()).toBe('default-setup/notes');
-  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: false }]);
+  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'FEATURE.SELECT', open: false }]);
 });
 
 it("waits for a plugin whose pack's frontend is still loading, and delivers once it arrives, still without opening it", async () => {
@@ -259,11 +259,11 @@ describe('a request from the app to open a plugin', () => {
     shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
     await settle();
 
-    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] } });
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
     await settle();
 
     expect(opened()).toBe('default-setup/settings');
-    expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: true }]);
+    expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'FEATURE.SELECT', open: true }]);
   });
 
   // A pack builds the payload at runtime (an action, a flow), where its types don't reach: events that aren't
@@ -292,7 +292,7 @@ describe('a request from the app to open a plugin', () => {
     await connectLoading([]);
     await settle();
 
-    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] } });
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
     await settle();
 
     expect(opened()).toBe('default-setup/notes');

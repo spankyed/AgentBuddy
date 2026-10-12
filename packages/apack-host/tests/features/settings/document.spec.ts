@@ -1,11 +1,11 @@
 // The settings document's rules, which both the store and the settings editor check with, so both refuse the same
-// document. The host knows one section, `plugins`; every other section is named by whoever registered it, which is
+// document. The host knows one section, `features`; every other section is named by whoever registered it, which is
 // what these cover — a document's shape is the host's, its content is not.
 import { describe, expect, it } from 'vitest';
 import {
   changesFrom,
   isEqual,
-  PLUGINS_SECTION,
+  FEATURES_SECTION,
   removeIn,
   SettingsRefusedError,
   settingsProblems,
@@ -72,16 +72,16 @@ describe('changesFrom', () => {
 });
 
 describe('settingsProblems', () => {
-  it('accepts plugins and the sections it is given', () => {
-    expect(check({ plugins: { 'default-setup/threads': { x: 1 } }, general: { personal: {} } })).toEqual([]);
+  it('accepts features and the sections it is given', () => {
+    expect(check({ features: { 'default-setup/threads': { x: 1 } }, general: { personal: {} } })).toEqual([]);
   });
 
-  // The host knows `plugins` and nothing else: a section nobody registered is a typo, not new content
+  // The host knows `features` and nothing else: a section nobody registered is a typo, not new content
   it('refuses a section it was not given, naming the ones it knows', () => {
     const [problem] = check({ generall: { typo: true } });
 
     expect(problem).toContain('"generall" isn\'t a settings section');
-    expect(problem).toContain(PLUGINS_SECTION);
+    expect(problem).toContain(FEATURES_SECTION);
     expect(problem).toContain('general, assistant');
   });
 
@@ -94,22 +94,22 @@ describe('settingsProblems', () => {
   });
 
   it('requires every plugin key to be a ref', () => {
-    expect(check({ plugins: { threads: { x: 1 } } })).toEqual([
-      '"threads" isn\'t a ref: a plugin\'s settings are stored under "<packId>/<featureId>"',
+    expect(check({ features: { threads: { x: 1 } } })).toEqual([
+      '"threads" isn\'t a ref: a feature\'s settings are stored under "<packId>/<featureId>"',
     ]);
   });
 
   // An uninstalled pack's slice is there for its reinstall, so only a slice that changes is checked
   it('leaves an unchanged slice alone and checks a changed one against keyProblem', () => {
-    const before = { plugins: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 1 } } };
+    const before = { features: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 1 } } };
     const keyProblem = (key: string) => (key === 'gone-pack/notes' ? 'not installed' : undefined);
 
-    expect(check({ plugins: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 2 } } }, before, keyProblem)).toEqual([]);
-    expect(check({ plugins: { 'gone-pack/notes': { changed: true } } }, before, keyProblem)).toEqual(['not installed']);
+    expect(check({ features: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 2 } } }, before, keyProblem)).toEqual([]);
+    expect(check({ features: { 'gone-pack/notes': { changed: true } } }, before, keyProblem)).toEqual(['not installed']);
   });
 
   it('reports every problem in one pass', () => {
-    expect(check({ nope: {}, general: 1, plugins: { bare: {} } })).toHaveLength(3);
+    expect(check({ nope: {}, general: 1, features: { bare: {} } })).toHaveLength(3);
   });
 });
 

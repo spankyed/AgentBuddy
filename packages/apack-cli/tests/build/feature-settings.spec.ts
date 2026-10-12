@@ -10,6 +10,7 @@ afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
 function pack(files: Record<string, string>): string {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-feature-settings-'));
+  fs.symlinkSync(path.resolve(__dirname, '../../../..', 'node_modules'), path.join(root, 'node_modules'), 'dir');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'settings-pack', type: 'module' }));
   for (const [file, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
@@ -20,7 +21,7 @@ function pack(files: Record<string, string>): string {
 
 describe('featureSettingsProblems', () => {
   it("accepts settings that set only the feature's own plugin", async () => {
-    const dir = pack({ 'src/memos/settings.ts': "export default { visible: false, plugins: { memos: { sort: 'newest' as const } } };\n" });
+    const dir = pack({ 'src/memos/settings.ts': "import { z } from 'zod'; export default { visible: false, defaults: { sort: 'newest' }, schema: z.object({ sort: z.string() }) };\n" });
     expect(await featureSettingsProblems(dir, [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'todos' }])).toEqual([]);
   });
 
@@ -30,7 +31,7 @@ describe('featureSettingsProblems', () => {
       { id: 'memos', settings: 'src/memos/settings.ts' },
       { id: 'todos', settings: 'src/todos/settings.ts' },
     ])).toEqual([
-      expect.stringContaining('Feature "memos" settings set "plugins.threads"'),
+      expect.stringContaining('Feature "memos" settings set "plugins"'),
       'Feature "todos" settings: src/todos/settings.ts doesn\'t exist',
     ]);
   });

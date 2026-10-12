@@ -1,7 +1,7 @@
-// Keyed by this feature's id, as any pack's is: the app stores it under this pack's own plugin id,
-// so it never touches default-setup's `notes` settings.
-export default {
-  plugins: {
-    notes: { listTitle: 'Fixture Notes' }
-  }
-}
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+// The host stores this slice under e2e-fixture/notes, independently of default-setup/notes.
+export default defineFeatureSettings({
+  schema: z.object({ listTitle: z.string().default('Fixture Notes') }).strict(),
+});

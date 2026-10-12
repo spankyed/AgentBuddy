@@ -66,10 +66,10 @@ export interface SettingsContext {
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packContentImport: PackContentImport;
-  activeTab: 'general' | 'plugins' | 'help';
+  activeTab: 'general' | 'features' | 'help';
   help: HelpContext;
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
-  selectedPluginId: string | null;
+  selectedFeatureId: string | null;
   isLoading: boolean;
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
   resetting: boolean;
@@ -82,17 +82,17 @@ export interface SettingsContext {
  * registered it gave. `label` is the whole address at its level — a section's sub-key belongs in `path`, so that one
  * target means one place in the document whoever builds it.
  */
-export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'section'; label: string };
+export type SettingsTarget = { entityType: 'feature'; label: FeatureRef } | { entityType: 'section'; label: string };
 
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'features' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
-  | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
+  | { type: 'FEATURE.SELECT'; featureId: FeatureRef }
   | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
   | { type: 'SETTINGS.REPLACE'; data: unknown }
   /** With no `target`, every change the user made; with one, that section's or that feature's alone */
-  | { type: 'SETTINGS.RESET'; target?: { entityType: 'section' | 'plugin'; label: string } }
+  | { type: 'SETTINGS.RESET'; target?: { entityType: 'section' | 'feature'; label: string } }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
   | { type: 'PACK_CONTENT.PREVIEW'; directory: string }
@@ -175,14 +175,14 @@ export function createSettingsMachine(io: SettingsIO) {
       }
     }),
 
-    selectPlugin: assign(({ context, event }) => {
-      const ev = typeOf('PLUGIN.SELECT', event);
+    selectFeature: assign(({ context, event }) => {
+      const ev = typeOf('FEATURE.SELECT', event);
       // Another pack may send it, so a bad one is reported and ignored rather than stopping the settings plugin
-      if (!splitRef(ev.pluginId)) {
-        console.error(`PLUGIN.SELECT names "${ev.pluginId}", which isn't a plugin's ref, "<packId>/<featureId>"`);
-        return { selectedPluginId: context.selectedPluginId };
+      if (!splitRef(ev.featureId)) {
+        console.error(`FEATURE.SELECT names "${ev.featureId}", which isn't a feature's ref, "<packId>/<featureId>"`);
+        return { selectedFeatureId: context.selectedFeatureId };
       }
-      return { selectedPluginId: ev.pluginId };
+      return { selectedFeatureId: ev.featureId };
     }),
 
     /* ── settings updates ────────────────────────────── */
@@ -436,7 +436,7 @@ export function createSettingsMachine(io: SettingsIO) {
     activeTab: 'general',
     help: createHelpContext(),
     generalNavItem: 'application',
-    selectedPluginId: null as string | null,
+    selectedFeatureId: null as string | null,
     isLoading: true,
     resetting: false,
     save: { status: 'idle', problems: [] },
@@ -460,8 +460,8 @@ export function createSettingsMachine(io: SettingsIO) {
         'GENERAL_NAV.SELECT': {
           actions: 'selectGeneralNavItem',
         },
-        'PLUGIN.SELECT': {
-          actions: 'selectPlugin',
+        'FEATURE.SELECT': {
+          actions: 'selectFeature',
         },
         'SETTINGS.UPDATE': {
           actions: 'updateSettings',

@@ -14,7 +14,7 @@ const { HOST } = await import('@apackdev/host/fe');
 const SETTINGS_DOC = {
   general: { projects: [{ name: 'one' }], application: { hotkeys: {} } },
   assistant: { name: 'Buddy' },
-  plugins: { 'default-setup/code': { mdEditorDefault: true } },
+  features: { 'default-setup/code': { mdEditorDefault: true } },
 };
 
 const sent: unknown[] = [];
@@ -71,7 +71,7 @@ it("addresses a feature's settings by its ref", () => {
   settingsPort.update({ feature: 'default-setup/code' as never }, ['cliPaths', 'gh'], '/opt/bin/gh');
 
   expect(sent).toEqual([{
-    type: 'SETTINGS.UPDATE', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths', 'gh'], value: '/opt/bin/gh',
+    type: 'SETTINGS.UPDATE', entityType: 'feature', label: 'default-setup/code', path: ['cliPaths', 'gh'], value: '/opt/bin/gh',
   }]);
 });
 

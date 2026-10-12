@@ -1,43 +1,51 @@
+import type { ZodType, output } from 'zod';
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { FeatureRef } from '../ids/index.ts';
 import { isPlainObject } from '../utils/shared.ts';
 
-/**
- * A feature's default settings (apack.json `features[].settings`): its plugin's slice under
- * `plugins.<feature id>`, and whether its sidebar tab shows by default (`visible`, shown when omitted).
- */
-export interface FeatureSettings {
-  plugins?: Record<string, unknown>;
+/** A feature owns its defaults and schema; neither declaration names another feature. */
+export interface FeatureSettings<T extends Record<string, unknown> = Record<string, unknown>> {
+  defaults?: T;
+  schema?: ZodType<T>;
   visible?: boolean;
 }
 
-/**
- * Every registered pack's feature settings, merged, each under its plugin's ref: the plugin slices and the
- * sidebar visibility the features declare. `revision` changes whenever a pack registers or unregisters.
- */
+/** Infer settings from a schema whose fields declare their defaults. Custom forms remain independent. */
+export function defineFeatureSettings<S extends ZodType<Record<string, unknown>>>(definition: {
+  schema: S;
+  visible?: boolean;
+}): FeatureSettings<output<S>> & { schema: ZodType<output<S>>; defaults: output<S> } {
+  return { ...definition, defaults: definition.schema.parse({}) };
+}
+
+/** Registered feature defaults and schemas, keyed by ref, plus pack-owned sections. Backend-only. */
 export interface PackSettingsDefaults {
   revision: number;
-  /** The default settings document: each feature's slice under `plugins`, and each section a pack registered */
-  settings: { plugins: Record<string, unknown>; [section: string]: unknown };
+  settings: { features: Record<string, unknown>; [section: string]: unknown };
+  schemas: Record<string, ZodType<Record<string, unknown>>>;
   visibility: Record<string, boolean>;
 }
 
-/**
- * Problems with a feature's settings: a feature sets only its own plugin's slice and whether its tab shows,
- * so a pack can't change the app's or another plugin's defaults.
- */
+/** Refuse invalid declarations before registering any part of a pack. */
 export function checkFeatureSettings(featureId: string, settings: unknown): string[] {
   const where = `Feature "${featureId}" settings`;
   if (!isPlainObject(settings)) return [`${where} must default-export an object`];
-  const problems = Object.keys(settings).filter((key) => key !== 'plugins' && key !== 'visible')
-    .map((key) => `${where} set "${key}"; only "plugins.${featureId}" and "visible" are allowed`);
+  const problems = Object.keys(settings).filter(key => !['defaults', 'schema', 'visible'].includes(key))
+    .map(key => `${where} set "${key}"; only "defaults", "schema", and "visible" are allowed`);
   if (settings.visible !== undefined && typeof settings.visible !== 'boolean') problems.push(`${where}: "visible" must be true or false`);
-  const { plugins } = settings;
-  if (plugins === undefined) return problems;
-  if (!isPlainObject(plugins)) return [...problems, `${where}: "plugins" must be an object`];
-  for (const key of Object.keys(plugins)) {
-    if (key !== featureId) problems.push(`${where} set "plugins.${key}"; a feature sets only its own plugin's settings, "plugins.${featureId}"`);
+  if (settings.defaults !== undefined && !isPlainObject(settings.defaults)) problems.push(`${where}: "defaults" must be an object`);
+  if (settings.schema === undefined) {
+    if (settings.defaults !== undefined) problems.push(`${where}: defaults require a schema`);
+    return problems;
   }
+  const schema = settings.schema as ZodType;
+  // Published packs and tools can load different copies of Zod; its public methods define the contract.
+  if (!schema || typeof schema.parse !== 'function' || typeof schema.safeParse !== 'function') {
+    return [...problems, `${where}: "schema" must be a Zod schema`];
+  }
+  const checked = schema.safeParse(settings.defaults ?? {});
+  if (!checked.success) problems.push(...checked.error.issues.map(issue => `${where}: ${issue.path.join('.') || 'defaults'}: ${issue.message}`));
+  else if (!isPlainObject(checked.data)) problems.push(`${where}: the schema must produce an object`);
   return problems;
 }
 
@@ -53,7 +61,7 @@ export function onPackSettingsDefaultsChanged(listener: () => void): () => void 
 
 /**
  * The refs of every installed feature that can have settings, a disabled pack's included (the bound app's): it declares
- * defaults, or has a plugin, whose settings form writes them. A plugin's settings may be written only under one of
+ * a settings declaration. A feature's settings may be written only under one of
  * them; the settings of a pack since uninstalled stay while nothing changes them.
  */
 export function getFeaturesWithSettings(): readonly FeatureRef[] {

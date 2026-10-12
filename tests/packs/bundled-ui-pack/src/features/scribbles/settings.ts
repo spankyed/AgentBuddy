@@ -1,6 +1,7 @@
-export default {
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+export default defineFeatureSettings({
   visible: true,
-  plugins: {
-    scribbles: {}
-  }
-}
+  schema: z.object({}).strict(),
+});

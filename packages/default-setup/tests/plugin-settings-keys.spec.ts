@@ -1,3 +1,4 @@
+import { z } from 'zod';
 // A plugin's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. The store
 // takes a `FeatureRef`; a name that arrives as a string (a client's send, an action's `services.settings` call) is
 // parsed once where it arrives, and one that isn't an installed feature's with settings throws, naming the ref it
@@ -8,15 +9,15 @@ import type { FeatureRef } from '@apackdev/sdk/ids';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 
-const stored = () => services.settings.getStored().plugins as Record<string, any>;
+const stored = () => services.settings.getStored().features as Record<string, any>;
 
-describe('the plugin settings keys', () => {
+describe('the feature settings keys', () => {
   it("takes a plugin's ref", async () => {
     await startApp({ systems: ['host/settings'] });
 
-    services.settings.setForFeature(ref('threads'), ['sort'], 'oldest');
+    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created');
 
-    expect(stored()).toEqual({ 'default-setup/threads': { sort: 'oldest' } });
+    expect(stored()).toEqual({ 'default-setup/threads': { recentThreadsSortOrder: 'created' } });
   });
 
   it('parses a name to the ref of an installed feature with settings, and refuses one that is none', async () => {
@@ -41,7 +42,7 @@ describe('the plugin settings keys', () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'threads', path: ['sort'], value: 'oldest' });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'threads', path: ['sort'], value: 'oldest' });
 
     // The sender's mistake to fix, which its form shows: not a system error
     expect(app.emitted('host/settings')).toContainEqual({
@@ -58,7 +59,7 @@ describe('the plugin settings keys', () => {
 // `default-setup/memos`. So it takes the ref and refuses a name.
 describe('services.settings', () => {
   it("reads and writes another pack's plugin at its ref", async () => {
-    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { plugins: { memos: {} } } } } });
+    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } } });
     onTestFinished(() => unregisterPack('memo-pack'));
     await startApp({ systems: ['host/settings'] });
 

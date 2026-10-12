@@ -13,8 +13,8 @@ test('Settings Help searches bundled articles and opens feature help', async ({ 
   await reader.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(reader.getByRole('textbox', { name: 'Search help' })).toHaveValue('fine-grained');
   await app.navigate('host/settings');
-  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'PLUGIN.SELECT', pluginId: 'default-setup/code' }));
-  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'TAB.SELECT', tab: 'plugins' }));
+  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'FEATURE.SELECT', featureId: 'default-setup/code' }));
+  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'TAB.SELECT', tab: 'features' }));
   await appPage.getByTestId('feature-help').click();
   await expect(reader.getByRole('combobox', { name: 'Filter help by feature' })).toHaveValue('default-setup/code');
 });

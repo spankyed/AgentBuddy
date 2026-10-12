@@ -258,24 +258,27 @@ import { breadcrumbWithParams } from '@apackdev/sdk/fe'; // Parameterized naviga
 
 ## Settings
 
-Each feature declares its default settings slice:
+Each feature declares a schema with defaults; its settings forms remain custom:
 
 ```typescript
 // src/features/bookmarks/settings.ts
-export default {
-  visible: true,  // Show in sidebar
-  plugins: {
-    bookmarks: {
-      // Feature-specific defaults
-      syncInterval: 300,
-    }
-  }
-}
+import { z } from 'zod';
+import { defineFeatureSettings } from '@apackdev/sdk/framework';
+
+const settings = defineFeatureSettings({
+  visible: true,
+  schema: z.object({
+    syncInterval: z.number().int().positive().default(300),
+  }).strict(),
+});
+
+export default settings;
+export type BookmarkSettings = typeof settings.defaults;
 ```
 
 - `visible` controls whether the plugin's sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
-- Feature-specific settings go under the plugin ID key.
-- A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `apack pack build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
+- The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
+- A feature declares only `schema`, optional `defaults`, and `visible`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Use synchronous validation schemas without coercions or transforms. See [Feature settings](manifest.md#feature-settings).
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
 - Read them at runtime with the app's settings service, `services.settings.forFeature('<packId>/<feature id>')`, which returns the user's values over the defaults; `setForFeature('<packId>/<feature id>', path, value)` changes one. Both take the feature's ref and throw for a bare name, naming the ref they likely meant. In a component, `useFeatureSettings(ref('<feature id>'))` from `@apackdev/sdk/fe` follows them, and `useSettingsSave()` gives the same change with whether the store stored it.
 - When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
