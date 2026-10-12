@@ -38,7 +38,7 @@ Constraints for isolated test data, typed EARS, migrations and validation. No co
 
 # Complete settings and discoverable pack contracts
 
-Status: planned; naming conventions are complete. This executes the five remaining work items in
+Status: in progress on `session/settings-pack-contracts`; naming conventions are complete. This executes the five remaining work items in
 [manifest maturity](../plans/manifest-maturity.md), building on the completed naming prerequisite.
 Lazy activation is deferred.
 
@@ -247,8 +247,8 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 
 | Checkpoint | Commit | Validation / outcome |
 |---|---|---|
-| Naming prerequisite | `3d389b9c8` | Complete; verify inclusion at kickoff and record the chosen base |
-| Kickoff | Pending | Pending |
+| Naming prerequisite | `3d389b9c8` | Ancestry verified against master `d7e77829a`; archived completion included |
+| Kickoff / Phase 0 | Base `d7e77829a`; branch `session/settings-pack-contracts` | Worktree `/private/tmp/apack-settings-pack-contracts`; independent `npm ci`, `npm run build:default-setup` and `npm run build:runtime` passed. Source checkout preserved. |
 
 ## Outcome
 
