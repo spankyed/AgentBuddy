@@ -1366,7 +1366,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
     const hasSystems = systemFeatures.length > 0;
 
     // Each system's sent events, read from its spec: the one place they are declared
-    const outgoingAliases = systemFeatures
+    const outgoingAliases = pluginFeatures.filter(f => f.system)
       .map(f => `type __events_${f.id} = OutgoingEventsOf<__SystemContracts['${f.id}']>;`)
       .join('\n');
     // Each plugin's declared contract, from the leaf module apack.json names — never the plugin module itself,
@@ -1401,7 +1401,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apackdev/sdk/events';
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${outgoingAliases ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apackdev/sdk/events';
 ${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.ts';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 

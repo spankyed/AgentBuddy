@@ -103,7 +103,7 @@ describe('generated sends compile', () => {
       '// @ts-expect-error the own foo system receives FOO_RUN',
       "sendToSystem('foo', { type: 'BASE_FOO_RUN', n: 1 });",
     ].join('\n'));
-    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
+    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'], true)).toEqual([]);
   });
 
   it("for a pack without systems, sending to its dependencies'", async () => {

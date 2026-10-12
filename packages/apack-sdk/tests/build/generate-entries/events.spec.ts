@@ -138,6 +138,7 @@ describe('generated events', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("'actions': __events_actions | __accepts_actions;");
     expect(events).not.toContain("'worker': __events_worker | __accepts_worker;");
+    expect(events).not.toContain('type __events_worker');
   });
 
 
