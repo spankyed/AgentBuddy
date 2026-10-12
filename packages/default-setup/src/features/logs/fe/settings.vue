@@ -103,8 +103,9 @@
 </template>
 
 <script setup lang="ts">
+import { useSettingsDraft } from '@apackdev/sdk/fe'
 import { X } from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 
@@ -121,8 +122,8 @@ const emit = defineEmits<{
 }>()
 
 // State
-const maxLogs = ref<number>(props.settings?.maxLogs || 1000)
-const excludedSources = ref<string[]>(props.settings?.excludedSources || [])
+const maxLogs = useSettingsDraft(() => props.settings?.maxLogs || 1000)
+const excludedSources = useSettingsDraft(() => props.settings?.excludedSources || [])
 const newExclusion = ref<string>('')
 
 // Common exclusion patterns
@@ -134,14 +135,6 @@ const commonExclusions = [
   'verbose.*',
   'system.*'
 ]
-
-// Watch for settings changes from backend
-watch(() => props.settings, (newSettings) => {
-  if (newSettings) {
-    maxLogs.value = newSettings.maxLogs
-    excludedSources.value = [...newSettings.excludedSources]
-  }
-}, { deep: true })
 
 // Methods
 const handleMaxLogsChange = () => {

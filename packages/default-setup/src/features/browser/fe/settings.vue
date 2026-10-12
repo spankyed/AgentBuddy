@@ -80,8 +80,9 @@
 </template>
 
 <script setup lang="ts">
+import { useSettingsDraft } from '@apackdev/sdk/fe'
 import { Trash2 } from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
@@ -99,15 +100,8 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate<'browser'>]
 }>()
 
-const openLinksInApp = ref(props.settings?.openLinksInApp ?? true)
-const showBookmarksBar = ref(props.settings?.showBookmarksBar ?? true)
-
-watch(() => props.settings, (newSettings) => {
-  if (newSettings) {
-    openLinksInApp.value = newSettings.openLinksInApp ?? true
-    showBookmarksBar.value = newSettings.showBookmarksBar ?? true
-  }
-}, { deep: true })
+const openLinksInApp = useSettingsDraft(() => props.settings?.openLinksInApp ?? true)
+const showBookmarksBar = useSettingsDraft(() => props.settings?.showBookmarksBar ?? true)
 
 const saveOpenLinksInAppSetting = () => {
   emit('update-setting', {

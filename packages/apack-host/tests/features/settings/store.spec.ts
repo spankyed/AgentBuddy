@@ -231,3 +231,32 @@ describe('schema validation at every write', () => {
     expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
   });
 });
+
+it('returns independent effective snapshots so a reader cannot mutate registered defaults', () => {
+  const defaults = DEFAULTS();
+  const snapshots = createSettingsStore({ defaults: () => defaults });
+  const first = snapshots.getFeatureSettings<{ limit: number }>(THREADS as never);
+  first.limit = -1;
+  expect(snapshots.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'newest' });
+  expect(defaults.features[THREADS]).toEqual({ limit: 10, sort: 'newest' });
+  expect(snapshots.getStored()).toEqual({});
+});
+
+it('updates one shortcut without losing another override or storing untouched defaults', () => {
+  const defaults = { hotkeys: { first: 'a', second: 'b', third: 'c' }, phase: 'Plan' };
+  const packId = 'shortcuts';
+  const ref = `${packId}/keys`;
+  registry.registerPack({ id: packId, features: { keys: { settings: {
+    defaults, schema: z.object({ hotkeys: z.record(z.string().nullable()), phase: z.string() }).strict(),
+  } } } });
+  try {
+    const shortcuts = createSettingsStore({ defaults: () => ({ features: { [ref]: defaults } }) });
+    shortcuts.setFeatureSetting(ref as never, ['hotkeys', 'first'], 'x');
+    shortcuts.setFeatureSetting(ref as never, ['hotkeys', 'second'], null);
+    shortcuts.setFeatureSetting(ref as never, ['phase'], '');
+    expect(shortcuts.getFeatureSettings(ref as never)).toEqual({ hotkeys: { first: 'x', second: null, third: 'c' }, phase: '' });
+    expect(shortcuts.getStored()).toEqual({ features: { [ref]: { hotkeys: { first: 'x', second: null }, phase: '' } } });
+  } finally {
+    registry.unregisterPack(packId);
+  }
+});

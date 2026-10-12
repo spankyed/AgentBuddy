@@ -165,7 +165,7 @@
 
 <script setup lang="ts">
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
@@ -189,12 +189,7 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate<'prompts'>]
 }>()
 
-// State - use settings or empty array (defaults come from backend)
-const categories = ref<Category[]>(
-  props.settings?.categories && props.settings.categories.length > 0
-    ? [...props.settings.categories]
-    : []
-)
+const categories = useSettingsDraft(() => props.settings?.categories ?? [])
 
 // Save function
 const saveCategories = () => {

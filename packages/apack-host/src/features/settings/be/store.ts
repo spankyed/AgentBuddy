@@ -70,7 +70,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
   }
 
   /** The settings in effect: the defaults with the stored changes over them */
-  const effective = (): SettingsDocument => deepMerge(defaults(), stored()) as SettingsDocument;
+  const effective = (): SettingsDocument => structuredClone(deepMerge(defaults(), stored())) as SettingsDocument;
 
   /** The sections a document may hold besides `features`, as the defaults name them */
   const sections = (): string[] => Object.keys(defaults()).filter((section) => section !== FEATURES_SECTION);

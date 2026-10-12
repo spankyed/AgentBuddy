@@ -51,7 +51,7 @@ function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 
 /** Each plugin's settings as they apply: what features were last told */
 const appliedFeatureSettings = (): Record<string, unknown> => ({ ...services.settings.getAll<SettingsDocument>().features });
 
-/** What each feature was last told of its settings, by plugin ref */
+/** What each feature was last told of its settings, by feature ref */
 /**
  * What the settings system takes while the stored data is being replaced or reset. A read is served, since it only
  * reports what is stored; a write is refused with `reason`, because storing it would either be lost with the data or

@@ -44,9 +44,9 @@ export function createApplierStore() {
 }
 
 /**
- * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and whether its
+ * Registered packs' feature settings, merged into the defaults: each feature's own slice and whether its
  * tab shows (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or
- * go. A manifest names the feature; its settings land under the plugin's ref, which the renderer reads by.
+ * go. A manifest names the feature; its settings land under the feature's ref, which the renderer reads by.
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();

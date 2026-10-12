@@ -7,6 +7,7 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
   appPage.on('pageerror', (error) => errors.push(error.message));
   appPage.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
+  await app.waitForPlugin('default-setup/threads');
   const { pluginIds, activePluginId: first } = await app.getContext();
   expect(pluginIds.length).toBeGreaterThan(5);
 
@@ -28,4 +29,22 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
 
   await app.navigate(first);
   expect(errors).toEqual([]);
+});
+
+
+test('an open feature form follows its settings being reset', async ({ app, appPage }) => {
+  await app.waitForPlugin('default-setup/code');
+  await app.navigate('host/settings');
+  await appPage.evaluate(() => {
+    const settings = (window as any).applicationState.system.get('host/settings');
+    settings.send({ type: 'FEATURE.SELECT', featureId: 'default-setup/code' });
+    settings.send({ type: 'TAB.SELECT', tab: 'features' });
+  });
+  const restoreTerminals = appPage.locator('#restore-terminals');
+  await expect(restoreTerminals).toBeChecked();
+  await restoreTerminals.uncheck();
+  await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
+  await appPage.getByTitle("Reset this feature's settings to their defaults").click();
+  await appPage.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(restoreTerminals).toBeChecked();
 });

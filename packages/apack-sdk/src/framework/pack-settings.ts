@@ -1,7 +1,7 @@
 import type { ZodType, output } from 'zod';
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { FeatureRef } from '../ids/index.ts';
-import { isPlainObject } from '../utils/shared.ts';
+import { hasOwn, isPlainObject } from '../utils/shared.ts';
 
 /** A feature owns its defaults and schema; neither declaration names another feature. */
 export interface FeatureSettings<T extends Record<string, unknown> = Record<string, unknown>> {
@@ -26,6 +26,17 @@ export interface PackSettingsDefaults {
   visibility: Record<string, boolean>;
 }
 
+/** Compare JSON values without depending on object property order. */
+function equalSettings(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((value, i) => equalSettings(value, b[i]));
+  }
+  if (!isPlainObject(a) || !isPlainObject(b)) return false;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every(key => hasOwn(b, key) && equalSettings(a[key], b[key]));
+}
+
 /** Refuse invalid declarations before registering any part of a pack. */
 export function checkFeatureSettings(featureId: string, settings: unknown): string[] {
   const where = `Feature "${featureId}" settings`;
@@ -46,6 +57,13 @@ export function checkFeatureSettings(featureId: string, settings: unknown): stri
   const checked = schema.safeParse(settings.defaults ?? {});
   if (!checked.success) problems.push(...checked.error.issues.map(issue => `${where}: ${issue.path.join('.') || 'defaults'}: ${issue.message}`));
   else if (!isPlainObject(checked.data)) problems.push(`${where}: the schema must produce an object`);
+  else {
+    const validated = schema.safeParse(checked.data);
+    if ((settings.defaults !== undefined && !equalSettings(checked.data, settings.defaults))
+      || !validated.success || !equalSettings(validated.data, checked.data)) {
+      problems.push(`${where}: the schema must validate effective defaults without transforming or removing values`);
+    }
+  }
   return problems;
 }
 

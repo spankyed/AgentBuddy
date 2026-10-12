@@ -858,6 +858,9 @@ export function _useFeatureSettings<T>(feature: FeatureRef): {
 export function usePlugin<T>(): T;
 
 // @public
+export function useSettingsDraft<T>(read: () => T): Ref<T>;
+
+// @public
 export function useSettingsSave(): {
     save: Readonly<Ref<SettingsSaveStatus>>;
     update: SettingsPort['update'];

@@ -193,10 +193,10 @@
 
 <script setup lang="ts">
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
@@ -217,15 +217,8 @@ const positionOptions = [
   { value: 'right' as const, label: 'Right' },
 ]
 
-const panelPosition = ref<'left' | 'right'>(props.settings.tasklistPanelPosition)
-const showCollapseIcon = ref(props.settings.showCollapseIcon)
-
-watch(() => props.settings, (newSettings) => {
-  if (newSettings) {
-    panelPosition.value = newSettings.tasklistPanelPosition
-    showCollapseIcon.value = newSettings.showCollapseIcon
-  }
-}, { deep: true })
+const panelPosition = useSettingsDraft(() => props.settings.tasklistPanelPosition)
+const showCollapseIcon = useSettingsDraft(() => props.settings.showCollapseIcon)
 
 const saveShowCollapseIconSetting = () => {
   emit('update-setting', {

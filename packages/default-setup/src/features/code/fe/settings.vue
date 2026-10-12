@@ -382,7 +382,7 @@
               v-model="hotkeys.openTerminal"
               id="open-terminal"
               label="Open Terminal"
-              @change="saveHotkeys"
+              @change="saveHotkey('openTerminal')"
               container-class="flex-1"
               :show-reset-button="true"
             />
@@ -396,7 +396,7 @@
               v-model="hotkeys.openTerminalTab"
               id="open-terminal-tab"
               label="Open Terminal Tab"
-              @change="saveHotkeys"
+              @change="saveHotkey('openTerminalTab')"
               container-class="flex-1"
               :show-reset-button="true"
             />
@@ -410,7 +410,7 @@
               v-model="hotkeys.focusSearch"
               id="focus-search"
               label="Focus Search"
-              @change="saveHotkeys"
+              @change="saveHotkey('focusSearch')"
               container-class="flex-1"
               :show-reset-button="true"
             />
@@ -425,7 +425,7 @@
                 v-model="hotkeys.navigatePrevPanel"
                 id="navigate-prev-panel"
                 label="Previous Panel"
-                @change="saveHotkeys"
+                @change="saveHotkey('navigatePrevPanel')"
                 container-class="flex-1"
                 :show-reset-button="true"
               />
@@ -434,7 +434,7 @@
                 v-model="hotkeys.navigateNextPanel"
                 id="navigate-next-panel"
                 label="Next Panel"
-                @change="saveHotkeys"
+                @change="saveHotkey('navigateNextPanel')"
                 container-class="flex-1"
                 :show-reset-button="true"
               />
@@ -454,19 +454,18 @@
 
 <script setup lang="ts">
 import { X, Plus } from 'lucide-vue-next'
-import { reactive, ref, computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
 import DirectorySelect from '@apackdev/ui/design/DirectorySelect'
 
-import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { useSettingsSection } from '@apackdev/sdk/fe'
 import type { GeneralSettings } from '#app-settings/types.ts'
-import type { CodeSettings, TerminalScript } from '#generated/types.ts'
 
 interface Project {
   name: string
@@ -486,31 +485,24 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate<'code'>]
 }>()
 
-// State - initialize directly from props with defaults
-const hotkeys = reactive<CodeSettings['hotkeys']>({
-  openTerminal: props.settings?.hotkeys?.openTerminal || null,
-  openTerminalTab: props.settings?.hotkeys?.openTerminalTab || null,
-  navigatePrevPanel: props.settings?.hotkeys?.navigatePrevPanel || null,
-  navigateNextPanel: props.settings?.hotkeys?.navigateNextPanel || null,
-  focusSearch: props.settings?.hotkeys?.focusSearch || null
-})
+const hotkeys = useSettingsDraft(() => props.settings?.hotkeys ?? {})
 
-const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
-const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
-const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
-const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
-const maxTerminals = ref(props.settings?.maxTerminals ?? 25)
-const enablePreview = ref(props.settings?.enablePreview ?? true)
-const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
-const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
-const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
-const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 180)
-const showStashes = ref(props.settings?.showStashes ?? false)
-const showCommits = ref(props.settings?.showCommits ?? true)
-const showWorktrees = ref(props.settings?.showWorktrees ?? false)
+const restoreTerminals = useSettingsDraft(() => props.settings?.restoreTerminals ?? true)
+const enableShellIntegration = useSettingsDraft(() => props.settings?.enableShellIntegration ?? false)
+const confirmTerminalClose = useSettingsDraft(() => props.settings?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = useSettingsDraft(() => props.settings?.closeTerminalOnTabClose ?? true)
+const maxTerminals = useSettingsDraft(() => props.settings?.maxTerminals ?? 25)
+const enablePreview = useSettingsDraft(() => props.settings?.enablePreview ?? true)
+const mdEditorDefault = useSettingsDraft(() => props.settings?.mdEditorDefault ?? true)
+const defaultBaseDirectory = useSettingsDraft(() => props.settings?.defaultBaseDirectory || null)
+const autoFetchRemote = useSettingsDraft(() => props.settings?.autoFetchRemote ?? false)
+const autoFetchIntervalSeconds = useSettingsDraft(() => props.settings?.autoFetchIntervalSeconds ?? 180)
+const showStashes = useSettingsDraft(() => props.settings?.showStashes ?? true)
+const showCommits = useSettingsDraft(() => props.settings?.showCommits ?? true)
+const showWorktrees = useSettingsDraft(() => props.settings?.showWorktrees ?? false)
 
 // Terminal scripts
-const localScripts = ref<TerminalScript[]>([...(props.settings?.terminalScripts ?? [])])
+const localScripts = useSettingsDraft(() => props.settings?.terminalScripts ?? [])
 const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
@@ -525,12 +517,8 @@ const getAllProjects = (): Project[] => {
 }
 
 // Save functions
-const saveHotkeys = () => {
-  // Simply send all hotkeys as-is
-  emit('update-setting', {
-    path: ['hotkeys'],
-    value: hotkeys
-  })
+const saveHotkey = (key: string) => {
+  emit('update-setting', { path: ['hotkeys', key], value: hotkeys.value[key] ?? null })
 }
 
 const saveTerminalSettings = () => {

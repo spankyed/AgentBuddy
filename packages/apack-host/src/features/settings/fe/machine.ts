@@ -76,7 +76,7 @@ export interface SettingsContext {
   /** The last change sent to the store: in flight, stored, or refused with why */
   save: SettingsSave;
 }
-/** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
+/** What a settings change is to: a feature's settings by their key (its ref), or a general section */
 /**
  * What a change names: an installed feature's own settings by its ref, or a registered section by the name whoever
  * registered it gave. `label` is the whole address at its level — a section's sub-key belongs in `path`, so that one
@@ -152,7 +152,7 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     updateSettingsData: assign(({ event }) => {
-      const ev = typeOf('SETTINGS_UPDATED', event);
+      const ev = typeOf(['SETTINGS_UPDATED', 'SETTINGS_RESET'] as const, event);
       return {
         settings: ev.data,
       }

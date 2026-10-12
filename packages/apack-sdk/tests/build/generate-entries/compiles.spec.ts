@@ -8,6 +8,8 @@
 //
 // One of five files split from a 1,365-line original; `_support/pack.ts` holds the fixture and why.
 import * as fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
@@ -204,4 +206,23 @@ it('emits settings modules that compile with unused-import checking for a pack w
   const files = generatePackFiles(manifest({}), { packRoot: root });
   const diagnostics = typecheck(files, ['src/__generated__/settings.ts', 'src/__generated__/settings-fe.ts'], true);
   expect(diagnostics.filter(d => /^src\/__generated__\/settings(?:-fe)?\.ts:/.test(d))).toEqual([]);
+});
+
+
+it('allows feature services to create settings handles during module initialization', () => {
+  write('src/settings.ts', `import { z } from 'zod';
+    export default { schema: z.object({ limit: z.number().default(10) }) };`);
+  write('src/service.ts', `import { settings } from './__generated__/settings.ts';
+    export const notesService = { settings: settings.forFeature('notes') };`);
+  const files = generatePackFiles(manifest({ features: [{
+    id: 'notes', settings: 'src/settings.ts', services: { notes: 'src/service.ts#notesService' },
+  }] }), { packRoot: root });
+  write('src/probe.ts', `import './__generated__/services.ts';
+    import { notesService } from './service.ts';
+    if (typeof notesService.settings.get !== 'function') throw new Error('Missing settings handle');`);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
 });

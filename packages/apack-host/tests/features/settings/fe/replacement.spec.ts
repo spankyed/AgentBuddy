@@ -65,3 +65,18 @@ it("is saving while a plugin's settings change is with the store, and refused wi
   actor.send({ type: 'SETTINGS_REFUSED', problems: ['No installed feature with settings is named "memo-pack/memos"'] })
   expect(save(actor)).toEqual({ status: 'refused', problems: ['No installed feature with settings is named "memo-pack/memos"'] })
 })
+
+
+it.each(['SETTINGS_UPDATED', 'SETTINGS_RESET'] as const)('accepts %s snapshots without stopping the settings actor', (type) => {
+  const actor = readySettingsPlugin()
+  const data = { general: {}, features: { 'default-setup/code': { restoreTerminals: true } } }
+  try {
+    actor.send({ type, data })
+    expect(actor.getSnapshot().status).toBe('active')
+    expect(actor.getSnapshot().context.settings).toEqual(data)
+    actor.send({ type: 'SETTINGS_SAVED' })
+    expect(save(actor)).toEqual({ status: 'saved', problems: [] })
+  } finally {
+    actor.stop()
+  }
+})

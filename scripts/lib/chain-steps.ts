@@ -1144,7 +1144,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
   { name: 'build:runtime', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
-    inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
+    inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,

@@ -194,7 +194,7 @@
 
 <script setup lang="ts">
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 
 import { ref } from 'vue'
@@ -222,10 +222,7 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate<'library'>]
 }>()
 
-// State - initialize directly from props with defaults
-const tags = ref<LibraryTagOption[]>(
-  props.settings?.tags ? [...props.settings.tags] : []
-)
+const tags = useSettingsDraft(() => props.settings?.tags ?? [])
 
 // Save function
 const saveTags = () => {

@@ -22,4 +22,13 @@ describe('feature settings declarations', () => {
     expect(checkFeatureSettings('memos', { visible: 'yes' })).toEqual([expect.stringContaining('"visible" must be true or false')]);
     expect(checkFeatureSettings('memos', undefined)).toEqual([expect.stringContaining('must default-export an object')]);
   });
+
+  it('refuses defaults that are transformed or silently stripped', () => {
+    const transformed = defineFeatureSettings({ schema: z.object({ count: z.number().default(1).transform(n => n + 1) }) });
+    expect(checkFeatureSettings('memos', transformed)).toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { schema: transformed.schema })).toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { defaults: { count: 1, typo: true }, schema: z.object({ count: z.number() }) }))
+      .toEqual([expect.stringContaining('without transforming or removing')]);
+    expect(checkFeatureSettings('memos', { defaults: { count: 1 }, schema: z.object({ count: z.number() }) })).toEqual([]);
+  });
 });

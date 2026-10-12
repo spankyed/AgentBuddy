@@ -198,7 +198,7 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useSettingsDraft, usePlugin } from '@apackdev/sdk/fe'
 import type { SettingUpdate, SettingsOf } from '#generated/settings-fe.ts'
 import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
@@ -227,7 +227,7 @@ const emit = defineEmits<{
 }>()
 
 // State
-const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
+const enableFlowPreview = useSettingsDraft(() => props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
 const flowsActor: FlowsState = usePlugin()
@@ -272,12 +272,6 @@ const currentRootFlow = computed(() => {
 // Follow the root flow the flows system reports
 watch(rootFlowId, (newValue) => {
   selectedRootFlowId.value = newValue || ''
-})
-
-watch(() => props.settings?.enableFlowPreview, (newValue) => {
-  if (newValue !== undefined) {
-    enableFlowPreview.value = newValue ?? true
-  }
 })
 
 // Methods

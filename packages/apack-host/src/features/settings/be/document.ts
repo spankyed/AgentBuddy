@@ -60,7 +60,7 @@ export function changesFrom(defaults: unknown, settings: unknown): unknown {
 export const SETTINGS_KIND = 'feature with settings';
 
 export interface SettingsCheck {
-  /** The document `next` replaces: a section or plugin slice equal to its value there isn't a change */
+  /** The document `next` replaces: a section or feature slice equal to its value there isn't a change */
   before: unknown;
   /**
    * The sections this document may hold besides `features`, as the packs that registered them named. The host knows
@@ -69,8 +69,8 @@ export interface SettingsCheck {
    */
   sections: readonly string[];
   /**
-   * Why a plugin key whose slice changes can't be written, where the installed features with settings are known: the
-   * store gives it for a replacement, the one edge with arbitrary keys; every other write names its plugin by a ref its
+   * Why a feature key whose slice changes can't be written, where the installed features with settings are known: the
+   * store gives it for a replacement, the one edge with arbitrary keys; every other write names its feature by a ref its
    * caller already parsed. Without it, a key only has to be a ref.
    */
   keyProblem?: (key: string) => string | undefined;
@@ -78,7 +78,7 @@ export interface SettingsCheck {
 
 /**
  * What's wrong with `next` as the stored settings, nothing when it may be stored: it must be an object; a section that
- * changes must be `features` or one of `sections`, and an object; every plugin's settings are keyed by a ref, and with
+ * changes must be `features` or one of `sections`, and an object; every feature's settings are keyed by a ref, and with
  * `keyProblem`, a slice that changes must be an installed feature's with settings. A slice left as it was stays: an
  * uninstalled pack's settings are there for its reinstall.
  */

@@ -292,6 +292,19 @@ bookmarks.reset(); // removes overrides; applies the current defaults
 
 In a component, `useSettings('bookmarks')` returns a reactive `value` (undefined until loaded), typed `set`, and `reset`. It must run in a component or effect scope; disposal stops its subscription. `useSettingsSave()` from `@apackdev/sdk/fe` reports the shared save status. Custom forms type their props with `SettingsOf<'bookmarks'>` and their `update-setting` payload with `SettingUpdate<'bookmarks'>`, both from `#generated/settings-fe.ts`. Paths address object fields, including record keys, up to six levels; replace arrays as a whole. Each path is paired with its field's value type. Runtime validation remains authoritative.
 
+Custom forms can use `useSettingsDraft` from `@apackdev/sdk/fe` for an editable copy of a JSON settings field:
+
+```typescript
+import { useSettingsDraft } from '@apackdev/sdk/fe';
+const tags = useSettingsDraft(() => props.settings.tags);
+// Save explicitly: emit('update-setting', { path: ['tags'], value: tags.value });
+```
+
+Draft edits never mutate the settings snapshot. A persisted change to the selected field replaces its draft,
+including after a reset; unrelated or equivalent snapshots preserve pending edits, regardless of object key order.
+Array order is significant. Values must be JSON-compatible (or `undefined`). The composable requires a component
+or effect scope; disposal stops its watcher. It does not save automatically.
+
 The host's raw `services.settings` and frontend settings port support migrations, app-wide sections, and transport. Ordinary feature code uses the generated accessors.
 - When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
 

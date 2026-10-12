@@ -1173,8 +1173,7 @@ export const {
     const qualified = depIds.map(id => `{ [K in keyof ${depAlias(id, 'PackFeatureSettings')} & string as \`${id}/\${K}\`]: ${depAlias(id, 'PackFeatureSettings')}[K] }`);
     return `${HEADER}
 import type { ${features.length ? 'FeatureSettingsValue, ' : ''}FeatureSettingUpdate } from '@apackdev/sdk/types';
-import { _featureSettings } from '@apackdev/sdk/services';
-import { services } from './services.ts';
+import { _featureSettings, services } from '@apackdev/sdk/services';
 import { ref } from './ref.ts';
 ${imports.join('\n')}
 ${deps.imports}

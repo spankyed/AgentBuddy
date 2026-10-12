@@ -131,7 +131,7 @@ Actions and prompts only support JSON import/export.
 
 ### Import
 
-Each plugin settings page has a "Select JSON File..." button. The JSON is an array:
+Each feature settings page has a "Select JSON File..." button. The JSON is an array:
 
 **Actions:**
 ```json
