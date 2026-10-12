@@ -1,4 +1,4 @@
-// An install asked for from outside the app (`apack://install?pack=…&source=…`): the window passes the platform's
+// An install asked for from outside the app (`apack://install?pack=…&sourceKind=…`): the window passes the platform's
 // parameters on, and the app reads them and asks the Packs system.
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '@apackdev/sdk/events';
@@ -10,9 +10,9 @@ afterAll(startFeTestRuntime({ client: { send: sent } }));
 beforeEach(() => sent.mockClear());
 
 describe('packInstallRequest', () => {
-  it('takes the pack a deep link names, with the source it gives', () => {
-    expect(packInstallRequest({ pack: 'awesome-pack' })).toEqual({ packSlug: 'awesome-pack', source: undefined });
-    expect(packInstallRequest({ pack: 'my-pack', source: 'github' })).toEqual({ packSlug: 'my-pack', source: 'github' });
+  it('takes the pack a deep link names, with the sourceKind it gives', () => {
+    expect(packInstallRequest({ pack: 'awesome-pack' })).toEqual({ packSlug: 'awesome-pack', sourceKind: undefined });
+    expect(packInstallRequest({ pack: 'my-pack', sourceKind: 'github' })).toEqual({ packSlug: 'my-pack', sourceKind: 'github' });
   });
 
   it('is null for parameters that name no pack, saying so', () => {
@@ -29,7 +29,7 @@ describe('installFromProtocol', () => {
   it('asks the Packs system to install what the link names', () => {
     installFromProtocol({ pack: 'fixture/pack@v1.0.0', sha256: 'A'.repeat(64) });
 
-    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', from: 'host', call: expect.any(String), event: { type: 'INSTALL_PACK', packSlug: 'fixture/pack@v1.0.0', source: undefined, sha256: 'a'.repeat(64) } });
+    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', from: 'host', call: expect.any(String), event: { type: 'INSTALL_PACK', packSlug: 'fixture/pack@v1.0.0', sourceKind: undefined, sha256: 'a'.repeat(64) } });
   });
 
   it.each(['', 'invalid', 'a'.repeat(63)])('refuses an invalid checksum rather than installing without its pin: %s', sha256 => {
@@ -42,7 +42,7 @@ describe('installFromProtocol', () => {
   it('asks for nothing when the link names no pack', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    installFromProtocol({ source: 'github' });
+    installFromProtocol({ sourceKind: 'github' });
 
     expect(sent).not.toHaveBeenCalled();
     vi.restoreAllMocks();

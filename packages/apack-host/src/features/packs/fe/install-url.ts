@@ -1,11 +1,11 @@
-// An install asked for from outside the app: `apack://install?pack=<slug>&source=<url>`, which the platform hands
+// An install asked for from outside the app: `apack://install?pack=<slug>&sourceKind=<kind>`, which the platform hands
 // the window as parameters. Reading them and asking the Packs system is the app's, so a window only subscribes to
 // the protocol and passes on what it was given.
 import { sendToSystem } from '../../../events.ts';
 
 export interface PackInstallRequest {
   packSlug: string;
-  source?: string;
+  sourceKind?: string;
   sha256?: string;
 }
 
@@ -20,7 +20,7 @@ export function packInstallRequest(params: Record<string, string>): PackInstallR
     console.warn('[pack-install] Invalid sha256 parameter in install URL');
     return null;
   }
-  return { packSlug, source: params.source, ...(params.sha256 !== undefined ? { sha256: params.sha256.toLowerCase() } : {}) };
+  return { packSlug, sourceKind: params.sourceKind, ...(params.sha256 !== undefined ? { sha256: params.sha256.toLowerCase() } : {}) };
 }
 
 /** Asks the Packs system to install a pack; a send that fails is reported by the window's client */

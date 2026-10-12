@@ -37,7 +37,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
    - `window.applicationState` is the actor. The E2E fixture (`@apackdev/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
    - `window.__sendToSystem` is `untypedSendToSystem`, for the E2E suite: a send to a backend system is otherwise only reachable over the API's tRPC WebSocket, which is a client to stand up rather than a call to make.
-7. Subscribes to `protocolAction`: `apack://install?pack=…&source=…` → `installFromProtocol` (`@apackdev/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
+7. Subscribes to `protocolAction`: `apack://install?pack=…&sourceKind=…` → `installFromProtocol` (`@apackdev/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
 8. Mounts `views/App.vue`, sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
 `App.vue` renders `PluginPopoutApp.vue` (one plugin, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.

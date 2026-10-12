@@ -45,7 +45,7 @@ Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apack
 ```
 <id>/
   apack.json          # The pack's manifest, as written
-  integrity.json          # Format version, versions, source, sha256 of every file
+  integrity.json          # Format version, versions, provenance, sha256 of every file
   runtime/
     index.cjs          # Backend: exports `registration` and `setCompiledDir`
     fe.js              # Frontend entry

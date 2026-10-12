@@ -6,7 +6,7 @@ import { installPack, installPackFromLocal, readHostCompatibility, readInstalled
 import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
-function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
+function detectSourceKind(input: string): 'local' | 'url' | 'registry' | undefined {
   if (input.startsWith('http://') || input.startsWith('https://')) return 'url';
   if (input.startsWith('.') || input.startsWith('/') || input.startsWith('~')) return 'local';
   if (input.endsWith('.zip') || input.endsWith('.tgz') || input.endsWith('.tar.gz')) return 'local';
@@ -48,12 +48,12 @@ Options:
     const { packsDir, userDataDir, installedPacksFile } = context;
     readInstalledPacks(installedPacksFile, { strict: true });
     const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
-    const kind = detectSource(source);
-    const resolvedSource = kind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
-    const result = kind === 'local'
-      ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion, packFormat })
-      : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
-    recordCliInstall(installedPacksFile, result.id, kind === undefined ? source : undefined);
+    const sourceKind = detectSourceKind(source);
+    const resolvedInput = sourceKind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
+    const result = sourceKind === 'local'
+      ? await installPackFromLocal(resolvedInput, packsDir, { hostVersion, packFormat })
+      : await installPack(resolvedInput, sourceKind === 'registry' ? 'url' : sourceKind, packsDir, { hostVersion, packFormat });
+    recordCliInstall(installedPacksFile, result.id, sourceKind === undefined ? source : undefined);
     return { result, hostVersion };
   });
 

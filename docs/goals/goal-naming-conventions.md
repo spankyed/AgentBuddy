@@ -128,3 +128,10 @@ Every newly enforceable rule has a firing case; semantic noun choices stay revie
   summary/metadata types. Chose AppDriver/EngineAppDriver rather than another TestApp, which already
   names the in-memory harness. Kept native tRPC createContext keys and stored data shapes. All
   typechecks and 3,799 host-suite tests pass; public API/facade reports were regenerated.
+
+- Phase 4: sourceKind selects install routing; inputPath names the local directory/archive; generated
+  integrity metadata and gitProvenance use provenance. Stored installedFrom and unrelated source
+  fields are unchanged. No layout-version bump: only optional informational metadata changed, not
+  paths, checksums or runtime loading. All typechecks pass; 77 host tests, the provenance credential
+  stripping test and 27 real release/archive tests pass, including explicit/inferred URL and GitHub
+  routing and local directory/archive routing. The review caught and fixed the renderer’s install field.

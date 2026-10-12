@@ -32,7 +32,7 @@ type PacksEvent =
   | { type: 'PACK_DEACTIVATED'; packId: string }
   | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
-  | { type: 'UI.INSTALL'; packSlug: string; source?: string }
+  | { type: 'UI.INSTALL'; packSlug: string; sourceKind?: string }
   | { type: 'UI.UNINSTALL'; packId: string }
   | { type: 'UI.CONFIRM_UNINSTALL'; packId: string }
   | { type: 'UI.CANCEL_UNINSTALL' }
@@ -107,7 +107,7 @@ const packsState = setup({
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
+      sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, sourceKind: ev.sourceKind });
     },
 
     promptUninstall: assign({

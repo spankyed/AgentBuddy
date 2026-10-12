@@ -16,7 +16,7 @@ Options:
   --out <dir>   Output directory (default: pack root)
 `.trim();
 
-export function gitSource(root: string): PackIntegrity['source'] | undefined {
+export function gitProvenance(root: string): PackIntegrity['provenance'] | undefined {
   const git = (...args: string[]) => {
     try {
       return execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
@@ -60,7 +60,7 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
   });
   try {
     const stageDir = path.join(root, '.apack', 'staged', manifest.id);
-    stagePack(root, stageDir, { sdkVersion: sdkVersion(), source: gitSource(root) });
+    stagePack(root, stageDir, { sdkVersion: sdkVersion(), provenance: gitProvenance(root) });
     const integrity = verifyPack(stageDir);
     const archive = await createPackArchive(stageDir, outDir);
     return { ...archive, integrity };

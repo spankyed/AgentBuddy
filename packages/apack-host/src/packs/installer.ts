@@ -305,9 +305,9 @@ function validateExpectedChecksum(options: InstallOptions): void {
   }
 }
 
-export async function installPackFromLocal(source: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+export async function installPackFromLocal(inputPath: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   validateExpectedChecksum(options);
-  const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
+  const expanded = inputPath.startsWith('~') ? inputPath.replace('~', os.homedir()) : inputPath;
   const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
     throw new Error(`Path not found: ${resolved}`);
@@ -404,11 +404,11 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
   }
 }
 
-export async function installPack(packSlug: string, source?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
-  if (source === 'local') {
+export async function installPack(packSlug: string, sourceKind?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  if (sourceKind === 'local') {
     return installPackFromLocal(packSlug, targetPacksDir, options);
   }
-  if (source === 'url') {
+  if (sourceKind === 'url') {
     return installPackFromUrl(packSlug, targetPacksDir, options);
   }
   if (packSlug.startsWith('http://') || packSlug.startsWith('https://')) {

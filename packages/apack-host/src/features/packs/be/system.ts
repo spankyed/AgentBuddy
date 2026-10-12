@@ -277,15 +277,15 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
         _inFlightOps.add(packSlug);
-        console.log(`[packs] Install requested: ${packSlug} (source: ${ev.source ?? 'default'})`);
+        console.log(`[packs] Install requested: ${packSlug} (source kind: ${ev.sourceKind ?? 'default'})`);
 
         broadcastToPlugin('packs', { type: 'PACK_INSTALL_STARTED' as const, packSlug });
 
-        const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
+        const isGitHub = !ev.sourceKind && !packSlug.startsWith('http') && packSlug.includes('/');
         // The id of the running pack this install tore down, which a slug or a URL doesn't carry
         let replacedId: string | undefined;
 
-        runInstall(packSlug, ev.source, undefined, {
+        runInstall(packSlug, ev.sourceKind, undefined, {
           sha256: ev.sha256,
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,

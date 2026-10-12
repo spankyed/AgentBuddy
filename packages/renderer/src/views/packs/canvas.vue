@@ -236,7 +236,7 @@ function handleInstall() {
   actor.send({
     type: 'UI.INSTALL',
     packSlug: value,
-    source: isLocal ? 'local' : undefined,
+    sourceKind: isLocal ? 'local' : undefined,
   });
   installInput.value = '';
 }

@@ -3,7 +3,7 @@
  * (dist/), the release archive, and the installed pack directory.
  *
  *   <id>/apack.json            the pack's manifest
- *   <id>/integrity.json            format version, versions, source, sha256 per file
+ *   <id>/integrity.json            format version, versions, provenance, sha256 per file
  *   <id>/runtime/index.cjs      backend: exports `registration` + `setCompiledDir`
  *   <id>/runtime/fe.js, fe.css  frontend
  *   <id>/runtime/content/         compiled content
@@ -54,7 +54,7 @@ export interface PackIntegrity {
   version: string;
   hostVersion?: string;
   sdkVersion?: string;
-  source?: { repo?: string; commit?: string };
+  provenance?: { repo?: string; commit?: string };
   /** sha256 of every file in the pack except integrity.json, keyed by pack-relative path. */
   files: Record<string, string>;
 }
@@ -191,7 +191,7 @@ export function stagedFileHashes(packRoot: string): Record<string, string> {
 export function stagePack(
   packRoot: string,
   stageDir: string,
-  options: { sdkVersion?: string; source?: PackIntegrity['source'] } = {},
+  options: { sdkVersion?: string; provenance?: PackIntegrity['provenance'] } = {},
 ): PackIntegrity {
   if (!hasBuiltPackSections(packRoot)) {
     throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack pack build" first.`);
@@ -222,7 +222,7 @@ export function stagePack(
     version: manifest.version,
     hostVersion: manifest.hostVersion,
     sdkVersion: options.sdkVersion,
-    source: options.source,
+    provenance: options.provenance,
     files,
   };
   fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');

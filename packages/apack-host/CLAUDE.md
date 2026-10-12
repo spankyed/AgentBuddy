@@ -125,7 +125,7 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`). The context
 
 **Installer** (`packs/installer.ts`): every install goes through stage, then verify, then place.
 - Entry points:
-  - `installPack(slug, source?)` dispatches by source: `local`, `url`, an `http(s)` URL, or otherwise a GitHub `owner/repo[@tag]` slug.
+  - `installPack(slug, sourceKind?)` dispatches by sourceKind: `local`, `url`, an `http(s)` URL, or otherwise a GitHub `owner/repo[@tag]` slug.
   - `installPackFromLocal` accepts a directory, a `.tgz`/`.tar.gz` (extracted with `extractPackArchive`) or a `.zip` (extracted by shelling out to `unzip`, with `findPackRoot`). An `sha256` option is checked (`assertChecksum`) before either archive is unpacked, so it covers the `.zip` path too.
   - `installPackFromGitHub` picks the release's first `.tgz` asset and requires its `<asset>.sha256` (or an `sha256` option): a release publishing neither is refused, as is a checksum file that isn't 64 hex digits.
   - `installPackFromUrl` warns when it has no `sha256` to check, and downloads under `DOWNLOAD_TIMEOUT_MS` (`packs/github.ts`, two minutes; the signal bounds the body too). `githubFetch` gives metadata requests 10s and release-asset downloads that same two minutes.
@@ -198,7 +198,7 @@ which is all that is left there.
   (`importModule`, `styles.add`/`remove`), so no browser global is reached here. Its failure log,
   `[pack-loader] Failed to load FE entry pack://<id>/…`, is matched by the E2E fixture to fail a pack under test
   fast: its text is a contract, not a message.
-- `install-url.ts` — `installFromProtocol(params)`, what `apack://install?pack=…&source=…&sha256=…` asks for; a window
+- `install-url.ts` — `installFromProtocol(params)`, what `apack://install?pack=…&sourceKind=…&sha256=…` asks for; a window
   subscribes to the protocol and passes on the parameters. An optional checksum is validated and carried through
   `INSTALL_PACK` to the installer; malformed pins are refused rather than treated as absent. Checksum verification
   happens before the running copy is torn down or its files replaced.

@@ -287,7 +287,7 @@ describe('runRelease', () => {
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
-    expect(readPackIntegrity(path.join(root, '.apack', 'staged', 'demo-pack')).source?.commit).toBe(tagged);
+    expect(readPackIntegrity(path.join(root, '.apack', 'staged', 'demo-pack')).provenance?.commit).toBe(tagged);
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
   });
 

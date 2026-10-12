@@ -113,7 +113,7 @@ describe('installing over a pack that is already running', () => {
       await installPackFromLocal(packSource('1.0.0'));
       expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
 
-      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), sourceKind: 'local' });
 
       await vi.waitFor(() => {
         const types = emitted(system.sent).map(e => e.type);
@@ -210,7 +210,7 @@ describe('a pack that ships with the app', () => {
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {
-      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), sourceKind: 'local' });
 
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED'))
@@ -427,8 +427,8 @@ describe('installing over a pack that is already running', () => {
       const realWarn = console.warn;
       console.warn = (...args: unknown[]) => void warned.push(args.map(String).join(' '));
       try {
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
       } finally {
         console.warn = realWarn;
       }
@@ -490,7 +490,7 @@ describe('reinstalling a pack whose data did not content', () => {
 
     const first = runPacksSystem();
     try {
-      first.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      first.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
       await vi.waitFor(() => expect(outcomes(first.sent)).toHaveLength(1));
       expect(outcomes(first.sent)).toEqual(['PACK_INSTALL_FAILED']);
       expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
@@ -501,7 +501,7 @@ describe('reinstalling a pack whose data did not content', () => {
     // The same pack again, byte for byte: nothing about its data has changed, so nothing is written again
     const second = runPacksSystem();
     try {
-      second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      second.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
       await vi.waitFor(() => expect(outcomes(second.sent)).toHaveLength(1));
 
       expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
