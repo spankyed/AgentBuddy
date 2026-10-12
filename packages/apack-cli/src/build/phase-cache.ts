@@ -1,36 +1,17 @@
 /**
- * Reusing a build phase's output when nothing it reads has moved.
+ * Content-keyed reuse of frontend bundles, facade types and DSL definitions.
  *
- * **Three of `apack pack build`'s phases are expensive and read a bounded set of files** — the frontend
- * bundle, the facade types and the DSL defs — so a build whose pack sources have not changed can take the
- * previous build's output forward instead of making it again. Measured on the pack the app ships,
- * 2026-10-08: hashing the whole scope is **17-19ms over 705 files**, against 11.3s for the frontend bundle
- * alone, and a build whose pack has not changed goes **21.0s to 6.3s, -70%** with all three gated (paired
- * A/B, median of 3, 74% idle, 2026-10-08). What is left is the hash and the copy of what the phases
- * produced — 101 files and 8.5 MB for the pack the app ships.
- *
- * **Reuse, not skip.** `--skip-fe` omits the frontend from the published tree; this produces the same tree
- * either way, which is the whole requirement — `apack pack build` stages into `.apack/build/` and renames
- * that over `dist/`, so a phase that does not run still has to leave its files in the staged tree.
- * Everything here exists to make the two trees identical, not to leave one short.
- *
- * **It is a content key over a declared scope, which is what makes it sound.** The build also records what
- * each phase *read* (`build-reads.ts`), and that record is explicitly never a cache key: a dep file can be
- * stale about a read nobody has made yet. A scope is the other half of the root guide's rule — *"a key
- * that cannot go stale, or a scope in which it cannot"* — because it hashes the tree rather than the reads,
- * so a file nobody touched last time is still in it. The reads record is how the scopes below were checked
- * against reality rather than guessed: measured 2026-10-08, the frontend phase read 329 files under the
- * pack's `src/` and 84 in the `@apackdev` packages' `dist`, and no others.
- *
- * **What the hash must cover besides the inputs is the options that change the output.** A `--release`
- * build minifies and drops sourcemaps, so reusing a development build's bundle for it would publish the
- * wrong bytes under the right name — the one failure here that no missing-file check could catch.
+ * Keys cover authored pack files, generated entries, the phase's additional inputs, tools and options.
+ * Diagnostic build-read records do not define this scope: additions must invalidate reuse even when
+ * no previous build read them. Reused output is copied into the staged tree before publication, so
+ * reuse produces the same artifact as running the phase. Release and development keys stay distinct.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { cliVersion } from '../utils';
+import { packInputsHash } from './pack-inputs.ts';
 
 /** Where the stamps live: beside `reads.json`, in the directory every pack already ignores */
 const CACHE_FILE = path.join('.apack', 'build-cache.json');
@@ -166,15 +147,13 @@ function bundlerVersions(): string {
 }
 
 /** Hashable file lists, each a scope rather than a list of reads */
-function hashTree(hash: ReturnType<typeof createHash>, dir: string, keep: (name: string) => boolean): void {
+function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
   for (const file of filesUnder(dir)) {
-    if (!keep(path.basename(file))) continue;
-    hash.update(file);
-    hash.update(fs.readFileSync(path.join(dir, file)));
+    const content = fs.readFileSync(path.join(dir, file));
+    hash.update(`${file.length}:${file}:${content.length}:`);
+    hash.update(content);
   }
 }
-
-const SOURCE = /\.(ts|tsx|js|mjs|cjs|vue|json|css)$/;
 
 /**
  * The frontend bundle's scope: the pack's own sources — `src/__generated__` included, since the entry it
@@ -212,13 +191,9 @@ function phaseInputsHash(root: string, o: {
   if (o.release !== undefined) hash.update(`release:${o.release}`);
   hash.update(bundlerSource(o.bundler));
   hash.update(bundlerVersions());
-  for (const file of ['apack.json', 'package.json', 'tsconfig.json', 'tailwind.config.ts', 'tailwind.config.js']) {
-    const full = path.join(root, file);
-    if (fs.existsSync(full)) { hash.update(file); hash.update(fs.readFileSync(full)); }
-  }
-  hashTree(hash, path.join(root, 'src'), (name) => SOURCE.test(name));
-  for (const tree of o.trees ?? []) hashTree(hash, path.join(root, tree), () => true);
-  for (const dir of o.dirs ?? []) hashTree(hash, dir, (name) => SOURCE.test(name));
+  hash.update(packInputsHash(root, { generated: true }));
+  for (const tree of o.trees ?? []) hashTree(hash, path.join(root, tree));
+  for (const dir of o.dirs ?? []) hashTree(hash, dir);
   for (const id of [...(o.depSnapshots?.keys() ?? [])].sort()) {
     hash.update(id);
     hash.update(JSON.stringify(o.depSnapshots!.get(id)));

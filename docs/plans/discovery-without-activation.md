@@ -99,6 +99,27 @@ authoring checks; evidence `node_modules/.cache/apack-chain/runs/2026-10-12T13-3
 The first broad run correctly refused published-package freshness after a source edit during that run;
 the successful rerun held source inputs unchanged.
 
+### Implemented authored-file scopes and publication stability
+
+Codegen and reusable bundle phases share `build/pack-inputs.ts`. Module sources are tracked throughout
+the pack, rather than only under `src/`; codegen also hashes captured manifest data, declared help and
+the SDK source tree. Bundle scopes include generated entries and all asset extensions, including files
+outside `src/`. Root build/dependency working trees are excluded; an authored nested `src/dist` is not.
+Filename/content boundaries make identities unambiguous and independent of checkout location or mtimes.
+Source symlinks are tracked; directory cycles refuse rather than recurse indefinitely.
+
+The build captures authored inputs before reading its manifest and checks them before publication.
+A real settings module that adds an authored file during compilation causes refusal, preserving the
+previous artifact and removing staging. This is a stability guard, not an immutable source snapshot:
+complete external-input/dependency identities and a frozen/coherent build view remain required before
+claiming full build-input freshness. The existing diagnostic reads record remains distinct from cache keys.
+
+Validation: 42 focused checks passed, including outside-`src` exports, asset/config/lockfile invalidation,
+generated-output exclusions, relocatable identities, symlinks and real-build refusal/rollback. Three
+mutations removing module coverage, asset coverage or the publication guard were caught and restored.
+The strict chain passed (282.0s, one cached); evidence
+`node_modules/.cache/apack-chain/runs/2026-10-12T14-44-50Z-20334`.
+
 ### Implemented catalog prototype
 
 `createContributionCatalog` retains validated snapshot data and host-owned enablement independently

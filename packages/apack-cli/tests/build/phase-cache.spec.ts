@@ -73,6 +73,28 @@ describe('feInputsHash', () => {
     expect(feInputsHash(root, { release: false }, [])).not.toBe(before);
   });
 
+  it.each(['assets/icon.svg', 'components/entry.vue', 'vite.config.mts', 'package-lock.json'])('invalidates for authored input %s outside the old source scope', file => {
+    const root = pack();
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), 'before');
+    const before = feInputsHash(root, { release: false }, []);
+    fs.writeFileSync(path.join(root, file), 'after');
+    expect(feInputsHash(root, { release: false }, [])).not.toBe(before);
+  });
+
+  it('ignores unrelated build output while including generated bundle entries', () => {
+    const root = pack();
+    const before = feInputsHash(root, { release: false }, []);
+    fs.mkdirSync(path.join(root, '.apack'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.apack/cache.json'), '{}');
+    fs.mkdirSync(path.join(root, 'dist/runtime'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'dist/runtime/index.cjs'), 'output');
+    expect(feInputsHash(root, { release: false }, [])).toBe(before);
+    fs.mkdirSync(path.join(root, 'src/__generated__'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/__generated__/pack-entry-fe.ts'), 'new entry');
+    expect(feInputsHash(root, { release: false }, [])).not.toBe(before);
+  });
+
   it('moves with --release, so a development bundle is never published as one', () => {
     const root = pack();
     expect(feInputsHash(root, { release: true }, [])).not.toBe(feInputsHash(root, { release: false }, []));

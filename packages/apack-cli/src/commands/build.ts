@@ -20,6 +20,7 @@ import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
+import { packInputsHash } from '../build/pack-inputs.ts';
 import { bundleDslDefs } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -129,6 +130,7 @@ export async function build(args: string[]) {
 async function buildIntoStaging(args: string[]) {
   const root = findPackRoot(process.cwd());
   // The installer rejects an invalid manifest; don't build (or let CI publish) one
+  const inputsHash = packInputsHash(root);
   const manifest = readValidManifest(root);
 
   // What each bundling phase read, for the chain step that builds this pack to be checked against. The
@@ -298,6 +300,7 @@ async function buildIntoStaging(args: string[]) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
+    if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
     failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));
     const validation = parseSnapshot(snapshot);
     failures.push(...validation.diagnostics.map(issue => issue.message));

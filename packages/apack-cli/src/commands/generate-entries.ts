@@ -6,45 +6,26 @@ import { _depTypesFile, _depTypesVersion, generatePackFiles, compileHelp } from 
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
+import { packInputsHash } from '../build/pack-inputs.ts';
 
 const HASH_FILE = '.inputs-hash';
 // Hash the codegen implementation too, so SDK upgrades regenerate entries
 function codegenSource(): string {
   const sdkDir = sdkPackageDir();
-  const sources = ['generate-entries', 'help', 'content/markdown-tree'];
-  for (const [dir, ext] of [['src', 'ts'], ['dist', 'js']]) {
-    const files = sources.map(source => path.join(sdkDir, dir, 'build', `${source}.${ext}`));
-    if (files.every(file => fs.existsSync(file))) return files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
+  for (const dir of ['src', 'dist']) {
+    const source = path.join(sdkDir, dir);
+    if (fs.existsSync(source)) return `${sdkVersion()}:${packInputsHash(source)}`;
   }
   return sdkVersion() ?? '';
 }
 
-/**
- * Pack sources codegen reads besides the manifest: service export shapes, step build.ts /
- * index.ts / types.ts, which *-fe.ts and export-types.ts files exist, and so on. Hashing all
- * of src/ (not __generated__) is simpler than tracking each read and never misses one.
- */
-function sourceFiles(dir: string, out: string[] = []): string[] {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) sourceFiles(full, out);
-    else if (/\.(ts|tsx|js|mjs|vue|json)$/.test(entry.name)) out.push(full);
-  }
-  return out;
-}
-
-function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>): string {
+function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: Map<string, PackSnapshot>): string {
   const hash = createHash('sha256');
-  hash.update(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'));
+  hash.update(packInputsHash(root, { modulesOnly: true }));
+  // The parsed declarations used below are part of the identity, even if disk changes between reads.
+  hash.update(JSON.stringify(manifest));
   hash.update(codegenSource());
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')) as PackManifest;
   if (manifest.extensions?.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
-  const srcDir = path.join(root, 'src');
-  for (const file of fs.existsSync(srcDir) ? sourceFiles(srcDir) : []) {
-    hash.update(path.relative(root, file));
-    hash.update(fs.readFileSync(file));
-  }
   // Generated flow helpers and types depend on every resolved dependency, wherever it came from
   for (const depId of [...depSnapshots.keys()].sort()) {
     hash.update(depId);
@@ -119,7 +100,7 @@ export async function generateEntries(
     depTypes = resolved.depTypes;
     depSnapshots = resolved.depSnapshots;
   }
-  const currentHash = computeInputsHash(root, depSnapshots);
+  const currentHash = computeInputsHash(root, manifest, depSnapshots);
 
   const stale = force ? 'forced' : staleReason(hashPath, root, currentHash);
   if (stale === null) {

@@ -37,6 +37,22 @@ const list = (dir: string): string[] => fs.existsSync(dir)
 describe('a build that fails', () => {
   const PREVIOUS = ['flows.content.json', 'content.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
 
+  it('refuses publication when an authored input changes during a real build', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', features: { memos: { settings: 'src/settings.ts' } } }, files: {
+      'src/settings.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default {};",
+    } });
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(build(['--skip-fe'])).rejects.toThrow('Pack inputs changed during the build');
+    } finally { process.chdir(cwd); }
+    expect(fs.existsSync(path.join(root, 'changed.json'))).toBe(true);
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
+
   it('refuses stale generated declarations and retains the previous artifact', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);

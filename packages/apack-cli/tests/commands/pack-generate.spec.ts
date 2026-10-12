@@ -188,6 +188,18 @@ describe('apack pack generate-entries', () => {
 describe('the inputs stamp', () => {
   const generated = (name: string) => path.join(tmpDir, 'src', '__generated__', name);
 
+  it('rechecks changed module exports outside src without forcing codegen', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', extensions: { services: { service: 'modules/service.ts#service' } } });
+    fs.mkdirSync(path.join(tmpDir, 'modules'));
+    const file = path.join(tmpDir, 'modules/service.ts');
+    fs.writeFileSync(file, 'export const service = { before: () => 1 };');
+    await generateEntries([], tmpDir);
+    const output = generated('services.ts');
+    expect(fs.readFileSync(output, 'utf8')).toContain('service as __service_service');
+    fs.writeFileSync(file, 'export const renamed = { after: () => 2 };');
+    await expect(generateEntries([], tmpDir)).rejects.toThrow('service');
+  });
+
   it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
     await generateEntries([], tmpDir);
