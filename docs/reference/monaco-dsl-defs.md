@@ -41,3 +41,8 @@ Anything that builds the pack rebuilds them, because they are part of `apack pac
 | Branch switch on its own | No — `dist/` is gitignored; the next build refreshes it |
 
 The declaration files are generated output: never edit them, and edit `src/defs/*.ts` instead.
+
+Builds assemble these definitions in `.apack/build/defs` alongside the other output. The frontend library
+bundle resolves its generated raw imports from that staged tree, and reuse hashes those same bytes.
+A successful build publishes all output as `dist`; a failed build retains the previous definitions and
+frontend together. The development server reads the published `dist/defs` files.

@@ -66,6 +66,21 @@ describe('feInputsHash', () => {
     expect(feInputsHash(root, { release: false }, [])).toBe(feInputsHash(root, { release: false }, []));
   });
 
+  it('hashes staged definitions and ignores the prior published copy when the build supplies a staged directory', () => {
+    const root = pack();
+    const definitionsDir = path.join(root, '.apack/build/defs');
+    fs.mkdirSync(definitionsDir, { recursive: true });
+    const current = path.join(definitionsDir, 'row.d.ts');
+    fs.writeFileSync(current, 'before');
+    const options = { release: false, definitionsDir };
+    const before = feInputsHash(root, options, []);
+    fs.mkdirSync(path.join(root, 'dist/defs'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'dist/defs/row.d.ts'), 'unrelated old output');
+    expect(feInputsHash(root, options, [])).toBe(before);
+    fs.writeFileSync(current, 'after');
+    expect(feInputsHash(root, options, [])).not.toBe(before);
+  });
+
   it('moves when a source changes', () => {
     const root = pack();
     const before = feInputsHash(root, { release: false }, []);

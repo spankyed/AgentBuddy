@@ -367,10 +367,28 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
   };
 }
 
+/** Resolve published DSL imports against the build being assembled, without changing live dist. */
+function stagedDslDefinitionsPlugin(packDir: string, definitionsDir: string): VitePlugin {
+  const published = path.join(fs.realpathSync(packDir), 'dist', 'defs');
+  return {
+    name: 'apack-staged-dsl-definitions',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (!importer || !source.endsWith('?raw')) return null;
+      const file = path.resolve(path.dirname(importer.split('?')[0]), source.slice(0, -4));
+      const relative = path.relative(published, file);
+      if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
+      return `${path.resolve(definitionsDir, relative)}?raw`;
+    },
+  };
+}
+
 export interface BundleFEOptions {
   packDir: string;
   outputDir: string;
   entryPoint: string;
+  /** Current staged DSL definitions; omitted for a standalone bundle reading published dist/defs. */
+  definitionsDir?: string;
   /** Minified, no source maps (release bundles). */
   release?: boolean;
   /** Where this bundle reports the files it read, for the build's record of its inputs */
@@ -510,7 +528,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
-  const { packDir, outputDir, entryPoint, release = false, recordReads } = options;
+  const { packDir, outputDir, entryPoint, definitionsDir, release = false, recordReads } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
@@ -553,6 +571,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
             return null;
           },
         },
+        ...(definitionsDir ? [stagedDslDefinitionsPlugin(packDir, definitionsDir)] : []),
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
         ...(recordReads ? [recordReadsPlugin(recordReads, vite.version)] : []),

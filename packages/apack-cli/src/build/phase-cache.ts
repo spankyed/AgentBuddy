@@ -155,15 +155,10 @@ function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
   }
 }
 
-/**
- * The frontend bundle's scope: the pack's own sources — `src/__generated__` included, since the entry it
- * bundles is generated — its build inputs, the DSL defs it resolves `?raw` from the real `dist`, and the
- * `@apackdev` packages it compiles against, which are what the recorded reads showed it reaching outside the
- * pack.
- */
-export function feInputsHash(root: string, options: { readonly release: boolean }, apackDirs: readonly string[]): string {
-  // `dist/defs` because the bundle resolves the DSL defs from the pack's real dist as `?raw`
-  return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release, dirs: apackDirs, trees: ['dist/defs'] });
+/** Hash the same DSL definitions the bundle resolves, whether staged or already published. */
+export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[]): string {
+  return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release,
+    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs] });
 }
 
 /** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
@@ -184,7 +179,6 @@ function phaseInputsHash(root: string, o: {
   readonly bundler: string;
   readonly release?: boolean;
   readonly dirs?: readonly string[];
-  readonly trees?: readonly string[];
   readonly depSnapshots?: ReadonlyMap<string, unknown>;
 }): string {
   const hash = createHash('sha256');
@@ -192,7 +186,6 @@ function phaseInputsHash(root: string, o: {
   hash.update(bundlerSource(o.bundler));
   hash.update(bundlerVersions());
   hash.update(packInputsHash(root, { generated: true }));
-  for (const tree of o.trees ?? []) hashTree(hash, path.join(root, tree));
   for (const dir of o.dirs ?? []) hashTree(hash, dir);
   for (const id of [...(o.depSnapshots?.keys() ?? [])].sort()) {
     hash.update(id);

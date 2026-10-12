@@ -76,10 +76,23 @@ changed bytes. Foreign snapshot formats remain opaque; layout verification still
 
 Checks cover missing receipts, changed runtime/snapshot/source maps, copy-time mutation retaining the
 old stage and cleaning candidates, and a real build/rebuild whose damaged reusable facade is regenerated.
-This does not yet freeze authored inputs or dependency/tool resolution. DSL compilation still writes
-into the live `dist/defs` before publication, so its failed-build retention path needs extraction into
-the staged build view. Installer placement and frontend asset delivery also need verified accepted
+This does not yet freeze authored inputs or dependency/tool resolution. DSL output staging is implemented below. Installer placement and frontend asset delivery also need verified accepted
 copy identities; these remain completion requirements, not properties of this receipt checkpoint.
+
+### Implemented staged DSL generation and frontend resolution
+
+DSL declaration bundling now takes the build output directory and writes directly into its `defs/`.
+Reused definitions are copied into the same staged tree. The library frontend bundle redirects the
+existing generated `dist/defs/... ?raw` imports to this build's definitions, and its cache key hashes
+that exact directory. Standalone frontend bundling and the development server continue to read the
+published output. Missing staged files fail rather than falling back to the accepted artifact.
+
+A real cold build, changed-definition build with a later runtime failure, recovery and unchanged
+rebuild verify that the accepted artifact/receipt, read record and cache survive failure; recovered
+frontend and declarations agree; and both definition and frontend phases reuse unchanged output.
+A separate missing-staged-definition check proves the older published copy cannot mask absence.
+Frozen authored/dependency/tool inputs, installer placement/frontend delivery identities, production
+catalog publication and contribution binding membership remain required.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
 asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and

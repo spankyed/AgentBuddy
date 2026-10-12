@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackArtifact, stagePack, verifyPack } from '@apackdev/host/packs';
@@ -167,6 +167,63 @@ describe('a completed build', () => {
       const stage = path.join(root, 'stage');
       stagePack(root, stage);
       expect(verifyPack(stage).id).toBe('sealed-build');
+    } finally { process.chdir(cwd); }
+  });
+});
+
+
+describe('staged DSL definitions', () => {
+  it('preserves a verified artifact on a later failure, then publishes and reuses the current definitions with its frontend', async () => {
+    const dir = previousBuild([]);
+    const root = path.dirname(dir);
+    packFixture({ at: root, manifest: {
+      id: 'staged-dsl', name: 'Staged DSL', features: {},
+      extensions: { dsl: { rows: { entry: 'src/rows.ts', targets: ['monaco'], prefix: '', globals: { row: 'Row' } } } },
+    }, files: { 'src/rows.ts': 'export interface Row { before: true }' }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await build([]);
+      const first = readPackArtifact(dir);
+      const definitions = path.join(dir, 'defs/monaco/rows-defs.d.ts');
+      const original = fs.readFileSync(definitions, 'utf8');
+      expect(original).toContain('before: true');
+      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).toContain('before: true');
+      const reads = fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8');
+      const cache = fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8');
+      fs.writeFileSync(path.join(root, 'src/rows.ts'), 'export interface Row { after: true }');
+      const entry = path.join(root, 'src/__generated__/pack-entry.ts');
+      const valid = fs.readFileSync(entry, 'utf8');
+      fs.appendFileSync(entry, '\nimport "./missing-runtime.ts";');
+      await expect(build(['--skip-generate'])).rejects.toThrow('Runtime bundle failed');
+      expect(readPackArtifact(dir).revision).toBe(first.revision);
+      expect(fs.readFileSync(definitions, 'utf8')).toBe(original);
+      expect(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')).toBe(reads);
+      expect(fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8')).toBe(cache);
+      expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+      fs.writeFileSync(entry, valid);
+      await build(['--skip-generate']);
+      const current = readPackArtifact(dir);
+      expect(current.revision).not.toBe(first.revision);
+      expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');
+      const frontend = fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8');
+      expect(frontend).toContain('after: true');
+      expect(frontend).not.toContain('before: true');
+      const log = vi.spyOn(console, 'log');
+      try {
+        await build(['--skip-generate']);
+        expect(log.mock.calls.flat().join('\n')).toContain('dsl defs: unchanged, reused');
+        expect(log.mock.calls.flat().join('\n')).toContain('fe: unchanged, reused');
+      } finally { log.mockRestore(); }
+      expect(readPackArtifact(dir).revision).toBe(current.revision);
+      const manifestFile = path.join(root, 'apack.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+      delete manifest.extensions.dsl;
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+      await build([]);
+      expect(readPackArtifact(dir).snapshot.manifest.extensions?.dsl).toBeUndefined();
+      expect(fs.existsSync(definitions)).toBe(false);
+      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('after: true');
     } finally { process.chdir(cwd); }
   });
 });

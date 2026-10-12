@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { bundleDslDefs, monacoDefsFile, withoutRenameSuffixes } from '../../src/build/dsl-defs';
+import { bundlePackFE } from '../../src/build/fe-bundler';
 import type { PackManifest } from '@apackdev/sdk/build';
 
 /**
@@ -38,7 +39,7 @@ function manifest(entry: Record<string, unknown>): PackManifest {
   return { id: 'defs-pack', name: 'Defs Pack', version: '1.0.0', extensions: { dsl: { console: { entry: 'src/defs/console.ts', targets: ['monaco'], ...entry } } } } as PackManifest;
 }
 
-const defs = () => fs.readFileSync(path.join(dir, monacoDefsFile('console')), 'utf-8');
+const defs = () => fs.readFileSync(path.join(dir, '.apack', 'build', monacoDefsFile('console')), 'utf-8');
 
 describe('bundleDslDefs', () => {
   it("inlines the pack's own modules and the SDK, and wraps them as the editor's module", async () => {
@@ -48,7 +49,9 @@ describe('bundleDslDefs', () => {
       "export type { ArtifactItem } from '@apackdev/sdk/artifacts';",
     ].join('\n'));
 
-    const result = await bundleDslDefs(dir, manifest({}));
+    write('dist/defs/monaco/console-defs.d.ts', 'accepted published definitions');
+    const result = await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({}));
+    expect(fs.readFileSync(path.join(dir, 'dist/defs/monaco/console-defs.d.ts'), 'utf8')).toBe('accepted published definitions');
 
     expect(result).toEqual({ success: true, files: [monacoDefsFile('console')] });
     expect(defs()).toMatch(/^declare module "@app\/defs\/console" \{/);
@@ -63,25 +66,38 @@ describe('bundleDslDefs', () => {
     write('node_modules/nested-dep/package.json', JSON.stringify({ name: 'nested-dep', version: '1.0.0', types: 'index.d.ts' }));
     write('node_modules/nested-dep/index.d.ts', 'export interface Nested { deep: true }\n');
 
-    await bundleDslDefs(dir, manifest({}));
+    await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({}));
     expect(defs()).toMatch(/from 'nested-dep'/);
 
-    await bundleDslDefs(dir, manifest({ inline: ['nested-dep'] }));
+    await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({ inline: ['nested-dep'] }));
     expect(defs()).toMatch(/interface Nested \{/);
     expect(defs()).not.toMatch(/from 'nested-dep'/);
   });
 
   it('reports which DSL entry failed to bundle', async () => {
     write('src/defs/console.ts', "export type { Missing } from './gone.ts';\n");
-    const result = await bundleDslDefs(dir, manifest({}));
+    const result = await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({}));
     expect(result).toEqual({ success: false, error: expect.stringMatching(/^console: /) });
   });
 
   it('writes nothing for an entry no editor targets', async () => {
     write('src/defs/console.ts', 'export interface Row { id: string }\n');
-    const result = await bundleDslDefs(dir, { ...manifest({}), extensions: { dsl: { console: { entry: 'src/defs/console.ts', targets: [] } } } } as PackManifest);
+    const result = await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), { ...manifest({}), extensions: { dsl: { console: { entry: 'src/defs/console.ts', targets: [] } } } } as PackManifest);
     expect(result).toEqual({ success: true, files: [] });
-    expect(fs.existsSync(path.join(dir, monacoDefsFile('console')))).toBe(false);
+    expect(fs.existsSync(path.join(dir, '.apack', 'build', monacoDefsFile('console')))).toBe(false);
+  });
+});
+
+describe('frontend definition input', () => {
+  it('refuses a missing staged definition even when an older published copy exists', async () => {
+    write('apack.json', JSON.stringify({ id: 'defs-pack', name: 'Defs Pack', version: '1.0.0' }));
+    write('src/entry.ts', "export { default as schema } from '../dist/defs/monaco/console-defs.d.ts?raw';");
+    write('dist/defs/monaco/console-defs.d.ts', 'older published definitions');
+    const result = await bundlePackFE({ packDir: dir, entryPoint: path.join(dir, 'src/entry.ts'),
+      outputDir: path.join(dir, '.apack/build/runtime'), definitionsDir: path.join(dir, '.apack/build/defs') });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('console-defs.d.ts');
+    expect(fs.readFileSync(path.join(dir, 'dist/defs/monaco/console-defs.d.ts'), 'utf8')).toBe('older published definitions');
   });
 });
 

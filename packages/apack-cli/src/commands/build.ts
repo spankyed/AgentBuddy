@@ -20,7 +20,7 @@ import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime
 import { buildReads } from '../build/build-reads';
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
 import { packInputsHash } from '../build/pack-inputs.ts';
-import { bundleDslDefs } from '../build/dsl-defs';
+import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
@@ -345,29 +345,17 @@ async function buildIntoStaging(args: string[]) {
     const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs);
     const dslStale = dslHash === null ? 'scope incomplete'
       : reuseProblem(stamps.dslDefs, distDir, dslHash) ?? (reads && !reads.carry('dslDefs') ? 'no reads recorded to carry' : null);
-    // Its files live in the pack's real `dist` either way, so reuse is not re-bundling them
     const defs = dslStale === null
       ? (takeForward(distDir, outputDir, stamps.dslDefs!.files),
          nextStamps.dslDefs = stamps.dslDefs!,
          console.log('  dsl defs: unchanged, reused'),
          { success: true as const, files: [] as string[] })
-      : await bundleDslDefs(root, manifest, reads?.forPhase('dslDefs'));
+      : await bundleDslDefs(root, outputDir, manifest, reads?.forPhase('dslDefs'));
     if (dslStale !== null && defs.success && dslHash !== null) {
-      nextStamps.dslDefs = { hash: dslHash, files: defs.files.map((file) => path.relative('dist', file)) };
+      nextStamps.dslDefs = { hash: dslHash, files: defs.files };
     }
     if (defs.success) {
-      for (const file of defs.files) console.log(`  dsl defs: ${file}`);
-      // **The one phase that writes outside the staged tree**, because the path its consumer uses is source
-      // text rather than an argument: codegen emits `'../../dist/defs/monaco/<name>-defs.d.ts?raw'` into
-      // `src/__generated__/`, and the FE bundle below resolves that from the pack's real `dist`. So the files
-      // are written there and copied into the staged tree, which is what the swap then publishes — and what
-      // drops a def file for a `dsl` entry this build no longer has, since the staged tree holds only these.
-      // The write into the live `dist` overwrites and never clears, so nothing reading it finds a file absent.
-      for (const file of defs.files) {
-        const dest = path.join(outputDir, path.relative('dist', file));
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.copyFileSync(path.join(root, file), dest);
-      }
+      for (const file of defs.files) console.log(`  dsl defs: dist/${file}`);
     } else {
       fail(`DSL definitions bundle failed: ${defs.error}`);
     }
@@ -388,7 +376,8 @@ async function buildIntoStaging(args: string[]) {
     const scope = apackScope(root);
     // No hash without the whole scope, and so no stamp either: recording one would let the next build that
     // also cannot resolve them match it and reuse a bundle compiled against who knows what
-    const feHash = 'missing' in scope ? null : feInputsHash(root, { release }, scope.dirs);
+    const definitionsDir = path.join(outputDir, DEFS_DIR);
+    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs);
     // Reused rather than skipped: the staged tree is renamed over `dist`, so the files have to be here
     // either way. `--skip-fe` is the other thing, and omits them on purpose
     const problem = feHash === null
@@ -400,7 +389,7 @@ async function buildIntoStaging(args: string[]) {
       console.log(`  fe: unchanged, reused (${stamps.fe!.files.length} files)`);
     } else {
       const before = new Set(filesUnder(feOutputDir));
-      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, recordReads: reads?.forPhase('fe') });
+      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, definitionsDir, release, recordReads: reads?.forPhase('fe') });
       if (feResult.success) {
         const written = filesUnder(feOutputDir).filter((file) => !before.has(file));
         if (feHash !== null) nextStamps.fe = { hash: feHash, files: written.map((file) => path.join(PACK_LAYOUT.runtimeDir, file)) };

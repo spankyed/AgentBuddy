@@ -40,9 +40,9 @@ export function withoutRenameSuffixes(code: string): string {
 /** The build output holding the DSL editors' definitions, dist-relative */
 export const DEFS_DIR = 'defs';
 
-/** The Monaco declarations of one DSL type, pack-relative: the generated DSL registration imports them */
+/** The Monaco declarations of one DSL type, relative to the build output directory. */
 export function monacoDefsFile(name: string): string {
-  return path.join('dist', DEFS_DIR, 'monaco', `${name}-defs.d.ts`);
+  return path.join(DEFS_DIR, 'monaco', `${name}-defs.d.ts`);
 }
 
 /**
@@ -55,6 +55,7 @@ export function monacoDefsFile(name: string): string {
  */
 export async function bundleDslDefs(
   packDir: string,
+  outputDir: string,
   manifest: PackManifest,
   recordReads?: RecordReads,
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
@@ -64,7 +65,7 @@ export async function bundleDslDefs(
   const files: string[] = [];
 
   for (const [name, def] of entries) {
-    const outFile = path.join(packDir, monacoDefsFile(name));
+    const outFile = path.join(outputDir, monacoDefsFile(name));
     const inlined = (id: string) => (def.inline ?? []).some((pkg) => id === pkg || id.startsWith(`${pkg}/`));
     const result = await bundleDeclarations(packDir, path.join(packDir, def.entry), outFile, {
       isExternal: (id) =>
