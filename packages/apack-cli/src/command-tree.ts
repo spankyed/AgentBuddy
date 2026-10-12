@@ -15,7 +15,7 @@ export const COMMANDS = {
   'open': { usage: '[--channel production|beta|preview]', description: 'Open the installed app', load: async () => (await import('./commands/open')).open, detailedHelp: true },
   'logs': { usage: '[--channel production|beta|preview] [--follow] [--lines <count>]', description: 'Read recent app logs or follow new output', load: async () => (await import('./commands/logs')).logs },
   'status': { usage: '[--channel production|beta|preview] [--json]', description: 'Show installed app version, state, and paths', load: async () => (await import('./commands/status')).status },
-  'doctor': { usage: '[--channel production|beta|preview]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
+  'doctor': { usage: '[--channel production|beta|preview] [--json]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
   'db': { usage: '<command> [options]', description: 'Query, export, import, or reset app data', load: async () => (await import('./commands/db')).db, detailedHelp: true },
   'profiles': { usage: '[command] [options]', description: 'Manage app data directories and profiles', load: async () => (await import('./commands/profiles')).profiles, detailedHelp: true },
   pack: {
