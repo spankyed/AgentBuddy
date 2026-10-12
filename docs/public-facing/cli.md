@@ -739,3 +739,5 @@ Downloads must have a matching published SHA-256 checksum. An incomplete latest 
 `apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, and dependency availability are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
 
 `apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
+
+`apack profiles --json [--all] [--sizes]` emits `environments` and `profiles` arrays, including their paths and running state. Temporary profiles require `--all`; numeric byte sizes require `--sizes`. JSON is supported for listings only.
