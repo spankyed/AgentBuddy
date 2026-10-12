@@ -355,15 +355,17 @@ replies alone do not solve stale writes. Implement that check at the writer for 
 reject an edit merely because an unrelated preference changed.
 
 Defaults remain underneath stored overrides. Reset removes overrides and uses current defaults; it
-never persists a copy of defaults. Registration validates the complete candidate before publication,
-and failed registration leaves settings unchanged. Objects merge recursively; arrays and scalar values
+never persists a copy of defaults. Descriptor validation checks the complete candidate before catalog publication; a rejected candidate
+leaves the previous definitions and stored overrides unchanged. Activation cannot redefine those
+defaults. Objects merge recursively; arrays and scalar values
 replace, including empty arrays and permitted null. An empty object overlays defaults; it does not
 clear a default object. A declaration that needs a disabled/cleared value must represent one explicitly
 (for example permitted null), not rely on deletion of a default. The same composition applies to every owner.
 
 Installed inline pack declarations can supply defaults and validation while a pack is disabled without
 executing it. Build the pack preference catalog from those declarations; runtime registration must agree
-with them. A source/dev registration can supply the same declaration when there is no installed manifest.
+with them. Source development produces the same validated descriptor through the build pipeline. A missing or
+stale descriptor is an explicit incomplete/stale result, never a reason to discover defaults from runtime registration.
 Disabling a pack removes its running behavior/form availability, not its data-only preference contract.
 Uninstalling removes its declarations but preserves stored overrides for reinstall.
 
@@ -418,6 +420,11 @@ also need the stale-value check described above. Secrets remain in the secrets s
 
 ## Delivery sequence
 
+These steps implement the shared-foundation and settings checkpoints in
+[manifest maturity](manifest-maturity.md). Start with discovery’s full inventory, then deliver a settings
+projection of the common catalog. Before any reader switches, that kind’s descriptor, generated bindings
+and refresh path must agree. This does not require finishing other contribution kinds first.
+
 1. **Prove the declaration and access contract.** The projects audit is complete above. Check the
    remaining app fields and assistant lifecycle gates, and audit every existing feature schema's
    constraints/defaults before conversion. Exercise the proposed draft-07 validator/type
@@ -425,7 +432,9 @@ also need the stale-value check described above. Secrets remain in the secrets s
    here before changing runtime contracts. Inventory current SDK/service/transport/generated names against
    the naming contract, including value/handle selectors and the two update types. Keep generated types
    structural and validation authoritative. Audit trusted caller context for shared/owner access and
-   settle the host binding before exposing restricted definitions.
+   settle the host caller binding before exposing restricted definitions. Establish the shared descriptor
+   reader/validator and catalog projection, with checked settings/form binding and coherent source-build
+   publication; extend these mechanisms as pack and feature declarations migrate.
 2. **Establish app ownership and the target document.** Define SDK types and host defaults/validation;
    teach the existing engine the three owners. Remove default-setup's responsibility for built-in
    preferences. Add the stored-data migration in the same working change so existing data can boot.
@@ -487,7 +496,8 @@ refuses their old paths, and assistant data must be moved before lifecycle start
 - The advanced JSON editor completes keys, shows descriptions and flags invalid values from the composed
   settings schema. Backend validation remains authoritative regardless of the editor or custom form used.
 - Declarations reveal names/defaults without executing a runtime; invalid declarations fail before
-  publication, and failed registration leaves existing values and notifications unchanged.
+  publication; rejected descriptors leave existing values and notifications unchanged. A runtime binding
+  failure changes activation availability, not the committed settings definition.
 - Generated handles infer optional fields and representable alternatives, reject structurally incorrect
   updates, and resolve owners without arbitrary root paths. Runtime validation rejects invalid ranges,
   patterns and unsupported fields. Defaults/nullable values/reset follow the documented composition.

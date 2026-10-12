@@ -17,21 +17,37 @@ Deliver in this order:
 1. Finish the in-flight [naming contracts goal](../goals/goal-naming-conventions.md). It has been reworked;
    its old blanket naming bans are not the current instructions. Rebase subsequent audits on its result.
 2. Close the contribution inventory and establish the common descriptor/catalog foundation, using
-   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation
-   and diagnostics. Do not create a temporary settings-only catalog.
+   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
 3. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
 4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
-   Include descriptor/codegen freshness and checked binding, not just more manifest fields.
+   Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
 5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
 6. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
-   on committed catalog update/rollback; consumed APIs need not wait for replacement.
+   on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
 7. Measure boot cost and pursue [lazy activation](lazy-activation.md) only if the evidence warrants it.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
 roadmap; the linked plans hold subsystem design. Do not implement all of them as one manifest rewrite.
+
+## Checkpoint handoffs
+
+| Checkpoint | Required result before the next work starts |
+|---|---|
+| Naming | Settled API vocabulary; re-audited paths and callers, without repeating its renames |
+| Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
+| Settings | Host/pack/feature ownership, stored-data migration, schema-backed handles and policy, custom forms and window runtime work on that foundation |
+| Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
+| Navigation and boundaries | Catalog destinations drive entity opening; failing panes/forms leave the shell usable |
+| API consumption, provenance, replacement | Independent follow-ups reuse catalog identities and caller binding; replacement distinguishes update ownership, disable and removal |
+| Lazy activation | Measurement justifies a change, and execution/readiness ordering is proven before adopting it |
+
+The settings and discovery delivery lists are parts of these checkpoints, not competing roadmaps.
+Inventory all contribution kinds up front; migrate one kind at a time with its validation, binding and
+freshness checks in place before switching its readers. Future contribution kinds extend that same
+contract and coverage fixture. Discovery completeness is about supported declarations, not live query results.
 
 ## Plan ownership and supersession
 
@@ -150,8 +166,7 @@ owner-bound handles exposing the intended surface. Runtime binding and generated
 ambient SDK imports must not silently bypass an authoring contract. Reuse the existing generated services
 facade and module checks. Start with the APIs actually consumed by default-setup.
 
-Use the [declared capabilities plan](declared-capabilities.md) as input, but re-audit its service list and
-data access assumptions. EARS/repositories and direct Node access are separate surfaces; withholding a
+Follow the [consumed-API plan](declared-capabilities.md), beginning with its inventory and granularity decision. EARS/repositories and direct Node access are separate surfaces; withholding a
 service object does not contain an in-process JavaScript pack. Call the feature an API dependency contract
 unless there is an enforcement boundary supporting a stronger claim.
 
@@ -189,7 +204,8 @@ recorded artifact.
 
 ## 5. Make lifecycle and failure behavior explicit
 
-Audit registration, replacement, disable, reload and uninstall for each contribution kind. Identify its
+Registration, replacement, disable, reload and uninstall checks belong to each discovery migration,
+not a later hardening pass. Audit them for each contribution kind. Identify its
 owner, collision/replacement policy, cleanup and observable notifications. Preserve intentional merging
 of facets; exclusive ownership and multi-owner folding are different contracts.
 
@@ -199,7 +215,7 @@ that replacement drops stale contributions, and that disposal removes listeners/
 
 Add frontend error boundaries around pack panes and forms with the pack named in the failure, a useful
 recovery path and error reporting. The shell should remain usable when a contributed component throws.
-Follow the cheap half of [pack fault isolation](pack-fault-isolation.md), checking what already landed.
+Follow the frontend workstream of [pack fault isolation](pack-fault-isolation.md), checking what already landed.
 
 Lazy activation is a separate, measurement-gated follow-up: attribute boot cost before changing when
 packs run. Derive activation from existing contributions where possible instead of making authors repeat
@@ -243,5 +259,5 @@ when authoring behavior changes, regenerate changed contracts, and run `npm run 
 checks for lifecycle/error presentation. Check complete behavior, not just schema acceptance.
 
 Keep marketplace categories, optional integrations, a new activation language and process isolation out
-of the immediate work unless their named product or measurement trigger exists. Complete the settings
-plan first; use the remaining priorities to scope subsequent changes.
+of the immediate work unless their named product or measurement trigger exists. Start with the shared
+foundation and settings checkpoints; use the handoffs above to scope subsequent changes.

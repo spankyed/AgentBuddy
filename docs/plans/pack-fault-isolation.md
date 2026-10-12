@@ -6,8 +6,9 @@ migration; out-of-process execution remains deferred to the design-first
 but does not remove runtime undo logs, owned binding stores or error containment. Re-audit the survey
 below before choosing mechanisms; separate crash containment from security confinement.
 
-Compiled 2026-10-08 on `AS/one-action-cache`. **Conditional: this is not work for today.** Its trigger is
-named below, and until that trips, the cheap half is worth doing and the expensive half is not.
+Surveyed 2026-10-08 on `AS/one-action-cache`. Frontend boundaries follow complete discovery;
+process isolation has no implementation commitment here. [Manifest maturity](manifest-maturity.md)
+owns the sequence.
 
 ## Context
 
@@ -39,17 +40,22 @@ process isolation needs its own threat-model and synchronous EARS design in the 
 A second trigger, weaker but earlier: a crash report that names a pack's frontend as the cause of a blank
 window. That is the cheap half's evidence.
 
-## The cheap half, worth doing before the trigger
+## Frontend boundaries
 
 **Scope the frontend blast radius to the pack.** A pack's canvas, panel and settings each render inside a
 `PluginScope` already; an error boundary at that seam turns "a pack's component threw" into "that pack's
 pane shows an error and the app keeps working", with the pack named. Vue's `onErrorCaptured` is the
 mechanism and the shell is the owner.
 
+Use catalog owner identities and explicit activation outcomes when reporting failures. Keep settings
+snapshots and the shell runtime outside contributed form boundaries. A component failure does not remove
+its pack’s declarations or defaults, and retry must not revive an unloaded artifact revision. Test canvas,
+panel and custom settings-form failures, with another pane and host settings still usable.
+
 This is a contained change with its own payoff, independent of any trust story: today the global handler
 (`main.ts:92`) learns about the error, and the user learns that the window is blank.
 
-## The expensive half, when the trigger trips
+## Separate process-isolation design
 
 **A process boundary for pack backends.** The shape VS Code uses, and the questions it forces here:
 
@@ -64,10 +70,10 @@ This is a contained change with its own payoff, independent of any trust story: 
 
 ## Verification
 
-For the cheap half: a fixture pack whose component throws on render, asserted to leave the rest of the app
+For frontend boundaries: a fixture pack whose component throws on render, asserted to leave the rest of the app
 working and to name the pack. `tests/packs/external-pack` is the natural home.
 
-For the expensive half, when it happens: a fixture pack that wedges (an infinite loop) and one that crashes,
+For process isolation, if selected by the security design: a fixture pack that wedges (an infinite loop) and one that crashes,
 with the app surviving both and reporting which pack. Neither is assertable today without the boundary.
 
 ## Risks
@@ -83,5 +89,5 @@ out-of-process" as a goal with EARS at its centre, not as a hardening task.
 
 - Not a security boundary against hostile packs. In-process JavaScript with access to the bound runtime is
   not contained by an error boundary, and saying otherwise would be worse than saying nothing.
-- Not a replacement for `declared-capabilities.md`. That plan limits what a pack may *reach*; this one
-  limits what its failure *costs*. They are different axes and the first is the one with present-tense value.
+- Not a replacement for [API consumption](declared-capabilities.md). That plan describes supported API
+  dependencies; these boundaries contain component failures. Neither confines arbitrary pack code.

@@ -168,8 +168,8 @@ those implement behavior beyond discovery.
 ### Pack information: stop using registration as an inventory
 
 `features/packs/be/system.ts::toPackInfoList()` joins installed manifests with
-`registry.findPackExtensions()`. Disabled or failed packs therefore lose contribution details.
-`registry.ts::featureInfo()` and the listing part of `findPackExtensions()` duplicate information that
+`registry.getPackExtensions()`. Disabled or failed packs therefore lose contribution details.
+`registry.ts::featureInfo()` and the listing part of `getPackExtensions()` duplicate information that
 belongs in the descriptor. Replace these projections and their empty-extension fallback with a catalog
 view joined to host-owned installation records, activation outcomes and applied-content offers.
 
@@ -178,7 +178,7 @@ states explicit; frontend and backend outcomes may differ, including between win
 catalog into another persisted installed-packs list: directories remain installation evidence and
 `installed-packs.json` remains the side table for user choices/update provenance.
 
-There is a runtime caller to migrate before deleting `findPackExtensions()`:
+There is a runtime caller to migrate before deleting `getPackExtensions()`:
 `runtime/lifecycle.ts::teardownPack()` uses its systems list. Use the existing
 `getRegisteredPackSystemIds()` for teardown, because stopping systems means stopping actual bindings,
 not every declared system. Keep `loadedPacks()` for genuine execution callers where needed; replace only
@@ -289,24 +289,25 @@ not become a second coordination layer alongside the old shell actions.
 1. **Close the inventory after naming lands.** Map every registration/manifest field and reader to declaration, metadata,
    asset or runtime behavior. Record exact remaining gaps and dependency ownership rules here.
 2. **Establish the shared foundation with settings.** Build descriptor validation and the catalog with
-   the linked settings plan as the first consumer. Complete its ownership/migration and schema/default/form
-   contract on that foundation. Do not build separate settings and contribution catalogs.
+   the linked settings plan as the first consumer. Establish checked binding, ownership checks and
+   coherent artifact publication for that projection before switching readers. Complete settings’
+   ownership/migration and schema/default/form contract on this foundation, as the roadmap specifies.
+   Do not build separate settings and contribution catalogs.
 3. **Extend the snapshot descriptor.** Resolve facade terminology and required-facade diagnostics from
    the absorbed [facade goal](../archive/goals/goal-defs-naming.md) in this checkpoint. Add the necessary
    static metadata and asset indexes, deriving them
    from declarations. Start with plugin navigation, reference types and anonymous editor contribution lists.
    Materialize help/step metadata and API/lifecycle contracts until the inventory has no executable reads.
-4. **Build catalog readers and move consumers.** Validate installed descriptors; expose data to frontend
+4. **Extend checked binding and freshness before switching readers.** Audit watch/codegen/snapshot
+   invalidation with [dev-loop freshness](../goals/goal-dev-loop-freshness.md). For each added kind,
+   generate metadata and bindings from the same declaration and artifact revision; reject added, missing
+   or inconsistent bindings. Preserve the last valid catalog on a failed rebuild and report it as stale.
+   Do not publish new runtime code against stale metadata. Keep owned binding cleanup and reload checks.
+5. **Build catalog readers and move consumers.** Validate installed descriptors; expose data to frontend
    and CLI readers. Move each discovery consumer off runtime registries, preserving deliberate ordering
    and ownership behavior. Follow the audited removal checkpoints above: settings/pack details/help,
    then shell navigation and editor/palette readers. Delete superseded glue in each checkpoint. Report
    incomplete/unavailable packs without trying to activate them.
-5. **Bind against declarations and keep builds fresh.** Audit watch/codegen/snapshot invalidation with
-   [dev-loop freshness](../goals/goal-dev-loop-freshness.md). A source/declaration edit must update its
-   descriptor and executable bindings consistently; never pair new runtime code with stale metadata.
-   Preserve the last valid catalog on a failed rebuild and report it as stale. Adapt generated runtime
-   registrations and host loaders; reject added,
-   missing or inconsistent bindings where the declaration requires them. Preserve rollback and reload.
 6. **Prove completeness and update contracts.** Exercise every contribution and consumer, update snapshots,
    schema/API reports, public authoring docs, templates and fixtures, and remove obsolete metadata exports.
 
@@ -314,6 +315,15 @@ Each implementation checkpoint remains usable with migrated callers. Apply the e
 rule for contract changes; do not bump package release versions. This work does not require making pack
 execution lazy. Link the resulting catalog boundary into the [lazy activation plan](lazy-activation.md)
 without changing migration/content execution order here.
+
+## Handoff to subsequent plans
+
+Entity navigation consumes catalog identities and readiness, then adds its build-checked `opens`
+contract. Discovery separates reference metadata from executable navigation bindings; it does not delete
+`navigate` callbacks before [entity opening](open-entity.md) migrates their callers. Frontend boundaries
+contain runtime component failures; API consumption extends the existing caller-bound facade; replacement
+uses committed artifact/catalog revisions. None introduces a second contribution inventory. Lazy
+activation remains a measured follow-up; discovery alone does not change when migrations or systems run.
 
 ## Acceptance: no discovery gaps
 
@@ -331,7 +341,9 @@ without changing migration/content execution order here.
 - Activation cannot introduce extra contributions or replace static metadata. A binding mismatch fails
   cleanly without removing another pack's contribution or partially mutating the catalog.
 - Update/remove/reinstall refresh catalog entries and preserve user data; failed replacement retains the
-  previous valid descriptor and implementations under the existing installer contract.
+  previous valid artifact/catalog for failures before publication. Activation failures report a separate
+  outcome; do not promise rollback of arbitrary migration/content side effects. Verify and document the
+  installer’s actual commit boundary before extending replacement.
 - Add a contract-coverage check requiring each new registration/extension field to identify its discovery
   representation or executable role. New contribution kinds extend the fixture and relevant consumers.
 - Disable/deactivate/reactivate without changing the descriptor: settings defaults and help stay intact,

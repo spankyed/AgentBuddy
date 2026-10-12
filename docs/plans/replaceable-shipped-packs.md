@@ -2,8 +2,9 @@
 
 Status: retained; implement after [settings architecture](settings-architecture.md) and the
 [discovery catalog](discovery-without-activation.md). Re-audit the original survey on the naming result.
-Publish replacement as one committed descriptor/outcome change; a failed replacement retains the prior
-valid view and bindings without a transient removal. Preserve owner IDs and stored settings overrides.
+Validate replacements before publishing one committed artifact/catalog revision. Pre-publication failure
+retains the prior artifact/view; activation failure is a separate outcome, not a promise to undo
+user-data effects. Preserve owner IDs and stored settings overrides.
 Keep migration version lines independent of update provenance. The planned catalog default-navigation policy
 supersedes the old first-plugin survey below.
 
@@ -24,6 +25,7 @@ Today that cannot work. Three facts stack:
   (`apack-cli/src/commands/pack.ts:42`), which is the one live reader of that field — so you cannot even
   package a clone of `default-setup`.
 
+The dated survey below describes earlier implementation; re-audit these assertions before making changes.
 The earlier survey named `b530a4899` as the source of a replacement refusal. Audit the current refusal
 and implement explicit replacement behavior; do not revert an old commit whose surrounding code has
 changed merely because the original plan named it.
@@ -66,7 +68,7 @@ updatesWith: 'app' | 'user'
 necessary, because an app update that left a stale pack behind could leave its snapshot format unreadable
 and the pack would not load at all. User-owned packs get the shipped version offered as an **available
 update**, which is what a fork wants and which reuses `checkForUpdates`/`availableVersion`/`UPDATE_PACK`
-rather than inventing a restore verb.
+for installed packs. An absent deliberately removed pack needs explicit restoration, not an enable toggle.
 
 **Absence means `'user'`.** The app only overwrites what it can prove it placed. That also means the CLI
 never has to start writing records — a CLI install is a user install, which is simply true — and it means
@@ -78,11 +80,12 @@ stored-data migration, and existing install ownership needs the reconciliation d
 from an id collision would let a pack whose manifest happens to claim `default-setup` silently become the
 user's choice.
 
-**Uninstall uses `enabled: false`.** Removing an app-owned pack records that and keeps the row, so
-install-if-absent does not put it back. `enabled` already means "it is there but I do not want it running"
-and is already the thing `pack-records.json` exists to remember. Re-enabling reinstalls it, so the restore
-path is a control that already exists. The one behaviour change is that uninstalling an app-owned pack keeps
-its row rather than calling `forgetPack`.
+**Disable and uninstall remain different operations.** Disable keeps the artifact and discoverable
+settings/help/metadata, changing eligibility and runtime availability. Uninstall removes the artifact and
+its declarations, preserving stored settings overrides. Record explicit suppression of automatic shipped
+installation separately from `enabled`; otherwise a disabled installed pack and an intentionally absent
+pack become indistinguishable. Settle that host-owned record field during implementation. Restoration
+explicitly installs the shipped artifact again; enabling alone does not install a missing artifact.
 
 **The toggle is hidden, not refused.** The Packs view shows no toggle for shipped packs by default; a
 developer-mode switch in Settings reveals it, and then every pack has one. Same gate covers `replace`. The
@@ -93,20 +96,21 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
 
 ## The work
 
-1. **Support deliberate replacement.** Re-audit the current install refusal and replace it with explicit intent checks; do not blindly revert historical commits.
+1. **Support deliberate replacement.** Re-audit the current install refusal and replace it with explicit
+   intent checks; do not blindly revert historical commits.
 2. **Rename `installed-packs.json` to `pack-records.json`** and add `updatesWith`. The file's own header
    opens by denying its name (*"not the list of installed packs — `packs/<id>/` is"*), and the code already
    says record (`PackRecord`, `recordInstalled`, `packRecord`). Read the old file once if present, write the
    new name through an idempotent stored-data migration, preserving enabled choices and provenance.
    A file rename is optional if the current naming goal already settles the record terminology.
-3. **Boot:** install when the id is absent *unless* the record says `enabled: false`; re-install on app
-   version change only where `updatesWith === 'app'`. Stop hash-comparing on every boot. Reconcile existing
-   installs once — equal hashes mean the app placed it, so mark those `'app'`, or every current install
+3. **Boot:** install when the id is absent *unless* the record suppresses automatic installation; re-install on shipped
+   artifact revision change only where `updatesWith === 'app'`. Stop hash-comparing on every boot. Reconcile existing
+   installs once — copies matching the shipped artifact may be adopted as app-managed, so mark those `'app'`, or every current install
    silently becomes a fork.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
    author lives in. Verify that `apack pack dev` in the fork's own directory is the path that serves them.
 5. **Proposed `apack pack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
-   refused. Uninstall of an app-owned pack records `enabled: false`.
+   refused. Uninstall records automatic-install suppression separately from enablement.
 6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `apack pack archive`'s
    refusal, which is its only reader and actively blocks packaging a fork. **Drop `canUninstall`** in both
    forms. Hide the toggle behind developer mode. Guard `closeDevLetter`'s `getDesignated('threads')`.
@@ -114,7 +118,9 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
    `PackOrigin`, so it reads `canUninstall: true` and its load-problem message sits inside
    `v-if="pack.canUninstall"`. The pack most needing a diagnostic is the one that hides it. Falls out of 6.
 
-Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
+Start only after the roadmap’s discovery checkpoint. Within this plan, audit intent/commit boundaries
+first; establish records before changing boot/reload/CLI behavior. Update the UI and tests with those
+contracts so no intermediate checkpoint silently overwrites a fork.
 
 ## Footguns, named because each was nearly missed
 
@@ -138,8 +144,11 @@ Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
 
 ## Out of scope
 
-Fixing `default-setup`'s decorative version. Anything about when migrations run. Whether a swap should
-re-apply. Whether the app should ship more than one pack — the directory scan already supports it and
+Fixing `default-setup`'s decorative version. Anything about when migrations run. Changing content
+semantics merely because update ownership changed. Audit actual replacement
+migration/content execution before promising rollback; pre-publication artifact rollback cannot undo
+arbitrary applier or migration side effects. Whether the app should ship more than one pack — the
+directory scan already supports it and
 nothing here assumes one.
 
 ## Verification
@@ -151,15 +160,21 @@ npm run typecheck
 npm run chain
 ```
 
-The cases that decide it, none of which can be written today:
+Required cases, after checking which current specs already cover them:
 
 - a fork installed at a shipped id **survives a restart**, and survives a `/dev/reload`
 - an **app-owned** pack is still re-installed when the shipped build changes with the app version
-- an app-owned pack uninstalled through the CLI **stays gone** across a restart, and comes back on re-enable
-- an existing install with no record is reconciled to `'app'`, not left as a fork
+- an app-owned pack uninstalled through the CLI **stays gone** across a restart, and comes back through explicit restoration
+- an existing install matching the shipped artifact is reconciled to `'app'`; a differing copy is
+  preserved as user-owned instead of guessed to be app-owned
 - `apack pack archive` archives a clone of `default-setup`
 
-And the rewrite of the pinned invariant at `tests/packs/shipped-packs.spec.ts:72-79`: an edited **app-owned**
-file is still repaired at the next boot; a **user-owned** pack is left alone. Those are the same bytes
-differing for different reasons, which is the distinction the hash comparison cannot make on its own and the
-record exists to supply.
+Replace the historical hash-repair invariant with the selected update contract: unchanged app-owned
+artifacts are not hash-compared and rewritten on every boot; shipped revision changes refresh app-owned
+copies; user-owned artifacts survive restart/reload. Invalid artifacts produce diagnostics rather than
+silently reclassifying a fork. Also verify disabled installed packs retain their catalog definitions,
+uninstalled packs do not, restoration reuses preserved overrides, and failed staging leaves the prior
+artifact/catalog available. Use discovery’s stale-load checks during in-flight replacement.
+
+The output is a deliberate update-ownership and removal contract on top of discovery. It does not alter
+settings ownership, catalog identities, migration version lines or the consumed-API security model.

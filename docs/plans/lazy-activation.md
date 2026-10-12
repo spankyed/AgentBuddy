@@ -3,7 +3,7 @@
 Sequencing: after naming and complete [discovery](discovery-without-activation.md), and only after
 boot attribution shows a worthwhile gain. Catalog completeness enables lazy loading but does not
 implement it. Derive triggers from existing declarations; preserve migrations/content ordering and
-message readiness. The original eager-runtime design below is research input, not the selected end state.
+message readiness. The dated survey below supplies measurement hypotheses; runtime paths and timings need re-audit.
 
 Compiled 2026-10-08 on `AS/one-action-cache`. **Measurement-gated: do not start this without step 0.** The
 design below needs re-audit on the catalog boundary, and the size of the prize is still unknown.
@@ -41,15 +41,15 @@ the whole, `DEBUG_E2E=1 npm run test:e2e -- smoke` for the app's own path, and a
 | content dominate | applying is already hash-skipped; the lever is elsewhere and this plan is the wrong one |
 | `onInit` and system spawning dominate | the design below is the lever, and the number sizes it |
 
-A plan whose first instruction is "measure" cannot also claim to know the answer, which is why nothing below
-is sequenced yet.
+A plan whose first instruction is "measure" cannot also claim to know the answer, which is why the
+candidates below are conditional on that evidence.
 
 ## The design, if step 0 says yes
 
 **Activation is a predicate over declarations, not a new vocabulary.** Candidates, cheapest first:
 
-- **A designation nothing has asked for.** A feature whose designation no flow, action or plugin references
-  in this app's data has no reason to be running. This is derivable from the written flows and the registry.
+- **A designation not yet requested.** Start its runtime on a real role request. Absence from stored
+  flows is insufficient proof of disuse: commands, lifecycle hooks and other runtime callers may need it.
 - **A role on demand.** `sendToSystem({ role })` already resolves a role to a system; it becomes the trigger
   that starts that system's pack rather than assuming it is up.
 - **A plugin the user opens.** The renderer imports pack frontends dynamically through `pack://`, currently during startup;
@@ -62,6 +62,18 @@ they stay eager (likely correct, and they are already hash-skipped so an unchang
 or they move behind the same predicate and the ordering guarantees in `applyPacks` have to be re-established.
 **This is the hard part of the plan, not the activation itself.**
 
+## Implementation handoff
+
+Use the complete catalog, entity-navigation readiness and settled API/provider contracts. Keep declared,
+eligible and active states separate. Discovery must still import no executable pack code; activating a
+known contribution is a separate operation with correlated readiness, failure and disposal. Determine
+whether triggers activate a feature or its pack from real execution dependencies before adding syntax.
+
+Queue requests that require an actor until its current revision is ready, with explicit failure/cancellation.
+For state notifications, prefer the existing ready-time snapshot rather than replaying every stale delta.
+Re-audit `FEATURE_SETTINGS_UPDATED` and `packClientReady` against that distinction. Settings definitions and
+help remain available regardless of activation; custom forms require their frontend implementation.
+
 ## Depends on
 
 [Discovery without activation](discovery-without-activation.md) provides the complete descriptor and
@@ -70,8 +82,8 @@ catalog. Re-measure and redesign activation on that boundary; the archived contr
 ## Verification
 
 - Boot attribution before and after, same method as step 0, on a quiet box.
-- A pack whose designation nothing references does not run its `onInit` — asserted on the registry, not on a
-  log line.
+- A pack with no requested activation trigger or mandatory eager work does not run its `onInit`;
+  assert execution directly, and show that its catalog declarations remain discoverable.
 - **The case that matters most: a lazily-activated pack is indistinguishable from an eager one** once
   activated. Same systems, same content applied, same settings. A fixture pack exercised both ways, with the
   same assertions, is the only honest way to hold that.

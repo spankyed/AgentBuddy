@@ -1,161 +1,67 @@
-# A pack declares what it consumes, not just what it provides
+# Declare the APIs a pack consumes
 
-Status: retained as a consumed-API contract plan; re-audit before implementation after naming and the
-settings/discovery foundation. [Manifest maturity](manifest-maturity.md) owns its sequence. The service
-list and paths below are survey evidence, not a frozen capability inventory.
+Status: planned after settings and complete discovery, as ordered by
+[manifest maturity](manifest-maturity.md). This is an API dependency contract, not a security sandbox.
 
-Settings keep [shared cross-pack read/write/reset by default](settings-architecture.md), with
-opt-in owner-only mutation. Consuming the settings API and satisfying a target's mutation policy are
-separate checks. Reuse trustworthy caller binding established by settings; do not introduce a competing
-caller identity or silently make dependency settings readonly. Inventory host and dependency consumption
-before choosing pack/feature granularity for generated services.
+## Problem
 
-Constructed facades and supported import checks enforce the authoring API, not arbitrary in-process
-JavaScript confinement. [Pack security isolation](../goals/goal-pack-security-isolation.md) owns the
-stronger threat model, sensitive-operation boundaries and frontend/backend isolation design.
+The manifest declares provided services, but consumption of host and dependency APIs is mostly implicit.
+Generated service types alone do not restrict runtime objects. The 2026-10-08 survey found a per-pack
+facade casting an ambient SDK object, direct SDK service imports, and `permissions` used as display
+metadata. Re-audit those paths after naming and discovery before choosing the declaration syntax.
 
-Compiled 2026-10-08 on `AS/one-action-cache`, from reading how a pack reaches the host's services after
-`goal-one-kind-of-pack`. Every location below was checked against the tree on that date.
+Authors need an accurate answer to which supported APIs their pack requires, actionable failures when a
+provider is unavailable, and tests that can supply just those dependencies. This does not establish what
+arbitrary JavaScript can do in the host process.
 
-Re-audit all in-tree packs, fixtures and supported local/URL installation paths. Lack of registry
-resolution is not proof that third-party code cannot be installed. This work declares API consumption;
-security permissions and isolation follow the separate security goal.
+## Inputs and contract
 
-## Context
+- Use the common catalog for available API identities and dependency ownership. Extend its descriptor
+  and coverage fixture when adding consumption metadata; do not create another inventory.
+- Reuse settings’ trusted caller binding and generated owner-bound handles. Do not derive identity from
+  a caller-supplied pack ID or mistake a type cast for runtime filtering.
+- Inventory host services, pack/dependency services, repositories, EARS queries, content appliers and
+  ambient imports separately. A service-name list cannot describe every route to stored data or Node APIs.
+- Keep provided-service declarations distinct from consumed APIs. Choose the consumption field and
+  granularity from the inventory; do not ship the old per-feature `capabilities` sketch by default.
+  The existing per-pack facade favors an initial pack-level contract. A per-feature contract requires
+  genuine feature-bound facades and execution context, not a widened pack union presented as isolation.
+- A declared dependency does not automatically mean every API it provides is consumed. Required API
+  availability is validated before activation. Optional integrations wait for a concrete consumer.
 
-`features[].services` in `apack.json` declares the services a feature **provides**
-(`pack-registration.ts:57-58`: *"The keys of the services the feature provides"*). **Nothing declares what
-a feature consumes.** Every pack reaches all nine host services — `logger`, `emitter`, `repository`,
-`appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings` (`packs/registry.ts:31`) —
-including the two with real reach: `secrets` (the user's API keys as metadata) and `filesystem` (files and
-folders on disk, as text).
+Settings retain [shared dependency read/write/reset by default](settings-architecture.md), with opt-in
+owner-only mutation. Declaring consumption of settings and satisfying the selected target’s mutation
+policy are separate checks; neither replaces the other. Host app settings follow the host SDK contract.
 
-`HOST_SERVICE_NAMES` exists only for **collision detection**: `registry.ts:422` refuses a pack whose own
-service key takes a host name. It is not an allow-list of consumption.
+## Delivery
 
-So there is no answer today to "what can this pack do", which is the question an install prompt asks, a
-review asks, and an incident asks.
+1. Audit actual consumption in default-setup, fixtures, scaffolds and supported local/URL pack installs.
+   Record which APIs are explicit, which are an intentional SDK baseline, and which cannot be mediated
+   by this facade. Settle pack/feature granularity and syntax with a representative generated prototype.
+2. Add consumption metadata to the existing manifest/descriptor pipeline. Reuse shared diagnostics for
+   unknown API names, unavailable required providers and dependency ownership errors.
+3. Construct caller-bound runtime facades from that declaration; generate types from the same facts.
+   Remove supported ambient service-import bypasses through the existing pack validation/build checks.
+   Host binding must apply the same supported API contract even when a caller bypasses generated types.
+4. Migrate every in-tree consumer and test. Keep settings policy and notifications unchanged. Report the
+   actual API contract through pack inspection; do not label it a resource permission guarantee.
+5. Validate compiled content entity targets against normalized supported declarations and dependencies,
+   including shared SDK entities. This independent check may land earlier during discovery if its inputs
+   are ready. It diagnoses content contracts without changing runtime query access.
 
-## The enforcement point already exists
+Data/resource confinement belongs to the separate
+[pack security isolation goal](../goals/goal-pack-security-isolation.md). This plan neither adds entity
+read/write grants nor silently removes documented EARS affordances. Do not block supported API contracts
+on a speculative sandbox, or claim they close direct Node or ambient runtime access.
 
-`#generated/services.ts` is generated per pack from `apack.json` and is what pack code imports. Its last
-line is the whole of the gap:
+## Verification and handoff
 
-```ts
-export const services = sdkServices as unknown as Services;   // :61
-```
+A declared API works through generated and host-bound access; an undeclared API is absent through both
+supported paths. A fixture with unavailable required dependencies fails with the owning pack and API
+named. Removing a declaration exposes its real call sites at typecheck. Dependency settings obey shared
+and owner-only policy regardless of consumption declarations. Content validation accepts legitimate shared
+entities and rejects unsupported targets.
 
-A **cast**. The facade is type-level only; at runtime it hands back the SDK's ambient object, so the
-manifest has no bearing on what is reachable. Making it a *constructed* object carrying only the declared
-host services is a content change to codegen, not a new mechanism.
-
-**The ambient path has to close with it.** Pack sources also import `services` straight from
-`@apackdev/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
-not exclusive. `check:specifiers` already rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem`
-imports in pack sources for exactly this reason; this is the same rule for the same kind of escape hatch,
-and `apack pack validate`/`apack pack build` are where it binds for an external pack.
-
-## The design
-
-**1. The manifest declares capabilities.** Per feature, beside the services it provides:
-
-```json
-{ "id": "code", "capabilities": ["filesystem", "inference"] }
-```
-
-Host services only — a pack's own services and its dependencies' are already declared elsewhere. The list
-to gate is the six the app implements: `appData`, `traceStore`, `inference`, `secrets`, `filesystem`,
-`settings`. `logger` and `emitter` are the floor: the SDK's own implementations over the bound bus, with
-nothing to withhold.
-
-**`repository` is not the floor, and gating it would not be enough** — see *The data layer is the real
-gap*, which is where this plan stops being about services.
-
-**2. Codegen builds the facade from it**, so an undeclared service is absent at runtime and a type error at
-compile time. The pack's own services and its dependencies' keep their current treatment.
-
-**3. `check:specifiers` closes the ambient import**, following the event-send precedent exactly.
-
-**4. The registry is the second gate**, for a pack whose bundle was not built by this repo's rules: it hands
-a feature's services object only the declared keys. Codegen is the ergonomic gate; the registry is the real
-one.
-
-## The data layer is the real gap
-
-**A capability list over services leaves the most sensitive surface open**, and this plan would be
-misleading without saying so. Three paths reach a pack's and every other pack's rows, and only the first
-looks like a service:
-
-1. **`services.repository`** — the typed repositories, which an earlier draft of this plan called "the
-   floor". It is not; it is data access.
-2. **`untypedQx` / `untypedTx` from `@apackdev/ears`** — and this one is *documented as a pack affordance*:
-   the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
-   open locks the front door and leaves the side door in the manual.
-3. **Content**, which touch `services` not at all. An applier calls
-   `createEntityWithDefaults(record.entity, …)` (`apack-sdk/src/content/format-applier.ts:164`) with the entity name
-   taken from the pack's compiled content data.
-
-**What is enforced today is declaration, not use.** The registry refuses a pack that *declares* a reserved
-entity type or one another pack already declared (`packs/registry.ts:37`, `:324`). The engine's
-`isEntityType` (`apack-ears/src/transaction.ts:28`) asks whether a name is a known entity type, never
-whose it is — it has no concept of packs. So a pack may read every row in the app, and write rows of any
-declared type, including another pack's.
-
-### The decision this forces, which is not mine to make
-
-Restricting the data layer contradicts a documented affordance. Either:
-
-- **the data layer stays open by design** — defensible for a local single-user app where packs are
-  installed deliberately, and the right answer is to *write that down* so it is a decision rather than an
-  oversight, and to scope this plan's title to services; or
-- **data access becomes a declared scope** — which is a different shape from a service list: not a boolean
-  per name but a set of entity types, and read distinct from write. That is OSGi's import/export packages
-  or a filesystem permission, not a flag, and it is a larger plan than this one.
-
-### The cheap piece worth doing either way
-
-**Validate compiled content entity targets against supported declarations and dependencies.** Derive
-the check from normalized entity contracts and compiled records, using the same rule in validation and
-build. Shared SDK/dependency entities require an explicit supported rule, not blanket rejection. This
-check leaves runtime query affordances unchanged.
-
-Validate content targets against the supported ownership/dependency contract, including shared SDK
-entities. Do not assume every legitimate content row has a type declared by the applying pack; inventory
-existing appliers before choosing the rule. This check diagnoses content contracts, not runtime confinement.
-
-## Steps
-
-1. The capability list in `manifest-schema.ts` plus `schema:update`, with the six gateable services as a
-   closed union — a list and its type as one declaration, per the repo rule.
-2. `generate-entries` builds `services` rather than casting it.
-3. `check:specifiers` rule, with its firing case.
-4. The registry gate, with a case that an undeclared service is absent.
-5. Migrate default-setup, fixture packs, scaffolds and every current consumer found by the inventory.
-6. The apply-ownership check above, which is independent of 1-5 and can land first.
-
-## Verification
-
-- A fixture pack declaring no capabilities and calling `services.secrets` fails: at compile time through the
-  facade, and at runtime through the registry. **Both**, since each is a different reader's gate.
-- `npm run chain`. The capability list reaching `apack.schema.json` needs `schema:update`, and the manifest
-  type reaching the published surface needs `api:update`.
-- default-setup's declared set is exactly what it uses: derive it by removing a capability and watching the
-  typecheck name the call sites, rather than reading the list and believing it.
-
-## Risks
-
-**A closed union of service names is a published contract.** Adding a host service becomes a schema change
-and an `api:update`, which is the point, but it is friction where there was none.
-
-**The facade is per *pack*, the services are per *feature*.** `#generated/services.ts` is one module for the
-whole pack, so a per-feature gate needs either a per-feature facade or the registry doing the real work with
-the facade widened to the pack's union. The second is simpler and still closes the hole.
-
-**It is not a sandbox.** A pack's code runs in the same process and can reach the bound runtime by other
-means if it tries. This makes capabilities *declared, reviewable and enforced at the seam*, which is what
-VS Code and Backstage do; containment is `pack-fault-isolation.md`'s subject and a different order of work.
-
-## What this is not
-
-- Not a user-facing permission prompt. The manifest is the prerequisite for one; the UI is separate.
-- Not a change to how a pack reaches its *own* services or its dependencies'.
+Regenerate changed schema/API reports, migrate docs/templates and run `npm run chain`. Feed the settled
+consumption/caller contract into the security goal and later lazy activation, where API availability and
+provider readiness must remain distinct. This work need not wait for shipped-pack replacement.

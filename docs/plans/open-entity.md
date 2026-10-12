@@ -1,7 +1,7 @@
 # Opening an entity is one verb, and no caller names a plugin
 
-Status: retained; revise against [discovery without activation](discovery-without-activation.md)
-after the naming goal. The catalog owns declared entity-to-feature destinations; activation binds the
+Status: planned after complete [discovery without activation](discovery-without-activation.md),
+as ordered by [manifest maturity](manifest-maturity.md). Re-audit the survey against the naming result. The catalog owns declared entity-to-feature destinations; activation binds the
 handler. Keep one `openEntity` verb, but do not implement the old registry lookup as a second inventory.
 The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
 that it was already removed is not a current-code assertion.
@@ -82,7 +82,8 @@ with `declaredTypeOf` (`apack-sdk/src/build/module-exports.ts`) without resolvin
 `apack.json` already names it at `features[].plugin.contract`. So the fact is readable at build time, lands
 in the snapshot, and the host reads it with no pack code and no TypeScript — which is what manifest-driven
 has to mean here. Against a JSON array it costs nothing and buys the compiler: `EntityName` checks the name
-natively, with no `satisfies`, no Zod rule, no validate-time string comparison and **no `schema:update`**.
+at build time. The descriptor validator still checks destination identities and cross-pack collisions;
+compiler checking alone cannot validate unrelated installed packs.
 The trade is that a JSON field is greppable by anything and a type needs the build's TS program, which the
 build already has.
 
@@ -90,11 +91,12 @@ build already has.
 itself and the caller holds only a URL. Exposing a `whoOpens(entityType)` lookup instead would put a ref back
 at every call site, which is the failure mode being removed.
 
-**4. One destination per entity type.** An Action has two today — `ACTION.SELECT` to the Actions plugin, and
-`codeActions.OPEN_ACTION` to the code editor, which `features/actions/fe/components/ActionDetail.vue:181`
-sends with a panel switch. The generic event forces a single answer, and the answer is the entity's own
-plugin: it is the feature that declares the entity, and its detail view already links onward to the code
-editor. The code-editor sends stay as they are — they are "open this **file**", a different request.
+**4. At most one eligible destination per entity type.** A feature explicitly claims what it opens;
+entity ownership does not imply destination ownership. This includes SDK-owned entities such as Action.
+Choose the normal detail view for generic opening; opening a source file remains a separate operation.
+Validate conflicting eligible claims with both owners named. No claim is a supported unavailable result,
+not an excuse to guess a plugin. Disabled declarations remain discoverable without competing as eligible
+routes; enabling a conflicting claimant must fail the same validation.
 
 **5. No `intent` on the event.** `reveal` against `edit` is a real distinction in editors and there is no
 second intent in this tree. If one arrives it is `OPEN_ENTITY { id, intent? }`, additively.
@@ -128,16 +130,20 @@ the **short code**, and `thread` and `document` have short codes distinct from t
 
 This is **pre-existing** — today's `navigate(refId)` has the same exposure — so Phase 0 establishes whether it
 is reachable (does stored content round-trip through markdown, or through ProseMirror JSON which keeps
-`refId`?) and files it as its own defect. The design does not depend on the answer: `openEntity` takes an
+`refId`?). Fix reachable short-code resolution before migrating those callers; test missing and ambiguous
+references explicitly. Static reference descriptors cannot resolve user-created short codes by themselves. The design does not depend on the answer: `openEntity` takes an
 entity id, and resolving a short code to one is the reference system's job, on the side of the boundary that
 knows short codes exist.
 
 **Phase 1 — the primitive.** `entityTypeOf` promoted to `@apackdev/ears`' barrel; `OpenEntity` in
 `PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
 `opens` on the plugin contract type, read by codegen into both registrations and the snapshot; the lookup on
-the two registry views. No consumer yet — the specs below are what prove it.
+the host/browser catalog projection, without a second registry inventory. Bind handlers against that
+projection. Unknown, missing and disabled destinations produce distinct useful results; known destinations
+use the discovery readiness coordinator before delivering the event. Correlate queued delivery and reject
+stale completions after unload/replacement. No consumer yet — specs prove this primitive.
 
-**Phase 2 — the four features that own openable entities declare it and handle it.** `notes` (`Note`),
+**Phase 2 — the pack-entity destinations declare what they open and handle it.** `notes` (`Note`),
 `threads` (`Thread`), `library` (`Document`, `Collection`). An entity a feature declares and does not open —
 `SearchIndex`, `IndexedDoc`, `Message`, `Artifact`, `Terminal`, `BrowserTab`, `BrowserBookmark` — says nothing,
 which is why `opens` is an opt-in rather than derived from the entity declaration.
@@ -154,7 +160,8 @@ the rule "a feature declares the entities it is the home of, not the entities it
 - **The typecheck is the main instrument**: `opens` is checked against `EntityName`, and every converted call
   site loses its event name, so a wrong one cannot be written.
 - **A derived guard**, in the shape this repo asks for: the subject is every catalog destination's declared
-  `opens`, asserted non-empty, and each entity type resolves to exactly one plugin. Mutate it in the test by
+  `opens`, asserted non-empty, and each eligible claimed entity type resolves to one destination.
+  Cover conflicts, disabled claimants and unclaimed entity types separately. Mutate it in the test by
   dropping one feature's `opens` and asserting the answer flips, because a check that reports nothing may
   have looked at nothing.
 - **Mutation-check `entityIs`** the way `targetIs` is covered: a plugin handed an `OPEN_ENTITY` for an entity
@@ -180,10 +187,12 @@ contract in the descriptor. Do not infer that every entity-owning feature can op
 copy destination facts into both manifest flags and contract types. Normalize them once for catalog
 readers; active handlers bind to that account.
 
-**Phase 4 is a behaviour change at eleven call sites in code with little coverage.** The reference subsystem
-has **no spec at all** — not the generated aggregate, not the click handler, not the popup, not markdown
-round-tripping. The derived guard and the one E2E claim exist because of that, and Phase 4 should land after
-them rather than beside them.
+**Phase 4 changes reference navigation.** Re-audit existing coverage rather than assume the historical
+survey is current. Prove short-code resolution, stored-reference round trips and catalog/readiness routing
+before converting callers. Remove `navigate` bindings only after every supported caller migrates.
+
+The resulting navigation API is the input to later lazy activation: a destination is known before it
+runs, but opening still waits for the current handler to be ready.
 
 ## What this is not
 
