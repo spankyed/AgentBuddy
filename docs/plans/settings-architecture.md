@@ -418,6 +418,18 @@ so nested edits mutate its authoritative snapshot before save, and its debounce 
 cleanup. Use the SDK draft helper, clean up the timer, and keep refused drafts visible. Whole-array writes
 also need the stale-value check described above. Secrets remain in the secrets service.
 
+## Schema prototype evidence (2026-10-12)
+
+A disposable probe at `/private/tmp/apack-settings-schema-prototype` used Ajv 8.20.0 and
+json-schema-to-typescript 15.0.4. It passed optional fields, nullable values, enums, integer ranges,
+records, arrays and document-local references, including strict TypeScript checks of generated types.
+Validation left both valid and invalid input unchanged, did not populate schema `default` annotations,
+and refused missing remote references. The generator disabled file and HTTP reference resolution.
+
+This establishes tool suitability, not delivery: declare production dependencies, add focused contract
+specs and wire validation and generation into the pack build before migrating settings readers. Trusted
+caller binding, catalog publication and custom-form loading still require implementation.
+
 ## Delivery sequence
 
 These steps implement the shared-foundation and settings checkpoints in

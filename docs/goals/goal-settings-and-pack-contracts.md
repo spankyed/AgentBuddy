@@ -7,8 +7,9 @@ Implement docs/goals/goal-settings-and-pack-contracts.md. Read CLAUDE.md, Backgr
 Working setup and checkpoint workflow, Phases and Constraints first. The updated base is 3d389b9c8 on
 session/naming-contracts, which completes naming. Start from a committed state containing that work
 and this goal; master is suitable only once it contains both.
-Create a dedicated branch and worktree as explicitly requested. Preserve the source checkout's
-uncommitted work; never share dependencies, generated output or the index between worktrees.
+Continue on session/settings-pack-contracts in the main checkout: the user promoted this work out
+of its initial worktree. Preserve unrelated changes. Use further isolation only if requested or clearly
+necessary; never share dependencies, generated output or the index between worktrees.
 
 Follow the linked subsystem plans without duplicating their designs here. This goal owns execution,
 checkpoints and completion; manifest-maturity owns the roadmap and subsystem plans own contracts.
@@ -56,9 +57,9 @@ against the completed naming result; historical surveys in the linked plans are 
 
 ## Decisions
 
-1. **One isolated working branch.** Fork the completed naming baseline in a dedicated worktree.
-   The user explicitly authorized branching/worktree creation and incremental commits for execution.
-   Naming integration is a kickoff prerequisite, not an ongoing workstream.
+1. **One working branch in the main checkout.** The initial isolated branch was forked from master.
+   The user then promoted it to the main checkout; continue there on `session/settings-pack-contracts`.
+   Naming integration is a kickoff prerequisite, not an ongoing workstream. Commit incrementally.
 2. **One shared foundation.** Inventory all supported contribution kinds before designing the catalog.
    Extend the existing snapshot/build pipeline, with settings as the first catalog projection. No second
    authored inventory, settings-only catalog or runtime fallback for missing declaration metadata.
@@ -88,15 +89,11 @@ with preserved history, verify ancestry. If squash/rebase changed its commit ide
 commit and verify the resulting contracts and archived validation instead of insisting on the old SHA.
 Master is a suitable base once that integration has landed; do not branch from a tree missing naming.
 
-Create the dedicated worktree through the repository session workflow:
-
-```sh
-npm run session:new -- settings-pack-contracts <pinned-base-commit>
-```
-
-Continue all edits, validation and commits there with its own dependencies and outputs. If the name is
-already in use, resume the matching goal worktree or choose an unused explicit name. Preserve other
-checkouts' uncommitted work. The goal doc must be committed and present in the selected starting tree.
+The initial branch and worktree were created from master `d7e77829a`. On 2026-10-12 the user promoted
+this goal into the main checkout at `/Users/spankyed/Develop/Projects/AgentBuddy`, keeping the branch
+`session/settings-pack-contracts` and its commits. Continue there; do not create another worktree merely
+because the original kickoff used one. Preserve unrelated concurrent work and use isolation only when
+requested or clearly necessary under CLAUDE.md. The promotion supersedes the original worktree requirement.
 
 If an existing goal branch lacks naming, integrate the completed commits once through the repository's
 `session:check` workflow before implementation. Resolve conflicts and validate the combined candidate,
@@ -116,9 +113,10 @@ naming branch is not an automatic source of future changes.
 
 ### Phase 0 — Isolate the work and establish the baseline
 
-Create the worktree from a committed state containing completed naming and this goal. Inspect the
-linked plans against that code, record current contribution/setting entry points, and verify the naming
-baseline once. Use existing isolated fixtures for stored-data and app checks.
+Establish the branch from a committed state containing completed naming and this goal. The initial
+worktree setup is complete and the branch is now promoted to the main checkout. Inspect the linked plans
+against that code, record current contribution/setting entry points, and verify the naming baseline once.
+Use existing isolated fixtures for stored-data and app checks.
 
 **Done when:** the branch/worktree and source SHA are recorded, setup succeeds, source work is untouched,
 and baseline failures or stale survey claims are investigated and accounted for before affected work starts.
@@ -248,7 +246,10 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 | Checkpoint | Commit | Validation / outcome |
 |---|---|---|
 | Naming prerequisite | `3d389b9c8` | Ancestry verified against master `d7e77829a`; archived completion included |
-| Kickoff / Phase 0 | Base `d7e77829a`; branch `session/settings-pack-contracts` | Worktree `/private/tmp/apack-settings-pack-contracts`; independent `npm ci`, `npm run build:default-setup` and `npm run build:runtime` passed. Source checkout preserved. |
+| Kickoff / Phase 0 | `70408039e`; base `d7e77829a` | Initial isolated setup, independent `npm ci`, default-setup/runtime builds and six doc checks passed. Full strict chain passed: 30 steps, `npm run chain -- --strict --all --cores 2` (270.9s). |
+| Contribution inventory | `b5761c0db` | BE/FE registration and nested metadata coverage audited in discovery plan; six doc checks passed. |
+| Main-checkout promotion | Branch preserved at `b5761c0db` | Both checkouts were clean; switched main checkout to `session/settings-pack-contracts` at user request. |
+| Schema prototype | Disposable `/private/tmp/apack-settings-schema-prototype` | Ajv 8.20.0 / json-schema-to-typescript 15.0.4 passed pure validation, optional/nullable/enum/record/array/local-reference and generated-type probes; no runtime contracts changed yet. |
 
 ## Outcome
 
