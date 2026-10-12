@@ -11,6 +11,8 @@ import type { PackManifest } from '@apackdev/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/registry.ts';
 import { discoverPacks } from '../../packs/discovery.ts';
+import { moveAppSettings } from './app-settings.ts';
+import { isEqual } from '../../features/settings/be/document.ts';
 import { deepMerge } from '@apackdev/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.4.0, and where the feature settings still are */
@@ -61,6 +63,11 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
     moveShellState(owners);
     // Every pack's feature settings too, the built-in packs' included, before any pack's migration reads them
     moveFeatureSettings(owners);
+    const data = storedSettings();
+    if (data) {
+      const next = moveAppSettings(data);
+      if (!isEqual(data, next)) untypedTx(SETTINGS_ID).put('data', next);
+    }
   },
 });
 

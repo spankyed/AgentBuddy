@@ -53,7 +53,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, features: { 'memo-pack/board': { columns: 3 } } } });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { features: { 'memo-pack/board': { columns: 3 } } } });
     expect(heardBy(app)).toEqual([]);
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 3 } });
 
@@ -260,7 +260,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, features: { memos: { tags: [] } } } });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { features: { memos: { tags: [] } } } });
 
     expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
@@ -274,8 +274,8 @@ describe('a feature whose settings change', () => {
   it.each([
     ['null', null, 'The settings must be a JSON object'],
     ['an array', [], 'The settings must be a JSON object'],
-    ['a section that is not an object', { general: {}, features: null }, '"features" must be an object'],
-    ['a section the settings do not hold', { general: {}, extra: {} }, `"extra" isn't a settings section`],
+    ['a section that is not an object', { features: null }, '"features" must be an object'],
+    ['a section the settings do not hold', { extra: {} }, `"extra" isn't a settings section`],
   ])('refuses replaced settings that are %s, storing nothing', async (_, data, problem) => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
@@ -339,8 +339,8 @@ describe('settings naming prototype machinery', () => {
   afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
 
   it.each([
-    ['a path segment', { entityType: 'section', label: 'general', path: ['application', '__proto__', 'polluted'] }],
-    ['a constructor path', { entityType: 'section', label: 'general', path: ['application', 'constructor', 'prototype', 'polluted'] }],
+    ['a path segment', { entityType: 'section', label: 'assistant', path: [ '__proto__', 'polluted'] }],
+    ['a constructor path', { entityType: 'section', label: 'assistant', path: [ 'constructor', 'prototype', 'polluted'] }],
     ["a plugin's path", { entityType: 'feature', label: 'memo-pack/memos', path: ['__proto__', 'polluted'] }],
   ])('keeps %s as data, and pollutes nothing', async (_, update) => {
     const app = await startApp({ systems: ['host/settings'] });
@@ -349,7 +349,7 @@ describe('settings naming prototype machinery', () => {
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' });
 
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
-    expect(Object.getPrototypeOf(services.settings.getAll().general)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(services.settings.getAll().assistant)).toBe(Object.prototype);
   });
 
   it('keeps such a key in replaced settings as data, and pollutes nothing', async () => {
@@ -357,7 +357,7 @@ describe('settings naming prototype machinery', () => {
     await app.connect();
 
     // As a client's JSON arrives: "__proto__" an own key
-    const data = JSON.parse('{ "general": {}, "features": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
+    const data = JSON.parse('{ "features": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
     await app.send('host/settings', { type: 'REPLACE_SETTINGS', data });
 
     const memos = services.settings.forFeature(resolveName('memo-pack/memos')) as Record<string, unknown>;
@@ -375,14 +375,14 @@ describe('a change to a section', () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['projects'], value: [{ name: 'one' }] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'app', path: ['projects'], value: [{ name: 'one', directories: [], color: 'blue' }] });
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'assistant', path: ['name'], value: 'Ada' });
 
     const all = services.settings.getAll<Record<string, any>>();
-    expect(all.general.projects).toEqual([{ name: 'one' }]);
-    expect(all.general).not.toHaveProperty('general');
+    expect(all.app.projects).toEqual([{ name: 'one', directories: [], color: 'blue' }]);
+    expect(all.app).not.toHaveProperty('general');
     expect(all.assistant.name).toBe('Ada');
-    expect(all.general).not.toHaveProperty('assistant');
+    expect(all.app).not.toHaveProperty('assistant');
   });
 
   it('refuses a section no pack registered, and stores nothing', async () => {

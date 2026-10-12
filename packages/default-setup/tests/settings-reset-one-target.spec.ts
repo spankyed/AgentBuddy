@@ -57,16 +57,16 @@ describe('a reset naming one section', () => {
   it('forgets that section and leaves the features alone', async () => {
     const app = await startApp({ systems: [SETTINGS] })
     await app.connect()
-    services.settings.setInSection('general', ['application', 'theme'], 'dark')
+    services.settings.setInSection('app', ['personal', 'name'], 'Ada')
     services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
 
     const call = await app.send(SETTINGS, {
-      type: 'RESET_SETTINGS', target: { entityType: 'section', label: 'general' },
+      type: 'RESET_SETTINGS', target: { entityType: 'section', label: 'app' },
     }, { sender: SETTINGS, client: WINDOW })
     await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
 
-    const stored = services.settings.getStored<{ general?: unknown }>()
-    expect(stored.general, 'the section the reset named').toBeUndefined()
+    const stored = services.settings.getStored<{ app?: unknown }>()
+    expect(stored.app, 'the section the reset named').toBeUndefined()
     expect(sortOf('threads'), 'a feature was reset with the section').toBe('created')
   })
 })

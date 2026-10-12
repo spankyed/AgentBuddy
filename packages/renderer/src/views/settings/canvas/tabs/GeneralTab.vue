@@ -72,7 +72,7 @@ import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor
 import { usePlugin } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@apackdev/host/fe'
-import type { GeneralSection} from '@/views/settings/types'
+import type { AppSettings } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 const actor: SettingsState = usePlugin()
@@ -85,14 +85,14 @@ const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {
-  // The one place this view says what it draws of a section the host stores opaquely
-  const general = settings.value?.general as GeneralSection | undefined
-  if (!general) return null
+  // App forms share the public host contract.
+  const app = settings.value?.app as AppSettings | undefined
+  if (!app) return null
 
   const settingsMap = {
-    personal: general.personal,
-    projects: general.projects,
-    application: general.application
+    personal: app.personal,
+    projects: app.projects,
+    application: { hotkeys: app.hotkeys }
   }
 
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]
@@ -141,11 +141,11 @@ const handleUpdateSetting = (event: SettingUpdate) => {
     return
   }
 
-  // The nav item is a key inside the `general` section, so it leads the path rather than naming the target
+  // Application displays the hotkeys form; personal and projects select their app fields.
   updateSettings({
     entityType: 'section',
-    label: 'general',
-    path: [backendLabel, ...event.path],
+    label: 'app',
+    path: backendLabel === 'application' ? event.path : [backendLabel, ...event.path],
     value: event.value
   })
 }

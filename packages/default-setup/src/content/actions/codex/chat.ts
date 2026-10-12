@@ -5,7 +5,7 @@
  * The action returns immediately; notifications stream via callbacks.
  */
 
-import type { GeneralSettings } from '#app-settings/types.ts';
+import type { AppSettings } from '@apackdev/sdk/types';
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer.ts';
@@ -92,7 +92,7 @@ export async function action(params: Record<string, any>, services: Services, _z
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
 
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
-    const projects = services.settings.getSection<GeneralSettings>('general').projects;
+    const projects = services.settings.getSection<AppSettings>('app').projects;
     const picker = services.chat.sendBlockMessage({
       threadId, text: 'Which project directory should I work in?',
       blocks: [

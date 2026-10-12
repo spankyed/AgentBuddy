@@ -3,9 +3,8 @@
 // checks with it before saving, so both refuse the same document. The operations build new objects from own keys
 // (spreads and `Object.fromEntries`, never assignment), so a key such as `__proto__` is data and reaches no prototype.
 //
-// The host owns the document's structure, not its content: it knows `features`, one slice per installed feature with
-// settings keyed by its ref, and takes every other section as opaque — whoever registered a section knows its shape.
-// So the sections a document may hold are the caller's to name, not a list here.
+// The store supplies declared section names and separately validates host app and feature values.
+// This module checks document addresses; pack sections remain transitional until group ownership is wired.
 import { splitRef } from '@apackdev/sdk/ids';
 import { hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 

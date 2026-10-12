@@ -16,7 +16,7 @@ const logger = createLogger('migrations');
 const PACK_ID = 'default-setup';
 
 export const migration: DeclaredMigration = {
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
     // ── The app's state (onboarding, versions, content revisions) is the host's AppState now ──
     // The host's own 0.4.0 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -42,11 +42,6 @@ export const migration: DeclaredMigration = {
     services.settings.removeStored(['features', `${PACK_ID}/flows`, 'rootFlowId']);
     services.settings.removeStored(['features', `${PACK_ID}/brain`, 'runningRootFlowId']);
 
-    // ── `general.projects` is the array, not a wrapper around one ──
-    // It was `{ projects: [...] }` once, and the Settings view read both shapes on every render to cope. Moving
-    // the stored value is what lets that view read one shape.
-    unwrapStoredProjects();
-
     // ── Short codes and display orders the library backfilled on every client connection ──
     const backfilled = backfillLibraryOrdering();
     if (backfilled > 0) logger.info(`[migration 0.4.0] backfilled ${backfilled} library row(s)`);
@@ -63,22 +58,9 @@ export const migration: DeclaredMigration = {
 };
 
 /**
- * `general.projects` held `{ projects: [...] }` before it held the array itself. Only the Settings view ever read
- * it, and it accepted both shapes; this moves the stored value so one shape is left to read.
- */
-function unwrapStoredProjects(): void {
-  const general = (services.settings.getStored() as Record<string, unknown>).general;
-  if (!isPlainObject(general)) return;
-  const projects = general.projects;
-  if (Array.isArray(projects) || !isPlainObject(projects) || !Array.isArray(projects.projects)) return;
-  services.settings.setInSection('general', ['projects'], projects.projects);
-  logger.info(`[migration 0.4.0] unwrapped general.projects (${projects.projects.length} project(s))`);
-}
-
-/**
  * 0.3.14 stored the whole default settings with the user's changes merged in, so every upgraded row holds a copy of
  * 0.3.14's defaults (`DEFAULT_SETTINGS_0314`), and a stored value shadows its default: without this, no default of
- * `general`, `assistant` or this pack's plugins could ever change for those users. Each stored value equal to 0.3.14's
+ * remaining legacy `general` fields, `assistant` or this pack's plugins could ever change for those users. Each stored value equal to 0.3.14's
  * default at the same path is dropped, an array only when it equals the whole default array, and an object left empty
  * goes with it. A user who deliberately chose a value equal to 0.3.14's default gets today's default instead: the row
  * can't tell the two apart. Another pack's slices are left alone; 0.3.14 stored no defaults for them.

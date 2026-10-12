@@ -215,7 +215,7 @@ describe('the 0.4.0 app migration, for plugins', () => {
 
     move();
 
-    expect(settings()).toEqual({ general: {} });
+    expect(settings()).toEqual({});
     expect(appState.get().pluginVisibility).toEqual({});
   });
 });

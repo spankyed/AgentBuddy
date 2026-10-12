@@ -44,8 +44,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
       inference,
       secrets,
       filesystem,
-      // The settings in effect before the user changed anything: each installed feature's own and each section a
-      // pack registered, both from the packs' registrations, read afresh so a pack coming or going applies at once
+      // The store owns app defaults. Pack/feature defaults still follow registrations until catalog wiring.
       settings: createSettingsService(createSettingsStore({
         defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
       })),

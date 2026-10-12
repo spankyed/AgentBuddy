@@ -465,7 +465,7 @@ import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { useSettingsSection } from '@apackdev/sdk/fe'
-import type { GeneralSettings } from '#app-settings/types.ts'
+import type { AppSettings } from '@apackdev/sdk/types'
 
 interface Project {
   name: string
@@ -507,7 +507,7 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const general = useSettingsSection<GeneralSettings>('general')
+const general = useSettingsSection<AppSettings>('app')
 const storedProjects = computed(() => general.value?.projects ?? [])
 const projects = computed(() => (storedProjects.value ?? []) as Project[])
 

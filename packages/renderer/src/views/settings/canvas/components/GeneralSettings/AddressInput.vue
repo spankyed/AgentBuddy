@@ -109,22 +109,15 @@
 <script setup lang="ts">
 import { watch, reactive } from 'vue'
 
-interface Address {
-  street: string
-  street2?: string
-  city: string
-  state: string
-  postalCode: string
-  country: string
-}
+import type { AppAddress } from '@apackdev/sdk/types'
 
 interface Props {
-  modelValue: Address
+  modelValue: AppAddress
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  'update:modelValue': [value: Address]
+  'update:modelValue': [value: AppAddress]
 }>()
 
 // US States data
@@ -183,7 +176,7 @@ const usStates = [
 ]
 
 /** The address with every field filled in, so each input is bound to a string */
-const normalizeAddress = (value: Address): Address => {
+const normalizeAddress = (value: AppAddress): AppAddress => {
   return {
     street: value.street || '',
     street2: value.street2 || '',
@@ -195,7 +188,7 @@ const normalizeAddress = (value: Address): Address => {
 }
 
 // Local address data
-const localAddress = reactive<Address>(normalizeAddress(props.modelValue))
+const localAddress = reactive<AppAddress>(normalizeAddress(props.modelValue))
 
 // Handle ZIP code input with auto-formatting
 const handleZipInput = (event: Event) => {

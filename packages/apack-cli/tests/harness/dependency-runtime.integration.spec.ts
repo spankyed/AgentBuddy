@@ -93,7 +93,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
   const connected = await app.nextEmit('default-setup/notes', 'NOTES_CONNECTED');
   expect(connected.data).toBeDefined();
   const loaded = await app.nextEmit('host/settings', 'SETTINGS_LOADED');
-  expect(loaded.data).toMatchObject({ general: expect.any(Object), features: expect.any(Object) });
+  expect(loaded.data).toMatchObject({ app: expect.any(Object), features: expect.any(Object) });
   expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach the app's
   // settings, and the repositories default-setup's runtime registered are the test's, through

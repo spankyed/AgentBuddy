@@ -502,6 +502,33 @@ loading their runtime. Its production wiring, host app extraction, pack group ha
 policies, forms and stored-document migration remain unfinished. Current registration-driven defaults are
 still transitional; discovery metadata does not imply an activated actor or a bound custom form.
 
+## Implemented host app ownership
+
+The host now declares `app.hotkeys`, `app.personal` and ordered `app.projects` in
+`packages/apack-host/src/features/settings/be/app-definition.ts`. The common schema compiler validates
+its baseline and writes; `scripts/app-settings-types.ts` generates the public SDK value types, with a
+parity spec preventing drift. Default-setup no longer supplies app values. Active app consumers and
+custom forms read the new location; the host supplies defaults even with no pack registered. Pack root
+sections cannot claim `app`. Section access is still transitional until owner-bound handles are wired.
+
+The host's stored 0.4.0 migration moves raw known overrides, unwraps the legacy projects wrapper,
+preserves order and destination overrides, and leaves unknown/orphan data intact. Copied 0.3.14 app
+defaults are pruned against a historical baseline, not current defaults. Real boot and backup-import
+checks exercise migration before subsequent validated edits. The existing legacy `internal` cleanup is
+still default-setup's responsibility; its lifecycle extraction remains required.
+
+Validation now exempts an unchanged invalid field only when the same problem already existed in the
+previous effective values. Comparing two absent field reads alone accidentally admitted new objects
+missing required fields; regression checks cover app projects and feature arrays. Reset can remove an
+existing orphan section field without permitting new writes to an undeclared section. Projects forms
+copy incoming arrays and directory arrays before editing, tolerate a restored missing directories field,
+and cancel pending debounce timers when disposed. Window-owned requests/subscriptions, the other forms
+and CAS/stale array protection remain required.
+
+Assistant declarations/lifecycle, pack-group handles, trusted policies, catalog-fed defaults and window
+runtime/product composition are unfinished. This checkpoint does not establish the complete three-owner
+document or claim discovery without activation for all settings consumers.
+
 ## Delivery sequence
 
 These steps implement the shared-foundation and settings checkpoints in

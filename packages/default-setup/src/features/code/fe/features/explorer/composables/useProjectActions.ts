@@ -4,7 +4,7 @@ import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
 import { updateSettings, useSettingsSection } from '@apackdev/sdk/fe'
-import type { GeneralSettings } from '#app-settings/types.ts'
+import type { AppSettings } from '@apackdev/sdk/types'
 export interface Project {
   name: string
   directories: string[]
@@ -12,7 +12,7 @@ export interface Project {
 }
 
 export function useProjectActions() {
-  const general = useSettingsSection<GeneralSettings>('general')
+  const general = useSettingsSection<AppSettings>('app')
   const stored = computed(() => general.value?.projects ?? [])
   const projects = computed(() => stored.value ?? [])
 
@@ -50,7 +50,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
+    updateSettings({ section: 'app' }, ['projects'], updatedProjects)
   }
 
   // Remove directory from project (and delete project if it's the last directory)
@@ -70,7 +70,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
+    updateSettings({ section: 'app' }, ['projects'], updatedProjects)
   }
 
   // Add directory to existing project
@@ -87,7 +87,7 @@ export function useProjectActions() {
     project.directories.push(directoryPath)
 
     // Update settings
-    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
+    updateSettings({ section: 'app' }, ['projects'], updatedProjects)
   }
 
   // Create new project with directory
@@ -111,7 +111,7 @@ export function useProjectActions() {
     updatedProjects.push(newProject)
 
     // Update settings
-    updateSettings({ section: 'general' }, ['projects'], updatedProjects)
+    updateSettings({ section: 'app' }, ['projects'], updatedProjects)
   }
 
   // Navigate to projects settings

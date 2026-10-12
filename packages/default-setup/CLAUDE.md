@@ -62,11 +62,11 @@ The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **f
 
 Settings is not one of them: the store, its writer and the Settings view are the app's (`host/settings` in
 `@apackdev/host`, drawn by `packages/renderer/src/views/settings`). What this pack contributes is content — each
-feature's `fe/settings.vue` and declarative defaults in `apack.json`, and the `general` and `assistant` sections it registers
+feature's `fe/settings.vue` and declarative defaults in `apack.json`, and the remaining `assistant` section it registers
 through `apack.json` `settingsSections` (`src/app-settings/`). A feature reads and writes its own settings with
 `settings.forFeature('<feature>')` from `#generated/settings.ts` on the backend and `useSettings('<feature>')` from
 `#generated/settings-fe.ts` on the frontend. Both derive their types from the schema; custom forms use
-`SettingsOf` and `SettingUpdate` from the frontend module. App-wide sections still use `useSettingsSection`.
+`SettingsOf` and `SettingUpdate` from the frontend module. App preferences use the SDK `AppSettings` contract at `app`; the host supplies their baseline and validation. Section access remains transitional until the planned owner-bound handles land.
 
 Default plugin is Threads.
 

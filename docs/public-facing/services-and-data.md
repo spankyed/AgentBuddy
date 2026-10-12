@@ -596,3 +596,9 @@ export const migrations: PackMigration[] = [
   "migrations": "src/migrations/index.ts"
 }
 ```
+
+App preferences belong to the host and are available without default-setup. `AppSettings` from
+`@apackdev/sdk/types` describes `hotkeys`, `personal` and ordered `projects` (each project has
+`name`, `color` and ordered `directories`). The host validates writes with the same declarative
+JSON Schema used to generate that type. Current section access addresses these values at `app`;
+pack preference groups and owner-bound handles are the next settings delivery checkpoint.

@@ -60,7 +60,7 @@ describe('services.appData.reset()', () => {
     // The user onboards, changes settings and deletes a flow; the data records an older version
     services.appData.completeOnboarding();
     appState.update({ version: '0.0.1' });
-    services.settings.setInSection('general', ['application', 'openLinksInApp'], false);
+    services.settings.setInSection('app', ['personal', 'name'], 'Ada');
     expect(storedSettings()).not.toEqual(fresh.settings);
     const [deleted] = fresh.flows;
     flowRepository.deleteFlow(deleted.id, { allowRoot: true });

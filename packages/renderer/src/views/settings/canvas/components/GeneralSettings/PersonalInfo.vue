@@ -77,11 +77,11 @@ import { ref } from 'vue'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
-import type { Address, PersonalSection} from '@/views/settings/types'
+import type { AppAddress, AppPersonalInfo } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 interface Props {
-  settings?: PersonalSection
+  settings?: AppPersonalInfo
 }
 
 // `settings` is optional, so it is already undefined when the tab has no slice for this form; the forms read it
@@ -95,7 +95,7 @@ const emit = defineEmits<{
 const formData = ref<{
   name: string
   phoneNumber: string
-  address: Address
+  address: AppAddress
 }>({
   name: props.settings?.name || '',
   phoneNumber: props.settings?.phoneNumber || '',

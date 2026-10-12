@@ -91,7 +91,7 @@ describe("0.4.0's migrations over 0.3.14's data", () => {
 
     // Every value still at 0.3.14's default is dropped, so today's defaults apply to it
     expect(storedSettings()).toEqual({
-      general: { personal: { name: 'Ada' } },
+      app: { personal: { name: 'Ada' } },
       features: {
         'default-setup/code': { baseDirectory: '/work' },
         'default-setup/browser': { openLinksInApp: false },

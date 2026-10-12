@@ -48,6 +48,22 @@ export interface ActionParameter {
 }
 
 // @public (undocumented)
+export interface AppAddress {
+    // (undocumented)
+    city: string;
+    // (undocumented)
+    country: string;
+    // (undocumented)
+    postalCode: string;
+    // (undocumented)
+    state: string;
+    // (undocumented)
+    street: string;
+    // (undocumented)
+    street2?: string;
+}
+
+// @public (undocumented)
 export interface ApplicationHotkeys {
     // (undocumented)
     custom?: CustomHotkey[];
@@ -60,11 +76,47 @@ export interface ApplicationHotkeys {
 }
 
 // @public (undocumented)
-export interface CustomHotkey extends KeyboardShortcut {
+export interface AppPersonalInfo {
+    // (undocumented)
+    address?: AppAddress;
+    // (undocumented)
+    name?: string;
+    // (undocumented)
+    phoneNumber?: string;
+}
+
+// @public (undocumented)
+export interface AppProject {
+    // (undocumented)
+    color: string;
+    // (undocumented)
+    directories: string[];
+    // (undocumented)
+    name: string;
+}
+
+// @public (undocumented)
+export interface AppSettings {
+    // (undocumented)
+    hotkeys: ApplicationHotkeys;
+    // (undocumented)
+    personal: AppPersonalInfo;
+    // (undocumented)
+    projects: AppProject[];
+}
+
+// @public (undocumented)
+export interface CustomHotkey {
     // (undocumented)
     eventName: string;
     // (undocumented)
+    global?: boolean;
+    // (undocumented)
     id: string;
+    // (undocumented)
+    key: string;
+    // (undocumented)
+    modifiers: string[];
 }
 
 // @public (undocumented)

@@ -34,7 +34,7 @@ export async function action(
       color: '#3B82F6',
     }));
 
-    services.settings.setInSection('general', ['projects'], projectEntries);
+    services.settings.setInSection('app', ['projects'], projectEntries);
 
     // Set first directory as default CWD
     services.settings.setForFeature('default-setup/code', ['defaultBaseDirectory'], dirs[0]);

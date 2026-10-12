@@ -13,23 +13,9 @@ import { FEATURES_SECTION, SettingsRefusedError } from './document.ts';
 import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
 
-/**
- * Where the app's shell reads its hotkeys in the settings document. The host knows this one path, not the shape of
- * the section around it: whoever registered `general` puts the hotkeys there, and the shell is told them.
- */
-const APP_HOTKEYS_PATH = ['general', 'application', 'hotkeys'] as const;
-
-
-/**
- * The application hotkeys, from the `general` section a pack contributes. Every section but `features` is a pack's
- * and opaque to the host, so `unknown` is what it can read and this is where it takes the pack's word for the
- * shape. Absent reads as none, rather than as `undefined` wearing the type the shell's context declares.
- */
+/** Host app preferences supply shell hotkeys without a contributing pack. */
 const appHotkeys = (document: SettingsDocument): ApplicationHotkeys =>
-  (at(document, APP_HOTKEYS_PATH) ?? {}) as ApplicationHotkeys;
-
-const at = (document: SettingsDocument, path: readonly string[]): unknown =>
-  path.reduce<unknown>((node, key) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined), document);
+  (document.app as Partial<import('@apackdev/sdk/types').AppSettings> | undefined)?.hotkeys ?? {};
 
 const logger = createLogger('settings');
 

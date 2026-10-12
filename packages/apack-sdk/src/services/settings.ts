@@ -4,9 +4,10 @@
  * Settings are the app's, not a pack's: the one row, its defaults and its one writer belong to the host, and a
  * feature reads or writes its own without depending on whichever pack renders the settings view.
  *
- * The document has one section the host knows — a feature's own settings, keyed by its ref — and whatever sections
- * the app registered beside it. What is stored is only what the user changed; what these read is the defaults with
- * those changes over them, so a changed default applies to every key the user never set.
+ * The host owns app defaults and validation under `app`. Features contribute their own schemas and
+ * defaults under qualified refs; pack root sections remain transitional until group handles are wired.
+ * Reads merge defaults under stored overrides. Targeted writes retain explicit choices; reset removes
+ * overrides so future defaults apply.
  */
 
 import type { FeatureRef } from '../ids/index.ts';

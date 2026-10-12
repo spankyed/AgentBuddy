@@ -6,7 +6,7 @@ import type { SettingsData } from './types.ts';
 import baseSettings from '../content/default-settings.ts';
 
 /**
- * The base settings this pack contributes: its `general` and `assistant` sections, with no feature's slice.
+ * The base settings this pack contributes: its `assistant` section, with no feature's slice.
  *
  * **An import, because this is this pack's own source, and not a content entry.** `content.sources` is for entries
  * that import rows into the database, and these are never written to one: the settings row holds only what
@@ -36,8 +36,8 @@ export function assertNoFeatureSlice(settings: unknown, source: string): void {
   }
 }
 
-/** The sections this pack owns, which the app merges under the user's changes */
+/** Transitional assistant defaults; app defaults and validation belong to the host. */
 export function settingsSections(): Record<string, unknown> {
-  const { general, assistant } = getBaseSettings();
-  return { general, assistant };
+  const { assistant } = getBaseSettings();
+  return { assistant };
 }

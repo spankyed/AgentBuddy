@@ -274,17 +274,18 @@ diffable, cheap, and it says what a thing *is* rather than where it is. `/screen
 looking at the result afterwards.
 
 **`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
-it is what says whether your write landed. The defaults it is merged over are the registry's.
+it is what says whether your write landed. The defaults come from the host for app preferences and pack declarations for contributed values.
 
 **A refused write answers `ok: false`, with the reasons.** The settings store checks the whole next
 document and refuses what it will not take — an unknown feature ref, a section nobody registered, a change
 while a backup is being imported — and `/set-setting` waits for that answer rather than for the send to be
 accepted. It used to resolve on the send, so every refusal read as success.
 
-**`/set-setting` writes either half of that document.** A feature's settings live under its ref
-(`{"feature":"default-setup/code"}`) and a pack's section lives at the top of it
-(`{"section":"general"}`) — one of the two, never both, as `/wait` takes one of its two. Writing only
-features left `general` and `assistant` readable and unwritable.
+**`/set-setting` addresses a feature or a section.** A feature uses its qualified ref
+(`{"feature":"default-setup/code"}`). App preferences use `{"section":"app"}` with a path
+such as `["personal", "name"]`; remaining registered pack sections use their section names.
+Choose exactly one selector. The writer validates the addressed value and reports refusals.
+
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
 person watching `apack pack drive` — has its *window* resized, because a viewport Playwright sets is an

@@ -110,3 +110,9 @@ Then in `packages/default-setup/apack.json`, under the app's line:
 ```json
 "migrations": { "app": { "0.X.Y": "src/migrations/0.X.Y.ts#migration" } }
 ```
+
+The host 0.4.0 migration also extracts app preference overrides from legacy `general` into `app`
+(`app/app-settings.ts`). It prunes only copied historical defaults, preserves destination overrides and
+unknown roots, and unwraps ordered projects. App defaults/schema are host-owned; default-setup no longer
+owns project unwrapping. `tests/features/settings/app.spec.ts`, the API upgrade test and the real old-backup
+import test cover these paths. Assistant lifecycle and the remaining pack root-section move are unfinished.

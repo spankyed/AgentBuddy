@@ -102,24 +102,24 @@ describe('the 0.4.0 migration', () => {
     afterEach(() => vi.restoreAllMocks())
 
     /**
-     * A row as 0.3.14 left it, once the host's 0.4.0 migration moved the plugin slices onto their refs: every default,
+     * A row as 0.3.14 left it, once the host's 0.4.0 migration moved feature slices onto refs and extracted app preferences: every default,
      * the user's changes merged in
      */
     function rowOf0314(changes: (row: any) => void) {
       const row = structuredClone(DEFAULT_SETTINGS_0314) as any
       row.features = Object.fromEntries(Object.entries(row.plugins).map(([id, slice]) => [`default-setup/${id}`, slice]))
       delete row.plugins
+      // The host has already moved these preferences; its migration is tested in host and API suites.
+      delete row.general.personal
+      delete row.general.projects
+      delete row.general.application.hotkeys
       row.internal = { hasOnboarded: true, version: '0.3.14', contentRevision: 'abc123', lastInteractionTimestamp: null }
       changes(row)
       untypedTx('Settings-app' as SdkEARS.EntityId).update('data', row)
     }
 
     const USER_CHANGES = {
-      general: {
-        personal: { name: 'Ada' },
-        // Each value is compared on its own: a hotkey keeps the part the user changed
-        application: { hotkeys: { toggleInspectionPanel: { key: 'i' } } },
-      },
+      app: { personal: { name: 'Ada' }, hotkeys: { toggleInspectionPanel: { key: 'i' } } },
       assistant: { name: 'Buddy' },
       features: {
         // A value changed deep inside a default object, the rest of which goes
@@ -136,8 +136,7 @@ describe('the 0.4.0 migration', () => {
     }
 
     function withUserChanges(row: any) {
-      row.general.personal = { name: 'Ada' }
-      row.general.application.hotkeys.toggleInspectionPanel = { key: 'i', modifiers: ['cmd'] }
+      row.app = { personal: { name: 'Ada' }, hotkeys: { toggleInspectionPanel: { key: 'i' } } }
       row.assistant.name = 'Buddy'
       row.features['default-setup/code'].hotkeys.saveFile = { key: 's', modifiers: ['ctrl'] }
       row.features['default-setup/code'].maxTerminals = 40

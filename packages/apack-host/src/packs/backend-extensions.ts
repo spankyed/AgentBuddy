@@ -75,7 +75,10 @@ export function createSettingsDefaultsStore() {
     const sections: Record<string, unknown> = {};
     for (const [packId, read] of sectionsByPack) {
       try {
-        for (const [name, value] of Object.entries(read())) sections[name] = value;
+        for (const [name, value] of Object.entries(read())) {
+          if (name === 'app') throw new Error('App preferences belong to the host');
+          sections[name] = value;
+        }
       } catch (error) {
         throw new Error(`Pack "${packId}" could not read its settings sections: ${(error as Error).message}`);
       }

@@ -4,17 +4,16 @@
 // The row stores only what the user changed. The settings in effect are the defaults with those changes over them,
 // so a changed default, or a pack's feature settings coming and going, applies to every key the user didn't set.
 //
-// The host owns the document's structure and not its content (`document.ts`): it knows `features`, one slice per
-// installed feature with settings keyed by its ref, and takes every other section as opaque. Which sections exist,
-// and what they default to, come from `defaults` — whoever composes the app supplies it, so no pack's shape reaches
-// this module.
+// App preferences and their schema/defaults belong to the host; feature schemas come from declarations.
+// Pack sections remain transitional until pack-group handles replace them.
 import { untypedTx, untypedQx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { deepMerge, hasOwn } from '@apackdev/sdk/utils/pure';
 import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apackdev/sdk/ids';
-import { getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, type SettingsValidator, type SettingsProblem, getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
 import { changesFrom, isEqual, FEATURES_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
 // The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
+import { appSettingsDefinition } from './app-definition.ts';
 import type { SettingsChange } from '@apackdev/sdk/services';
 export type { SettingsChange };
 
@@ -24,7 +23,7 @@ export const SETTINGS_ENTITY = 'Settings';
 // A fixed id without a hyphen: "Settings-app" with one had a bug where updates didn't persist
 const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
 
-/** A settings document: the `features` slices the host knows, and whatever sections the app registered */
+/** App preferences, feature slices and the currently registered pack sections. */
 export interface SettingsDocument {
   [FEATURES_SECTION]: Record<string, unknown>;
   [section: string]: unknown;
@@ -50,7 +49,19 @@ function at(value: unknown, path: readonly (string | number)[]): unknown {
   return value;
 }
 
-export function createSettingsStore({ defaults }: SettingsStoreOptions) {
+/** Retain only problems already present at an unchanged value, never a newly missing required field. */
+function newProblems(validator: SettingsValidator, before: unknown, after: unknown): SettingsProblem[] {
+  const previous = validator.validate(before);
+  return validator.validate(after).filter(issue => issue.keyword === 'json'
+    || !isEqual(at(before, issue.path), at(after, issue.path))
+    || !previous.some(old => old.keyword === issue.keyword && old.message === issue.message && isEqual(old.path, issue.path)));
+}
+
+const appValidator = _compileSettingsDefinition(appSettingsDefinition);
+
+export function createSettingsStore({ defaults: packDefaults }: SettingsStoreOptions) {
+  // Pack registrations never supply or override the host's baseline.
+  const defaults = (): SettingsDocument => ({ ...packDefaults(), app: structuredClone(appSettingsDefinition.defaults) });
   const listeners = new Set<(change: SettingsChange) => void>();
   /** How many data replacements are running (`whileReplacingData`) */
   let replacingData = 0;
@@ -82,11 +93,16 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
    * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
    * stored: every write goes through here, so none stores a document of the wrong shape.
    */
-  function write(next: unknown): void {
-    const problems = settingsProblems(next, { before: stored(), sections: sections() });
+  function write(next: unknown, removingSection?: string): void {
+    const problems = settingsProblems(next, { before: stored(), sections: removingSection ? [...sections(), removingSection] : sections() });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     const current = effective();
     const effectiveNext = deepMerge(defaults(), next) as SettingsDocument;
+    if (!isEqual(effectiveNext.app, current.app)) {
+      for (const issue of newProblems(appValidator, current.app, effectiveNext.app)) {
+        problems.push(`App ${issue.path.join('.') || 'settings'}: ${issue.message}`);
+      }
+    }
     const validators = getPackSettingsDefaults().validators;
     for (const [ref, slice] of Object.entries(effectiveNext.features ?? {})) {
       if (isEqual(slice, current.features?.[ref])) continue;
@@ -95,9 +111,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
         problems.push(`Feature "${ref}" does not declare a settings schema`);
         continue;
       }
-      for (const issue of validator.validate(slice)) {
-        // A changed declaration must not trap existing data: unchanged invalid values remain editable elsewhere.
-        if (issue.keyword !== 'json' && isEqual(at(current.features?.[ref], issue.path), at(slice, issue.path))) continue;
+      for (const issue of newProblems(validator, current.features?.[ref], slice)) {
         problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
       }
     }
@@ -169,7 +183,8 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     removeStored(path: readonly string[]): void {
       const before = stored();
       const next = removeIn(before, path);
-      if (next !== before) write(next);
+      // Reset may remove an orphan override even when its declaration is absent.
+      if (next !== before) write(next, path[0]);
     },
 
     /** Forgets every change the user made, so the defaults apply again */

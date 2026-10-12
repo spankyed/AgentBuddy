@@ -114,20 +114,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onScopeDispose, ref, watch } from 'vue'
 import { Plus, X, GripVertical } from 'lucide-vue-next'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
-interface Project {
-  name: string
-  directories: string[]
-  color: string
-}
+import type { AppProject } from '@apackdev/sdk/types'
 
 interface Props {
-  settings?: Project[]
+  settings?: AppProject[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -138,7 +134,8 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate]
 }>()
 
-const projects = ref<Project[]>(props.settings ?? [])
+const copyProjects = (values: AppProject[] = []) => values.map(project => ({ ...project, directories: [...(project.directories ?? [])] }))
+const projects = ref(copyProjects(props.settings))
 
 // Reorder
 const reorderGroup = Symbol('settings-projects')
@@ -155,10 +152,10 @@ watch(() => props.settings, (val) => {
     droppingItem = false
     return
   }
-  projects.value = val ?? []
+  projects.value = copyProjects(val)
 }, { deep: true })
 
-function reorderProject(moving: MovingItem<Project>) {
+function reorderProject(moving: MovingItem<AppProject>) {
   if (!moving.destination?.listItems) return
   droppingItem = true
   projects.value = [...moving.destination.listItems]
@@ -167,6 +164,7 @@ function reorderProject(moving: MovingItem<Project>) {
 
 // Debounce helper
 let saveTimeout: number | undefined
+onScopeDispose(() => clearTimeout(saveTimeout))
 const debouncedSave = () => {
   if (saveTimeout) clearTimeout(saveTimeout)
   saveTimeout = window.setTimeout(() => {

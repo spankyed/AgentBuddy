@@ -16,7 +16,7 @@ import { settings as featureSettings } from '#generated/settings.ts';
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import type { Contract } from './contract.ts';
-import type { GeneralSettings } from '#app-settings/types.ts';
+import type { AppSettings } from '@apackdev/sdk/types';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli.ts';
@@ -320,7 +320,7 @@ export const systemMachine = setup({
   initial: 'idle',
   context: () => {
     const codeSettings = featureSettings.forFeature('code').get()
-    const projects = services.settings.getSection<GeneralSettings>('general').projects
+    const projects = services.settings.getSection<AppSettings>('app').projects
 
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)

@@ -40,8 +40,8 @@ const write = (label: string) => ({
   type: 'UPDATE_SETTINGS' as const,
   entityType: 'section' as const,
   label,
-  path: ['application', 'theme'],
-  value: 'dark',
+  path: ['personal', 'name'],
+  value: 'Ada',
 })
 
 describe('a settings write from a window', () => {
@@ -49,7 +49,7 @@ describe('a settings write from a window', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'), { sender: SETTINGS, client: WINDOW })
+    const call = await app.send(SETTINGS, write('app'), { sender: SETTINGS, client: WINDOW })
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
 
     expect(answer).toMatchObject({ type: 'SETTINGS_SAVED' })
@@ -80,7 +80,7 @@ describe('a settings write from a window', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'), { sender: SETTINGS, client: WINDOW })
+    const call = await app.send(SETTINGS, write('app'), { sender: SETTINGS, client: WINDOW })
     await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
     await app.settle()
 
@@ -100,7 +100,7 @@ describe('a settings write with no sender', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'))
+    const call = await app.send(SETTINGS, write('app'))
     // Waited for by type alone, because this arm answers nothing — and then asserted to answer nothing, which
     // is what tells this case apart from the three above rather than leaving it to read the same
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED')

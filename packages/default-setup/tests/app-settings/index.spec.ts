@@ -12,12 +12,13 @@ import { assertNoFeatureSlice, getBaseSettings, settingsSections } from '#app-se
 describe('the base settings', () => {
   it('are this pack\'s own source, with no compiled content on disk to read', () => {
     const base = getBaseSettings();
-    expect(Object.keys(base)).toContain('general');
+    expect(Object.keys(base)).not.toContain('general');
+    expect(Object.keys(base)).not.toContain('app');
     expect(Object.keys(base)).toContain('assistant');
   });
 
-  it('offer the two sections this pack registers, and nothing else', () => {
-    expect(Object.keys(settingsSections()).sort()).toEqual(['assistant', 'general']);
+  it('offer the assistant section this pack registers, and nothing else', () => {
+    expect(Object.keys(settingsSections()).sort()).toEqual(['assistant']);
   });
 
   /** A feature's own defaults come from the registry under its ref; a copy here is one only a stale reader finds */
