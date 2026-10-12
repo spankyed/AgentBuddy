@@ -102,10 +102,10 @@ function handleHotReload() {
 
       /** Spawn a new electron process */
       const inspectMode = process.env.ELECTRON_INSPECT === 'true';
-      const electronArgs = inspectMode ? ['--inspect', '.'] : ['.'];
+      const electronArgs = inspectMode ? ['--inspect=127.0.0.1:0', '.'] : ['.'];
 
       if (inspectMode) {
-        console.log('Starting Electron with Node.js inspector on port 9229');
+        console.log('Starting Electron with Node.js inspector on an available port');
       }
 
       /**

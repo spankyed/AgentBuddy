@@ -103,9 +103,9 @@ function hostSharedModulesPlugin(): Plugin {
    * runtime effect and the app imports it for two side effects of being in the graph.
    *
    * In **dev** it is what the map is read from: transforming it gives back the URLs Vite serves each module
-   * at, and it is also how the dep optimizer learns of them. Most are in `optimizeDeps.include`, but the
-   * ProseMirror subpaths reach the scan through nothing else, and a dep discovered later costs a re-optimise
-   * and a full reload the first time a pack asks for it.
+   * at, and it is also how the dep optimizer learns of them. ProseMirror's canonical modules are explicitly
+   * included below: discovering them during the first navigation would trigger a reload and interrupt
+   * Electron's initial page load.
    *
    * In **build** each is an entry in its own right, so this adds nothing there.
    */
@@ -231,6 +231,7 @@ export default defineConfig(({ command }) => ({
   ssr: { resolve: { conditions: ['@apackdev/source', ...defaultServerConditions] } },
   optimizeDeps: {
     include: [
+      ...SHARED_ENTRIES.filter(module => module.startsWith('prosemirror-')),
       'monaco-editor',
       '@xterm/xterm',
       '@xterm/addon-fit',

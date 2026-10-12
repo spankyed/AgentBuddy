@@ -475,6 +475,7 @@ describe('a recorded artifact has both halves', () => {
 describe("the chain runs every artifact's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
+    'session:check': 'runs the full chain over explicitly named branches in another checkout; nesting it in the chain would recurse',
     // These are commands over a rule a spec already asserts, so the artifact is checked and the script is
     // a way to ask by hand.
     'content-parity:check': 'a wrapper for `npm test -- tests/content`; those specs run in test:unit:pack',

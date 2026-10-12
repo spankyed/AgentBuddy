@@ -2,6 +2,7 @@
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tsImport } from 'tsx/esm/api';
+import { withCheckoutProfile } from './lib/dev-profile.mjs';
 
 const [operation, ...args] = process.argv.slice(2);
 const repositoryRoot = realpathSync(fileURLToPath(new URL('..', import.meta.url)));
@@ -19,16 +20,17 @@ Usage: npm run dev:open -- [--profile <name> | --fresh [--rm]] [--with-secrets]
 
 Launch the built source app and hold its development session until Ctrl-C.
 Always uses the apack checkout containing this script.
+Linked worktrees default to their own profile; explicit profile flags override it.
 Use npm run dev for source watchers and HMR.
 
 Pack authors: run apack pack dev from your pack repository.`);
     } else {
       const { holdSession } = await tsImport('../packages/apack-cli/src/commands/dev.ts', import.meta.url);
-      await holdSession(args, 'app');
+      await holdSession(withCheckoutProfile(repositoryRoot, args), 'app');
     }
   } else if (operation === 'drive') {
     const { drive } = await tsImport('../packages/apack-cli/src/commands/drive.ts', import.meta.url);
-    await drive(args);
+    await drive(withCheckoutProfile(repositoryRoot, args));
   } else throw new Error('Use npm run dev:open or npm run dev:drive.');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

@@ -48,6 +48,10 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
+    why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },
+  'packages/repo-checks/tests/session.integration.spec.ts': { calls: 2,
+    why: 'real Git worktrees verify separate files and indexes; the session command runs as a process to verify gate failures and exit codes' },
   'packages/apack-cli/tests/_support/pack-builds.ts': { calls: 1,
     why: 'the shared `run` spawns the repo\'s own bin/apack.mjs, for the cases that need argv dispatch and a real process boundary; callCli covers the rest in-process' },
   'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts': { calls: 1,
