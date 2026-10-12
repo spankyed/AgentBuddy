@@ -269,13 +269,13 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
   let layoutDir = dir;
   let stageRoot: string | undefined;
-  if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
-    stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-stage-'));
-    layoutDir = path.join(stageRoot, manifestSource.id);
-    stagePack(dir, layoutDir);
-  }
-
   try {
+    if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
+      stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-stage-'));
+      layoutDir = path.join(stageRoot, manifestSource.id);
+      try { stagePack(dir, layoutDir, { packFormat: options.packFormat }); }
+      catch (error) { throw new Error(`Pack "${manifestSource.id}" can't be installed: ${reason(error)}`); }
+    }
     if (!isPackLayout(layoutDir)) {
       throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "apack pack build" first.`);
     }
@@ -283,8 +283,8 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
     // Refused here rather than at the app's next start, where the loader would skip it
     const buildProblem = packBuildProblem(layoutDir, options.packFormat);
     if (buildProblem) {
-      if (options.packFormat !== undefined) throw new Error(`Pack "${integrity.id}" can't be installed: ${buildProblem}`);
-      log.warn(`Pack "${integrity.id}" may not load: ${buildProblem}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
+      if (options.packFormat !== undefined || buildProblem.kind !== 'format') throw new Error(`Pack "${integrity.id}" can't be installed: ${buildProblem.message}`);
+      log.warn(`Pack "${integrity.id}" may not load: ${buildProblem.message}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
     }
 
     const manifest = readValidManifest(layoutDir);

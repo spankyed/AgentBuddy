@@ -89,6 +89,7 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(runtime, 'throw new Error("catalog executed runtime");');
       const file = path.join(dir, PACK_LAYOUT.snapshot);
       fs.writeFileSync(file, JSON.stringify(source('poisoned').snapshot));
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(source('poisoned').snapshot.manifest));
       const before = fs.readFileSync(file, 'utf8');
       const catalog = createContributionCatalog(app);
       catalog.replace([{ snapshot: readPackSnapshot(dir), dir, enabled: false }]);

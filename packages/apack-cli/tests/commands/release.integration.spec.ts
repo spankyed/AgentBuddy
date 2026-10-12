@@ -21,14 +21,18 @@ vi.mock('../../src/commands/build', () => ({
   build: vi.fn(async () => {
     if (!builtAt.root) return;
     const [{ readFileSync, writeFileSync }, { join }] = await Promise.all([import('node:fs'), import('node:path')]);
+    const manifest = JSON.parse(readFileSync(join(builtAt.root, 'apack.json'), 'utf8'));
+    const snapshotFile = join(builtAt.root, 'dist/types/snapshot.json');
+    const snapshot = JSON.parse(readFileSync(snapshotFile, 'utf8'));
+    snapshot.manifest = manifest;
+    snapshot.declarationRevision = _declarationRevision(manifest);
+    writeFileSync(snapshotFile, JSON.stringify(snapshot));
     // Rewritten rather than `utimesSync(new Date())`, which truncates to the millisecond and so can stamp a
     // time *before* the sub-millisecond one the manifest was just written at — the stand-in then looks older
     // than the sources it was supposedly built from. Writing the bytes is what a build does, and it takes the
     // filesystem's own clock at its full precision
-    for (const file of ['dist/runtime/index.cjs', 'dist/types/snapshot.json']) {
-      const at = join(builtAt.root, file);
-      writeFileSync(at, readFileSync(at));
-    }
+    const runtimeFile = join(builtAt.root, 'dist/runtime/index.cjs');
+    writeFileSync(runtimeFile, readFileSync(runtimeFile));
   }),
 }));
 import { buildPackArchive } from '../../src/commands/archive';
@@ -51,7 +55,7 @@ function builtPack(version = '1.2.3'): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version, hostVersion: '>=0.3.0' }));
-  write('.gitignore', '.apack/\n');
+  write('.gitignore', '.apack/\ndist/\n');
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
@@ -319,7 +323,7 @@ describe('runRelease', () => {
     expect(read('package-lock.json')).toMatchObject({ version: '1.2.4', packages: { '': { version: '1.2.4' } } });
     expect(git(root, 'show', '--name-only', '--format=', 'HEAD').split('\n').sort())
       .toEqual(['apack.json', 'package-lock.json', 'package.json']);
-    // no tracked file left behind modified (.apack/ build output is untracked, and gitignored in a real pack)
+    // No tracked file left modified; .apack/ and dist/ build output are ignored in generated packs.
     expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
   });
 

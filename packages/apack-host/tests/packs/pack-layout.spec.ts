@@ -1,5 +1,6 @@
 import { _declarationRevision } from '@apackdev/sdk/build';
-import * as fs from 'node:fs';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -11,6 +12,9 @@ import {
   readPackIntegrity,
   sha256File,
   packFrontendFiles,
+  packBuildProblem,
+  packFileHashes,
+  readPackSnapshot,
   stagePack,
   verifyPack,
 } from '../../src/packs/layout.ts';
@@ -80,10 +84,6 @@ describe('stagePack', () => {
   // is this". Staging the built manifest as it is keeps there being one.
   it('stages one version: the built manifest, which integrity and the built snapshot agree on', () => {
     const root = builtPack();
-    fs.writeFileSync(
-      path.join(root, 'dist', 'types', 'snapshot.json'),
-      JSON.stringify({ types: {}, manifest: { id: 'demo-pack', version: '1.2.3' } }),
-    );
     const stage = path.join(tmp, 'stage');
 
     const integrity = stagePack(root, stage);
@@ -91,6 +91,33 @@ describe('stagePack', () => {
     const staged = (rel: string) => JSON.parse(fs.readFileSync(path.join(stage, rel), 'utf-8'));
     expect([integrity.version, staged('apack.json').version, staged('types/snapshot.json').manifest.version])
       .toEqual(['1.2.3', '1.2.3', '1.2.3']);
+  });
+
+  it.each(['version', 'name', 'features'])('refuses edited %s declarations before replacing an existing stage', field => {
+    const root = builtPack();
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    const file = path.join(root, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest[field] = field === 'features' ? { added: {} } : field === 'version' ? '2.0.0' : 'Changed';
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    expect(() => stagePack(root, stage)).toThrow('manifest does not match its built declarations');
+    expect(packFileHashes(stage)).toEqual(before);
+    expect(verifyPack(stage).id).toBe('demo-pack');
+  });
+
+  it('refuses malformed current-format data before touching the destination', () => {
+    const root = builtPack();
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    const file = path.join(root, 'dist/types/snapshot.json');
+    const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+    snapshot.defs = { bad: 1 };
+    fs.writeFileSync(file, JSON.stringify(snapshot));
+    expect(() => stagePack(root, stage)).toThrow('snapshot.json defs.bad');
+    expect(packFileHashes(stage)).toEqual(before);
   });
 });
 
@@ -163,6 +190,57 @@ describe('bundle archives', () => {
 });
 
 describe('installPackFromLocal (pack layout path)', () => {
+  it('removes its temporary staging directory when declaration validation refuses the source', async () => {
+    const root = builtPack();
+    const file = path.join(root, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest.version = '2.0.0';
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    const staging = vi.spyOn(fs, 'mkdtempSync');
+    syncBuiltinESMExports();
+    const created = () => staging.mock.results.flatMap(result => result.type === 'return' && typeof result.value === 'string' ? [result.value] : []);
+    try {
+      await expect(installPackFromLocal(root, path.join(tmp, 'packs'))).rejects.toThrow('manifest does not match its built declarations');
+      expect(created()).toHaveLength(1);
+      expect(fs.existsSync(created()[0])).toBe(false);
+    } finally {
+      const directories = created();
+      staging.mockRestore();
+      syncBuiltinESMExports();
+      for (const directory of directories) fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['source', undefined], ['source', PACK_SNAPSHOT_FORMAT],
+    ['layout', undefined], ['layout', PACK_SNAPSHOT_FORMAT],
+  ] as const)('retains an installed artifact and skips teardown when a %s has mismatched declarations (app format %s)', async (kind, packFormat) => {
+    const packsDir = path.join(tmp, 'packs');
+    const installed = await installPackFromLocal(builtPack(), packsDir);
+    const before = packFileHashes(installed.dir);
+    const root = builtPack();
+    const stage = path.join(tmp, 'stage');
+    if (kind === 'layout') stagePack(root, stage);
+    const input = kind === 'layout' ? stage : root;
+    const file = path.join(input, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest.features = { newFeature: {} };
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    if (kind === 'layout') {
+      // Valid checksums prove file integrity, not agreement with the built declarations.
+      const integrity = readPackIntegrity(input);
+      fs.writeFileSync(path.join(input, 'integrity.json'), JSON.stringify({ ...integrity, files: packFileHashes(input) }));
+      expect(verifyPack(input).id).toBe('demo-pack');
+      expect(() => readPackSnapshot(input)).toThrow('manifest does not match its built declarations');
+      expect(packBuildProblem(input)).toMatchObject({ kind: 'declarations', message: expect.stringContaining('manifest does not match its built declarations') });
+    }
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(input, packsDir, { packFormat, beforePlace })).rejects.toThrow('manifest does not match its built declarations');
+    expect(beforePlace).not.toHaveBeenCalled();
+    expect(packFileHashes(installed.dir)).toEqual(before);
+    expect(verifyPack(installed.dir).version).toBe('1.2.3');
+  });
+
   it.each(['directory', 'archive'])('routes a local %s through the sourceKind selector', async (kind) => {
     let inputPath = builtPack();
     if (kind === 'archive') {

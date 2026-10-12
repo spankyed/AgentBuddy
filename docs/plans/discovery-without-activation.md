@@ -74,11 +74,23 @@ generated modules, not arbitrary custom frontend entry implementations. Runtime 
 an entry when it exports a different identity; build-time checking of every supported binding remains
 part of the descriptor checkpoint. No settings/discovery reader has switched to a catalog yet.
 
-The next descriptor checkpoint must also validate staging/install inputs against the built descriptor.
-Keeping the prior `dist` after a failed build does not by itself prevent staging a subsequently edited
-source manifest beside those older bytes. Do not treat the runtime refusal as pre-publication rollback.
+Staging now validates current-format snapshot data and its agreement with the source manifest before
+touching the destination. Installation performs the same agreement check for pre-staged layouts, even
+when the target app's format is unknown; current-format corruption is distinct from a foreign-format
+refusal. Failed validation leaves the accepted installation and teardown untouched and removes temporary
+staging. Foreign formats stay opaque and retain explicit target-format checks.
 
-Validation: 87 focused declaration/codegen/frontend/build checks, 150 runtime lifecycle checks and six
+This closes the edited-manifest/retained-build gap for readable declarations. Complete source-input
+freshness, static assets and binding membership are still required; manifest agreement alone does not
+prove those inputs are current. Do not treat activation refusal as pre-publication rollback.
+
+Staging validation: 364 host pack checks, 27 release checks and six doc checks passed; staging,
+unknown-format refusal and temporary-cleanup guard mutations were caught. Release stand-ins now rebuild
+snapshot identities and ignore generated output as real pack repositories do; release implementation
+and metadata are unchanged. The strict chain passed (180.9s, 16 cached); evidence
+`node_modules/.cache/apack-chain/runs/2026-10-12T14-28-19Z-88313`.
+
+Declaration identity validation: 87 focused declaration/codegen/frontend/build checks, 150 runtime lifecycle checks and six
 doc-link checks passed. Removing the snapshot identity, binding identity, generated-entry comparison or
 resolved-path cache cleanup was caught by its regression tests; each mutation was restored. SDK API
 reports were regenerated and reviewed. The stable strict chain passed with
@@ -99,7 +111,7 @@ catalog from input and reader mutation. Failed candidates preserve its revision 
 The installed poison-runtime fixture proves this projection performs data reads without executing pack
 code or changing artifacts. Semantic-definition, atomic-publication and owned-copy guard mutations are
 caught. This prototype is not wired into production boot or existing discovery/settings readers yet.
-Feature schemas, static metadata/assets for the remaining kinds, staging validation, checked form/runtime
+Feature schemas, static metadata/assets for the remaining kinds, complete build-input freshness, checked form/runtime
 bindings, full artifact revisions and trusted caller binding remain on the completion inventory.
 
 ### Remaining descriptor work

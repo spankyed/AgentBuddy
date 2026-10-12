@@ -18,7 +18,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
-import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 
 /**
@@ -193,7 +193,7 @@ export function stagedFileHashes(packRoot: string): Record<string, string> {
 export function stagePack(
   packRoot: string,
   stageDir: string,
-  options: { sdkVersion?: string; provenance?: PackIntegrity['provenance'] } = {},
+  options: { sdkVersion?: string; provenance?: PackIntegrity['provenance']; packFormat?: number } = {},
 ): PackIntegrity {
   if (!hasBuiltPackSections(packRoot)) {
     throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack pack build" first.`);
@@ -202,6 +202,15 @@ export function stagePack(
   // build, never by being substituted here: dist/types/snapshot.json is a build artifact copied verbatim,
   // and a dependent range-checks against the version in it while the app reads apack.json.
   const manifest: PackManifest = JSON.parse(fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8'));
+
+  // A failed build retains dist. Refuse edited declarations before removing an existing stage.
+  // Foreign formats remain opaque: only their matching app can interpret their grammar.
+  const raw = readSnapshotData(path.join(packRoot, 'dist'));
+  if (options.packFormat !== undefined) {
+    const mismatch = _snapshotFormatMismatch(raw, options.packFormat);
+    if (mismatch) throw new Error(snapshotFormatProblem(mismatch, options.packFormat));
+  }
+  if (!_snapshotFormatMismatch(raw)) checkedSnapshot(raw, manifest);
 
   fs.rmSync(stageDir, { recursive: true, force: true });
   fs.mkdirSync(stageDir, { recursive: true });
@@ -243,11 +252,17 @@ export function readPackIntegrity(dir: string): PackIntegrity {
  * dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
  */
 export function readPackSnapshot(dir: string): PackSnapshot {
-  const raw = readSnapshotData(dir);
+  return checkedSnapshot(readSnapshotData(dir), JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+}
+
+function checkedSnapshot(raw: unknown, manifest: unknown): PackSnapshot {
   const mismatch = _snapshotFormatMismatch(raw);
-  if (mismatch) throw new Error(snapshotProblem(raw, PACK_SNAPSHOT_FORMAT));
+  if (mismatch) throw new Error(snapshotFormatProblem(mismatch, PACK_SNAPSHOT_FORMAT));
   const result = parseSnapshot(raw);
   if (!result.snapshot) throw new Error(result.diagnostics.map(issue => issue.message).join('; '));
+  if (JSON.stringify(manifest) !== JSON.stringify(result.snapshot.manifest)) {
+    throw new Error('its manifest does not match its built declarations; rebuild and install the complete pack');
+  }
   return result.snapshot;
 }
 
@@ -258,20 +273,25 @@ function readSnapshotData(dir: string): unknown {
   }
 }
 
-function snapshotProblem(raw: unknown, appFormat: number): string | undefined {
-  const mismatch = _snapshotFormatMismatch(raw, appFormat);
-  if (mismatch) return `${mismatch.problem}; this apack reads format ${appFormat}. `
+function snapshotFormatProblem(mismatch: SnapshotFormatMismatch, appFormat: number): string {
+  return `${mismatch.problem}; this apack reads format ${appFormat}. `
     + (mismatch.newer ? 'Update apack to use it' : 'Rebuild it with the apack CLI that matches this apack');
-  // A CLI can stage for a different app format, but cannot interpret that app's grammar.
-  if (appFormat !== PACK_SNAPSHOT_FORMAT) return undefined;
-  const result = parseSnapshot(raw);
-  return result.snapshot ? undefined : result.diagnostics.map(issue => issue.message).join('; ');
 }
 
 /** Why an installed build cannot be read, before any executable module is loaded. */
-export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_FORMAT): string | undefined {
-  try { return snapshotProblem(readSnapshotData(dir), appFormat); }
-  catch (error) { return (error as Error).message; }
+export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_FORMAT): { kind: 'format' | 'declarations' | 'unreadable'; message: string } | undefined {
+  try {
+    const raw = readSnapshotData(dir);
+    const mismatch = _snapshotFormatMismatch(raw, appFormat);
+    if (mismatch) return { kind: 'format', message: snapshotFormatProblem(mismatch, appFormat) };
+    // A matching foreign format is opaque to this CLI; its app interprets the grammar.
+    if (appFormat !== PACK_SNAPSHOT_FORMAT) return undefined;
+    try {
+      checkedSnapshot(raw, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+      return undefined;
+    } catch (error) { return { kind: 'declarations', message: (error as Error).message }; }
+  }
+  catch (error) { return { kind: 'unreadable', message: (error as Error).message }; }
 }
 
 /** Check format version and that the files on disk are exactly the ones recorded. */
