@@ -352,3 +352,7 @@ discoverable or require apack to copy their field vocabulary.
 Keep process isolation, general lazy activation, executing user migrations during discovery, remote
 provider queries and prediction of arbitrary code behavior outside this plan. The completion criterion
 is full discovery of the supported contract, enforced at contribution boundaries.
+
+The separate [pack security isolation goal](../goals/goal-pack-security-isolation.md) owns confinement
+and resource permission enforcement. Discovery supplies inspectable declarations; it does not grant
+access or prove that executable pack code is confined.

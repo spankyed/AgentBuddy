@@ -73,6 +73,67 @@ live in the SDK so packs and the renderer do not import private host implementat
 Feature ownership stays under `features.<id>.settings`; its definition changes from an executable
 Zod module to the same data contract used for app and pack preferences.
 
+## Naming contract
+
+Use **settings** consistently in APIs, types and manifest keys. Preferences describes their product
+purpose; it is not a second API vocabulary. Separate definitions, effective values, stored choices and
+presentation rather than naming all of them settings sections.
+
+| Concept | Name | Meaning |
+|---|---|---|
+| Pack contribution | `extensions.settings` | Pack-owned settings definitions keyed by local group ID |
+| Feature declaration | `features.<id>.settings` | One feature-owned settings definition |
+| Declaration | `SettingsDefinition` | Schema, explicit defaults and optional presentation/form metadata |
+| Discoverable definitions | `SettingsCatalog` | Definitions indexed by owner; part of the host contribution catalog |
+| Pack-local collection | Settings group | Addressable values such as `packs[packId].assistant` |
+| UI grouping | Settings category | Navigation/presentation independent of ownership and storage |
+| Composed values | Effective settings | Defaults overlaid with stored overrides |
+| Persisted choices | Settings overrides | Explicit user choices, including values equal to defaults |
+| Owner-bound access | `SettingsHandle<T>` | Reads, writes and resets one target |
+| Write/reset address | `SettingsTarget` | App, pack/group or feature identity |
+
+Keep `SettingsDocument` for the effective whole-document shape and `SettingsService` for the host writer.
+Use `SettingsSnapshot` for transported effective values plus revision/run identity; do not call the
+catalog or defaults a snapshot of user settings. Use `SettingsOverrides` for the sparse persisted shape,
+including retained orphan values. Reserve **scope** for storage precedence such as user/workspace/profile,
+**owner** for app/pack/feature, and **state** for lifecycle facts. This work adds no storage scopes.
+
+Retire section terminology from authoring and addressing APIs. Existing section names remain in historical
+explanations and migration sources only. A group ID is stable storage identity; its `title` is a display
+heading and `description` is explanatory text. Categories organize the UI without changing group IDs or
+value paths. `label` must not carry an identifier. Keep `schema`, `defaults` and `form` as declaration names.
+
+| Current surface | Target |
+|---|---|
+| `settingsSections` | Remove; declare pack groups in `extensions.settings` |
+| `FeatureSettings` declaration / `defineFeatureSettings` | Common `SettingsDefinition`; remove executable declaration helper after data conversion |
+| `PackSettingsDefaults` containing values, schemas and visibility | Catalog definitions plus derived defaults; navigation visibility belongs to its separate policy |
+| `getPackSettingsDefaults` / `onPackSettingsDefaultsChanged` | Catalog reads/subscriptions for definitions; effective-value subscriptions for values |
+| `FeatureSettingsAccess<T>` | `SettingsHandle<T>` |
+| `FeatureSettingUpdate<T>` | `SettingUpdate<T>` for every owner's typed path/value pair |
+| `getStored()` | `getOverrides()` |
+| `getSection()` / `setInSection()` / `useSettingsSection()` | Owner-bound handles and explicit targets |
+| `{ entityType, label }` targets | Discriminated `SettingsTarget` with actual owner identifiers |
+
+There is already a frontend `SettingUpdate` with an untyped value. Unify it with the typed update contract
+rather than create two unrelated public types with the same name. Use `unknown` at the transport/form
+boundary and preserve path/value pairing in generated author access. Audit declaration-inference names
+such as `FeatureSettingsValue` and generated `PackFeatureSettings`: name definition-derived value types
+for values, while keeping feature qualification where it actually describes the map's keys.
+
+Low-level targets are explicit:
+
+```ts
+type SettingsTarget =
+  | { kind: 'app' }
+  | { kind: 'pack'; packId: PackId; groupId: string }
+  | { kind: 'feature'; featureRef: FeatureRef };
+```
+
+Paths are relative to that target. The host's trusted whole-document operations remain separate; absence
+of a target must not accidentally turn a scoped reset into a whole-app reset. Backend and frontend use
+the same target vocabulary, with their existing synchronous/asynchronous execution differences.
+
 ## Declaration and authoring interface
 
 Pack settings are inline manifest declarations under `extensions.settings`, keyed by a local group
@@ -85,7 +146,7 @@ preferences; `extensions.settings` is for pack-owned preferences shared across f
   "extensions": {
     "settings": {
       "assistant": {
-        "label": "Assistant",
+        "title": "Assistant",
         "defaults": { "name": "" },
         "schema": {
           "type": "object",
@@ -147,32 +208,33 @@ invalid legacy values, with consistent issue paths for all owners.
 Generated types describe structure, optionality and representable alternatives. Numeric ranges, patterns
 and other constraints remain runtime checks; do not promise that every invalid value is a compile error.
 
-An optional `form` source path belongs beside `label`, `defaults` and `schema`. Use the existing feature
+An optional `form` source path belongs beside `title`, `description`, `defaults` and `schema`. Use the existing feature
 form convention (a component's default export) rather than another export-target syntax. Load it through
 the pack frontend contribution registry, never the backend registration's imports. The form receives
 readonly effective values and emits the same typed setting updates as feature forms. The host supplies
 save results, resets and navigation. Without a form, expose the group through typed access and the advanced
 editor; do not show a blank editable page. Keep all forms custom.
 
-Normal author code uses owner-bound handles, conceptually:
+Normal author code uses generated owner-bound handles. Retain the existing handle operations and make
+owner selection explicit, rather than offer both property shortcuts and selectors. Backend example:
 
 ```ts
-appSettings
-packSettings.assistant
-featureSettings.code
-```
-
-Reuse the existing generated accessor style rather than introduce a competing one. Backend example:
-
-```ts
-const assistant = packSettings.forSection('assistant');
+appSettings.get();
+const assistant = packSettings.forGroup('assistant');
+const code = featureSettings.forFeature('code');
 assistant.get();
 assistant.set({ path: ['name'], value: 'Ava' });
 assistant.reset(['name']); // Remove this field's override; reset() resets the whole group.
 ```
 
-Feature code keeps `featureSettings.forFeature('code')`; app access uses its SDK-defined handle. Internally,
-use explicit targets for app, pack/group and feature/ref rather than a generic section string. Backend
+`packSettings` is bound to the author pack; `forGroup` takes a local group ID or a qualified dependency
+group selector, never a pack ID alone.
+`featureSettings.forFeature` resolves local feature IDs and declared dependency refs using generated
+types. Both selectors return a `SettingsHandle<T>`; `appSettings` is the SDK-defined app handle. Today
+the generated backend export is `settings.forFeature`, while `services.settings.forFeature` returns
+values instead of a handle. Migrate these callers together: a selector must not sometimes return values
+and sometimes a handle. Values come from `get()`; do not retain a second selector alias. Internally,
+use the explicit targets above rather than a generic section string. Backend
 writes remain synchronous and throw a structured refusal. Frontend handles expose readonly reactive
 values, scoped subscriptions and asynchronous save/reset results. Generate pack types from the schema,
 not literal defaults. Extend the existing typed path/update model across owners; arrays remain whole values.
@@ -188,10 +250,77 @@ Whole-document access remains for backup, import, migrations and the advanced ed
 normal authoring API. Owner-bound handles prevent accidental misaddressing; they are not a sandbox for
 trusted pack code. Explicit cross-owner access must name the owner and use the same writer.
 
+### Pack namespacing and cross-pack access
+
+Shared access is the default for pack groups and feature settings: the owning pack and packs declaring
+it as a dependency can read, write and reset them. A dependency's qualified identity makes the target
+explicit; no separate write grant is required. Generation makes dependency contracts available, rather
+than searching all installed packs for a matching bare name.
+
+```ts
+// Generated for the importing pack. In default-setup, 'code' resolves to 'default-setup/code'.
+const local = featureSettings.forFeature('code');
+// In a dependent pack, explicitly selects default-setup's feature.
+const dependency = featureSettings.forFeature('default-setup/code');
+// Pack groups follow the same local/qualified selector convention.
+const assistant = packSettings.forGroup('default-setup/assistant');
+```
+
+Both local and qualified shared targets return writable handles. A bare name always belongs to the
+importing pack; it does not fall back to a dependency or a globally installed feature. Qualified feature
+refs and qualified group selectors are different typed domains even though both use `<packId>/<localId>`;
+the latter becomes a pack/group target, not a feature target. Generated code captures the importing pack
+ID and derives available names/value types from its definitions and declared dependency contracts.
+Namespacing itself needs only the pack ID; generation supplies the checked names and typed handles.
+
+A pack group or feature definition can opt into owner-only mutation:
+
+```json
+{
+  "access": "owner",
+  "schema": { "type": "object", "additionalProperties": false },
+  "defaults": {}
+}
+```
+
+`access` is definition metadata, outside the value schema. Allowed values are `shared` and `owner`;
+omission means `shared`. Reads remain available to declared dependents in both cases. `owner` restricts
+write/reset to the owning pack and trusted host settings operations, including the Settings UI. Restrict
+whole definitions only; do not add field permissions, explicit grants or another permission subsystem.
+This policy covers pack/feature contributions; it does not let packs declare ownership or access policy
+for host app settings. Keep app access governed by the host's SDK contract.
+
+Generated dependency handles for owner-only definitions expose reads/subscriptions, without write/reset;
+owner handles remain writable. Represent this through the common handle contract's access capability,
+not a second implementation of the settings store. The host writer also checks the current declaration
+on every mutation, so stale generated code or an untyped request cannot bypass a restriction. A changed
+access policy is a changed dependency contract and must be reflected in generated types and diagnostics.
+
+Enforcement requires a trustworthy caller context, separate from `SettingsTarget`. Audit backend service
+binding and frontend transport before implementation; bind the caller at the host execution boundary,
+and never trust a payload's claimed pack ID. If the current shared service cannot identify its caller,
+refactor that binding before claiming owner-only restrictions work. Generated readonly access alone is
+an authoring guard. In-process packs remain trusted JavaScript, so this is API enforcement, not isolation
+from malicious code; the declaration grants no secrecy to readable settings.
+
+Confining arbitrary pack code and enforcing resource grants belongs to the separate
+[pack security isolation goal](../goals/goal-pack-security-isolation.md), not this settings extraction.
+That goal preserves this plan's shared-by-default collaboration policy while closing ambient bypasses.
+
+Route targeted writes/resets and whole-document replacement through the same policy. A bulk replacement
+must check every changed owner before committing; unchanged restricted values must not reject unrelated
+edits. Keep raw override removal, migrations, backup import and whole-document reset in explicit trusted
+host operations so a low-level method or target omission cannot bypass owner-only policy. Refused writes
+leave values and notifications unchanged; allowed cross-pack writes use normal validation, correlation
+and live change delivery to the affected owner.
+
+Shared access permits editing preferences. Use the owner's public commands/services for operations with
+domain behavior or lifecycle effects rather than exposing those effects as writable settings fields.
+
 ## Service and frontend boundary
 
 ```text
-Host app declarations + registered pack/feature declarations + stored overrides
+Host app definitions + discovered pack/feature definitions + stored overrides
                                       |
                          Host settings service
                              /                \
@@ -288,14 +417,19 @@ also need the stale-value check described above. Secrets remain in the secrets s
    remaining app fields and assistant lifecycle gates, and audit every existing feature schema's
    constraints/defaults before conversion. Exercise the proposed draft-07 validator/type
    generator on small real declarations, finalize form loading and typed handles, and record the results
-   here before changing runtime contracts. Keep generated types structural and validation authoritative.
+   here before changing runtime contracts. Inventory current SDK/service/transport/generated names against
+   the naming contract, including value/handle selectors and the two update types. Keep generated types
+   structural and validation authoritative. Audit trusted caller context for shared/owner access and
+   settle the host binding before exposing restricted definitions.
 2. **Establish app ownership and the target document.** Define SDK types and host defaults/validation;
    teach the existing engine the three owners. Remove default-setup's responsibility for built-in
    preferences. Add the stored-data migration in the same working change so existing data can boot.
 3. **Declare pack preferences and typed handles.** Replace the root `settingsSections` thunk with
    inline `extensions.settings` declarations;
    derive registration, types and qualified discovery from the manifest. Migrate default-setup assistant
-   preferences and all in-tree consumers. Reuse custom feature forms and add pack form loading.
+   preferences and all in-tree consumers. Generate local/qualified selectors with shared mutation by
+   default and owner-only readonly dependency handles; enforce policy at the host writer. Reuse custom
+   feature forms and add pack form loading.
 4. **Unify feature settings definitions.** Convert audited feature schemas/defaults to the common
    JSON Schema data declaration, update generated accessors and snapshots, and migrate all feature
    callers/tests. Retain custom forms and navigation metadata. Compare representative valid and invalid
@@ -309,7 +443,10 @@ also need the stale-value check described above. Secrets remain in the secrets s
 7. **Finish the product surface and contracts.** Align navigation with app, pack and feature forms;
    compose the advanced editor schema for completion, descriptions and diagnostics, and update reset
    targets, templates, fixtures, schema/API reports and public docs.
-   Remove old accessors, duplicated types and inaccurate lazy/opaque-section prose.
+   Apply the naming contract across SDK/service/transport APIs, generated files, forms, fixtures and docs.
+   Remove old section accessors, overloaded selectors, duplicated types and inaccurate lazy/opaque-section
+   prose. Move default-setup's remaining pack definitions/forms out of the misleading `app-settings`
+   directory when host app ownership is extracted; choose paths by the definitions/forms they contain.
 
 Each step ends with a usable, validated implementation. Internal working stages may span the steps;
 commit checkpoints must not leave old data unreadable or consumers using incompatible contracts.
@@ -361,6 +498,19 @@ refuses their old paths, and assistant data must be moved before lifecycle start
 - Migrating/importing legacy stored data preserves personal details, shortcuts, projects, assistant
   preferences and lifecycle facts. Repeating the migration makes no further changes.
 - Removing/reinstalling a pack preserves its overrides; unrelated owners remain unchanged.
+- Definitions, defaults, overrides, effective values and snapshots have distinct contracts. Backend and
+  frontend selectors return handles consistently, all write/reset targets use explicit owner IDs, and
+  changing a category title does not change storage identity. No old section APIs or naming aliases remain.
+- Two packs with the same local feature/group ID resolve bare selectors to their own definitions.
+  Qualified declared-dependency selectors infer the dependency's values and allow read/write/reset by
+  default; unknown or undeclared dependency targets are refused through the pack-facing boundary.
+- Owner-only definitions remain readable to dependents, but generated dependent handles reject mutation
+  at compile time and the host refuses untyped/stale write/reset requests. The owner and trusted host
+  Settings UI can mutate them. Payloads cannot acquire authority by naming another caller pack.
+- Cross-pack mutations notify the affected owner's consumers through the existing settings path.
+  Restricted bulk/reset operations are checked before commitment, unchanged restricted values survive
+  unrelated edits, and refused operations publish no partial changes. Trusted migration/import operations
+  preserve overrides without exposing a pack-facing policy bypass.
 
 Run focused meaningful specs at each boundary, then regenerate `apack.schema.json` and SDK API reports,
 inspect the diffs, run `npm run chain`, and exercise the affected settings/onboarding flows through targeted

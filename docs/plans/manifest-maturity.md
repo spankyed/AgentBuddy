@@ -93,6 +93,11 @@ data access assumptions. EARS/repositories and direct Node access are separate s
 service object does not contain an in-process JavaScript pack. Call the feature an API dependency contract
 unless there is an enforcement boundary supporting a stronger claim.
 
+The stronger permission/security boundary is a separate
+[pack security isolation goal](../goals/goal-pack-security-isolation.md). It covers both backend and
+frontend ambient access and requires a design/prototype before choosing an isolation mechanism.
+This workstream establishes API dependency contracts; it does not implement that sandbox.
+
 Evidence: an undeclared API is unavailable through normal generated access, required unavailable APIs
 produce an actionable failure, and tests can provide only the declared dependencies. An explicit shared
 API remains usable by dependent packs. Document the actual trust model.
@@ -166,9 +171,8 @@ existing plans if new evidence invalidates their assumptions, rather than leavin
   activation inferred from contributed commands/views. This supports deriving repeated facts.
 - [JetBrains plugin dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html#depends)
   distinguish required providers from conditional integrations. Add that distinction when apack needs it.
-- [Chrome permission declarations](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions)
-  correspond to constrained API access. This is a useful comparison, not evidence that apack's current
-  in-process manifest labels enforce the same boundary.
+- The Chrome permission comparison and stronger enforcement target are extracted into the
+  [pack security isolation goal](../goals/goal-pack-security-isolation.md).
 
 ## Validation and scope
 
