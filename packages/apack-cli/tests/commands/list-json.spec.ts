@@ -26,6 +26,6 @@ it('prints one structured inventory for the selected data directory', async () =
     expect(JSON.parse(output.mock.calls[0]![0])).toMatchObject({ profile: 'production', packs: [{ id: 'demo', version: '1.0.0', enabled: true, source: 'owner/repo' }] });
     await expect(list(['--json', '--json'])).rejects.toThrow('Usage');
     fs.writeFileSync(path.join(dir, 'apack.json'), '{broken');
-    await expect(list(['--json'])).rejects.toThrow();
+    await expect(list(['--json'])).rejects.toThrow(`Cannot read installed pack ${dir}`);
   } finally { output.mockRestore(); vi.unstubAllEnvs(); fs.rmSync(root, { recursive: true, force: true }); }
 });

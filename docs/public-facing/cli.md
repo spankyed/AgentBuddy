@@ -42,7 +42,7 @@ For app contributors working in the apack source monorepo, see the
 
 `apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. The backup directory is accessible only to its owner. Existing destinations and destinations inside the source data directory are refused.
 
-`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import.
+`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import. Invalid backups exit nonzero; JSON reports include `valid: false` and the error.
 
 `apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
 

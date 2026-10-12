@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import { recordHostInfo, readInstalledPacks } from '@apackdev/host/packs';
 import { recordCliInstall, forgetCliInstall } from '../../src/app/installed-packs';
-import { packUpdates } from '../../src/commands/pack-outdated';
+import { packUpdates } from '../../src/app/pack-updates';
 
 it('checks recorded sources against the explicit host and leaves records untouched', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-updates-'));

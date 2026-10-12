@@ -5,6 +5,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordHostInfo } from '@apackdev/host/packs';
 import { install } from '../../src/commands/pack-install';
+import { uninstall } from '../../src/commands/pack-uninstall';
+import { publishRunningApp, findDatabaseWriter } from '@apackdev/host/database';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -35,6 +37,23 @@ function builtPack(hostVersion: string): string {
 }
 
 describe('apack pack install', () => {
+  it('refuses install and uninstall while the selected app is running, preserving installed files', async () => {
+    const source = builtPack('>=0.3.0');
+    const data = path.join(tmp, 'data');
+    await install([source]);
+    const manifest = path.join(_appDirOf(data), 'packs', 'demo-pack', 'apack.json');
+    const before = fs.readFileSync(manifest, 'utf8');
+    const stop = publishRunningApp(data);
+    try {
+      await expect(install([source])).rejects.toThrow('Quit the app');
+      await expect(uninstall(['demo-pack'])).rejects.toThrow('Quit the app');
+      expect(fs.readFileSync(manifest, 'utf8')).toBe(before);
+      expect(findDatabaseWriter(data)).toBeNull();
+    } finally { stop(); }
+    await uninstall(['demo-pack']);
+    expect(fs.existsSync(manifest)).toBe(false);
+  });
+
   it("refuses a pack whose hostVersion the data dir's apack doesn't satisfy", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
     await expect(install([builtPack('>=99.0.0')])).rejects.toThrow(/requires apack >=99\.0\.0/);

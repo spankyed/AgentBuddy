@@ -1,8 +1,8 @@
-import { dbBackupVerify, VERIFY_USAGE } from './backup-verify';
+import { dbBackupVerify, verifyBackup, VERIFY_USAGE } from './backup-verify';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { findRunningApp, holdDatabaseWriteLock } from '@apackdev/host/database';
-import { exportDatabase, readBackup } from '@apackdev/host/backup';
+import { exportDatabase } from '@apackdev/host/backup';
 import { readHostInfo } from '@apackdev/host/packs';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
@@ -43,7 +43,7 @@ export async function dbBackup(args: string[], io: DbIo): Promise<void> {
         appVersion: readHostInfo(target.userDataDir).version,
         log: { info: message => io.err(message), warn: message => io.err(message) },
       });
-      readBackup(backup);
+      verifyBackup(backup);
       fs.chmodSync(backup, 0o700);
       // Exclusive reservation prevents overwriting a destination created while the snapshot was copied.
       fs.mkdirSync(destination);

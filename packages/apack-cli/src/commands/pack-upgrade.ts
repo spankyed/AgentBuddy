@@ -5,7 +5,7 @@ import { withPackMutation } from '../app/pack-mutation';
 import { findLatestRelease, installPackFromGitHub, readHostInfo } from '@apackdev/host/packs';
 import { packInventory, recordCliInstall } from '../app/installed-packs';
 import { parseStorageProfile, targetDataContext } from '../utils';
-import { packUpdates } from './pack-outdated';
+import { packUpdate } from '../app/pack-updates';
 
 export async function upgradePack(context: AppContext, id: string, options: {
   find?: typeof findLatestRelease;
@@ -15,13 +15,14 @@ export async function upgradePack(context: AppContext, id: string, options: {
   return withPackMutation(context, `upgrade ${id}`, async () => {
     const host = readHostInfo(context.userDataDir);
     if (!host.version || host.packFormat === undefined) throw new Error('Open the app with this profile first to record its version and pack format.');
-    const [update] = await packUpdates(context, options.find, id);
-    if (!update) throw new Error(`Pack is not installed: ${id}`);
+    const inventory = packInventory(context);
+    const pack = inventory.find(pack => pack.manifest.id === id);
+    if (!pack) throw new Error(`Pack is not installed: ${id}`);
+    const update = await packUpdate(pack, { hostVersion: host.version, includePrerelease: context.env === 'beta' }, options.find);
     if (update.status === 'unmanaged' || update.status === 'error') throw new Error(`${id}: ${update.reason}`);
     if (!update.candidate) return { id, version: update.currentVersion, upgraded: false };
     const { version, tag } = update.candidate;
     const source = `${update.source!.split('@')[0]}@${tag}`;
-    const inventory = packInventory(context);
     const installed = new Map(inventory.filter(pack => pack.record.enabled).map(pack => [pack.manifest.id, pack.manifest.version]));
     for (const { manifest } of inventory) {
       if (manifest.id === id) continue;
