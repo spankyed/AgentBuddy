@@ -1,5 +1,6 @@
 // What the brain keeps outside its actors (cron jobs, ad-hoc listeners, the flow actor registry) goes when the pack's
-// backend stops: default-setup's boot.onShutdown clears it, and @apackdev/testing runs it when a test's last app stops
+// backend stops: the brain feature's onShutdown clears it, and @apackdev/testing runs every feature's when a
+// test's last app stops
 // (the harness stops apps after each test), so a real schedule from one test never ticks into the next
 //
 // @slow: the wait is the assertion
@@ -10,7 +11,7 @@ import { importFlows, startApp, type TestApp } from '@apackdev/testing/harness'
 import { testRootEvents } from '@apackdev/sdk/testing'
 import { action, schedule } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
-import { onShutdown } from '#features/hooks.ts'
+import { onShutdown } from '#features/brain/be/lifecycle.ts'
 import { registerSchedule } from '#features/brain/be/services/scheduler.ts'
 import { listen, notify } from '#features/brain/be/services/brain.ts'
 import { getAllFlowActorIds } from '#features/brain/be/flow-system.ts'
@@ -18,7 +19,7 @@ import { getAllFlowActorIds } from '#features/brain/be/flow-system.ts'
 const EVERY_SECOND = '* * * * * *'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-describe("default-setup's onShutdown", () => {
+describe("the brain feature's onShutdown", () => {
   it('stops cron jobs and removes ad-hoc brain listeners', async () => {
     const tick = vi.fn()
     const heard = vi.fn()

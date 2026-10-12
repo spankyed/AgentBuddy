@@ -41,7 +41,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="REFERENCE_TYPES[item.type].icon" class="reference-suggestion-icon" :size="16" />
+          <component v-if="iconFor(item.type)" :is="iconFor(item.type)" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
@@ -57,8 +57,16 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin.ts'
-import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
-import { REFERENCE_TYPES } from './reference-config.ts'
+import { useReferenceItems, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
+import { referenceRegistry } from '@apackdev/sdk/fe/references'
+
+// Every registered pack's categories, read once with the providers `useReferenceItems` reads
+const categories = referenceRegistry.categories()
+
+/** The icon a type is listed with, or none for a type whose pack isn't installed */
+function iconFor(type: string) {
+  return referenceRegistry.type(type)?.icon
+}
 
 const props = defineProps<{
   editor: Editor
@@ -70,7 +78,7 @@ const popupEl = ref<HTMLElement | null>(null)
 const popupStyle = ref<Record<string, string>>({ bottom: '0px', left: '0px' })
 
 function getCategoryIcon(id: ReferenceCategory) {
-  return CATEGORIES.find((c) => c.id === id)?.primaryIcon
+  return categories.find((c) => c.id === id)?.primaryIcon
 }
 
 const pluginState = computed(() => {
@@ -83,20 +91,20 @@ const query = computed(() => pluginState.value?.query ?? '')
 const selectedCategory = computed(() => pluginState.value?.selectedCategory ?? null)
 
 const activeCategoryLabel = computed(() => {
-  const cat = CATEGORIES.find((c) => c.id === selectedCategory.value)
+  const cat = categories.find((c) => c.id === selectedCategory.value)
   return cat?.label ?? ''
 })
 
 const filteredCategories = computed(() => {
   const q = query.value.toLowerCase()
-  if (!q) return CATEGORIES
-  return CATEGORIES.filter((c) => c.label.toLowerCase().includes(q))
+  if (!q) return categories
+  return categories.filter((c) => c.label.toLowerCase().includes(q))
 })
 
 watch([query, level], ([q, lvl]) => {
   if (lvl !== 'category' || !q.endsWith(':')) return
   const typed = q.slice(0, -1)
-  const match = CATEGORIES.find(
+  const match = categories.find(
     (c) => c.label.toLowerCase().replace(/\s+/g, '') === typed
   )
   if (!match) return
@@ -268,7 +276,7 @@ onBeforeUnmount(() => {
 })
 
 function selectCategory(id: ReferenceCategory) {
-  const cat = CATEGORIES.find((c) => c.id === id)
+  const cat = categories.find((c) => c.id === id)
   if (!cat) return
 
   const state = pluginState.value

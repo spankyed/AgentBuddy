@@ -24,6 +24,16 @@ export interface CategoryItemsProvider {
     useItems(): Readonly<Ref<ReferenceItem[]>>;
 }
 
+// @public
+export interface PackReferences {
+    // (undocumented)
+    categories: CategoryConfig[];
+    // (undocumented)
+    itemsProviders: CategoryItemsProvider[];
+    // (undocumented)
+    types: Record<string, ReferenceTypeConfig>;
+}
+
 // @public (undocumented)
 export interface ReferenceItem {
     // (undocumented)
@@ -35,6 +45,15 @@ export interface ReferenceItem {
     // (undocumented)
     type: string;
 }
+
+// @public
+export const referenceRegistry: {
+    type(name: string): ReferenceTypeConfig | undefined;
+    types(): Record<string, ReferenceTypeConfig>;
+    categories(): CategoryConfig[];
+    itemsProviders(): CategoryItemsProvider[];
+    protocols(): string[];
+};
 
 // @public
 export interface ReferenceTypeConfig {

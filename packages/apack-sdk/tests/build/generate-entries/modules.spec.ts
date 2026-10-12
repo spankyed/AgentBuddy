@@ -338,7 +338,7 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
+    $manifestVersion: true, $schema: true, build: true, builtIn: true,
     dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, help: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
     permissions: true, relKinds: true, content: true, settingsSections: true, version: true,
@@ -349,7 +349,7 @@ describe('the snapshot format', () => {
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    designation: true, plugin: true, references: true, repositories: true, services: true,
+    designation: true, lifecycle: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
@@ -363,11 +363,11 @@ describe('the snapshot format', () => {
   const FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
-    id: true, name: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
+    id: true, name: true, features: true, services: true, ears: true, repositories: true, migrations: true, steps: true,
     artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settingsSections: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
-    designation: true, system: true, plugin: true, services: true, settings: true,
+    designation: true, system: true, plugin: true, services: true, settings: true, lifecycle: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
   const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
@@ -408,12 +408,12 @@ describe('the snapshot format', () => {
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
+          '$manifestVersion', '$schema', 'build', 'builtIn', 'content', 'dependencies', 'description',
           'entities', 'entityShapes', 'extensions', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name',
           'permissions', 'relKinds', 'settingsSections', 'version',
         ],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services', 'steps'],
-        feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        feature: ['designation', 'lifecycle', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['contract', 'default', 'entry'],
@@ -422,8 +422,8 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
-        feature: ['designation', 'plugin', 'services', 'settings', 'system'],
+        fields: ['appliers', 'artifacts', 'blocks', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
+        feature: ['designation', 'lifecycle', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['receives'],
       },

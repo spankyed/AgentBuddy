@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppContext, getAppVersion } from '@apackdev/sdk/env';
-import { packSystemIds, type PackRegistry } from '../registry.ts';
+import { packSystemIds, packLifecycleHooks, type PackRegistry } from '../registry.ts';
+import type { PackLifecycle } from '@apackdev/sdk/framework';
 import { installShippedPacks } from '../installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import type { PackManifest } from '../discovery.ts';
@@ -17,8 +18,7 @@ interface FreshPack {
   newSystemIds: string[];
   /** Registers the fresh runtime; throws when the registration is refused */
   register(): void;
-  onShutdown?: () => void;
-  onInit?: () => void;
+  lifecycle?: PackLifecycle[];
   afterRegister?: () => void;
 }
 
@@ -56,10 +56,10 @@ async function reloadPack(
   }
 
   registry.runShutdownHooksForKey(packId);
-  if (fresh.onShutdown) {
-    registry.registerShutdownHook(fresh.onShutdown, packId);
+  for (const lifecycle of fresh.lifecycle ?? []) {
+    if (lifecycle.onShutdown) registry.registerShutdownHook(lifecycle.onShutdown, packId);
   }
-  fresh.onInit?.();
+  for (const lifecycle of fresh.lifecycle ?? []) lifecycle.onInit?.();
   // Side work once the swap is done (applying content, publishing build output, the loaded-pack list). By here the old
   // registration is gone and its shutdown hooks have run, so the systems must be restarted whatever this
   // does: a throw that escaped would leave the fresh registration live, the old actors running but already
@@ -140,8 +140,7 @@ export async function reloadPackById(
         if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
       },
       newSystemIds: packSystemIds(pack.registration),
-      onShutdown: pack.registration.boot?.onShutdown,
-      onInit: pack.registration.boot?.onInit,
+      lifecycle: packLifecycleHooks(pack.registration),
       afterRegister: () => {
         runPackMigrations(registry.packMigrationTargets('pack', [packId]));
         applyPacks(registry.packContentTargets([packId]));

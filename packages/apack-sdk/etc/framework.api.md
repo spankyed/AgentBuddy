@@ -148,14 +148,6 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public
-export interface PackBootHooks {
-    // (undocumented)
-    onInit?: () => void;
-    // (undocumented)
-    onShutdown?: () => void;
-}
-
-// @public
 export interface PackCommand {
     // (undocumented)
     name: string;
@@ -175,6 +167,7 @@ export interface PackEARS {
 export interface PackFeature {
     // (undocumented)
     designation?: string;
+    lifecycle?: PackLifecycle;
     // (undocumented)
     plugin?: PackFeaturePlugin;
     services?: readonly string[];
@@ -196,6 +189,14 @@ export interface PackFeatureSystem {
 }
 
 // @public
+export interface PackLifecycle {
+    // (undocumented)
+    onInit?: () => void;
+    // (undocumented)
+    onShutdown?: () => void;
+}
+
+// @public
 export interface PackMigration extends DeclaredMigration {
     // (undocumented)
     target: string;
@@ -208,8 +209,6 @@ export interface PackRegistration {
     artifacts?: ArtifactDefinition[];
     // (undocumented)
     blocks?: BlockDefinition[];
-    // (undocumented)
-    boot?: PackBootHooks;
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     // (undocumented)

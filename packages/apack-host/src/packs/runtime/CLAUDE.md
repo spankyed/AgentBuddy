@@ -115,11 +115,10 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives } (packSystem), plugin?: { receives }, services?, settings?
+  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives } (packSystem), plugin?: { receives }, services?, settings?, lifecycle?: { onInit?, onShutdown? }
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
-  boot?: PackBootHooks;      // onInit/onShutdown (boot.hooks)
   migrations?: PackMigration[];
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];

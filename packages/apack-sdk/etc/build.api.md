@@ -28,15 +28,6 @@ export interface ActionMeta {
 export const actionsCompiler: SpecialtyCompiler<DslCompiled>;
 
 // @public (undocumented)
-export const BootConfigSchema: z.ZodObject<{
-    hooks: z.ZodOptional<z.ZodString>;
-}, "strict", z.ZodTypeAny, {
-    hooks?: string | undefined;
-}, {
-    hooks?: string | undefined;
-}>;
-
-// @public (undocumented)
 export function buildPackConfigFromManifest(manifest: PackManifest, packDir: string, options?: PackConfigOptions): Promise<PackConfig>;
 
 // @internal
@@ -466,6 +457,16 @@ export const FEATURE_ID_PATTERN: RegExp;
 export const FeatureEntrySchema: z.ZodObject<{
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodString>;
+    lifecycle: z.ZodOptional<z.ZodObject<{
+        onInit: z.ZodOptional<z.ZodString>;
+        onShutdown: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    }, {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    }>>;
     typesEntry: z.ZodOptional<z.ZodString>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
@@ -510,6 +511,10 @@ export const FeatureEntrySchema: z.ZodObject<{
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: string | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -529,6 +534,10 @@ export const FeatureEntrySchema: z.ZodObject<{
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: string | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -622,6 +631,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     features: z.ZodOptional<z.ZodRecord<z.ZodEffects<z.ZodString, string, string>, z.ZodObject<{
         designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodString>;
+        lifecycle: z.ZodOptional<z.ZodObject<{
+            onInit: z.ZodOptional<z.ZodString>;
+            onShutdown: z.ZodOptional<z.ZodString>;
+        }, "strict", z.ZodTypeAny, {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        }, {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        }>>;
         typesEntry: z.ZodOptional<z.ZodString>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
@@ -666,6 +685,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -685,6 +708,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1009,13 +1036,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         path: string;
     }>>;
     settingsSections: z.ZodOptional<z.ZodString>;
-    boot: z.ZodOptional<z.ZodObject<{
-        hooks: z.ZodOptional<z.ZodString>;
-    }, "strict", z.ZodTypeAny, {
-        hooks?: string | undefined;
-    }, {
-        hooks?: string | undefined;
-    }>>;
     content: z.ZodOptional<z.ZodObject<{
         sources: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
@@ -1276,6 +1296,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1344,9 +1368,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         path: string;
     } | undefined;
     settingsSections?: string | undefined;
-    boot?: {
-        hooks?: string | undefined;
-    } | undefined;
     content?: {
         sources?: Record<string, string | {
             format?: string | undefined;
@@ -1409,6 +1430,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1477,9 +1502,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         path: string;
     } | undefined;
     settingsSections?: string | undefined;
-    boot?: {
-        hooks?: string | undefined;
-    } | undefined;
     content?: {
         sources?: Record<string, string | {
             format?: string | undefined;
@@ -1542,6 +1564,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1610,9 +1636,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         path: string;
     } | undefined;
     settingsSections?: string | undefined;
-    boot?: {
-        hooks?: string | undefined;
-    } | undefined;
     content?: {
         sources?: Record<string, string | {
             format?: string | undefined;
@@ -1675,6 +1698,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
+        lifecycle?: {
+            onInit?: string | undefined;
+            onShutdown?: string | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1743,9 +1770,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         path: string;
     } | undefined;
     settingsSections?: string | undefined;
-    boot?: {
-        hooks?: string | undefined;
-    } | undefined;
     content?: {
         sources?: Record<string, string | {
             format?: string | undefined;
@@ -1855,9 +1879,6 @@ export const PACK_SNAPSHOT_FORMAT = 1;
 
 // @public
 export const PACK_TYPES_DEF = "pack-types";
-
-// @public (undocumented)
-export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 
 // @public
 export interface PackBuildDefinitions {

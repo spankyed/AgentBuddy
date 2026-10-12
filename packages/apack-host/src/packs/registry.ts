@@ -8,7 +8,7 @@
 
 import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
+import type { PackRegistration, PackLifecycle, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import type { HostServices } from '@apackdev/sdk/services';
@@ -26,7 +26,7 @@ import { addContributions, createDefinitionStore, createDesignationStore, create
 import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 
-export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
+export type { PackRegistration, PackLifecycle, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
 const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostServices)[];
@@ -45,6 +45,15 @@ const appEARS = (): PackEARS => ({
 /** A registration's features, each with the ref it runs at, `<packId>/<featureId>` */
 function featuresOf({ id, features = {} }: PackRegistration): Array<{ featureId: string; ref: FeatureRef; feature: PackFeature }> {
   return Object.entries(features).map(([featureId, feature]) => ({ featureId, ref: resolveName(featureId, id), feature }));
+}
+
+/**
+ * One pack's lifecycle hooks, in feature order. Exported because the three paths that start or stop a
+ * single pack — a boot, an activation and a reload — each need that pack's and not every pack's, and
+ * reading `features` for them in three places is how they come to disagree about which hooks a pack has.
+ */
+export function packLifecycleHooks(registration: PackRegistration): PackLifecycle[] {
+  return featuresOf(registration).flatMap(({ feature }) => (feature.lifecycle ? [feature.lifecycle] : []));
 }
 
 /** A registration's systems at their refs; `early` ones too, which the app starts itself, outside the bus */
@@ -230,7 +239,7 @@ export interface PackRegistry extends PackRegistryView {
    * is opened with, and each call reads the policy of the packs registered then (cached until a pack
    * registers or unregisters).
    */
-  getBootHooks(): PackBootHooks[];
+  getLifecycleHooks(): PackLifecycle[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
@@ -640,7 +649,9 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getRegisteredEntityTypes: entityTypes,
     getRegisteredServices: services,
 
-    getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
+    // Every feature's, pack by pack in registration order: the hooks run at the same four points they
+    // always did, and only where they come from moved
+    getLifecycleHooks: () => [...registrations.values()].flatMap(packLifecycleHooks),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
     packContentTargets(packIds) {
@@ -661,9 +672,9 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       const reg = registrations.get(packId);
       if (!reg) return null;
 
-      const bootHooks: string[] = [];
-      if (reg.boot?.onInit) bootHooks.push('onInit');
-      if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
+      // Named per feature, since that is where a hook is declared: `brain.onShutdown`, not `onShutdown`
+      const bootHooks = featuresOf(reg).flatMap(({ featureId, feature }) =>
+        (['onInit', 'onShutdown'] as const).filter((hook) => feature.lifecycle?.[hook]).map((hook) => `${featureId}.${hook}`));
 
       return {
         systems: systemsOf(reg).map(({ ref }) => ref),

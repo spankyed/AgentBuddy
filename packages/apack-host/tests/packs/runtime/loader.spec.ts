@@ -245,14 +245,11 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
       registration: {
         id: '${id}',
-        ${extra.includes('features:') ? '' : "features: { widget: { system: { machine, receives: ['PING', 'EXTRA'] } } },"}
+        ${extra.includes('features:') ? '' : "features: { widget: { system: { machine, receives: ['PING', 'EXTRA'] }, lifecycle: { onInit() {} } } },"}
         services: { hello: () => 'hi' },
         ears: {
           entities: { Widget: 'Widget' },
           relKinds: {},
-        },
-        boot: {
-          onInit() {},
         },
         ${extra}
       },
@@ -269,7 +266,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(systemFeatures(pack)).toEqual(['widget']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
-    expect(pack.registration.boot?.onInit).toBeTypeOf('function');
+    expect(pack.registration.features?.widget?.lifecycle?.onInit).toBeTypeOf('function');
 
     // content live under runtime/content for bundled packs
     const mod = require(path.join(dir, 'runtime', 'index.cjs'));
@@ -302,19 +299,19 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
     const [pack] = loadExternalPacks();
-    expect(pack.registration.boot?.onInit).toBeDefined();
+    expect(pack.registration.features?.widget?.lifecycle?.onInit).toBeDefined();
 
     const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
-    expect(exported.boot?.onInit).toBeDefined();
+    expect(exported.features?.widget?.lifecycle?.onInit).toBeDefined();
   });
 
   // A pack's content are files the host reads with the appliers that pack *registered*; a function the pack
   // puts on `boot` is not a door into applying, and never was
-  it("content a pack from its compiled files, never from a function its boot hooks export", async () => {
+  it("content a pack from its compiled files, never from a function a lifecycle hook exports", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
     const dir = makeBundledPack('smuggle-pack', registration('smuggle-pack').replace(
       'onInit() {},',
-      'onInit() {}, apply() { module.exports.bootApplyCalls = (module.exports.bootApplyCalls ?? 0) + 1; },',
+      'features: { widget: { lifecycle: { onInit() {} }, apply() { module.exports.bootApplyCalls = (module.exports.bootApplyCalls ?? 0) + 1; } } },',
     ));
     fs.writeFileSync(path.join(dir, 'runtime', 'content', 'actions.content.json'), '[]');
 
@@ -325,7 +322,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       applyPacks(registry.packContentTargets(['smuggle-pack']), applyFn);
 
       const mod = require(path.join(dir, 'runtime', 'index.cjs'));
-      expect(mod.bootApplyCalls, 'the pack smuggled an apply function onto boot and it was called').toBeUndefined();
+      expect(mod.bootApplyCalls, 'the pack smuggled an apply function onto a feature and it was called').toBeUndefined();
       expect(applyFn).toHaveBeenCalledTimes(1);
       expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'content') }));
     } finally {

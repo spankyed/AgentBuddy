@@ -163,7 +163,7 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features.<id>.references`.
+- One manifest field is for built-in packs only: validation rejects `content.sources.settings` in an external pack.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 

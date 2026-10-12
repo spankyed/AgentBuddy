@@ -19,6 +19,7 @@ const noFrontends: FePackRegistryView = {
   tiptapPlugins: () => [],
   appExtension: () => undefined,
   dslTypes: () => new Map(),
+  references: () => ({ types: {}, categories: [], itemsProviders: [] }),
 };
 
 /**

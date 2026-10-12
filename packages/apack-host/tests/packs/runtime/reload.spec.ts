@@ -107,10 +107,10 @@ describe('reloading a pack the app ships', () => {
         },
         registration: {
           id: '${SHIPPED_ID}',
-          features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
-          boot: {
-            onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
-          },
+          features: { widget: {
+            system: { machine: { id: 'widget', config: {} }, receives: ['PING'] },
+            lifecycle: { onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); } },
+          } },
         },
       };
     `);

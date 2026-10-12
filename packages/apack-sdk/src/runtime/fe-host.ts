@@ -5,6 +5,7 @@ import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { HostShell } from '../fe/shell.ts';
+import type { PackReferences } from '../fe/reference-types.ts';
 import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
 import type { DslTypeConfig } from '../fe/dsl-types.ts';
 import type { PackExtensionsView } from './packs-view.ts';
@@ -29,6 +30,8 @@ export interface FePackRegistryView extends PackExtensionsView {
   appExtension(slot: string): Component | undefined;
   /** The DSL types packs registered for the code editors, by name */
   dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+  /** Every pack's reference types, categories and item providers, folded into one */
+  references(): PackReferences;
 }
 
 /** The running app, as the SDK reaches it in the renderer */

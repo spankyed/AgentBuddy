@@ -6,6 +6,7 @@ import { createFePackRegistry, createShellMachine, describeFailure, HOST, type S
 import type { Message } from '@apackdev/sdk/events';
 import { resolveName } from '@apackdev/sdk/ids';
 import type { HostShell, PluginDefinition } from '@apackdev/sdk/fe';
+import type { PackReferences } from '@apackdev/sdk/fe/references';
 import { startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apackdev/sdk/runtime';
 
@@ -22,6 +23,11 @@ export interface StartShellOptions {
   defaultPlugin?: string;
   /** Roles the features play (`apack.json` `features[].designation`), by feature id */
   designations?: Record<string, string>;
+  /**
+   * What an editor can link to among the pack's things, as the generated frontend entry carries it — a test
+   * passes its `#generated/references.ts`. Registered like the plugins, so `referenceRegistry` answers with it
+   */
+  references?: PackReferences;
 }
 
 export interface TestShell {
@@ -55,6 +61,7 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     tiptapPlugins: () => frontend.tiptapPlugins(),
     appExtension: (slot) => frontend.appExtension(slot),
     dslTypes: () => frontend.dslTypes(),
+    references: () => frontend.references(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
     step: (type) => backend.step(type) ?? frontend.step(type),
     steps: () => byType(backend.steps(), frontend.steps()),
@@ -114,6 +121,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
       ...(options.designations?.[id] && { designation: options.designations[id] }),
       ...(id === defaultPlugin && { default: true as const }),
     }])),
+    ...(options.references && { references: options.references }),
   });
 
   const stops: Array<() => void> = [];

@@ -8,8 +8,14 @@ import { describe, expect, it } from 'vitest';
 const SRC = path.resolve(import.meta.dirname, '../../src');
 const SCANNED = ['build', 'content'];
 
-/** Library, notes and FAQ entity types, their shapes, compiled content formats, repositories and content keys */
-const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
+/**
+ * Library, notes and FAQ entity types, their shapes, compiled content formats, repositories and content keys.
+ *
+ * Not global: `.test()` needs no `g`, and with one the regex kept a `lastIndex` between lines and files, so
+ * whether a line was reported depended on what had been scanned before it — an edit to one module changed
+ * which *other* module this rule named.
+ */
+const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/i;
 
 /** `file:line` substrings that name one of them for another reason */
 const ALLOWED: Record<string, string> = {
@@ -29,14 +35,12 @@ function findPackContentSpecifics(root: string = SRC): string[] {
     const relative = path.relative(root, file).split(path.sep).join('/');
     fs.readFileSync(file, 'utf-8').split('\n').forEach((line, index) => {
       if (!FORBIDDEN.test(line)) return;
-      FORBIDDEN.lastIndex = 0;
       if (Object.keys(ALLOWED).some((allowed) => {
         const [allowedFile, text] = [allowed.slice(0, allowed.indexOf(':')), allowed.slice(allowed.indexOf(':') + 1)];
         return allowedFile === relative && line.includes(text);
       })) return;
       found.push(`${relative}:${index + 1}: ${line.trim()}`);
     });
-    FORBIDDEN.lastIndex = 0;
   }
   return found;
 }

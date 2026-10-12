@@ -1,10 +1,10 @@
-// The pack's boot.onInit and boot.onShutdown run around a test's apps as around the app's run: onInit when the first
-// app starts, onShutdown when the last one stops
+// The memos feature's onInit and onShutdown run around a test's apps as around the app's run: onInit when the
+// first app starts, onShutdown when the last one stops. Declared on the feature, which is what owns the journal.
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@apackdev/testing/harness';
 import { journal } from '../../../../src/features/memos/be/journal.ts';
 
-describe("the pack's boot hooks", () => {
+describe("the feature's lifecycle hooks", () => {
   it('open the journal while an app runs, and close it when the app stops', async () => {
     expect(journal.isOpen).toBe(false);
 

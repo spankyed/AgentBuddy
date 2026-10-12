@@ -1,14 +1,12 @@
 import { computed, type Ref } from 'vue'
-import { CATEGORIES, ITEMS_PROVIDERS } from '#generated/references.ts'
-import type { ReferenceItem } from '@apackdev/sdk/fe/references'
+import { referenceRegistry, type ReferenceItem } from '@apackdev/sdk/fe/references'
 
 export type ReferenceCategory = string
 export type { ReferenceItem }
-export { CATEGORIES }
 
 export function useReferenceItems(category: Ref<string | null>, query: Ref<string>) {
-  // Each category's items, from the feature that owns them
-  const categoryItems = new Map(ITEMS_PROVIDERS.map((provider) => [provider.category, provider.useItems()] as const))
+  // Each category's items, from the feature that owns them — in any pack, not only this one
+  const categoryItems = new Map(referenceRegistry.itemsProviders().map((provider) => [provider.category, provider.useItems()] as const))
 
   const items = computed<ReferenceItem[]>(() => {
     if (!category.value) return []

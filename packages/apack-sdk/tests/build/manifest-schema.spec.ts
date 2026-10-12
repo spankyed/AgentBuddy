@@ -96,9 +96,9 @@ describe('parseManifest', () => {
       expect(parseManifest({ ...pack, [key]: {} }).errors, key)
         .toEqual([expect.stringContaining(`"${key}" is now "${to}"`)]);
     }
-    // Every key the section holds, and the two that moved elsewhere
+    // Every key the section holds, and the three that moved elsewhere
     expect(Object.keys(_MOVED_ROOT_KEYS).sort())
-      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'packServices', 'services', 'steps']);
+      .toEqual(['artifacts', 'blocks', 'boot', 'bundleUi', 'commands', 'dsl', 'fe', 'packServices', 'services', 'steps']);
   });
 
   // The hint is for a key that moved; an unrecognized key that never existed gets the plain message

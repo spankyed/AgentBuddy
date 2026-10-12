@@ -14,6 +14,12 @@ import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 
+/** The hooks a feature's `lifecycle` may declare, which is also the order they are emitted in */
+const LIFECYCLE_HOOKS = ['onInit', 'onShutdown'] as const;
+
+/** The local a feature's hook is imported as: two features may export the same name from two modules */
+const lifecycleBinding = (featureId: string, hook: string): string => `__lifecycle_${featureId}_${hook}`;
+
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
 
@@ -483,6 +489,8 @@ export function generatePackFiles(
     const features = packFeatures(manifest);
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
+      ...features.flatMap((f) => Object.values(f.lifecycle ?? {})),
+      ...features.flatMap((f) => (f.references ? [f.references] : [])),
       ...Object.values(manifest.extensions?.services ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
@@ -934,6 +942,17 @@ ${items.join('\n')}
       return `packSystem(${systemBinding(f.id)}${options})`;
     };
 
+    /**
+     * A feature's lifecycle hooks, each imported by name. The pack-wide key this replaced was resolved as
+     * `import * as`, so every export of that module landed in the registration whether it was a hook or not.
+     */
+    const lifecycleLiteral = (f: PackFeature): string => {
+      const parts = LIFECYCLE_HOOKS
+        .filter((hook) => f.lifecycle?.[hook])
+        .map((hook) => `${hook}: ${lifecycleBinding(f.id, hook)}`);
+      return parts.length ? `{ ${parts.join(', ')} }` : '';
+    };
+
     const featuresLiteral = features.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
@@ -941,6 +960,8 @@ ${items.join('\n')}
       if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
+      const lifecycle = lifecycleLiteral(f);
+      if (lifecycle) parts.push(`      lifecycle: ${lifecycle}`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
 
@@ -949,9 +970,12 @@ ${items.join('\n')}
       .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, settingsSource(f))}';`)
       .join('\n');
 
-    const hooksImport = manifest.boot?.hooks
-      ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
-      : '';
+    const hooksImport = features.flatMap((f) => LIFECYCLE_HOOKS
+      .filter((hook) => f.lifecycle?.[hook])
+      .map((hook) => {
+        const { source, exportName } = valueExport(`Feature "${f.id}": lifecycle.${hook}`, f.lifecycle![hook]!);
+        return `import { ${exportName} as ${lifecycleBinding(f.id, hook)} } from '${toImportPath(root, source)}';`;
+      })).join('\n');
 
     const writerEntries = contentWriterEntries();
     const blocks = blockDefinitions();
@@ -1015,7 +1039,7 @@ ${help ? `  help: ${JSON.stringify(help)},` : ''}
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
-${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
+${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
 ${contractCheck}`;
   }
@@ -1070,6 +1094,10 @@ ${contractCheck}`;
     const regProps: string[] = [];
     if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
     if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
+    if (packFeatures(manifest).some((f) => f.references)) {
+      extraImports.push(`import { references } from './references.ts';`);
+      regProps.push(`  references,`);
+    }
     if (appExt.length) {
       const extObj = appExt.map(([key]) => `${key}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);
@@ -1635,36 +1663,58 @@ export type { Repositories } from './repository.ts';
 `;
   }
 
+  /** The three exports a references module names, which codegen imports by convention and so checks */
+  const REFERENCE_EXPORTS = ['referenceTypes', 'categories', 'itemsProviders'] as const;
+
+  /**
+   * The module a feature's `references` names, with its three exports checked. The names are this
+   * convention rather than the manifest's, so a renamed export used to reach the author as a missing
+   * binding inside a generated file, naming neither the manifest key nor what was expected.
+   */
+  function referencesModule(feature: PackFeature): string {
+    const label = `Feature "${feature.id}": references`;
+    const file = sourceFileOf(feature.references!);
+    if (!file) throw new Error(`${label}: no module found at ${feature.references} (.ts or /index.ts)`);
+    for (const name of REFERENCE_EXPORTS) {
+      if (!exportOf(file, name)?.value) {
+        throw new Error(`${label}: ${feature.references} doesn't export "${name}" (${REFERENCE_EXPORTS.map((n) => `\`${n}\``).join(', ')} are all required)`);
+      }
+    }
+    return feature.references!;
+  }
+
   function generateReferences(): string {
     const features = packFeatures(manifest);
     const referenceFeatures = features.filter(f => f.references);
 
     const imports = referenceFeatures.map((f, i) => {
-      const importPath = toImportPath(root, f.references!);
-      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${importPath}';`;
+      const importPath = toImportPath(root, referencesModule(f));
+      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProviders as itemsProviders${i} } from '${importPath}';`;
     }).join('\n');
 
     const typesSpread = referenceFeatures.map((_, i) => `  ...types${i},`).join('\n');
     const categoriesSpread = referenceFeatures.map((_, i) => `  ...categories${i},`).join('\n');
-    const providersEntries = referenceFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
+    const providersSpread = referenceFeatures.map((_, i) => `  ...itemsProviders${i},`).join('\n');
 
     return `${HEADER}
-import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
+import type { PackReferences } from '@apackdev/sdk/fe/references';
 ${imports}
 
-export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
+/**
+ * What an editor can link to among this pack's things. The generated frontend entry registers it, so it
+ * reaches the app rather than only this pack's own frontend.
+ */
+export const references: PackReferences = {
+  types: {
 ${typesSpread}
-};
-
-export const CATEGORIES: CategoryConfig[] = [
+  },
+  categories: [
 ${categoriesSpread}
-];
-
-export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
-${providersEntries}
-];
-
-export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
+  ],
+  itemsProviders: [
+${providersSpread}
+  ],
+};
 
 export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 `;

@@ -27,6 +27,7 @@ import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder.ts
 import { ImageSelectionDecoration } from './extensions/image-selection-decoration.ts'
 import { CustomHorizontalRule } from './extensions/custom-horizontal-rule.ts'
 import { SearchAndFind } from './extensions/search-extension.ts'
+import { referenceRegistry } from '@apackdev/sdk/fe/references'
 
 const lowlight = createLowlight(common)
 
@@ -113,7 +114,9 @@ export function createExtensions({ mode, variant = 'full', placeholder, injected
     Link.configure({
       openOnClick: false,
       autolink: true,
-      protocols: ['note', 'thread', 'doc'],
+      // Every registered pack's reference schemes, so a pack's own protocol autolinks. This was the three
+      // default-setup declares, written out here, which is why no other pack's ever did.
+      protocols: referenceRegistry.protocols(),
     }),
     CustomCode.configure({ HTMLAttributes: { spellcheck: 'false' } }),
     EmptyLinePreserver,

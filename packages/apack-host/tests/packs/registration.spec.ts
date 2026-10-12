@@ -292,12 +292,12 @@ describe('packContentTargets', () => {
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
   // is: a registration claiming a `compiledDir` is not enough to be written from.
   it('leaves out a pack with no origin, having nowhere to read content from', () => {
-    registerPack({ id: 'nowhere-pack', boot: { onInit() {} } } as unknown as PackRegistration);
+    registerPack({ id: 'nowhere-pack', features: { widget: { lifecycle: { onInit() {} } } } } as unknown as PackRegistration);
     registered.push('nowhere-pack');
 
     expect(registry.packContentTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
     // Still reported as a boot hook the pack declares, which is a different question
-    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['onInit']);
+    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['widget.onInit']);
   });
 
   /**

@@ -1,5 +1,5 @@
-// What the pack's backend holds open while it runs, as a pack holds a connection or a file handle: boot.onInit opens
-// it and boot.onShutdown closes it (src/features/hooks.ts)
+// What this feature holds open while the pack runs, as a pack holds a connection or a file handle: its
+// lifecycle's onInit opens it and onShutdown closes it (./lifecycle.ts)
 let entries: string[] | undefined;
 let opened = 0;
 

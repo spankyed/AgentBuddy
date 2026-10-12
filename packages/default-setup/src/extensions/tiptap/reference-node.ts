@@ -1,6 +1,26 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin.ts'
-import { REFERENCE_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config.ts'
+import { referenceRegistry } from '@apackdev/sdk/fe/references'
+import type { ReferenceType } from './reference-config.ts'
+
+/**
+ * What a reference whose type no registered pack declares is drawn as: a broken link, rather than whichever
+ * type happened to be at hand. One feature's `thread` was the default here, so a reference from another pack
+ * — or from a pack that is no longer installed — was drawn as a thread and said nothing.
+ */
+const UNKNOWN_TYPE_ICON: ReadonlyArray<readonly [string, Record<string, string>]> = [
+  ['path', { d: 'M9 17H7A5 5 0 0 1 7 7h2' }],
+  ['path', { d: 'M15 7h2a5 5 0 0 1 4 8' }],
+  ['line', { x1: '2', y1: '2', x2: '22', y2: '22' }],
+]
+
+/**
+ * The scheme a reference's link is written with. A type no pack declares has none, so the link names the type
+ * instead — which the pack that owns it can still read, where a borrowed `thread://` could not.
+ */
+function protocolOf(type: ReferenceType): string {
+  return referenceRegistry.type(type)?.protocol ?? type
+}
 
 function createIconSvg(type: ReferenceType): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
@@ -14,7 +34,7 @@ function createIconSvg(type: ReferenceType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of REFERENCE_TYPES[type]?.svgElements || REFERENCE_TYPES.thread.svgElements) {
+  for (const [tag, attrs] of referenceRegistry.type(type)?.svgElements ?? UNKNOWN_TYPE_ICON) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -41,7 +61,7 @@ export const ReferenceNode = Node.create({
   },
 
   parseHTML() {
-    return Object.entries(REFERENCE_TYPES).map(([refType, cfg]) => ({
+    return Object.entries(referenceRegistry.types()).map(([refType, cfg]) => ({
       tag: `a[href^="${cfg.protocol}://"]`,
       priority: 60,
       getAttrs(node: HTMLElement) {
@@ -53,8 +73,7 @@ export const ReferenceNode = Node.create({
   },
 
   renderHTML({ node }) {
-    const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
-    const protocol = cfg?.protocol || 'thread'
+    const protocol = protocolOf(node.attrs.refType as ReferenceType)
     return [
       'a',
       mergeAttributes({
@@ -89,9 +108,9 @@ export const ReferenceNode = Node.create({
 
         const refType = node.attrs.refType as ReferenceType
         const refId = node.attrs.refId as string
-        const cfg = REFERENCE_TYPES[refType]
 
-        cfg.navigate(refId)
+        // A type whose pack isn't installed has nowhere to go, and a click on its pill is not an error
+        referenceRegistry.type(refType)?.navigate(refId)
       })
 
       return {
@@ -135,13 +154,12 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
-          const protocol = cfg?.protocol || 'thread'
+          const protocol = protocolOf(node.attrs.refType as ReferenceType)
           state.write(`[${node.attrs.label}](${protocol}://${node.attrs.shortCode})`)
         },
         parse: {
           updateDOM(element: HTMLElement) {
-            for (const protocol of ALL_PROTOCOLS) {
+            for (const protocol of referenceRegistry.protocols()) {
               element.querySelectorAll(`a[href^="${protocol}://"]`).forEach(() => {
                 // The default markdown parse already creates <a> elements, which parseHTML handles
               })

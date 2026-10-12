@@ -2,6 +2,7 @@
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
+import type { PackReferences, ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
@@ -66,6 +67,55 @@ function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => 
 }
 
 /**
+ * Every pack's reference contributions, folded into one.
+ *
+ * Types key by name because that is what a reference carries (`ReferenceItem.type`, and the editor node's
+ * stored attribute). The **protocol** is a second identity — `note://`, and `library`'s `document` type uses
+ * the scheme `doc`, so the two are genuinely different facts — and it is the one that must be unique across
+ * packs, since it is what a URL names. Nothing checked it before, because nothing an external pack declared
+ * reached the app at all.
+ */
+function createReferenceStore() {
+  const held = new Map<string, { owner: string; references: PackReferences }>();
+
+  const fold = (): PackReferences => {
+    const types: Record<string, ReferenceTypeConfig> = {};
+    const categories: CategoryConfig[] = [];
+    const itemsProviders: CategoryItemsProvider[] = [];
+    for (const { references } of held.values()) {
+      Object.assign(types, references.types);
+      categories.push(...references.categories);
+      itemsProviders.push(...references.itemsProviders);
+    }
+    return { types, categories, itemsProviders };
+  };
+
+  /** Who already claimed each type name and each protocol, so a second claim names both packs */
+  const claimed = (pick: (type: ReferenceTypeConfig, name: string) => string) =>
+    new Map([...held.values()].flatMap(({ owner, references }) =>
+      Object.entries(references.types).map(([name, type]) => [pick(type, name), owner] as const)));
+
+  return {
+    register(owner: string, references: PackReferences | undefined): void {
+      if (!references) return;
+      const names = claimed((_type, name) => name);
+      const protocols = claimed((type) => type.protocol);
+      for (const [name, type] of Object.entries(references.types)) {
+        const byName = names.get(name);
+        if (byName) throw new Error(`Reference type collision: "${name}" — pack "${owner}" vs "${byName}"`);
+        const byProtocol = protocols.get(type.protocol);
+        if (byProtocol) throw new Error(`Reference protocol collision: "${type.protocol}://" — pack "${owner}" vs "${byProtocol}"`);
+      }
+      held.set(owner, { owner, references });
+    },
+    unregister(owner: string): void {
+      held.delete(owner);
+    },
+    all: fold,
+  };
+}
+
+/**
  * A list of contributions kept with the pack that made each, for a kind whose items have no key to collide
  * on — which is every kind `createOwnedStore` cannot hold.
  *
@@ -100,6 +150,7 @@ export function createFePackRegistry(): FePackRegistry {
   const tiptapPlugins = createOwnedList<TiptapPlugin>();
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
+  const references = createReferenceStore();
 
   /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
   const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
@@ -107,6 +158,10 @@ export function createFePackRegistry(): FePackRegistry {
     (reg, undo) => {
       designations.register(reg.roles);
       undo(() => designations.unregister(reg.roles));
+    },
+    (reg, undo) => {
+      references.register(reg.id, reg.references);
+      undo(() => references.unregister(reg.id));
     },
     (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
     // The first pack to claim the default keeps it
@@ -187,5 +242,6 @@ export function createFePackRegistry(): FePackRegistry {
     tiptapPlugins: tiptapPlugins.all,
     appExtension: appExtensions.get,
     dslTypes: () => dslTypes.entries(),
+    references: references.all,
   };
 }
