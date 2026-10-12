@@ -579,7 +579,7 @@ export interface GenerateEntriesOptions {
 }
 
 // @public (undocumented)
-export function generatePackFiles(manifest: PackManifest, opts: GenerateEntriesOptions): Record<string, string>;
+export function generatePackFiles(manifest: PackManifest, opts: GenerateEntriesOptions): Promise<Record<string, string>>;
 
 // @public
 export function generateSettingsTypes(definition: SettingsDefinition, name: string): Promise<string>;

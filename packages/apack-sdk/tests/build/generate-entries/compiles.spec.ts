@@ -89,10 +89,10 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 }
 
 describe('generated sends compile', () => {
-  it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
+  it('for feature ids that match generated names, beside a dependency with the same feature ids', async () => {
     const ids = ['foo', 'fooEntry', 'specs', 'specEvents', 'ref', 'openPlugin', 'registration', 'steps'];
     for (const id of ids) writeSystemEntry(id, "{ type: 'DONE' }", `{ type: '${id.toUpperCase()}_RUN'; n: number }`);
-    const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
+    const files = await generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', calendar: 'CALENDAR_RUN' })]]),
     });
@@ -106,8 +106,8 @@ describe('generated sends compile', () => {
     expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
   });
 
-  it("for a pack without systems, sending to its dependencies'", () => {
-    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
+  it("for a pack without systems, sending to its dependencies'", async () => {
+    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ calendar: 'CALENDAR_RUN' })]]),
     });
@@ -122,13 +122,13 @@ describe('generated sends compile', () => {
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 
-  it("to a dependency's plugins and a host plugin, with the events their owner declares", () => {
+  it("to a dependency's plugins and a host plugin, with the events their owner declares", async () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
       { features: [withPlugin(system('calendar')), withPlugin(system('code'))] },
       facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
     );
-    const files = generatePackFiles(
+    const files = await generatePackFiles(
       manifest({ features: [withPlugin(system('memos'))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
@@ -151,7 +151,59 @@ describe('generated sends compile', () => {
 
 
 describe('generated settings compile', () => {
-  it('pairs schema-derived paths and values in backend accessors and custom forms', () => {
+  it('derives pack group values from schemas, preserving enums, optional fields and local references', async () => {
+    const files = await generatePackFiles(manifest({ extensions: { settings: {
+      other: {
+        schema: { type: 'object', additionalProperties: false,
+          definitions: { label: { type: 'number' } },
+          properties: { label: { $ref: '#/definitions/label' } }, required: ['label'],
+        },
+        defaults: { label: 1 },
+      },
+      assistant: {
+        title: 'Assistant preferences',
+        schema: {
+          type: 'object', additionalProperties: false,
+          definitions: { label: { type: 'string' } },
+          properties: {
+            mode: { type: 'string', enum: ['quick', 'thorough'] },
+            limit: { type: 'number' },
+            label: { $ref: '#/definitions/label' },
+            optional: { type: 'boolean' },
+            nullable: { type: ['string', 'null'] },
+            labels: { type: 'object', additionalProperties: { type: 'string' } },
+          },
+          required: ['mode', 'limit', 'label', 'nullable', 'labels'],
+        },
+        defaults: { mode: 'quick', limit: 10, label: 'Default', nullable: null, labels: {} },
+      },
+    } } }), { packRoot: root });
+    write('src/probe.ts', `
+      import type { PackGroupSettings } from './__generated__/settings.ts';
+      const settings: PackGroupSettings['assistant'] = {
+        mode: 'thorough', limit: 20, label: 'Other', nullable: 'present', labels: { first: 'one' },
+      };
+      const other: PackGroupSettings['other'] = { label: 2 };
+      // @ts-expect-error groups with identically named schema definitions stay independent
+      other.label = settings.label;
+      settings.optional = false;
+      settings.nullable = null;
+      // @ts-expect-error the enum is closed
+      settings.mode = 'unknown';
+      // @ts-expect-error defaults do not determine numeric types
+      settings.limit = '20';
+      // @ts-expect-error local references retain their value type
+      settings.label = 1;
+      // @ts-expect-error record values follow their schema
+      settings.labels.first = false;
+      // @ts-expect-error undeclared group
+      type Missing = PackGroupSettings['missing'];
+    `);
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+    expect(files['src/__generated__/pack-types.ts']).toContain('PackGroupSettings');
+  });
+
+  it('pairs schema-derived paths and values in backend accessors and custom forms', async () => {
     write('src/settings.ts', `import { z } from 'zod';
       import { defineFeatureSettings } from '@apackdev/sdk/framework';
       export default defineFeatureSettings({ schema: z.object({
@@ -161,7 +213,7 @@ describe('generated settings compile', () => {
         items: z.array(z.string()).default([]),
       }).strict() });`);
     write('src/visibility.ts', 'export default { visible: false };');
-    const files = generatePackFiles(manifest({ features: [
+    const files = await generatePackFiles(manifest({ features: [
       { id: 'notes', settings: 'src/settings.ts' },
       { id: 'hidden', settings: 'src/visibility.ts' },
     ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
@@ -202,19 +254,19 @@ describe('generated settings compile', () => {
 });
 
 
-it('emits settings modules that compile with unused-import checking for a pack without settings', () => {
-  const files = generatePackFiles(manifest({}), { packRoot: root });
+it('emits settings modules that compile with unused-import checking for a pack without settings', async () => {
+  const files = await generatePackFiles(manifest({}), { packRoot: root });
   const diagnostics = typecheck(files, ['src/__generated__/settings.ts', 'src/__generated__/settings-fe.ts'], true);
   expect(diagnostics.filter(d => /^src\/__generated__\/settings(?:-fe)?\.ts:/.test(d))).toEqual([]);
 });
 
 
-it('allows feature services to create settings handles during module initialization', () => {
+it('allows feature services to create settings handles during module initialization', async () => {
   write('src/settings.ts', `import { z } from 'zod';
     export default { schema: z.object({ limit: z.number().default(10) }) };`);
   write('src/service.ts', `import { settings } from './__generated__/settings.ts';
     export const notesService = { settings: settings.forFeature('notes') };`);
-  const files = generatePackFiles(manifest({ features: [{
+  const files = await generatePackFiles(manifest({ features: [{
     id: 'notes', settings: 'src/settings.ts', services: { notes: 'src/service.ts#notesService' },
   }] }), { packRoot: root });
   write('src/probe.ts', `import './__generated__/services.ts';

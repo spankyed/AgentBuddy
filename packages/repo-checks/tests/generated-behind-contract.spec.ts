@@ -77,8 +77,8 @@ function fixture(): PackManifest {
 }
 
 /** The generated modules, by the basename the rule classifies them under */
-function generated(): Map<string, string> {
-  const files = generatePackFiles(fixture(), { packRoot: root });
+async function generated(): Promise<Map<string, string>> {
+  const files = await generatePackFiles(fixture(), { packRoot: root });
   return new Map(Object.entries(files)
     .filter(([file]) => /^src\/__generated__\/[^/]+\.ts$/.test(file))
     .map(([file, contents]) => [path.basename(file, '.ts'), contents]));
@@ -101,13 +101,13 @@ function specifiersOf(contents: string): string[] {
 const asSpecifier = (manifestPath: string) => `../${manifestPath.replace(/^src\//, '')}`;
 
 describe('the generated modules a contract is behind', () => {
-  it('is the whole set codegen emits, so a new one has to be classified', () => {
-    const emitted = [...generated().keys()].sort();
+  it('is the whole set codegen emits, so a new one has to be classified', async () => {
+    const emitted = [...(await generated()).keys()].sort();
     expect(emitted).toEqual([...GENERATED_MODULES].sort());
   });
 
-  it('is exactly the modules that import a contract or an actor entry', () => {
-    const behind = [...generated()]
+  it('is exactly the modules that import a contract or an actor entry', async () => {
+    const behind = [...(await generated())]
       .filter(([, contents]) => {
         const specifiers = new Set(specifiersOf(contents));
         return [...CONTRACTS, ...ENTRIES].some((declared) => specifiers.has(asSpecifier(declared)));
@@ -118,8 +118,8 @@ describe('the generated modules a contract is behind', () => {
 
   // The fixture is the subject of both cases above, so a fixture that stopped producing one would make them pass by
   // looking at nothing: `events` reads a contract and `pack-entry` an entry, one for each half of the claim.
-  it('reads a fixture that really does reach both', () => {
-    const modules = generated();
+  it('reads a fixture that really does reach both', async () => {
+    const modules = await generated();
     expect(specifiersOf(modules.get('events') ?? '')).toContain(asSpecifier(CONTRACTS[1]!));
     expect(specifiersOf(modules.get('pack-entry') ?? '')).toContain(asSpecifier(ENTRIES[0]!));
   });

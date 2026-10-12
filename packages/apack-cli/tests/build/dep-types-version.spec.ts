@@ -16,22 +16,22 @@ afterEach(() => {
 });
 
 /** Writes the facade types generation produces for base-pack at `version` */
-function generateDepTypes(version: string): void {
+async function generateDepTypes(version: string): Promise<void> {
   const manifest = { id: 'app-pack', name: 'App', version: '1.0.0' } as PackManifest;
   // The exports generation imports from every dependency's facade
   const facade = ['PackEntityShapes', 'PackStepNodes', 'SendablePluginEvents', 'PackSystemEvents', 'Services', 'Repositories']
     .map((name) => `export type ${name} = {};`).join('\n');
   const snapshot = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base', version }), types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, manifest: { id: 'base-pack', name: 'Base', version }, format: PACK_SNAPSHOT_FORMAT } as PackSnapshot;
-  for (const [file, content] of Object.entries(generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
+  for (const [file, content] of Object.entries(await generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);
   }
 }
 
 describe('warnStaleDepTypes', () => {
-  it('warns when the dependency the pack builds with is not the version its facade types came from', () => {
+  it('warns when the dependency the pack builds with is not the version its facade types came from', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    generateDepTypes('1.2.0');
+    await generateDepTypes('1.2.0');
 
     warnStaleDepTypes(root, new Map([['base-pack', '1.2.0']]));
     expect(warn).not.toHaveBeenCalled();

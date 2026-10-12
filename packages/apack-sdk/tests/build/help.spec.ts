@@ -16,7 +16,7 @@ function fixture(files: Record<string, string>) {
   return { root, manifest };
 }
 describe('Markdown help compilation', () => {
-  it('bundles nested articles, metadata and resolved inline/reference links without a runtime loader', () => {
+  it('bundles nested articles, metadata and resolved inline/reference links without a runtime loader', async () => {
     const { root, manifest } = fixture({
       'start.md': '---\nid: welcome\nfeatures: [code]\norder: 1\n---\n# Welcome\n\n[Next](nested/next.md)\n\n[More][next]\n[next]: nested/next.md',
       'nested/next.md': '# Next\nDetails',
@@ -24,7 +24,7 @@ describe('Markdown help compilation', () => {
     const articles = compileHelp(root, manifest);
     expect(articles.find(a => a.id === 'welcome')).toMatchObject({ title: 'Welcome', features: ['code'], order: 1 });
     expect(articles.find(a => a.id === 'welcome')!.body).toContain('https://help.apack.invalid/test-pack/nested%2Fnext');
-    const files = generatePackFiles(manifest, { packRoot: root });
+    const files = await generatePackFiles(manifest, { packRoot: root });
     expect(files['src/__generated__/pack-entry.ts']).toContain('"title":"Welcome"');
     fs.rmSync(path.join(root, 'src/extensions/help'), { recursive: true });
     expect(files['src/__generated__/pack-entry.ts']).toContain('Details');

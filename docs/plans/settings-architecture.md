@@ -466,6 +466,13 @@ whole candidate before replacing the revision/map; failure retains the previous 
 notification. Readers receive readonly views, and a throwing subscriber cannot undo publication or
 prevent later subscribers from observing it. A poisoned installed runtime still yields its settings data.
 
+Pack code generation now awaits the maintained schema compiler and exports `PackGroupSettings` from
+the pack facade. Each group's generated value type uses its schema, preserving optional fields and
+local references; referenced type names are isolated between groups. `generatePackFiles` returns one
+Promise contract, and CLI generation retains its lock through settlement. Validation awaits generation
+without writing files. Pack group access handles, policy enforcement and feature conversion remain
+separate requirements; exporting group types alone does not implement access.
+
 This is the foundation prototype, not the completed runtime integration. Production boot does not yet
 populate the catalog; host preference extraction, feature declaration conversion, typed group handles,
 trusted caller binding, access enforcement, form bindings and stored-data migration remain required.

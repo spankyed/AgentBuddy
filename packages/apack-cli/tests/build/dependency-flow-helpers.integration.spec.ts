@@ -82,7 +82,7 @@ beforeAll(async () => {
     'src/steps/choose/build.ts': 'export const chooseStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
     'src/steps/tick/build.ts': "export const tickTriggerBuild = { trackField: 'every' };\n",
   });
-  for (const [file, content] of Object.entries(generatePackFiles(baseManifest, { packRoot: base }))) {
+  for (const [file, content] of Object.entries(await generatePackFiles(baseManifest, { packRoot: base }))) {
     fs.mkdirSync(path.dirname(path.join(base, file)), { recursive: true });
     fs.writeFileSync(path.join(base, file), content);
   }
@@ -91,7 +91,7 @@ beforeAll(async () => {
   snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
-  for (const [file, content] of Object.entries(generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
+  for (const [file, content] of Object.entries(await generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(app, file)), { recursive: true });
     fs.writeFileSync(path.join(app, file), content);
   }

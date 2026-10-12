@@ -43,17 +43,17 @@ function importAll(compiledDir: string, pack: PackManifest, packDir: string, dep
 }
 
 describe('a pack depending on default-setup content with its formats', () => {
-  it("declares only a path and default-setup's format per entry, and registers no hooks", () => {
+  it("declares only a path and default-setup's format per entry, and registers no hooks", async () => {
     expect(messagesOf(parseManifest(manifest))).toEqual([]);
     for (const entry of Object.values(manifest.content!.sources!)) {
       expect(Object.keys(entry as object).sort()).toEqual(['format', 'path']);
     }
-    const files = generatePackFiles(manifest, { packRoot: FIXTURE, depSnapshots: new Map([['default-setup', depSnapshot]]) });
+    const files = await generatePackFiles(manifest, { packRoot: FIXTURE, depSnapshots: new Map([['default-setup', depSnapshot]]) });
     expect(files['src/__generated__/appliers.ts']).toContain('"key":"team-notes"');
     expect(files['src/__generated__/appliers.ts']).toContain('"key":"team-docs"');
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('contentWriters');
     // Without the dependency, its formats can't be resolved
-    expect(() => generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).toThrow(/default-setup/);
+    await expect(generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).rejects.toThrow(/default-setup/);
   });
 
   it("gets NOTE and DOC shortCodes, order, nesting, sections, media and REFERENCES from default-setup's format and hooks", async () => {

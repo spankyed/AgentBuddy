@@ -1,4 +1,5 @@
 import { compileHelp } from './help.ts';
+import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
@@ -357,10 +358,10 @@ export interface GenerateEntriesOptions {
   depSnapshots?: Map<string, PackSnapshot>;
 }
 
-export function generatePackFiles(
+export async function generatePackFiles(
   manifest: PackManifest,
   opts: GenerateEntriesOptions,
-): Record<string, string> {
+): Promise<Record<string, string>> {
   const root = opts.packRoot;
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   const depIds = [...depSnapshots.keys()];
@@ -1168,7 +1169,11 @@ export const {
   }
 
   // Settings schemas remain backend-only: frontend accessors import their inferred shapes as types.
-  function generateSettings(): string {
+  async function generateSettings(): Promise<string> {
+    const groups = Object.entries(manifest.extensions?.settings ?? {});
+    // Isolate referenced schema types too: two groups may both define a type named Project.
+    const groupTypes = await Promise.all(groups.map(async ([name, definition]) =>
+      `declare namespace __PackSettings_${toPascalCase(name)} {\n${await generateSettingsTypes(definition, 'Value')}\n}`));
     const features = packFeatures(manifest).filter(f => f.settings);
     const imports = features.map((f, i) => `import type declaration${i} from '${toImportPath(root, f.settings!)}';`);
     const entries = features.map((f, i) => `  '${f.id}': FeatureSettingsValue<typeof declaration${i}>;`);
@@ -1180,6 +1185,12 @@ import { _featureSettings, services } from '@apackdev/sdk/services';
 import { ref } from './ref.ts';
 ${imports.join('\n')}
 ${deps.imports}
+
+${groupTypes.join('\n')}
+/** Local pack preference groups, inferred from schemas rather than default literals. */
+export type PackGroupSettings = {
+${groups.map(([name]) => `  '${name}': __PackSettings_${toPascalCase(name)}.Value;`).join('\n')}
+};
 
 type Declarations = {
 ${entries.join('\n')}
@@ -1675,7 +1686,7 @@ export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.ts';
 export type { PackPluginEvents, PackSystemEvents } from './events.ts';
 ${hasPlugins ? "export type { PackPluginState } from './fe.ts';\n" : ''}export type { Services } from './services.ts';
 export type { Repositories } from './repository.ts';
-export type { PackFeatureSettings } from './settings.ts';
+export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
 `;
   }
 
@@ -1998,7 +2009,7 @@ ${entries.join('\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/ref.ts', generateRef()],
     ['src/__generated__/paths.ts', generatePaths()],
-    ['src/__generated__/settings.ts', generateSettings()],
+    ['src/__generated__/settings.ts', await generateSettings()],
     ['src/__generated__/settings-fe.ts', generateSettingsFe()],
     ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],

@@ -136,8 +136,8 @@ export function dependency(fields: Record<string, unknown>, defs: Record<string,
   return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
-export function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
-  return generatePackFiles(manifest(fields), { packRoot: root, depSnapshots: new Map(Object.entries(deps)) });
+export async function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Promise<Record<string, string>> {
+  return await generatePackFiles(manifest(fields), { packRoot: root, depSnapshots: new Map(Object.entries(deps)) });
 }
 
 /**

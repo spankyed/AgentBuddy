@@ -4238,6 +4238,9 @@ type PackFeatureSettings = {
     [K in keyof Declarations as Declarations[K] extends never ? never : K]: Declarations[K];
 };
 
+/** Local pack preference groups, inferred from schemas rather than default literals. */
+type PackGroupSettings = {};
+
 /**
  * Feature id → the `public` half of the inbox this pack's plugin declares (dependents name it
  * `default-setup/<feature>`). Neither its own system's events nor its `pack` audience are here: the first is
@@ -6954,5 +6957,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackFeatureSettings, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackFeatureSettings, PackGroupSettings, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

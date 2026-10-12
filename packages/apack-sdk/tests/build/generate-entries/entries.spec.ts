@@ -22,8 +22,8 @@ setupPackFixture();
 
 describe('generated ref', () => {
   // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
-  it("takes this pack's features, its dependencies' and the host's, and nothing else", () => {
-    const files = generate(
+  it("takes this pack's features, its dependencies' and the host's, and nothing else", async () => {
+    const files = await generate(
       { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
       { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
@@ -36,8 +36,8 @@ describe('generated ref', () => {
 
 describe('generated frontend names', () => {
   // A name nothing declares fails to compile: a plugin named by data opens through `openPlugin` instead
-  it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", () => {
-    const files = generate(
+  it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", async () => {
+    const files = await generate(
       { features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
       { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
     );
@@ -47,19 +47,19 @@ describe('generated frontend names', () => {
 });
 
 describe('generated frontend entry', () => {
-  it('uses one declaration identity for the backend and frontend bindings', () => {
-    const files = generate({ features: [] });
+  it('uses one declaration identity for the backend and frontend bindings', async () => {
+    const files = await generate({ features: [] });
     const identity = (file: string) => files[file].match(/declarationRevision: '([a-f0-9]{64})'/)?.[1];
     const backend = identity('src/__generated__/pack-entry.ts');
     expect(backend).toMatch(/^[a-f0-9]{64}$/);
     expect(identity('src/__generated__/pack-entry-fe.ts')).toBe(backend);
-    const changed = generate({ name: 'Different declarations', features: [] });
+    const changed = await generate({ name: 'Different declarations', features: [] });
     expect(changed['src/__generated__/pack-entry.ts']).not.toContain(`declarationRevision: '${backend}'`);
   });
 
   // Keyed by feature, as the backend entry is: each plugin with its feature's role
-  it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", () => {
-    const files = generate({ features: [
+  it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", async () => {
+    const files = await generate({ features: [
       { id: 'settings', designation: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
     ] });
@@ -70,14 +70,14 @@ describe('generated frontend entry', () => {
     expect(fe).not.toContain('_module');
   });
 
-  it('names the pack the frontend registration belongs to', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }] });
+  it('names the pack the frontend registration belongs to', async () => {
+    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }] });
 
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("id: 'demo-pack',");
   });
 
-  it('opens the plugin that claims the default, not the pack\'s first', () => {
-    const files = generate({ features: [
+  it('opens the plugin that claims the default, not the pack\'s first', async () => {
+    const files = await generate({ features: [
       { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin'), default: true } },
     ] });
@@ -92,8 +92,8 @@ describe('generated frontend entry', () => {
    * order JSON tooling left behind, and a default chosen that way would move without anyone editing it. A
    * pack claiming none has no default plugin, which the shell already handles.
    */
-  it('name no default when no plugin claims it', () => {
-    const files = generate({ features: [
+  it('name no default when no plugin claims it', async () => {
+    const files = await generate({ features: [
       { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
     ] });
@@ -102,8 +102,8 @@ describe('generated frontend entry', () => {
   });
 
   // So a frontend send to that role resolves, as it does on the backend
-  it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', () => {
-    const files = generate({ features: [
+  it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', async () => {
+    const files = await generate({ features: [
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
       system('scheduler', {}),
       system('worker'),
@@ -117,19 +117,17 @@ describe('generated frontend entry', () => {
 
   // The manifest names the module and `tiptapPlugins` is the export name by convention, so the convention
   // is checked rather than assumed: it used to reach the author as a missing binding in a generated file.
-  it('names the module and the export it expects when a tiptap module exports neither', () => {
+  it('names the module and the export it expects when a tiptap module exports neither', async () => {
     write('src/tiptap/index.ts', 'export const plugins = [];\n');
 
-    expect(() => generate({ fe: { tiptapPlugins: 'src/tiptap/index.ts' } }))
-      .toThrow('fe.tiptapPlugins: src/tiptap/index.ts doesn\'t export "tiptapPlugins"');
-    expect(() => generate({ fe: { tiptapPlugins: 'src/tiptap/missing.ts' } }))
-      .toThrow('fe.tiptapPlugins: no module found at src/tiptap/missing.ts');
+    await expect(generate({ fe: { tiptapPlugins: 'src/tiptap/index.ts' } })).rejects.toThrow('fe.tiptapPlugins: src/tiptap/index.ts doesn\'t export "tiptapPlugins"');
+    await expect(generate({ fe: { tiptapPlugins: 'src/tiptap/missing.ts' } })).rejects.toThrow('fe.tiptapPlugins: no module found at src/tiptap/missing.ts');
   });
 
-  it('registers the tiptap plugins a pack declares', () => {
+  it('registers the tiptap plugins a pack declares', async () => {
     write('src/tiptap/ok.ts', 'export const tiptapPlugins = [];\n');
 
-    const fe = generate({ fe: { tiptapPlugins: 'src/tiptap/ok.ts' } })['src/__generated__/pack-entry-fe.ts'];
+    const fe = (await generate({ fe: { tiptapPlugins: 'src/tiptap/ok.ts' } }))['src/__generated__/pack-entry-fe.ts'];
 
     expect(fe).toContain("import { tiptapPlugins } from '../tiptap/ok.ts';");
     expect(fe).toContain('  tiptapPlugins,');
@@ -137,8 +135,8 @@ describe('generated frontend entry', () => {
 });
 
 describe('generated backend entry', () => {
-  it('records which features have a plugin, and takes the plugin\'s name and icon from its module', () => {
-    const files = generate({ features: [
+  it('records which features have a plugin, and takes the plugin\'s name and icon from its module', async () => {
+    const files = await generate({ features: [
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
       system('brain'),
     ] });
@@ -148,12 +146,12 @@ describe('generated backend entry', () => {
   });
 
   // One record, keyed by feature: the app derives every ref, system and plugin from it
-  it('registers each feature once, in manifest order, with the events the manifest adds', () => {
-    const entry = generate({ features: [
+  it('registers each feature once, in manifest order, with the events the manifest adds', async () => {
+    const entry = (await generate({ features: [
       system('logs'),
       { ...system('inbox'), system: { entry: 'src/features/inbox/be/system.ts', events: { incoming: ['MAIL_ARRIVED'] } } },
       { ...system('config'), designation: 'settings' },
-    ] })['src/__generated__/pack-entry.ts'];
+    ] }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("system: packSystem(__system_logs),");
     expect(entry).toContain(`system: packSystem(__system_inbox, { incoming: ["MAIL_ARRIVED"] }),`);
     // No role orders the features: a system that needs another's data reads it when it needs it
@@ -161,19 +159,18 @@ describe('generated backend entry', () => {
     expect(entry).not.toMatch(/systems:|earlySystem|early:|receivedEventTypes|toPackSystemDefs/);
   });
 
-  it("carries the pack's declared slash commands, so registering it registers them", () => {
-    const withCommands = generate({ commands: { note: { placeholder: 'Text' } }, features: [system('brain')] });
+  it("carries the pack's declared slash commands, so registering it registers them", async () => {
+    const withCommands = await generate({ commands: { note: { placeholder: 'Text' } }, features: [system('brain')] });
     expect(withCommands['src/__generated__/pack-entry.ts']).toContain('commands: [{"name":"note","placeholder":"Text"}],');
 
     // A pack that declares none says nothing
-    expect(generate({ features: [system('brain')] })['src/__generated__/pack-entry.ts']).not.toContain('commands:');
+    expect((await generate({ features: [system('brain')] }))['src/__generated__/pack-entry.ts']).not.toContain('commands:');
   });
 
-  it('fails for a command a dependency declares, which the app would refuse to register', () => {
+  it('fails for a command a dependency declares, which the app would refuse to register', async () => {
     const base = { 'base-pack': dependency({ commands: { instructions: { placeholder: 'Theirs' } } }) };
-    expect(() => generate({ commands: { instructions: { placeholder: 'Mine' } }, features: [system('brain')] }, base))
-      .toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
-    expect(generate({ commands: { memo: { placeholder: 'Mine' } }, features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
+    await expect(generate({ commands: { instructions: { placeholder: 'Mine' } }, features: [system('brain')] }, base)).rejects.toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
+    expect((await generate({ commands: { memo: { placeholder: 'Mine' } }, features: [system('brain')] }, base))['src/__generated__/pack-entry.ts'])
       .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
   });
 
@@ -182,31 +179,30 @@ describe('generated backend entry', () => {
    * ordinary object it finds `Object`'s constructor, and the build failed with
    * `declared by "function Object() { [native code] }"` — for a command nothing had declared.
    */
-  it('accepts a command named after something on Object.prototype, which no pack declared', () => {
-    expect(() => generate(
+  it('accepts a command named after something on Object.prototype, which no pack declared', async () => {
+    await expect(generate(
       { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
       { 'base-pack': dependency({ id: 'base-pack' }) },
-    )).not.toThrow();
+    )).resolves.toBeDefined();
   });
 
-  it('still fails when a dependency really does declare that name', () => {
-    expect(() => generate(
+  it('still fails when a dependency really does declare that name', async () => {
+    await expect(generate(
       { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
       { 'base-pack': dependency({ id: 'base-pack', commands: { constructor: { placeholder: 'x' } } }) },
-    )).toThrow('Command "constructor" is declared by "base-pack"');
+    )).rejects.toThrow('Command "constructor" is declared by "base-pack"');
   });
 
-  it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", () => {
+  it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", async () => {
     const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { commands: { pr2md: 'default-setup' } } } };
-    expect(() => generate({ commands: { pr2md: { placeholder: 'Mine' } }, features: [system('brain')] }, mid))
-      .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
+    await expect(generate({ commands: { pr2md: { placeholder: 'Mine' } }, features: [system('brain')] }, mid)).rejects.toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
   });
 });
 
 describe('generated registrations', () => {
   // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
-  it("carry the pack's appliers and DSL types, which their modules only export", () => {
-    const files = generate({
+  it("carry the pack's appliers and DSL types, which their modules only export", async () => {
+    const files = await generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
       boot: { content: { actions: 'src/content/actions' } },
       dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
@@ -228,8 +224,8 @@ describe('generated registrations', () => {
     }
   });
 
-  it('carry no appliers or DSL types for a pack without them', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+  it('carry no appliers or DSL types for a pack without them', async () => {
+    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [];');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
     expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
@@ -264,8 +260,8 @@ describe('generated step registrations', () => {
 
   // Three places, three subsets: the backend runs a step, a dependent pack validates flows with it, and the
   // editor draws it. None of them is a barrel somebody keeps in step with the other two.
-  it("send each facet where it is used: build and runtime to the backend, build alone to the module dependents load, fe to the frontend", () => {
-    const files = generate(stepPack());
+  it("send each facet where it is used: build and runtime to the backend, build alone to the module dependents load, fe to the frontend", async () => {
+    const files = await generate(stepPack());
 
     const be = files['src/__generated__/pack-entry.ts'];
     expect(be).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
@@ -288,8 +284,8 @@ describe('generated step registrations', () => {
 
   // The facet both halves read. While it was part of `fe`, the backend registration carried none of it, so
   // every node the app created was missing its label and its field defaults and nothing reported it.
-  it('send the node facet to both registrations', () => {
-    const files = generate(stepPack());
+  it('send the node facet to both registrations', async () => {
+    const files = await generate(stepPack());
 
     for (const entry of ['src/__generated__/pack-entry.ts', 'src/__generated__/pack-entry-fe.ts']) {
       expect(files[entry], entry).toContain("import { llmStepNode as __step_llm_node } from '../steps/llm/build.ts';");
@@ -300,23 +296,23 @@ describe('generated step registrations', () => {
 
   // The module is what a dependent pack's `apack pack build` loads, so the backend and it are generated from the
   // same entries rather than from two barrels that can name different facets
-  it('name the same build facet in the backend entry and the module dependents load', () => {
-    const files = generate(stepPack());
+  it('name the same build facet in the backend entry and the module dependents load', async () => {
+    const files = await generate(stepPack());
     for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/steps-build.ts']) {
       expect(files[file], file).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
       expect(files[file], file).toContain("import { cronTrigger as __step_cron_trigger } from '../steps/cron/build.ts';");
     }
   });
 
-  it('write no build module for a pack with no steps', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+  it('write no build module for a pack with no steps', async () => {
+    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
     expect(files).not.toHaveProperty(['src/__generated__/steps-build.ts']);
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('steps:');
   });
 
-  it("carry a runtime of flags alone for a step whose behaviour is one", () => {
+  it("carry a runtime of flags alone for a step whose behaviour is one", async () => {
     write('src/steps/sub/build.ts', 'export const subStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const subStepNode = { label: \'Subflow\' };\n');
-    const files = generate({ steps: { subflow: { node: 'src/steps/sub/build.ts#subStepNode', build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
+    const files = await generate({ steps: { subflow: { node: 'src/steps/sub/build.ts#subStepNode', build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
     expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', node: __step_subflow_node, build: __step_subflow_build, runtime: { spawnsSubflow: true } },");
   });
 
@@ -326,10 +322,10 @@ describe('generated step registrations', () => {
    * the flow stops first and the step's own COMPLETE reaches an actor that is gone — so the step reads as
    * still running. `default-setup/tests/extensions/steps/kill/step.spec.ts` is what fails when it regresses.
    */
-  it('import a sync handler with the entry rather than on first run', () => {
+  it('import a sync handler with the entry rather than on first run', async () => {
     write('src/steps/kill/build.ts', 'export const killStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const killStepNode = { label: \'Kill\' };\n');
     write('src/steps/kill/runtime.ts', 'export function handler() {}\n');
-    const files = generate({ steps: { kill: { node: 'src/steps/kill/build.ts#killStepNode', build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
+    const files = await generate({ steps: { kill: { node: 'src/steps/kill/build.ts#killStepNode', build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
     const be = files['src/__generated__/pack-entry.ts'];
 
     expect(be).toContain("import { handler as __step_kill_handler } from '../steps/kill/runtime.ts';");
@@ -337,10 +333,9 @@ describe('generated step registrations', () => {
     expect(be).not.toContain('await import');
   });
 
-  it('fail naming the step and the export for a facet the module does not export', () => {
+  it('fail naming the step and the export for a facet the module does not export', async () => {
     write('src/steps/llm/build.ts', 'export const other = {};\nexport const llmStepNode = { label: \'LLM\' };\n');
-    expect(() => generate({ steps: { llm: { node: 'src/steps/llm/build.ts#llmStepNode', build: 'src/steps/llm/build.ts#llmStepBuild' } } }))
-      .toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
+    await expect(generate({ steps: { llm: { node: 'src/steps/llm/build.ts#llmStepNode', build: 'src/steps/llm/build.ts#llmStepBuild' } } })).rejects.toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
   });
 
   /**
@@ -348,11 +343,11 @@ describe('generated step registrations', () => {
    * readers are `existsSync`-filtered — so a directory guessed wrong drops the step's node types out of the
    * pack's shapes and says nothing. These are the two ways it could be guessed wrong.
    */
-  it('refuse a step whose facets sit in different directories, naming the step and where they are', () => {
+  it('refuse a step whose facets sit in different directories, naming the step and where they are', async () => {
     write('src/steps/split/build.ts', 'export const splitStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const splitStepNode = { label: \'Split\' };\n');
     write('src/steps/elsewhere/fe.ts', 'export const splitStepFE = { nodeConfig: {} };\n');
 
-    expect(() => generate({
+    await expect(generate({
       steps: {
         split: {
           node: 'src/steps/split/build.ts#splitStepNode',
@@ -360,23 +355,22 @@ describe('generated step registrations', () => {
           fe: 'src/steps/elsewhere/fe.ts#splitStepFE',
         },
       },
-    })).toThrow(/Step "split" spreads its facets across directories \(build in src\/steps\/split, fe in src\/steps\/elsewhere\)/);
+    })).rejects.toThrow(/Step "split" spreads its facets across directories \(build in src\/steps\/split, fe in src\/steps\/elsewhere\)/);
   });
 
   // An assertion rather than a gate: the schema makes `node` required, so no validated manifest reaches
   // codegen with an entry naming nothing. Make `node` optional again and this is what fires.
-  it('refuse a step entry that names no facet at all, rather than reading the pack root', () => {
-    expect(() => generate({ steps: { ghost: {} } as never }))
-      .toThrow('Step "ghost" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has');
+  it('refuse a step entry that names no facet at all, rather than reading the pack root', async () => {
+    await expect(generate({ steps: { ghost: {} } as never })).rejects.toThrow('Step "ghost" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has');
   });
 });
 
 describe('generated artifact registrations', () => {
   // Both of an artifact's facets are frontend ones, so the backend entry carries the type alone — which is
   // what keeps the icon set out of a backend bundle
-  it("name each artifact's icon and viewer in the frontend entry, and nothing but its type in the backend", () => {
+  it("name each artifact's icon and viewer in the frontend entry, and nothing but its type in the backend", async () => {
     write('src/artifacts/todo.vue', '<template><div /></template>\n');
-    const files = generate({
+    const files = await generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
       artifacts: {
         todo: { icon: 'ListTodo', fe: 'src/artifacts/todo.vue' },
@@ -396,31 +390,30 @@ describe('generated artifact registrations', () => {
   });
 
   // Two artifacts on one icon is ordinary — default-setup's `text` and `json` share FileText
-  it('import each named icon once however many artifacts name it', () => {
-    const files = generate({ artifacts: { text: { icon: 'FileText' }, json: { icon: 'FileText' } } });
+  it('import each named icon once however many artifacts name it', async () => {
+    const files = await generate({ artifacts: { text: { icon: 'FileText' }, json: { icon: 'FileText' } } });
     expect(files['src/__generated__/pack-entry-fe.ts'].match(/from 'lucide-vue-next'/g)).toHaveLength(1);
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { FileText } from 'lucide-vue-next';");
   });
 
-  it('carry no artifacts for a pack that declares none', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+  it('carry no artifacts for a pack that declares none', async () => {
+    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('artifacts:');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('artifacts:');
   });
 
-  it('fail naming the artifact and the file for a viewer path naming nothing', () => {
-    expect(() => generate({ artifacts: { todo: { icon: 'ListTodo', fe: 'src/artifacts/missing.vue' } } }))
-      .toThrow('Artifact "todo": fe: no file at src/artifacts/missing.vue');
+  it('fail naming the artifact and the file for a viewer path naming nothing', async () => {
+    await expect(generate({ artifacts: { todo: { icon: 'ListTodo', fe: 'src/artifacts/missing.vue' } } })).rejects.toThrow('Artifact "todo": fe: no file at src/artifacts/missing.vue');
   });
 });
 
 describe('generated block registrations', () => {
   // The type is the manifest key and the kind is data, so neither half imports a barrel to learn them: the
   // backend entry carries the facet a backend process can run and the frontend entry the component
-  it('split each declared block by facet: the backend facet into the backend entry, the component into the frontend', () => {
+  it('split each declared block by facet: the backend facet into the backend entry, the component into the frontend', async () => {
     write('src/blocks/aside.ts', 'export const asideFacet = { generateAsideText: () => null };\n');
     write('src/blocks/Rating.vue', '<template><div /></template>\n');
-    const files = generate({
+    const files = await generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
       blocks: {
         rating: { fe: 'src/blocks/Rating.vue' },
@@ -439,20 +432,18 @@ describe('generated block registrations', () => {
     expect(fe).not.toContain('asideFacet');
   });
 
-  it('carry no blocks for a pack that declares none', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+  it('carry no blocks for a pack that declares none', async () => {
+    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('blocks:');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('blocks:');
   });
 
-  it('fail naming the block and the file for a component path naming nothing', () => {
-    expect(() => generate({ blocks: { rating: { fe: 'src/blocks/Missing.vue' } } }))
-      .toThrow('Block "rating": fe: no file at src/blocks/Missing.vue');
+  it('fail naming the block and the file for a component path naming nothing', async () => {
+    await expect(generate({ blocks: { rating: { fe: 'src/blocks/Missing.vue' } } })).rejects.toThrow('Block "rating": fe: no file at src/blocks/Missing.vue');
   });
 
-  it("fail naming the block and the export for a backend facet the module doesn't export", () => {
+  it("fail naming the block and the export for a backend facet the module doesn't export", async () => {
     write('src/blocks/aside.ts', 'export const asideFacet = {};\n');
-    expect(() => generate({ blocks: { rating: { be: 'src/blocks/aside.ts#missing' } } }))
-      .toThrow('Block "rating": be: src/blocks/aside.ts doesn\'t export "missing"');
+    await expect(generate({ blocks: { rating: { be: 'src/blocks/aside.ts#missing' } } })).rejects.toThrow('Block "rating": be: src/blocks/aside.ts doesn\'t export "missing"');
   });
 });

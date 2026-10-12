@@ -16,7 +16,7 @@ describe('generated trigger track builders', () => {
    * out of the module the entry names — not out of whatever file in the step's folder happens to mention
    * one. The folder here holds a second module that does, which is what says which of the two was read.
    */
-  it("read trackField from the module the entry names, not from another file beside it", () => {
+  it("read trackField from the module the entry names, not from another file beside it", async () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'track-helpers-'));
     const stepDir = path.join(tmp, 'src', 'extensions', 'steps', 'tick');
     fs.mkdirSync(stepDir, { recursive: true });
@@ -27,7 +27,7 @@ describe('generated trigger track builders', () => {
       extensions: { steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } } },
     } as unknown as PackManifest;
 
-    const files = generatePackFiles(manifest, { packRoot: tmp });
+    const files = await generatePackFiles(manifest, { packRoot: tmp });
     const helpers = Object.entries(files).find(([file]) => file.endsWith('flow-helpers.ts'))?.[1] ?? '';
 
     expect(helpers).toMatch(/export function every\(every: string/);

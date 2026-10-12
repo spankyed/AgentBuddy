@@ -59,7 +59,7 @@ async function gate(declaration: 'bare' | 'annotation'): Promise<{ problems: str
     fs.writeFileSync(path.join(dir, rel), content);
   }
   if (!fs.existsSync(path.join(dir, 'node_modules'))) fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
-  for (const [rel, content] of Object.entries(generatePackFiles(MANIFEST, { packRoot: dir }))) {
+  for (const [rel, content] of Object.entries(await generatePackFiles(MANIFEST, { packRoot: dir }))) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content);
   }

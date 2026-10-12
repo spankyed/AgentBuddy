@@ -1,3 +1,4 @@
+import * as sdkBuild from '@apackdev/sdk/build';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
@@ -187,6 +188,31 @@ describe('apack pack generate-entries', () => {
  */
 describe('the inputs stamp', () => {
   const generated = (name: string) => path.join(tmpDir, 'src', '__generated__', name);
+
+  it('holds its lock until async generation settles and preserves files and stamp after rejection', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
+    await generateEntries([], tmpDir);
+    const output = fs.readFileSync(generated('settings.ts'), 'utf8');
+    const stamp = fs.readFileSync(generated('.inputs-hash'), 'utf8');
+    let refuse!: (error: Error) => void;
+    const pending = new Promise<Record<string, string>>((_, reject) => { refuse = reject; });
+    const spy = vi.spyOn(sdkBuild, 'generatePackFiles').mockReturnValueOnce(pending);
+    try {
+      const result = expect(generateEntries(['--force'], tmpDir)).rejects.toThrow('type generation failed');
+      await vi.waitFor(() => expect(fs.existsSync(generated('.generating.lock'))).toBe(true));
+      expect(fs.readFileSync(generated('.inputs-hash'), 'utf8')).toBe(stamp);
+      refuse(new Error('type generation failed'));
+      await result;
+      expect(fs.existsSync(generated('.generating.lock'))).toBe(false);
+      expect(fs.readFileSync(generated('settings.ts'), 'utf8')).toBe(output);
+      expect(fs.readFileSync(generated('.inputs-hash'), 'utf8')).toBe(stamp);
+    } finally {
+      spy.mockRestore();
+    }
+    await generateEntries(['--force'], tmpDir);
+    expect(fs.existsSync(generated('.generating.lock'))).toBe(false);
+  });
+
 
   it('rechecks changed module exports outside src without forcing codegen', async () => {
     writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', extensions: { services: { service: 'modules/service.ts#service' } } });

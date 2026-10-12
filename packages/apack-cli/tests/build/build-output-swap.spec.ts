@@ -59,7 +59,7 @@ describe('a build that fails', () => {
     packFixture({ at: root, manifest: { id: 'stale-codegen', name: 'Before', features: {} } });
     const manifestFile = path.join(root, 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-    for (const [file, source] of Object.entries(generatePackFiles(manifest, { packRoot: root }))) {
+    for (const [file, source] of Object.entries(await generatePackFiles(manifest, { packRoot: root }))) {
       const target = path.join(root, file);
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, source);

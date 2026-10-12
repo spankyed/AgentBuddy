@@ -123,7 +123,7 @@ export async function generateEntries(
     ),
   });
   try {
-    writeGenerated(root, outDir, hashPath, currentHash, manifest, depTypes, depSnapshots);
+    await writeGenerated(root, outDir, hashPath, currentHash, manifest, depTypes, depSnapshots);
   } finally {
     lock.release();
   }
@@ -132,7 +132,7 @@ export async function generateEntries(
 /** The lock file, inside the directory it guards, so it travels with the output it protects */
 const GENERATE_LOCK = '.generating.lock';
 
-function writeGenerated(
+async function writeGenerated(
   root: string,
   outDir: string,
   hashPath: string,
@@ -141,7 +141,7 @@ function writeGenerated(
   depTypes: Map<string, PackTypeManifest> | undefined,
   depSnapshots: Map<string, PackSnapshot>,
 ) {
-  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
+  const files = await generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 
   // Dependencies' facade types are rewritten from their snapshots each time
   fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });
