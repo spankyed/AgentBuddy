@@ -20,7 +20,7 @@ export interface PromptsConnectedData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type PromptsSettings = typeof import('../settings.ts').default.defaults;
+export type PromptsSettings = import('#generated/settings.ts').SettingsOf<'prompts'>;
 
 export type IncomingPromptEvents =
   | { type: 'PROMPT_SELECT'; promptId: string }

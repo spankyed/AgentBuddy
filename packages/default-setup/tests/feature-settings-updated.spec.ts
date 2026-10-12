@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // Every feature, any pack's, hears when its settings change: its system (with what changed in its lists) and its
 // plugin get FEATURE_SETTINGS_UPDATED, which the SDK declares for every system and plugin, whatever changed the
 // settings. A feature with no system, or no plugin, just doesn't get that half.
@@ -21,9 +20,9 @@ beforeEach(() => {
   registerPack({
     id: 'memo-pack',
     features: {
-      memos: { system: { machine: recorder, receives: [] }, plugin: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: z.record(z.unknown()) } },
+      memos: { system: { machine: recorder, receives: [] }, plugin: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: { type: 'object' } } },
       // Settings but no system: only its plugin hears
-      board: { plugin: { receives: [] }, settings: { defaults: { columns: 2 }, schema: z.record(z.unknown()) } },
+      board: { plugin: { receives: [] }, settings: { defaults: { columns: 2 }, schema: { type: 'object' } } },
     },
   });
 });

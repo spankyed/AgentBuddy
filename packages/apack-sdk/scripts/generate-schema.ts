@@ -15,6 +15,8 @@ const properties = (jsonSchema as { properties: Record<string, Record<string, un
 const extensions = properties.extensions.properties as Record<string, Record<string, unknown>>;
 const settingsDefinition = extensions.settings.additionalProperties as { properties: { schema: Record<string, unknown> } };
 Object.assign(settingsDefinition.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
+const feature = properties.features.additionalProperties as { properties: { settings: typeof settingsDefinition } };
+Object.assign(feature.properties.settings.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
 for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_REL_KINDS]] as const) {
   Object.assign(properties[field], {
     propertyNames: { not: { enum: Object.keys(reserved) } },

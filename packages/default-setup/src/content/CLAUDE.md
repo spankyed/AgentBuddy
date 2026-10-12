@@ -24,7 +24,7 @@ Content sources `apack pack build` compiles to JSON, as `apack.json` `content.fo
 
 ## Settings
 
-Each feature has a `settings.ts` (`src/features/<name>/settings.ts`, `features[].settings` in `apack.json`) that declares its slice of the default settings; the pack registry holds it under the plugin's address (`default-setup.<name>`), as it does every pack's.
+Each feature declares JSON Schema and explicit defaults in `apack.json` under `features.<id>.settings`. The registry keeps values under `<packId>/<featureId>`; navigation defaults live in `features.<id>.plugin.defaultVisible`.
 
 **Settings are not written, and the app's base defaults are not a content source.** `src/content/default-settings.ts` is this pack's own source, and `src/app-settings/index.ts` imports it — `getBaseSettings`, which refuses a base file that sets a plugin's slice (`assertNoPluginSlice`). Nothing about settings reaches the database through writing: the row holds only what the user changed, and the store composes these defaults underneath it from the registration. Forgetting those changes is a targeted reset in the app's Settings view (`RESET_SETTINGS` naming a feature's ref or a section's name), which is where a destructive action belongs rather than behind an import dialog.
 
@@ -47,7 +47,7 @@ export default {
 
 - `visible` controls whether the plugin's sidebar tab is shown by default; what the user shows or hides is the host's state (`AppState`), not settings
 - Feature-specific defaults (hotkeys, modes, display preferences) go under the feature id key; the registry stores them under the plugin's address
-- Features with no settings beyond visibility still need the file (e.g., `settings/settings.ts` just sets `visibility: { settings: true }`)
+- Features with only navigation visibility declare `plugin.defaultVisible`; they need no settings definition.
 
 ## Notes
 

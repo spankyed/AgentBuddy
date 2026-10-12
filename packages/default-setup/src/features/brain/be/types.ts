@@ -93,7 +93,7 @@ export interface EventReceived {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type BrainSettings = typeof import('../settings.ts').default.defaults;
+export type BrainSettings = import('#generated/settings.ts').SettingsOf<'brain'>;
 
 export type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }

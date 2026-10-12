@@ -45,7 +45,7 @@ export interface SavedBookmark {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type BrowserSettings = typeof import('../settings.ts').default.defaults;
+export type BrowserSettings = import('#generated/settings.ts').SettingsOf<'browser'>;
 
 export type IncomingBrowserEvents =
   | { type: 'SYNC_TABS'; tabs: SavedTab[] }

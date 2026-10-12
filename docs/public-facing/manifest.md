@@ -88,7 +88,10 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
   "features": {
     "bookmarks": {
       "designation": "bookmarks",
-      "settings": "src/features/bookmarks/settings.ts",
+      "settings": {
+        "schema": { "type": "object", "additionalProperties": false },
+        "defaults": {}
+      },
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },
@@ -125,27 +128,42 @@ A feature can have just a system (backend-only), just a plugin (frontend-only), 
 
 ### Feature settings
 
-The `settings` module default-exports a feature's schema and sidebar visibility. `defineFeatureSettings` derives defaults and the settings type from the schema:
+A feature declares effective-value validation and explicit defaults as JSON data. Codegen derives its TypeScript value type from the schema:
 
-```typescript
-// src/features/bookmarks/settings.ts
-import { z } from 'zod';
-import { defineFeatureSettings } from '@apackdev/sdk/framework';
-
-const settings = defineFeatureSettings({
-  visible: true,
-  schema: z.object({
-    syncInterval: z.number().int().positive().default(300),
-  }).strict(),
-});
-
-export default settings;
-export type BookmarkSettings = typeof settings.defaults;
+```json
+{
+  "features": {
+    "bookmarks": {
+      "settings": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "syncInterval": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "syncInterval"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "syncInterval": 300
+        }
+      },
+      "plugin": {
+        "entry": "src/features/bookmarks/fe/plugin.ts",
+        "defaultVisible": true
+      }
+    }
+  }
+}
 ```
 
-The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use synchronous schemas for validation, without coercions or transforms: parsed values are not substituted for user input.
+The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use JSON Schema draft-07 for validation; values are never coerced, transformed or populated from schema annotations. References stay within the value schema.
 
-A declaration may contain only `schema`, `defaults` and `visible`. Defaults must pass the schema before the pack builds or registers. `{ visible: false }` is sufficient for a feature with no configurable settings. Unchanged legacy values remain available for migrations and can be removed or corrected. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
+Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Unchanged legacy values remain available for migrations and can be removed or corrected. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
 ## Steps
 
@@ -439,7 +457,6 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 
 ```json
 {
-  "id": "bookmarks",
   "name": "Bookmarks",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
@@ -455,7 +472,10 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 
   "features": {
     "bookmarks": {
-      "settings": "src/features/bookmarks/settings.ts",
+      "settings": {
+        "schema": { "type": "object", "additionalProperties": false },
+        "defaults": {}
+      },
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },

@@ -443,7 +443,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       undo(() => help.unregister(reg.id));
       help.register(reg.id, reg.help, reg.name);
       undo(() => settingsDefaults.unregister(reg.id));
-      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })), reg.settingsSections);
+      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings, plugin: feature.plugin })), reg.settingsSections);
     },
   ];
 

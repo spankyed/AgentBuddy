@@ -17,7 +17,7 @@ export interface Category {
   color: string; // Hex color value
 }
 
-export type ActionsSettings = typeof import('../settings.ts').default.defaults;
+export type ActionsSettings = import('#generated/settings.ts').SettingsOf<'actions'>;
 
 export type IncomingActionEvents =
   | { type: 'ACTION_SELECT'; actionId: string }

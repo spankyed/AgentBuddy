@@ -80,7 +80,7 @@ describe('parseManifest', () => {
   // two features with one id used to collapse last-wins across five generated modules, silently
   it('cannot be given one feature id twice', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const parsed = JSON.parse('{"notes": {"settings": "a.ts"}, "notes": {"settings": "b.ts"}}');
+    const parsed = JSON.parse('{"notes": {"settings": {"schema": {"type": "object"}, "defaults": {}}}, "notes": {"settings": {"schema": {"type": "object"}, "defaults": {}}}}');
     expect(Object.keys(parsed)).toEqual(['notes']);
     expect(messagesOf(parseManifest({ ...pack, features: parsed }))).toEqual([]);
   });

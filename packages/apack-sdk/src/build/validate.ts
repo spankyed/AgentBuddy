@@ -49,7 +49,7 @@ export function validateManifest(manifestPath: string): PackValidation {
 }
 
 /**
- * Checks a manifest's `features[]` against the pack on disk: each feature's `settings`, `system.entry`
+ * Checks a manifest's features against the pack on disk: each feature's `settings.form`, `system.entry`
  * and `plugin.entry` file exists, and no two features claim the same designation.
  *
  * A designation is a role, not a name, so it need not match the feature id: the registries map the role
@@ -63,7 +63,7 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
   const designatedBy = new Map<string, string>();
   for (const feature of packFeatures(manifest)) {
     const files: [string, string | undefined][] = [
-      ['settings', feature.settings],
+      ['settings.form', feature.settings?.form],
       ['system.entry', feature.system?.entry],
       ['plugin.entry', feature.plugin?.entry],
       // Written without its extension, as codegen reads it. A typo here costs the feature its types in

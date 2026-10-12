@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@apackdev/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
@@ -212,13 +211,13 @@ describe('registerPack entities', () => {
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { settings: { visible: false, defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } };
+  const memos = { plugin: { receives: [], defaultVisible: false }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };
-    const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } };
+    const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
-      .toThrow('Feature "memos" settings');
+      .toThrow('invalid feature settings for "memos"');
     expect(getPackExtensions('bad-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
     expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
@@ -276,7 +275,7 @@ describe('registerPack commands', () => {
   });
 
   it("rolls its commands back when a later part of the registration is refused", () => {
-    const invalid = { settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } };
+    const invalid = { settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
 
     expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
 

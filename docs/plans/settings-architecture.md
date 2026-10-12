@@ -478,6 +478,30 @@ populate the catalog; host preference extraction, feature declaration conversion
 trusted caller binding, access enforcement, form bindings and stored-data migration remain required.
 Do not switch the writer until those contracts and staging/source freshness checks are in place.
 
+### Implemented feature declarations
+
+All 11 shipped feature schemas now declare JSON Schema and explicit defaults directly in `apack.json`.
+The conversion audit compared 844 probes against the previous effective-value schemas, covering defaults,
+required and optional fields, nested strict objects, records, arrays, enums, nullability and numeric bounds.
+No transforms or refinements needed a domain replacement. Default wrappers were removed from the audit's
+output schemas; merging the explicit baseline remains the settings store's responsibility. No conversion
+adapter or executable feature-settings authoring API remains.
+
+Feature navigation defaults now live in `plugin.defaultVisible`; a plugin with no configurable values
+needs no settings declaration. This is distinct from `plugin.default`, which claims startup selection.
+Generated feature values use the maintained schema compiler, isolated per feature, and backend registrations
+embed declaration data. The registry compiles validators once on registration; the shared writer preserves
+unchanged invalid values after a declaration change but refuses new invalid values, including explicit
+undefined writes to optional fields. Generated setter value types exclude undefined.
+Validators own a copy of the schema, including large enum arrays retained by Ajv. Generated registrations
+decode JSON data rather than emitting object literals, preserving own `__proto__` fields. Mutation checks
+cover both protections and the refusal of non-JSON writes.
+
+The common catalog now projects feature definitions by qualified ref, including disabled packs, without
+loading their runtime. Its production wiring, host app extraction, pack group handles, trusted caller
+policies, forms and stored-document migration remain unfinished. Current registration-driven defaults are
+still transitional; discovery metadata does not imply an activated actor or a bound custom form.
+
 ## Delivery sequence
 
 These steps implement the shared-foundation and settings checkpoints in

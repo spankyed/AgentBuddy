@@ -68,18 +68,30 @@ describe('generated entity shapes', () => {
 });
 
 describe('generated feature settings', () => {
-  it("passes each feature's settings module to its registration, which registers them as defaults", async () => {
-    write('src/features/memos/settings.ts', 'export default { visible: true };\n');
-    const entry = (await generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] }))['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("import __settings_Memos from '../features/memos/settings.ts';");
-    expect(entry).toContain("    'memos': {\n      system: packSystem(__system_memos),\n      services: [],\n      settings: __settings_Memos,\n    }");
+  it('embeds declarative defaults without importing or executing a settings module', async () => {
+    const settings = { schema: { type: 'object', properties: { sort: { type: 'string' } }, required: ['sort'] }, defaults: { sort: 'newest' } };
+    const entry = (await generate({ features: [{ ...system('memos'), settings }, system('todos')] }))['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain(`settings: JSON.parse(${JSON.stringify(JSON.stringify(settings))})`);
+    expect(entry).not.toContain('import __settings');
     expect(entry).toContain("    'todos': {\n      system: packSystem(__system_todos),\n      services: [],\n    }");
   });
 
-  it('fails on a settings module that is missing or has no default export', async () => {
-    await expect(generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] })).rejects.toThrow('Feature "memos": no settings file found at src/settings.ts');
-    write('src/settings.ts', 'export const settings = {};\n');
-    await expect(generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] })).rejects.toThrow('Feature "memos": settings src/settings.ts has no default export');
+  it('preserves ordinary JSON prototype-named keys in emitted registrations', async () => {
+    const declaration = { schema: { type: 'object' }, defaults: JSON.parse('{"__proto__":{"enabled":true}}') };
+    const entry = (await generate({ features: [{ id: 'memos', settings: declaration }] }))['src/__generated__/pack-entry.ts'];
+    const expression = entry.split('\n').find(line => line.trim().startsWith('settings:'))!;
+    const encoded = expression.match(/settings: JSON.parse\((.*)\),$/)![1];
+    const emitted = JSON.parse(JSON.parse(encoded));
+    expect(emitted).toEqual(declaration);
+    expect(Object.hasOwn(emitted.defaults, '__proto__')).toBe(true);
+    expect(Object.getPrototypeOf(emitted.defaults)).toBe(Object.prototype);
+  });
+
+  it('refuses invalid effective defaults through the common schema compiler', async () => {
+    await expect(generate({ features: [{ ...system('memos'), settings: {
+      schema: { type: 'object', properties: { count: { type: 'number' } }, required: ['count'] },
+      defaults: { count: 'wrong' },
+    } }] })).rejects.toThrow('Invalid settings defaults');
   });
 });
 

@@ -348,7 +348,6 @@ function toPascalCase(id: string): string {
 
 // Local bindings for a feature's default exports start with `__`, which a feature id can't, so they don't
 // collide with generated names (`specs`, `ref`, `<feature>Entry`).
-const settingsBinding = (id: string) => `__settings_${toPascalCase(id)}`;
 const systemBinding = (id: string) => `__system_${id}`;
 const pluginBinding = (id: string) => `__plugin_${id}`;
 
@@ -495,7 +494,6 @@ export async function generatePackFiles(
     const sources = [
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
-      ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
       // Named as a module rather than a `path#export`, but its export name is a convention codegen checks,
       // so it has to be in the program for `exportOf` to see it
       ...(manifest.extensions?.fe?.tiptapPlugins ? [manifest.extensions.fe.tiptapPlugins] : []),
@@ -856,14 +854,6 @@ ${items.join('\n')}
     return { source, exportName };
   }
 
-  /** A feature's settings module, imported by its default export */
-  function settingsSource(feature: PackFeature): string {
-    const label = `Feature "${feature.id}"`;
-    const file = sourceFileOf(feature.settings!);
-    if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
-    if (!exportOf(file, 'default')?.value) throw new Error(`${label}: settings ${feature.settings} has no default export of the settings object`);
-    return feature.settings!;
-  }
 
   function typesEntry(feature: PackFeature): string {
     return feature.typesEntry ?? `src/features/${feature.id}/be/types`;
@@ -940,16 +930,12 @@ ${items.join('\n')}
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
+      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}]${f.plugin.defaultVisible !== undefined ? `, defaultVisible: ${f.plugin.defaultVisible}` : ''} }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
-      if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
+      // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
+      if (f.settings) parts.push(`      settings: JSON.parse(${JSON.stringify(JSON.stringify(f.settings))})`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
-
-    const settingsImports = features
-      .filter(f => f.settings)
-      .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, settingsSource(f))}';`)
-      .join('\n');
 
     const hooksImport = manifest.boot?.hooks
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
@@ -960,7 +946,7 @@ ${items.join('\n')}
     const artifacts = artifactDefinitions();
     const steps = stepDefinitionsFor('backend');
     const migrations = migrationEntries();
-    // The pack's settings sections: a function returning them, called the first time the defaults are read
+    // App preference sections returned while the host registers the pack's defaults.
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
       : undefined;
@@ -989,7 +975,6 @@ ${systemImports}
 import { featureServices } from './services.ts';
 ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
-${settingsImports}
 ${migrations.imports.join('\n')}
 ${steps.imports.join('\n')}
 ${blocks.imports.join('\n')}
@@ -1175,28 +1160,26 @@ export const {
     const groupTypes = await Promise.all(groups.map(async ([name, definition]) =>
       `declare namespace __PackSettings_${toPascalCase(name)} {\n${await generateSettingsTypes(definition, 'Value')}\n}`));
     const features = packFeatures(manifest).filter(f => f.settings);
-    const imports = features.map((f, i) => `import type declaration${i} from '${toImportPath(root, f.settings!)}';`);
-    const entries = features.map((f, i) => `  '${f.id}': FeatureSettingsValue<typeof declaration${i}>;`);
+    const featureTypes = await Promise.all(features.map(async f =>
+      `declare namespace __FeatureSettings_${toPascalCase(f.id)} {\n${await generateSettingsTypes(f.settings!, 'Value')}\n}`));
+    const entries = features.map(f => `  '${f.id}': __FeatureSettings_${toPascalCase(f.id)}.Value;`);
     const deps = depTypeImports('PackFeatureSettings');
     const qualified = depIds.map(id => `{ [K in keyof ${depAlias(id, 'PackFeatureSettings')} & string as \`${id}/\${K}\`]: ${depAlias(id, 'PackFeatureSettings')}[K] }`);
     return `${HEADER}
-import type { ${features.length ? 'FeatureSettingsValue, ' : ''}FeatureSettingUpdate } from '@apackdev/sdk/types';
+import type { FeatureSettingUpdate } from '@apackdev/sdk/types';
 import { _featureSettings, services } from '@apackdev/sdk/services';
 import { ref } from './ref.ts';
-${imports.join('\n')}
 ${deps.imports}
 
 ${groupTypes.join('\n')}
+${featureTypes.join('\n')}
 /** Local pack preference groups, inferred from schemas rather than default literals. */
 export type PackGroupSettings = {
 ${groups.map(([name]) => `  '${name}': __PackSettings_${toPascalCase(name)}.Value;`).join('\n')}
 };
 
-type Declarations = {
-${entries.join('\n')}
-};
 export type PackFeatureSettings = {
-  [K in keyof Declarations as Declarations[K] extends never ? never : K]: Declarations[K];
+${entries.join('\n')}
 };
 type AvailableSettings = PackFeatureSettings${qualified.map(t => ` & ${t}`).join('')};
 export type SettingsName = keyof AvailableSettings & string;

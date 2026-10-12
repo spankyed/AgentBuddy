@@ -8,9 +8,16 @@
   "relKinds": {},
   "features": {
     "scribbles": {
-      "settings": "src/features/scribbles/settings.ts",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "defaults": {}
+      },
       "plugin": {
-        "entry": "src/features/scribbles/fe/plugin.ts"
+        "entry": "src/features/scribbles/fe/plugin.ts",
+        "defaultVisible": true
       },
       "services": {}
     }

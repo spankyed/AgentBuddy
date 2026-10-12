@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // Registries are instances: two in one process hold their own packs, and the SDK's lookups read the bound one.
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
@@ -20,7 +19,7 @@ const pack = (id: string, role: string, step: string, service: string, featureId
       designation: role,
       system: { machine: {} as never, receives: [] },
       plugin: { receives: [] },
-      settings: { defaults: { from: id }, schema: z.record(z.unknown()) },
+      settings: { defaults: { from: id }, schema: { type: 'object' } },
     },
   },
 });

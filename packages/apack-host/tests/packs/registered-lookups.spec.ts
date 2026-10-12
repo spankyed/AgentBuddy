@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
 import * as fs from 'node:fs';
@@ -308,7 +307,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: z.record(z.unknown()) } } },
+      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
     // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
@@ -320,7 +319,7 @@ describe('a pack whose registration is refused', () => {
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } },
+      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
     })).toThrow('Command collision');
 
     // Nothing of the refused pack survives
@@ -355,8 +354,8 @@ describe('a pack whose registration is refused', () => {
 });
 
 describe('feature settings defaults', () => {
-  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } };
-  const cards = { plugin: { receives: [] }, settings: { visible: false } };
+  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
+  const cards = { plugin: { receives: [], defaultVisible: false } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();

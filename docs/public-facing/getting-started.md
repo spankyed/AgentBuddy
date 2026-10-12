@@ -49,7 +49,7 @@ my-pack/
   src/
     env.d.ts
     features/
-      notes/                # added by `apack pack add feature notes`: settings.ts, be/, fe/
+      notes/                # added by `apack pack add feature notes`: be/, fe/ and inline settings
     extensions/             # added by `apack pack add step|artifact|block`: one directory each,
                             # declared in apack.json's `extensions` — there is no barrel
     content/

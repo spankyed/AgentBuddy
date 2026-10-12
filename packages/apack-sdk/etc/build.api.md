@@ -468,7 +468,35 @@ export const FEATURE_ID_PATTERN: RegExp;
 // @public (undocumented)
 export const FeatureEntrySchema: z.ZodObject<{
     designation: z.ZodOptional<z.ZodString>;
-    settings: z.ZodOptional<z.ZodString>;
+    settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+        schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        title: z.ZodOptional<z.ZodString>;
+        description: z.ZodOptional<z.ZodString>;
+        form: z.ZodOptional<z.ZodString>;
+        access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
+    }, "strict", z.ZodTypeAny, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }>, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }, unknown>>;
     typesEntry: z.ZodOptional<z.ZodString>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
@@ -494,6 +522,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
+        defaultVisible: z.ZodOptional<z.ZodBoolean>;
         entry: z.ZodString;
         contract: z.ZodOptional<z.ZodString>;
         default: z.ZodOptional<z.ZodBoolean>;
@@ -501,10 +530,12 @@ export const FeatureEntrySchema: z.ZodObject<{
         entry: string;
         default?: boolean | undefined;
         contract?: string | undefined;
+        defaultVisible?: boolean | undefined;
     }, {
         entry: string;
         default?: boolean | undefined;
         contract?: string | undefined;
+        defaultVisible?: boolean | undefined;
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -512,7 +543,14 @@ export const FeatureEntrySchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
-    settings?: string | undefined;
+    settings?: {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    } | undefined;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -525,13 +563,14 @@ export const FeatureEntrySchema: z.ZodObject<{
         entry: string;
         default?: boolean | undefined;
         contract?: string | undefined;
+        defaultVisible?: boolean | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
 }, {
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
-    settings?: string | undefined;
+    settings?: unknown;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -544,6 +583,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         entry: string;
         default?: boolean | undefined;
         contract?: string | undefined;
+        defaultVisible?: boolean | undefined;
     } | undefined;
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
@@ -627,7 +667,35 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }>>>;
     features: z.ZodOptional<z.ZodRecord<z.ZodEffects<z.ZodString, string, string>, z.ZodObject<{
         designation: z.ZodOptional<z.ZodString>;
-        settings: z.ZodOptional<z.ZodString>;
+        settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+            schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+            defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+            title: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            form: z.ZodOptional<z.ZodString>;
+            access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
+        }, "strict", z.ZodTypeAny, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }>, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }, unknown>>;
         typesEntry: z.ZodOptional<z.ZodString>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
@@ -653,6 +721,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
+            defaultVisible: z.ZodOptional<z.ZodBoolean>;
             entry: z.ZodString;
             contract: z.ZodOptional<z.ZodString>;
             default: z.ZodOptional<z.ZodBoolean>;
@@ -660,10 +729,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             entry: string;
             default?: boolean | undefined;
             contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
         }, {
             entry: string;
             default?: boolean | undefined;
             contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -671,7 +742,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }, "strict", z.ZodTypeAny, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
-        settings?: string | undefined;
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -684,13 +762,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             entry: string;
             default?: boolean | undefined;
             contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
-        settings?: string | undefined;
+        settings?: unknown;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -703,6 +782,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             entry: string;
             default?: boolean | undefined;
             contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
@@ -716,25 +796,25 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             form: z.ZodOptional<z.ZodString>;
             access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
         }, "strict", z.ZodTypeAny, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }>, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }, unknown>>>;
         help: z.ZodOptional<z.ZodObject<{
@@ -962,11 +1042,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             inline?: string[] | undefined;
         }> | undefined;
         settings?: Record<string, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
@@ -1304,28 +1384,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
-    dependencies?: Record<string, string> | undefined;
-    features?: Record<string, {
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: string | undefined;
-        typesEntry?: string | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-        references?: string | undefined;
-    }> | undefined;
     description?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
     build?: {
@@ -1342,6 +1402,34 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
+    }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
         fe?: {
@@ -1356,11 +1444,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             inline?: string[] | undefined;
         }> | undefined;
         settings?: Record<string, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
@@ -1445,28 +1533,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
-    dependencies?: Record<string, string> | undefined;
-    features?: Record<string, {
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: string | undefined;
-        typesEntry?: string | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-        references?: string | undefined;
-    }> | undefined;
     description?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
     build?: {
@@ -1482,6 +1550,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     entityShapes?: Record<string, {
         type: string;
         source: string;
+    }> | undefined;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: unknown;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1579,28 +1668,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
-    dependencies?: Record<string, string> | undefined;
-    features?: Record<string, {
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: string | undefined;
-        typesEntry?: string | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-        references?: string | undefined;
-    }> | undefined;
     description?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
     build?: {
@@ -1617,6 +1686,34 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
+    }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
         fe?: {
@@ -1631,11 +1728,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             inline?: string[] | undefined;
         }> | undefined;
         settings?: Record<string, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
@@ -1720,28 +1817,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
-    dependencies?: Record<string, string> | undefined;
-    features?: Record<string, {
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: string | undefined;
-        typesEntry?: string | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-        references?: string | undefined;
-    }> | undefined;
     description?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
     build?: {
@@ -1757,6 +1834,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     entityShapes?: Record<string, {
         type: string;
         source: string;
+    }> | undefined;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: unknown;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1854,28 +1952,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
-    dependencies?: Record<string, string> | undefined;
-    features?: Record<string, {
-        services?: Record<string, string> | undefined;
-        designation?: string | undefined;
-        settings?: string | undefined;
-        typesEntry?: string | undefined;
-        system?: {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
-        repositories?: Record<string, string> | undefined;
-        references?: string | undefined;
-    }> | undefined;
     description?: string | undefined;
+    dependencies?: Record<string, string> | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
     build?: {
@@ -1892,6 +1970,34 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
+    features?: Record<string, {
+        services?: Record<string, string> | undefined;
+        designation?: string | undefined;
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
+        typesEntry?: string | undefined;
+        system?: {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+            contract?: string | undefined;
+            defaultVisible?: boolean | undefined;
+        } | undefined;
+        repositories?: Record<string, string> | undefined;
+        references?: string | undefined;
+    }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
         fe?: {
@@ -1906,11 +2012,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             inline?: string[] | undefined;
         }> | undefined;
         settings?: Record<string, {
-            defaults: Record<string, unknown>;
             schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
             form?: string | undefined;
-            description?: string | undefined;
             title?: string | undefined;
+            description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {

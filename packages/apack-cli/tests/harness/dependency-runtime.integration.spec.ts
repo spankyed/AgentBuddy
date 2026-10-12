@@ -42,7 +42,6 @@ function dependentPack(spec: string): string {
 import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
   write(root, 'tests/setup.ts', `
-import { z } from 'zod';
 import { setupPackTests } from '@apackdev/testing/harness';
 import { memos } from './memos-system';
 await setupPackTests({
@@ -53,7 +52,7 @@ await setupPackTests({
       // A hand-written registration declares what its plugin receives, as a generated one does: the bus
       // drops a send to a plugin nothing declares
       memos: { system: { machine: memos, receives: ['SAVE', 'NOTIFY'] }, plugin: { receives: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] } },
-      widgets: { settings: { defaults: { size: 3 }, schema: z.record(z.unknown()) } },
+      widgets: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } },
     },
   },
 });`);

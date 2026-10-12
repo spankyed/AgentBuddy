@@ -259,7 +259,6 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   }
 
   const registration = (id: string, extra = '') => `
-    const { z } = require('zod');
     let compiledDir = null;
     const machine = { id: 'widget', events: ['PING'], config: {} };
     module.exports = {
@@ -303,7 +302,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
-      features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, defaults: { size: 3 }, schema: z.record(z.unknown()) } } },
+      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
     `));
 
     const [pack] = loadExternalPacks();

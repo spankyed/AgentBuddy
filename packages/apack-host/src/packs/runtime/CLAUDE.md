@@ -147,7 +147,7 @@ Designations come from the manifest's `features[].designation`, which generate-e
 | Content writers | Another pack's hooks for the entity type | Throws — **with rollback** of what this call registered (repositories, steps, artifacts, blocks, content writers, appliers, commands, feature settings) |
 | ContentAppliers | Two appliers for one content key in the pack | Same rollback behavior |
 | Commands | Other packs' command names | Same rollback behavior |
-| Feature settings | `checkFeatureSettings` (a feature sets only its own plugin's settings) | Same rollback behavior |
+| Feature settings | Common JSON Schema/defaults validation (each declaration owns one feature) | Same rollback behavior |
 
 EARS, designation, service and repository collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure; `unregisterPack()` removes all of it, the repositories from the installed engine included (`unregisterRepository`). Step, artifact and block types aren't collisions: a later registration of a type merges into it (steps, facet by facet) or replaces it (`../extensions.ts`). The specs are `tests/packs/registration.spec.ts` and `tests/packs/registered-lookups.spec.ts`.
 

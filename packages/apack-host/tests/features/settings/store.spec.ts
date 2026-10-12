@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // The one Settings row and the one writer to it. What the store guarantees: the row holds only the user's changes,
 // the settings in effect are the defaults with those over them, every write is checked once, and the listeners hear
 // each change in the order it happened — including the two that bracket a wholesale replacement.
@@ -18,7 +17,7 @@ const THREADS = 'default-setup/threads';
 // accept one — the same lookup the app uses (`getFeaturesWithSettings`)
 const pack: PackRegistration = {
   id: 'default-setup',
-  features: { threads: { plugin: { receives: [] }, settings: { defaults: { limit: 10, sort: 'newest' }, schema: z.object({ limit: z.number().int().positive(), sort: z.enum(['newest', 'oldest']) }).strict() } } },
+  features: { threads: { plugin: { receives: [] }, settings: { defaults: { limit: 10, sort: 'newest' }, schema: {"type":"object","properties":{"limit":{"type":"integer","exclusiveMinimum":0},"sort":{"type":"string","enum":["newest","oldest"]}},"required":["limit","sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } } },
 };
 registry.registerPack(pack);
 afterAll(() => registry.unregisterPack(pack.id));
@@ -247,7 +246,7 @@ it('updates one shortcut without losing another override or storing untouched de
   const packId = 'shortcuts';
   const ref = `${packId}/keys`;
   registry.registerPack({ id: packId, features: { keys: { settings: {
-    defaults, schema: z.object({ hotkeys: z.record(z.string().nullable()), phase: z.string() }).strict(),
+    defaults, schema: {"type":"object","properties":{"hotkeys":{"type":"object","additionalProperties":{"type":["string","null"]}},"phase":{"type":"string"}},"required":["hotkeys","phase"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"},
   } } } });
   try {
     const shortcuts = createSettingsStore({ defaults: () => ({ features: { [ref]: defaults } }) });
@@ -259,4 +258,17 @@ it('updates one shortcut without losing another override or storing untouched de
   } finally {
     registry.unregisterPack(packId);
   }
+});
+
+
+it('refuses an explicit undefined write even when an optional field was absent', () => {
+  const ref = 'optional/memos';
+  registry.registerPack({ id: 'optional', features: { memos: { settings: {
+    schema: { type: 'object', properties: { label: { type: 'string' } }, additionalProperties: false }, defaults: {},
+  } } } });
+  try {
+    const optional = createSettingsStore({ defaults: () => ({ features: { [ref]: {} } }) });
+    expect(() => optional.setFeatureSetting(ref as never, ['label'], undefined)).toThrow('JSON data');
+    expect(optional.getStored()).toEqual({});
+  } finally { registry.unregisterPack('optional'); }
 });

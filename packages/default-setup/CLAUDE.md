@@ -62,7 +62,7 @@ The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **f
 
 Settings is not one of them: the store, its writer and the Settings view are the app's (`host/settings` in
 `@apackdev/host`, drawn by `packages/renderer/src/views/settings`). What this pack contributes is content — each
-feature's `fe/settings.vue` and `settings.ts` defaults, and the `general` and `assistant` sections it registers
+feature's `fe/settings.vue` and declarative defaults in `apack.json`, and the `general` and `assistant` sections it registers
 through `apack.json` `settingsSections` (`src/app-settings/`). A feature reads and writes its own settings with
 `settings.forFeature('<feature>')` from `#generated/settings.ts` on the backend and `useSettings('<feature>')` from
 `#generated/settings-fe.ts` on the frontend. Both derive their types from the schema; custom forms use
@@ -251,7 +251,7 @@ Logging and actions:
 Content sources compiled to JSON by `apack pack build`, as `apack.json` `content.formats` and `content.sources` describe them. Located in `src/content/`:
 
 - `actions/`, `prompts/`, `flows/` — compiled by the SDK's own compilers (the manifest names their paths and `onUserEdit: "offer"`, the only three entries that declare it: these are the pack's, customised, so a user who has edited one still gets its fixes offered. Every other entry is `theirs`)
-- `default-settings.ts` — the `general` and `assistant` sections' defaults, **not a content item**: `src/app-settings/index.ts` imports it (`getBaseSettings`, which refuses a base file setting a plugin's slice — a feature's own defaults are its `settings.ts`, which the registry holds under its ref) and the pack's registration contributes it, so nothing about settings is compiled, written to disk or imported into the database
+- `default-settings.ts` — the `general` and `assistant` sections' defaults, **not a content item**: `src/app-settings/index.ts` imports it (`getBaseSettings`, which refuses a base file setting a plugin's slice — a feature's own defaults are declared in `apack.json`, which the registry holds under its ref) and the pack's registration contributes it, so nothing about settings is compiled, written to disk or imported into the database
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
 - `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `apack.json` `extensions.commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `src/extensions/help/` — Markdown articles contributed through `apack.json` `extensions.help.path`, bundled into the runtime and displayed by the host Help feature

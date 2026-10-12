@@ -31,8 +31,8 @@ export function getBaseSettings(): SettingsData {
 export function assertNoFeatureSlice(settings: unknown, source: string): void {
   const features = isPlainObject(settings) ? (settings as { features?: unknown }).features : undefined;
   if (isPlainObject(features) && Object.keys(features).length > 0) {
-    throw new Error(`${source} sets a feature's settings: a feature declares its own, and whether its tab `
-      + 'shows, in features[].settings');
+    throw new Error(`${source} sets a feature's settings: declare values in features.<id>.settings; `
+      + 'navigation defaults belong in features.<id>.plugin.defaultVisible');
   }
 }
 

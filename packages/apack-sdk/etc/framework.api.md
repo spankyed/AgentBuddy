@@ -12,16 +12,11 @@ import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
-import type { output } from 'zod';
 import type { ParameterizedObject } from 'xstate';
 import { z } from 'zod';
-import type { ZodType } from 'zod';
 
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
-
-// @public
-export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @internal
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
@@ -33,15 +28,6 @@ export interface DeclaredMigration {
     // (undocumented)
     up: () => void;
 }
-
-// @public
-export function defineFeatureSettings<S extends ZodType<Record<string, unknown>>>(definition: {
-    schema: S;
-    visible?: boolean;
-}): FeatureSettings<output<S>> & {
-    schema: ZodType<output<S>>;
-    defaults: output<S>;
-};
 
 // @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
@@ -63,16 +49,6 @@ export type DiffResult<T> = null | {
     added: T[];
     removed: T[];
 };
-
-// @public
-export interface FeatureSettings<T extends Record<string, unknown> = Record<string, unknown>> {
-    // (undocumented)
-    defaults?: T;
-    // (undocumented)
-    schema?: ZodType<T>;
-    // (undocumented)
-    visible?: boolean;
-}
 
 // @public
 export function getFeaturesWithSettings(): readonly FeatureRef[];
@@ -200,13 +176,14 @@ export interface PackFeature {
     // (undocumented)
     plugin?: PackFeaturePlugin;
     services?: readonly string[];
-    settings?: FeatureSettings;
+    settings?: SettingsDefinition;
     // (undocumented)
     system?: PackFeatureSystem;
 }
 
 // @public
 export interface PackFeaturePlugin {
+    defaultVisible?: boolean;
     receives: readonly string[];
 }
 
@@ -256,12 +233,12 @@ export interface PackSettingsDefaults {
     // (undocumented)
     revision: number;
     // (undocumented)
-    schemas: Record<string, ZodType<Record<string, unknown>>>;
-    // (undocumented)
     settings: {
         features: Record<string, unknown>;
         [section: string]: unknown;
     };
+    // (undocumented)
+    validators: Record<string, SettingsValidator>;
     // (undocumented)
     visibility: Record<string, boolean>;
 }

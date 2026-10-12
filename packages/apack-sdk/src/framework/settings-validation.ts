@@ -14,12 +14,22 @@ export class _SettingsDefaultsError extends Error {
  * Each definition has its own reference registry, so two packs may use the same schema identifier.
  */
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator {
+  if (!definition || typeof definition !== 'object' || Array.isArray(definition)) throw new Error('Settings definition must be an object');
+  const allowed = new Set(['schema', 'defaults', 'title', 'description', 'form', 'access']);
+  for (const key of Object.keys(definition)) if (!allowed.has(key)) throw new Error(`Unknown settings definition field "${key}"`);
+  for (const key of ['title', 'description', 'form'] as const) {
+    const value = definition[key];
+    if (value !== undefined && (typeof value !== 'string' || (key !== 'description' && value.length === 0))) {
+      throw new Error(`Settings ${key} must be ${key === 'description' ? 'a string' : 'a nonempty string'}`);
+    }
+  }
+  if (definition.access !== undefined && !['shared', 'owner'].includes(definition.access)) throw new Error('Settings access must be shared or owner');
   const schemaProblems = jsonProblems(definition.schema);
   if (schemaProblems.length) throw new Error(`Settings schema must be JSON data: ${schemaProblems[0].message}`);
   if (definition.schema?.type !== 'object') throw new Error('Settings schema must declare an object at its root');
   checkReferences(definition.schema);
   const ajv = new Ajv({ strict: true, allErrors: true, useDefaults: false, coerceTypes: false, removeAdditional: false });
-  const validate = ajv.compile(definition.schema);
+  const validate = ajv.compile(structuredClone(definition.schema));
   const validator: SettingsValidator = {
     validate(value) {
       if (value === null || typeof value !== 'object' || Array.isArray(value)) {

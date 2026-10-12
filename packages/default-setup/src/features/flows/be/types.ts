@@ -50,7 +50,7 @@ export interface FlowExtendedData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type FlowsSettings = typeof import('../settings.ts').default.defaults;
+export type FlowsSettings = import('#generated/settings.ts').SettingsOf<'flows'>;
 
 export type IncomingFlowsEvents =
   | { type: 'FLOW_SELECT'; flowId: string }

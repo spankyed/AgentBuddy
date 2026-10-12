@@ -16,14 +16,31 @@
   "relKinds": {},
   "features": {
     "memos": {
-      "settings": "src/features/memos/settings.ts",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "listTitle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "listTitle"
+          ]
+        },
+        "defaults": {
+          "listTitle": "Memos"
+        }
+      },
       "system": {
         "entry": "src/features/memos/be/system.ts",
         "contract": "src/features/memos/be/contract.ts#Contract"
       },
       "plugin": {
         "entry": "src/features/memos/fe/plugin.ts",
-        "contract": "src/features/memos/fe/contract.ts#Contract"
+        "contract": "src/features/memos/fe/contract.ts#Contract",
+        "defaultVisible": false
       },
       "services": {},
       "repositories": {
@@ -32,7 +49,23 @@
       }
     },
     "notes": {
-      "settings": "src/features/notes/settings.ts",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "listTitle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "listTitle"
+          ]
+        },
+        "defaults": {
+          "listTitle": "Fixture Notes"
+        }
+      },
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts"
       },

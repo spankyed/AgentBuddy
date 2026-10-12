@@ -60,9 +60,10 @@ const SettingsDefinitionShape = {
   access: z.enum(['shared', 'owner']).describe('Shared with declared dependents by default; owner restricts writes and resets.').optional(),
 } satisfies Record<keyof SettingsDefinition, z.ZodTypeAny>;
 
+const SettingsDefinitionValueSchema = z.object(SettingsDefinitionShape).strict();
 const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
   // Validate original JSON: record decoding can discard an own __proto__ default before semantic checks.
-  if (raw && typeof raw === 'object' && 'schema' in raw && 'defaults' in raw) {
+  if (SettingsDefinitionValueSchema.safeParse(raw).success) {
     try { _compileSettingsDefinition(raw as SettingsDefinition); }
     catch (error) {
       if (error instanceof _SettingsDefaultsError) {
@@ -71,7 +72,7 @@ const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
     }
   }
   return raw;
-}, z.object(SettingsDefinitionShape).strict());
+}, SettingsDefinitionValueSchema);
 
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
@@ -269,6 +270,7 @@ const SystemSchema = z.object({
 }).strict();
 
 const PluginSchema = z.object({
+  defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
   entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
   contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
@@ -358,7 +360,7 @@ const FEATURE_ID_SCHEMA = z.string()
 
 export const FeatureEntrySchema = z.object({
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
-  settings: z.string().describe('Path to default settings file.').optional(),
+  settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
@@ -535,7 +537,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
   settingsSections: ExportTargetSchema
-    .describe('Sections of the app settings this pack owns, with their defaults, beside the "features" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
+    .describe('Sections of the app settings this pack owns, with their defaults, beside the "features" section the app keeps itself. "path#exportName" of a function returning them; it is evaluated during pack registration.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),

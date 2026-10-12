@@ -204,20 +204,18 @@ describe('generated settings compile', () => {
   });
 
   it('pairs schema-derived paths and values in backend accessors and custom forms', async () => {
-    write('src/settings.ts', `import { z } from 'zod';
-      import { defineFeatureSettings } from '@apackdev/sdk/framework';
-      export default defineFeatureSettings({ schema: z.object({
-        enabled: z.boolean().default(true),
-        paths: z.record(z.string()).default({}),
-        chat: z.object({ mode: z.string().optional() }).default({}),
-        items: z.array(z.string()).default([]),
-      }).strict() });`);
-    write('src/visibility.ts', 'export default { visible: false };');
+    const declaration = { schema: { type: 'object', additionalProperties: false,
+      properties: {
+        enabled: { type: 'boolean' }, paths: { type: 'object', additionalProperties: { type: 'string' } },
+        chat: { type: 'object', additionalProperties: false, properties: { mode: { type: 'string' } } },
+        items: { type: 'array', items: { type: 'string' } },
+      }, required: ['enabled', 'paths', 'chat', 'items'],
+    }, defaults: { enabled: true, paths: {}, chat: {}, items: [] } };
     const files = await generatePackFiles(manifest({ features: [
-      { id: 'notes', settings: 'src/settings.ts' },
-      { id: 'hidden', settings: 'src/visibility.ts' },
+      { id: 'notes', settings: declaration },
+      { id: 'hidden', plugin: { entry: writePluginEntry('src/hidden.ts'), defaultVisible: false } },
     ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
-      features: [{ id: 'calendar', settings: 'src/settings.ts' }],
+      features: [{ id: 'calendar', settings: declaration }],
     }, facade({ PackFeatureSettings: "{ calendar: { weekStartsOn: number } }" }))]]) });
     write('src/probe.ts', `
       import { settings, type SettingUpdate } from './__generated__/settings.ts';
@@ -227,6 +225,8 @@ describe('generated settings compile', () => {
       notes.set({ path: ['enabled'], value: enabled });
       notes.set({ path: ['enabled'] as const, value: false });
       notes.set({ path: ['paths', 'claude'], value: '/usr/bin/claude' });
+      notes.set({ path: ['chat', 'mode'], value: 'focused' });
+      // @ts-expect-error JSON writes do not encode undefined
       notes.set({ path: ['chat', 'mode'], value: undefined });
       notes.set({ path: ['items'], value: ['one'] });
       notes.reset();
@@ -262,12 +262,10 @@ it('emits settings modules that compile with unused-import checking for a pack w
 
 
 it('allows feature services to create settings handles during module initialization', async () => {
-  write('src/settings.ts', `import { z } from 'zod';
-    export default { schema: z.object({ limit: z.number().default(10) }) };`);
   write('src/service.ts', `import { settings } from './__generated__/settings.ts';
     export const notesService = { settings: settings.forFeature('notes') };`);
   const files = await generatePackFiles(manifest({ features: [{
-    id: 'notes', settings: 'src/settings.ts', services: { notes: 'src/service.ts#notesService' },
+    id: 'notes', settings: { schema: { type: 'object', properties: { limit: { type: 'number' } }, required: ['limit'] }, defaults: { limit: 10 } }, services: { notes: 'src/service.ts#notesService' },
   }] }), { packRoot: root });
   write('src/probe.ts', `import './__generated__/services.ts';
     import { notesService } from './service.ts';

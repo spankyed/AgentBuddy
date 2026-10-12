@@ -35,7 +35,7 @@ export interface DatabaseStartupData {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type DatabaseSettings = typeof import('../settings.ts').default.defaults;
+export type DatabaseSettings = import('#generated/settings.ts').SettingsOf<'database'>;
 
 export type IncomingDatabaseEvents =
   | { type: 'EXECUTE_QUERY'; code: string }

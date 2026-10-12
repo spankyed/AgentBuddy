@@ -29,7 +29,7 @@ describe('the base settings', () => {
 describe('a base file that sets a feature\'s slice', () => {
   it('is refused, named, and told where a feature declares its own', () => {
     expect(() => assertNoFeatureSlice({ features: { memos: { sort: 'newest' } } }, 'base.ts'))
-      .toThrow('base.ts sets a feature\'s settings: a feature declares its own, and whether its tab shows, in features[].settings');
+      .toThrow('base.ts sets a feature\'s settings: declare values in features.<id>.settings; navigation defaults belong in features.<id>.plugin.defaultVisible');
   });
 
   // The app shell's old `_meta` too: which tabs show is each feature's `visible`, and the host's state

@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // The backend registry's command and feature settings stores: what a registry does with a pack's declared
 // commands and feature settings when it registers and unregisters
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,14 +82,14 @@ describe('the feature settings defaults store', () => {
     const before = getPackSettingsDefaults().revision;
 
     packSettingsRegistry.register('memo-pack', [
-      { id: 'memos', settings: { visible: false, defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } },
+      { id: 'memos', plugin: { receives: [], defaultVisible: false }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } },
       { id: 'no-settings' },
     ]);
-    packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { defaults: { done: true }, schema: z.record(z.unknown()) } }]);
+    packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { defaults: { done: true }, schema: { type: 'object' } } }]);
     expect(getPackSettingsDefaults()).toEqual({
       revision: before + 2,
       settings: { features: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
-      schemas: { 'memo-pack/memos': expect.any(z.ZodType), 'todo-pack/todos': expect.any(z.ZodType) },
+      validators: { 'memo-pack/memos': { validate: expect.any(Function) }, 'todo-pack/todos': { validate: expect.any(Function) } },
       visibility: { 'memo-pack/memos': false },
     });
 
@@ -105,7 +104,7 @@ describe('the feature settings defaults store', () => {
 
   it("rejects a pack whose feature sets another plugin's settings, registering nothing", () => {
     const before = getPackSettingsDefaults();
-    expect(() => packSettingsRegistry.register('bad-pack', [{ id: 'memos', settings: { defaults: { hidden: true }, schema: z.object({ hidden: z.string() }) } }]))
+    expect(() => packSettingsRegistry.register('bad-pack', [{ id: 'memos', settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } }]))
       .toThrow(/invalid feature settings/);
     expect(getPackSettingsDefaults()).toBe(before);
   });

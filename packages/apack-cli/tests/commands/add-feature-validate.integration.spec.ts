@@ -106,18 +106,19 @@ describe('apack pack add feature', () => {
 });
 
 describe('apack pack validate', () => {
-  it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
+  it("reports a feature's invalid settings default, and accepts a designation that is not its id", async () => {
     await addFeature(['memos'], pack);
     const manifest = readManifest();
     // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
     manifest.features.memos.designation = 'inbox';
     fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
-    fs.rmSync(path.join(pack, 'src', 'features', 'memos', 'settings.ts'));
+    manifest.features.memos.settings.defaults = { unexpected: true };
+    fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
 
     const { exitCode, output } = await runValidate();
 
     expect(exitCode).toBe(1);
-    expect(output).toContain('Feature "memos": settings file "src/features/memos/settings.ts" not found');
+    expect(output).toContain('features.memos.settings.defaults.unexpected');
     expect(output).not.toContain('designation');
   });
 

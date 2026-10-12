@@ -87,28 +87,21 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     const current = effective();
     const effectiveNext = deepMerge(defaults(), next) as SettingsDocument;
-    const schemas = getPackSettingsDefaults().schemas;
+    const validators = getPackSettingsDefaults().validators;
     for (const [ref, slice] of Object.entries(effectiveNext.features ?? {})) {
       if (isEqual(slice, current.features?.[ref])) continue;
-      const schema = schemas[ref];
-      if (!schema) {
+      const validator = validators[ref];
+      if (!validator) {
         problems.push(`Feature "${ref}" does not declare a settings schema`);
         continue;
       }
-      const checked = schema.safeParse(slice);
-      if (checked.success && !isEqual(checked.data, slice)) {
-        problems.push(`Feature "${ref}" settings schema must validate without transforming values`);
-      }
-      if (!checked.success) {
-        for (const issue of checked.error.issues) {
-          const paths = issue.code === 'unrecognized_keys'
-            ? issue.keys.map(key => [...issue.path, key]) : [issue.path];
-          // A declaration changing must not trap existing data: only new or changed invalid values are refused.
-          if (paths.every(path => isEqual(at(current.features?.[ref], path), at(slice, path)))) continue;
-          problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
-        }
+      for (const issue of validator.validate(slice)) {
+        // A changed declaration must not trap existing data: unchanged invalid values remain editable elsewhere.
+        if (issue.keyword !== 'json' && isEqual(at(current.features?.[ref], issue.path), at(slice, issue.path))) continue;
+        problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
       }
     }
+
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     // The first change is what creates the row, so it is written here rather than by whoever read the settings first.
     // treatAsNew gives it a createdAt, and the entity type is what makes it findable as a Settings row.

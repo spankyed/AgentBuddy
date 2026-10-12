@@ -150,8 +150,46 @@
             "description": "Links the system to an EARS designation."
           },
           "settings": {
-            "type": "string",
-            "description": "Path to default settings file."
+            "type": "object",
+            "properties": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "JSON Schema draft-07 for the effective settings object; references stay within this schema.",
+                "$ref": "http://json-schema.org/draft-07/schema#"
+              },
+              "defaults": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "Complete explicit baseline values, validated without coercion or schema default population."
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "form": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Source path of the custom settings form; its default export is a component."
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "shared",
+                  "owner"
+                ],
+                "description": "Shared with declared dependents by default; owner restricts writes and resets."
+              }
+            },
+            "required": [
+              "schema",
+              "defaults"
+            ],
+            "additionalProperties": false,
+            "description": "Declarative feature preferences: effective-value schema and explicit defaults."
           },
           "typesEntry": {
             "type": "string",
@@ -192,6 +230,10 @@
           "plugin": {
             "type": "object",
             "properties": {
+              "defaultVisible": {
+                "type": "boolean",
+                "description": "Default navigation visibility, independent of settings values and the startup default claim."
+              },
               "entry": {
                 "type": "string",
                 "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
@@ -579,7 +621,7 @@
     "settingsSections": {
       "type": "string",
       "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"features\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then."
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"features\" section the app keeps itself. \"path#exportName\" of a function returning them; it is evaluated during pack registration."
     },
     "boot": {
       "type": "object",

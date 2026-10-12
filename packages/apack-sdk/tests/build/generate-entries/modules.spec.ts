@@ -349,7 +349,7 @@ describe('the snapshot format', () => {
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, defaultVisible: true, entry: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -366,7 +366,7 @@ describe('the snapshot format', () => {
     designation: true, system: true, plugin: true, services: true, settings: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
-  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
+  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { defaultVisible: true, receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   async function facadeImports(): Promise<string[]> {
@@ -412,7 +412,7 @@ describe('the snapshot format', () => {
         feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
-        plugin: ['contract', 'default', 'entry'],
+        plugin: ['contract', 'default', 'defaultVisible', 'entry'],
         contentFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
         contentTree: ['branch', 'branchEntity', 'relKind'],
         contentField: ['default', 'from', 'type'],
@@ -421,7 +421,7 @@ describe('the snapshot format', () => {
         fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
-        plugin: ['receives'],
+        plugin: ['defaultVisible', 'receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],

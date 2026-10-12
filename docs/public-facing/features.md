@@ -20,7 +20,6 @@ This creates:
 
 ```
 src/features/bookmarks/
-  settings.ts                    # Default settings
   be/
     system.ts                    # Backend XState machine
     types.ts                     # Shared types
@@ -129,7 +128,7 @@ The spec it returns:
 
 ### Key rules
 
-- **Default-export the entry, and keep the contract in its own module** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`) default-exports its single definition. Named exports alongside it are fine; the default is what gets loaded. How you declare the entry no longer matters: the events come from the contract, and your pack's typecheck says so if the machine was built from a different one.
+- **Default-export the entry, and keep the contract in its own module** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`) default-exports its single definition. Named exports alongside it are fine; the default is what gets loaded. How you declare the entry no longer matters: the events come from the contract, and your pack's typecheck says so if the machine was built from a different one.
 - **Always handle `SEND_STATE`, and usually nothing else** — the app asks every system for its state whenever anything could have changed what it holds: a frontend connected, a pack was installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, its content were imported from Settings, or the data was reset or restored from a backup. Answer by broadcasting the full state your plugin starts from; the plugin doesn't need to ask for it. Because the ask is the same whatever caused it, you write it once and stay correct as new causes are added — including ones that didn't exist when your pack was written. An installed pack with frontend code (an FE entry or plugins) is asked once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack is asked, those without a plugin too. Every open window receives what you send, not only the one that asked.
 - **Handle a fact only for what publishing cannot fix** — `CLIENT_CONNECTED`, `PACK_CHANGED { packId }` and `DATA_REPLACED` are delivered before the ask that follows them, for work that re-sending data cannot do: tearing down something held over rows that are gone, or tracking whether a client is attached. If your answer to one of them would be "send my data again", delete it and handle `SEND_STATE` instead.
 - **Use `broadcastToPlugin()` to send to the frontend** — `broadcastToPlugin(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the plugin that name stands for, in **every** window showing it (a plugin runs once per window). The renderer's own `sendToPlugin(name, event)`, from the same module, goes to one window's actor instead. It's dropped while no client is connected, which is also why the app doesn't ask a system to publish until one is. It comes from `#generated/events` and accepts only the events that plugin receives. Don't import it from `@apackdev/sdk/events`, whose untyped version accepts any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. A plugin that should also take events from another feature or another pack declares them itself, in the `inbox` half of its `Contract` — the receiver says what it handles, so a pack widens only its own plugins.
@@ -258,27 +257,42 @@ import { breadcrumbWithParams } from '@apackdev/sdk/fe'; // Parameterized naviga
 
 ## Settings
 
-Each feature declares a schema with defaults; its settings forms remain custom:
+Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms remain custom:
 
-```typescript
-// src/features/bookmarks/settings.ts
-import { z } from 'zod';
-import { defineFeatureSettings } from '@apackdev/sdk/framework';
-
-const settings = defineFeatureSettings({
-  visible: true,
-  schema: z.object({
-    syncInterval: z.number().int().positive().default(300),
-  }).strict(),
-});
-
-export default settings;
-export type BookmarkSettings = typeof settings.defaults;
+```json
+{
+  "features": {
+    "bookmarks": {
+      "settings": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "syncInterval": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "syncInterval"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "syncInterval": 300
+        }
+      },
+      "plugin": {
+        "entry": "src/features/bookmarks/fe/plugin.ts",
+        "defaultVisible": true
+      }
+    }
+  }
+}
 ```
 
-- `visible` controls whether the plugin's sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
+- `plugin.defaultVisible` controls whether the sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
-- A feature declares only `schema`, optional `defaults`, and `visible`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Use synchronous validation schemas without coercions or transforms. See [Feature settings](manifest.md#feature-settings).
+- Settings use JSON Schema draft-07 and required explicit `defaults`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Validation does not coerce, populate defaults or transform values. See [Feature settings](manifest.md#feature-settings).
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
 - Codegen derives the read and write types from the schema. Backend code uses `settings.forFeature('bookmarks')` from `#generated/settings.ts`; components use `useSettings('bookmarks')` from `#generated/settings-fe.ts`. Own features use bare IDs; dependencies use `<packId>/<featureId>`. Only features declaring a settings schema are accepted. The frontend module loads no schemas or backend services.
 
@@ -314,13 +328,16 @@ The host's raw `services.settings` and frontend settings port support migrations
 
 ```json
 {
-  "id": "bookmarks",
-  "settings": "src/features/bookmarks/settings.ts",
+  "settings": {
+    "schema": { "type": "object", "additionalProperties": false },
+    "defaults": {}
+  },
   "system": {
     "entry": "src/features/bookmarks/be/system.ts"
   },
   "plugin": {
-    "entry": "src/features/bookmarks/fe/plugin.ts"
+    "entry": "src/features/bookmarks/fe/plugin.ts",
+    "defaultVisible": true
   },
   "services": {},
   "repositories": {
@@ -340,7 +357,7 @@ Other feature fields:
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
 | `references` | Built-in packs only; ignored for external packs |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.entry` file that doesn't exist.
 
 ## Types dependents see
 

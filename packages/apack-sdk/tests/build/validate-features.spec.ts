@@ -21,11 +21,11 @@ function pack(files: string[]): string {
 }
 
 const memos = {
-  settings: 'src/features/memos/settings.ts',
+  settings: { schema: { type: 'object' }, defaults: {}, form: 'src/features/memos/fe/settings.vue' },
   system: { entry: 'src/features/memos/be/system.ts' },
   plugin: { entry: 'src/features/memos/fe/plugin.ts' },
 };
-const memosFiles = [memos.settings, memos.system.entry, memos.plugin.entry];
+const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.entry];
 
 describe('validateFeatures', () => {
   it('accepts features whose files exist and whose designation is the feature id', () => {
@@ -34,7 +34,7 @@ describe('validateFeatures', () => {
   });
 
   it.each([
-    ['settings', memos.settings],
+    ['settings.form', memos.settings.form],
     ['system.entry', memos.system.entry],
     ['plugin.entry', memos.plugin.entry],
   ])('reports a missing %s file', (field, missing) => {

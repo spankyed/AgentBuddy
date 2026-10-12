@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@apackdev/ears'
 import type { EARS as SdkEARS } from '@apackdev/sdk'
 import { migration } from '../../src/migrations/0.3.0.ts'
-import threadsSettings from '#features/threads/settings.ts'
+import manifest from '../../apack.json'
 import { ref } from '#generated/ref.ts'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
@@ -22,7 +22,7 @@ describe('the 0.3.0 migration', () => {
     migration.up()
     migration.up()
 
-    expect(modeIds()).toEqual(threadsSettings.defaults.chat.modes.map((m) => m.id))
+    expect(modeIds()).toEqual(manifest.features.threads.settings.defaults.chat.modes.map((m) => m.id))
     expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
   })
 

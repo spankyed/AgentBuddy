@@ -40,8 +40,9 @@ describe('a build that fails', () => {
   it('refuses publication when an authored input changes during a real build', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
-    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', features: { memos: { settings: 'src/settings.ts' } } }, files: {
-      'src/settings.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default {};",
+    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } } }, files: {
+      'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default function compile() { return []; }",
+      'src/data.ts': 'export default [];',
     } });
     const cwd = process.cwd();
     process.chdir(root);
@@ -79,14 +80,14 @@ describe('a build that fails', () => {
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
       id: 'built-in-pack', name: 'Built-in', builtIn: true,
-      features: { memos: { settings: 'src/memos/settings.ts' } },
+      features: { memos: { settings: { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } }, defaults: {} } } },
       content: { sources: { flows: 'src/content/flows' } },
     } });
     const cwd = process.cwd();
     process.chdir(root);
     try {
-      // The feature's settings file is missing, which fails the build before it compiles the content
-      await expect(build(['--skip-generate'])).rejects.toThrow('Invalid feature settings');
+      // Invalid declared defaults fail before content compilation.
+      await expect(build(['--skip-generate'])).rejects.toThrow('features.memos.settings.defaults.name');
     } finally {
       process.chdir(cwd);
     }

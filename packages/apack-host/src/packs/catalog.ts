@@ -1,5 +1,6 @@
 import { parseSnapshot, type PackSnapshot } from '@apackdev/sdk/build';
 import { _compileSettingsDefinition, type SettingsDefinition } from '@apackdev/sdk/framework';
+import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
 type CatalogData<T> = T extends object ? { readonly [K in keyof T]: CatalogData<T[K]> } : T;
@@ -52,6 +53,11 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
       byId.get(packId)?.snapshot.manifest.extensions?.settings ?? emptySettings,
+
+    featureSettings: (ref: FeatureRef): CatalogData<SettingsDefinition> | undefined => {
+      const address = splitRef(ref);
+      return address ? byId.get(address.packId)?.snapshot.manifest.features?.[address.featureId]?.settings : undefined;
+    },
 
     /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
     replace(sources: readonly PackCatalogSource[]): void {

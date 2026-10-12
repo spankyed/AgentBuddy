@@ -459,7 +459,7 @@ export interface ChatStateConfig {
   busy: boolean;
 }
 
-export type ThreadsSettings = typeof import('../settings.ts').default.defaults;
+export type ThreadsSettings = import('#generated/settings.ts').SettingsOf<'threads'>;
 
 export type AgentSettings = ThreadsSettings['chat'];
 

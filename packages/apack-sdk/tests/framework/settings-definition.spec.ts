@@ -118,3 +118,19 @@ describe('settings data contract', () => {
     expect(validator.validate(accessor)).toContainEqual(expect.objectContaining({ path: ['name'], keyword: 'json' }));
   });
 });
+
+
+it.each([{ ...definition, visible: false }, { ...definition, access: 'private' }, { ...definition, title: 3 }])('refuses invalid definition metadata in native registrations too: %j', invalid => {
+  expect(() => _compileSettingsDefinition(invalid as SettingsDefinition)).toThrow();
+});
+
+
+it('owns the compiled schema even when validation retains a large enum by reference', () => {
+  const values = Array.from({ length: 201 }, (_, i) => `value${i}`);
+  const validator = _compileSettingsDefinition({ schema: {
+    type: 'object', properties: { mode: { type: 'string', enum: values } }, required: ['mode'],
+  }, defaults: { mode: 'value0' } });
+  values[0] = 'changed';
+  expect(validator.validate({ mode: 'value0' })).toEqual([]);
+  expect(validator.validate({ mode: 'changed' }).length).toBeGreaterThan(0);
+});

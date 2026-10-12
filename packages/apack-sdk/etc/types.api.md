@@ -6,7 +6,6 @@
 
 import type { BaseEntity } from '@apackdev/ears';
 import { EARS as EARS_2 } from '@apackdev/ears';
-import type { ZodType } from 'zod';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -140,14 +139,9 @@ export interface FeatureSettingsAccess<T> {
 }
 
 // @public
-export type FeatureSettingsValue<D> = D extends {
-    schema: ZodType<infer T>;
-} ? T : never;
-
-// @public
 export type FeatureSettingUpdate<T> = SettingsPath<T> extends infer P ? P extends readonly string[] ? {
     path: P;
-    value: SettingsValue<T, P>;
+    value: Exclude<SettingsValue<T, P>, undefined>;
 } : never : never;
 
 // @public (undocumented)

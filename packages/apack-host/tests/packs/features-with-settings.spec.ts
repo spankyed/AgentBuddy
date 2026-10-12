@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // The features whose feature settings may be written: every installed feature that declares settings. A registered
 // pack's come from its registration; a pack in the packs dir that isn't registered (disabled, or one that didn't load)
 // keeps its settings, so its features come from its manifest. The answer is kept until the registrations or the dir's
@@ -14,10 +13,10 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 const memoPack: PackRegistration = {
   id: 'memo-pack',
   features: {
-    memos: { plugin: { receives: [] }, settings: { defaults: { sort: 'new' }, schema: z.record(z.unknown()) } },
-    // A plugin with no declared defaults: its settings form may still write its slice
+    memos: { plugin: { receives: [] }, settings: { defaults: { sort: 'new' }, schema: { type: 'object' } } },
+    // A plugin with no settings declaration contributes no writable settings slice
     board: { plugin: { receives: [] } },
-    // No settings file and no plugin, so nothing may be written for it
+    // No settings declaration and no plugin, so nothing may be written for it
     systemOnly: { system: { machine: setup({}).createMachine({}), receives: [] } },
   },
 };
@@ -47,10 +46,10 @@ describe('featuresWithSettings', () => {
 
   it("adds an installed pack's features from its manifest while it isn't registered, and reads a malformed one as none", () => {
     // `features` is a map keyed by feature id; the key is the id, and no entry restates it
-    install('memo-pack', manifest('memo-pack', { memos: { settings: 'src/memos/settings.ts' }, board: { plugin: { entry: 'src/board/fe.ts' } }, systemOnly: { system: { entry: 'x' } } }));
-    install('idle-pack', manifest('idle-pack', { idle: { settings: 'src/settings.ts' } }));
+    install('memo-pack', manifest('memo-pack', { memos: { settings: { schema: { type: 'object' }, defaults: {} } }, board: { plugin: { entry: 'src/board/fe.ts' } }, systemOnly: { system: { entry: 'x' } } }));
+    install('idle-pack', manifest('idle-pack', { idle: { settings: { schema: { type: 'object' }, defaults: {} } } }));
     // An array is the shape nothing writes, so it reads as none rather than throwing
-    install('broken-pack', manifest('broken-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
+    install('broken-pack', manifest('broken-pack', [{ id: 'idle', settings: { schema: { type: 'object' }, defaults: {} } }]));
     install('odd-pack', manifest('odd-pack', { 'Not An Id': { settings: 'x' } }));
     install('garbled-pack', '{ not json');
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
@@ -65,7 +64,7 @@ describe('featuresWithSettings', () => {
   });
 
   it("keeps its answer until the dir's entries change, and sees a pack installed or removed then", () => {
-    install('idle-pack', manifest('idle-pack', { idle: { settings: 'src/settings.ts' } }));
+    install('idle-pack', manifest('idle-pack', { idle: { settings: { schema: { type: 'object' }, defaults: {} } } }));
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
     expect(registry.featuresWithSettings()).toEqual(['idle-pack/idle']);
 
@@ -73,7 +72,7 @@ describe('featuresWithSettings', () => {
     fs.writeFileSync(path.join(packsDir, 'idle-pack', 'apack.json'), JSON.stringify(manifest('idle-pack', {})));
     expect(registry.featuresWithSettings()).toEqual(['idle-pack/idle']);
 
-    install('memo-pack', manifest('memo-pack', { memos: { settings: 'src/settings.ts' } }));
+    install('memo-pack', manifest('memo-pack', { memos: { settings: { schema: { type: 'object' }, defaults: {} } } }));
     expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos']);
 
     fs.rmSync(path.join(packsDir, 'memo-pack'), { recursive: true });

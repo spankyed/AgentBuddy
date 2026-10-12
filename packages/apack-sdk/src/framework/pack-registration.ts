@@ -67,6 +67,8 @@ export interface PackFeatureSystem {
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
 export interface PackFeaturePlugin {
+  /** Default navigation visibility before a user override. */
+  defaultVisible?: boolean;
   /**
    * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender
@@ -83,8 +85,8 @@ export interface PackFeature {
   plugin?: PackFeaturePlugin;
   /** The keys of the services the feature provides, which `PackRegistration.services` holds */
   services?: readonly string[];
-  /** The feature's default settings (apack.json `features[].settings`) */
-  settings?: import('./pack-settings.ts').FeatureSettings;
+  /** The feature's default settings (apack.json `features.<id>.settings`) */
+  settings?: import('./settings-definition.ts').SettingsDefinition;
 }
 
 export interface PackRegistration {
@@ -126,8 +128,7 @@ export interface PackRegistration {
    * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
    * knowing what is in it.
    *
-   * Called the first time the defaults are read, so a pack whose defaults come from its compiled content can read
-   * them then rather than at registration.
+   * Evaluated synchronously while registering the pack's defaults.
    */
   settingsSections?: () => Record<string, unknown>;
 }

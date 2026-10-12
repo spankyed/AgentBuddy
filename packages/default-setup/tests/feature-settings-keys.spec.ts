@@ -1,4 +1,3 @@
-import { z } from 'zod';
 // A feature's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. The store
 // takes a `FeatureRef`; a name that arrives as a string (a client's send, an action's `services.settings` call) is
 // parsed once where it arrives, and one that isn't an installed feature's with settings throws, naming the ref it
@@ -59,7 +58,7 @@ describe('the feature settings keys', () => {
 // `default-setup/memos`. So it takes the ref and refuses a name.
 describe('services.settings', () => {
   it("reads and writes another pack's feature at its ref", async () => {
-    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } } });
+    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } } });
     onTestFinished(() => unregisterPack('memo-pack'));
     await startApp({ systems: ['host/settings'] });
 
