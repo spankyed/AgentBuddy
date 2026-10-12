@@ -313,7 +313,7 @@ not become a second coordination layer alongside the old shell actions.
 
 Each implementation checkpoint remains usable with migrated callers. Apply the existing snapshot-format
 rule for contract changes; do not bump package release versions. This work does not require making pack
-execution lazy. Link the resulting catalog boundary into the [lazy activation plan](lazy-activation.md)
+execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](deferred/lazy-activation.md)
 without changing migration/content execution order here.
 
 ## Handoff to subsequent plans
@@ -323,7 +323,7 @@ contract. Discovery separates reference metadata from executable navigation bind
 `navigate` callbacks before [entity opening](open-entity.md) migrates their callers. Frontend boundaries
 contain runtime component failures; API consumption extends the existing caller-bound facade; replacement
 uses committed artifact/catalog revisions. None introduces a second contribution inventory. Lazy
-activation remains a measured follow-up; discovery alone does not change when migrations or systems run.
+activation is deferred outside the active roadmap; discovery alone does not change when migrations or systems run.
 
 ## Acceptance: no discovery gaps
 

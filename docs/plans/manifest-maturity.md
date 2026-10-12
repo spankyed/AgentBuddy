@@ -27,7 +27,6 @@ Deliver in this order:
 6. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
    on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
-7. Measure boot cost and pursue [lazy activation](lazy-activation.md) only if the evidence warrants it.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
 roadmap; the linked plans hold subsystem design. Do not implement all of them as one manifest rewrite.
@@ -42,7 +41,6 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 | Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
 | Navigation and boundaries | Catalog destinations drive entity opening; failing panes/forms leave the shell usable |
 | API consumption, provenance, replacement | Independent follow-ups reuse catalog identities and caller binding; replacement distinguishes update ownership, disable and removal |
-| Lazy activation | Measurement justifies a change, and execution/readiness ordering is proven before adopting it |
 
 The settings and discovery delivery lists are parts of these checkpoints, not competing roadmaps.
 Inventory all contribution kinds up front; migrate one kind at a time with its validation, binding and
@@ -87,6 +85,8 @@ the settings plan, as that goal already specifies.
 
 ### Other tracks and documents to revisit
 
+- [Lazy activation](deferred/lazy-activation.md) is deferred by request, outside the active sequence.
+  Revisit only when boot attribution justifies it; discovery completion does not trigger this work.
 - [Dev-loop freshness](../goals/goal-dev-loop-freshness.md) remains a scoped follow-up; descriptor freshness
   needed by discovery belongs in discovery's checkpoints, not in an unrelated package watcher redesign.
 - [Pack security isolation](../goals/goal-pack-security-isolation.md) remains a separate design-first goal.
@@ -217,10 +217,10 @@ Add frontend error boundaries around pack panes and forms with the pack named in
 recovery path and error reporting. The shell should remain usable when a contributed component throws.
 Follow the frontend workstream of [pack fault isolation](pack-fault-isolation.md), checking what already landed.
 
-Lazy activation is a separate, measurement-gated follow-up: attribute boot cost before changing when
+Lazy activation is deferred, outside the active sequence: attribute boot cost before changing when
 packs run. Derive activation from existing contributions where possible instead of making authors repeat
 command/view declarations in an activation list. Preserve migration/content ordering and event delivery.
-Use [lazy activation](lazy-activation.md) for the measured design.
+If resumed, use the [deferred lazy activation plan](deferred/lazy-activation.md) for the measured design.
 
 Out-of-process backend packs are deferred. Synchronous EARS access makes this a data-contract redesign,
 not simply a process-spawning task.

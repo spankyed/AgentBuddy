@@ -63,5 +63,5 @@ and owner-only policy regardless of consumption declarations. Content validation
 entities and rejects unsupported targets.
 
 Regenerate changed schema/API reports, migrate docs/templates and run `npm run chain`. Feed the settled
-consumption/caller contract into the security goal and later lazy activation, where API availability and
-provider readiness must remain distinct. This work need not wait for shipped-pack replacement.
+consumption/caller contract into the security goal. Preserve API availability versus provider readiness
+for any future activation work; lazy activation is currently deferred. This work need not wait for shipped-pack replacement.
