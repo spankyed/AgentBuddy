@@ -536,3 +536,15 @@ describe('a browser holding a data dir', () => {
     expect(printed()).toMatch(/development.*an app is running on it/);
   });
 });
+
+it('emits one JSON profile listing and measures bytes only on request', () => {
+  openProfile(dirs, 'sample');
+  list(dirs, { sizes: false, all: false, json: true, resolve, bytes });
+  const result = JSON.parse(vi.mocked(console.log).mock.calls[0]![0]);
+  expect(result.profiles).toMatchObject([{ name: 'sample', inUse: false }]);
+  expect(result.profiles[0]).not.toHaveProperty('bytes');
+  expect(bytes).not.toHaveBeenCalled();
+  vi.mocked(console.log).mockClear();
+  list(dirs, { sizes: true, all: false, json: true, resolve, bytes });
+  expect(JSON.parse(vi.mocked(console.log).mock.calls[0]![0]).profiles[0].bytes).toBe(1_500_000_000);
+});

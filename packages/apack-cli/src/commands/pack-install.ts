@@ -1,6 +1,8 @@
+import { withPackMutation } from '../app/pack-mutation';
+import { recordCliInstall } from '../app/installed-packs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
+import { installPack, installPackFromLocal, readHostInfo, readInstalledPacks } from '@apackdev/host/packs';
 import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
@@ -41,29 +43,23 @@ Options:
     return;
   }
 
-  const { packsDir, userDataDir } = targetDataContext(env, profile);
-  // Recorded by the app when it starts with this data dir
-  const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
-  const kind = detectSource(source);
-
-  let resolvedSource = source;
-  if (kind === 'registry') {
-    resolvedSource = await resolveFromRemoteRegistry(source);
-  }
-
-  const result = kind === 'local'
-    ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion, packFormat })
-    : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
+  const context = targetDataContext(env, profile);
+  const { result, hostVersion } = await withPackMutation(context, 'install', async () => {
+    const { packsDir, userDataDir, installedPacksFile } = context;
+    readInstalledPacks(installedPacksFile, { strict: true });
+    const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
+    const kind = detectSource(source);
+    const resolvedSource = kind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
+    const result = kind === 'local'
+      ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion, packFormat })
+      : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
+    recordCliInstall(installedPacksFile, result.id, kind === undefined ? source : undefined);
+    return { result, hostVersion };
+  });
 
   if (result.missingDependencies.length > 0) {
-    if (fs.existsSync(packsDir)) {
-      console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
-      console.warn(`  They are not installed. Install them first for full functionality.`);
-    } else {
-      // The app installs the packs it ships when it first starts with a data dir
-      console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed. That's expected for a pack apack ships,`);
-      console.warn(`  which isn't installed until apack${profileLabel(env, profile)} has started with this data dir.`);
-    }
+    console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
+    console.warn('  Install them before opening the app. App-shipped packs are installed on first launch.');
   }
 
   if (!hostVersion) {
@@ -72,5 +68,5 @@ Options:
 
   console.log(`\nInstalled "${result.name}" v${result.version}${profileLabel(env, profile)}`);
   console.log(`  Location: ${result.dir}`);
-  console.log(`\nRestart apack to load the pack.`);
+  console.log(`\nOpen apack to load the pack.`);
 }

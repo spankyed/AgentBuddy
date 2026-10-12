@@ -371,7 +371,7 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
   }
 
   const apiUrl = tag
-    ? `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`
+    ? `https://api.github.com/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag)}`
     : `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
 
   const release = await (await githubFetch(apiUrl)).json() as { assets: GitHubReleaseAsset[] };

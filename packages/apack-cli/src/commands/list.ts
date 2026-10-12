@@ -1,44 +1,25 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { packInventory } from '../app/installed-packs';
 import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
 
 export async function list(args: string[]) {
   const { env, profile, args: rest } = parseStorageProfile(args);
-  if (rest.length) throw new Error('Usage: apack pack list [--profile <name>]');
-  const { packsDir } = targetDataContext(env, profile);
+  if (rest.some(arg => arg !== '--json') || rest.length > 1) throw new Error('Usage: apack pack list [--profile <name>] [--json]');
+  const context = targetDataContext(env, profile);
+  const packs = packInventory(context).map(({ manifest, record }) => ({
+    id: manifest.id, name: manifest.name, version: manifest.version,
+    builtIn: manifest.builtIn ?? false, enabled: record.enabled,
+    dependencies: manifest.dependencies ?? {}, source: record.installedFrom ?? null,
+  }));
+  if (rest.includes('--json')) {
+    console.log(JSON.stringify({ profile: profile ?? env, packsDir: context.packsDir, packs }));
+    return;
+  }
   const label = profileLabel(env, profile);
-
-  if (!fs.existsSync(packsDir)) {
-    console.log(`No packs installed${label}.`);
-    return;
-  }
-
-  const entries = fs.readdirSync(packsDir, { withFileTypes: true })
-    .filter(e => e.isDirectory());
-
-  if (entries.length === 0) {
-    console.log(`No packs installed${label}.`);
-    return;
-  }
-
+  if (!packs.length) { console.log(`No packs installed${label}.`); return; }
   console.log(`Installed packs${label}:\n`);
-
-  for (const entry of entries) {
-    const manifestPath = path.join(packsDir, entry.name, 'apack.json');
-    if (!fs.existsSync(manifestPath)) {
-      console.log(`  ${entry.name}  (missing apack.json)`);
-      continue;
-    }
-
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      const deps = Object.keys(manifest.dependencies ?? {});
-      const depInfo = deps.length > 0 ? `  deps: ${deps.join(', ')}` : '';
-      console.log(`  ${manifest.id}  v${manifest.version}  "${manifest.name}"${depInfo}`);
-    } catch {
-      console.log(`  ${entry.name}  (invalid apack.json)`);
-    }
+  for (const pack of packs) {
+    const deps = Object.keys(pack.dependencies);
+    console.log(`  ${pack.id}  v${pack.version}  "${pack.name}"${deps.length ? `  deps: ${deps.join(', ')}` : ''}${pack.enabled ? '' : '  (disabled)'}`);
   }
-
-  console.log(`\n${entries.length} pack(s) in ${packsDir}`);
+  console.log(`\n${packs.length} pack(s) in ${context.packsDir}`);
 }

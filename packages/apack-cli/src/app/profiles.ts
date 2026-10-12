@@ -296,10 +296,9 @@ export interface ListedProfile {
   inUse: boolean;
   /** Ephemeral, with neither its `npm run dev:open --` nor an app still going: a crash left it, and it can go */
   leaked: boolean;
-  bytes: number;
 }
 
-/** Everything on disk, named and ephemeral. Sizes are reported because a Chromium profile is not small. */
+/** Named and ephemeral profiles, without walking their contents. */
 export function listProfiles(dirs: CliDirs): ListedProfile[] {
   const root = profilesRoot(dirs);
   const read = (dir: string, ephemeral: boolean): ListedProfile => {
@@ -317,7 +316,6 @@ export function listProfiles(dirs: CliDirs): ListedProfile[] {
       // `processExists`, whose contract is the one this needs: never miss a live holder, because
       // inventing a dead one deletes a running app's data.
       leaked: ephemeral && !inUse && (record?.pid === undefined || !lockIsHeld(record.pid)),
-      bytes: dirBytes(dir),
     };
   };
   const named = entries(root).filter(name => name !== EPHEMERAL).map(name => read(path.join(root, name), false));

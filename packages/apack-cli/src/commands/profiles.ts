@@ -31,7 +31,7 @@ import {
 } from '../app/profiles';
 
 const HELP = `
-Usage: apack profiles [--sizes] [--all]
+Usage: apack profiles [--sizes] [--all] [--json]
        apack profiles new [name]
        apack profiles rename <from> <to>
        apack profiles rm <name>... | --leaked
@@ -48,6 +48,7 @@ trim           Delete the caches Chromium rebuilds, from the dirs you name or fr
 stop           Close the app running on a data dir and wait for the dir to come free.
 
 Options:
+  --json         Print one structured listing (listing only)
   --sizes        Add a size column, which walks every directory
   --all          Include the throwaway profiles \`--fresh --rm\` made, and say which a dead run left behind
   --leaked       With rm, remove exactly those
@@ -124,16 +125,25 @@ const note = (profile: ListedProfile): string => {
  */
 export interface ListOptions {
   sizes: boolean;
+  json?: boolean;
   /** Include the throwaway profiles the listing hides by default */
   all: boolean;
   resolve?: (env: AppEnv) => string;
   bytes?: (dir: string) => number;
 }
 
-export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: ListOptions): void {
+export function list(dirs: CliDirs, { sizes, all, json = false, resolve, bytes = dirBytes }: ListOptions): void {
   /** Taken only where asked for, since taking it is the slow half */
   const sized = (dir: string): string => size(bytes(dir));
   const envs = environmentRows(resolve);
+  const profiles = listProfiles(dirs).filter(profile => all || !profile.ephemeral);
+  if (json) {
+    console.log(JSON.stringify({
+      environments: envs.map(row => ({ ...row, ...(sizes && { bytes: row.exists ? bytes(row.dir) : 0 }) })),
+      profiles: profiles.map(profile => ({ ...profile, session: readSession(profile.dir) ?? null, ...(sizes && { bytes: bytes(profile.dir) }) })),
+    }));
+    return;
+  }
   const width = Math.max(...envs.map((row) => row.env.length), 'ENVIRONMENT'.length);
 
   console.log(`\n  ${'ENVIRONMENT'.padEnd(width)}${sizes ? '    SIZE' : ''}  APP         DATA DIR`);
@@ -146,7 +156,6 @@ export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: L
       + `  ${(row.version ?? '—').padEnd(10)}  ${row.dir}${state}`);
   }
 
-  const profiles = listProfiles(dirs).filter((profile) => all || !profile.ephemeral);
   if (profiles.length === 0) {
     console.log(`\n  no profiles${all ? '' : ' (--all includes the throwaway ones)'}\n`);
     return;
@@ -337,14 +346,16 @@ export async function profiles(args: string[]): Promise<void> {
   const flags = args.filter((arg) => arg.startsWith('--'));
   // Rejected rather than ignored, for `clean`'s reason: this command removes directories, and a mistyped
   // flag that fell through used to take the pack's build output with it
-  const known = ['--sizes', '--all', '--leaked'];
+  const known = ['--sizes', '--all', '--leaked', '--json'];
   const unknown = flags.filter((flag) => !known.includes(flag));
   if (unknown.length > 0) throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See apack profiles --help.`);
 
+  if (flags.filter(flag => flag === '--json').length > 1) throw new Error('Specify --json once.');
+  if (flags.includes('--json') && subcommand !== undefined) throw new Error('--json is supported only for profile listings.');
   const dirs = cliDirs();
   switch (subcommand) {
     case undefined:
-      list(dirs, { sizes: flags.includes('--sizes'), all: flags.includes('--all') });
+      list(dirs, { sizes: flags.includes('--sizes'), all: flags.includes('--all'), json: flags.includes('--json') });
       return;
     case 'new':
       if (rest.length > 1) throw new Error('apack profiles new takes one name, or none to mint one.');

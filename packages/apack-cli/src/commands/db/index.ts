@@ -1,6 +1,8 @@
 // apack db: the app's database, opened offline (@apackdev/host/database)
 import { CLEAR_SETTINGS_USAGE, dbClearSettings, dbImport, dbReset, IMPORT_USAGE, RESET_USAGE } from './destructive';
 import { dbExec, dbQuery, EXEC_USAGE, QUERY_USAGE } from './code';
+import { VERIFY_USAGE } from './backup-verify';
+import { dbBackup, BACKUP_USAGE } from './backup';
 import { dbExport, EXPORT_USAGE } from './export';
 import { dbInspect, INSPECT_USAGE } from './inspect';
 import { dbRepl, REPL_USAGE } from './repl';
@@ -13,6 +15,7 @@ const COMMANDS: Record<string, { run: (args: string[], io: DbIo) => Promise<void
   repl: { run: dbRepl, usage: REPL_USAGE },
   script: { run: dbScript, usage: SCRIPT_USAGE },
   inspect: { run: dbInspect, usage: INSPECT_USAGE },
+  backup: { run: dbBackup, usage: BACKUP_USAGE },
   export: { run: dbExport, usage: EXPORT_USAGE },
   import: { run: dbImport, usage: IMPORT_USAGE },
   reset: { run: dbReset, usage: RESET_USAGE },
@@ -31,6 +34,8 @@ Commands:
   repl [--write]        Run console code line by line
   script <file>         Run a script file against the database (it imports what it likes)
   inspect [<id>]        An entity's relations, or relation counts per entity type
+  backup --out <dir>    Full database and media backup to a new directory
+  backup verify <dir>   Check backup readability and completeness
   export --out <dir>    Each entity type's entities to a file
   import <backup-dir>   Replace the database with a backup (lists the change; --force makes it)
   reset                 Delete all data, as Reset Database does (lists it; --force deletes)
@@ -52,7 +57,7 @@ export async function db(args: string[], io: DbIo = processIo): Promise<void> {
   const entry = COMMANDS[command];
   if (!entry) throw new Error(`Unknown db command: ${command}\n\n${DB_USAGE}`);
   if (rest.includes('--help') || rest.includes('-h')) {
-    io.out(entry.usage);
+    io.out(command === 'backup' && rest[0] === 'verify' ? VERIFY_USAGE : entry.usage);
     return;
   }
   await entry.run(rest, io);
