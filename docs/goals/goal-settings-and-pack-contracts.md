@@ -2256,3 +2256,25 @@ app-source update offers, followed by the complete replacement restart/reload ac
 All other all-kind discovery, navigation, frontend boundaries, API consumption, dependency provenance
 and final-audit requirements remain in scope. The independent API/fixture shutdown race remains open;
 no plans are archived and final strict `--all` is still required.
+
+
+### Shared shipped-source catalog checkpoint (2026-10-13)
+
+`c14572af5` adds a verified data-only app-source projection, separate from installed/native/authoring
+settings owners. Boot and CLI restore share the reader. Duplicate advertisements have no winner;
+source withdrawal clears offers, and source publication preserves an installed user fork's settings.
+CLI restore carries the captured source revision through filesystem acceptance; changed candidates
+retain the prior installed receipt and record. Catalog publication owns immutable copies.
+
+Fifty-one focused host tests, six CLI tests and the host typecheck pass. Removing the restoration
+revision guard fails its specific assertion; the restored source/catalog suite passes all 24 checks.
+Strict validation passes all 30 gates in 355.4s (one cached), including actual external-pack app and
+packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T20-52-16Z-20954`;
+`/private/tmp/apack-app-sources-strict-chain.log`. See
+[the source contract and remaining consumers](../plans/replaceable-shipped-packs.md#shipped-source-catalog-prototype-2026-10-13).
+
+Next integrate advertised-id installation guards, live pack replace/restore controls, app-source update
+offers and provenance-only uninstall/toggle decisions, then complete the external fork/restart/reload
+acceptance matrix. Every remaining all-kind discovery, navigation, pane-boundary, API consumption,
+dependency provenance and final-audit requirement remains required. The independent API/fixture cleanup
+race is still open. No plans are archived; final strict `--all` on finished committed source remains due.
