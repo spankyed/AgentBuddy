@@ -1540,3 +1540,43 @@ Checkpoint `1d99b0f5e` commits the expanded identities/facet checks and migratio
 with behavioral tests and corrected fixture declarations. `57b35a98f` separately commits the
 OS-reaping test observation correction. Help/hook/static module metadata, frontend binding completeness, all-kind catalog views
 and consumer migration remain open, along with all later phases and the three Phase 6 workstreams.
+
+
+### Static help checkpoint and repeated-click correction (2026-10-13)
+
+Commit `2169d29f8` moves help into snapshot data and the common declaration catalog, removes executable
+help registration and its store, and supplies explicit source help through the authoring harness. The
+public subscription is `onPackCatalogChanged`; the bound registry exposes `onCatalogChanged`. All
+callers and API reports move together, with no alias. Disabled poisoned-entry artifact coverage proves
+help can be read without activating a pack and returned articles cannot mutate accepted data.
+
+Help Markdown no longer invalidates executable generation. Complete builds compile and validate articles
+before staged publication; the backend watcher uses that complete path for help changes. Real build
+coverage proves edits update the snapshot and invalid Markdown retains the accepted sealed artifact.
+Focused publication tests pass (8) and shell URL refusal tests pass (16).
+
+The actual app test revealed repeated clicks could bypass ProseMirror's single-click callback and open
+an internal help URL in the developer's browser. Viewer links now use DOM click handling, and Electron
+refuses `help.apack.invalid` at the OS-opening boundary. The app regression captures external opens and
+proves none occur while help remains navigable with its contributing runtime disabled.
+
+The complete sequential strict chain passes (135.0s, 25 cached), including host/shipped unit suites,
+external app and smoke. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T05-09-32Z-28459` and
+`/private/tmp/apack-discovery-help-serial-diagnostic-chain.log`.
+
+Concurrent chain failures remain unresolved: backup export can deliver no result before its existing
+5-second deadline, and Electron worker teardown can hang after passing smoke assertions. Their runs are
+`2026-10-13T04-49-16Z-44777`, `2026-10-13T05-00-07Z-49745` and
+`2026-10-13T05-05-08Z-87164` in the same evidence directory. The first retry additionally caught the
+repeated-click failure, fixed and verified thereafter. One intermediate run was deliberately cancelled
+after finding a regression case placed in the allowed-URL table; it was corrected and all 16 cases pass.
+No timeout or assertion was weakened. Sequential success is a usable checkpoint, not proof the concurrent
+lifecycle failures are solved; investigate those before final acceptance.
+
+The user's settings-boundary concern was rechecked against source: default-setup's app-settings assembly
+is absent, app definitions belong to the host, pack/feature declarations are inline and custom forms own
+presentation only. This does not complete the supported-API authority audit for whole-data administration.
+The goal remains active across all Phases 0–7. Native all-kind catalog ownership, other hidden metadata,
+frontend binding/asset and source/dependency freshness, navigation, frontend fault boundaries and all three
+Phase 6 workstreams remain required. Nothing is archived at this checkpoint.
