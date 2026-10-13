@@ -423,3 +423,51 @@ Strict validation passes all 30 gates in 331.9s (one cached), evidence
 source catalog/provenance, live pack controls, update offers, complete replacement acceptance and final
 goal `--all` remain outstanding. The independently observed fixture/API shutdown race is not declared
 fixed by this passing run.
+
+
+### Shipped source catalog prototype (2026-10-13)
+
+The existing declaration catalog's installed/native/authoring inputs define active owners; an app's
+available defaults must not enter those settings/help projections and override a selected user fork.
+Add a separate app-source projection carrying verified built snapshots, publication-file identities and
+source paths, with diagnostics for incomplete or conflicting advertisements. Read it without executing
+pack code or writing data. Reject inconsistent source/build/receipt pairs rather than manufacturing an
+installed receipt for a source projection.
+
+Boot and explicit restore should share the same source reader instead of separate manifest scans.
+Identity follows the manifest, not folder names; duplicate advertised ids name both sources and refuse
+selection. Source failures leave installed artifacts/ownership untouched and remain visible diagnostics.
+The host catalog publishes app-source changes independently of active settings definitions, supplying
+full advertised-id guards, missing-default restore controls and app-source update offers in the next
+consumer integration. This does not remove any other discovery or replacement requirements.
+
+Implemented reader/boot/restore integration: `readAppPackSources` verifies complete source builds and
+captures snapshots plus the installation variant's file hashes. Boot and CLI restoration use that
+reader; selection never executes pack code. Duplicate ids exclude every claimant, including one whose
+build is invalid. `catalog.appPackSources` publishes immutable copies independently of installed
+settings owners; withdrawal clears offers without unloading the selected installation. A source-only
+publication preserves the effective settings projection identity/revision.
+
+CLI restore carries the selected `expectedSourceRevision` through final filesystem acceptance. A
+changed candidate is refused before installation records change, and filesystem acceptance restores
+the incumbent. App-managed boot installs likewise check the captured id/revision before accepting.
+This binds selection to the offered bytes; it does not imply rollback of post-acceptance data effects.
+
+Focused evidence: 51 host checks and six CLI restore/replacement checks pass, plus the host typecheck.
+The ten new source checks include poisoned runtime entries, manifest/folder identity, invalid builds,
+duplicate claimants, immutable publication, disabled-fork settings isolation, source withdrawal and
+restoration refusal preserving the actual incumbent receipt/record. Removing the restore revision guard
+makes its regression resolve instead of reject; the source was restored and 24 source/catalog checks
+then passed. The reader owns no active bindings and creates no synthetic installed receipts.
+
+Remaining consumer integration: advertised-id installation guards, missing-source diagnostics and
+restore controls, live deliberate replacement/restoration, app-source update offers, provenance-only
+uninstall/toggle decisions and the complete external fork/restart/reload acceptance matrix. This
+checkpoint does not complete replacement or any other unfinished goal phase.
+
+Strict checkpoint validation passes all 30 gates in 355.4s (one cached), including real external-pack
+app and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-52-16Z-20954`;
+`/private/tmp/apack-app-sources-strict-chain.log`.
+This is not the final full-goal strict `--all` run and does not resolve the independent fixture/API
+shutdown cleanup race recorded above.

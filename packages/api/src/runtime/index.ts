@@ -98,6 +98,7 @@ export function openAppStore(): AppStore {
   const packs = createPackRegistry({
     nativeDeclarations: [hostDeclaration],
     installedPacksDir: () => resolveAppEnvironment().packsDir,
+    appPackSourcesDir: () => process.env.SHIPPED_PACKS_DIR,
     settingsForPack: (packId) => runtime.services.settings.forPack(packId),
   });
   const { store, engine } = openDatabaseStore({

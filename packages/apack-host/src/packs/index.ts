@@ -13,6 +13,9 @@ export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts
 export { createContributionCatalog, readInstalledContributionCatalog } from './catalog.ts';
 export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, SourcePackDeclaration } from './catalog.ts';
 
+export { readAppPackSources } from './app-sources.ts';
+export type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
+
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,

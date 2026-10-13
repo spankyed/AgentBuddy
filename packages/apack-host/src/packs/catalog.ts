@@ -1,5 +1,6 @@
+import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
 import { readInstalledPackArtifacts } from './discovery.ts';
-import { packArtifactRevision, type PackIntegrity } from './layout.ts';
+import { packArtifactRevision, shippedPackRevision, type PackIntegrity } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
@@ -50,6 +51,8 @@ export interface PackCatalogSnapshot {
   readonly problems: readonly PackCatalogProblem[];
   readonly native: readonly CatalogData<NativePackDeclaration>[];
   readonly sourcePacks: readonly SourcePackDeclaration[];
+  readonly appPackSources: readonly CatalogData<AppPackSource>[];
+  readonly appPackSourceProblems: readonly CatalogData<AppPackSourceProblem>[];
 }
 
 /** Own immutable data; neither input mutation nor a reader can change a committed catalog. */
@@ -71,17 +74,20 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   const logger = createLogger('pack-catalog');
   const app = immutable(appSettings);
   _compileSettingsDefinition(app);
-  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [] });
+  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [] });
   let byId = new Map<string, PackCatalogEntry>();
   const listeners = new Set<() => void>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
   let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
 
-  function publish(packs: readonly PackCatalogEntry[], native: readonly NativePackDeclaration[], sourcePacks = current.sourcePacks, catalogProblems = current.problems): void {
+  function publish(changes: Partial<Omit<PackCatalogSnapshot, 'revision' | 'appSettings'>>): void {
+    const { packs, native, sourcePacks, problems: catalogProblems, appPackSources, appPackSourceProblems } = { ...current, ...changes };
     const declarationsChanged = !isDeepStrictEqual(current.packs, packs)
       || !isDeepStrictEqual(current.native, native) || !isDeepStrictEqual(current.sourcePacks, sourcePacks);
-    if (!declarationsChanged && isDeepStrictEqual(current.problems, catalogProblems)) return;
+    if (!declarationsChanged && isDeepStrictEqual(current.problems, catalogProblems)
+      && isDeepStrictEqual(current.appPackSources, appPackSources)
+      && isDeepStrictEqual(current.appPackSourceProblems, appPackSourceProblems)) return;
     const manifests = [...packs.map(({ snapshot }) => snapshot.manifest), ...sourcePacks.map(source => source.manifest)];
     const definitions = [...native, ...manifests.map(manifest => ({
       id: manifest.id, dependencies: manifest.dependencies,
@@ -109,8 +115,8 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         }
       }
     }
-    const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks });
-    // A diagnostic-only publication leaves accepted settings definitions and their identity intact.
+    const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks, appPackSources, appPackSourceProblems });
+    // Diagnostics and source offers leave accepted settings definitions and their identity intact.
     const projection = declarationsChanged ? immutable({ revision: next.revision, app, packs: groups, features, dependencies }) : settings;
     const helpOwners = [
       ...packs.map(({ snapshot }) => ({ manifest: snapshot.manifest, help: snapshot.help })),
@@ -153,14 +159,28 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         if (_declarationRevision(result.data) !== source.declarationRevision) throw new Error(`Source pack "${result.data.id}" has a stale declaration identity`);
         return { ...source, manifest: result.data };
       });
-      publish(current.packs, current.native, next);
+      publish({ sourcePacks: next });
+    },
+    /** Available app defaults are not active owners and never change settings/help definitions. */
+    setAppPackSources(input: AppPackSources): void {
+      const ids = new Set<string>();
+      const sources = input.sources.map(source => {
+        const result = parseSnapshot(source.snapshot);
+        if (!result.snapshot || result.snapshot.manifest.id !== source.id || ids.has(source.id)
+          || source.sourceRevision !== shippedPackRevision(source.files)) {
+          throw new Error(`Invalid or conflicting app source declarations: ${source.dir}`);
+        }
+        ids.add(source.id);
+        return { ...source, snapshot: result.snapshot };
+      });
+      publish({ appPackSources: sources, appPackSourceProblems: input.problems });
     },
     setNative(declarations: readonly NativePackDeclaration[]): void {
       for (const declaration of declarations) {
         const result = _NativePackDeclarationSchema.safeParse(declaration);
         if (!result.success) throw new Error(`Invalid native declarations: ${result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
       }
-      publish(current.packs, declarations);
+      publish({ native: declarations });
     },
     packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
       hasOwn(settings.packs, packId) ? settings.packs[packId] : emptySettings,
@@ -184,7 +204,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         next.set(id, { ...candidate, snapshot: result.snapshot,
           ...(candidate.integrity && { artifactRevision: packArtifactRevision(candidate.integrity) }) });
       }
-      publish([...next.values()], current.native, current.sourcePacks, problems);
+      publish({ packs: [...next.values()], problems });
     },
 
     onChanged(listener: () => void): () => void {

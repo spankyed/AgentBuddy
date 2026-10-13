@@ -29,6 +29,7 @@ import type { PackContentTarget } from './runtime/apply.ts';
 import { createOwnedStore, createDesignationStore } from './extensions.ts';
 import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
+import { readAppPackSources } from './app-sources.ts';
 import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
 import { disabledPackIds } from './installed.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
@@ -361,11 +362,13 @@ export interface PackRegistryOptions {
    * build, a test).
    */
   installedPacksDir?: () => string;
+  /** Available app defaults remain separate from installed/active contributions. */
+  appPackSourcesDir?: () => string | undefined;
   /** Composition supplies scoped authority; registrations cannot choose a caller identity. */
   settingsForPack?: (packId: string) => SettingsService;
 }
 
-export function createPackRegistry({ installedPacksDir, settingsForPack, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
+export function createPackRegistry({ installedPacksDir, appPackSourcesDir, settingsForPack, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
   let registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   let origins = new Map<string, PackOrigin>();
@@ -388,6 +391,9 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
   let catalogDir: string | undefined;
 
   function refreshCatalog(packsDir = installedPacksDir?.() ?? catalogDir, disabled?: ReadonlySet<string>): void {
+    const appSources = appPackSourcesDir?.();
+    if (appPackSourcesDir) catalog.setAppPackSources(appSources === undefined
+      ? { sources: [], problems: [] } : readAppPackSources(appSources));
     if (!packsDir) return;
     disabled ??= disabledPackIds();
     const sources: PackCatalogSource[] = [];

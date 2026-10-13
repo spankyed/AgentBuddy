@@ -151,6 +151,6 @@ it('an explicit host wins over the associated host handoff; missing and duplicat
   const before = readPackArtifact(path.join(context.packsDir, 'default-pack'));
   await expect(restore(['missing-pack', '--host', host])).rejects.toThrow('found 0');
   builtPack(path.join(host, 'packages', 'duplicate'));
-  await expect(restore(['default-pack', '--host', host])).rejects.toThrow('found 2');
+  await expect(restore(['default-pack', '--host', host])).rejects.toThrow('Duplicate app-shipped pack "default-pack"');
   expect(readPackArtifact(path.join(context.packsDir, 'default-pack'))).toEqual(before);
 });

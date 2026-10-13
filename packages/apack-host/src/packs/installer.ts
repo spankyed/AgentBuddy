@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { createHash } from 'node:crypto';
+import { readAppPackSources } from './app-sources.ts';
 import { readInstalledPacks, writeInstalledPacks, type PackRecord } from './installed.ts';
 import * as path from 'path';
 import * as os from 'os';
@@ -15,7 +15,6 @@ import { createLogger } from '@apackdev/sdk/logger';
 import type { PackManifest } from '@apackdev/sdk/build';
 import {
   PACK_LAYOUT,
-  PACK_LAYOUT_VERSION,
   assertChecksum,
   extractPackArchive,
   hasBuiltPackSections,
@@ -23,7 +22,7 @@ import {
   stagePack,
   verifyPack,
   packBuildProblem,
-  stagedFileHashes,
+  shippedPackRevision,
   type PackIntegrity,
 } from './layout.ts';
 import { errorMessage as reason } from '@apackdev/sdk/utils/pure';
@@ -178,14 +177,13 @@ export interface ShippedInstallOptions extends InstallOptions {
 export async function installShippedPacks(shippedDir: string, packsDir: string, options: ShippedInstallOptions): Promise<ShippedPackInstall[]> {
   if (!fs.existsSync(shippedDir)) return [];
   const results: ShippedPackInstall[] = [];
-  for (const entry of fs.readdirSync(shippedDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    const source = path.join(shippedDir, entry.name);
-    if (!fs.existsSync(path.join(source, PACK_LAYOUT.manifest))) continue;
-
-    let id = entry.name;
+  const catalog = readAppPackSources(shippedDir);
+  for (const problem of catalog.problems) {
+    if (options.only === undefined || problem.id === options.only) results.push({ id: problem.id, outcome: 'failed', error: problem.message });
+  }
+  for (const source of catalog.sources) {
+    const { id, sourceRevision: revision } = source;
     try {
-      id = readValidManifest(source).id;
       if (options.only !== undefined && id !== options.only) continue;
       const records = readInstalledPacks(options.installedPacksFile, { strict: true });
       const record = records.find(record => record.id === id);
@@ -202,16 +200,20 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
         results.push({ id, outcome: 'preserved' });
         continue;
       }
-      const revision = shippedFilesRevision(stagedFileHashes(source));
       if (wasInstalled && record?.shippedRevision === revision) {
         results.push({ id, outcome: 'unchanged' });
         continue;
       }
-      await installPackFromLocal(source, packsDir, {
+      await installPackFromLocal(source.dir, packsDir, {
         ...options,
         installedPacksFile: undefined,
-        accept: candidate => withInstallationRecord(options.installedPacksFile, id,
-          previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate)),
+        accept: candidate => {
+          if (candidate.id !== id || shippedPackRevision(candidate.integrity.files) !== revision) {
+            throw new Error(`App source "${id}" changed before installation acceptance; retry the complete build`);
+          }
+          return withInstallationRecord(options.installedPacksFile, id,
+            previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate));
+        },
       });
       results.push({ id, outcome: wasInstalled ? 'updated' : 'installed' });
     } catch (err) {
@@ -223,7 +225,8 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
 
 /** Deliberately restore the named shipped artifact, including a missing or user-owned installation. */
 export function restoreShippedPack(
-  id: string, source: string, packsDir: string, options: InstallOptions & { installedPacksFile: string },
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string },
 ): Promise<InstallResult> {
   return installPackFromLocal(source, packsDir, {
     ...options, installedPacksFile: undefined,
@@ -231,8 +234,14 @@ export function restoreShippedPack(
       if (manifest.id !== id) throw new Error(`Restore expected pack "${id}", received "${manifest.id}"`);
       options.beforePlace?.(manifest);
     },
-    accept: candidate => withInstallationRecord(options.installedPacksFile, id,
-      previous => appInstallationRecord(previous, candidate, true), () => options.accept?.(candidate)),
+    accept: candidate => {
+      if (options.expectedSourceRevision !== undefined
+        && shippedPackRevision(candidate.integrity.files) !== options.expectedSourceRevision) {
+        throw new Error(`App source "${id}" changed before restoration acceptance; retry the complete build`);
+      }
+      return withInstallationRecord(options.installedPacksFile, id,
+        previous => appInstallationRecord(previous, candidate, true), () => options.accept?.(candidate));
+    },
   });
 }
 
@@ -240,15 +249,8 @@ function appInstallationRecord(previous: PackRecord, candidate: Readonly<Install
   const { installedFrom: _source, availableVersion: _version, availableTag: _tag,
     updateCheckError: _check, suppressAppInstall: _suppression, ...record } = previous;
   return { ...record, enabled: enable ? true : previous.enabled, updatesWith: 'app',
-    shippedRevision: shippedFilesRevision(candidate.integrity.files),
+    shippedRevision: shippedPackRevision(candidate.integrity.files),
     installedAt: previous.installedAt ?? new Date().toISOString() };
-}
-
-/** A source-content identity, not an installed artifact receipt or accepted runtime revision. */
-function shippedFilesRevision(files: Record<string, string>): string {
-  return createHash('sha256').update(JSON.stringify({ layout: PACK_LAYOUT_VERSION,
-    files: Object.keys(files).sort().map(file => [file, files[file]]),
-  })).digest('hex');
 }
 
 /** Save installation intent before the synchronous filesystem/runtime decision, restoring it on refusal. */

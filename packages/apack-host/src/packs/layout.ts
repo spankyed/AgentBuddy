@@ -18,6 +18,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
+import { isDeepStrictEqual } from 'node:util';
 import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
@@ -166,6 +167,24 @@ function stagedHashes(integrity: PackIntegrity): Record<string, string> {
 /** Verify the producer's output and the source descriptor before computing a shipped update. */
 export function stagedFileHashes(packRoot: string): Record<string, string> {
   return stagedHashes(readBuiltPackIntegrity(packRoot));
+}
+
+/** Capture a verified source declaration and its published files without executing or staging it. */
+export function readBuiltPackSource(packRoot: string): { snapshot: PackSnapshot; files: Record<string, string>; sourceRevision: string } {
+  const built = readBuiltPackIntegrity(packRoot, PACK_SNAPSHOT_FORMAT);
+  const artifact = readPackArtifact(path.join(packRoot, 'dist'));
+  if (!isDeepStrictEqual(built, artifact.integrity)) {
+    throw new Error('Built artifact changed while reading its source declarations; retry with the complete build');
+  }
+  const files = stagedHashes(built);
+  return { snapshot: artifact.snapshot, files, sourceRevision: shippedPackRevision(files) };
+}
+
+/** Identity of published source files/layout; distinct from an installed receipt or runtime nonce. */
+export function shippedPackRevision(files: Readonly<Record<string, string>>): string {
+  return crypto.createHash('sha256').update(JSON.stringify({ layout: PACK_LAYOUT_VERSION,
+    files: Object.keys(files).sort().map(file => [file, files[file]]),
+  })).digest('hex');
 }
 
 function readBuiltPackIntegrity(packRoot: string, packFormat?: number): PackIntegrity {

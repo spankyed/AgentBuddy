@@ -1,10 +1,8 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { PACK_ID_PATTERN, HOST_PACK_ID } from '@apackdev/sdk/ids';
-import { readHostCompatibility, readInstalledPacks, restoreShippedPack } from '@apackdev/host/packs';
+import { readHostCompatibility, readInstalledPacks, restoreShippedPack, readAppPackSources } from '@apackdev/host/packs';
 import { cliDirs, configuredHostPackagesDir, parseHostFlags } from '../app/pack-host';
 import { withPackMutation } from '../app/pack-mutation';
-import { parseStorageProfile, targetDataContext, profileLabel, readValidManifest } from '../utils';
+import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
 
 export async function restore(args: string[]): Promise<void> {
   const { env, profile, args: rest } = parseStorageProfile(args);
@@ -22,18 +20,18 @@ export async function restore(args: string[]): Promise<void> {
   }
   const host = await configuredHostPackagesDir({ dirs: cliDirs(), env: sourceEnv, readOnly: true });
   if (!host) throw new Error('Select the source app with --host <path|beta>. Restoration does not infer a host from the current directory.');
-  const sources = fs.readdirSync(host.dir, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map(entry => path.join(host.dir, entry.name))
-    .filter(dir => fs.existsSync(path.join(dir, 'apack.json')))
-    .filter(dir => readValidManifest(dir).id === id);
+  const catalog = readAppPackSources(host.dir);
+  const problems = catalog.problems.filter(problem => problem.id === id);
+  if (problems.length) throw new Error(`${host.label} cannot supply "${id}": ${problems.map(problem => problem.message).join('; ')}`);
+  const sources = catalog.sources.filter(source => source.id === id);
   if (sources.length !== 1) throw new Error(`${host.label} must ship exactly one pack "${id}"; found ${sources.length}.`);
   const context = targetDataContext(env, profile);
   const result = await withPackMutation(context, 'restore', async () => {
     readInstalledPacks(context.installedPacksFile, { strict: true });
     const { version: hostVersion, packFormat } = readHostCompatibility(context.userDataDir);
-    return restoreShippedPack(id, sources[0]!, context.packsDir, {
+    return restoreShippedPack(id, sources[0]!.dir, context.packsDir, {
       installedPacksFile: context.installedPacksFile, hostVersion, packFormat,
+      expectedSourceRevision: sources[0]!.sourceRevision,
     });
   });
   console.log(`Restored "${result.name}" v${result.version}${profileLabel(env, profile)}; updates follow the app.`);
