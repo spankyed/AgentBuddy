@@ -26,7 +26,7 @@ export interface ShellNotify {
 /** The I/O the shell is given */
 export interface ShellOptions {
   /** This window's registered pack frontends: the plugins the shell starts with, and its default */
-  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'defaultPlugin'>;
+  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'defaultPlugin' | 'designation'>;
   client: ShellClient;
   packFrontends: ShellPackFrontends;
   storage: ShellStorage;

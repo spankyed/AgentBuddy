@@ -235,6 +235,8 @@ Behaviour:
 - **Errors:** `SYSTEM_ERROR` is a toast, `severity: 'fatal'` the error page, and `diagnostic` nothing (it's in the Logs plugin already). A backend failure (`ShellFailure`: a message, or `{ message, stack? }`) reaches `notify.errorPage` as the client reported it, so the page lays out an error's message over its stack.
 - **Pack frontends:** `BUS_SUBSCRIBED` runs the loader in every state; requests during a run queue another read. Ordinary reads compare the accepted frontend runtime revisions; application state publication requests reconciliation when they differ. Disconnect stops the pending loader without removing accepted frontends. Reconnect refreshes their resources through the transactional loader; only a successful `client.loadedPacks()` read removes absent owners. `PACK_FRONTEND_LOADED` means acceptance: the shell replaces that owner's actors/definitions, preserving its tab position, visibility and selection when the selected feature remains. Refused candidates preserve incumbents and report errors; successful actors acknowledge their accepted runtime revision after replacement. `PluginScope` remounts cached content when its actor instance changes; settings forms remount only for publication by their owner. Explicit `PACK_PLUGINS_UNLOADED` still removes the owner and its actors.
 
+- Welcome closing reads optional Threads designation from the shell's own window registry. Without a frontend destination it advances onboarding and keeps the current plugin; it does not require default-setup or a process-global role binding.
+
 ## Settings (`features/settings/`)
 
 The app's settings: `be/` holds persistence and the system, `fe/machine.ts` the plugin's

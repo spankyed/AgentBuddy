@@ -397,3 +397,29 @@ Strict validation passes all 30 gates in 381.0s (none cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T20-15-31Z-55624`. This is a manifest/archive eligibility
 checkpoint, not final goal `--all` acceptance or completion of the replacement workstream. The
 independently observed fixture/API shutdown race remains unresolved despite passing this run.
+
+
+### Optional Threads during onboarding (2026-10-13)
+
+The controls audit found Welcome closing through the SDK's throwing process-global `getDesignated`.
+The shell now reads optional `designation('threads')` from its injected window registry and sends the
+existing selection action only when a role is present. The existing action safely handles a designation
+without a frontend plugin; no duplicate availability check, fallback feature or fabricated actor is added.
+
+Six new cases cover a host-only registry, another current plugin, an alternate Threads provider,
+a backend-only role, provider removal before click, and two independent window registries. Welcome
+advances to onboarding without error and retains the existing selection when no destination is available.
+Renderer bootstrap registers the native host frontend before shell creation; the packless case represents
+that real host-only state, not an unsupported completely empty shell initializer.
+
+The focused run passes 23 tests and the host typecheck. A hardcoded default-setup Threads ref fails the
+window-local selection test and was restored. An initially attempted redundant frontend-membership guard
+had no behavioral effect because selection already handles absence; the guard was removed. This is the
+optional-role prerequisite, not completion of live replace/restore, catalog/provenance or update offers.
+All other replacement and larger goal acceptance remain required.
+
+Strict validation passes all 30 gates in 331.9s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-32-47Z-87954`. This is the optional-role prerequisite;
+source catalog/provenance, live pack controls, update offers, complete replacement acceptance and final
+goal `--all` remain outstanding. The independently observed fixture/API shutdown race is not declared
+fixed by this passing run.

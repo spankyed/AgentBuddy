@@ -2,7 +2,7 @@
 // lays out the panels and loads every pack's frontend. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
 import { assign, enqueueActions, setup, spawnChild } from 'xstate';
-import { getDesignated, processHotkeys, safeEvents } from '@apackdev/sdk/fe';
+import { processHotkeys, safeEvents } from '@apackdev/sdk/fe';
 import { splitRef } from '@apackdev/sdk/ids';
 import { senderSuffix } from '@apackdev/sdk/events';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -509,7 +509,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       toggleInspectionPanel: assign(({ context }) => ({ panelSizes: saved(inspectionToggled(context.panelSizes)) })),
 
       closeDevLetter: ({ self }) => {
-        self.send({ type: 'SELECT_PLUGIN', plugin: getDesignated('threads') });
+        const threads = packs.designation('threads');
+        if (threads) {
+          self.send({ type: 'SELECT_PLUGIN', plugin: threads });
+        }
       },
     },
     guards: {

@@ -2,6 +2,7 @@
 // test loads, storage kept in memory, and records of what the shell reported to the user
 import { vi } from 'vitest';
 import { setup } from 'xstate';
+import type { FeatureRef } from '@apackdev/sdk/ids';
 import type { Message } from '@apackdev/sdk/events';
 import type { Plugin, ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry, ShellClient, ShellConnection, ShellFailure, ShellOptions } from '../../../../src/fe/index.ts';
@@ -48,7 +49,7 @@ export function fakeClient() {
 }
 
 /** The shell's options over fakes, starting with `plugins` registered (the first is the default, unless one is given) */
-export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) {
+export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; designations?: Record<string, FeatureRef> }) {
   const client = fakeClient();
   const packFrontends = {
     load: vi.fn<(pack: { id: string }) => Promise<Plugin[] | null>>(() => Promise.resolve(null)),
@@ -64,7 +65,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) 
     savePanelSizes: vi.fn((sizes: ShellPanelSizes) => { savedSizes = sizes; }),
   };
   const options: ShellOptions = {
-    packs: { getRegisteredPlugins: () => start.plugins, defaultPlugin: () => start.defaultPlugin ?? start.plugins[0] },
+    packs: { getRegisteredPlugins: () => start.plugins, defaultPlugin: () => start.defaultPlugin ?? start.plugins[0], designation: role => start.designations?.[role] },
     client: client.client,
     packFrontends,
     storage,
