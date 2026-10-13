@@ -1110,3 +1110,26 @@ must not invalidate a generated identity merely by reordering keys. Rebuild outp
 there is no alternate old hash or compatibility reader. Key-order invariance and genuine declaration changes
 have focused regression coverage. Remaining all-kind discovery/binding admission still follows the discovery
 plan; this source checkpoint does not claim that work complete.
+
+
+### Repeated directory intents and native shutdown evidence (2026-10-13)
+
+Concurrent restore acceptance captured the Code backend repeatedly receiving the same
+`SET_BASE_DIRECTORY` after thread restoration. Each request recreates its repository/watcher and
+refreshes child systems. The backup failure snapshot shows `exporting: true`, no response and an empty
+metadata file; its API sample shows nearly all main-thread samples in `posix_spawn`, with all four
+filesystem workers idle. This is concrete event-loop contention, not evidence of an LMDB copy failure.
+Make directory selection idempotent while preserving an explicit navigation choice: remember a user's
+selected directory even if already displayed, but rebuild repository/watcher and notify child systems
+only when the effective directory changes. Verify both behaviors with the real Code system before
+attributing the backup deadline failure to that correction.
+
+Shutdown is a separate native issue. Electron emits `quit` and closes all windows while its main thread
+continues a native `usleep` loop. A minimal app using this checkout's Electron and disposable profiles,
+with no apack code, exits in all three no-window controls; two of three hidden-window runs retain the
+same sampled shutdown loop. Our versions are Electron 37.2.4 and macOS 26.3.1. A similar
+[upstream report](https://github.com/electron/electron/issues/52582) covers different Electron/macOS
+versions and reports resolution after an OS update; that is supporting context, not proof of the exact
+cause or a verified upgrade for this machine. Do not add self-kill logic or weaken teardown assertions
+as a settings fix. Preserve samples, keep final lifecycle acceptance open and continue the architectural
+work rather than rewriting settings to accommodate a native shutdown defect.

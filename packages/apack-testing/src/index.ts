@@ -3,7 +3,7 @@ export { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execFileSync } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
@@ -523,14 +523,23 @@ export function createTest(options: CreateTestOptions = {}) {
 
         await use(app);
         if (process.env.DEBUG_E2E) console.log('[e2e shutdown] calling close');
-        const inspectShutdown = process.env.DEBUG_E2E ? setTimeout(() => console.log('[e2e shutdown] still waiting', {
-          pid: app.process().pid,
-          exitCode: app.process().exitCode,
-          signalCode: app.process().signalCode,
-          stdoutEnded: app.process().stdout?.readableEnded,
-          stderrEnded: app.process().stderr?.readableEnded,
-          windows: app.windows().map(page => ({ closed: page.isClosed() })),
-        }), 5000) : undefined;
+        const inspectShutdown = process.env.DEBUG_E2E ? setTimeout(() => {
+          console.log('[e2e shutdown] still waiting', {
+            pid: app.process().pid,
+            exitCode: app.process().exitCode,
+            signalCode: app.process().signalCode,
+            stdoutEnded: app.process().stdout?.readableEnded,
+            stderrEnded: app.process().stderr?.readableEnded,
+            windows: app.windows().map(page => ({ closed: page.isClosed() })),
+          });
+          const pid = app.process().pid;
+          if (process.env.DEBUG_E2E === 'sample' && process.platform === 'darwin' && pid && app.process().exitCode === null) {
+            const output = `${appLogPath(workerInfo)}.shutdown.sample.txt`;
+            execFile('/usr/bin/sample', [String(pid), '2', '-file', output], { timeout: 10_000 }, error => {
+              console.log('[e2e shutdown] sample', error ? error.message : output);
+            });
+          }
+        }, 5000) : undefined;
         try { await app.close(); }
         finally { clearTimeout(inspectShutdown); }
         if (process.env.DEBUG_E2E) console.log('[e2e shutdown] close resolved');

@@ -6,6 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createTRPCUntypedClient, createWSClient, wsLink } from '@trpc/client';
 import type { SettingsSnapshot } from '@apackdev/sdk/types';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { test, expect } from '@apackdev/testing';
 
 const companion = fileURLToPath(new URL('../../../bundled-ui-pack/', import.meta.url));
@@ -66,7 +67,36 @@ test('backup import restores all settings owners and updates an open window', as
       actor.send({ type: 'VIEW_BACKUP' });
       actor.send({ type: 'BACKUP.EXPORT', path: targetPath, name: 'settings', databases: ['lmdb'] });
     }, backups);
-    await expect.poll(backupResult).toEqual({ operation: 'export' });
+    try {
+      await expect.poll(backupResult).toEqual({ operation: 'export' });
+    } catch (error) {
+      const state = await appPage.evaluate(() => {
+        const snapshot = (window as any).applicationState.system.get('default-setup/database').getSnapshot();
+        return { status: snapshot.status, state: snapshot.value,
+          exporting: snapshot.context.exporting, backupResult: snapshot.context.backupResult };
+      });
+      const files: Record<string, number> = {};
+      for (const file of fs.readdirSync(backups, { recursive: true })) {
+        const stat = fs.statSync(path.join(backups, String(file)));
+        if (stat.isFile()) files[String(file)] = stat.size;
+      }
+      const diagnostic = test.info().outputPath('backup-export-stall.json');
+      fs.writeFileSync(diagnostic, JSON.stringify({ state, files }, null, 2));
+      await test.info().attach('backup-export-stall', { contentType: 'application/json', path: diagnostic });
+      if (process.env.DEBUG_E2E === 'sample' && process.platform === 'darwin') {
+        try {
+          const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'));
+          const { apiPortFile } = resolveAppEnvironment({ env: 'test', userDataDir });
+          const { pid } = JSON.parse(fs.readFileSync(apiPortFile, 'utf8'));
+          const parent = Number(execFileSync('/bin/ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8' }));
+          if (parent !== electronApp.process().pid) throw new Error('The recorded API is not this fixture’s child');
+          const sample = test.info().outputPath('backup-api.sample.txt');
+          execFileSync('/usr/bin/sample', [String(pid), '2', '-file', sample], { timeout: 10_000 });
+          await test.info().attach('backup-api-sample', { contentType: 'text/plain', path: sample });
+        } catch (sampleError) { console.log('[backup diagnostic] sampling failed', String(sampleError)); }
+      }
+      throw error;
+    }
     const entries = fs.readdirSync(backups);
     expect(entries).toHaveLength(1);
     const backup = path.join(backups, entries[0]);

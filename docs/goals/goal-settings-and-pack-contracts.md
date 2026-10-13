@@ -1580,3 +1580,29 @@ presentation only. This does not complete the supported-API authority audit for 
 The goal remains active across all Phases 0–7. Native all-kind catalog ownership, other hidden metadata,
 frontend binding/asset and source/dependency freshness, navigation, frontend fault boundaries and all three
 Phase 6 workstreams remain required. Nothing is archived at this checkpoint.
+
+
+### Native lifecycle diagnostics and directory-intent finding (2026-10-13)
+
+The lightweight concurrent smoke/external app reproduction passes. Full-load runs reproduce backup
+and native shutdown stalls. The testing fixture now supports `DEBUG_E2E=sample` on macOS, producing a
+native sample only if its own Electron process remains alive five seconds into teardown. Backup
+acceptance persists failure-only state/file diagnostics and optionally samples the API after verifying
+its parent is this fixture's Electron process. No assertion or timeout changes.
+
+Strict full-load evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T05-22-36Z-47970`
+and `2026-10-13T05-33-16Z-50463`. Both fail actual app lifecycle acceptance; other checks pass.
+Native samples and JSON are retained in their captured results. The backup JSON reports active backup
+state, exporting true, no result and a zero-byte metadata file. Its API main thread is in subprocess
+creation while filesystem workers are idle. Logs show repeated same-directory Code intents; the owning
+settings plan records the idempotent-command correction to implement and verify next.
+
+The minimal native comparison at `/private/tmp/apack-native-exit-probe/results.log` exits three of three
+no-window controls; two of three hidden-window runs remain alive after quit, with native samples matching
+the stalled app's loop. The runner samples and kills only its own temporary test children and removes
+its own profiles. That isolates shutdown from apack's settings code. Upstream comparison is linked in
+the settings plan and remains an inference across different versions, not a confirmed fix.
+
+This is diagnostic progress, not completed lifecycle acceptance. Do not mark the goal complete or
+archive its plans. All remaining discovery/native declaration, freshness, navigation, boundary and
+Phase 6 requirements remain in scope.

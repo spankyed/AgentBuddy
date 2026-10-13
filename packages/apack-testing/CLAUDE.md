@@ -496,3 +496,12 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
 - **Dev server marker**: `apack pack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@apackdev/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.
+
+
+### Shutdown sampling
+
+`DEBUG_E2E=sample` enables the existing lifecycle diagnostics and, on macOS, captures a two-second
+native sample if the fixture's own Electron process still has not exited five seconds into teardown.
+The sample is written beside its `app-<worker>.log`. It changes no close timeout or test assertion;
+normal test runs do not invoke the sampler. This distinguishes a live native shutdown stall from an
+application that exited while its driver is waiting for another resource.
