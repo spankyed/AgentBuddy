@@ -98,7 +98,7 @@ describe('reloading a pack the app ships', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', features: { widget: { system: { entry: 'system.ts' } } }, ...manifest }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', boot: { hooks: 'hooks.ts' }, features: { widget: { system: { entry: 'system.ts' } } }, ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
@@ -356,7 +356,7 @@ describe('reloading a pack', () => {
     appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
     const ran: string[] = [];
     Object.assign(globalThis, { reloadPackRuns: ran });
-    writeRebuild(runtime(`migrations: { pack: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })) },`));
+    writeRebuild(runtime(`migrations: { pack: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })) },`), { migrations: { pack: { '1.0.0': 'migration.ts#first', '1.0.1': 'migration.ts#next' } } });
 
     await reloadPackById(registry, PACK_ID, bus as never);
 

@@ -99,7 +99,8 @@ describe('createHostRuntime', () => {
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
-    packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
+    const origin = externalOrigin('reset-pack', 'Reset');
+    packs.registerPack({ id: 'reset-pack', boot }, { ...origin, manifest: { ...origin.manifest, boot: { hooks: 'hooks.ts' } } });
     // A pack the app ships, with a content policy — written by the same call as the installed one
     packs.registerPack({ id: 'written-pack' },
       { declarationRevision: 'fixture-revision', id: 'written-pack', name: 'Written', version: '1.0.0', dir: '/packs/written-pack', shipped: true } as never);

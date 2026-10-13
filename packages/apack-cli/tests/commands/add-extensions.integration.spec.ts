@@ -238,8 +238,8 @@ describe('apack pack add migration', () => {
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
     // One array per line, each in version order, each entry with the target its key names
-    expect(entry).toContain("    app: [\n      { target: '0.3.16', ...__migration_app_0_3_16 },\n    ],");
-    expect(entry).toContain("    pack: [\n      { target: '0.2.0', ...__migration_pack_0_2_0 },\n      { target: '0.10.1', ...__migration_pack_0_10_1 },\n      { target: '0.11.0', ...__migration_pack_0_11_0 },\n    ],");
+    expect(entry).toContain("    app: [\n      { target: '0.3.16', description: __migration_app_0_3_16.description, up: () => __migration_app_0_3_16.up() },\n    ],");
+    expect(entry).toContain("    pack: [\n      { target: '0.2.0', description: __migration_pack_0_2_0.description, up: () => __migration_pack_0_2_0.up() },\n      { target: '0.10.1', description: __migration_pack_0_10_1.description, up: () => __migration_pack_0_10_1.up() },\n      { target: '0.11.0', description: __migration_pack_0_11_0.description, up: () => __migration_pack_0_11_0.up() },\n    ],");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });

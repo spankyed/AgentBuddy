@@ -373,6 +373,20 @@ SDK framework ownership, remove the harness's fake backend-registration assembly
 identity/membership through a separate registry operation. Backend integration fixtures must also declare
 their hand-written systems/plugins rather than adding them only in test setup.
 
+The next working extension checks backend entity/relation values, writer/applier identities, step,
+artifact and block type membership, command names/placeholders, migration lines/targets, and hook-module
+presence. It checks step runtime flags and handler presence and refuses frontend facets in backend
+bindings. Missing/extra/duplicate arrays and explicit malformed values are refused before registration.
+Help bodies, migration descriptions, hook export availability and other hidden module metadata still
+require materialized descriptors; do not infer them by activating a pack during discovery.
+
+The migration producer must bind explicit fields rather than spread the exported object: target comes
+from the manifest, description is read from the source object, and calling `up()` retains that receiver.
+Spreading allowed an extra target to overwrite the manifest and dropped class prototype methods.
+Generated import paths must be relative to the actual generated directory, not computed by stripping an
+assumed `src/` prefix. A bundled generated-entry regression exercises a root-level migration instance,
+checks the authoritative target and executes its receiver-dependent method.
+
 This is partial binding coverage. Remaining kinds, static metadata/assets, generated event contracts,
 frontend membership and the native host declaration inventory still need their own checks and catalog
 projections. Do not call a matching key set a proof of an executable object's full contract, or describe

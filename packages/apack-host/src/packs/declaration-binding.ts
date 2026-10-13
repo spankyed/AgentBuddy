@@ -45,6 +45,85 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   if (!sameKeys(registration.services === undefined ? {} : registration.services, services)) return problem('services');
   const repositories = Object.values(declared).flatMap(feature => Object.keys(feature.repositories ?? {}));
   if (!sameKeys(registration.repositories === undefined ? {} : registration.repositories, repositories)) return problem('repositories');
+
+  const ears = registration.ears === undefined ? {} : registration.ears;
+  if (!isPlainObject(ears)) return problem('ears');
+  if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, manifest.entities ?? {})) return problem('ears.entities');
+  if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, manifest.relKinds ?? {})) return problem('ears.relKinds');
+  if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
+    Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
+  if (!namedBindings(registration.appliers, 'key', Object.keys(manifest.content?.sources ?? {}))) return problem('appliers');
+
+  const commands = namedBindings(registration.commands, 'name', Object.keys(manifest.extensions?.commands ?? {}));
+  if (!commands) return problem('commands');
+  for (const [name, declaration] of Object.entries(manifest.extensions?.commands ?? {})) {
+    if (commands.get(name)!.placeholder !== declaration.placeholder) return problem(`commands.${name}.placeholder`);
+  }
+
+  const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(manifest.extensions?.artifacts ?? {}));
+  if (!artifacts) return problem('artifacts');
+  for (const [type, artifact] of artifacts) if (artifact.fe !== undefined) return problem(`artifacts.${type}.fe`);
+
+  const blocks = namedBindings(registration.blocks, 'type', Object.keys(manifest.extensions?.blocks ?? {}));
+  if (!blocks) return problem('blocks');
+  for (const [type, declaration] of Object.entries(manifest.extensions?.blocks ?? {})) {
+    const block = blocks.get(type)!;
+    if ((block.kind === undefined ? 'display' : block.kind) !== (declaration.kind ?? 'display')) return problem(`blocks.${type}.kind`);
+    if (block.fe !== undefined) return problem(`blocks.${type}.fe`);
+    if ((block.be !== undefined) !== (declaration.be !== undefined)) return problem(`blocks.${type}.be`);
+    if (block.be !== undefined && (!block.be || typeof block.be !== 'object' || Array.isArray(block.be))) return problem(`blocks.${type}.be`);
+  }
+
+  const steps = namedBindings(registration.steps, 'type', Object.keys(manifest.extensions?.steps ?? {}));
+  if (!steps) return problem('steps');
+  for (const [type, declaration] of Object.entries(manifest.extensions?.steps ?? {})) {
+    const step = steps.get(type)!;
+    if ((step.kind === undefined ? 'step' : step.kind) !== (declaration.kind ?? 'step')) return problem(`steps.${type}.kind`);
+    if (step.fe !== undefined) return problem(`steps.${type}.fe`);
+    for (const facet of ['node', 'build', 'trigger'] as const) {
+      if ((step[facet] !== undefined) !== (declaration[facet] !== undefined)) return problem(`steps.${type}.${facet}`);
+      if (step[facet] !== undefined && (!step[facet] || typeof step[facet] !== 'object' || Array.isArray(step[facet]))) return problem(`steps.${type}.${facet}`);
+    }
+    const runtime = declaration.runtime;
+    const hasRuntime = Boolean(runtime?.handler || runtime?.isAsync || runtime?.waits || runtime?.spawnsSubflow);
+    if ((step.runtime !== undefined) !== hasRuntime) return problem(`steps.${type}.runtime`);
+    if (hasRuntime) {
+      if (!isPlainObject(step.runtime)) return problem(`steps.${type}.runtime`);
+      if ((step.runtime.handler !== undefined) !== (runtime?.handler !== undefined)
+        || (step.runtime.handler !== undefined && typeof step.runtime.handler !== 'function')) return problem(`steps.${type}.runtime.handler`);
+      for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
+        if ((step.runtime[flag] === undefined ? false : step.runtime[flag]) !== (runtime?.[flag] ?? false)) return problem(`steps.${type}.runtime.${flag}`);
+      }
+    }
+  }
+
+  const migrations = registration.migrations === undefined ? {} : registration.migrations;
+  if (!isPlainObject(migrations) || Object.keys(migrations).some(line => line !== 'app' && line !== 'pack')) return problem('migrations');
+  for (const line of ['app', 'pack'] as const) {
+    const entries = namedBindings(migrations[line], 'target', Object.keys(manifest.migrations?.[line] ?? {}));
+    if (!entries) return problem(`migrations.${line}`);
+    for (const [target, entry] of entries) {
+      if (typeof entry.up !== 'function' || typeof entry.description !== 'string') return problem(`migrations.${line}.${target}`);
+    }
+  }
+  if ((registration.boot !== undefined) !== (manifest.boot?.hooks !== undefined)) return problem('boot');
+  if (registration.boot !== undefined) {
+    if (!isPlainObject(registration.boot)) return problem('boot');
+    for (const hook of ['onInit', 'onShutdown'] as const) {
+      if (registration.boot[hook] !== undefined && typeof registration.boot[hook] !== 'function') return problem(`boot.${hook}`);
+    }
+  }
+}
+
+function namedBindings(actual: unknown, key: string, expected: readonly string[]): Map<string, Record<string, unknown>> | undefined {
+  if (actual === undefined) actual = [];
+  if (!Array.isArray(actual)) return;
+  const bindings = new Map<string, Record<string, unknown>>();
+  for (const binding of actual) {
+    if (!isPlainObject(binding) || typeof binding[key] !== 'string' || bindings.has(binding[key])) return;
+    bindings.set(binding[key], binding);
+  }
+  return sameNames([...bindings.keys()], expected) ? bindings : undefined;
 }
 
 function sameNames(actual: unknown, expected: readonly string[]): boolean {

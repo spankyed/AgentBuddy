@@ -3,7 +3,7 @@ import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { dirname, extname, join } from 'path';
+import { dirname, extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -282,7 +282,8 @@ const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
  */
 function toImportPath(root: string, manifestPath: string): string {
   const normalized = manifestPath.split('\\').join('/');
-  const rel = '../' + normalized.replace(/^(\.\/)?src\//, '');
+  const fromGenerated = relative(join(root, 'src', '__generated__'), resolve(root, normalized)).split('\\').join('/');
+  const rel = fromGenerated.startsWith('.') ? fromGenerated : `./${fromGenerated}`;
   if (MODULE_EXTENSIONS.has(extname(rel))) return rel;
   if (!existsSync(join(root, `${normalized}.ts`)) && existsSync(join(root, normalized, 'index.ts'))) {
     return `${rel}/index.ts`;
@@ -753,12 +754,11 @@ export async function generatePackFiles(
         const label = `Migration "${line}/${version}"`;
         const local = `__migration_${line}_${version.replace(/[^A-Za-z0-9]/g, '_')}`;
         const { source, exportName, value } = valueExport(label, target);
-        // The target is spread onto it, so a function or a class would contribute no `description` and no
-        // `up` and the migration would run as an empty object
+        // Bind declared fields explicitly: the manifest owns the target, and methods retain their source object.
         if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the migration object itself (export const ${exportName}: DeclaredMigration = { … })`);
         if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it`);
         imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
-        return `      { target: '${version}', ...${local} },`;
+        return `      { target: '${version}', description: ${local}.description, up: () => ${local}.up() },`;
       });
       return [`    ${line}: [\n${items.join('\n')}\n    ],`];
     });

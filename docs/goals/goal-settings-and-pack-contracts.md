@@ -1481,3 +1481,62 @@ Next continue the complete discovery inventory: remaining backend contribution k
 shape checks, frontend declaration membership and static metadata/assets, common catalog projections and
 consumer migration, source/dependency freshness and host-native declarations. The backend key checks
 alone do not complete any of those requirements. All Phase 6 workstreams and remaining phases stay active.
+
+
+The next backend checkpoint checks the remaining declared arrays and maps: own EARS values, writers,
+source-key appliers, steps/facets/runtime flags, artifacts, blocks/kinds, commands/placeholders,
+migration lines/targets and hook-module presence. Missing/extra/duplicate contributions and explicit
+null or non-callable declared handlers are refused. Help bodies and hidden hook/migration metadata,
+frontend bindings and complete catalog projections still require descriptor work.
+
+Expanded checks exposed installed fixture manifests omitting their actual boot, migration, writer,
+entity and applier facts. Those declarations were corrected without bypassing admission. Initial broad
+focused failure evidence is `/private/tmp/apack-discovery-backend-contributions-spec.log`; the corrected
+run passed 959 tests but exposed an undefined local target-list variable and one remaining writer
+fixture, both fixed. A new regression also found two producer defects: migration spreading could
+replace the manifest target and lose prototype methods; path generation assumed every source was
+inside src. Codegen now binds explicit migration fields while retaining callback context and computes
+imports from the actual generated directory.
+
+The bundled generated migration passes its real target/receiver checks; focused backend arrays, loader
+and runner tests pass 102 checks at `/private/tmp/apack-discovery-backend-array-focused.log` (plus the
+separate SDK regression). Affected lifecycle/reset/reload/installation checks and malformed-facet checks
+pass at `/private/tmp/apack-discovery-backend-array-lifecycle.log`; lint passes at
+`/private/tmp/apack-discovery-backend-array-lint.log`. Run strict checkpoint validation before committing
+or starting another implementation slice. No full discovery or goal completion is claimed.
+
+
+The expanded backend checkpoint chain is terminal and failed at integration after 283.7s:
+`node_modules/.cache/apack-chain/runs/2026-10-13T03-54-48Z-93411`. All reached type, schema,
+report, lint, host/pack unit and external-contract checks passed. Of 36 integration files, only the
+migration scaffold assertion failed: it expected the old object-spread code. Its expected binding now
+checks explicit target/description/up fields, preserving version order and the real tsc check. All
+18 tests in that integration file pass at `/private/tmp/apack-discovery-migration-scaffold-integration.log`.
+Re-run strict checkpoint validation on the corrected assertion before committing. The bundled class
+migration still provides independent behavioral proof of target authority and receiver preservation.
+
+
+The corrected backend checkpoint rerun is terminal and failed on the unrelated bounded-spawn cleanup
+assertion, after 110.6s with 17 cached steps:
+`node_modules/.cache/apack-chain/runs/2026-10-13T04-03-14Z-22384`. All 18 migration scaffold tests
+passed; 637 integration tests passed and one failed because it probed grandchild disappearance
+immediately after parent exit. Inspection confirms the reaper queues SIGKILL before parent exit;
+that syscall does not await kernel reaping. The test now uses bounded polling for ESRCH, still requiring
+the exact spawned process to disappear and propagating permission/other errors. It uses the existing
+poll bound and changes no production cleanup behavior. Signal/abort checks pass all four tests at
+`/private/tmp/apack-discovery-bounded-reaping-proof.log`; lint passes at
+`/private/tmp/apack-discovery-bounded-reaping-lint.log`. Re-run strict checkpoint validation on this
+correction before committing; no cleanup invariant was waived.
+
+
+Expanded backend checkpoint validation passes: `npm run chain -- --strict --cores 1`, 213.7s,
+12 executed steps and 18 cached. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T04-13-53Z-49690` and
+`/private/tmp/apack-discovery-backend-contributions-reaping-chain.log`. It includes the corrected
+integration checks, runtime build, external app, smoke and packaged authoring/application. Earlier
+matching-input successes supply the cached checks; final full-goal `--all` validation is still required.
+
+Commit the expanded identities/facet checks and migration/path producer fixes together with their
+behavioral tests and corrected fixture declarations. The OS-reaping test correction is a separate
+logical commit. Help/hook/static module metadata, frontend binding completeness, all-kind catalog views
+and consumer migration remain open, along with all later phases and the three Phase 6 workstreams.

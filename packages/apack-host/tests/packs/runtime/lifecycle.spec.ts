@@ -118,6 +118,8 @@ describe('activating and tearing down a pack at runtime', () => {
       version: '1.0.0',
       features: { main: { system: { entry: 'src/features/main/be/system.ts' } } },
       extensions: { commands: { 'activate-memo': { placeholder: 'Text' } } },
+      content: { sources: { memos: { applier: 'memos.ts' } } },
+      migrations: { pack: { '1.0.0': 'migration.ts#migration' } },
     });
     // The runtime carries what generate-entries writes from the manifest, commands and appliers included
     writeBuild(

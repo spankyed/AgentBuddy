@@ -262,7 +262,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', entities: { Widget: 'Widget' }, boot: { hooks: 'hooks.ts' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
@@ -316,7 +316,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `), { features: { widget: { system: { entry: 'system.ts' }, plugin: { entry: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } });
+    `), { features: { widget: { system: { entry: 'system.ts' }, plugin: { entry: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks();
