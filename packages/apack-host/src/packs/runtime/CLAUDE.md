@@ -35,10 +35,10 @@ profile's installation record file and runs before installed-pack discovery.
 
 ### Loading
 
-`loadAppPacks(registry, shippedIds)` in `loader.ts` — one path for every pack:
+`loadAppPacks(registry)` in `loader.ts` — one path for every pack:
 
 - **Discovery** — `discoverPacks(packsDir)` plus the `installed-packs.json` rows, minus the disabled.
-- **Order** — the ids in `shippedIds` first, so a pack depending on one the app ships finds it registered.
+- **Order** — deterministic pack-id order, with no advertisement/ownership priority. Contribution conflicts name both owners; dependency content order is handled separately by `packContentTargets`.
 - **Loading** — `runtime/index.cjs` in the pack's own installed directory, written by its `apack pack build`, required with `withHostResolution()`. The api bundle carries no pack's backend, so this is the path packaged and from source alike.
 - Before loading code, `readPackArtifact` validates declarations and verifies the complete installed file inventory. Changed/missing/extra files, malformed checksums and symbolic links are refused. The accepted content identity is retained in the pack origin separately from its declaration revision.
 - A pack with no built runtime, or one whose load throws, has a **load problem recorded** and the rest load.

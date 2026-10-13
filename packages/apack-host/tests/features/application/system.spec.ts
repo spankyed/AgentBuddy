@@ -14,7 +14,6 @@ import { createApplicationSystem } from '../../../src/features/application/be/sy
 const withDefaults = (visibility: Record<string, boolean>, pluginIds: string[] = []) => ({
   pluginDefaults: () => visibility,
   pluginIds: () => pluginIds,
-  shippedPacks: () => [],
   loadedPacks: () => [],
   getPackRuntime: () => null,
 });
@@ -88,7 +87,7 @@ it('publishes accepted runtime lifetimes through ordinary state requests without
   const stopListening = testRootEvents.onPluginSend(message => { sent.push(message); });
   const actor = createActor(createApplicationSystem(registry)).start();
   const id = 'runtime-publication';
-  const origin = { id, declarationRevision: 'fixture', name: 'Runtime publication', version: '1.0.0', dir: '/fixture/runtime-publication', shipped: false };
+  const origin = { id, declarationRevision: 'fixture', name: 'Runtime publication', version: '1.0.0', dir: '/fixture/runtime-publication' };
   try {
     registry.registerPack({ id }, origin);
     const before = structuredClone(appState.get());

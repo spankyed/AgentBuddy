@@ -111,12 +111,11 @@ export function acceptInstalledPack(
   const packDir = path.join(resolveAppEnvironment().packsDir, packId);
   const previous = registry.getPackRegistration(packId);
   const previousSystemIds = previous ? packSystemIds(previous) : undefined;
-  const shippedIds = registry.packOrigin(packId)?.shipped ? new Set([packId]) : new Set<string>();
   clearPackRequireCache(packDir);
   let pack: LoadedPack;
   let cleanupProblems: string[] = [];
   try {
-    const candidate = loadSingleExternalPack(packDir, shippedIds);
+    const candidate = loadSingleExternalPack(packDir);
     if ('problem' in candidate) throw new Error(`Failed to load pack ${packId}: ${candidate.problem}`);
     pack = candidate;
     if (previous) {

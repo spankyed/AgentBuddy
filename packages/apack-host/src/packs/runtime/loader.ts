@@ -62,7 +62,6 @@ function skipped(id: string, problem: string): PackLoadProblem {
 /** Reads an installed pack and its runtime, or says why it can't be loaded */
 export function loadSingleExternalPack(
   dir: string,
-  shippedIds: ReadonlySet<string> = new Set(),
 ): LoadedPack | PackLoadProblem {
   let artifact;
   try { artifact = readInstalledPackArtifact(dir); }
@@ -84,7 +83,7 @@ export function loadSingleExternalPack(
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, artifactFiles, dir, shipped: shippedIds.has(manifest.id), manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, artifactFiles, dir, manifest },
   };
 }
 
@@ -132,18 +131,13 @@ export function clearPackRequireCache(packDir: string): void {
  * Reads every enabled installed pack. Why each one it skips was skipped goes to `problems` when given: the app passes
  * its registry, so the Packs view can say why an enabled pack isn't running.
  */
-export function loadExternalPacks(problems?: LoadProblemSink, shippedIds: ReadonlySet<string> = new Set()): LoadedPack[] {
+export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
   const { packsDir } = resolveAppEnvironment();
   const discovered = readInstalledPackArtifacts(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
   forgetPacksExcept(new Set(discovered.map(entry => entry.id)));
-  // **The packs this app ships load first, and that is a guarantee rather than an accident of readdir.**
-  // Registration order decides who wins a designation or a plugin id, so an installed pack that claimed
-  // `brain` would take it from the pack the app needs if it happened to be discovered first. Two separate
-  // load calls used to make this ordering structural; with one list it has to be said.
   const disabled = disabledPackIds();
-  const enabled = discovered.filter(entry => !disabled.has(entry.id))
-    .sort((a, b) => Number(shippedIds.has(b.id)) - Number(shippedIds.has(a.id)));
+  const enabled = discovered.filter(entry => !disabled.has(entry.id)).sort((a, b) => a.id.localeCompare(b.id));
 
   if (enabled.length === 0) return [];
 
@@ -157,7 +151,7 @@ export function loadExternalPacks(problems?: LoadProblemSink, shippedIds: Readon
       continue;
     }
     const { dir, artifact: { snapshot: { manifest } } } = entry;
-    const pack = loadSingleExternalPack(dir, shippedIds);
+    const pack = loadSingleExternalPack(dir);
     if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
     else loaded.push(pack);
   }
@@ -184,15 +178,9 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
   return registered;
 }
 
-/**
- * Loads the app's packs into `registry` — every pack, by the one path, from its own installed directory.
- *
- * The packs in `shippedIds` are ordered first, so a role one of them designates can't be taken by a pack
- * installed later that designates it too: the shipped pack would then fail to register at all. That is the
- * whole of what shipping buys a pack here, and it is an argument rather than something read off a manifest.
- */
-export function loadAppPacks(registry: PackRegistry, shippedIds: ReadonlySet<string> = new Set()): { loaded: LoadedPack[] } {
+/** Load and register every enabled installed pack; advertisements grant no registration priority. */
+export function loadAppPacks(registry: PackRegistry): { loaded: LoadedPack[] } {
   registry.refreshCatalog(resolveAppEnvironment().packsDir);
-  const loaded = loadExternalPacks(registry, shippedIds);
+  const loaded = loadExternalPacks(registry);
   return { loaded: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
 }

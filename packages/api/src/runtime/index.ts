@@ -163,7 +163,6 @@ export async function setupBackend(): Promise<void> {
   // Install before discovery. Ownership, shipped source revision and deliberate removal decide refresh;
   // matching bytes never grant app ownership of an existing user artifact.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
-  const shippedIds = new Set<string>();
   if (!shippedDir) {
     // "This app ships no packs" and "nobody told me where they are" are different answers, and installing
     // nothing looks the same either way: on a fresh data dir both give an app with no plugins
@@ -172,16 +171,13 @@ export async function setupBackend(): Promise<void> {
     const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
     if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
     for (const result of results) {
-      // Shipped whatever the install came to: the app refuses to uninstall it either way, and a pack whose
-      // install failed is one the Packs view reports rather than one it offers to remove
-      shippedIds.add(result.id);
       if (result.outcome === 'failed') console.error(`[packs] Could not install ${result.id}, which this app ships: ${result.error}`);
       else if (result.outcome === 'installed' || result.outcome === 'updated') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
     }
   }
 
   // ── Load packs ────────────
-  const { loaded: loadedPacks } = loadAppPacks(packs, shippedIds);
+  const { loaded: loadedPacks } = loadAppPacks(packs);
 
   console.log(`[app] apack v${APP_VERSION} startupId=${process.env.APACK_STARTUP_ID ?? 'unknown'}`);
 

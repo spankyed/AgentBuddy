@@ -35,7 +35,7 @@ describe('what the loader says about a pack', () => {
     const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
     const pack = {
       registration: { id: PACK_ID },
-      origin: { declarationRevision: 'fixture-revision', ...manifest, dir: tmpDir, shipped: false, manifest },
+      origin: { declarationRevision: 'fixture-revision', ...manifest, dir: tmpDir, manifest },
     };
 
     expect(registerExternalPacks(registry, [pack])).toHaveLength(1);

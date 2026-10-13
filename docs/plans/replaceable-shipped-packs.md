@@ -663,3 +663,46 @@ including fresh packaged authoring/app checks. Evidence:
 The prior run's failure is recorded in `node_modules/.cache/apack-chain/runs/2026-10-13T22-05-33Z-49117`;
 no guard or test expectation was weakened to bypass the missing selector. Final full-goal `--all`
 acceptance and the independently recorded shutdown race remain outstanding.
+
+
+### Runtime provenance cleanup plan (2026-10-13)
+
+`PackOrigin.shipped` is an id classification, not evidence that the installed copy came from the app.
+It still drives loader priority and is carried through replacement; `shippedPacks()` has only fixture
+readers. Remove the flag, query and loader argument plumbing rather than inventing another ownership
+cache. Verified installed origin remains path/declaration/artifact identity; installation records own
+update policy; the app-source catalog owns advertisements. No replacement flag or compatibility alias.
+
+Remove advertised-id load priority. Use deterministic pack-id order and retain named registration
+conflicts; shipping does not grant a designation privilege. This does not substitute for the remaining
+catalog navigation/eligibility policy or dependency-readiness work. Migrate owned runtime/harness/tests,
+prove conflict diagnostics and artifact identity, then run strict validation and commit.
+
+
+### Selected runtime identity cleanup working implementation (2026-10-13)
+
+Removed `PackOrigin.shipped`, `shippedPacks()` and all loader/boot/reload/harness argument propagation.
+Runtime origins now describe verified selected artifacts without falsely claiming app-source provenance
+from an advertised id. Updates still follow installation records; available app defaults remain a
+separate source projection. No alias or replacement ownership cache is introduced.
+
+Loading uses deterministic pack-id order, removing advertised-id priority. A designation conflict still
+refuses the later registration and names both owners; this is not the final catalog eligibility/navigation
+resolver. Content application retains its separate dependency ordering. Owned fixtures and API boot/reset
+composition use the common loader without shipping arguments.
+
+All 148 focused host loader/reload/registration/migration/event checks and the host typecheck pass.
+A verified app advertisement shares an id with a different selected user artifact; the actual loaded
+origin retains that artifact's path, version, receipt/file identity while the advertisement remains
+unchanged. Conflicting designation checks verify deterministic order and both owner diagnostics.
+Strict validation passes all 30 gates in 390.7s (one cached), including actual app and packaged authoring.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T22-20-12Z-93616`;
+`/private/tmp/apack-runtime-provenance-strict-chain.log`. Actual cloned-source editing,
+restart/reload and multiple-window acceptance remain open, as do all other unfinished goal phases.
+
+
+After correcting two stale comments, the final committed candidate's strict recheck passes all 30 gates
+in 208.7s (15 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-13T22-27-18Z-24275`;
+`/private/tmp/apack-runtime-provenance-strict-chain-final.log`. The preceding full checkpoint run
+supplies unchanged real-app/packaged-authoring evidence. No version/release metadata changes and no
+archive of unfinished plans. The independent process shutdown race and final full-goal `--all` remain due.

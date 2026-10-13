@@ -69,7 +69,7 @@ beforeEach(() => {
   // The incumbent is an installed pack, not a host-native contribution with the same ID.
   registry.refreshCatalog(resolveAppEnvironment().packsDir);
   registerPack(running, {
-    id: PACK_ID, name: PACK_ID, version: '1.0.0', shipped: false,
+    id: PACK_ID, name: PACK_ID, version: '1.0.0',
     dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), declarationRevision: 'fixture-revision',
   });
   registerShutdownHook(shutdown, PACK_ID);
@@ -175,7 +175,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('points the rebuilt runtime at its compiled content, so onInit can read them', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
 
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
@@ -187,7 +187,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('changes the accepted runtime identity when identical installed bytes reload', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     const previous = registry.getPackRuntime(SHIPPED_ID)!;
     expect(previous.runtimeRevision).toMatch(/^[a-f0-9-]{36}$/);
     await reloadPackById(registry, SHIPPED_ID, bus as never);
@@ -202,7 +202,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and content
   it('tells the running systems the pack changed, after restarting its own', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
 
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
@@ -212,7 +212,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('content the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     // Boot's own applying, which the reload picks up from
     applyPacks([contentTarget()]);
     expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
@@ -230,7 +230,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it("records what it written per pack, so a second shipped pack's boot apply doesn't re-run this one", async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     applyPacks([contentTarget()]);
     expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
@@ -247,7 +247,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('reports the records an applier could not content, and still records the hash so they are retried on the next change', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
     applyPacks([contentTarget()]);
 
@@ -272,7 +272,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('restarts actors after a committed replacement even when its initialization throws', async () => {
     const dir = writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     const entry = path.join(dir, PACK_LAYOUT.runtimeEntry);
     fs.writeFileSync(entry, fs.readFileSync(entry, 'utf-8').replace(
       'module.exports.compiledDirAtInit = module.exports.getCompiledDir();',
@@ -288,7 +288,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
   it('still restarts the systems when the apply after registering throws, and says why', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     bus.send.mockClear();
 
     // A rebuild running again mid-reload takes the compiled content out from under the applier
@@ -303,7 +303,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
   // A rebuild can change the pack's version, and the list the Packs view shows reads the origin
   it("re-reads the pack's manifest, so a version a rebuild changed is the one listed", async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     expect(registry.packOrigin(SHIPPED_ID)?.version).toBe('1.0.0');
 
     writeShipped({ version: '2.0.0' });
@@ -332,7 +332,7 @@ describe('reloading a pack', () => {
     const handle = generated.settingsHandle({ kind: 'app' });
     const old = { ...running, bindSettings: generated.bindSettings };
     const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision: 'fixture-revision',
-      dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), shipped: false };
+      dir: path.join(resolveAppEnvironment().packsDir, PACK_ID) };
     isolated.registerPack(old, origin);
     const acceptedRuntime = isolated.getPackRuntime(PACK_ID);
     const heard = vi.fn();
@@ -366,7 +366,7 @@ describe('reloading a pack', () => {
 
   // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
   it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
-    const origin = { declarationRevision: 'fixture-revision', id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), shipped: false };
+    const origin = { declarationRevision: 'fixture-revision', id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID) };
     unregisterPack(PACK_ID);
     registerPack(running, origin);
     const previous = registry.getPackRuntime(PACK_ID);

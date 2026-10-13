@@ -68,7 +68,7 @@ describe('the order external packs content in', () => {
 // others.
 describe('the order the registry hands out', () => {
   const origin = (id: string, ...deps: string[]) => ({ declarationRevision: 'fixture-revision',
-    id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped: false,
+    id, name: id, version: '1.0.0', dir: `/packs/${id}`,
     manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) },
   });
 

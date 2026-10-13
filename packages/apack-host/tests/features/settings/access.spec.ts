@@ -5,7 +5,7 @@ import { createSettingsAccess } from '../../../src/features/settings/be/access.t
 
 const origin = (): PackOrigin => ({
   id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact',
-  name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack', shipped: false,
+  name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack',
 });
 const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact' };
 

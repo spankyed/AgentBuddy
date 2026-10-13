@@ -335,7 +335,7 @@ it('preserves the running app-owned artifact, catalog and record when a shipped 
   try {
     shipPack(id);
     expect(await outcomes()).toEqual([`${id}=installed`]);
-    loadAppPacks(registry, new Set([id]));
+    loadAppPacks(registry);
     const previousRegistration = registry.getPackRegistration(id);
     const previousRuntime = registry.getPackRuntime(id);
     const previousArtifact = readPackArtifact(path.join(packsDir, id));

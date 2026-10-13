@@ -181,8 +181,6 @@ export interface PackOrigin {
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
   dir: string;
-  /** Whether the loader classified this id as app-shipped; update ownership is recorded separately. */
-  shipped: boolean;
   /** The pack's `apack.json`, which its loader read to find the pack at all */
   manifest?: PackManifest;
 }
@@ -242,8 +240,6 @@ export interface PackRegistry extends PackRegistryView {
   packOrigin(packId: string): PackOrigin | null;
   /** Accepted installed runtime identity; replacement changes it even when artifact bytes do not. */
   getPackRuntime(packId: string): { origin: PackOrigin; runtimeRevision: string } | null;
-  /** The packs whose installed copy this app shipped, in registration order */
-  shippedPacks(): PackOrigin[];
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
@@ -691,7 +687,6 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       const contribution = admitted.get(packId);
       return origin && contribution ? { origin, runtimeRevision: contribution.runtimeRevision } : null;
     },
-    shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
     loadedPacks: () => [...origins.values()],
     packMigrationTargets: (line, packIds) => {
       const wanted = packIds && new Set(packIds);

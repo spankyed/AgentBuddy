@@ -26,7 +26,7 @@ startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));
 const origins = new Map<string, PackOrigin>();
 const stamp = { runtimeRevision: 'runtime', id: 'consumer', declarationRevision: 'declarations', artifactRevision: 'artifact' };
-const origin = (): PackOrigin => ({ ...stamp, name: 'Consumer', version: '1.0.0', dir: '/fixture/consumer', shipped: false });
+const origin = (): PackOrigin => ({ ...stamp, name: 'Consumer', version: '1.0.0', dir: '/fixture/consumer' });
 const target = (groupId: string) => ({ kind: 'pack' as const, packId: 'owner', groupId });
 let bus: ReturnType<typeof createActor<ReturnType<typeof createAppBus>>>;
 let messages: Message[];

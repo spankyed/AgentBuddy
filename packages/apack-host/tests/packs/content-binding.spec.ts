@@ -17,7 +17,7 @@ const manifest = ManifestSchema.parse({
 });
 const declarationRevision = _declarationRevision(manifest);
 const origin = { id: manifest.id, name: manifest.name, version: manifest.version, manifest,
-  declarationRevision, dir: '/source/content-pack', shipped: false };
+  declarationRevision, dir: '/source/content-pack' };
 const queries = { count: () => 42 };
 const writer = { find: () => undefined };
 const runtime: ContentRuntime = { id: manifest.id, declarationRevision,

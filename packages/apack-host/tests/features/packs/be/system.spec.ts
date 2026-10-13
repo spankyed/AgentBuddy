@@ -909,7 +909,7 @@ describe('updating to a release that holds another pack', () => {
   // Refused for the same reason as any other id, and worded the same: the release is for a different pack
   // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
   it("is refused the same way when that pack is one the app ships, and the incumbent keeps running", async () => {
-    registry.registerPack({ id: 'shipped-pack' }, { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
+    registry.registerPack({ id: 'shipped-pack' }, { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack' });
 
     const sent = await updateTo('shipped-pack');
 
@@ -1055,7 +1055,7 @@ describe('a user answering for one of a pack’s content items', () => {
           },
         },
       },
-    }, { id: manifest.id, name: manifest.name, version: manifest.version, manifest, dir, shipped: false,
+    }, { id: manifest.id, name: manifest.name, version: manifest.version, manifest, dir,
       declarationRevision: snapshot.declarationRevision, artifactRevision: revision, artifactFiles: integrity.files });
   }
 

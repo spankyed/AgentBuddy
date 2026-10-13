@@ -296,8 +296,8 @@ describe('registerPack commands', () => {
 });
 
 describe('packContentTargets', () => {
-  const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
-    ({ declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
+  const origin = (id: string, dependencies?: Record<string, string>) =>
+    ({ declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir: `/packs/${id}`, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
   // **A pack is writable because it is somewhere.** Its compiled content is files in its directory, which the
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
@@ -315,8 +315,8 @@ describe('packContentTargets', () => {
    * alone the applier decides from the rows, so nothing about a pack's content travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
-    registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack', true));
-    registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack', false));
+    registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack'));
+    registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack'));
     registered.push('shipped-pack', 'installed-pack');
 
     const targets = registry.packContentTargets();
@@ -330,8 +330,8 @@ describe('packContentTargets', () => {
 
   // The order content run in, so a pack's content can reference what the packs it depends on written
   it('orders a pack after the packs it depends on', () => {
-    registerPack({ id: 'base-pack' } as PackRegistration, origin('base-pack', true));
-    registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', false, { 'base-pack': '*' }));
+    registerPack({ id: 'base-pack' } as PackRegistration, origin('base-pack'));
+    registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', { 'base-pack': '*' }));
     registered.push('base-pack', 'dependent-pack');
 
     const ids = registry.packContentTargets().map((t) => t.manifest.id);
@@ -339,8 +339,8 @@ describe('packContentTargets', () => {
   });
 
   it('narrows to the packs it is given, which is what activating or reloading one content', () => {
-    registerPack({ id: 'one-pack' } as PackRegistration, origin('one-pack', false));
-    registerPack({ id: 'two-pack' } as PackRegistration, origin('two-pack', false));
+    registerPack({ id: 'one-pack' } as PackRegistration, origin('one-pack'));
+    registerPack({ id: 'two-pack' } as PackRegistration, origin('two-pack'));
     registered.push('one-pack', 'two-pack');
 
     expect(registry.packContentTargets(['two-pack']).map((t) => t.manifest.id)).toEqual(['two-pack']);
@@ -354,7 +354,7 @@ describe('runtime settings admission', () => {
   const manifest = { id: 'settings-pack', name: 'Settings', version: '1.0.0', features: { widget: {} } };
   const origin = {
     id: manifest.id, name: manifest.name, version: manifest.version, manifest,
-    declarationRevision: 'fixture-revision', dir: '/packs/settings-pack', shipped: false,
+    declarationRevision: 'fixture-revision', dir: '/packs/settings-pack',
   };
 
   it.each([

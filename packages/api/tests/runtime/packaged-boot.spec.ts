@@ -50,11 +50,11 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 
 /**
  * The pack half of the app's boot: the shipped packs installed into the data dir, then every installed pack
- * loaded — shipped ones first, which is what keeps a designation theirs
+ * loaded through the same admission path, without advertisement-based registration priority
  */
 async function bootPacks(app: ReturnType<typeof openAppStore>) {
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
-  return loadAppPacks(app.packs, new Set(installed.map((result) => result.id)));
+  await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+  return loadAppPacks(app.packs);
 }
 
 /** The app's boot, closed and unbound however the test ends */

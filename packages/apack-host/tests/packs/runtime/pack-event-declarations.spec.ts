@@ -69,11 +69,11 @@ describe('where the registry says a pack came from', () => {
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
     const origin = registry.packOrigin(PACK_ID);
-    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0', shipped: false });
+    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0' });
     expect(origin?.dir).toBe(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     expect(origin?.manifest?.id).toBe(PACK_ID);
     expect(registry.loadedPacks().map((o) => o.id)).toContain(PACK_ID);
-    expect(registry.shippedPacks().map((o) => o.id)).not.toContain(PACK_ID);
+    expect(registry.packOrigin(PACK_ID)?.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
 
     registry.unregisterPack(PACK_ID);
     expect(registry.packOrigin(PACK_ID)).toBeNull();

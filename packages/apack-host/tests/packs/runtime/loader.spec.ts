@@ -9,13 +9,14 @@ import { clearPackRequireCache, loadAppPacks, loadExternalPacks, type LoadedPack
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { applyPacks, contentRevision, type PackContentTarget } from '../../../src/packs/runtime/apply.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
+import { readAppPackSources } from '../../../src/packs/app-sources.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@apackdev/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, contentFile } from '@apackdev/sdk/build';
 import type { ApplyRecord } from '@apackdev/sdk/utils';
 import { recordInstalled, setPackEnabled, readInstalledPacks } from '../../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, readPackArtifact } from '../../../src/packs/layout.ts';
 
 
 /** The features of a loaded pack that have a system */
@@ -253,35 +254,40 @@ describe('pack-loader', () => {
 
 });
 
-// A pack this app shipped registers before one the user installed, whatever order the packs directory is
-// read in: registration order decides who wins a designation, so a pack claiming `brain` would otherwise
-// take it from the pack the app needs to run. The order is an argument now (`shippedIds`), not a
-// consequence of loading in two calls, so it is something to assert rather than something structural.
-describe('loadAppPacks', () => {
+describe('loadAppPacks deterministic registration', () => {
   afterEach(() => {
-    for (const id of ['role-shipped', 'role-taker']) if (registry.getPackRegistration(id)) registry.unregisterPack(id);
+    for (const id of ['a-custom', 'z-default']) if (registry.getPackRegistration(id)) registry.unregisterPack(id);
+    registry.catalog.setAppPackSources({ sources: [], problems: [] });
   });
 
-  it('registers a pack this app shipped before one it did not', () => {
-    const packs = path.join(_appDirOf(tmpDir), 'packs');
-    // Named so the packs directory is read with the shipped one *last*, which is what makes this a check
-    makePack(packs, 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0', features: { taker: { designation: 'loader-spec-role' } } }, "{ taker: { designation: 'loader-spec-role' } }");
-    makePack(packs, 'role-shipped', { id: 'role-shipped', name: 'Shipped', version: '1.0.0', features: { owner: { designation: 'loader-spec-role' } } }, "{ owner: { designation: 'loader-spec-role' } }");
-
-    const { loaded } = loadAppPacks(registry, new Set(['role-shipped']));
-
-    expect(registry.designation('loader-spec-role')).toBe('role-shipped/owner');
-    // The other pack's claim on the role is what fails, not the shipped pack's
-    expect(loaded.map((pack) => pack.origin.id)).toEqual(['role-shipped']);
-    expect(registry.packOrigin('role-shipped')?.shipped, 'the origin records which copy the app shipped').toBe(true);
-  });
-
-  it('records a pack the app did not ship as one it did not', () => {
-    makePack(path.join(_appDirOf(tmpDir), 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, '{}');
-
+  it('retains the verified selected fork identity even when the app advertises the same id', () => {
+    const appManifest = { id: 'a-custom', name: 'App default', version: '1.0.0' };
+    const staging = makePack(path.join(tmpDir, 'app-stage'), 'a-custom', appManifest);
+    const sources = path.join(tmpDir, 'app-sources');
+    const source = path.join(sources, 'default');
+    fs.mkdirSync(source, { recursive: true });
+    fs.cpSync(staging, path.join(source, 'dist'), { recursive: true });
+    fs.copyFileSync(path.join(staging, 'apack.json'), path.join(source, 'apack.json'));
+    sealBuild(source);
+    registry.catalog.setAppPackSources(readAppPackSources(sources));
+    const selected = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'a-custom', { id: 'a-custom', name: 'User fork', version: '2.0.0' });
+    const accepted = readPackArtifact(selected);
     loadAppPacks(registry);
+    expect(registry.packOrigin('a-custom')).toMatchObject({ name: 'User fork', version: '2.0.0', dir: selected,
+      artifactRevision: accepted.revision, artifactFiles: accepted.integrity.files });
+    expect(registry.catalog.getSnapshot().appPackSources[0].snapshot.manifest.name).toBe('App default');
+  });
 
-    expect(registry.packOrigin('role-taker')?.shipped).toBe(false);
+  it('orders by pack id and reports both owners when a designation conflicts', () => {
+    const packs = path.join(_appDirOf(tmpDir), 'packs');
+    makePack(packs, 'z-default', { id: 'z-default', name: 'Default', version: '1.0.0', features: { owner: { designation: 'loader-spec-role' } } }, "{ owner: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'a-custom', { id: 'a-custom', name: 'Custom', version: '1.0.0', features: { taker: { designation: 'loader-spec-role' } } }, "{ taker: { designation: 'loader-spec-role' } }");
+    const { loaded } = loadAppPacks(registry);
+    expect(registry.designation('loader-spec-role')).toBe('a-custom/taker');
+    expect(loaded.map(pack => pack.origin.id)).toEqual(['a-custom']);
+    expect(registry.loadProblem('z-default')).toContain('a-custom');
+    expect(registry.loadProblem('z-default')).toContain('z-default');
+    expect(registry.packOrigin('a-custom')?.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
   });
 });
 
@@ -1111,7 +1117,7 @@ describe('loaded packs: accepted frontend assets', () => {
     const pack = (id: string, files: string[]) => ({ declarationRevision: 'fixture-revision', artifactRevision: revision,
       artifactFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])),
       manifest: { id, name: id, version: '2.0.0' },
-      id, name: id, version: '2.0.0', dir: '/not-an-installed-directory', shipped: false });
+      id, name: id, version: '2.0.0', dir: '/not-an-installed-directory' });
     const origins = [pack('with-fe', [PACK_LAYOUT.feEntry, PACK_LAYOUT.feStyles]), pack('be-only', [])];
     const loaded = { loadedPacks: () => origins, getPackRuntime: (id: string) => { const origin = origins.find(pack => pack.id === id); return origin ? { origin, runtimeRevision: 'runtime' } : null; } };
     expect(getLoadedPackEntries(loaded)).toEqual([
@@ -1124,7 +1130,7 @@ describe('loaded packs: accepted frontend assets', () => {
     const manifest = { id: 'copy', name: 'Copy', version: '1.0.0' };
     const origin = { id: manifest.id, name: manifest.name, version: manifest.version, manifest,
       declarationRevision: _declarationRevision(manifest), artifactRevision: 'a'.repeat(64),
-      artifactFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy', shipped: false };
+      artifactFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy' };
     const loaded = { loadedPacks: () => [origin], getPackRuntime: () => ({ origin, runtimeRevision: 'runtime' }) };
     getLoadedPackEntries(loaded)[0].manifest!.name = 'Changed by reader';
     expect(manifest.name).toBe('Copy');

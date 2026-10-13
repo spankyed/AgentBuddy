@@ -238,7 +238,7 @@ it('checks source binding identity before acceptance and preserves declarations 
   const manifest = source('author').snapshot.manifest;
   const declarationRevision = _declarationRevision(manifest);
   packs.catalog.setSources([{ manifest, dir: '/source/author', declarationRevision }]);
-  const origin = { id: manifest.id, name: manifest.name, version: manifest.version, dir: '/source/author', shipped: false, manifest, declarationRevision };
+  const origin = { id: manifest.id, name: manifest.name, version: manifest.version, dir: '/source/author', manifest, declarationRevision };
   const registration = { id: manifest.id, declarationRevision, settings: manifest.extensions!.settings };
   const before = packs.catalog.getSnapshot();
   expect(() => packs.registerPack({ ...registration, declarationRevision: 'stale' }, origin)).toThrow('accepted source declarations');

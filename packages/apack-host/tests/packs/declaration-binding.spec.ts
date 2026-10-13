@@ -64,7 +64,7 @@ it('refuses undeclared services before registration, catalog publication or auth
   let bound = false;
   const empty = ManifestSchema.parse({ id: 'undeclared', name: 'Undeclared', version: '1.0.0' });
   expect(() => registry.registerPack({ id: empty.id, services: { ghost: {} }, bindSettings: () => { bound = true; return () => {}; } }, {
-    id: empty.id, name: empty.name, version: empty.version, dir: '/packs/undeclared', shipped: false,
+    id: empty.id, name: empty.name, version: empty.version, dir: '/packs/undeclared',
     declarationRevision: 'accepted', manifest: empty,
   })).toThrow('runtime services does not match');
   expect(bound).toBe(false);

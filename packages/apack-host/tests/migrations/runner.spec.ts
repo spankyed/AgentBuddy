@@ -61,13 +61,13 @@ describe('boot migrations', () => {
     // origin's manifest, and the loader builds every origin with one — so a fixture without it is a shipped
     // pack the second runner cannot see, and this case passed while a real one ran its migrations twice.
     const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, migrations: { app: { [TEST_APP_VERSION]: { description: 'built-in', up: 'migration.ts#up' } } } };
-    registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...shippedManifest, dir: builtInDir, shipped: true, manifest: shippedManifest as never });
+    registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...shippedManifest, dir: builtInDir, manifest: shippedManifest as never });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION, migrations: { pack: { [TEST_APP_VERSION]: { description: 'external', up: 'migration.ts#up' } } } };
     const external = {
       registration: { id: manifest.id, migrations: { pack: [externalMigration] } },
-      origin: { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, shipped: false, manifest: manifest },
+      origin: { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
     // What the boot passes on: the registry joins each registered pack's origin with the migrations it declared
@@ -100,7 +100,7 @@ describe('boot migrations', () => {
     const manifest = { id: 'migrations-shipped-own-line', name: 'Shipped', version: '9.0.0', migrations: { pack: { '2.0.0': { description: 'own line', up: 'migration.ts#up' } } } };
     registry.registerPack(
       { id: manifest.id, migrations: { pack: [{ target: '2.0.0', description: 'own line', up: () => { ran.push('2.0.0'); } }] } },
-      { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, shipped: true, manifest: manifest as never },
+      { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, manifest: manifest as never },
     );
     try {
       const targets = registry.packMigrationTargets('pack');
@@ -171,7 +171,7 @@ describe('which migrations run', () => {
       })) },
     };
     const gateManifest = { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, migrations: { app: Object.fromEntries(targets.map(target => [target, { description: target, up: 'migration.ts#up' }])) } };
-    registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...gateManifest, dir: builtInDir, shipped: false, manifest: gateManifest as never });
+    registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...gateManifest, dir: builtInDir, manifest: gateManifest as never });
   });
 
   beforeEach(() => {

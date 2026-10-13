@@ -246,7 +246,7 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
 function originOf(manifest: PackManifest, dir: string): PackOrigin {
   // `shipped` is about the app having installed this copy, which a test app never did — and nothing a pack's
   // own tests exercise reads it
-  return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, shipped: false, manifest };
+  return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, manifest };
 }
 
 /**
