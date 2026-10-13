@@ -2211,3 +2211,26 @@ offers, archive eligibility and the full restart/reload acceptance matrix. All r
 navigation, pane boundaries, supported APIs, dependency provenance and final-audit requirements remain
 in scope. The independently recorded API/fixture shutdown race remains open. No plans are archived,
 and this checkpoint does not satisfy final strict `--all` or complete the replacement workstream.
+
+
+### Manifest shipping privilege removal checkpoint (2026-10-13)
+
+`748781815` removes `builtIn` from the manifest/schema, default-setup, codegen fixtures, controlled SDK
+build report and public docs. No alias, conversion or special legacy parser remains. Archive eligibility
+now follows build freshness/integrity, enabling the actual default-setup artifact to be archived as a
+standalone verified pack. CLI list exposes update ownership; GitHub updates use recorded ownership,
+allowing a user-managed default-id fork's remote source while excluding app-managed updates.
+
+All 92 SDK schema/codegen, 18 focused host and four CLI tests pass. The archive test builds an archive
+of the freshly rebuilt real default-setup, verifies its checksum, extracts it and checks the receipt.
+The controlled SDK report has exactly six obsolete field declarations removed. Strict validation passes
+all 30 gates in 381.0s (none cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-15-31Z-55624`. No release/version metadata changes.
+See [the removal evidence and remaining controls](../plans/replaceable-shipped-packs.md#manifest-shipping-privilege-removal-2026-10-13).
+
+Next complete the app source/advertised-id catalog and provenance contract, live replace/restore and
+uninstall/toggle controls, app-source update offers, optional Threads selection when no pack supplies
+that role, and the full clone/edit/restart/reload acceptance matrix. All remaining all-kind discovery,
+navigation, frontend boundaries, consumed APIs, dependency provenance and final audit remain required.
+The separate API/fixture shutdown race is not declared fixed by a passing run. No plans are archived;
+this is not final strict `--all` acceptance or completion of the replacement workstream/full goal.
