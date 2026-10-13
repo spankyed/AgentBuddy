@@ -2160,3 +2160,29 @@ Next implement explicit shipped-pack update ownership and uninstall suppression,
 replace/restore operations with restart/reload verification. Every other unfinished discovery,
 navigation, boundary, API/provenance and final-audit requirement remains in scope. The independently
 observed API/fixture shutdown cleanup race also remains open; no plans are archived at this checkpoint.
+
+
+### Explicit shipped ownership and removal checkpoint (2026-10-13)
+
+`03745e1dc` implements `updatesWith`, a distinct shipped-source revision and deliberate-removal
+suppression in installation records. Boot and id-specific refresh require the target profile's record
+file; they preserve unrecorded/user-owned artifacts and retain suppression across pruning. App-owned
+source changes refresh without discarding enablement; unchanged source identity does not certify
+installed health or repair edited bytes. Artifact admission still diagnoses invalid installations.
+
+App/CLI/dev installs choose user ownership before publication, and source recording participates in
+acceptance. Record write/refusal/deletion failures restore the prior installation decision. Actual
+app-owned shipped reload also accepts registration inside filesystem/record rollback, retaining the
+incumbent runtime, catalog, bytes and records on collision. Startup/data effects remain outside rollback.
+
+All 169 focused host tests, seven CLI caller tests and CLI/testing typechecks pass. Five ownership,
+suppression, pruning, record-write and rollback mutations fail and were restored. Strict validation
+passes all 30 gates in 356.8s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T19-24-50Z-88047`. See
+[the selected ownership contract and evidence](../plans/replaceable-shipped-packs.md#explicit-update-ownership-and-removal-suppression-2026-10-13).
+
+Next deliver explicit replace/restore operations, app-source update offers, provenance-only controls,
+archive eligibility and the replacement plan's complete restart/reload acceptance. All other unfinished
+discovery, navigation, boundary, consumed-API/provenance and final-audit requirements remain in scope.
+The independent API/fixture shutdown cleanup race remains unresolved. No plans are archived, and this
+is not final strict `--all` acceptance or completion of the shipped replacement workstream.
