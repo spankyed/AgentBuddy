@@ -196,7 +196,9 @@ which is all that is left there.
 - `frontends.ts` — `createPackFrontends(io, packs)`, the shell's `packFrontends`: a pack's file URLs (with the
   revision, so an updated pack isn't served from the cache), what a default export must declare to count as a
   registration, and what unloading takes back. The window's two acts arrive as `PackFrontendIO`
-  (`importModule`, `styles.add`/`remove`), so no browser global is reached here. Its failure log,
+  (`importModule`, `styles.prepare`/`remove`), so no browser global is reached here. A prepared style lease
+  loads inert CSS and owns its readiness, commit and disposal; only accepted frontends apply it, and
+  candidate failure disposes its own lease while retaining accepted styles. Its failure log,
   `[pack-loader] Failed to load FE entry pack://<id>/…`, is matched by the E2E fixture to fail a pack under test
   fast: its text is a contract, not a message.
 - `install-url.ts` — `installFromProtocol(params)`, what `apack://install?pack=…&sourceKind=…&sha256=…` asks for; a window

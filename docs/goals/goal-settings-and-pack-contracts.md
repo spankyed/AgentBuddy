@@ -1994,3 +1994,25 @@ also records concrete frontend replacement hazards: failure can remove incumbent
 factory failure can retire incumbent bindings. Complete resource transactions and declarative metadata
 before claiming Phase 3 done. Navigation, boundaries, source/dependency freshness and all three Phase 6
 streams remain required; no plans are archived and final `--all` acceptance remains outstanding.
+
+
+### Owned stylesheet preparation checkpoint (2026-10-13)
+
+`de0d55480` stages inert stylesheet leases and applies them after frontend acceptance. Each attempt
+owns cancellation and cleanup; matching hrefs share the physical load without letting a cancelled or
+retired lease remove accepted CSS. Failed same-pack candidates retain the incumbent stylesheet;
+explicit unload clears pending/accepted styles. Fresh registration is cleaned up if binding aborts
+before style commit. Restored checks pass: 28 host cases and nine renderer/runtime cases. Mutations
+that remove all styles on failure, apply candidate CSS before commit, or remove a new same-href owner
+all fail. Lint found unnecessary iterable copies; these were removed and disposal checks rerun.
+
+The final strict chain passed in 216.8s (17 of 30 gates cached), including real external-pack app,
+smoke and packaged-app checks: Chromium fetched inert CSS and applied it after acceptance.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T13-59-24Z-37300`;
+`/private/tmp/apack-style-leases-strict-chain-final.log`.
+
+Audit correction: the frontend registry rejects duplicate registration; it does not currently replace
+an incumbent. The shell retires old frontends in its unload-before-reload path. An explicit staged
+registry replacement plus shell handoff is still required to preserve bindings/settings resources.
+Native/all-kind metadata, remaining static readers, navigation, boundaries, freshness and all three
+Phase 6 streams remain open. No plans are archived; final `--all` acceptance remains outstanding.

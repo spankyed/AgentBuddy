@@ -874,8 +874,24 @@ anonymous editor contribution identities still require declarations; native fron
 needs the complete native model. Icon identity and DSL asset bytes are not established by member-name
 checks. The renderer still has to move static readers off runtime registrations.
 
-Frontend replacement must also become transactional: styles are currently keyed only by pack ID and
-failed loads can remove an incumbent stylesheet; the frontend store's replacement can retire incumbent
-resources before a late factory failure. Stage owned style/settings/contribution resources, publish once,
-and retire the old resources after acceptance. Prove failure/cancellation keeps the incumbent resources
-usable; a metadata guard alone is not that proof. Arbitrary module side effects remain outside rollback.
+Frontend replacement still needs an explicit transaction. Correction from the subsequent source audit:
+`registerPackFE()` currently refuses duplicate owners; it does not implement replacement. The shell's
+`PACK_PLUGINS_UNLOADED` path retires existing frontends before reloading them. Stylesheet ownership is
+now staged as described below, but settings/contribution replacement and shell handoff remain open.
+Stage resources, publish once, and retire old resources after acceptance; prove failure/cancellation
+keeps the incumbent usable. Arbitrary module side effects remain outside rollback.
+
+
+### Owned stylesheet preparation checkpoint (2026-10-13)
+
+`de0d55480` replaces pack-wide failure cleanup with per-attempt stylesheet leases. Preparation fetches
+an inert `media="not all"` link; readiness is awaited, and styles are applied only after frontend
+acceptance. Same-href leases share one physical request but own cancellation independently. Disposing
+an old owner cannot remove a newer owner using that link. Candidate failure retains accepted CSS;
+explicit pack unload disposes accepted and pending leases. Styles-only retries transfer ownership
+without duplicating links. An abort during a fresh binding also unregisters that candidate before commit.
+
+The real-app strict gate proves Chromium loads the inert stylesheet and accepted plugin styles apply.
+DOM and host seam checks prove failure/cancellation/ownership behavior. This closes stylesheet staging,
+not the shell's unload-before-reload behavior or a transactional frontend registry replacement API.
+Vite/source-module side effects remain outside installed stylesheet rollback.
