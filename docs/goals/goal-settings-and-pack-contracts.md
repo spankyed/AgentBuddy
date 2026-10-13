@@ -2117,3 +2117,24 @@ The surviving API log and non-awaited child shutdown are recorded in
 The unchanged-source recheck passes the strict chain in 115.8s (25 cached gates), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T17-52-50Z-12522`; the cleanup race remains unresolved.
 All unfinished phases and final strict `--all` acceptance remain required.
+
+
+### Coordinated live installation checkpoint (2026-10-13)
+
+`814938b6a` wires installer acceptance to transactional registry replacement. Download, runtime-load
+and registration refusal preserve the incumbent artifact, registration/revision, records and generated
+settings authority. Resolved-id reservation prevents competing source installs from publishing one owner.
+Initialization runs after filesystem acceptance, restarts old/new systems on success, and cleans runtime
+resources after failure while retaining accepted files; arbitrary user-data effects are not rolled back.
+Disabled updates preserve disabled state and refresh declarations without activating executable code.
+
+All 163 focused tests pass, with four refusal/cache/ownership/enablement mutations caught and restored.
+Strict checkpoint validation passes all 30 gates in 393.9s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T18-05-22Z-18099`. The separate API/fixture shutdown
+cleanup race remains unresolved despite passing this run. See
+[the coordinated installation evidence](../plans/replaceable-shipped-packs.md#coordinated-app-installation-2026-10-13).
+
+Next remove the now-unused teardown replacement flag and its registry/bus suppression state, and
+replace teardown's obsolete extension projection with its lifecycle lookup. Explicit shipped update
+ownership, suppression and replace/restore operations remain required, alongside every other unfinished
+goal phase. This is not the final requirement audit or strict `--all` acceptance; no plans are archived.
