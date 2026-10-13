@@ -922,3 +922,43 @@ Next audit and implement shell handoff, preserving accepted actors through refus
 removing genuinely absent owners after an authoritative read. Native/all-kind metadata, source/dependency
 freshness, navigation, frontend boundaries and all three Phase 6 streams remain required. No plans are
 archived; full requirement review and final strict `--all` acceptance remain outstanding.
+
+
+### Reconnect handoff and generated binding lifecycle (2026-10-13)
+
+`854eea117` separates connection loss from pack removal. The shell cancels an interrupted loader,
+retains accepted actors/definitions/resources, and refreshes them after reconnect. Failed list reads
+and refused candidates preserve incumbents. A successful authoritative list removes absent owners.
+Accepted replacements stop the previous owner's actors, publish new definitions without duplicate IDs,
+retain tab order/visibility/selection where possible, and announce readiness afterward. A replacement
+that removes its frontend also removes its old actors. This supersedes the earlier unload-first
+reconnection behavior and its tests; explicit disable/uninstall still remove their frontends.
+
+Review found a real gap behind the passing shell mocks: the SDK's generated settings binder refused
+replacement when an unchanged artifact reused its cached module. The real SDK/registry probe reproduced
+`Frontend settings are already bound`. The frontend hook now returns explicit `activate`/`dispose`
+operations. Preparation leaves the module's accepted accessor unchanged; host commit activates the
+candidate before other host resource publication. Failed publication restores a still-active incumbent.
+Retirement cannot revive old handles or clear the new accessor, and it releases the rollback reference.
+The generated entry and public API report use this contract outright, without an old-hook alias.
+
+Evidence: 345 focused host checks, 16 SDK settings checks and nine generated-compilation checks pass.
+The real shell/loader/registry/generated binder test reuses the same registration and import URL across
+reconnect, preserves the actor until acceptance, and proves new authority plus old-handle revocation.
+Six mutations covering premature unload, missing-owner reconciliation, actor retirement, early accessor
+publication, missing accessor rollback and retired-accessor cleanup fail their intended regressions.
+Sources were restored. The first combined strict run found the missed cleanup-function call inside a
+generated-code fixture; it was corrected to exercise activation/disposal, without weakening assertions.
+Final strict sequential validation passes in 303.7s (15 of 30 cached), including integration, actual
+external-pack app, smoke and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T15-20-17Z-72081`;
+`/private/tmp/apack-frontend-handoff-protocol-strict-chain-complete.log`.
+
+This closes reconnect handoff, not the entire replacement workstream. Backend `RELOAD_PACK` currently
+restarts systems and publishes `PACK_CHANGED`, but does not request a frontend refresh while the
+connection stays live. Normal activation reads still skip accepted IDs. Add accepted-revision-aware
+refresh notification together with coherent artifact/runtime publication; do not route replacement
+through `PACK_DEACTIVATED`. Installed update/install still have pre-teardown paths. Arbitrary actor/module
+side effects and pane failures remain the separate boundary work, not rollback guarantees here.
+Native/all-kind declarations, remaining static readers, complete freshness, navigation and all three
+Phase 6 streams remain required before final `--all` acceptance and archival.

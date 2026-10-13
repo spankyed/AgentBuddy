@@ -2043,3 +2043,19 @@ Next audit and implement shell handoff, preserving accepted actors through refus
 removing genuinely absent owners after an authoritative read. Native/all-kind metadata, source/dependency
 freshness, navigation, frontend boundaries and all three Phase 6 streams remain required. No plans are
 archived; full requirement review and final strict `--all` acceptance remain outstanding.
+
+
+### Reconnect frontend handoff checkpoint (2026-10-13)
+
+`854eea117` retains accepted frontends across disconnect/refused replacements, reconciles removals
+from an authoritative read, and replaces accepted actors while preserving selection/order/visibility.
+The generated settings lifecycle now supports cached modules through explicit activation and disposal;
+real composed checks prove replacement without reviving old handles. The missed generated fixture was
+corrected before the final strict pass: 303.7s, 15 of 30 cached, evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T15-20-17Z-72081`.
+Detailed contract corrections, mutations and limits are in
+[the discovery checkpoint](../plans/discovery-without-activation.md#reconnect-handoff-and-generated-binding-lifecycle-2026-10-13).
+
+The goal remains active. Live accepted-revision frontend refresh and installed update publication are
+still open, alongside native/all-kind descriptors, static consumers/freshness, navigation, pane boundaries
+and every Phase 6 stream. No completed-phase claim or archival follows this local checkpoint.
