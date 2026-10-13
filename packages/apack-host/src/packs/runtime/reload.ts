@@ -8,7 +8,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
-import { acceptInstalledPack } from './lifecycle.ts';
+import { acceptInstalledPack, replacePackRuntime } from './lifecycle.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -133,7 +133,7 @@ export async function reloadPackById(
       register: (replacing) => {
         if (replacing) {
           try {
-            for (const problem of registry.replacePack(pack.registration, pack.origin)) {
+            for (const problem of replacePackRuntime(registry, pack, backendActor)) {
               logger.error(`Pack ${packId} replaced, but old binding cleanup failed: ${problem}`);
             }
           } catch (error) {

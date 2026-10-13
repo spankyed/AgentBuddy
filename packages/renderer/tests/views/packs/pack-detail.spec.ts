@@ -1,18 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createApp, type App } from 'vue';
-import type { InstalledPackSummary } from '@apackdev/host/fe';
+import { createApp, nextTick, reactive, type App } from 'vue';
+import type { AppPackSourceSummary, InstalledPackSummary } from '@apackdev/host/fe';
 import PackDetail from '@/views/packs/PackDetail.vue';
 
 /** An installed external pack with nothing declared, and `overrides` */
 const pack = (overrides: Partial<InstalledPackSummary> = {}): InstalledPackSummary => ({
-  id: 'memo-pack', name: 'Memos', version: '1.0.0', canUninstall: true, enabled: true,
+  id: 'memo-pack', name: 'Memos', version: '1.0.0', updatesWith: 'user', enabled: true,
   entities: {}, relKinds: {}, features: [], services: [], steps: [], artifacts: [], blocks: [], systems: [],
-  permissions: [], bootHooks: [], migrationCount: 0, contentOffers: [], contentKept: [],
+  entityCount: 0, hasFrontend: false, permissions: [], bootHooks: [], migrationCount: 0, contentOffers: [], contentKept: [],
   ...overrides,
-} as unknown as InstalledPackSummary);
+});
 
 let app: App | undefined;
-function render(props: { pack: InstalledPackSummary }): HTMLElement {
+function render(props: { pack: InstalledPackSummary; appSource?: AppPackSourceSummary; confirmingUninstall?: boolean; onRestore?: (revision: string) => void; onReplace?: (source: string) => void }): HTMLElement {
+  app?.unmount();
   const el = document.createElement('div');
   app = createApp(PackDetail, props);
   app.mount(el);
@@ -90,5 +91,41 @@ describe('the decisions a pack’s content leaves the user', () => {
     const none = render({ pack: pack() });
     expect(none.querySelector('[data-testid="pack-content-offers"]')).toBeNull();
     expect(none.querySelector('[data-testid="pack-content-kept"]')).toBeNull();
+  });
+});
+
+
+describe('app-default controls', () => {
+  it('offers disable, remove and explicit replacement for app-managed installations', async () => {
+    const replacements: string[] = [];
+    const el = render({ pack: pack({ updatesWith: 'app' }), onReplace: source => replacements.push(source) });
+    expect(el.textContent).toContain('App-managed');
+    expect(el.querySelector('button[title="Disable"]')).toBeTruthy();
+    expect([...el.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Remove')).toBe(true);
+    const input = el.querySelector('[data-testid="pack-replacement"] input') as HTMLInputElement;
+    input.value = '/fork';
+    input.dispatchEvent(new Event('input'));
+    await nextTick();
+    (el.querySelector('[data-testid="pack-replace"]') as HTMLButtonElement).click();
+    expect(replacements).toEqual(['/fork']);
+  });
+
+  it('confirms restoration and sends the revision the user selected, even if the offer changes', async () => {
+    const restores: string[] = [];
+    const source = reactive({ id: 'memo-pack', name: 'App memos', version: '1.0.0', sourceRevision: 'a'.repeat(64) });
+    const el = render({ pack: pack(), appSource: source, onRestore: revision => restores.push(revision) });
+    (el.querySelector('[data-testid="pack-restore"]') as HTMLButtonElement).click();
+    await nextTick();
+    expect(restores).toEqual([]);
+    expect(el.querySelector('[data-testid="pack-restore-confirmation"]')).toBeTruthy();
+    source.sourceRevision = 'b'.repeat(64);
+    await nextTick();
+    (el.querySelector('[data-testid="pack-confirm-restore"]') as HTMLButtonElement).click();
+    expect(restores).toEqual(['a'.repeat(64)]);
+  });
+
+  it('shows removal confirmation in the selected detail pane', () => {
+    const el = render({ pack: pack({ updatesWith: 'app' }), confirmingUninstall: true });
+    expect(el.querySelector('[data-testid="pack-remove-confirmation"]')?.textContent).toContain('Pack files will be deleted');
   });
 });

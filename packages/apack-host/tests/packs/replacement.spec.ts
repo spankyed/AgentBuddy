@@ -59,6 +59,21 @@ function assertIncumbent(f: ReturnType<typeof fixture>) {
 }
 
 describe('accepted pack replacement', () => {
+  it('publishes the candidate while the coordinator retains incumbent authority through actor cleanup', () => {
+    const f = fixture();
+    let dispose!: () => string[];
+    const candidate = f.fresh.settingsHandle(target);
+    expect(f.registry.replacePack(f.next, undefined, { retireBinding: cleanup => { dispose = cleanup; } })).toEqual([]);
+    expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
+    expect(candidate.get()).toEqual({ value: 1 });
+    expect(f.handle.get()).toEqual({ value: 1 });
+    expect(f.listeners.size).toBe(1);
+    expect(dispose()).toEqual([]);
+    expect(f.listeners.size).toBe(0);
+    expect(() => f.handle.get()).toThrow('revoked');
+    expect(candidate.get()).toEqual({ value: 1 });
+  });
+
   it.each(['__proto__', 'constructor', 'toString'])('publishes, replaces and removes the exact repository key %s', name => {
     const f = fixture();
     f.next.repositories = { [name]: { owner: 'candidate' } };

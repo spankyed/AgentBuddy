@@ -253,6 +253,7 @@ describe('activating and tearing down a pack at runtime', () => {
   afterEach(async () => {
     if (registry.getPackRegistration(PACK_ID)) registry.unregisterPack(PACK_ID);
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
   });
 
   it('removes a failed initialization binding while retaining installed declarations', async () => {
@@ -309,6 +310,7 @@ describe('activating and tearing down a pack at runtime', () => {
     fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
     expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
 
     teardownPack(registry, PACK_ID, bus as never);
 
@@ -334,6 +336,7 @@ describe('activating and tearing down a pack at runtime', () => {
     const logged: string[] = [];
     const stopLogging = testRootEvents.onLog((event) => void logged.push(`${event.message} ${event.stack ?? ''} ${JSON.stringify(event.meta ?? {})}`));
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
     try {
       teardownPack(registry, 'stuck-pack', bus as never);
     } finally {

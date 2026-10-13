@@ -10,7 +10,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-lifecycle');
 
-/** Stops and unregisters a pack, then publishes its removal. */
+/** Unregister and revoke a pack only after the bus finishes stopping its actors and subscriptions. */
 export function teardownPack(
   registry: PackRegistry,
   packId: string,
@@ -20,35 +20,48 @@ export function teardownPack(
 
   logger.info(`Tearing down pack: ${packId}`);
 
-  registry.runShutdownHooksForKey(packId);
-  // Whatever stopped it loading is no longer the pack's state: it is disabled, gone, or about to be activated again
-  registry.clearLoadProblem(packId);
+  const finish = () => {
+    registry.runShutdownHooksForKey(packId);
+    // Whatever stopped it loading is no longer the pack's state: it is disabled, gone, or about to be activated again
+    registry.clearLoadProblem(packId);
 
-  // Asked, not caught: unregisterPack also throws when a contribution couldn't be taken back out, and
-  // reporting that as a pack nobody had registered is the wrong story. The pack is unregistered either
-  // way, so the rest of the teardown — the require cache, stopping its systems — still has to happen.
-  if (!registry.getPackRegistration(packId)) {
-    logger.info(`Pack ${packId} was not previously registered`);
-  } else {
-    try {
-      registry.unregisterPack(packId);
-    } catch (err) {
-      logger.error(`Tearing down pack ${packId}:`, err as Error);
+    // Asked, not caught: unregisterPack also throws when a contribution couldn't be taken back out, and
+    // reporting that as a pack nobody had registered is the wrong story. The pack is unregistered either
+    // way, so the rest of the teardown — the require cache, stopping its systems — still has to happen.
+    if (!registry.getPackRegistration(packId)) {
+      logger.info(`Pack ${packId} was not previously registered`);
+    } else {
+      try {
+        registry.unregisterPack(packId);
+      } catch (err) {
+        logger.error(`Tearing down pack ${packId}:`, err as Error);
+      }
     }
-  }
 
-  const packDir = path.join(resolveAppEnvironment().packsDir, packId);
-  if (fs.existsSync(packDir)) {
-    clearPackRequireCache(packDir);
-  }
+    const packDir = path.join(resolveAppEnvironment().packsDir, packId);
+    if (fs.existsSync(packDir)) {
+      clearPackRequireCache(packDir);
+    }
 
-  if (systemIds.length > 0) {
-    busActor.send({ type: 'TEARDOWN_PACK', systemIds });
-  }
-  // The systems still running read what the pack registered (its slash commands, say)
-  busActor.send({ type: 'PACK_CHANGED', packId });
+    // The systems still running read what the pack registered (its slash commands, say)
+    busActor.send({ type: 'PACK_CHANGED', packId });
 
-  logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
+    logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
+  };
+  if (systemIds.length > 0) busActor.send({ type: 'TEARDOWN_PACK', packId, systemIds, afterStop: finish });
+  else finish();
+}
+
+/** Publish checked bindings first; revoke the incumbent only after its actors finish cleanup. */
+export function replacePackRuntime(registry: PackRegistry, pack: LoadedPack, busActor: import('xstate').AnyActorRef): string[] {
+  const systemIds = registry.getRegisteredPackSystemIds(pack.registration.id);
+  return registry.replacePack(pack.registration, pack.origin, { retireBinding: dispose => {
+    busActor.send({ type: 'TEARDOWN_PACK', packId: pack.registration.id, systemIds,
+      afterStop: () => {
+        for (const problem of dispose()) logger.error(`Pack ${pack.registration.id} accepted, but old binding cleanup failed: ${problem}`);
+      },
+    });
+  } });
 }
 
 /**
@@ -107,7 +120,7 @@ export function acceptInstalledPack(
     if ('problem' in candidate) throw new Error(`Failed to load pack ${packId}: ${candidate.problem}`);
     pack = candidate;
     if (previous) {
-      cleanupProblems = registry.replacePack(pack.registration, pack.origin);
+      cleanupProblems = replacePackRuntime(registry, pack, busActor);
     } else {
       registry.registerPack(pack.registration, pack.origin);
     }

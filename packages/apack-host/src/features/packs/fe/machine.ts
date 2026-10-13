@@ -4,14 +4,17 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { breadcrumb, safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '../../../events.ts';
-import type { InstalledPackSummary } from '../../../packs/registry.ts';
+import type { AppPackSourceSummary, InstalledPackSummary } from '../../../packs/registry.ts';
+import type { OutgoingPacksEvents } from '../../registration.ts';
 import { HOST } from '../../../refs.ts';
 import { notifyPluginActor } from '../../../fe/plugin-delivery.ts';
 
-export type { InstalledPackSummary };
+export type { AppPackSourceSummary, InstalledPackSummary };
 
 export interface PacksContext {
   packs: InstalledPackSummary[];
+  appPackSources: AppPackSourceSummary[];
+  appPackSourceProblems: { id: string; message: string }[];
   selectedPackId: string | null;
   installing: string | null;
   confirmingUninstall: string | null;
@@ -19,20 +22,11 @@ export interface PacksContext {
   error: string | null;
 }
 
-type PacksEvent =
+type PacksEvent = OutgoingPacksEvents
   | { type: 'CLIENT_CONNECTED' }
-  | { type: 'PACKS_LIST'; packs: InstalledPackSummary[] }
-  | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
-  | { type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }
-  | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
-  | { type: 'PACK_UNINSTALL_COMPLETE'; packId: string }
-  | { type: 'PACK_UNINSTALL_FAILED'; packId: string; error: string }
-  | { type: 'PACK_ENABLED_CHANGED'; packId: string; enabled: boolean }
-  | { type: 'PACK_ACTIVATED'; packId: string }
-  | { type: 'PACK_DEACTIVATED'; packId: string }
-  | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
-  | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
   | { type: 'UI.INSTALL'; packSlug: string; sourceKind?: string }
+  | { type: 'UI.REPLACE'; packId: string; packSlug: string; sourceKind?: string }
+  | { type: 'UI.RESTORE'; packId: string; sourceRevision: string }
   | { type: 'UI.UNINSTALL'; packId: string }
   | { type: 'UI.CONFIRM_UNINSTALL'; packId: string }
   | { type: 'UI.CANCEL_UNINSTALL' }
@@ -61,6 +55,8 @@ const packsState = setup({
   actions: {
     setPacksList: assign({
       packs: ({ event }) => typeOf('PACKS_LIST', event).packs,
+      appPackSources: ({ event }) => typeOf('PACKS_LIST', event).appPackSources,
+      appPackSourceProblems: ({ event }) => typeOf('PACKS_LIST', event).appPackSourceProblems,
       error: () => null,
     }),
 
@@ -108,6 +104,16 @@ const packsState = setup({
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
       sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: ev.packSlug, sourceKind: ev.sourceKind });
+    },
+
+    sendReplace: ({ event }) => {
+      const ev = typeOf('UI.REPLACE', event);
+      sendToSystem('packs', { type: 'REPLACE_PACK', packId: ev.packId, packSlug: ev.packSlug, sourceKind: ev.sourceKind });
+    },
+
+    sendRestore: ({ event }) => {
+      const ev = typeOf('UI.RESTORE', event);
+      sendToSystem('packs', { type: 'RESTORE_PACK', packId: ev.packId, sourceRevision: ev.sourceRevision });
     },
 
     promptUninstall: assign({
@@ -190,6 +196,8 @@ const packsState = setup({
   initial: 'idle',
   context: {
     packs: [],
+    appPackSources: [],
+    appPackSourceProblems: [],
     selectedPackId: null,
     installing: null,
     confirmingUninstall: null,
@@ -213,6 +221,8 @@ const packsState = setup({
         PACK_UPDATE_COMPLETE: { actions: 'onUpdateComplete' },
         PACK_UPDATE_FAILED: { actions: 'onUpdateFailed' },
         'UI.INSTALL': { actions: 'sendInstall' },
+        'UI.REPLACE': { actions: 'sendReplace' },
+        'UI.RESTORE': { actions: 'sendRestore' },
         'UI.CONFIRM_UNINSTALL': { actions: 'promptUninstall' },
         'UI.CANCEL_UNINSTALL': { actions: 'cancelUninstall' },
         'UI.UNINSTALL': { actions: 'sendUninstall' },

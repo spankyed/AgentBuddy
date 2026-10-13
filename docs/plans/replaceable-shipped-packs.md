@@ -1,7 +1,8 @@
 # A shipped pack is replaceable, and nothing special-cases it
 
-Status: retained; implement after [settings architecture](settings-architecture.md) and the
-[discovery catalog](discovery-without-activation.md). Re-audit the original survey on the naming result.
+Status: in progress, using [settings architecture](settings-architecture.md) and the
+[discovery catalog](discovery-without-activation.md). Checkpoints below record implemented behavior;
+the original survey is historical evidence, not the current policy.
 Validate replacements before publishing one committed artifact/catalog revision. Pre-publication failure
 retains the prior artifact/view; activation failure is a separate outcome, not a promise to undo
 user-data effects. Preserve owner IDs and stored settings overrides.
@@ -9,10 +10,9 @@ Keep migration version lines independent of update provenance. The planned catal
 supersedes the old first-plugin survey below.
 
 Current settings acceptance confirms that booting with a current-format disabled `default-setup`
-record works: host Personal and shortcut preferences remain usable without it. The Packs backend
-still uses `canUninstall` to refuse disabling a shipped pack, conflating two separate operations.
-Resolve that guard with this replacement contract, not by weakening an acceptance fixture's dependency
-requirements. The external authoring fixture depends on default-setup's content providers and cannot
+record works: host Personal and shortcut preferences remain usable without it. Live controls remove
+`canUninstall` and separate replacement, restoration, disable and removal. Required dependencies remain
+required; removing their provider does not silently weaken an acceptance fixture's contract. The external authoring fixture depends on default-setup's content providers and cannot
 serve as a host-only boot fixture; the host-only app suite instead installs no external fixture.
 
 ## Context
@@ -471,3 +471,101 @@ app and packaged authoring. Evidence:
 `/private/tmp/apack-app-sources-strict-chain.log`.
 This is not the final full-goal strict `--all` run and does not resolve the independent fixture/API
 shutdown cleanup race recorded above.
+
+
+### Live controls implementation plan (2026-10-13)
+
+1. Publish installation update ownership and app-source offers separately in `PACKS_LIST`; include
+   invalid-source diagnostics and missing defaults. No source advertisement becomes an installed row.
+2. Use explicit `REPLACE_PACK { packId, packSlug }` and `RESTORE_PACK { packId, sourceRevision }`
+   requests. Reuse normal installer acceptance and startup; require replacement id equality and the
+   selected restoration revision. Reserve resolved owner ids across every concurrent mutation.
+3. Ordinary live install refuses host, advertised app defaults (including invalid advertisements) and
+   app-owned incumbent ids. Deliberate replacement assigns user ownership; restoration enables the
+   accepted app-owned artifact. Refusal retains incumbent resources and records.
+4. Remove `canUninstall` and shipping-based disable/uninstall restrictions. The host remains non-removable;
+   it is not an installed pack. Present all installed packs with the same controls and explain update
+   ownership. Show explicit replacement input, restoration confirmation and missing-default restore
+   actions. Keep load/source failures visible independently of ownership.
+5. Prove actual sealed-artifact replace/restore/disable/uninstall behavior, invalid/stale offer refusal,
+   named-id collisions and control event routing; update public contracts/docs and run strict validation.
+
+App-source update offers and standalone CLI host-selection/advertised-id enforcement are subsequent
+consumer checkpoints, not implicitly supplied by these live controls. Complete external fork/restart/
+reload acceptance and all other goal work remain required.
+
+
+### Live controls working implementation (2026-10-13)
+
+`PACKS_LIST` now carries update ownership, separate available app defaults and source diagnostics.
+Missing defaults are restorable without fabricating installed rows. Every installed pack has enable/
+disable/remove controls; host remains native and non-removable. The frontend uses the backend's
+outgoing event type rather than a duplicate payload contract.
+
+Ordinary live install refuses advertised ids even without active origin metadata, including invalid
+source advertisements; it also refuses an app-owned incumbent if advertisements are withdrawn.
+`REPLACE_PACK` requires incoming id equality and assigns user ownership. `RESTORE_PACK` validates the
+selected offer revision before staging and again during filesystem acceptance, then enables app updates.
+Both share the accepted-runtime startup path. Detail restoration confirms the selected revision;
+source refresh cannot silently substitute a different build. Replacement input explains stored-setting
+preservation. Removal confirmation is now visible in the selected detail pane.
+
+The lifecycle audit also corrected save/teardown ordering. A failed enablement write leaves runtime
+unchanged. Removal stops runtime only after deletion succeeds; a refused record write/deletion does
+not itself deactivate the incumbent. The canonical cache path is captured before deletion and cleared
+on success. This is not atomic recursive deletion: a filesystem failure partway through deletion may
+leave incomplete bytes, which ordinary artifact admission must diagnose. Cleanup callbacks after
+accepted deletion likewise cannot restore arbitrary data effects.
+
+Focused checks currently pass 67 host lifecycle/system/routing checks and nine renderer checks, plus
+host and renderer typechecks. Sealed-artifact cases exercise the complete live restore → replace →
+restore cycle, missing/disabled/activation-failed/invalid advertised ids, stale restoration, replacement
+id mismatch, disabled declaration preservation and removal suppression. Renderer checks verify
+selected-revision confirmation, explicit replacement, and detail removal confirmation. The real Electron
+control test passes independently against the rebuilt app, including explicit replacement of the absent
+default and active restoration; final strict validation remains due.
+
+App-source update offers, standalone CLI advertised-id enforcement, selected-copy provenance cleanup
+and the full cloned-source edit/build/restart/reload matrix remain required. Nothing here completes
+other unfinished discovery/navigation/fault/API/provenance work or final full-goal validation.
+
+
+### Actor and binding retirement correction (2026-10-13)
+
+The first real control test failed after disabling default-setup: its Logs actor received log events
+through a still-live subscription after generated settings authority had been revoked, crashing the API.
+Stopping actors by sending `TEARDOWN_PACK` was insufficient because XState queues actual stop and drains
+current work. The bus now confirms completion after every active target finishes, including callback
+cleanup; teardown unregisters/revokes the pack only then. A composed test requests stop from inside the
+actor's own action and proves current work and subscription cleanup precede authority retirement.
+
+Extending the real UI cycle exposed the same defect on active replacement/restoration. Registry admission
+still validates and publishes the candidate before retiring anything. Runtime coordinators now supply
+`PackReplacementOptions.retireBinding`: incumbent settings authority survives until its actors finish
+stopping, then the host disposes its captured binding. Direct registry-only replacements retain immediate
+retirement. The installed acceptance path and ordinary dev reload both use this coordinator. Candidate
+refusal still preserves incumbent actors/bindings; post-commit retirement diagnostics never masquerade
+as installation refusal. Candidate actor startup remains separate from admission and filesystem commit.
+
+The final focused suite passes 100 host tests. Three mutations fail their intended assertions:
+removing advertised-source protection admits absent/disabled/failed default ids; removing replacement
+id equality installs a different owner; retiring the incumbent immediately revokes its handle before
+actor cleanup. Original source is restored. Nine renderer checks pass. Real Electron acceptance now
+passes disable → remove → replace by explicit id as user-managed → restore over the active replacement
+as app-managed, with native settings usable while the default is absent. The replacement deliberately
+uses the same verified bytes, proving ownership does not follow byte equality. It is not yet the complete
+cloned-source edit/build/restart/multiple-window acceptance matrix.
+
+Per-window stale outgoing delivery remains a separate navigation/readiness requirement. This correction
+coordinates owned actor/binding lifetimes; it does not undo arbitrary asynchronous pack side effects,
+provide process isolation or fix the independent Electron/API shutdown cleanup race.
+
+
+Final strict checkpoint validation passes all 30 gates in 357.0s (one cached), including the extended
+real default-pack control cycle and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T21-28-44Z-84566`;
+`/private/tmp/apack-live-controls-strict-chain-final.log`.
+The earlier failed strict run and targeted active-restoration failure established the two lifetime bugs;
+they were fixed before this pass. This checkpoint is not final full-goal `--all` acceptance and does not
+close app-source update offers, CLI host/advertisement selection, complete fork/restart/multiple-window
+acceptance or the independently recorded process shutdown race.

@@ -3,6 +3,8 @@
 
 export type IncomingPacksEvents =
   | { type: 'INSTALL_PACK'; packSlug: string; sourceKind?: string; sha256?: string }
+  | { type: 'REPLACE_PACK'; packId: string; packSlug: string; sourceKind?: string; sha256?: string }
+  | { type: 'RESTORE_PACK'; packId: string; sourceRevision: string }
   | { type: 'UNINSTALL_PACK'; packId: string }
   | { type: 'TOGGLE_PACK_ENABLED'; packId: string }
   | { type: 'UPDATE_PACK'; packId: string }

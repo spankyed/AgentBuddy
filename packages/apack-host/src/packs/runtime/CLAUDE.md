@@ -19,12 +19,19 @@ Hidden `.<id>.installing-*` and `.<id>.previous-*` dirs are installs in progress
 
 ### The packs the app ships
 
-They are installed packs, so they have no loader of their own. `installShippedPacks(SHIPPED_PACKS_DIR, packsDir)` (`packs/installer.ts`) runs before loading, because a pack has to be in the packs dir to be discovered there:
+They use the same installed layout and loader as other packs. `installShippedPacks` requires the target
+profile's installation record file and runs before installed-pack discovery.
 
-- **Which** — a directory under `SHIPPED_PACKS_DIR` holding an `apack.json`. The manifest grants no shipping privilege; update ownership is recorded separately in installation decisions.
-- **Whether to write** — `packFileHashes` of the installed copy against `stagedFileHashes` of the shipped one. Equal is `current` and writes nothing, so only a first boot and a version bump install; unequal is `updated`, which covers both causes at once — a newer build was shipped, or something changed the installed copy. The comparison is of the files themselves rather than of either side's recorded `integrity.json`, which is what makes an edited install visible.
-- **A failed install** is reported and the rest proceed (`outcome: 'failed'`). It is not fallen back on: there is no read-only load straight from the shipped directory, because a pack the app could not install is a pack the app does not have, which is the answer an installed pack has always had for the same condition.
-- **Its id is reserved against an install**, which is what makes `canUninstall: false` a promise rather than a hidden button: uninstalling, disabling and installing over it are the three ways to lose a pack the app needs, and the same predicate refuses all three (`features/packs/be/system.ts`). An install over a shipped pack bought nothing the next boot's hash comparison did not revert, and cost a session running a pack nobody chose. A shipped pack that failed to *load* has no origin to read, so the refusal cannot answer for it and that case still recovers at the next boot.
+- `readAppPackSources` reads verified built sources and refuses duplicate advertised ids without activation.
+- New defaults are app-managed. User-owned copies remain untouched; deliberately removed defaults stay
+  absent through `suppressAppInstall`. Disabling keeps files and declarations and changes eligibility.
+- App-owned refresh compares the recorded `shippedRevision` with the current source's published-file
+  identity. Unchanged sources do not repair edited installed files; ordinary artifact admission diagnoses them.
+- Plain live install refuses advertised default ids even when disabled, absent or failed. Explicit replace
+  chooses user ownership; restore selects verified app bytes, enables the pack and resumes app ownership.
+  All installed packs can be disabled or removed. The host is native and cannot be installed/removed.
+- Filesystem/runtime refusal preserves the incumbent; post-acceptance initialization failures retain accepted
+  files and report unavailable runtime. User-data effects are not transactionally rolled back.
 
 ### Loading
 

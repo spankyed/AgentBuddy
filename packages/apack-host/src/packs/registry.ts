@@ -92,18 +92,22 @@ export interface PackExtensions {
   features: PackFeatureSummary[];
 }
 
+/** An available app default; neither an installed artifact nor an active owner. */
+export interface AppPackSourceSummary {
+  id: string;
+  name: string;
+  version: string;
+  sourceRevision: string;
+}
+
 export interface InstalledPackSummary extends PackExtensions {
   id: string;
   name: string;
   /** Absent when this installed artifact has no accepted declarations. */
   version?: string;
   enabled: boolean;
-  /**
-   * Whether the app offers to uninstall it. False for whatever this app ships, which it needs to run — the
-   * Packs view hides the button rather than refusing the click. A pack property, so making a shipped pack
-   * uninstallable is one decision in one place.
-   */
-  canUninstall: boolean;
+  /** Installation ownership determines automatic updates; advertisement never grants privileges. */
+  updatesWith: 'app' | 'user';
   entityCount: number;
   /** Whether the pack has frontend code: its `runtime/fe.js` */
   hasFrontend: boolean;
@@ -174,27 +178,25 @@ export interface PackOrigin {
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
   dir: string;
-  /**
-   * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
-   * the installed copy came from rather than about the pack. Two things read it, both genuinely about
-   * shipping: the installer updates shipped copies with the app, and the app will not offer to uninstall
-   * what it needs to run (`InstalledPackSummary.canUninstall`). Migration lines are declared by each pack.
-   *
-   * Update ownership comes from installation records; manifests grant no shipping privilege.
-   */
+  /** Whether the loader classified this id as app-shipped; update ownership is recorded separately. */
   shipped: boolean;
   /** The pack's `apack.json`, which its loader read to find the pack at all */
   manifest?: PackManifest;
 }
 
 /** The registered packs, the host's own (`hostRegistration`) among them, and their shutdown hooks */
+/** Runtime coordinators retain incumbent bindings until their actors finish stopping. */
+export interface PackReplacementOptions {
+  retireBinding(dispose: () => string[]): void;
+}
+
 export interface PackRegistry extends PackRegistryView {
   readonly catalog: ContributionCatalog;
   refreshCatalog(packsDir?: string, disabled?: ReadonlySet<string>): void;
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration, origin?: PackOrigin): void;
   /** Replace an accepted runtime atomically; returns retirement errors after a successful commit. */
-  replacePack(pack: PackRegistration, origin?: PackOrigin): string[];
+  replacePack(pack: PackRegistration, origin?: PackOrigin, options?: PackReplacementOptions): string[];
   /** Bind data operations without activating backend systems or services. */
   registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void;
   unregisterPack(packId: string): void;
@@ -505,7 +507,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   }
 
   function registerContributions(registration: PackRegistration, origin: PackOrigin | undefined,
-    checkBinding: typeof backendBindingProblem, replacing = false): string[] {
+    checkBinding: typeof backendBindingProblem, replacing = false, replacement?: PackReplacementOptions): string[] {
     if (registrations.has(registration.id) && !replacing) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
@@ -583,7 +585,14 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     else bindings.delete(registration.id);
     loadProblems.delete(registration.id);
     changed();
-    return previousBinding?.dispose() ?? [];
+    if (!previousBinding) return [];
+    if (!replacement) return previousBinding.dispose();
+    try {
+      replacement.retireBinding(() => previousBinding.dispose());
+      return [];
+    } catch (error) {
+      return [`Pack "${registration.id}" committed, but binding retirement could not be scheduled: ${String(error)}`];
+    }
   }
 
   function unregisterPack(packId: string): void {
@@ -649,9 +658,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     catalog,
     refreshCatalog,
     registerPack,
-    replacePack: (registration, origin) => mutate(() => {
+    replacePack: (registration, origin, options) => mutate(() => {
       if (!registrations.has(registration.id)) throw new Error(`Pack "${registration.id}" is not registered`);
-      return registerContributions(registration, origin, backendBindingProblem, true);
+      return registerContributions(registration, origin, backendBindingProblem, true, options);
     }),
     registerContentRuntime,
     unregisterPack,

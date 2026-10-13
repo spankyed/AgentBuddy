@@ -8,12 +8,14 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { HOST_PACK_ID, PACK_ID_PATTERN, resolveName } from '@apackdev/sdk/ids';
 import { packRecord, packRecords, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
-import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
+import { installPack as runInstall, uninstallPack as runUninstall, restoreShippedPack, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
 import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
 import { PACK_LAYOUT } from '../../../packs/layout.ts';
 import { discoverPackDirectories, installedPacks } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack, acceptInstalledPack } from '../../../packs/runtime/lifecycle.ts';
+import { clearPackRequireCache } from '../../../packs/runtime/loader.ts';
+import * as fs from 'node:fs';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
@@ -55,13 +57,13 @@ function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOff
 }
 
 /** Accepted declarations describe a pack independently of whether its executable bindings are running. */
-function toInstalledPackSummaries(registry: PackRegistry, canUninstall: (packId: string) => boolean): InstalledPackSummary[] {
+function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[] {
   const catalog = registry.catalog.getSnapshot();
   const records = packRecords();
   const base = (id: string, dir: string, enabled: boolean) => {
     const record = packRecord(id, records);
     return {
-      id, dir, enabled, canUninstall: canUninstall(id),
+      id, dir, enabled, updatesWith: record.updatesWith ?? 'user',
       installedAt: record.installedAt, installedFrom: record.installedFrom,
       availableVersion: record.availableVersion, updateCheckError: record.updateCheckError,
       loadProblem: registry.loadProblem(id), ...contentOffersOf(id),
@@ -101,23 +103,18 @@ function toInstalledPackSummaries(registry: PackRegistry, canUninstall: (packId:
   return packs;
 }
 
-function emitPacksList(registry: PackRegistry, canUninstall: (packId: string) => boolean) {
+function emitPacksList(registry: PackRegistry) {
   registry.refreshCatalog(resolveAppEnvironment().packsDir);
-  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toInstalledPackSummaries(registry, canUninstall) });
+  const catalog = registry.catalog.getSnapshot();
+  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toInstalledPackSummaries(registry),
+    appPackSources: catalog.appPackSources.map(source => ({ id: source.id, name: source.snapshot.manifest.name,
+      version: source.snapshot.manifest.version, sourceRevision: source.sourceRevision })),
+    appPackSourceProblems: catalog.appPackSourceProblems.map(({ id, message }) => ({ id, message })),
+  });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
 export function createPacksSystem(registry: PackRegistry) {
-  /**
-   * Whether the app would offer to uninstall this pack. False for the host and for whatever this app
-   * shipped — the app needs it to run, and an uninstall would leave a user with nothing. The Packs view
-   * reads the same answer as `InstalledPackSummary.canUninstall` to decide whether to show the button.
-   *
-   * Flipping a shipped pack to uninstallable is a product decision rather than a refactor, and this is the
-   * one place it would be made.
-   */
-  const canUninstall = (packId: string) => packId !== HOST_PACK_ID && registry.packOrigin(packId)?.shipped !== true;
-
   const isInstalled = (id: string) => PACK_ID_PATTERN.test(id)
     && discoverPackDirectories(resolveAppEnvironment().packsDir).some(dir => path.basename(dir) === id);
   const _inFlightOps = new Set<string>();
@@ -167,7 +164,7 @@ export function createPacksSystem(registry: PackRegistry) {
     },
 
       sendPacksList: () => {
-        emitPacksList(registry, canUninstall);
+        emitPacksList(registry);
       },
 
       /**
@@ -229,7 +226,7 @@ export function createPacksSystem(registry: PackRegistry) {
         } catch (err) {
           reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: err });
         }
-        emitPacksList(registry, canUninstall);
+        emitPacksList(registry);
       },
 
       /** "Keep mine": the item stays as the user wrote it, and this version is not offered again */
@@ -240,7 +237,7 @@ export function createPacksSystem(registry: PackRegistry) {
           choice: 'dismissed',
           ...(offer?.contentHash !== undefined && { contentHash: offer.contentHash }),
         });
-        emitPacksList(registry, canUninstall);
+        emitPacksList(registry);
       },
 
       /**
@@ -260,11 +257,11 @@ export function createPacksSystem(registry: PackRegistry) {
         } catch (err) {
           reportError({ source: 'packs', operation: 'deleteContentItem', severity: 'error', error: err });
         }
-        emitPacksList(registry, canUninstall);
+        emitPacksList(registry);
       },
 
       installPack: ({ system, event }) => {
-        const ev = packsSpec.typeOf('INSTALL_PACK', event);
+        const ev = event.type === 'REPLACE_PACK' ? packsSpec.typeOf('REPLACE_PACK', event) : packsSpec.typeOf('INSTALL_PACK', event);
         const packSlug = ev.packSlug;
 
         // Reserve the source while downloading, then the resolved owner before publication.
@@ -286,8 +283,17 @@ export function createPacksSystem(registry: PackRegistry) {
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
           beforePlace: manifest => {
-            if (!canUninstall(manifest.id)) {
-              throw new Error(`"${manifest.id}" is part of apack, so an install can't take its id`);
+            if (manifest.id === HOST_PACK_ID) throw new Error('The host is not an installable pack');
+            if (ev.type === 'REPLACE_PACK') {
+              if (manifest.id !== ev.packId) throw new Error(`Replacement expected pack "${ev.packId}", received "${manifest.id}"`);
+            } else {
+              registry.refreshCatalog();
+              const catalog = registry.catalog.getSnapshot();
+              if (packRecord(manifest.id).updatesWith === 'app'
+                || catalog.appPackSources.some(source => source.id === manifest.id)
+                || catalog.appPackSourceProblems.some(problem => problem.id === manifest.id)) {
+                throw new Error(`"${manifest.id}" is an app default. Use Replace to install your own version.`);
+              }
             }
             if (manifest.id !== packSlug && _inFlightOps.has(manifest.id)) {
               throw new Error(`Operation already in progress for ${manifest.id}`);
@@ -313,7 +319,7 @@ export function createPacksSystem(registry: PackRegistry) {
               packSlug,
               error: `${result.name} was installed but ${problem}`,
             });
-            emitPacksList(registry, canUninstall);
+            emitPacksList(registry);
             return;
           }
 
@@ -325,7 +331,7 @@ export function createPacksSystem(registry: PackRegistry) {
             version: result.version,
           });
           broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId: result.id });
-          emitPacksList(registry, canUninstall);
+          emitPacksList(registry);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Install failed for ${packSlug}:`, message);
@@ -340,10 +346,55 @@ export function createPacksSystem(registry: PackRegistry) {
         });
       },
 
+      restorePack: ({ system, event }) => {
+        const { packId, sourceRevision } = packsSpec.typeOf('RESTORE_PACK', event);
+        const fail = (error: unknown) => broadcastToPlugin('packs', {
+          type: 'PACK_INSTALL_FAILED' as const, packSlug: packId, error: errorMessage(error),
+        });
+        if (packId === HOST_PACK_ID || !PACK_ID_PATTERN.test(packId)) {
+          fail(new Error('Select an installable app default'));
+          return;
+        }
+        if (_inFlightOps.has(packId)) {
+          fail(new Error(`Operation already in progress for ${packId}`));
+          return;
+        }
+        _inFlightOps.add(packId);
+        broadcastToPlugin('packs', { type: 'PACK_INSTALL_STARTED' as const, packSlug: packId });
+        let startAccepted: (() => boolean) | undefined;
+        Promise.resolve().then(() => {
+          registry.refreshCatalog();
+          const catalog = registry.catalog.getSnapshot();
+          const source = catalog.appPackSources.find(source => source.id === packId);
+          if (!source || catalog.appPackSourceProblems.some(problem => problem.id === packId)) {
+            throw new Error(`App default "${packId}" is unavailable; refresh to see source diagnostics`);
+          }
+          if (source.sourceRevision !== sourceRevision) {
+            throw new Error(`App default "${packId}" changed; refresh before restoring`);
+          }
+          const { packsDir, installedPacksFile } = resolveAppEnvironment();
+          return restoreShippedPack(packId, source.dir, packsDir, {
+            installedPacksFile, expectedSourceRevision: sourceRevision,
+            hostVersion: getAppVersion(), packFormat: PACK_SNAPSHOT_FORMAT,
+            accept: candidate => { startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus)); },
+          });
+        }).then(result => {
+          const activated = startAccepted!();
+          const problem = activationProblem(registry, packId, activated);
+          if (problem) fail(new Error(`${result.name} was restored but ${problem}`));
+          else {
+            broadcastToPlugin('packs', { type: 'PACK_INSTALL_COMPLETE' as const, packSlug: packId,
+              packId, packName: result.name, version: result.version });
+            broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
+          }
+          emitPacksList(registry);
+        }).catch(fail).finally(() => { _inFlightOps.delete(packId); });
+      },
+
       uninstallPack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UNINSTALL_PACK', event);
         const packId = ev.packId;
-        if (!canUninstall(packId)) {
+        if (packId === HOST_PACK_ID) {
           broadcastToPlugin('packs', { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is part of apack, so it can't be uninstalled` });
           return;
         }
@@ -360,17 +411,21 @@ export function createPacksSystem(registry: PackRegistry) {
         _inFlightOps.add(packId);
         console.log(`[packs] Uninstall requested: ${packId}`);
 
-        teardownPack(registry, packId, system.get(HOST.bus));
-        broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
-
-        runUninstall(packId, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile }).then(() => {
+        let cacheDir: string;
+        Promise.resolve().then(() => {
+          cacheDir = fs.realpathSync(path.join(resolveAppEnvironment().packsDir, packId));
+          return runUninstall(packId, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+        }).then(() => {
+          teardownPack(registry, packId, system.get(HOST.bus));
+          clearPackRequireCache(cacheDir);
+          broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
           registry.refreshCatalog(resolveAppEnvironment().packsDir);
 
           broadcastToPlugin('packs', {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
             packId,
           });
-          emitPacksList(registry, canUninstall);
+          emitPacksList(registry);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Uninstall failed for ${packId}:`, message);
@@ -435,7 +490,7 @@ export function createPacksSystem(registry: PackRegistry) {
               packId,
               error: `Updated to ${result.version} but ${problem}`,
             });
-            emitPacksList(registry, canUninstall);
+            emitPacksList(registry);
             return;
           }
 
@@ -445,7 +500,7 @@ export function createPacksSystem(registry: PackRegistry) {
             version: result.version,
           });
           if (activated) broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
-          emitPacksList(registry, canUninstall);
+          emitPacksList(registry);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
@@ -454,7 +509,7 @@ export function createPacksSystem(registry: PackRegistry) {
             packId,
             error: message,
           });
-          emitPacksList(registry, canUninstall);
+          emitPacksList(registry);
         }).finally(() => {
           _inFlightOps.delete(packId);
         });
@@ -462,7 +517,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
       checkForPackUpdates: () => {
         checkForUpdates({ hostVersion: getAppVersion() }).then(() => {
-          emitPacksList(registry, canUninstall);
+          emitPacksList(registry);
         }).catch(err => {
           console.error('[packs] Update check failed:', err);
         });
@@ -477,56 +532,39 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
+        if (packId === HOST_PACK_ID) return;
         if (!isInstalled(packId)) {
           console.warn(`[packs] Pack not found: ${packId}`);
           return;
         }
         const entry = packRecord(packId);
 
-        // Refused for the packs `canUninstall` refuses, and for its reason: the app needs what it ships to
-        // run. Every pack is an installed record now, so the lookup above no longer turns one of them away
-        // on its own — and the Packs view hides this switch for them (`PackDetail.vue`), so a disabled
-        // shipped pack could only be re-enabled by editing `installed-packs.json` by hand. The state it
-        // sends back is the record's own, not `true`: an answer that invented one would be the same bug.
-        if (!canUninstall(packId)) {
-          broadcastToPlugin('packs', { type: 'PACK_ENABLED_CHANGED' as const, packId, enabled: entry.enabled });
-          reportError({
-            source: 'packs',
-            operation: 'togglePackEnabled',
-            severity: 'error',
-            error: new Error(`"${packId}" is part of apack, so it can't be disabled`),
+        const newEnabled = !entry.enabled;
+
+        if (!setPackEnabled(packId, newEnabled)) {
+          reportError({ source: 'packs', operation: 'setPackEnabled', severity: 'error',
+            error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}; the current state is unchanged.`),
           });
+          broadcastToPlugin('packs', { type: 'PACK_ENABLED_CHANGED' as const, packId, enabled: entry.enabled });
           return;
         }
-
-        const newEnabled = !entry.enabled;
 
         if (!newEnabled) {
           teardownPack(registry, packId, system.get(HOST.bus));
           broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
         } else {
-          activatePack(registry, packId, system.get(HOST.bus));
-          broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
+          if (activatePack(registry, packId, system.get(HOST.bus))) {
+            broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
+          }
         }
 
-        // The pack has already been torn down or activated; what may not have survived is the choice
-        // itself, and at the next boot the pack comes back the way it was. Saying which decision was
-        // lost is the difference between that and the app quietly disagreeing with the user.
-        if (!setPackEnabled(packId, newEnabled)) {
-          reportError({
-            source: 'packs',
-            operation: 'setPackEnabled',
-            severity: 'error',
-            error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time apack starts.`),
-          });
-        }
         registry.refreshCatalog(resolveAppEnvironment().packsDir);
         broadcastToPlugin('packs', {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,
           enabled: newEnabled,
         });
-        emitPacksList(registry, canUninstall);
+        emitPacksList(registry);
       },
     }),
   }).createMachine({
@@ -547,6 +585,8 @@ export function createPacksSystem(registry: PackRegistry) {
           INSTALL_PACK: {
             actions: 'installPack',
           },
+          REPLACE_PACK: { actions: 'installPack' },
+          RESTORE_PACK: { actions: 'restorePack' },
           UNINSTALL_PACK: {
             actions: 'uninstallPack',
           },
@@ -583,6 +623,8 @@ export function createPacksSystem(registry: PackRegistry) {
 export const packsEvents = new Set([
   'SEND_STATE',
   'INSTALL_PACK',
+  'REPLACE_PACK',
+  'RESTORE_PACK',
   'UNINSTALL_PACK',
   'TOGGLE_PACK_ENABLED',
   'GET_INSTALLED_PACKS',

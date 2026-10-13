@@ -12,10 +12,10 @@
         <div class="flex items-center gap-2">
           <h2 class="text-base font-medium text-neutral-200 truncate">{{ pack.name }}</h2>
           <span
-            v-if="!pack.canUninstall"
+            v-if="pack.updatesWith === 'app'"
             class="px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded cursor-default"
-            title="Bundled with the app"
-          >Built-in</span>
+            title="Updates with the app"
+          >App-managed</span>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-neutral-500">{{ pack.id }}</span>
@@ -126,7 +126,7 @@
       </section>
 
       <!-- Status / Controls -->
-      <section v-if="pack.canUninstall" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
+      <section class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
         <span class="text-sm text-neutral-300">{{ pack.loadProblem ? 'Unavailable' : pack.enabled ? 'Enabled' : 'Disabled' }}</span>
         <div class="flex items-center gap-3 flex-shrink-0">
           <button
@@ -155,6 +155,31 @@
             Remove
           </button>
         </div>
+      </section>
+
+      <section class="space-y-3 px-4 py-3 bg-neutral-800/50 rounded-lg" data-testid="pack-replacement">
+        <p class="text-xs text-neutral-400">{{ pack.updatesWith === 'app' ? 'Updates with the app.' : 'Updates are user-managed.' }}
+          Replacing changes this pack's files and keeps your stored settings.</p>
+        <div class="flex gap-2">
+          <input v-model="replacement" placeholder="Local path, URL, or owner/repo" class="flex-1 min-w-0 px-2 py-1 bg-neutral-900 text-sm rounded" :disabled="busy" />
+          <button :disabled="busy || !replacement.trim()" class="text-xs text-primary-400 disabled:opacity-50"
+            data-testid="pack-replace" @click="$emit('replace', replacement.trim())">Replace</button>
+        </div>
+        <template v-if="appSource">
+          <button v-if="!confirmingRestore" :disabled="busy" class="text-xs text-primary-400" data-testid="pack-restore"
+            @click="confirmingRestore = appSource.sourceRevision">Restore app default v{{ appSource.version }}</button>
+          <div v-else class="space-y-2" data-testid="pack-restore-confirmation">
+            <p class="text-xs text-neutral-300">Replace your installed files with the selected app default and enable it? Stored settings are kept.</p>
+            <button :disabled="busy" class="text-xs text-primary-400 mr-3" data-testid="pack-confirm-restore"
+              @click="$emit('restore', confirmingRestore); confirmingRestore = null">Restore</button>
+            <button class="text-xs text-neutral-400" @click="confirmingRestore = null">Cancel</button>
+          </div>
+        </template>
+      </section>
+      <section v-if="confirmingUninstall" class="space-y-2" data-testid="pack-remove-confirmation">
+        <p class="text-sm text-neutral-300">Remove {{ pack.name }}? Pack files will be deleted; stored settings are kept.</p>
+        <button class="text-xs text-red-400 mr-3" @click="$emit('confirmUninstall', pack.id)">Remove</button>
+        <button class="text-xs text-neutral-400" @click="$emit('cancelUninstall')">Cancel</button>
       </section>
 
       <!-- Summary stats -->
@@ -340,15 +365,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ArrowLeft, Shield } from 'lucide-vue-next';
-import type { InstalledPackSummary } from '@apackdev/host/fe';
+import type { AppPackSourceSummary, InstalledPackSummary } from '@apackdev/host/fe';
 import SectionHeader from './SectionHeader.vue';
 
-const props = defineProps<{ pack: InstalledPackSummary; updating?: boolean }>();
+const props = defineProps<{ pack: InstalledPackSummary; appSource?: AppPackSourceSummary; updating?: boolean; busy?: boolean; confirmingUninstall?: boolean }>();
+const replacement = ref('');
+const confirmingRestore = ref<string | null>(null);
+watch(() => props.pack.id, () => { replacement.value = ''; confirmingRestore.value = null; });
 
 defineEmits<{
   back: [];
+  replace: [source: string];
+  restore: [sourceRevision: string];
+  confirmUninstall: [packId: string];
+  cancelUninstall: [];
   toggle: [packId: string];
   uninstall: [packId: string];
   update: [packId: string];

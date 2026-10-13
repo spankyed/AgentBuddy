@@ -18,7 +18,7 @@ export type BusEvent =
 
 /** Restarts a pack's systems: stops each running one, then starts those still registered */
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
-export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
+export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[]; packId?: string; afterStop?: () => void };
 export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemIds: string[] };
 /** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
@@ -128,10 +128,24 @@ function stopSystems(
   enqueue: { stopChild(actor: AnyActorRef): void },
   system: { get(id: string): AnyActorRef | undefined },
   systemIds: readonly string[],
+  afterStop?: () => void,
 ): void {
-  for (const id of systemIds) {
+  const actors = [...new Set(systemIds)].flatMap(id => {
     const actor = system.get(id);
-    if (actor) enqueue.stopChild(actor);
+    return actor && actor.getSnapshot().status === 'active' ? [actor] : [];
+  });
+  let remaining = actors.length;
+  if (remaining === 0) afterStop?.();
+  for (const actor of actors) {
+    let stopped = false;
+    const complete = () => {
+      if (stopped) return;
+      stopped = true;
+      if (--remaining === 0) afterStop?.();
+    };
+    // stopChild defers actual stop; authority must survive queued work and callback cleanup.
+    if (afterStop) actor.subscribe({ complete, error: complete });
+    enqueue.stopChild(actor);
   }
 }
 
@@ -362,8 +376,8 @@ export function createBusMachine(options: BusOptions) {
       teardownPack: enqueueActions(({ enqueue, event, context, system }) => {
         if (event.type !== 'TEARDOWN_PACK') return;
         const current = clientLoadedPacks();
-        enqueue.assign({ awaitingFrontends: new Set([...context.awaitingFrontends].filter(id => current.has(id))) });
-        stopSystems(enqueue, system, event.systemIds);
+        enqueue.assign({ awaitingFrontends: new Set([...context.awaitingFrontends].filter(id => current.has(id) && id !== event.packId)) });
+        stopSystems(enqueue, system, event.systemIds, event.afterStop);
       }),
       activatePack: enqueueActions(({ enqueue, event, context }) => {
         if (event.type !== 'ACTIVATE_PACK') return;

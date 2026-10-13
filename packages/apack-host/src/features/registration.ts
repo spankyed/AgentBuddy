@@ -6,13 +6,13 @@ import type { PackFeatureSystem, PackRegistration } from '@apackdev/sdk/framewor
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { APPLICATION_PLUGIN_EVENT_TYPES } from './application/events.ts';
 import { hostFeatureIds } from './declaration.ts';
-import type { InstalledPackSummary } from '../packs/registry.ts';
+import type { AppPackSourceSummary, InstalledPackSummary } from '../packs/registry.ts';
 import { helpSystem, helpEvents } from './help/be/system.ts';
 import { SETTINGS_PLUGIN_EVENT_TYPES } from './settings/be/system.ts';
 
 /** What the host `packs` system sends its plugin */
 export type OutgoingPacksEvents =
-  | { type: 'PACKS_LIST'; packs: InstalledPackSummary[] }
+  | { type: 'PACKS_LIST'; packs: InstalledPackSummary[]; appPackSources: AppPackSourceSummary[]; appPackSourceProblems: { id: string; message: string }[] }
   | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
   | { type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }
   | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }

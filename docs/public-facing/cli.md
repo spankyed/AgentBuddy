@@ -167,7 +167,7 @@ A build resolves the pack's `@apackdev` packages to the `dist` each published pa
 
 #### `apack pack archive [--out <dir>]`
 
-Verify the build-owned `dist/integrity.json` and stage its recorded files into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses built-in packs, invalid manifests and edited build output; rebuild before archiving changed files.
+Verify the build-owned `dist/integrity.json` and stage its recorded files into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses invalid manifests and edited build output; rebuild before archiving changed files.
 
 #### `apack pack dev`
 
@@ -577,6 +577,11 @@ apack pack restore default-setup --host /path/to/apack-checkout --profile my-wor
 The current directory does not select a host. An explicit flag wins over an associated handoff.
 A checkout needs the pack's built artifacts, not a running app. `--host beta` uses a compatible cached
 beta and refuses if none is cached. Restore never downloads or launches an app.
+
+The running app offers the same choices in **Packs**: disable or remove an installed pack, replace it
+from its detail view or use **Replace by ID**, and restore an available app default. Replacing chooses
+user-managed updates; restoring re-enables the default and resumes app updates. Both keep stored
+settings. Host settings remain available when the shipped default is disabled or removed.
 
 #### `apack pack uninstall <id> [--profile <name>]`
 
