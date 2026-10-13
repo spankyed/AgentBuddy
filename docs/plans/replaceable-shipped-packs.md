@@ -317,3 +317,56 @@ All 30 strict gates pass in 356.8s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T19-24-50Z-88047`. The independent API/fixture shutdown
 cleanup race remains open despite this passing run. Final goal `--all` and complete shipped replacement
 acceptance remain outstanding.
+
+
+### Explicit operation prototype (2026-10-13)
+
+`apack pack replace <id> <source> [--profile <name>]` selects user-managed updates and requires the
+verified candidate id to match the explicit target. The operation kind supplies replacement intent;
+the identity check does not double as an authorization flag. It can also fill an explicitly named
+missing slot. Ordinary install must refuse an app-managed incumbent and point to replace.
+
+`apack pack restore <id> --host <path|beta> [--profile <name>]` selects an app-shipped artifact,
+re-enables it, clears removal suppression and records app-managed updates. It preserves database
+settings/content overrides. Source selection uses the existing read-only host-packages resolver:
+explicit host flag or associated host handoff/environment, no working-directory inference, app launch
+or download. A missing selection or uncached beta is an actionable refusal. Profile chooses stored
+state independently of the source host; no profile name chooses an executable or release channel.
+
+Both commands hold the existing profile mutation lock and refuse a running app. Candidate validation,
+compatibility, identity, ownership-record update and filesystem acceptance precede publication. Failed
+restoration must retain the old artifact/record or the existing removal marker. Helpers share the same
+record acceptance boundary as boot; there is no reset/import or historical-format conversion.
+
+The full advertised shipped-id guard, app UI replace/restore controls, app-source update offers,
+archive eligibility and provenance-only policy still need their subsequent integration. These command
+checkpoints do not close the replacement workstream or alter any other required goal phase.
+
+
+### CLI replace/restore checkpoint (2026-10-13)
+
+Implemented `pack replace` and `pack restore` with command routing and public help/docs. Install and
+replace share validation/publication under the profile lock; a discriminated operation supplies intent,
+while the incoming id must match replace's explicit target. Plain install refuses an app-managed
+incumbent. Restore resolves the selected host packages read-only without cwd inference/download/launch,
+requires exactly one matching declared id and shares boot's app-record preparation. It re-enables the
+pack, clears removal suppression/remote offers and records app ownership; source or acceptance failure
+retains the previous artifact/record or removal marker.
+
+A composed CLI fixture runs restore → replace → boot preservation → uninstall → boot suppression →
+restore, using real sealed artifacts whose runtime throws if activated. Preferences are written to
+actual LMDB, closed before mutation and reopened after restoration; app and pack override values
+persist. Further cases cover identity/compatibility refusal, running-app locks, independent custom
+profiles, explicit host precedence, missing/duplicate ids and uncached beta with fetch mocked to refuse.
+Twenty-eight focused CLI and 27 shipped-host tests pass. Five identity/intent/enablement/offline mutations
+fail and were restored; CLI/testing and host typechecks pass.
+
+This delivers offline CLI operations. The full advertised shipped-id guard, source catalog/provider
+identity audit, live app UI controls, app-source update offers, archive eligibility and the complete
+replacement acceptance matrix remain required. It does not establish full discovery, pane boundaries,
+API/provenance contracts or final goal completion. Database initialization/runtime effects are not
+covered by filesystem/record rollback. The separately recorded fixture/API shutdown race remains open.
+
+Strict checkpoint validation passes all 30 gates in 325.8s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-01-02Z-23338`. This is not the final full-goal
+requirement audit or strict `--all`; no unfinished plan is archived.

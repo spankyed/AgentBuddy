@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installShippedPacks, installPackFromLocal, uninstallPack } from '../../src/packs/installer.ts';
+import { installShippedPacks, installPackFromLocal, uninstallPack, restoreShippedPack } from '../../src/packs/installer.ts';
 import { PACK_LAYOUT, readPackIntegrity, readPackArtifact, stagePack, verifyPack } from '../../src/packs/layout.ts';
 import { readInstalledPacks, writeInstalledPacks, forgetPacksExcept } from '../../src/packs/installed.ts';
 import { registry } from './runtime/test-host.ts';
@@ -144,6 +144,32 @@ describe('installing the packs the app ships', () => {
 
 
 describe('explicit installation ownership', () => {
+  it('refuses a wrong restore identity without changing either namespace or the incumbent', async () => {
+    shipPack('shipped-pack');
+    await outcomes();
+    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const records = readInstalledPacks(recordsFile(), { strict: true });
+    const other = shipPack('other-pack');
+    await expect(restoreShippedPack('shipped-pack', other, packsDir, { installedPacksFile: recordsFile() }))
+      .rejects.toThrow('Restore expected pack');
+    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(fs.existsSync(path.join(packsDir, 'other-pack'))).toBe(false);
+    expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(records);
+  });
+
+  it('keeps removal suppression when explicit restoration is refused', async () => {
+    const source = shipPack('shipped-pack');
+    await outcomes();
+    await uninstallPack('shipped-pack', packsDir, { installedPacksFile: recordsFile() });
+    const before = readInstalledPacks(recordsFile(), { strict: true });
+    await expect(restoreShippedPack('shipped-pack', source, packsDir, {
+      installedPacksFile: recordsFile(), accept: () => { throw new Error('restore refused'); },
+    })).rejects.toThrow('restore refused');
+    expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(before);
+    expect(fs.existsSync(path.join(packsDir, 'shipped-pack'))).toBe(false);
+    expect(await outcomes()).toEqual(['shipped-pack=suppressed']);
+  });
+
   it('reports a non-directory installation path without overwriting it', async () => {
     shipPack('shipped-pack');
     const file = path.join(packsDir, 'shipped-pack');

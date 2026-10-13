@@ -210,12 +210,8 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
       await installPackFromLocal(source, packsDir, {
         ...options,
         installedPacksFile: undefined,
-        accept: candidate => withInstallationRecord(options.installedPacksFile, id, previous => {
-          const { installedFrom: _source, availableVersion: _version, availableTag: _tag,
-            updateCheckError: _check, ...record } = previous;
-          return { ...record, updatesWith: 'app', shippedRevision: shippedFilesRevision(candidate.integrity.files),
-            installedAt: previous.installedAt ?? new Date().toISOString() };
-        }, () => options.accept?.(candidate)),
+        accept: candidate => withInstallationRecord(options.installedPacksFile, id,
+          previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate)),
       });
       results.push({ id, outcome: wasInstalled ? 'updated' : 'installed' });
     } catch (err) {
@@ -223,6 +219,29 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
     }
   }
   return results;
+}
+
+/** Deliberately restore the named shipped artifact, including a missing or user-owned installation. */
+export function restoreShippedPack(
+  id: string, source: string, packsDir: string, options: InstallOptions & { installedPacksFile: string },
+): Promise<InstallResult> {
+  return installPackFromLocal(source, packsDir, {
+    ...options, installedPacksFile: undefined,
+    beforePlace: manifest => {
+      if (manifest.id !== id) throw new Error(`Restore expected pack "${id}", received "${manifest.id}"`);
+      options.beforePlace?.(manifest);
+    },
+    accept: candidate => withInstallationRecord(options.installedPacksFile, id,
+      previous => appInstallationRecord(previous, candidate, true), () => options.accept?.(candidate)),
+  });
+}
+
+function appInstallationRecord(previous: PackRecord, candidate: Readonly<InstallResult>, enable: boolean): PackRecord {
+  const { installedFrom: _source, availableVersion: _version, availableTag: _tag,
+    updateCheckError: _check, suppressAppInstall: _suppression, ...record } = previous;
+  return { ...record, enabled: enable ? true : previous.enabled, updatesWith: 'app',
+    shippedRevision: shippedFilesRevision(candidate.integrity.files),
+    installedAt: previous.installedAt ?? new Date().toISOString() };
 }
 
 /** A source-content identity, not an installed artifact receipt or accepted runtime revision. */

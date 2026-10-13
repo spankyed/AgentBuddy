@@ -2,6 +2,12 @@
 
 The `apack` app and pack CLI: scaffold, generate, build, test, pack, release and install packs. Built-in packs (`packages/default-setup`, `npm run build:default-setup`) and external packs go through the same commands. User-facing reference: `docs/public-facing/cli.md` (flags, build output layout, dependency sources). This file is the contributor map. Paths below are relative to `packages/apack-cli`.
 
+Installed-pack mutations share `withPackMutation`, the selected profile's storage lock. `pack replace`
+checks the explicit target id and chooses user-managed updates; plain install refuses an app-managed
+incumbent. `pack restore` reads the selected host packages without activation/download, restores the
+named shipped artifact, re-enables it and resumes app updates. Its `--host` source selection is independent
+of `--profile` storage. Both preserve database overrides. See `commands/pack-{install,replace,restore}.ts`.
+
 ## Layout
 
 ```

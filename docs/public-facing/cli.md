@@ -551,17 +551,44 @@ apack pack install user/my-pack
 
 A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack pack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack pack build` first. Restart the app after installing.
 
+#### `apack pack replace <id> <source> [--profile <name>]`
+
+Deliberately replace the named pack using any source supported by `pack install`. The incoming
+manifest must claim that exact ID. The installed artifact becomes user-managed, so app refreshes
+preserve it. An app-managed incumbent refuses ordinary `pack install` and points to this command.
+Replacement can also fill an explicitly named missing slot; it preserves stored database overrides.
+
+```bash
+apack pack replace default-setup ./my-default-setup
+```
+
+#### `apack pack restore <id> --host <path|beta> [--profile <name>]`
+
+Restore a pack from the selected app's shipped artifacts, re-enable it and resume app-managed updates.
+This clears deliberate-removal suppression and preserves stored settings/content overrides.
+
+```bash
+apack pack restore default-setup --host /Applications/apack.app
+apack pack restore default-setup --host /path/to/apack-checkout --profile my-work
+```
+
+`--host` selects the source app; `--profile` independently selects stored state. An associated
+`APACK_HOST_ROOT`, `APACK_HOST_EXECUTABLE` or `APACK_HOST` can supply the source when no flag is given.
+The current directory does not select a host. An explicit flag wins over an associated handoff.
+A checkout needs the pack's built artifacts, not a running app. `--host beta` uses a compatible cached
+beta and refuses if none is cached. Restore never downloads or launches an app.
+
 #### `apack pack uninstall <id> [--profile <name>]`
 
-Remove an installed pack by ID. Restart the app after uninstalling.
+Remove an installed pack by ID, retaining database settings and recording deliberate removal so boot does not put an app-shipped default back. Use `pack restore` to reinstate the default.
 
 #### `apack pack list [--profile <name>]`
 
 Show installed packs.
 
-`pack install`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. These commands do not select or launch an executable.
+`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Restore separately selects the source host artifacts with `--host`.
 
-Close the app using the selected profile before installing, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
+Close the app using the selected profile before installing, replacing, restoring, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
 
 ### App
 

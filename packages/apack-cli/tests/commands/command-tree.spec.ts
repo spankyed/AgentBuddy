@@ -27,7 +27,7 @@ describe('explicit app and pack command routing', () => {
     expect(pack).toHaveBeenCalledWith([]);
   });
 
-  it.each(['init-tests', 'build', 'facade-report', 'init'])('does not execute %s when --help is requested', async name => {
+  it.each(['init-tests', 'build', 'facade-report', 'init', 'replace', 'restore'])('does not execute %s when --help is requested', async name => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const scaffold = vi.spyOn((COMMANDS.pack.children as Record<string, { load: () => Promise<(args: string[]) => Promise<void>> }>)[name]!, 'load');
     await runCommand(['pack', name, '--help']);

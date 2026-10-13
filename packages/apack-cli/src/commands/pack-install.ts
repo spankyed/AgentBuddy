@@ -1,3 +1,4 @@
+import type { AppEnvironment } from '@apackdev/sdk/env';
 import { withPackMutation } from '../app/pack-mutation';
 import { recordCliInstall } from '../app/installed-packs';
 import * as fs from 'node:fs';
@@ -44,23 +45,7 @@ Options:
   }
 
   const context = targetDataContext(env, profile);
-  const { result, hostVersion } = await withPackMutation(context, 'install', async () => {
-    const { packsDir, userDataDir, installedPacksFile } = context;
-    readInstalledPacks(installedPacksFile, { strict: true });
-    const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
-    const sourceKind = detectSourceKind(source);
-    const resolvedInput = sourceKind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
-    const options = { hostVersion, packFormat, installedPacksFile,
-      accept: (candidate: Awaited<ReturnType<typeof installPack>>) => {
-        recordCliInstall(installedPacksFile, candidate.id, sourceKind === undefined ? source : undefined);
-        return undefined;
-      },
-    };
-    const result = sourceKind === 'local'
-      ? await installPackFromLocal(resolvedInput, packsDir, options)
-      : await installPack(resolvedInput, sourceKind === 'registry' ? 'url' : sourceKind, packsDir, options);
-    return { result, hostVersion };
-  });
+  const { result, hostVersion } = await installPackSource(context, source, { kind: 'install' });
 
   if (result.missingDependencies.length > 0) {
     console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
@@ -74,4 +59,34 @@ Options:
   console.log(`\nInstalled "${result.name}" v${result.version}${profileLabel(env, profile)}`);
   console.log(`  Location: ${result.dir}`);
   console.log(`\nOpen apack to load the pack.`);
+}
+
+/** Install and replace share validation/publication; the explicit operation determines intent. */
+export async function installPackSource(
+  context: AppEnvironment, source: string, action: { kind: 'install' } | { kind: 'replace'; id: string },
+) {
+  return withPackMutation(context, action.kind, async () => {
+    const { packsDir, userDataDir, installedPacksFile } = context;
+    const records = readInstalledPacks(installedPacksFile, { strict: true });
+    const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
+    const sourceKind = detectSourceKind(source);
+    const resolvedInput = sourceKind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
+    const options = { hostVersion, packFormat, installedPacksFile,
+      beforePlace: (manifest: { id: string }) => {
+        if (action.kind === 'replace') {
+          if (manifest.id !== action.id) throw new Error(`Replacement expected pack "${action.id}", received "${manifest.id}"`);
+        } else if (records.find(record => record.id === manifest.id)?.updatesWith === 'app') {
+          throw new Error(`"${manifest.id}" is app-managed. Use apack pack replace ${manifest.id} <source>.`);
+        }
+      },
+      accept: (candidate: Awaited<ReturnType<typeof installPack>>) => {
+        recordCliInstall(installedPacksFile, candidate.id, sourceKind === undefined ? source : undefined);
+        return undefined;
+      },
+    };
+    const result = sourceKind === 'local'
+      ? await installPackFromLocal(resolvedInput, packsDir, options)
+      : await installPack(resolvedInput, sourceKind === 'registry' ? 'url' : sourceKind, packsDir, options);
+    return { result, hostVersion };
+  });
 }
