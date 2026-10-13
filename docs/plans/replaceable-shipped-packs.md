@@ -184,5 +184,38 @@ silently reclassifying a fork. Also verify disabled installed packs retain their
 uninstalled packs do not, restoration reuses preserved overrides, and failed staging leaves the prior
 artifact/catalog available. Use discovery’s stale-load checks during in-flight replacement.
 
+## Installed publication audit (2026-10-13)
+
+The app's install handler currently tears down an active pack in `beforePlace`; the update handler
+tears it down before downloading. Neither path uses the registry's transactional `replacePack`.
+A download, runtime-load or registration refusal can therefore discard a working incumbent even
+though the artifact checks pass. The existing install lock also uses the source slug while update uses
+the pack id: different sources resolving to one owner need a resolved-id guard, not just a slug guard.
+
+The filesystem acceptance checkpoint adds synchronous `InstallOptions.accept`. The callback reads the
+verified candidate at its final path while `replaceDir` retains the old directory. Throwing restores
+the old bytes; a refused first install is removed. The callback receives independent metadata. Rollback
+checks directory identity before deleting the candidate, retaining the old backup rather than deleting
+a destination now owned by another replacement. This is a mechanism, not completed host integration.
+
+Next migrate live install/update to a shared acceptance operation: load and check the candidate, then
+use `replacePack` when an incumbent is registered. A refusal must preserve its settings leases,
+contributions, actors, accepted revision and install record, and clear the refused candidate's module
+cache. Stop sending `PACK_DEACTIVATED` for a replacement. After acceptance, retire the previous hooks
+and restart affected actors through the existing replacement lifecycle; perform initialization,
+migrations and content application after that acceptance decision. Report post-acceptance failures
+separately without claiming to restore arbitrary user-data effects. Cover new/disabled packs and
+resolved-id concurrency before accepting this integration. Shipped update ownership, suppression,
+explicit replacement and restoration remain the subsequent required work in this plan.
+
+Checkpoint validation also exposed a separate shutdown lifetime race: all 21 external-pack app tests
+passed, but fixture cleanup raised `ENOTEMPTY` for `apack-e2e-GOJY57`. The surviving file was
+`apack/logs/app-events.log`, ending with API LMDB shutdown entries. Electron's `before-quit` calls
+`stopApiServer`, whose process-manager `kill` starts `stop` without awaiting it; the fixture awaits
+Electron close and immediately removes the data directory. Inspect and coordinate child-process
+completion before deleting fixture-owned storage. A passing repeat is not evidence that this race is
+fixed; do not hide it with extended test deadlines or swallowed cleanup errors. Initial strict evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T17-46-38Z-83704` (296.6s).
+
 The output is a deliberate update-ownership and removal contract on top of discovery. It does not alter
 settings ownership, catalog identities, migration version lines or the consumed-API security model.

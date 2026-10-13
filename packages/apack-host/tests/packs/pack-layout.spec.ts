@@ -456,6 +456,49 @@ describe('verified installation candidate', () => {
   });
 });
 
+describe('installation acceptance', () => {
+  it('keeps the prior verified artifact when runtime acceptance refuses a replacement', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const installed = await installPackFromLocal(builtPack(), packsDir);
+    const previous = readPackArtifact(installed.dir);
+    const accept = vi.fn(candidate => {
+      expect(candidate).toMatchObject({ id: installed.id, version: '2.0.0', dir: installed.dir });
+      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
+      expect(readPackArtifact(candidate.dir).revision).not.toBe(previous.revision);
+      throw new Error('runtime registration refused');
+    });
+    await expect(installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { accept }))
+      .rejects.toThrow('runtime registration refused');
+    expect(accept).toHaveBeenCalledOnce();
+    expect(readPackArtifact(installed.dir)).toEqual(previous);
+    expect(fs.readdirSync(packsDir)).toEqual([installed.id]);
+  });
+
+  it('removes a refused first installation', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    await expect(installPackFromLocal(builtPack(), packsDir, { accept: candidate => {
+      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
+      throw new Error('runtime registration refused');
+    } })).rejects.toThrow('runtime registration refused');
+    expect(fs.readdirSync(packsDir)).toEqual([]);
+  });
+
+  it('publishes accepted bytes and keeps result metadata independent of the callback', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    await installPackFromLocal(builtPack(), packsDir);
+    const result = await installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { accept: candidate => {
+      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
+      candidate.integrity.files['runtime/index.cjs'] = 'callback mutation';
+      candidate.missingDependencies.push('callback mutation');
+      return undefined;
+    } });
+    expect(result.integrity).toEqual(readPackArtifact(result.dir).integrity);
+    expect(result.missingDependencies).toEqual([]);
+    expect(result.version).toBe('2.0.0');
+    expect(fs.readdirSync(packsDir)).toEqual([result.id]);
+  });
+});
+
 describe('installPackFromLocal (pack layout path)', () => {
   it('removes its temporary staging directory when declaration validation refuses the source', async () => {
     const root = builtPack();

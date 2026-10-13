@@ -38,6 +38,12 @@ export interface InstallResult {
 }
 
 export interface InstallOptions {
+  /**
+   * Accept the verified candidate at its final path before retiring the previous directory.
+   * Throw to restore the previous files. Keep initialization and other irreversible work outside
+   * this synchronous decision; filesystem rollback cannot undo callback effects.
+   */
+  accept?: (candidate: Readonly<InstallResult>) => undefined;
   /** Refuse packs whose manifest hostVersion this host doesn't satisfy (the app passes its version). */
   hostVersion?: string;
   /** Expected sha256 of a downloaded archive. */
@@ -280,11 +286,14 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
     options.beforePlace?.(structuredClone(manifest));
     const destDir = path.join(packsDir, manifest.id);
-    replaceDir(incoming, destDir);
+    const result: InstallResult = {
+      id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir,
+      missingDependencies: checkDependencies(manifest, packsDir), integrity,
+    };
+    replaceDir(incoming, destDir, () => options.accept?.(structuredClone(result)));
     incoming = undefined;
-    const missingDependencies = checkDependencies(manifest, packsDir);
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, integrity };
+    return result;
   } finally {
     if (incoming) fs.rmSync(incoming, { recursive: true, force: true });
     if (stageRoot) fs.rmSync(stageRoot, { recursive: true, force: true });

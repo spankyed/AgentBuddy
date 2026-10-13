@@ -2100,3 +2100,20 @@ See [the discovery evidence and limits](../plans/discovery-without-activation.md
 Ordinary live refresh is delivered. Coordinated installed updates, complete native/static discovery,
 source/dependency freshness, navigation/stale delivery, pane boundaries and all Phase 6 streams remain
 required. No plans are archived; the complete goal audit and final strict `--all` remain outstanding.
+
+### Installer filesystem acceptance checkpoint (2026-10-13)
+
+`replaceDir` now retains the prior directory through synchronous candidate acceptance, restores it on
+refusal and checks destination ownership before rollback. `InstallOptions.accept` exposes the verified
+candidate at its final path with independent metadata. This is the filesystem foundation for coordinated
+runtime installation, not delivery of transactional app install/update: those handlers still tear down
+first and must migrate to `replacePack`, with post-acceptance initialization kept separate.
+
+Focused checks pass 92 tests and the host typecheck. Omitting the acceptance call fails the two installer
+refusal tests; the source was restored before strict validation. Initial strict validation failed after
+all 21 external app assertions passed: fixture cleanup raced API shutdown and raised `ENOTEMPTY`.
+The surviving API log and non-awaited child shutdown are recorded in
+[the replacement audit](../plans/replaceable-shipped-packs.md#installed-publication-audit-2026-10-13).
+The unchanged-source recheck passes the strict chain in 115.8s (25 cached gates), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T17-52-50Z-12522`; the cleanup race remains unresolved.
+All unfinished phases and final strict `--all` acceptance remain required.
