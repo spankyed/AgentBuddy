@@ -2355,3 +2355,27 @@ multiple-window acceptance matrix. Every remaining all-kind discovery, navigatio
 pane boundary, API consumption, dependency provenance and final-audit requirement remains required.
 The independent process shutdown race is still open. No plans are archived; final full-goal strict
 `--all` on finished committed source remains due.
+
+
+### Selected runtime identity and priority cleanup checkpoint (2026-10-13)
+
+`b40412df3` removes `PackOrigin.shipped`, `shippedPacks()` and boot/loader/reload/harness argument
+propagation. Runtime origins describe the selected verified artifact; records describe update ownership;
+the source catalog describes advertisements. Removed advertised-id registration priority in favor of
+deterministic pack-id order. Designation conflicts still refuse the later registration and name both
+owners; content dependency ordering remains separate. Catalog eligibility/navigation and required
+provider readiness still require their own remaining work, not a claim of completion from this sort.
+
+All 148 focused loader/reload/registration/migration/event tests and the host typecheck pass. A real
+verified app advertisement and a distinct selected user artifact share an id; the loaded origin retains
+the user artifact's name/version/path/receipt/files while the advertisement remains unchanged. Strict
+validation passes all 30 gates in 390.7s (one cached), including real app and packaged authoring. After
+two stale comment corrections, final strict recheck passes in 208.7s (15 cached). Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T22-20-12Z-93616` and
+`node_modules/.cache/apack-chain/runs/2026-10-13T22-27-18Z-24275`;
+`/private/tmp/apack-runtime-provenance-strict-chain-final.log`.
+
+Next complete the actual cloned-source edit/build/install/restart/reload/multiple-window replacement
+matrix. Every remaining all-kind discovery, navigation/stale delivery, pane-boundary, API consumption,
+dependency provenance and final-audit requirement remains required. The independent process shutdown
+race remains open. No plans are archived; final full-goal strict `--all` on finished committed source is due.
