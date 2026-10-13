@@ -1863,3 +1863,25 @@ names and unavailable names through the real engine and host publication. This p
 in-memory engine and no production data. Then continue complete discovery and every remaining phase;
 this checkpoint does not finish native all-kind metadata, source/dependency freshness, navigation,
 frontend boundaries or any Phase 6 stream.
+
+### Owned repository keys checkpoint (2026-10-13)
+
+Committed `ccafe7396`. The engine repository registry uses a Map rather than a prototype-bearing
+object. Named repositories remain explicit keys, snapshots retain own properties without changing
+object prototypes, and removal really makes the provider unavailable. This fixes the prior isolated
+`__proto__` probe and prevents inherited `constructor`/`toString`/`hasOwnProperty` lookups from appearing
+as undeclared providers. Host transaction tests cover publishing, replacing and removing these keys;
+the registry's resource transaction and generated settings gates are retained unchanged.
+
+Validation: 15 engine-query checks and 13 host replacement checks pass. Restoring the original storage
+makes four engine regressions fail; source is restored and checks pass. Strict sequential chain passes
+in 383.3s (all 30 gates), including API reports, typechecks, integration, actual app/external pack and
+packaged authoring; evidence `node_modules/.cache/apack-chain/runs/2026-10-13T11-10-24Z-93017`, log
+`/private/tmp/apack-repository-owned-keys-strict-chain.log`. No public API report/type or release metadata
+change was needed. The fix is an explicit-key availability contract, not a JavaScript confinement claim.
+
+Continue full discovery with hook availability and migration descriptions: current manifest hooks name
+one module and migration targets point to objects whose descriptions are only available after loading.
+Re-audit current native/installed declarations and codegen, move these facts into data with checked named
+bindings, and migrate owned fixtures/docs without compatibility aliases. Native all-kind declarations,
+frontend metadata/consumer migration, complete freshness and all later phases remain required.

@@ -101,3 +101,14 @@ entities and rejects unsupported targets.
 Regenerate changed schema/API reports, migrate docs/templates and run `npm run chain`. Feed the settled
 consumption/caller contract into the security goal. Preserve API availability versus provider readiness
 for any future activation work; lazy activation is currently deferred. This work need not wait for shipped-pack replacement.
+
+## Review evidence: repository availability (2026-10-13)
+
+The actual engine previously used a prototype-bearing object for repository entries. Registering
+`__proto__` changed inherited lookups rather than creating a discoverable own entry; removal did not
+remove the inherited state. Missing `constructor`/`toString` also looked available. Commit `ccafe7396`
+uses explicit keyed storage and verifies engine snapshots, lookup/removal and host replacement with
+these names. The public types remain unchanged. Retain these tests when adding required-provider
+checks; a declared API name cannot be considered available because it exists on Object.prototype.
+This closes that concrete lookup defect, not the remaining API inventory, consumption declarations,
+required providers or ambient/internal API audit.
