@@ -24,7 +24,10 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/types.d.ts",
+      "types": {
+        "@apackdev/source": "./src/types.ts",
+        "default": "./dist/types.d.ts"
+      },
       "default": "./dist/server.js"
     },
     "./dist/*": "./dist/*"
@@ -55,7 +58,6 @@
     "tsup": "^8.4.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.2"
   }
 }

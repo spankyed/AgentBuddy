@@ -8,8 +8,8 @@ import { HOST, receiveClientEvent, UnknownClientEventError } from '@apackdev/hos
 import { splitRef } from '@apackdev/sdk/ids';
 import { procedure, router } from './trpc';
 import { createLogger } from '@apackdev/sdk/logger';
-import { rootEvents } from '@/transport/emitter';
-import { appClaims, appPacks, appSettingsAccess } from '@/runtime';
+import { rootEvents } from './emitter.ts';
+import { appClaims, appPacks, appSettingsAccess } from '../runtime/index.ts';
 import { bindSettingsRequest, SETTINGS_MUTATIONS, SettingsRefusedError } from '@apackdev/host/settings';
 
 const logger = createLogger('app-events');

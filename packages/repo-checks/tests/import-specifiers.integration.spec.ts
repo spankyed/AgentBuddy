@@ -1955,7 +1955,8 @@ describe('findMissingSourceConditions', () => {
     expect(sourceConditionPackages(root)).toEqual(['@apackdev/lib']);
     // @apackdev/testing is not among them: its entries resolve its built bundle whoever loads them, so a
     // config importing it selects nothing and needs no condition
-    expect(sourceConditionPackages()).toEqual(['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui']);
+    // The API participates for TypeScript; its runtime entry still resolves the compiled server.
+    expect(sourceConditionPackages()).toEqual(['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui', '@app/api']);
   });
 
   // Every config-file name the check recognises, with the option each kind declares the condition in

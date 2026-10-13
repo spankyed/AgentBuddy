@@ -2,7 +2,7 @@ import type {} from '@trpc/server/unstable-core-do-not-import';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { SettingsRefusedError } from '@apackdev/host/settings';
-import { appSettingsAccess } from '@/runtime';
+import { appSettingsAccess } from '../runtime/index.ts';
 import { procedure, router } from './trpc';
 import type { RpcContext } from './context';
 

@@ -973,7 +973,7 @@ Rules for default-setup migrations (details in `packages/apack-host/src/migratio
 
 ### Path aliases
 
-- Backend: `@/*` → `packages/api/src/*`
+- API imports use file-relative paths, so its workspace type entry resolves from source in other packages.
 
 ## Tech stack
 

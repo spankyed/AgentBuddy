@@ -705,7 +705,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * `repo` says the suite holds a guard whose subject is the whole tree, so its inputs are the whole tree.
  * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
  */
-export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
+export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true; inputs?: readonly string[] }> = {
   // `pretest: ensure-packages-built`, `@apackdev/testing`'s bundle, and its own compiled content under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
@@ -715,8 +715,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   // there and skips when it is not, so the tree decides whether that check checks anything
   'apack-host': { packages: true, pack: true },
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.content.json`.
-  // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
-  api: { pack: true },
+  // The runtime also imports root package metadata for the app version.
+  api: { pack: true, inputs: ['package.json'] },
   // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.
   // `repo`: six of its specs ask git what the repo holds — the chain's input coverage, spec placement,
   // the lint's scope, the import rules — so every one of them is about files this package does not own
@@ -792,6 +792,7 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
     ...SUITE_RUNNER,
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
+    ...(reads.inputs ?? []),
     ...(reads.packages ? PACKAGE_BUILD_READS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
     ...(reads.repo ? EVERY_SOURCE : []),

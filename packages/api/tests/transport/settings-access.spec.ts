@@ -12,13 +12,13 @@ import { HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createWindowSettingsRuntime } from '@apackdev/host/fe';
 
 const live = vi.hoisted(() => ({ packs: undefined as unknown as ReturnType<typeof createNativePackTestRegistry>, access: undefined as unknown as ReturnType<typeof createSettingsAccess> }));
-vi.mock('@/runtime', () => ({
+vi.mock('../../src/runtime/index.ts', () => ({
   get appPacks() { return live.packs; }, get appSettingsAccess() { return live.access; },
   appClaims: { clientFor: () => undefined },
 }));
-vi.mock('@/transport/emitter', async () => ({ rootEvents: (await import('@apackdev/sdk/testing')).testRootEvents }));
-const { systemBusRouter } = await import('@/transport/bus');
-const { settingsRouter } = await import('@/transport/settings');
+vi.mock('../../src/transport/emitter.ts', async () => ({ rootEvents: (await import('@apackdev/sdk/testing')).testRootEvents }));
+const { systemBusRouter } = await import('../../src/transport/bus.ts');
+const { settingsRouter } = await import('../../src/transport/settings.ts');
 
 const packs = createNativePackTestRegistry();
 const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog, onCatalogChanged: packs.onCatalogChanged }));

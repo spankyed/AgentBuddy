@@ -14,7 +14,7 @@ import { _appDirOf } from '@apackdev/sdk/env';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-boot-recovery-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const backend = await import('@/runtime');
+const backend = await import('../../src/runtime/index.ts');
 
 /** A process id no process has any more */
 function exitedPid(): number {

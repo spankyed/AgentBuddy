@@ -8,7 +8,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-db-write-lock-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { setupBackend } = await import('@/runtime');
+const { setupBackend } = await import('../../src/runtime/index.ts');
 const { holdDatabaseWriteLock } = await import('@apackdev/host/database');
 
 const locks: Array<{ release(): void }> = [];

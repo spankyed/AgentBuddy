@@ -31,16 +31,16 @@ vi.mock('@apackdev/host/bus', () => ({
  * claimed" cannot exercise it.
  */
 let claimed: string | undefined;
-vi.mock('@/runtime', () => ({
+vi.mock('../../src/runtime/index.ts', () => ({
   appPacks: {
     getEventValidationMap: () => new Map([['memo-pack/memos', new Set(['ADD_MEMO'])]]),
     getPluginEventValidationMap: () => new Map([['memo-pack/memos', new Set(['MEMO_ADDED'])]]),
   },
   appClaims: { clientFor: (ref: string) => (ref === claimed ? 'c-drive' : undefined) },
 }));
-vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
+vi.mock('../../src/transport/emitter.ts', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
 
-const { systemBusRouter } = await import('@/transport/bus');
+const { systemBusRouter } = await import('../../src/transport/bus.ts');
 
 /**
  * One connection's caller. `client` is the context the API mints per WebSocket connection, and `closed` the

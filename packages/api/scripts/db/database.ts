@@ -4,7 +4,7 @@
 // Database work that runs no pack code goes through `apack db` instead.
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openAppStore } from '@/runtime';
+import { openAppStore } from '../../src/runtime/index.ts';
 import { loadAppPacks } from '@apackdev/host/packs/runtime';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

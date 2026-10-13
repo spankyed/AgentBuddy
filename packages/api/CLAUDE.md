@@ -92,7 +92,7 @@ Importing `runtime/index.ts` opens and binds nothing. `openAppStore()` creates t
 - Env (`getEnvironment`): `NODE_ENV` (`development` / `production`), `API_PORT` (from `get-port`, preferring the previous port), `APACK_STARTUP_ID`, `APACK_LOG_DIR` (main's log dir), `SHIPPED_PACKS_DIR` (`packages/`, or `resources/app/packages` packaged: the packs the app installs at first boot), `APACK_ENV`, `APACK_USER_DATA_DIR`.
 - `process-manager.ts` parses stderr lines starting with `{"__fatal":` to report the crash.
 
-Builds: `npm run dev` (root) runs `build:api:dev` → this package's `build:dev` (tsup, ESM `server.js` only, no tsc/dts/minify; the dev launcher builds default-setup first). `npm run build` runs `tsc --noEmit`, then tsup with ESM + CJS, `types.ts` declarations and minification. tsup bundles workspace packages from source (`@apackdev/source` + `module` conditions), stubs `.vue` imports and resolves this package's `@/`. **It carries no pack's backend**: every pack's runtime is loaded from its own `dist/runtime/index.cjs` at boot.
+Builds: `npm run dev` (root) runs `build:api:dev` → this package's `build:dev` (tsup, ESM `server.js` only, no tsc/dts/minify; the dev launcher builds default-setup first). `npm run build` runs `tsc --noEmit`, then tsup with ESM + CJS, `types.ts` declarations and minification. tsup bundles workspace packages from source (`@apackdev/source` + `module` conditions), stubs `.vue` imports. **It carries no pack's backend**: every pack's runtime is loaded from its own `dist/runtime/index.cjs` at boot.
 
 ## Logging and redaction (`src/adapters/logging.ts`)
 
@@ -102,9 +102,12 @@ Loggers and error reports are SDK code (`@apackdev/sdk/logger`): a bound `create
 - `initializeLogCapture()` also replaces `console.log/debug/info/warn/error`: args are formatted with `util.formatWithOptions` (no colors), redacted and emitted as log events (`log` maps to `info`), which the printer prints. Nothing is printed twice (`log-capture.spec.ts`). `restoreConsole()` undoes the replacement; `originalConsole` holds the originals.
 - The logs system (default-setup's `features/logs/be/system.ts`) subscribes with `onLog` (`@apackdev/sdk/logger`), which is why the app bus (`createAppBus(registry)`) doesn't route incoming events addressed to it.
 
-## Path alias
+## Type contract
 
-`@/*` → `src/*`: `tsconfig.json` `paths`, `tsup.config.ts` (`resolve-at-aliases` plugin), `vitest.config.ts` (`vite-tsconfig-paths` with `tsconfig.test.json`, plus an explicit `resolve.alias`), and `tsconfig.scripts.json` for `scripts/`. `tsconfig.build.json` clears `paths`.
+`@app/api` exposes `src/types.ts` to TypeScript under the workspace `@apackdev/source` condition.
+Other consumers use compiled `dist/types.d.ts`. Runtime resolution uses the compiled server entry.
+API code, tests and scripts use file-relative imports, so source contracts need no consumer-specific
+alias mapping or API build before the renderer can typecheck them.
 
 ## Tests
 
@@ -112,12 +115,11 @@ Loggers and error reports are SDK code (`@apackdev/sdk/logger`): a bound `create
   covers: `transport/`, `adapters/`, `runtime/`, and `source-layout.spec.ts` at the root, whose subject is `src/`
   itself. `tests/integration/` holds none today (the pack load pipeline spec moved to `@apackdev/host`).
 - Run: `npm test -w @app/api` (`vitest run`), `npm run test:watch -w @app/api`, a single file with `npm test -w @app/api -- secrets`. Root `npm run test:unit` runs this package first, then default-setup and `@apackdev/host`.
-- Config: `globals: true`, `environment: 'node'`, `testTimeout: 120_000`, `@apackdev/source` plus Vite's server conditions (without `module`) for `resolve` and `ssr.resolve`, `.env` loaded with dotenv. There's no global env or data dir setup: specs that touch stores set `APACK_ENV=test` and `APACK_USER_DATA_DIR` to an `fs.mkdtempSync` dir, then call `openAppStore()` from `@/runtime` (see `secrets.spec.ts`). `app-reset.spec.ts` and `packaged-boot.spec.ts` load the built-in packs' built runtimes, so run `npm run build:default-setup` first.
+- Config: `globals: true`, `environment: 'node'`, `testTimeout: 15_000`, `@apackdev/source` plus Vite's server conditions (without `module`) for `resolve` and `ssr.resolve`, `.env` loaded with dotenv. There's no global env or data dir setup: specs that touch stores set `APACK_ENV=test` and `APACK_USER_DATA_DIR` to an `fs.mkdtempSync` dir, then call `openAppStore()` from `src/runtime/index.ts` (see `secrets.spec.ts`). `app-reset.spec.ts` and `packaged-boot.spec.ts` load the built-in packs' built runtimes, so run `npm run build:default-setup` first.
 - Coverage by file: the files `src/` may hold (`source-layout`), the app bus's `CLIENT_CONNECTED` handling and `broadcastToPlugin` dropped until a client connects, on this package's transport (`bus-client-connected`), the bound app's members (`bound-runtime`), each log event printed once (`log-capture`), data persisted across a restart through `openAppStore()` (`restart-persistence`), host data services, an app reset on the built-in packs leaving default settings, written flows and the app version (`app-reset`), current-format backup restore preserving preferences and onboarding completion (`host-data-services`), secrets procedures and redaction, the API's boot and `openAppDatabase` hydrating a data dir to the same entities, relations, roles and partition routes (`app-database-parity`), the boot over the real shipped packs, each loaded from the built runtime in the directory it ships in, which is where an installed pack once took a shipped pack's role (`packaged-boot`) — and one spec for code outside this package (`claude-code-permission-shape`, a standalone Zod mirror of the Claude Code CLI's permission response). `app-reset` also shows the reset empties the app's state (`AppState`: onboarding and version).
 - Typecheck: root `npm run typecheck:api` runs three projects here — `tsc -p .` (`src`), `tsc -p tsconfig.test.json`
   (`src` and `tests`, with `vitest/globals` so `describe`/`it`/`expect` are ambient in specs and nowhere else) and
-  `tsc -p tsconfig.scripts.json` (`scripts/`). `tsconfig.test.json` is also what `vitest.config.ts` reads for its
-  path aliases. Leaving the specs out of a project lets them drift unseen: a call carrying an argument the
+  `tsc -p tsconfig.scripts.json` (`scripts/`). Leaving the specs out of a project lets them drift unseen: a call carrying an argument the
   callee dropped, a `Message` collected into a `Record<string, unknown>` array, a cast through types that no
   longer overlap — none of which a run can catch, since extra arguments and structural mismatches are invisible
   at runtime. A compile-time assertion about this package's own boundary

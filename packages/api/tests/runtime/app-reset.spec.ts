@@ -12,7 +12,7 @@ import { createActor } from 'xstate';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-app-reset-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, packs } = openAppStore();
 const { loadAppPacks, startPacks } = await import('@apackdev/host/packs/runtime');
 const { installShippedPacks } = await import('@apackdev/host/packs');
@@ -97,7 +97,7 @@ describe('services.appData.reset()', () => {
 
 it('restores unfinished onboarding and resumes it only after an explicit restart', async () => {
   const { createAppBus } = await import('@apackdev/host/bus');
-  const { rootEvents } = await import('@/transport/emitter');
+  const { rootEvents } = await import('../../src/transport/emitter.ts');
   const opened: unknown[] = [];
   const unsubscribe = rootEvents.onOutgoing(({ to, event }) => {
     if (to === 'default-setup/threads' && event.type === 'LOAD_CHAT_THREAD') opened.push(event);

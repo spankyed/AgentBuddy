@@ -19,7 +19,7 @@ import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-packaged-boot-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
 const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');

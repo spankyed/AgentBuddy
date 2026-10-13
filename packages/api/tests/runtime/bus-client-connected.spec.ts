@@ -18,7 +18,7 @@ const { createNativePackTestRegistry } = await import('@apackdev/host/testing');
 const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@apackdev/host/bus');
-const { rootEvents } = await import('@/transport/emitter');
+const { rootEvents } = await import('../../src/transport/emitter.ts');
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
 const { bindHost } = await import('@apackdev/sdk/runtime');

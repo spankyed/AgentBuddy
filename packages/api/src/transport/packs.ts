@@ -5,7 +5,7 @@ import type { LoadedPackEntry } from '@apackdev/host/packs';
 import { getLoadedPackEntries, PACK_LAYOUT } from '@apackdev/host/packs';
 import { devServerUrl } from '@apackdev/host/packs/dev-server';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { appPacks } from '@/runtime';
+import { appPacks } from '../runtime/index.ts';
 import { router, procedure } from './trpc';
 
 export const packsRouter = router({

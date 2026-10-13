@@ -16,8 +16,8 @@ vi.mock('@apackdev/host/bus', () => ({
   receiveClientEvent: () => {},
   UnknownClientEventError: class extends Error {},
 }));
-vi.mock('@/runtime', () => ({ appPacks: {} }));
-vi.mock('@/transport/emitter', () => ({
+vi.mock('../../src/runtime/index.ts', () => ({ appPacks: {} }));
+vi.mock('../../src/transport/emitter.ts', () => ({
   rootEvents: {
     onOutgoing: (callback: (message: Message) => void) => { listeners.add(callback); return () => listeners.delete(callback); },
     emitConnected: () => {},
@@ -25,7 +25,7 @@ vi.mock('@/transport/emitter', () => ({
   },
 }));
 
-const { systemBusRouter } = await import('@/transport/bus');
+const { systemBusRouter } = await import('../../src/transport/bus.ts');
 
 /** What the backend puts on the bus, reaching every live subscription's filter */
 const emitOutgoing = (message: Message) => { for (const callback of listeners) callback(message); };

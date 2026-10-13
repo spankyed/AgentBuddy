@@ -14,7 +14,7 @@ import { initTRPC } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
 import { _byDeadline, _whenSatisfied } from '@apackdev/sdk/testing/waiting';
-import { createRpcContext, type RpcContext } from '@/transport/context';
+import { createRpcContext, type RpcContext } from '../../src/transport/context.ts';
 
 /** A connection as the adapter describes one, which is the only shape `createRpcContext` accepts */
 const connection = () => ({ info: { signal: new AbortController().signal } });
