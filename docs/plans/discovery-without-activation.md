@@ -962,3 +962,33 @@ through `PACK_DEACTIVATED`. Installed update/install still have pre-teardown pat
 side effects and pane failures remain the separate boundary work, not rollback guarantees here.
 Native/all-kind declarations, remaining static readers, complete freshness, navigation and all three
 Phase 6 streams remain required before final `--all` acceptance and archival.
+
+
+### Accepted runtime identity and grant freshness (2026-10-13)
+
+`244dd5380` gives captured backend registrations a host-issued runtime revision. `getPackRuntime`
+projects that revision with installed provenance; `packs.loaded` carries it with declaration and artifact
+identities. It changes on acceptance, including identical-byte reloads, remains unchanged after refused
+binding, and disappears on removal. Native registrations without installed provenance return no installed
+runtime. No manifest, snapshot, artifact hash or author-supplied revision owns this lifecycle identity.
+
+Settings grant issuance now checks the caller's expected runtime revision as well as declaration/artifact
+identity. Resolution checks the current revision, so reusing an origin object cannot preserve an obsolete
+grant. Renderer issuance and all owned transport/fixture callers use the required current contract.
+This is request freshness over trusted host-issued access; it does not confine arbitrary JavaScript.
+
+Evidence: 103 focused host checks and eight API transport checks pass. Mutations that reuse a revision,
+ignore an expected revision, or omit retirement checks each fail its intended regression and were restored.
+The real external-pack app proves reactivation of unchanged artifact bytes rejects the old loaded-record
+grant request and old credential, while a freshly read runtime succeeds. Final strict chain passes in
+182.9s (18 of 30 cached), including integration, real app, smoke and packaged authoring:
+`node_modules/.cache/apack-chain/runs/2026-10-13T15-43-13Z-31425`;
+`/private/tmp/apack-runtime-revision-strict-chain-complete.log`.
+
+Two preceding validation findings were corrected: the renderer read stale API declarations until an
+explicit API rebuild, and the external-pack credential fixture omitted the newly required revision.
+The fixture now also proves stale-record refusal after reactivation. The chain's missing API declaration
+build prerequisite remains an open freshness defect; fix that dependency rather than relying on manual
+prebuilds before final acceptance. Then publish accepted runtime state through the application system's
+normal state publication and compare per-owner revisions in the shell's loader. Live frontend refresh,
+installed update publication, complete native/static descriptors and every later goal phase remain open.

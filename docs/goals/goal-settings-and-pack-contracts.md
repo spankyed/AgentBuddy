@@ -2059,3 +2059,17 @@ Detailed contract corrections, mutations and limits are in
 The goal remains active. Live accepted-revision frontend refresh and installed update publication are
 still open, alongside native/all-kind descriptors, static consumers/freshness, navigation, pane boundaries
 and every Phase 6 stream. No completed-phase claim or archival follows this local checkpoint.
+
+
+### Accepted runtime revision checkpoint (2026-10-13)
+
+`244dd5380` separates accepted runtime lifetime from artifact content identity and checks it during
+frontend settings grant issuance/resolution. Identical-byte reload, refused binding, same-origin reuse
+and real-app reactivation are covered; three guard mutations fail and were restored. Final strict chain
+passes in 182.9s (18 of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T15-43-13Z-31425`.
+See [the discovery evidence](../plans/discovery-without-activation.md#accepted-runtime-identity-and-grant-freshness-2026-10-13).
+
+Next fix the demonstrated API declaration build prerequisite in the chain, then publish runtime revisions
+and use them for targeted live frontend refresh. Those integrations, installed update publication and
+all remaining discovery/navigation/boundary/Phase 6 work remain required. No plans are archived.
