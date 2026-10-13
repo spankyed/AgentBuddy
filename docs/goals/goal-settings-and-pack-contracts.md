@@ -1821,3 +1821,45 @@ Runtime checkpoint validation: strict sequential chain passes in 327.3s (one of 
 `node_modules/.cache/apack-chain/runs/2026-10-13T09-57-40Z-95167`; log
 `/private/tmp/apack-pr-review-runtime-chain.log`. The isolated handle probe performs no production-data
 reads/writes. This successful chain does not cover the newly identified transactional rollback defect.
+
+### Transactional runtime replacement checkpoint (2026-10-13)
+
+Implemented and committed `1ed8b09a2`, fixing the rollback defect identified during PR review.
+Backend contribution indexes now prepare from captured ownership/address data without changing live
+readers. Executable step/artifact/block objects retain their identity. Command order is preserved.
+Registry maps/tables publish once after candidate binding and repository publication succeed; refusal
+leaves the exact incumbent origin, captured handles, subscriptions and lookups intact. Ordinary removal
+uses captured addresses rather than re-reading authored getters. Reload calls one `replacePack`
+operation instead of unregistering and attempting to restore disposed resources.
+
+The host owns the settings port's pending/active/revoked lifetime. Candidate operations are unavailable
+until publication. A hook that captures a port and throws, or returns cleanup omitting generated
+release, cannot leave a usable port/subscription after refusal or unload. Retirement runs once after
+commit and reports cleanup failures without restoring a disposed runtime. Repository publication
+restores attempted entries on failure and retires the provisional binding. Reentrant registry writes
+are refused during the transaction. Runtime initialization, migrations/content effects and installed
+artifact/catalog publication remain separate transitions, not arbitrary-side-effect rollback claims.
+
+Checks: ten new transaction cases, an actual reload using a captured generated handle, and related
+checks pass (95 in the final focused run); host typecheck passes. A broader existing admission/lifecycle
+run passed 171 before the final gate. The old getter-based teardown failure fixture now proves its
+address is read exactly once, executable identity survives another registration, and all contributions
+leave cleanly. This improves removal rather than hiding cleanup failure; real cleanup-failure cases
+remain in the new resource tests.
+
+Four guard mutations were caught and restored: early incumbent retirement (four failing cases),
+missing repository rollback (one), reinstating unregister-and-restore reload (one), and missing
+host-owned revocation when generated cleanup is omitted (one). Final strict sequential chain passes
+in 325.2s (one of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T10-56-31Z-61811`; log
+`/private/tmp/apack-registry-transaction-gate-strict-chain.log`. The earlier pre-gate strict pass at
+`2026-10-13T10-33-46Z-29826` was not treated as final evidence after the gate was added.
+
+Next fix the independently reproduced repository dictionary defect: the real in-memory engine's
+`registerRepository('__proto__', { owner: 'candidate' })` is absent from its own repository snapshot,
+exposes an undeclared `owner` lookup, and that lookup survives `unregisterRepository('__proto__')`.
+Use explicit keyed storage rather than a prototype-bearing object; verify inherited-looking valid
+names and unavailable names through the real engine and host publication. This probe used an isolated
+in-memory engine and no production data. Then continue complete discovery and every remaining phase;
+this checkpoint does not finish native all-kind metadata, source/dependency freshness, navigation,
+frontend boundaries or any Phase 6 stream.
