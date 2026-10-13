@@ -2440,3 +2440,24 @@ coordination. Continue remaining replacement acceptance auditing and all-kind/na
 reader migration, followed by navigation/stale delivery, frontend boundaries, supported consumed APIs,
 dependency provenance and final goal-wide review. Final strict `--all` on finished committed source
 and archival remain due; this checkpoint does not complete or narrow the full goal.
+
+
+### Plugin discovery design audit (2026-10-13)
+
+Audited Plugin/PluginDefinition, frontend registration/admission, manifest/codegen, all eleven
+shipped plugin assembly modules, three fixture plugin modules, the CLI template and two native host
+views. Existing snapshots omit presentation and pane metadata because codegen imports whole plugin
+objects. The binding guard checks only label/machine shape, not declaration agreement for those fields.
+
+The owning discovery plan now records a complete Plugin-field classification and the next implementation
+shape: inline presentation plus explicit state/component/route/predicate targets, with codegen assembling
+the binding. It accounts for named Library state, five Threads canvas routes, six existing lazy component
+bindings, custom icon support and Brain's fallback predicate. Native Settings/Packs views must share the
+metadata contract while retaining trusted per-window executable composition. Host/application's shell
+inbox and host/help's system do not require invented visible plugins or actors.
+
+Implement the shared declaration/binding prototype and migrate owned modules, authoring, fixtures and
+first catalog reader together; preserve readiness and transactional frontend retirement. The real fork
+test must continue proving changed executable behavior after its label moves to the manifest. This is
+a design checkpoint, not a claim that new metadata or readers exist yet. All remaining contribution
+kinds, native coverage, freshness and other goal phases remain required.

@@ -1062,3 +1062,114 @@ or establish per-window epoch filtering for all outgoing messages. Installed ins
 paths still require coordinated publication. Native/all-kind descriptors and static consumers, complete
 freshness, navigation, frontend fault boundaries and all three Phase 6 streams remain required. Final
 requirement audit, strict `--all` on completed committed source, and archival remain outstanding.
+
+
+### Plugin declaration audit and implementation design (2026-10-13)
+
+The next slice removes executable plugin assembly as the metadata source. Audit at `7e79cd788`
+confirms eleven default-setup plugin modules, three external fixture plugin modules and two native
+host views. `PluginSchema` currently declares only entry, contract, default and default visibility;
+`generateFrontendEntry` imports the plugin object wholesale. `frontendBindingProblem` verifies a
+nonempty label and a machine, but does not compare presentation or pane membership to declarations.
+Installed/source snapshots therefore cannot describe the current UI independently of activation.
+
+Every field of `Plugin` is classified below. This is an audit of the supported contract, not another
+hand-maintained runtime registry:
+
+| Field | Owner and source after migration |
+|---|---|
+| id | Generated feature ref; never authored inside a plugin binding |
+| label, isPinned, hotkeys, options.headerClass | Inline plugin declaration data; codegen supplies the registered values |
+| icon | Named Lucide icon, consistent with artifact declarations, or an explicit custom component target; discovery reads the reference, rendering resolves the binding |
+| state | Explicit module/default or named-export target; machine construction and state remain execution |
+| canvas | Optional component target or a declared route map; route identities and component references are data |
+| panel, chat | Optional component targets; their presence is known before loading the frontend |
+| fallbackPanel.label, fallbackPanel.toggle | Inline declaration data; the event retains its supported type contract |
+| fallbackPanel.isShown | Named executable predicate target; discovery never evaluates it or treats its result as eligibility |
+
+Concrete cases constrain the shape. Threads has five canvas routes (`list`, `kanban`, `create`, `view`,
+`dashboard`) and a chat component. Library imports the named `librarySystem` export. Brain supplies
+one state-dependent fallback-panel predicate. Brain and Code each have two lazy view bindings; Flows
+and the Memos fixture each have one. Every current icon is a Lucide export, but the SDK also supports
+arbitrary icon components; preserve that capability through an explicit component reference rather
+than silently restricting the contract to the in-tree icon set. Optional canvas/panel/chat remain
+optional; do not invent panes or actors to fill absent declarations.
+
+#### Authored shape
+
+Keep metadata inline and implementation targets explicit. Replace `plugin.entry` with `plugin.state`;
+codegen assembles the plugin instead of importing a second handwritten inventory from `fe/plugin.ts`.
+Retain existing contract/default/defaultVisible keys and their meanings. A normal plugin is:
+
+```json
+"plugin": {
+  "label": "Notes",
+  "icon": "NotebookText",
+  "state": "src/features/notes/fe/state.ts",
+  "canvas": "src/features/notes/fe/canvas.vue",
+  "panel": "src/features/notes/fe/panel.vue",
+  "contract": "src/features/notes/fe/contract.ts#Contract"
+}
+```
+
+A component target is a source path (default export), or `{ "entry": "path", "load": "lazy" }`
+when lazy loading is required. The object form may omit load for an explicit custom icon component.
+Support the existing named-export target syntax where a module uses a named component or machine.
+A routed canvas uses `{ "routes": { "list": "path", "view": "path" } }`; the routes wrapper avoids
+confusing a route named entry/load with a component-target object. Preserve the six existing lazy
+bindings; this is component loading, not the deferred general pack-activation workstream.
+Custom icon components use the component-target object, leaving string icons unambiguously Lucide
+names. Do not execute custom icons to discover them; their rendered output is execution, not metadata.
+
+Fallback-panel declarations retain label/toggle and name the predicate via path#export. Move Brain's
+predicate to a small executable module or an appropriate existing module; do not serialize its result.
+Delete obsolete plugin assembly files and unused definePlugin authoring exports/callers together.
+There are no aliases or dual reads for plugin.entry. Generated registrations still use the bound
+Plugin/PluginDefinition types needed by host stores, with metadata supplied from declarations.
+
+#### Native host and common readers
+
+The normalized plugin descriptor must be shared by installed, source-authoring and native declarations;
+there is no plugin-only catalog and no fabricated native receipt. Native host metadata is pure data,
+separate from the renderer's executable imports and per-window machine factories. The native renderer
+uses that metadata when assembling bindings, and admission checks the same label/pinning/shortcuts,
+pane/route presence and fallback-panel metadata as external frontends.
+
+Do not assume native implementations physically live in the metadata owner's package: host Settings
+and Packs views live in renderer, while their machines/ownership live in host. Resolve native binding
+references through trusted composition/build checks, independently of installed artifact paths.
+The host/application backend plugin inbox targets the shell actor; it is not a contributed canvas.
+Host/help supplies a system, while its articles appear in Settings. Neither needs a fabricated visible
+plugin, feature or actor to satisfy a frontend inventory. Classify protocol receivers separately from
+contributed views when expanding the remaining native event/system declarations.
+
+The common catalog projects feature refs, declaration identity, enablement and plugin descriptor data
+before frontend activation. Source declarations retain source identity; installed entries retain their
+real receipts; native entries retain trusted native identity. UI availability/readiness remains a
+separate runtime concern. Move installed details and known-plugin discovery to this projection before
+changing shell selection. A declared disabled/failed plugin remains describable; it does not become an
+eligible destination or trigger component/module execution merely because it is listed.
+
+#### Implementation and verification checkpoints
+
+1. Add shared descriptor/component-target schemas and exhaustive Plugin field classification, then
+   change codegen and file/export validation together. Generate metadata and bindings from one accepted
+   declaration. Check exact pane/route membership and presentation values before frontend publication.
+2. Migrate default-setup, native views, both external fixtures and the authoring template in the same
+   usable change. Update doctor, contract-leaf actor-entry checks and source/watch inputs to state and
+   component targets. Delete obsolete assembly modules/helper calls. Update the real fork acceptance
+   case to edit the manifest label and an actual component, preserving its proof of changed executable
+   behavior rather than replacing it with a metadata-only test.
+3. Publish the common catalog projection and migrate its first production reader. Cover native views,
+   disabled and activation-failed external packs without evaluating entry/component/dependency code.
+   Readiness, actor startup and existing transactional frontend resource retirement remain intact.
+4. Prove single/routed/lazy panes, named machine exports, custom icons and fallback predicates through
+   generated-entry/build checks. Refuse mismatched labels, routes, pane presence, shortcuts and unknown
+   plugin fields before committing a replacement; retain the accepted frontend/settings grant on refusal.
+   Mutation-check admission guards. Run the actual external app and packaged-authoring checks, regenerate
+   public schema/API reports and update authoring docs before committing the implementation checkpoint.
+
+This design audit is not implementation or completion of discovery. References, steps/triggers,
+editor contributions, remaining native contracts, complete dependency/build freshness and the other
+listed consumer migrations still require their own coherent checkpoints. Keep every goal phase and
+all three Phase 6 workstreams active.
