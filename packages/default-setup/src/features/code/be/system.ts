@@ -140,16 +140,15 @@ export const systemMachine = setup({
       }
     },
 
+    rememberBaseDirectory: ({ event }) => {
+      const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
+      if (ev.fromUserNavigation !== false) {
+        featureSettings.forFeature('code').set({ path: ['baseDirectory'], value: ev.path })
+      }
+    },
+
     updateBaseDirectory: assign({
-      baseDirectory: ({ event }) => {
-        const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
-        // Save to navigation history only when triggered by user navigation
-        // (not when applying settings like defaultBaseDirectory)
-        if (ev.fromUserNavigation !== false) {
-          featureSettings.forFeature('code').set({ path: ['baseDirectory'], value: ev.path })
-        }
-        return ev.path
-      },
+      baseDirectory: ({ event }) => codeSpec.typeOf('SET_BASE_DIRECTORY', event).path,
       gitRepository: ({ event, context }) => {
         const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
         // Clear the old repository's cache before creating new one
@@ -356,9 +355,13 @@ export const systemMachine = setup({
           ]
         },
         // Handle SET_BASE_DIRECTORY specially
-        SET_BASE_DIRECTORY: {
-          actions: ['updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher']
-        },
+        SET_BASE_DIRECTORY: [
+          {
+            guard: ({ context, event }) => event.path !== context.baseDirectory,
+            actions: ['rememberBaseDirectory', 'updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher'],
+          },
+          { actions: 'rememberBaseDirectory' },
+        ],
         // Worktree switch is intercepted here to change baseDirectory
         'commit.WORKTREE_SWITCH': {
           actions: ({ event, self }) => {

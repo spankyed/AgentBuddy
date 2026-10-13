@@ -1133,3 +1133,22 @@ versions and reports resolution after an OS update; that is supporting context, 
 cause or a verified upgrade for this machine. Do not add self-kill logic or weaken teardown assertions
 as a settings fix. Preserve samples, keep final lifecycle acceptance open and continue the architectural
 work rather than rewriting settings to accommodate a native shutdown defect.
+
+
+The Code correction is implemented: directory commands remember explicit navigation separately from
+changing runtime directory state. An unchanged path retains its repository and watcher and sends no
+child-system refresh. The real-system test verifies both resource identity and the first explicit choice
+at the already displayed default directory. Removing the identity guard fails that regression; the
+restored source passes all three directory checks.
+
+Concurrent external app acceptance now passes all 21 main-fixture cases and the bundled fixture,
+including backup restoration; captured smart-base requests fall from 96 to two in the compared runs.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T05-46-47Z-3566`. That concurrent run still
+fails smoke/packaged worker teardown in the separately reproduced native quit loop. The unchanged
+strict sequential chain passes (76.6s, 25 cached), evidence `2026-10-13T05-50-21Z-25389` in the same
+runs directory. This does not establish deterministic native shutdown or close final lifecycle acceptance.
+
+A further source audit found Code starts Git watchers through async actions and has no actor-stop
+cleanup. Its service can finish async startup after the owner stops. Replace this with an actor-owned
+watcher resource and prove directory handoff, stop-during-start and teardown against real watcher
+lifetime. Do not use that cleanup as a claimed fix for the native hidden-window reproduction.

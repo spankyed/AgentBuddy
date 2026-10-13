@@ -26,6 +26,33 @@ const setCodeSetting = (key: string, value: unknown) =>
 const explorerDirectory = () => (app!.system('code').getSnapshot().context as { baseDirectory: string | null }).baseDirectory;
 
 describe("the code explorer's directory", () => {
+  it('retains the repository and watcher for repeated selection while remembering an explicit choice', async () => {
+    app = await startApp({ systems: ['code', 'host/settings'] });
+    await app.connect();
+    const directory = tempDir();
+    await setCodeSetting('defaultBaseDirectory', directory);
+    await app.settle();
+    const before = app.system('code').getSnapshot().context;
+    const refreshes = () => app!.emitted('code').filter(event => event.type === 'pr.STATUS_CHANGED').length;
+    const originalRefreshes = refreshes();
+    const revision = getTestSettings().getSnapshot().revision;
+    expect(getTestSettings().getOverrides().features?.['default-setup/code']).not.toHaveProperty('baseDirectory');
+
+    for (let i = 0; i < 3; i++) {
+      await app.send('code', { type: 'SET_BASE_DIRECTORY', path: directory, fromUserNavigation: false });
+    }
+    await app.settle();
+    expect(getTestSettings().getSnapshot().revision).toBe(revision);
+
+    await app.send('code', { type: 'SET_BASE_DIRECTORY', path: directory });
+    await app.settle();
+    expect(getTestSettings().getOverrides().features?.['default-setup/code']).toHaveProperty('baseDirectory', directory);
+    const after = app.system('code').getSnapshot().context;
+    expect(after.gitRepository).toBe(before.gitRepository);
+    expect(after.gitWatcher).toBe(before.gitWatcher);
+    expect(refreshes()).toBe(originalRefreshes);
+  });
+
   it('moves when defaultBaseDirectory changes', async () => {
     app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();
