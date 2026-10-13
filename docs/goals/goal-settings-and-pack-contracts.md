@@ -1944,3 +1944,29 @@ Next review target: `loadExternalPacks()` prunes installation records using succ
 a malformed installed manifest can therefore lose its recorded disabled choice. Prove this with an
 isolated boot regression while migrating installed inventory to the common admission boundary.
 No plans are archived, and final `--all` acceptance remains outstanding.
+
+
+### Shared installed artifact admission checkpoint (2026-10-13)
+
+`e50838e14` fixes the confirmed boot-pruning bug: an unreadable installed manifest no longer erases its
+disabled choice or update provenance. Directory removal still prunes the record. Installed discovery,
+catalog refresh, boot, activation/reload and offline schema inspection share full artifact admission,
+including directory-owner agreement and the receipt-owned backend entry. The loader no longer accepts
+an unchecked manifest argument. Offline schemas refuse invalid enabled artifacts; named snapshots use
+the common snapshot validator. Refused artifacts under valid pack IDs remain removable. No historical conversion or
+compatibility path is added.
+
+Evidence: the record-preservation regression failed before the change; 255 restored focused checks pass.
+Pruning invalid artifacts, bypassing owner checks and silently omitting invalid schema sources each fail
+an intended guard regression. Broader integration found one manifest-only database-import fixture;
+it now creates a complete sealed artifact and still proves orphaned rows survive import. Content tests
+now declare their own prompt entity/writer instead of overriding an SDK-owned writer through native setup.
+The final strict chain passed in 220.3s (17 of 30 gates cached), including integration, real external-pack
+app, smoke and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T12-43-46Z-41676`;
+`/private/tmp/apack-installed-admission-strict-chain-final.log`.
+
+The goal remains open: native/all-kind descriptors, remaining static consumers and source/dependency
+freshness, navigation, frontend boundaries and all three Phase 6 streams are still required. Next
+implementation review should remove the obsolete runtime pack-information projection and complete
+native/frontend declaration coverage. No plans are archived; final `--all` acceptance remains outstanding.

@@ -145,8 +145,8 @@ remain execution state; static frontend declarations and window activation/retry
 move to the common descriptor/catalog before the shell becomes a discovery consumer.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
-asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and
-the database tool's explicit `--schema-from` reader still need to move onto the common catalog boundary.
+asset/binding identities and coherent catalog refresh are still required. Installed discovery and offline schema admission now share the reader in `e50838e14`, described below.
+Source/dependency freshness and the remaining contribution descriptors are still open.
 
 Validation: 118 focused snapshot/manifest/format checks and six doc-link checks passed. The final strict
 chain passed with `npm run chain -- --strict --cores 1` (152.3s, 23 cached), including external-pack and
@@ -834,3 +834,23 @@ real CLI scaffolding/typechecking and runtime mismatch refusals verify the data/
 final strict chain passed at `2026-10-13T11-47-39Z-39675`. Installed snapshots already carry these facts
 through their manifest; static consumer/native completeness still requires migration. This checkpoint
 is not a complete discovery implementation or a promise to roll back migration effects.
+
+
+### Shared installed admission checkpoint (2026-10-13)
+
+`e50838e14` makes installed discovery, catalog refresh, boot, activation/reload and offline database
+schemas use one data-only artifact admission path. It validates the snapshot and receipt, checks the
+directory's owner and requires a receipt-owned backend entry. Producer/staging readers remain distinct:
+a `dist/` build directory is not a managed `packs/<id>/` installation.
+
+Directory presence remains installation evidence when admission fails. Boot now prunes user records
+only for removed directories, preserving disabled choices and update provenance through malformed
+manifests and later repair. Refused artifacts under valid pack IDs remain removable without trusting their metadata.
+Offline enabled schema sources fail explicitly; `--schema-from` validates complete current snapshots
+and declaration identities without loading executable modules. The permissive EARS fragment reader
+and unused enabled-pack projection are removed. Data fixtures now use complete sealed artifacts.
+
+Focused checks and guard mutations cover record preservation, directory-owner refusal before execution,
+invalid offline schemas, incomplete/stale named snapshots and invalid-installation removal. Native
+all-kind metadata, static shell/reference/editor discovery, complete source/dependency freshness and
+atomic installation/runtime publication remain separate required work.
