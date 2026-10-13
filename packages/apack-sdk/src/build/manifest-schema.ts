@@ -538,7 +538,6 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   name: z.string().min(1).describe('Human-readable pack name.'),
   version: z.string().regex(/^\d+\.\d+\.\d+/, 'Must be a semver version string')
     .describe('Semver version string.'),
-  builtIn: z.boolean().describe('Whether this pack is bundled with the host app.').optional(),
   description: z.string().describe('Short description of the pack\'s purpose.').optional(),
   hostVersion: z.string().describe('Semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
   license: z.string().describe('SPDX license identifier.').optional(),

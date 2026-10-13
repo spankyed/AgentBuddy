@@ -34,7 +34,7 @@ export interface PackFixtureOptions {
    * **Merge rather than replace, because that is what the call sites want.** Surveyed 2026-10-02 over the 54
    * manifest-writing sites in the two packages that may import this: 23 of the 28 written inline are the
    * minimum plus at most one key — `{ id, name, version }`, sometimes with `features`, `dependencies`,
-   * `entities` or `builtIn`. Replacing meant each of those restated a whole manifest, which is how they came
+   * `entities` or `hostVersion`. Replacing meant each of those restated a whole manifest, which is how they came
    * to differ from each other in ways no case was about.
    */
   readonly manifest?: Record<string, unknown>;

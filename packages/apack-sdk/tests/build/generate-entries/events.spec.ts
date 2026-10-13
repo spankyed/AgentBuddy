@@ -201,7 +201,7 @@ describe('generated system sends', () => {
   it("names the pack's own systems by feature id and its dependencies' as <dependency>/<feature>", async () => {
     const files = await generate({ features: [system('memos')] }, {
       'base-pack': dependency({ features: [system('calendar')] }, baseTypes),
-      'default-setup': dependency({ id: 'default-setup', builtIn: true, features: [system('memos')] }),
+      'default-setup': dependency({ id: 'default-setup', features: [system('memos')] }),
     });
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<__SystemContracts['memos']>;\n};");

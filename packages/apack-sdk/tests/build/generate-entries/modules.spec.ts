@@ -333,7 +333,7 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
+    $manifestVersion: true, $schema: true, boot: true, build: true,
     dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
     permissions: true, relKinds: true, content: true, version: true,
@@ -404,7 +404,7 @@ describe('the snapshot format', () => {
       fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
+          '$manifestVersion', '$schema', 'boot', 'build', 'content', 'dependencies', 'description',
           'entities', 'entityShapes', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
           'permissions', 'relKinds', 'version',
         ],

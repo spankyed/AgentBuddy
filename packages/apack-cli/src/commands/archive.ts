@@ -39,9 +39,6 @@ export interface PackResult {
 
 export async function buildPackArchive(root: string, outDir: string): Promise<PackResult> {
   const manifest = readValidManifest(root);
-  if (manifest.builtIn) {
-    throw new Error('Built-in packs ship inside the app and are not packed.');
-  }
   // **A build that is not of these sources must not be shipped, and absence is no longer what says so.**
   // `apack pack build` renames its output into place, so a failed build leaves the previous one where it was and
   // `stagePack` would find a complete `dist` to pack. Before that it left none, and the pack simply failed for

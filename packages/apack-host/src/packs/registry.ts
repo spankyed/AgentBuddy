@@ -179,7 +179,7 @@ export interface PackOrigin {
    * shipping: the installer updates shipped copies with the app, and the app will not offer to uninstall
    * what it needs to run (`InstalledPackSummary.canUninstall`). Migration lines are declared by each pack.
    *
-   * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
+   * Update ownership comes from installation records; manifests grant no shipping privilege.
    */
   shipped: boolean;
   /** The pack's `apack.json`, which its loader read to find the pack at all */

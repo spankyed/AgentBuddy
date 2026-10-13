@@ -656,7 +656,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     id: z.ZodEffects<z.ZodString, string, string>;
     name: z.ZodString;
     version: z.ZodString;
-    builtIn: z.ZodOptional<z.ZodBoolean>;
     description: z.ZodOptional<z.ZodString>;
     hostVersion: z.ZodOptional<z.ZodString>;
     license: z.ZodOptional<z.ZodString>;
@@ -1463,7 +1462,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1611,7 +1609,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1759,7 +1756,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1907,7 +1903,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -2055,7 +2050,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;

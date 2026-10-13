@@ -22,7 +22,7 @@ const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
  * and every pack's frontend is fetched over `pack://` from the bundle its own `apack pack build` wrote — which
  * is the path a pack takes in production whatever directory it lives in.
  *
- * The map is keyed by pack id and says nothing about `builtIn`: a pack is in it because its source is on
+ * The map is keyed by pack id and grants no manifest shipping privilege: a pack is in it because its source is on
  * this disk.
  */
 function devPackFrontendsPlugin(serving: boolean): Plugin {

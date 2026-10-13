@@ -35,7 +35,7 @@ function pack(stepInFlow: string): string {
   };
   write('package.json', JSON.stringify({ name: 'registry-pack', type: 'module' }));
   write('apack.json', JSON.stringify({
-    id: 'registry-pack', name: 'Registry pack', version: '1.0.0', builtIn: true,
+    id: 'registry-pack', name: 'Registry pack', version: '1.0.0',
     // Declared here, which is what makes the generated module below the pack's own steps
     extensions: {
       steps: {

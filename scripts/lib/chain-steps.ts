@@ -630,7 +630,7 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
 /**
  * The built-in pack's own sources, which **two steps compile**: `build:default-setup`, which is the pack's build, and
  * `build:runtime`, because the app is built from them too. That second reader is the surprising one and the reason
- * this is named rather than spelled twice — the renderer's `builtInPacksPlugin` generates a module of static
+ * this is named rather than spelled twice — the renderer's `devPackFrontendsPlugin` generates a module of static
  * imports of the pack's generated FE entry, so Vite follows them into each feature's `fe` directory and the pack's
  * components land in the renderer bundle, while the api's tsup traces its generated BE entry the same way.
  *

@@ -199,7 +199,6 @@ describe('content.formats, content.sources and content.datasets', () => {
   it('refuses features[].earlySystem as the unknown key it now is, in any pack', () => {
     const features = { logs: { earlySystem: true, system: { entry: 'src/logs/system.ts' } } };
     expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
-    expect(messagesOf(parseManifest({ ...pack, builtIn: true, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
   // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there

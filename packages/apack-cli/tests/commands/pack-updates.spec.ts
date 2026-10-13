@@ -37,3 +37,20 @@ it('checks recorded sources against the explicit host and leaves records untouch
     expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Cannot read');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+
+it('uses installation ownership to choose GitHub updates independently of the pack name', async () => {
+  const { packUpdate } = await import('../../src/app/pack-updates');
+  const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'v1.1.0' });
+  const manifest = { id: 'default-setup', name: 'Default setup fork', version: '1.0.0' };
+  const record = { id: manifest.id, enabled: true, installedFrom: 'owner/default-fork', updatesWith: 'user' as const };
+  const pack = { manifest, record, dir: '/unused' };
+  expect(await packUpdate(pack, { hostVersion: '0.4.0', includePrerelease: false }, find))
+    .toMatchObject({ status: 'outdated' });
+  expect(find).toHaveBeenCalledOnce();
+  find.mockClear();
+  expect(await packUpdate({ ...pack, record: { ...record, updatesWith: 'app' } },
+    { hostVersion: '0.4.0', includePrerelease: false }, find))
+    .toMatchObject({ status: 'unmanaged', reason: 'updates with the app' });
+  expect(find).not.toHaveBeenCalled();
+});

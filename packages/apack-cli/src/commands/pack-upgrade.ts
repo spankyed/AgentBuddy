@@ -36,7 +36,7 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
       installedPacksFile: context.installedPacksFile,
       accept: candidate => { recordCliInstall(context.installedPacksFile, candidate.id, source); },
       beforePlace: manifest => {
-        if (manifest.id !== id || manifest.version !== version || manifest.builtIn) {
+        if (manifest.id !== id || manifest.version !== version) {
           throw new Error(`Expected external pack ${id} v${version}, received ${manifest.id} v${manifest.version}.`);
         }
         for (const [dependency, range] of Object.entries(manifest.dependencies ?? {})) {

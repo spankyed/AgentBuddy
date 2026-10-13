@@ -36,7 +36,7 @@ beforeAll(() => {
   const packDir = path.join(builtInDir, 'migrations-built-in');
   fs.mkdirSync(packDir);
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({
-    id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, builtIn: true,
+    id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION,
   }));
 });
 

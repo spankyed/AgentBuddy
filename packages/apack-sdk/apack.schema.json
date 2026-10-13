@@ -25,10 +25,6 @@
       "pattern": "^\\d+\\.\\d+\\.\\d+",
       "description": "Semver version string."
     },
-    "builtIn": {
-      "type": "boolean",
-      "description": "Whether this pack is bundled with the host app."
-    },
     "description": {
       "type": "string",
       "description": "Short description of the pack's purpose."

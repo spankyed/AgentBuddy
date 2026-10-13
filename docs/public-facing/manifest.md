@@ -14,7 +14,6 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `description` | `string` | no | Short description |
 | `hostVersion` | `string` | no | Semver range of compatible host versions (e.g. `">=0.3.0"`) |
 | `license` | `string` | no | SPDX license identifier |
-| `builtIn` | `boolean` | no | `true` for packs built into the app only |
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |

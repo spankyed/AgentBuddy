@@ -103,7 +103,7 @@ describe('a build that fails', () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
-      id: 'built-in-pack', name: 'Built-in', builtIn: true,
+      id: 'built-in-pack', name: 'Built-in',
       features: { memos: { settings: { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } }, defaults: {} } } },
       content: { sources: { flows: 'src/content/flows' } },
     } });
@@ -128,7 +128,7 @@ describe('a pack whose content compiler modules fail to bundle', () => {
       at: root,
       files: { 'src/tags.ts': 'export default () => [;\n' },
       manifest: {
-        id: 'built-in-pack', name: 'Built-in', builtIn: true,
+        id: 'built-in-pack', name: 'Built-in',
         // Not used by an entry here, so only the bundle for dependents compiles it
         content: { sources: { flows: 'src/content/flows' }, formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
       },

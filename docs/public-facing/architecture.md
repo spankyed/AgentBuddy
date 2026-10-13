@@ -332,7 +332,6 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
 | `content.sources.settings` | No | Feature defaults go in `features.<id>.settings` |
-| `builtIn` | No | Reserved for the default pack |
 
 ## Build-time dependency resolution
 

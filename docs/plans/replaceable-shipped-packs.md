@@ -370,3 +370,30 @@ covered by filesystem/record rollback. The separately recorded fixture/API shutd
 Strict checkpoint validation passes all 30 gates in 325.8s (one cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T20-01-02Z-23338`. This is not the final full-goal
 requirement audit or strict `--all`; no unfinished plan is archived.
+
+
+### Manifest shipping privilege removal (2026-10-13)
+
+Removed `builtIn` from the manifest schema, generated JSON Schema, controlled SDK build report,
+default-setup declaration, codegen fixtures and public authoring docs. No alias, conversion or special
+parser exists for the removed field. Archive no longer refuses a pack based on its manifest origin.
+CLI list exposes `updatesWith` rather than a pack's self-declared privilege; GitHub update selection
+uses installation ownership, so a user-managed fork at the default id is eligible for its recorded
+remote source while an app-managed record is not. Upgrade still validates identity/version and the
+existing compatibility/dependency guards.
+
+Focused checks pass 92 SDK schema/codegen tests, 18 host discovery/migration tests and four CLI tests.
+The archive test uses the real freshly rebuilt default-setup: create its archive/checksum, extract it
+and verify its installed receipt. The SDK report diff contains exactly six `builtIn` declarations removed;
+line endings were normalized before review. No release/version metadata changes.
+
+`canUninstall` and the live toggle/install restrictions remain pending the app source catalog and live
+replace/restore controls. In that integration audit, distinguish the currently id-based `PackOrigin.shipped`
+flag from selected artifact provenance and recorded update ownership; it must not regain authority over
+updates. Complete the clone/edit/build/install/restart acceptance matrix, source update offers and the
+other replacement requirements before closing this plan. All broader goal work remains required.
+
+Strict validation passes all 30 gates in 381.0s (none cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-15-31Z-55624`. This is a manifest/archive eligibility
+checkpoint, not final goal `--all` acceptance or completion of the replacement workstream. The
+independently observed fixture/API shutdown race remains unresolved despite passing this run.
