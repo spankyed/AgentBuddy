@@ -61,9 +61,69 @@ it('rolls back all contributions and disposes transport when binding refuses acc
 it('releases a refused duplicate without revoking the existing frontend', () => {
   const packs = createFePackRegistry();
   const existingRevoke = vi.fn();
-  packs.registerPackFE(registration(() => existingRevoke), { port: {} as SettingsPort, dispose: vi.fn() });
+  packs.registerPackFE(registration(() => ({ activate() {}, dispose: existingRevoke })), { port: {} as SettingsPort, dispose: vi.fn() });
   const dispose = vi.fn();
   expect(() => packs.registerPackFE(registration(vi.fn()), { port: {} as SettingsPort, dispose })).toThrow('already registered');
   expect(dispose).toHaveBeenCalledOnce();
   expect(existingRevoke).not.toHaveBeenCalled();
+});
+
+
+it('stages and discards a cached module replacement without changing its accepted accessor', async () => {
+  const packs = createFePackRegistry();
+  const generated = _createFeSettings();
+  const first = fakeSettings({ features: { 'owner/code': { limit: 1 } } });
+  const dispose = vi.fn();
+  const reg = registration(generated.bindSettings);
+  packs.registerPackFE(reg, { port: first, dispose });
+  const second = fakeSettings({ features: { 'owner/code': { limit: 10 } } });
+  const candidate = packs.preparePackFE(reg, { port: second, dispose: vi.fn() }, true);
+  const scope = effectScope();
+  const handle = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
+  expect(handle.value.value).toEqual({ limit: 1 });
+  candidate.dispose();
+  await handle.set({ path: ['limit'], value: 2 });
+  expect(first.get(target)).toEqual({ limit: 2 });
+  expect(second.updates).toEqual([]);
+  expect(dispose).not.toHaveBeenCalled();
+  scope.stop();
+  packs.unregisterPackFE('owner');
+});
+
+it('restores the cached module accessor when a prepared host commit refuses publication', () => {
+  const packs = createFePackRegistry();
+  const generated = _createFeSettings();
+  const reg = registration(generated.bindSettings);
+  const dispose = vi.fn();
+  packs.registerPackFE(reg, { port: fakeSettings({ features: { 'owner/code': { limit: 1 } } }), dispose });
+  const candidate = packs.preparePackFE(reg, { port: fakeSettings({ features: { 'owner/code': { limit: 10 } } }), dispose: vi.fn() }, true);
+  expect(() => candidate.commit(() => { throw new Error('publication refused'); })).toThrow('publication refused');
+  const scope = effectScope();
+  const handle = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
+  expect(handle.value.value).toEqual({ limit: 1 });
+  expect(dispose).not.toHaveBeenCalled();
+  scope.stop();
+  packs.unregisterPackFE('owner');
+});
+
+it('rebinds a cached module repeatedly without reviving old handles or clearing the new accessor', async () => {
+  const packs = createFePackRegistry();
+  const generated = _createFeSettings();
+  const reg = registration(generated.bindSettings);
+  const first = fakeSettings({ features: { 'owner/code': { limit: 1 } } });
+  packs.registerPackFE(reg, { port: first, dispose: vi.fn() });
+  const scope = effectScope();
+  const old = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
+  for (const limit of [10, 20]) {
+    const source = fakeSettings({ features: { 'owner/code': { limit } } });
+    packs.replacePackFE(reg, { port: source, dispose: vi.fn() });
+    const current = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
+    expect(current.value.value).toEqual({ limit });
+    expect((await old.set({ path: ['limit'], value: 99 })).status).toBe('refused');
+    await current.set({ path: ['limit'], value: limit + 1 });
+    expect(source.get(target)).toEqual({ limit: limit + 1 });
+  }
+  expect(first.updates).toEqual([]);
+  scope.stop();
+  packs.unregisterPackFE('owner');
 });

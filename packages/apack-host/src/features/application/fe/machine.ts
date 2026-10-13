@@ -117,12 +117,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     actions: {
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 
-      mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
+      mergePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
         const { packId, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
 
         // The pack was unloaded while its frontend was loading: keep its plugins out, since nothing would ever take
         // them out again, and undo what the load registered
-        if (context.packLoadInvalidated || context.packsUnloadedWhileLoading.includes(packId)) {
+        if (context.packsUnloadedWhileLoading.includes(packId)) {
           enqueue.assign({ packsUnloadedWhileLoading: context.packsUnloadedWhileLoading.filter(id => id !== packId) });
           enqueue(() => packFrontends.unload(packId));
           return;
@@ -132,24 +132,30 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           ? context.packFrontendsLoaded
           : [...context.packFrontendsLoaded, packId];
 
-        // A pack without frontend code contributes nothing and needs no startup data: the connection's
-        // CLIENT_CONNECTED reached its systems already
-        if (packPlugins === null) {
-          enqueue.assign({ packFrontendsLoaded });
-          return;
+        // Only an accepted load reaches this action. Replace this owner's actors and view together;
+        // failed candidates never retire the incumbent or disturb its selection.
+        const previous = context.plugins.filter(plugin => plugin.id.startsWith(`${packId}/`));
+        const retained = context.plugins.filter(plugin => !plugin.id.startsWith(`${packId}/`));
+        const newPlugins = packPlugins ?? [];
+        const firstPrevious = context.plugins.findIndex(plugin => plugin.id.startsWith(`${packId}/`));
+        const position = firstPrevious < 0 ? retained.length : firstPrevious;
+        const plugins = withHostLast([...retained.slice(0, position), ...newPlugins, ...retained.slice(position)]);
+        const defaultPlugin = packs.defaultPlugin() ?? null;
+        const replacingActive = previous.some(plugin => plugin.id === context.activePlugin.id);
+        const activePlugin = replacingActive
+          ? (newPlugins.find(plugin => plugin.id === context.activePlugin.id) ?? plugins[0])
+          : context.activePlugin;
+        for (const plugin of previous) {
+          const actor = system.get(plugin.id);
+          if (actor) enqueue.stopChild(actor);
         }
-
-        // A plugin's id is its feature's ref, `<packId>/<featureId>`: a pack can't name a plugin in another pack's
-        // namespace, and a pack the loader finished is in `packFrontendsLoaded`, so these ids are this window's first
-        const newPlugins = packPlugins;
-        const packsWithFrontend = context.packsWithFrontend.includes(packId)
-          ? context.packsWithFrontend
-          : [...context.packsWithFrontend, packId];
-        if (newPlugins.length === 0) {
-          enqueue.assign({ packFrontendsLoaded, packsWithFrontend });
-        } else {
+        const packsWithFrontend = packPlugins === null
+          ? context.packsWithFrontend.filter(id => id !== packId)
+          : context.packsWithFrontend.includes(packId) ? context.packsWithFrontend : [...context.packsWithFrontend, packId];
+        enqueue.assign({ plugins, packFrontendsLoaded, packsWithFrontend, defaultPlugin,
+          ...(activePlugin ? { activePlugin } : {}) });
+        if (newPlugins.length > 0) {
           // Visibility is the host's (AppState, sent on each connection); unset shows the plugin
-          enqueue.assign({ plugins: withHostLast([...context.plugins, ...newPlugins]), packFrontendsLoaded, packsWithFrontend });
           for (const plugin of newPlugins) spawnPluginActor(enqueue, plugin);
           const added = new Set<string>(newPlugins.map((p) => p.id));
           // A pack claiming the app's default is how this window learns what it is. It opens it only while
@@ -183,15 +189,21 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
             }
           }
         }
-        // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this window's
-        // subscription is established, announceLoadedPacks asks for it once it is.
-        if (context.busSubscribed) enqueue(() => announcePackClientReady(client, packId));
+        if (replacingActive && activePlugin) {
+          enqueue(({ system }) => {
+            const actor = system.get(activePlugin.id);
+            if (actor) notifyPluginActor(actor, activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
+          });
+        }
+        if (packPlugins !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId));
       }),
 
       // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after
       // it, whatever the frontend turned out to add — a pack that exported no plugin has systems waiting too
       announceLoadedPacks: ({ context }) => {
-        for (const packId of context.packsWithFrontend) announcePackClientReady(client, packId);
+        if (!context.packFrontendsNeedRefresh) {
+          for (const packId of context.packsWithFrontend) announcePackClientReady(client, packId);
+        }
       },
 
       /** Runs the pack frontend loader, or queues a run when one is under way */
@@ -201,22 +213,24 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue.assign({ packLoadQueued: true });
           return;
         }
-        enqueue.assign({ packLoadRunning: true, packLoadQueued: false, packLoadInvalidated: false });
-        enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded } });
+        enqueue.assign({ packLoadRunning: true, packLoadQueued: false });
+        enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded, refresh: context.packFrontendsNeedRefresh } });
       }),
 
       /** The loader finished: run it again when a load was asked for meanwhile, and report what failed */
       finishPackFrontendLoad: enqueueActions(({ context, event, enqueue }) => {
         const { loadedPacksError, failedPacks } = typeOf('PACK_FRONTENDS_SETTLED', event);
         enqueue.stopChild(PACK_FRONTEND_LOADER_ID);
+        const refresh = context.packFrontendsNeedRefresh && (!!loadedPacksError || !!failedPacks?.length);
+        enqueue.assign({ packFrontendsNeedRefresh: refresh });
 
         // Every result of the run that finished has arrived, so nothing is left to drop
         if (context.packsUnloadedWhileLoading.length > 0) enqueue.assign({ packsUnloadedWhileLoading: [] });
 
         if (context.packLoadQueued) {
-          enqueue.assign({ packLoadQueued: false, packLoadInvalidated: false });
+          enqueue.assign({ packLoadQueued: false });
           // The packs this run loaded are in context already: the loader sends its results before settling
-          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded } });
+          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded, refresh } });
         } else {
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
@@ -230,7 +244,6 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           }
         }
 
-        if (context.packLoadInvalidated) return;
         if (loadedPacksError) {
           // The next connection runs the loader again, so a read that fails while the API restarts repairs
           // itself; the user hears about it only while no pack has ever loaded
@@ -244,7 +257,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         }
 
         if (failedPacks?.length) {
-          // The loaded packs were read: these packs alone are missing, and the loader won't come back to them
+          // A refused candidate may still have a working incumbent; report the refusal without removing it.
           const names = failedPacks.map(p => p.packId).join(', ');
           const details = failedPacks.map(p => `${p.packId}: ${p.error}`).join('\n');
           enqueue(() => {
@@ -254,18 +267,11 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         }
       }),
 
-      disconnectPackFrontends: enqueueActions(({ context, enqueue }) => {
-        const activePack = splitRef(context.activePlugin.id)?.packId;
-        enqueue.assign({
-          busSubscribed: false,
-          packLoadQueued: false,
-          packLoadInvalidated: true,
-          ...(activePack && context.packFrontendsLoaded.includes(activePack)
-            ? { pendingPluginId: context.activePlugin.id } : {}),
-        });
-        for (const packId of context.packFrontendsLoaded) {
-          enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId });
-        }
+      disconnectPackFrontends: enqueueActions(({ enqueue }) => {
+        // Stop the attempt, not the accepted frontend. The next authoritative read determines removals.
+        enqueue.stopChild(PACK_FRONTEND_LOADER_ID);
+        enqueue.assign({ busSubscribed: false, packLoadRunning: false, packLoadQueued: false,
+          packFrontendsNeedRefresh: true, packsUnloadedWhileLoading: [] });
       }),
 
       removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
@@ -286,7 +292,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         }
         if (context.packFrontendsLoaded.includes(packId)) {
           enqueue.assign({ packFrontendsLoaded: context.packFrontendsLoaded.filter(id => id !== packId) });
-        } else if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
+        }
+        if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
           // It's being loaded right now: its result is dropped instead of adding plugins nothing removes
           enqueue.assign({ packsUnloadedWhileLoading: [...context.packsUnloadedWhileLoading, packId] });
         }
@@ -302,7 +309,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         for (const id of pluginIds) delete pluginVisibility[id];
 
         const needsNavigate = removeSet.has(context.activePlugin.id);
-        const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin ?? context.activePlugin) : context.activePlugin;
+        const defaultPlugin = packs.defaultPlugin() ?? null;
+        const activePlugin = needsNavigate ? (remaining[0] ?? context.activePlugin) : context.activePlugin;
 
         // Plugin children are spawned by system id only, so stop them by reference
         for (const id of pluginIds) {
@@ -310,7 +318,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (plugin) enqueue.stopChild(plugin);
         }
 
-        enqueue.assign({ plugins: remaining, pluginVisibility, activePlugin });
+        enqueue.assign({ plugins: remaining, pluginVisibility, activePlugin, defaultPlugin });
 
         if (needsNavigate) {
           enqueue(({ system }) => {
@@ -545,7 +553,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         busSubscribed: false,
         packLoadRunning: false,
         packLoadQueued: false,
-        packLoadInvalidated: false,
+        packFrontendsNeedRefresh: false,
         packFrontendsLoaded: [],
         packsWithFrontend: [],
         packsUnloadedWhileLoading: [],

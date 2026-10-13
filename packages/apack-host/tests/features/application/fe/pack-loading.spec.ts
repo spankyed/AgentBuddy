@@ -81,7 +81,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend).toHaveBeenCalledTimes(4);
-    expect(unloadPackFrontend.mock.calls).toEqual([['default-setup'], ['ext']]);
+    expect(unloadPackFrontend).not.toHaveBeenCalled();
     expect(app.getSnapshot().context.plugins.map(p => p.id))
       .toEqual(expect.arrayContaining(['default-setup/own', 'ext/own']));
   });
@@ -213,7 +213,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend).toHaveBeenCalledTimes(2);
-    expect(unloadPackFrontend).toHaveBeenCalledWith('styles-only');
+    expect(unloadPackFrontend).not.toHaveBeenCalled();
   });
 });
 
@@ -228,19 +228,19 @@ it('discards a late result from the lost connection before accepting a fresh reg
   dropConnection();
   connect();
   await settle();
-  expect(loadPackFrontend).toHaveBeenCalledTimes(1);
-  expect(packClientReady).not.toHaveBeenCalled();
+  expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+  expect(packClientReady.mock.calls).toEqual([['ext']]);
   release([plugin('ext/stale')]);
   await settle();
-  expect(unloadPackFrontend).toHaveBeenCalledWith('ext');
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
   expect(loadPackFrontend).toHaveBeenCalledTimes(2);
   expect(app.system.get('ext/stale')).toBeUndefined();
   expect(app.system.get('ext/new')).toBeDefined();
   expect(packClientReady.mock.calls).toEqual([['ext']]);
-  expect(unloadPackFrontend.mock.invocationCallOrder[0]).toBeLessThan(loadPackFrontend.mock.invocationCallOrder[1]);
+
 });
 
-it('removes disconnected plugin actors and restores the selected feature only after fresh acceptance', async () => {
+it('preserves the selected actor through disconnect and replaces it after fresh acceptance', async () => {
   loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
   loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
   connect();
@@ -248,9 +248,9 @@ it('removes disconnected plugin actors and restores the selected feature only af
   app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
   const previous = app.system.get('ext/own');
   dropConnection();
-  expect(app.system.get('ext/own')).toBeUndefined();
-  expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
-  expect(app.getSnapshot().context.pendingPluginId).toBe('ext/own');
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
+  expect(app.getSnapshot().context.pendingPluginId).toBeNull();
   connect();
   await settle();
   expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
@@ -274,4 +274,110 @@ it('does not restart an interrupted loader while the connection remains down', a
   expect(app.system.get('ext/stale')).toBeUndefined();
   expect(app.getSnapshot().context.packLoadRunning).toBe(false);
   expect(packClientReady).not.toHaveBeenCalled();
+});
+
+
+it('keeps the accepted frontend and selection when a reconnect read fails', async () => {
+  loadedPacksQuery.mockResolvedValueOnce([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  const previous = app.system.get('ext/own');
+  loadedPacksQuery.mockRejectedValueOnce(new Error('read refused'));
+  dropConnection();
+  connect();
+  await settle();
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
+  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
+});
+
+it('keeps accepted actors while preparing a replacement and after its refusal', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockResolvedValueOnce([plugin('ext/own')]);
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  const previous = app.system.get('ext/own');
+  let refuse!: (error: Error) => void;
+  loadPackFrontend.mockReturnValueOnce(new Promise((_resolve, reject) => { refuse = reject; }));
+  packClientReady.mockClear();
+  dropConnection();
+  connect();
+  await settle();
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(packClientReady).not.toHaveBeenCalled();
+  refuse(new Error('candidate refused'));
+  await settle();
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(previous?.getSnapshot().status).toBe('active');
+  expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
+  expect(toastError).toHaveBeenCalledWith("Couldn't load ext", 'candidate refused');
+});
+
+it('removes an absent owner only after an authoritative reconnect read', async () => {
+  loadedPacksQuery.mockResolvedValueOnce([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  const previous = app.system.get('ext/own');
+  dropConnection();
+  expect(previous?.getSnapshot().status).toBe('active');
+  loadedPacksQuery.mockResolvedValueOnce([]);
+  connect();
+  await settle();
+  expect(unloadPackFrontend.mock.calls).toEqual([['ext']]);
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.system.get('ext/own')).toBeUndefined();
+  expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
+  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual([]);
+});
+
+it('reconciles removed plugins when an accepted replacement has no frontend', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockResolvedValueOnce([plugin('ext/own'), plugin('ext/removed')]);
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  const previous = app.system.get('ext/own');
+  loadPackFrontend.mockResolvedValueOnce(null);
+  packClientReady.mockClear();
+  dropConnection();
+  connect();
+  await settle();
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.system.get('ext/removed')).toBeUndefined();
+  expect(app.getSnapshot().context.plugins.map(plugin => plugin.id)).toEqual(['notes']);
+  expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
+  expect(app.getSnapshot().context.packsWithFrontend).toEqual([]);
+  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
+  expect(packClientReady).not.toHaveBeenCalled();
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
+});
+
+
+it('publishes new plugin definitions without duplicate actors or changing tab order and visibility', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }, { id: 'other', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockImplementation(pack => Promise.resolve([plugin(`${pack.id}/own`)]));
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  app.send({ type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'ext/own': false } });
+  const previous = app.system.get('ext/own');
+  const order = app.getSnapshot().context.plugins.map(plugin => plugin.id);
+  const replacement = { ...plugin('ext/own'), label: 'Updated' };
+  loadPackFrontend.mockImplementation(pack => Promise.resolve(pack.id === 'ext' ? [replacement] : [plugin('other/own')]));
+  dropConnection();
+  connect();
+  await settle();
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.system.get('ext/own')).not.toBe(previous);
+  expect(app.getSnapshot().context.activePlugin).toBe(replacement);
+  expect(app.getSnapshot().context.plugins.map(plugin => plugin.id)).toEqual(order);
+  expect(app.getSnapshot().context.pluginVisibility).toEqual({ 'ext/own': false });
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
 });

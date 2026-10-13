@@ -26,8 +26,8 @@ export interface PackFERegistration {
   declarationRevision?: string;
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;
-  /** The host injects accepted caller authority; unloading revokes it. */
-  bindSettings?: (settings: import('./settings.ts').SettingsPort) => () => void;
+  /** Prepare caller-bound access; the host activates it at publication and disposes it on refusal or unload. */
+  bindSettings?: (settings: import('./settings.ts').SettingsPort) => { activate(): void; dispose(): void };
   /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each plugin runs at `<packId>/<featureId>` */
   features?: Record<string, PackFEFeature>;
   /** Pack settings group id → its declared custom form. */

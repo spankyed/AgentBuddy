@@ -12,7 +12,7 @@ function binding() {
   const dispose = vi.fn();
   const cleanup = vi.fn();
   let port!: SettingsPort;
-  const hook = vi.fn((accepted: SettingsPort) => { port = accepted; return cleanup; });
+  const hook = vi.fn((accepted: SettingsPort) => { port = accepted; return { activate() {}, dispose: cleanup }; });
   return { source, dispose, cleanup, hook, get port() { return port; }, transport: { port: source, dispose } };
 }
 
@@ -131,7 +131,7 @@ describe('prepared frontend replacement', () => {
     const next = binding();
     expect(() => packs.replacePackFE(registration('New', () => {
       packs.registerPackFE({ id: 'nested' });
-      return () => {};
+      return { activate() {}, dispose() {} };
     }), next.transport)).toThrow('already in progress');
     expect(packs.hasPackFE('nested')).toBe(false);
     expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'Old' });
@@ -219,4 +219,25 @@ describe('prepared frontend replacement', () => {
     packs.unregisterPackFE('owner');
     expect(packs.step('captured')).toBeUndefined();
   });
+});
+
+
+it('preserves the incumbent when candidate activation throws before host resource publication', () => {
+  const packs = createFePackRegistry();
+  const old = binding();
+  packs.registerPackFE(registration('Old', old.hook), old.transport);
+  const next = binding();
+  const dispose = vi.fn();
+  const beforePublish = vi.fn();
+  const candidate = packs.preparePackFE(registration('New', port => {
+    next.hook(port);
+    return { activate() { throw new Error('activation refused'); }, dispose };
+  }), next.transport, true);
+  expect(() => candidate.commit(beforePublish)).toThrow('activation refused');
+  expect(beforePublish).not.toHaveBeenCalled();
+  expect(packs.getRegisteredPlugins()[0].label).toBe('Old');
+  expect(old.port.get(target)).toEqual({ limit: 1 });
+  expect(old.dispose).not.toHaveBeenCalled();
+  expect(dispose).toHaveBeenCalledOnce();
+  expect(next.dispose).toHaveBeenCalledOnce();
 });

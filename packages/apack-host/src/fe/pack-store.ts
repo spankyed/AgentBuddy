@@ -178,9 +178,9 @@ export function createFePackRegistry(): FePackRegistry {
         try { return mutate(() => {
           if (state !== 'pending') throw new Error('Only a pending frontend may commit');
           if (revision !== before) throw new Error('The frontend registry changed while this candidate was prepared');
+          binding?.activate();
           beforePublish?.();
           if (state !== 'pending') throw new Error('Frontend preparation was disposed before publication');
-          binding?.activate();
           const previous = bindings.get(id);
           accepted = next;
           tables = projected;

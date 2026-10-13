@@ -5,7 +5,7 @@ import type { FrontendSettingsBinding } from './pack-store.ts';
 /** Authority belongs to the host even when a generated hook retains a port or omits its cleanup. */
 export function createFrontendSettingsBinding(source?: FrontendSettingsBinding) {
   let state: 'pending' | 'active' | 'revoked' = 'pending';
-  let cleanup: (() => void) | undefined;
+  let lifecycle: ReturnType<NonNullable<PackFERegistration['bindSettings']>> | undefined;
   const subscriptions = new Set<() => void>();
   const assertActive = () => {
     if (state !== 'active') throw new Error(state === 'revoked'
@@ -30,12 +30,16 @@ export function createFrontendSettingsBinding(source?: FrontendSettingsBinding) 
     bind(hook: PackFERegistration['bindSettings']): void {
       if (!hook) return;
       if (!source) throw new Error('Frontend requires host-bound settings access');
-      cleanup = hook(port);
-      if (typeof cleanup !== 'function') throw new Error('Frontend settings binding must return cleanup');
+      lifecycle = hook(port);
+      if (!lifecycle || typeof lifecycle.activate !== 'function' || typeof lifecycle.dispose !== 'function') {
+        lifecycle = undefined;
+        throw new Error('Frontend settings binding must return activation and disposal');
+      }
     },
     activate(): void {
       if (state !== 'pending') throw new Error('Only pending frontend settings may activate');
       state = 'active';
+      lifecycle?.activate();
     },
     dispose(): unknown[] {
       if (state === 'revoked') return [];
@@ -44,7 +48,7 @@ export function createFrontendSettingsBinding(source?: FrontendSettingsBinding) 
       for (const stop of subscriptions) {
         try { stop(); } catch (error) { errors.push(error); }
       }
-      try { cleanup?.(); } catch (error) { errors.push(error); }
+      try { lifecycle?.dispose(); } catch (error) { errors.push(error); }
       try { source?.dispose(); } catch (error) { errors.push(error); }
       return errors;
     },

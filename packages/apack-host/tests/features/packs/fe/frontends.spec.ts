@@ -285,7 +285,7 @@ describe("a pack's frontend", () => {
     const revoke = vi.fn();
     const transportDispose = vi.fn();
     const registration = { id: 'ext', declarationRevision: 'current', features: {},
-      bindSettings: () => { controller.abort(); return revoke; } };
+      bindSettings: () => { controller.abort(); return { activate() {}, dispose: revoke }; } };
     const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose: transportDispose });
     const registry = createFePackRegistry();
@@ -303,7 +303,7 @@ describe("a pack's frontend", () => {
     const nextRevision = 'b'.repeat(64);
     const revoke = vi.fn();
     const dispose = vi.fn();
-    const old = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => revoke };
+    const old = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => ({ activate() {}, dispose: revoke }) };
     const next = { id: 'ext', declarationRevision: 'current', features: {} };
     const { io, styles } = fakeIO({
       [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: old,
@@ -328,7 +328,7 @@ describe("a pack's frontend", () => {
   it('retires an accepted frontend when the replacement has no executable frontend or stylesheet', async () => {
     const revoke = vi.fn();
     const dispose = vi.fn();
-    const registration = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => revoke };
+    const registration = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => ({ activate() {}, dispose: revoke }) };
     const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose });
     const registry = createFePackRegistry();

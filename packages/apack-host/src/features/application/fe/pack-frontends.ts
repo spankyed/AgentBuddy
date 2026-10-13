@@ -1,5 +1,5 @@
-// External packs' frontends, loaded by a child actor: it reads the loaded packs and loads the frontend of each this
-// window hasn't loaded, reporting each one as it finishes and the run as a whole when it's done.
+// One cancellable read/load cycle: reconcile absent owners, accept new frontends, and refresh existing
+// resources on reconnect. Refused candidates leave accepted resources to their owner.
 import { fromCallback } from 'xstate';
 import type { ShellClient } from '../../../fe/client.ts';
 import type { ShellEvent } from './types.ts';
@@ -13,21 +13,24 @@ function messageOf(err: unknown): string {
 }
 
 /**
- * Loads the frontends of the loaded packs not in `loadedPackIds`. A failed read of the loaded packs leaves them
- * unloaded: the shell runs the loader again whenever its subscription is established, so the next connection picks
- * them up. One pack that throws doesn't stop the others; it's reported as its own failure, since the loaded packs
- * were read and only that pack is missing.
+ * Ordinary activation reads skip accepted owners. Reconnect refreshes them through the transactional loader.
+ * Only a successful authoritative list can remove an owner; failed reads and candidates preserve incumbents.
  */
 export function packFrontendLoader(client: ShellClient, packFrontends: ShellPackFrontends) {
-  return fromCallback<ShellEvent, { loadedPackIds: string[] }>(({ sendBack, input }) => {
+  return fromCallback<ShellEvent, { loadedPackIds: string[]; refresh: boolean }>(({ sendBack, input }) => {
     let stopped = false;
     const controller = new AbortController();
     const failedPacks: { packId: string; error: string }[] = [];
 
     client.loadedPacks().then(async (loadedPacks) => {
+      if (stopped) return;
+      const present = new Set(loadedPacks.map(pack => pack.id));
+      for (const packId of input.loadedPackIds) {
+        if (!present.has(packId)) sendBack({ type: 'PACK_PLUGINS_UNLOADED', packId });
+      }
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (input.loadedPackIds.includes(pack.id)) continue;
+        if (!input.refresh && input.loadedPackIds.includes(pack.id)) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
           const plugins = await packFrontends.load(pack, controller.signal);

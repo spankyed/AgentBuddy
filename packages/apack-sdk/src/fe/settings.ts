@@ -120,24 +120,37 @@ export interface FeSettingsHandle<T> extends ReadonlyFeSettingsHandle<T> {
   reset(): Promise<SettingsWriteResult>;
 }
 
-/** @internal Generated frontends receive their settings port only after host acceptance. */
+/** @internal Generated frontends publish prepared bindings only when the host activates them. */
 export function _createFeSettings() {
-  let current: { port: SettingsPort; active: boolean; subscriptions: Set<() => void> } | undefined;
+  type Binding = { port: SettingsPort; active: boolean; subscriptions: Set<() => void>; previous?: Binding };
+  let current: Binding | undefined;
   return {
-    bindSettings(source: SettingsPort): () => void {
-      if (current) throw new Error('Frontend settings are already bound');
-      const binding = { port: source, active: true, subscriptions: new Set<() => void>() };
-      current = binding;
-      return () => {
-        if (!binding.active) return;
-        binding.active = false;
-        current = undefined;
-        const errors: unknown[] = [];
-        for (const stop of binding.subscriptions) {
-          try { stop(); }
-          catch (error) { errors.push(error); }
-        }
-        if (errors.length) throw new AggregateError(errors, 'Frontend settings subscriptions could not be disposed');
+    bindSettings(source: SettingsPort): { activate(): void; dispose(): void } {
+      const binding: Binding = { port: source, active: false, subscriptions: new Set() };
+      let state: 'pending' | 'active' | 'disposed' = 'pending';
+      return {
+        activate() {
+          if (state !== 'pending') throw new Error('Only pending frontend settings may activate');
+          binding.previous = current;
+          current = binding;
+          binding.active = true;
+          state = 'active';
+        },
+        dispose() {
+          if (state === 'disposed') return;
+          state = 'disposed';
+          binding.active = false;
+          // Failed host publication can restore a still-active incumbent. Retirement cannot revive it.
+          if (current === binding) current = binding.previous?.active ? binding.previous : undefined;
+          else if (current?.previous === binding) current.previous = undefined;
+          binding.previous = undefined;
+          const errors: unknown[] = [];
+          for (const stop of binding.subscriptions) {
+            try { stop(); }
+            catch (error) { errors.push(error); }
+          }
+          if (errors.length) throw new AggregateError(errors, 'Frontend settings subscriptions could not be disposed');
+        },
       };
     },
     useSettings<T>(target: SettingsTarget): FeSettingsHandle<T> {

@@ -293,7 +293,8 @@ it('runs generated frontend settings through its entry binding without ambient h
       update: async (target, path, value, condition) => { updates.push({ target, path, value, condition }); return { status: 'saved' }; },
       reset: async target => { updates.push({ target }); return { status: 'saved' }; },
     };
-    const revoke = entry.bindSettings(port);
+    const binding = entry.bindSettings(port);
+    binding.activate();
     const scope = effectScope();
     const handles = scope.run(() => ({ notes: useSettings('notes'), shared: usePackSettings('shared'), app: useAppSettings() }))!;
     await handles.notes.set({ path: ['limit'], value: 20 });
@@ -304,11 +305,13 @@ it('runs generated frontend settings through its entry binding without ambient h
       { target: { kind: 'pack', packId: 'demo-pack', groupId: 'shared' }, path: ['limit'], value: 30 },
       { target: { kind: 'app' }, path: ['personal', 'name'], value: 'Ada' },
     ])) throw new Error('Generated settings did not reach their bound targets');
-    revoke();
+    binding.dispose();
     if ((await handles.app.reset()).status !== 'refused') throw new Error('Retained app handle remained writable');
     if ((await handles.notes.reset()).status !== 'refused') throw new Error('Retained handle remained writable');
-    entry.bindSettings(port);
+    const next = entry.bindSettings(port);
+    next.activate();
     if ((await handles.shared.reset()).status !== 'refused') throw new Error('Rebinding revived an old handle');
+    next.dispose();
     scope.stop();
   `);
   expect(typecheck(files, ['src/probe.ts'])).toEqual([]);

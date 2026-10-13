@@ -137,14 +137,14 @@ export interface ShellContext {
   packLoadRunning: boolean;
   /** A load was asked for while one was running — the list it read may predate the request — so it runs again */
   packLoadQueued: boolean;
-  /** The current load belongs to a lost connection; its registrations must be released before reloading. */
-  packLoadInvalidated: boolean;
+  /** Accepted frontends need fresh backend-bound resources after reconnect. */
+  packFrontendsNeedRefresh: boolean;
   /**
    * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
-   * nothing — so it's never loaded twice. A pack unloaded drops out and loads again when it comes back.
+   * nothing — so ordinary activation reads skip it. Reconnect refreshes accepted resources; removal drops it.
    *
    * Not the registered packs: one whose frontend is styles alone, exported nothing, or failed to load
-   * registers nothing and is still finished with.
+   * registers nothing. Failed candidates are not recorded as accepted.
    */
   packFrontendsLoaded: string[];
   /**
@@ -199,8 +199,8 @@ export type ShellEvent =
    */
   | { type: 'PACK_FRONTENDS_SETTLED'; loadedPacksError?: string; failedPacks?: { packId: string; error: string }[] }
   /**
-   * A pack's frontend load finished, with the plugins it exports: none when it failed to load, and null
-   * for a pack without frontend code, which is recorded as loaded and asked for nothing
+   * A pack's frontend was accepted, with its plugins, or null for a pack without frontend code.
+   * Refused candidates do not emit this event.
    */
   | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] | null }
   | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };

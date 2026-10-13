@@ -131,7 +131,10 @@ export type ContextMenuMeta = ContextMenuItem[] | ((context: never) => ContextMe
 
 // @internal
 export function _createFeSettings(): {
-    bindSettings(source: SettingsPort): () => void;
+    bindSettings(source: SettingsPort): {
+        activate(): void;
+        dispose(): void;
+    };
     useSettings<T>(target: SettingsTarget): FeSettingsHandle<T>;
 };
 
@@ -541,7 +544,10 @@ export interface PackFERegistration {
     appExtensions?: Record<string, Component>;
     // (undocumented)
     artifacts?: ArtifactDefinition[];
-    bindSettings?: (settings: SettingsPort) => () => void;
+    bindSettings?: (settings: SettingsPort) => {
+        activate(): void;
+        dispose(): void;
+    };
     // (undocumented)
     blocks?: BlockDefinition[];
     declarationRevision?: string;

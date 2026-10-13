@@ -18,7 +18,7 @@ let frontendSettings: ReturnType<typeof _createFeSettings>
 beforeEach(() => {
   settings = fakeSettings({ app: { projects: ['one'] }, features: { [CODE]: { mdEditorDefault: true } } })
   frontendSettings = _createFeSettings()
-  frontendSettings.bindSettings(settings)
+  frontendSettings.bindSettings(settings).activate()
   bindFeHost({ application: {} as never, secrets: {} as never, settings, client: {} as never, packs: {} as never })
 })
 afterEach(() => unbindFeHost())
@@ -167,14 +167,17 @@ it('requires host acceptance and never falls back to the ambient administrative 
   expect(() => inScope(() => generated.useSettings({ kind: 'feature', featureRef: CODE }))).toThrow('before host acceptance')
   const scoped = fakeSettings({ features: { [CODE]: { limit: 1 } } })
   const update = vi.spyOn(scoped, 'update')
-  const revoke = generated.bindSettings(scoped)
+  const { activate, dispose: revoke } = generated.bindSettings(scoped)
+  activate()
   const { value: handle, stop } = inScope(() => generated.useSettings<{ limit: number }>({ kind: 'feature', featureRef: CODE }))
   await handle.set({ path: ['limit'], value: 2, condition: { runId: 'run', expected: { exists: true, value: 1 } } })
   expect(update).toHaveBeenCalledWith({ kind: 'feature', featureRef: CODE }, ['limit'], 2,
     { runId: 'run', expected: { exists: true, value: 1 } })
   expect(scoped.updates).toHaveLength(1)
   expect(settings.updates).toEqual([])
-  expect(() => generated.bindSettings(settings)).toThrow('already bound')
+  const candidate = generated.bindSettings(settings)
+  candidate.dispose()
+  expect(handle.value.value).toEqual({ limit: 2 })
   revoke()
   expect((await handle.set({ path: ['limit'], value: 3 })).status).toBe('refused')
   expect((await handle.reset()).status).toBe('refused')
@@ -185,11 +188,13 @@ it('requires host acceptance and never falls back to the ambient administrative 
 it('does not reactivate retained handles or subscriptions when a cached frontend module is rebound', async () => {
   const generated = _createFeSettings()
   const first = fakeSettings({ features: { [CODE]: { limit: 1 } } })
-  const revoke = generated.bindSettings(first)
+  const { activate, dispose: revoke } = generated.bindSettings(first)
+  activate()
   const old = inScope(() => generated.useSettings<{ limit: number }>({ kind: 'feature', featureRef: CODE }))
   revoke()
   const second = fakeSettings({ features: { [CODE]: { limit: 10 } } })
-  const revokeSecond = generated.bindSettings(second)
+  const { activate: activateSecond, dispose: revokeSecond } = generated.bindSettings(second)
+  activateSecond()
   revoke()
   first.set({ features: { [CODE]: { limit: 100 } } })
   expect(old.value.value.value).toEqual({ limit: 1 })
@@ -208,7 +213,8 @@ it('releases every subscription once even when one cleanup throws', () => {
   const failedStop = vi.fn(() => { throw new Error('failed cleanup') })
   const healthyStop = vi.fn()
   const source = { ...settings, subscribe: vi.fn().mockReturnValueOnce(failedStop).mockReturnValueOnce(healthyStop) }
-  const revoke = generated.bindSettings(source)
+  const { activate, dispose: revoke } = generated.bindSettings(source)
+  activate()
   const first = inScope(() => generated.useSettings({ kind: 'app' }))
   const second = inScope(() => generated.useSettings({ kind: 'app' }))
   expect(revoke).toThrow('could not be disposed')
@@ -230,3 +236,13 @@ it('uses the explicitly supplied writer even when another settings port is bound
   expect(settings.updates).toEqual([]);
   stop();
 });
+
+
+it('requires explicit activation and refuses disposed preparations', () => {
+  const generated = _createFeSettings()
+  const candidate = generated.bindSettings(settings)
+  expect(() => inScope(() => generated.useSettings({ kind: 'app' }))).toThrow('before host acceptance')
+  candidate.dispose()
+  expect(() => candidate.activate()).toThrow('Only pending')
+  expect(() => inScope(() => generated.useSettings({ kind: 'app' }))).toThrow('before host acceptance')
+})
