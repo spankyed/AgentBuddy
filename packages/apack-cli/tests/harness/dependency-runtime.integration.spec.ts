@@ -30,7 +30,7 @@ function dependentPack(spec: string): string {
   dirs.push(root);
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'dependent-pack', type: 'module' }));
-  write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' }, features: { widgets: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } }));
+  write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' }, features: { memos: { system: { entry: 'tests/memos-system.ts' }, plugin: { entry: 'tests/memos-plugin.ts' } }, widgets: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } }));
   const dep = path.join(root, '.apack', 'deps', 'default-setup');
   fs.mkdirSync(path.join(dep, 'runtime'), { recursive: true });
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
@@ -58,6 +58,13 @@ await setupPackTests({
     },
   },
 });`);
+  write(root, 'tests/memos-plugin.ts', `
+import { setup } from 'xstate';
+import { defineComponent, h } from 'vue';
+import type { PluginDefinition } from '@apackdev/sdk/fe';
+export default { id: 'memos', label: 'Memos', state: setup({}).createMachine({}),
+  canvas: defineComponent({ setup: () => () => h('div', 'Memos') }) } satisfies PluginDefinition;
+`);
   // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an
   // error on SAVE. Hand-written, so it has no generated name map and names its plugin by the id it runs
   // under; a built pack writes `untypedBroadcastToPlugin('memos', …)` and its `#generated/events` resolves it.

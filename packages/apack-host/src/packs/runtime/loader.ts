@@ -13,6 +13,7 @@ import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
+import { backendBindingProblem } from '../declaration-binding.ts';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
@@ -126,7 +127,8 @@ function loadBundledRuntime(
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
-      const problem = _packDeclarationProblem({ id: manifest.id, declarationRevision }, mod.registration);
+      const problem = _packDeclarationProblem({ id: manifest.id, declarationRevision }, mod.registration)
+        ?? backendBindingProblem(manifest, mod.registration);
       if (problem) return { problem };
       mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.contentDir));
       return mod.registration;

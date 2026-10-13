@@ -3,7 +3,7 @@ import type { SettingsAdmin } from '../services/settings.ts';
 // @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
 import { createEarsEngine, installEngine, type EarsEngine } from '@apackdev/ears';
-import type { ContentWriter } from '../content/writers.ts';
+import type { ContentRuntime } from '../framework/content-runtime.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
@@ -20,22 +20,6 @@ export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from
 export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
 // What a delivery door puts on an answer, for a spec that drives a machine with no door in front of it
 export { answerTo } from './answers.ts';
-
-/**
- * What a pack's content needs outside the app: its entity types and relation kinds, its repositories
- * and its content writers. `apack pack generate-entries` writes it as `contentRuntime` in
- * `src/__generated__/content-runtime.ts`; `apack pack build` bundles it into `build/content-runtime.mjs` for
- * packs that depend on this one.
- */
-export interface ContentRuntime {
-  id: string;
-  /** Identity of the manifest that generated this source or bundled runtime. */
-  declarationRevision: string;
-  entities: Record<string, string>;
-  relKinds: Record<string, string>;
-  repositories: Record<string, unknown>;
-  contentWriters: Record<string, ContentWriter>;
-}
 
 /** What `startTestRuntime` starts the in-memory app with */
 export interface TestRuntimeStartOptions {

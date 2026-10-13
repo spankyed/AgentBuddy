@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
  *
@@ -10,10 +11,11 @@ import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
+import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
 import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import type { HostServices, SettingsService } from '@apackdev/sdk/services';
-import type { ContentOffer } from '@apackdev/sdk/utils';
+import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
@@ -196,6 +198,8 @@ export interface PackRegistry extends PackRegistryView {
   refreshCatalog(packsDir?: string, disabled?: ReadonlySet<string>): void;
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration, origin?: PackOrigin): void;
+  /** Bind data operations without activating backend systems or services. */
+  registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void;
   unregisterPack(packId: string): void;
   /**
    * Notes that a pack is being replaced, so the plugins it owns are expected to be missing until its
@@ -480,6 +484,26 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
   }
 
   function registerPack(registration: PackRegistration, origin?: PackOrigin): void {
+    registerContributions(registration, origin, backendBindingProblem);
+  }
+
+  /** Register the content facet without claiming backend actors, roles or services. */
+  function registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void {
+    if (!origin.manifest) throw new Error(`Pack "${origin.id}" content runtime needs accepted manifest declarations`);
+    const problem = _packDeclarationProblem(origin, runtime);
+    if (problem) throw new Error(problem);
+    registerContributions({
+      id: runtime.id, declarationRevision: runtime.declarationRevision,
+      settings: origin.manifest.extensions?.settings,
+      features: Object.fromEntries(Object.entries(origin.manifest.features ?? {})
+        .filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, { settings: feature.settings }])),
+      ears: { entities: runtime.entities, relKinds: runtime.relKinds },
+      repositories: runtime.repositories, contentWriters: runtime.contentWriters, appliers,
+    }, origin, manifest => contentBindingProblem(manifest, runtime, appliers));
+  }
+
+  function registerContributions(registration: PackRegistration, origin: PackOrigin | undefined,
+    checkBinding: typeof backendBindingProblem): void {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
@@ -501,6 +525,8 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
         || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, origin.manifest.extensions?.settings ?? {})) {
         throw new Error(`Pack "${registration.id}" runtime settings do not match its accepted declarations`);
       }
+      const problem = checkBinding(origin.manifest, registration);
+      if (problem) throw new Error(problem);
     }
 
     checkEARS(registration);
@@ -614,6 +640,7 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
     catalog,
     refreshCatalog,
     registerPack,
+    registerContentRuntime,
     unregisterPack,
 
     markPackReplacing(packId) {

@@ -234,7 +234,7 @@ current readers. Nested contribution lists matter as much as top-level keys.
 |---|---|---|
 | Pack identity/dependencies | IDs, versions, host range and dependencies | Validate descriptors; retain resolved identities, origin and unavailable reasons |
 | Features/plugins | Feature refs, designations, entry paths and default claims | Declare labels, icon references, pinning, pane/route presence, fallback-panel metadata and static shortcut descriptors |
-| Settings | Executable feature declarations and a root section thunk | Complete the common data declarations, defaults, schemas and form references in the settings plan |
+| Settings | Inline pack/feature schemas, defaults and form references; host app definition | Catalog-based extraction landed in `f3416ad2f`; retain its policy, restore and window checks while completing the other kinds |
 | Steps/triggers | Type names, facet paths, runtime flags and DSL metadata | Materialize palette labels/categories, initial node values, static connection metadata and facet availability |
 | Blocks/artifacts | Type names, facet paths and artifact icon names | Audit remaining labels/metadata; expose descriptors without importing viewers or backend facets |
 | References | A feature names an executable reference module | Declare protocols, categories, labels, icons and provider/navigation bindings currently exported from that module |
@@ -354,6 +354,29 @@ Refresh the catalog on install/update/removal and dependency changes without cre
 Keep stored overrides and other user data outside the catalog.
 
 ### Authoritative declarations and checked binding
+
+The validated backend/content checkpoint checks backend feature identities, designation values, system/plugin
+presence, plugin default visibility, per-feature service names, and the aggregate provided-service and
+repository names against the accepted manifest. Both installed loading and direct origin-bearing
+registration perform this check before registry mutation, catalog publication or settings authority
+binding. A matching declaration stamp alone did not enforce this membership. Installed test artifacts
+must declare the contributions they actually bind; do not infer manifest facts by executing their runtime.
+
+The integration gate confirmed a facet mismatch in the testing harness: content-only runtimes were
+adapted into full backend registrations. Settle two explicit operations instead. Backend registration
+binds the manifest's systems, plugins, roles and services. Content registration binds only the generated
+content runtime's own entities, relations, repositories and writers, with optional declared appliers;
+it activates no actors and claims no backend services. Both retain the same accepted declaration identity,
+owner and catalog data, and share registry collision, rollback and teardown machinery. Do not add a
+skip-validation flag or manufacture missing actors. Move the producer's `ContentRuntime` contract to
+SDK framework ownership, remove the harness's fake backend-registration assembly, and check content
+identity/membership through a separate registry operation. Backend integration fixtures must also declare
+their hand-written systems/plugins rather than adding them only in test setup.
+
+This is partial binding coverage. Remaining kinds, static metadata/assets, generated event contracts,
+frontend membership and the native host declaration inventory still need their own checks and catalog
+projections. Do not call a matching key set a proof of an executable object's full contract, or describe
+this backend check as complete discovery without activation.
 
 Activation binds implementations to catalog entries. The runtime cannot silently add an undeclared
 contribution or redefine static metadata. Check the identity and shape of bindings when loading, retaining

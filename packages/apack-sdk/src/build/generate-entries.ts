@@ -1703,7 +1703,7 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
     const repositories = repositoryEntries();
     const hooks = contentWriterEntries();
     return `${HEADER}
-import type { ContentRuntime } from '@apackdev/sdk/testing';
+import type { ContentRuntime } from '@apackdev/sdk/framework';
 ${repositories.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${hooks.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 

@@ -30,11 +30,11 @@ const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 
 /** Writes the rebuilt pack: a pack layout whose runtime entry is `runtimeSource` */
-function writeRebuild(runtimeSource: string) {
+function writeRebuild(runtimeSource: string, manifestExtra: Record<string, unknown> = {}) {
   const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
+  fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1', features: { widget: { system: { entry: 'system.ts' } } }, ...manifestExtra }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (runtimeSource) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
@@ -98,7 +98,7 @@ describe('reloading a pack the app ships', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', features: { widget: { system: { entry: 'system.ts' } } }, ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
@@ -306,7 +306,7 @@ describe('reloading a pack', () => {
     unregisterPack(PACK_ID);
     registerPack(running, origin);
     registerPack({ id: 'service-owner', services: { taken: {} } });
-    writeRebuild(runtime(`services: { taken: {} },`));
+    writeRebuild(runtime(`services: { taken: {} },`), { extensions: { services: { taken: 'taken.ts#taken' } } });
     await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
     expect(registry.packOrigin(PACK_ID)).toEqual(origin);

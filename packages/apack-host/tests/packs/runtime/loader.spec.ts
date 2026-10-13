@@ -108,6 +108,17 @@ describe('pack-loader', () => {
       expect(systemFeatures(result[0])).toEqual(['myFeature']);
     });
 
+    it('refuses undeclared features despite a matching stamp, before initializing compiled content', () => {
+      const marker = path.join(tmpDir, 'compiled-content-initialized');
+      const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'undeclared', {
+        id: 'undeclared', name: 'Undeclared', version: '1.0.0',
+      }, '{ ghost: {} }');
+      fs.appendFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `\nmodule.exports.setCompiledDir = () => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'initialized');`);
+      sealPack(dir);
+      expect(loadExternalPacks()).toEqual([]);
+      expect(fs.existsSync(marker)).toBe(false);
+    });
+
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
       fs.rmSync(path.join(packDir, PACK_LAYOUT.integrity));
@@ -226,8 +237,8 @@ describe('loadAppPacks', () => {
   it('registers a pack this app shipped before one it did not', () => {
     const packs = path.join(_appDirOf(tmpDir), 'packs');
     // Named so the packs directory is read with the shipped one *last*, which is what makes this a check
-    makePack(packs, 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
-    makePack(packs, 'role-shipped', { id: 'role-shipped', name: 'Shipped', version: '1.0.0' }, "{ owner: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0', features: { taker: { designation: 'loader-spec-role' } } }, "{ taker: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'role-shipped', { id: 'role-shipped', name: 'Shipped', version: '1.0.0', features: { owner: { designation: 'loader-spec-role' } } }, "{ owner: { designation: 'loader-spec-role' } }");
 
     const { loaded } = loadAppPacks(registry, new Set(['role-shipped']));
 
@@ -251,8 +262,8 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
-    const manifest = { id, name: id, version: '1.0.0', ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
@@ -305,7 +316,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `), { features: { widget: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } });
+    `), { features: { widget: { system: { entry: 'system.ts' }, plugin: { entry: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } });
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks();

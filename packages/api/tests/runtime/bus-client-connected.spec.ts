@@ -48,14 +48,14 @@ function pack(id: string, label = id) {
 const packDirs: string[] = [];
 
 /** An installed pack's origin, with the frontend files `files` names (runtime/fe.js, runtime/fe.css) on disk */
-function loaded(id: string, files: string[]) {
+function loaded(id: string, files: string[], features: Record<string, { system: { entry: string } }> = { feature: { system: { entry: 'system.ts' } } }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `bus-client-connected-${id}-`));
   packDirs.push(dir);
   for (const file of files) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), '');
   }
-  return { declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir, shipped: false, manifest: { id, name: id, version: '1.0.0' } };
+  return { declarationRevision: 'fixture-revision', id, name: id, version: '1.0.0', dir, shipped: false, manifest: { id, name: id, version: '1.0.0', features } };
 }
 
 const withFrontend = ['runtime/fe.js'];
@@ -126,7 +126,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
         feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
         background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
       },
-    }, loaded('external-pack', withFrontend));
+    }, loaded('external-pack', withFrontend, { feature: { system: { entry: 'system.ts' } }, background: { system: { entry: 'background.ts' } } }));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 

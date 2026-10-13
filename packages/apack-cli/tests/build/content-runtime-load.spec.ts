@@ -17,7 +17,7 @@ function pack(repository: string): string {
   const files: Record<string, string> = {
     'src/repository.ts': repository,
     'src/__generated__/content-runtime.ts': [
-      "import type { ContentRuntime } from '@apackdev/sdk/testing';",
+      "import type { ContentRuntime } from '@apackdev/sdk/framework';",
       "import { memoQueries } from '../repository';",
       "export const contentRuntime: ContentRuntime = { id: 'load-pack', declarationRevision: 'fixture', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, contentWriters: {} };",
     ].join('\n'),

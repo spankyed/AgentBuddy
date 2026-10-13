@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
-import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type ContentRuntime, fakeInference, type FakeInference } from '@apackdev/sdk/testing';
+import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, fakeInference, type FakeInference } from '@apackdev/sdk/testing';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
@@ -25,7 +25,7 @@ import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
-import { getSettingsCatalog, onSettingsCatalogChanged } from '@apackdev/sdk/framework';
+import { getSettingsCatalog, onSettingsCatalogChanged, type ContentRuntime } from '@apackdev/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
@@ -244,20 +244,6 @@ function originOf(manifest: PackManifest, dir: string): PackOrigin {
   return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, shipped: false, manifest };
 }
 
-/** A content runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */
-function contentRuntimeRegistration(runtime: ContentRuntime, manifest: PackManifest, appliers?: ContentApplier[]): PackRegistration {
-  return {
-    id: runtime.id,
-    declarationRevision: runtime.declarationRevision,
-    settings: manifest.extensions?.settings,
-    features: Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.settings).map(([id, feature]) => [id, { settings: feature.settings }])),
-    ears: { entities: runtime.entities, relKinds: runtime.relKinds },
-    repositories: runtime.repositories,
-    contentWriters: runtime.contentWriters,
-    appliers,
-  };
-}
-
 /**
  * Starts the in-memory runtime for the pack's tests: entity types of the SDK, the pack and its
  * dependencies; each dependency's content runtime (its repositories and content writers) and the pack's own
@@ -314,11 +300,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
       startTestRuntime({ entityTypes: Object.values(contentRuntime.entities) });
-      registry.registerPack(contentRuntimeRegistration(contentRuntime, dependency.manifest), originOf(dependency.manifest, dependency.dir));
+      registry.registerContentRuntime(contentRuntime, originOf(dependency.manifest, dependency.dir));
       declareFeatures(dependency.manifest);
     }
     startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities) });
-    registry.registerPack(contentRuntimeRegistration(options.contentRuntime, manifest, options.appliers), originOf(manifest, packDir));
+    registry.registerContentRuntime(options.contentRuntime, originOf(manifest, packDir), options.appliers);
     declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
   }

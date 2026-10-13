@@ -22,6 +22,21 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
 
 // @public
+export interface ContentRuntime {
+    // (undocumented)
+    contentWriters: Record<string, ContentWriter>;
+    declarationRevision: string;
+    // (undocumented)
+    entities: Record<string, string>;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    relKinds: Record<string, string>;
+    // (undocumented)
+    repositories: Record<string, unknown>;
+}
+
+// @public
 export interface DeclaredMigration {
     // (undocumented)
     description: string;

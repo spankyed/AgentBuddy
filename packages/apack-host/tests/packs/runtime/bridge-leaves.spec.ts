@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe('external pack runtime', () => {
   it('requires @apackdev/sdk/cron and @apackdev/sdk/utils/compare-versions through the bridge', async () => {
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0', extensions: { services: { leaves: 'leaves.ts#leaves' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
@@ -36,7 +36,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }, packDir);
+    const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0', extensions: { services: { leaves: 'leaves.ts#leaves' } } }, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     expect(pack.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
@@ -52,7 +52,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
    * This pack is in a temp dir, which is what an installed one is, so nothing answers but the host.
    */
   it('requires one lazily, after the load that produced it has returned', async () => {
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0', extensions: { services: { step: 'step.ts#step' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
@@ -63,7 +63,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }, packDir);
+    const pack = loadSingleExternalPack({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0', extensions: { services: { step: 'step.ts#step' } } }, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     const step = (pack.registration.services as { step: { run: () => string } }).step;

@@ -1415,3 +1415,68 @@ onboarding and guides move together. The supported administration/global-service
 explicit Phase 6 item; no full-goal or all-kind-discovery completion is claimed. Keep the unexplained
 historical revision discrepancy recorded with its failure-only capture. Next extend the catalog and
 checked binding inventory across remaining contribution kinds before dependent consumer refactors.
+
+
+The next discovery checkpoint adds backend binding membership checks before installed content
+initialization and before origin-bearing registry mutation. It compares feature IDs, roles, system/plugin
+presence, plugin default visibility, feature service names, aggregate services and repositories with the
+accepted manifest. A matching stamp alone previously permitted undeclared contributions. Explicit null
+maps are refused, while omitted empty maps remain valid. This does not complete frontend/static-asset
+or remaining contribution-kind binding coverage.
+
+The first broad focused run exposed 33 inconsistent installed fixtures; their manifest declarations now
+name their real runtime features/services. The follow-up passed 925 tests and failed only the remaining
+packaged role fixture; after correcting it, 927 tests passed and the new refusal test alone failed because
+it expected undefined rather than the registry's documented null result. Corrected binding/loader checks
+pass 86 tests at `/private/tmp/apack-discovery-binding-focused-proof.log`; explicit-null checks pass at
+`/private/tmp/apack-discovery-binding-null-proof.log`. Host typecheck and lint pass at
+`/private/tmp/apack-discovery-binding-host-types.log` and `/private/tmp/apack-discovery-binding-lint.log`.
+Run the strict chain on this corrected candidate before committing. No guard or existing behavioral
+assertion was removed to admit those fixtures; the no-publication test proves no registration, service,
+catalog revision or settings authority is installed on mismatch.
+
+
+The strict backend-binding run is terminal and failed at integration after 234.1s:
+`node_modules/.cache/apack-chain/runs/2026-10-13T02-54-58Z-62950`. All reached type, lint, host/pack
+unit and external-contract checks passed. Integration confirmed that data-only harness setup incorrectly
+adapted content bindings into full backend registrations; hand-written backend integration fixtures also
+omitted their actual memos feature from the manifest.
+
+The owning discovery plan now distinguishes backend and content facets explicitly. The host registry
+adds checked `registerContentRuntime` alongside full backend registration, sharing mutation, collisions,
+rollback and teardown. Content identities, entities, relations, repositories, writer names and supplied
+source-key appliers are checked against accepted declarations without claiming actors or services.
+`ContentRuntime` moves to SDK framework ownership; codegen and callers migrate, the old testing export
+is removed, and the harness's `contentRuntimeRegistration` assembly is deleted. Reviewed API changes
+are the unchanged interface moving between framework and testing reports, with normalized line endings.
+No skip-validation flag or invented actor is used.
+
+Corrected content registration/teardown checks pass at
+`/private/tmp/apack-discovery-content-teardown-proof.log`; the two previously failing harness integration
+suites pass all 10 tests at `/private/tmp/apack-discovery-content-harness-integration.log`. Published
+packages rebuild successfully at `/private/tmp/apack-discovery-content-packages-build.log`; host typecheck
+and lint pass at `/private/tmp/apack-discovery-content-host-types.log` and
+`/private/tmp/apack-discovery-content-facet-lint.log`. Validate the final applier guard and rerun the strict
+checkpoint chain before committing. Remaining discovery kinds, frontend/static metadata and all later
+phases are still required.
+
+
+The content applier check now accepts declared class instances and rejects unknown/duplicate source
+keys before any repository registration. All eight content-facet tests pass at
+`/private/tmp/apack-discovery-content-appliers-proof.log`. Repository removal is verified through the
+actual unregistered-name refusal, rather than enumeration of the repository proxy (which exposes no
+keys). Public testing docs and SDK/host guides describe the separate contracts. The next strict chain
+covers the complete corrected backend/content checkpoint; do not treat focused checks as its substitute.
+
+
+Backend/content binding checkpoint validation passes: `npm run chain -- --strict --cores 1`, all
+30 steps in 390.8s. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T03-15-21Z-96692`
+and `/private/tmp/apack-discovery-backend-content-chain.log`. This includes public contracts/reports,
+host/pack unit tests, complete integration, runtime build, external app, smoke and packaged authoring.
+The earlier content-versus-backend integration failure is resolved through distinct checked operations,
+not a validation exemption. Commit this usable checkpoint before further source changes.
+
+Next continue the complete discovery inventory: remaining backend contribution kinds and implementation
+shape checks, frontend declaration membership and static metadata/assets, common catalog projections and
+consumer migration, source/dependency freshness and host-native declarations. The backend key checks
+alone do not complete any of those requirements. All Phase 6 workstreams and remaining phases stay active.

@@ -84,6 +84,12 @@ it('content notes', async () => {
 
 `importContent({ keys?, mode? })` compiles your content sources (your formats and your dependencies') and writes them. Without `keys` it content every entry naming a format and no `applier`. Name `actions`, `prompts` and `flows` to write those, before running flows.
 
+Generated `ContentRuntime` types come from `@apackdev/sdk/framework`. Data-only setup binds the pack's
+content facet (entities, relations, repositories, writers and supplied source appliers), checked against
+its manifest. It activates no backend systems or services. Passing the generated backend `registration`
+selects backend testing; that binding must match the manifest's complete feature and provided-API list.
+Both modes retain settings declarations without opening the Settings page.
+
 ## Systems
 
 `startApp` runs registered systems under the same bus the app uses, and plays the client:

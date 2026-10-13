@@ -40,21 +40,6 @@ export function answerTo<E extends {
 }>(call: string, event: E): E;
 
 // @public
-export interface ContentRuntime {
-    // (undocumented)
-    contentWriters: Record<string, ContentWriter>;
-    declarationRevision: string;
-    // (undocumented)
-    entities: Record<string, string>;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    relKinds: Record<string, string>;
-    // (undocumented)
-    repositories: Record<string, unknown>;
-}
-
-// @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
 
 // @public
