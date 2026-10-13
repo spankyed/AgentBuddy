@@ -1694,3 +1694,44 @@ intermittent native shutdown issue is fixed.
 This closes native declaration lifetime, not all-kind native discovery. Native metadata/binding coverage,
 remaining executable discovery fields, accepted frontend assets, full freshness, navigation, frontend
 boundaries and all three Phase 6 workstreams remain required. The goal stays active; nothing is archived.
+
+### Accepted frontend byte delivery checkpoint (2026-10-13)
+
+Commit `e9fe3e9b0` retains installed file receipts in the catalog and active origins. Loaded frontend
+metadata/readiness use the accepted membership instead of finding or rehashing current files. Installed
+URLs carry the artifact identity in their base, preserving it through relative chunks, styles and assets.
+Main checks the receipt identity and the exact bytes returned; missing/unlisted/changed files, replacement
+receipts and symlinks fail. Shipped/source fallback and the independent `feRevision` digest are removed.
+Development advertises an explicit local Vite base only in the development environment. Source imports
+do not fall back to installed bytes.
+
+Stylesheet errors now reject before registration/settings binding. Concurrent requests share their actual
+pending outcome; unloading settles pending loads. Focused checks pass (102 host, 14 API, 13 protocol,
+seven stylesheet cases, nine readiness fixtures). Removing either byte checksum or artifact comparison
+fails its regression; removing pending-outcome sharing or cancellation also fails. Restored source passes.
+Evidence: `/private/tmp/apack-assets-{checksum,revision}-mutation.log`,
+`/private/tmp/apack-styles-{pending,cancel}-mutation.log` and the corresponding restored-spec logs.
+
+The first broad check exposed obsolete disk-inference/style-success fixtures, corrected without weakening
+assertions. The subsequent run failed Electron startup: the broad host barrel brought SDK schema code into
+main, whose external import resolved root AJV 6 rather than SDK AJV 8. A bounded isolated launch captured
+the actual named-export failure (`/private/tmp/apack-assets-launch-diagnostic.log`). The asset reader now
+imports only Node builtins and shared path/data definitions through `packs/assets`; schema/compiler code
+is outside main's delivery boundary. No vendor import/validator was weakened. The general dependency-owner
+resolution finding remains part of the consumed-API/tool provenance audit.
+
+The real external fixture now splits its async canvas into a chunk. Its app regression verifies rendered
+styles and actual chunk/style request bases through an owned CDP session, restoring caching and detaching
+afterward. Resource Timing did not expose these custom-protocol requests, so it was replaced as an observer,
+not treated as evidence of missing delivery. The focused app case passes in 4.3s; evidence:
+`/private/tmp/apack-assets-relative-chunk-app-spec.log`.
+
+Strict sequential validation passes (318.8s, one cached), including integration, external app, smoke and
+packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T09-32-53Z-32444` and
+`/private/tmp/apack-accepted-assets-strict-chain.log`. This does not prove the previously reproduced
+intermittent native shutdown issue is fixed. No deadline or assertion was relaxed.
+
+The goal remains active across Phases 0–7. Source/dependency projections do not yet have complete artifact
+admission; static native/plugin/step/reference/editor/hook metadata and the window activation/retry/stale
+binding coordinator remain unfinished. Full freshness, navigation, fault boundaries and all three Phase 6
+workstreams still require their own implementation and evidence. Nothing is archived.
