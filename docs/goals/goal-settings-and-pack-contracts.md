@@ -1536,7 +1536,7 @@ Expanded backend checkpoint validation passes: `npm run chain -- --strict --core
 integration checks, runtime build, external app, smoke and packaged authoring/application. Earlier
 matching-input successes supply the cached checks; final full-goal `--all` validation is still required.
 
-Commit the expanded identities/facet checks and migration/path producer fixes together with their
-behavioral tests and corrected fixture declarations. The OS-reaping test correction is a separate
-logical commit. Help/hook/static module metadata, frontend binding completeness, all-kind catalog views
+Checkpoint `1d99b0f5e` commits the expanded identities/facet checks and migration/path producer fixes
+with behavioral tests and corrected fixture declarations. `57b35a98f` separately commits the
+OS-reaping test observation correction. Help/hook/static module metadata, frontend binding completeness, all-kind catalog views
 and consumer migration remain open, along with all later phases and the three Phase 6 workstreams.
