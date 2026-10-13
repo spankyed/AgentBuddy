@@ -43,10 +43,10 @@ export function createApplierStore() {
 }
 
 /** Each pack's declared slash commands, listed in the order the packs first registered */
-export function createCommandStore() {
+export function createCommandStore(order: ReadonlyMap<string, number> = new Map()) {
   const byPack = new Map<string, PackCommand[]>();
   // Kept when a pack unregisters, so a reload or update registers it again where it was
-  const rank = new Map<string, number>();
+  const rank = new Map(order);
   return {
     /** Throws when another pack already declares one of the commands, so nothing of this pack is registered */
     register(packId: string, commands: readonly PackCommand[]): void {
@@ -68,6 +68,7 @@ export function createCommandStore() {
     unregister(packId: string): void {
       byPack.delete(packId);
     },
+    order: (): ReadonlyMap<string, number> => new Map(rank),
     all: (): PackCommand[] => [...byPack]
       .sort(([a], [b]) => rank.get(a)! - rank.get(b)!)
       .flatMap(([, commands]) => commands.map((command) => ({ ...command }))),

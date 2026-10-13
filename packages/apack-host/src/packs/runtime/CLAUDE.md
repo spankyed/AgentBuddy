@@ -69,7 +69,7 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 | File | Purpose |
 |------|---------|
 | `discovery.ts` | `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
-| `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
+| `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`replacePack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Candidate admission and atomic runtime replacement |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, commands, shutdown hooks |
 | `installed.ts` | `installed-packs.json` CRUD |
 | `module-bridge.ts` | `withModuleBridge()` |
@@ -145,12 +145,27 @@ Designations come from the manifest's `features[].designation`, which generate-e
 | Designation roles | All registered packs' roles | Throws (blocks registration) |
 | Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
 | Repository names | All registered packs' repository names | Throws (blocks registration) |
-| Content writers | Another pack's hooks for the entity type | Throws — **with rollback** of what this call registered (repositories, steps, artifacts, blocks, content writers, appliers, commands, feature settings) |
-| ContentAppliers | Two appliers for one content key in the pack | Same rollback behavior |
-| Commands | Other packs' command names | Same rollback behavior |
-| Feature settings | Common JSON Schema/defaults validation (each declaration owns one feature) | Same rollback behavior |
+| Content writers | Another pack's hooks for the entity type | Throws before candidate publication |
+| ContentAppliers | Two appliers for one content key in the pack | Throws before candidate publication |
+| Commands | Other packs' command names | Throws before candidate publication |
+| Feature settings | Common JSON Schema/defaults validation (each declaration owns one feature) | Throws before candidate publication |
 
-EARS, designation, service and repository collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure; `unregisterPack()` removes all of it, the repositories from the installed engine included (`unregisterRepository`). Step, artifact and block types aren't collisions: a later registration of a type merges into it (steps, facet by facet) or replaces it (`../extensions.ts`). The specs are `tests/packs/registration.spec.ts` and `tests/packs/registered-lookups.spec.ts`.
+Admission checks declarations and ownership, captures contribution addresses, and builds candidate tables
+without changing live lookups. It acquires only the candidate's settings binding, then publishes repository
+changes and accepted registry state. A refusal retains the incumbent's origin, lookups, captured handles
+and subscriptions. Repository publication failure restores attempted entries and retires the provisional
+binding. Executable definition objects retain their identity; removal uses captured addresses rather
+than re-reading authored getters.
+
+`replacePack` replaces an already accepted runtime through this same admission path. Once committed,
+it retires the incumbent binding and returns any cleanup errors as diagnostics; callers never interpret
+those errors as candidate refusal or restore a disposed runtime. Ordinary unregister removes accepted
+state and disposes its binding even when binding cleanup throws. Reentrant registry changes during
+admission/retirement are refused. Command order is retained across replacements and reloads.
+
+Step facets still merge, and artifact/block definitions still follow registration precedence. Runtime
+initialization, migrations and content effects are separate from this registry transaction. The focused
+checks are `registration.spec.ts`, `replacement.spec.ts`, `registered-lookups.spec.ts` and runtime reload.
 
 ## Host resolution for pack runtime code
 
@@ -180,8 +195,8 @@ Update tears down with `replacing`, installs the release the update check found,
 `POST /dev/reload { packId }` (from `apack pack dev` and `apack pack build --watch`; one reload per pack at a time) calls `reloadPackById(registry, …)` on the app's registry, which re-requires the pack's built runtime from the directory the registry says it came from. Either way:
 0. refresh the installed copy of a pack the app ships, `installShippedPacks(…, { only: packId })` — the same comparison the boot makes, so it writes nothing when the installed copy already holds the shipped build, and a pack the app does not ship matches no shipped id and nothing happens. A pack is loaded from `packsDir`, so a rebuild in the checkout reaches the app only once this has run; without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit. A refresh that fails throws, because the edit is what the reload was for
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
-2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
-3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-apply. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
+2. prepare and commit the fresh registration with `replacePack` (or initially register a pack not yet running); refusal leaves the incumbent resources untouched. Successful publication invalidates derived lookup caches and retires the old binding; retirement errors are logged without restoring it
+3. run old shutdown hooks and register new `onShutdown`; initialize by refreshing declaration data, running `onInit`, migrations and content apply. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
 Initialization and apply errors after the registration swap are logged; actor restart still runs because the old registration has already left.
 
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`, then asks them to publish

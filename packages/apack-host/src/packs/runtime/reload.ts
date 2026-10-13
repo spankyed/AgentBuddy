@@ -16,10 +16,9 @@ const logger = createLogger('pack-reload');
 interface FreshPack {
   newSystemIds: string[];
   /** Registers the fresh runtime; throws when the registration is refused */
-  register(): void;
+  register(replacing: boolean): void;
   onShutdown?: () => void;
-  onInit?: () => void;
-  afterRegister?: () => void;
+  initialize(): void;
 }
 
 /**
@@ -35,9 +34,6 @@ async function reloadPack(
   cacheDir: string,
 ): Promise<void> {
   const previous = registry.getPackRegistration(packId);
-  // Restored with the registration if the fresh one is refused: without it the registry forgets where the pack came
-  // from, and a built-in pack's next reload can't find it
-  const previousOrigin = registry.packOrigin(packId) ?? undefined;
   const oldSystemIds = previous ? packSystemIds(previous) : [];
 
   logger.info(`Reloading pack: ${packId}`);
@@ -46,14 +42,8 @@ async function reloadPack(
   clearPackRequireCache(cacheDir);
   const fresh = loadFresh();
 
-  if (previous) registry.unregisterPack(packId);
-  else logger.info(`Pack ${packId} was not previously registered`);
-  try {
-    fresh.register();
-  } catch (err) {
-    if (previous) registry.registerPack(previous, previousOrigin);
-    throw err;
-  }
+  // Candidate refusal leaves the incumbent's accepted resources untouched.
+  fresh.register(!!previous);
 
   registry.runShutdownHooksForKey(packId);
   if (fresh.onShutdown) {
@@ -64,8 +54,7 @@ async function reloadPack(
   // does: a throw that escaped would leave the fresh registration live, the old actors running but already
   // torn down, and nothing ever stopped or respawned.
   try {
-    fresh.onInit?.();
-    fresh.afterRegister?.();
+    fresh.initialize();
   } catch (err) {
     logger.error(`Pack ${packId} reloaded, but the work after registering it failed:`, err as Error);
   }
@@ -135,15 +124,24 @@ export async function reloadPackById(
     }
 
     return {
-      register: () => {
-        // registerExternalPacks logs why a registration was refused
-        if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
-        registry.refreshCatalog(packsDir);
+      register: (replacing) => {
+        if (replacing) {
+          try {
+            for (const problem of registry.replacePack(pack.registration, pack.origin)) {
+              logger.error(`Pack ${packId} replaced, but old binding cleanup failed: ${problem}`);
+            }
+          } catch (error) {
+            throw new Error(`Failed to register pack ${packId}`, { cause: error });
+          }
+        } else if (registerExternalPacks(registry, [pack]).length === 0) {
+          throw new Error(`Failed to register pack ${packId}`);
+        }
       },
       newSystemIds: packSystemIds(pack.registration),
       onShutdown: pack.registration.boot?.onShutdown,
-      onInit: pack.registration.boot?.onInit,
-      afterRegister: () => {
+      initialize: () => {
+        registry.refreshCatalog(packsDir);
+        pack.registration.boot?.onInit?.();
         runPackMigrations(registry.packMigrationTargets('pack', [packId]));
         applyPacks(registry.packContentTargets([packId]));
       },

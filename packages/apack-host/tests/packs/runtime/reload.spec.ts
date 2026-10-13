@@ -7,6 +7,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
+import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
@@ -304,6 +306,36 @@ if (module.exports.registration) module.exports.registration.declarationRevision
 });
 
 describe('reloading a pack', () => {
+  it('retains incumbent generated handles and origin after a late candidate binding failure', async () => {
+    const listeners = new Set<() => void>();
+    const source: SettingsService = {
+      get: <T,>() => ({ retained: true }) as T,
+      set() {}, reset() {},
+      onChange(listener) { const notify = () => listener('written'); listeners.add(notify); return () => { listeners.delete(notify); }; },
+    };
+    const isolated = createNativePackTestRegistry({ settingsForPack: () => source });
+    const generated = _createPackServices();
+    const handle = generated.settingsHandle({ kind: 'app' });
+    const old = { ...running, bindSettings: generated.bindSettings };
+    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision: 'fixture-revision',
+      dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), shipped: false };
+    isolated.registerPack(old, origin);
+    const heard = vi.fn();
+    handle.onChange(heard);
+    try {
+      writeRebuild(runtime("bindSettings() { throw new Error('late binding refused'); },"));
+      await expect(reloadPackById(isolated, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
+      expect(isolated.getPackRegistration(PACK_ID)).toBe(old);
+      expect(isolated.packOrigin(PACK_ID)).toBe(origin);
+      expect(handle.get()).toEqual({ retained: true });
+      for (const notify of listeners) notify();
+      expect(heard).toHaveBeenCalledOnce();
+      expect(bus.send).not.toHaveBeenCalled();
+    } finally { isolated.unregisterPack(PACK_ID); }
+    expect(listeners.size).toBe(0);
+    expect(() => handle.get()).toThrow('revoked');
+  });
+
   it('leaves the running pack intact when the rebuilt runtime throws while loading', async () => {
     writeRebuild(`throw new Error('broken build');`);
     await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to load pack ${PACK_ID}`);

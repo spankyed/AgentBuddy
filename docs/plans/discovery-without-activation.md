@@ -788,3 +788,30 @@ incumbent handle and settings subscription; a late binding/contribution failure 
 and origin intact; a successful replacement revokes old handles and exposes new ones; cleanup errors
 are reported without skipping owned-resource retirement. Add an actual reload fixture with a bound
 handle; registration-map equality alone is not its acceptance criterion.
+
+#### Selected registry transaction
+
+The current backend undo log combines pure indexed contributions with one executable lifetime:
+`bindSettings`. Rebuilding the former does not require re-executing the latter. Replace that mixed
+mechanism with admitted contribution data and separately owned binding cleanup. Capture contributed
+collections once at admission so later mutation of the author's registration cannot change removal.
+Build candidate designation/definition/writer/applier/command tables privately, preserving command order.
+Existing live readers continue to see accepted tables while candidate binding runs.
+
+Repository entries are an engine-owned lookup mirror, not disposal callbacks. Publish changed entries
+through the captured engine only after candidate preparation succeeds; restore its prior entries if
+publication fails. No incumbent binding cleanup runs before successful publication. Commit registry
+maps/tables once, then retire the incumbent binding exactly once. Cleanup failures after commit are
+explicit replacement diagnostics, not a refused candidate or a reason to restore a disposed runtime.
+Ordinary unregister still removes accepted data and retires its binding even if cleanup reports failure.
+
+Expose this as one host registry `replacePack` operation and route reload through it. Initial registration
+uses the same admission path. Do not expose transaction flags to packs or teach callers to unregister
+and repair the registry. Preserve boot-hook/actor restart ordering and keep user-data side effects out
+of the registry transaction guarantee.
+
+The implemented host binding gate remains pending during preparation and becomes active only after
+publication. The host revokes its port and subscriptions even when a hook captures the port and throws
+before returning cleanup, or returns cleanup that omits generated disposal. This is a supported API
+lifetime guarantee, not confinement of arbitrary in-process JavaScript. Reconnection/unload does not
+revive captured handles. A post-commit cleanup error remains a retirement diagnostic.

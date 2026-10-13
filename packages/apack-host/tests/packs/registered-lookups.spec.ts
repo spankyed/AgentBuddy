@@ -195,48 +195,30 @@ describe('appliers', () => {
   });
 });
 
-// Teardown removes a pack's contributions one at a time, and one of them can fail. Stopping there would
-// leave the pack registered as well as half torn down — the worst of both — so the rest still come out and
-// the pack still goes; what failed is reported.
-describe('a contribution that cannot be taken back out', () => {
-  /** A step that registers, and whose type can't be read a second time, so its own undo throws */
-  function stepWithABrokenUndo(type: string): StepDefinition {
-    let read = false;
-    return {
-      get type() {
-        if (read) throw new Error(`cannot read the type of ${type}`);
-        read = true;
-        return type;
-      },
-      kind: 'step',
-    } as unknown as StepDefinition;
-  }
-
-  it("still takes out the rest, still unregisters the pack, and says what was left", () => {
-    registry.registerPack({
-      id: 'breaks-on-teardown',
-      steps: [stepWithABrokenUndo('stuck')],
-      commands: [{ name: 'leaves', placeholder: 'Cleanly' }],
+// Captured keys own removal; disposing a pack must not re-read authored getters.
+describe('captured contribution addresses', () => {
+  it('reads a definition address once, preserves its identity, and removes every contribution', () => {
+    const readType = vi.fn(() => {
+      if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
+      return 'stuck';
     });
-
-    expect(() => registry.unregisterPack('breaks-on-teardown'))
-      .toThrow(/is unregistered, but 1 of its contributions could not be taken back out: cannot read the type of stuck/);
-
-    // The pack is gone, not half gone...
-    expect(registry.getPackRegistration('breaks-on-teardown')).toBeNull();
-    expect(() => registry.unregisterPack('breaks-on-teardown')).toThrow('is not registered');
-    // ...and the contributions that could come out did
+    const step: StepDefinition = { get type() { return readType(); }, kind: 'step' };
+    registry.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
+    expect(stepRegistry.get('stuck')).toBe(step);
+    expect(registry.getPackExtensions('captured-address')?.steps).toEqual(['stuck']);
+    add({ id: 'another-pack' });
+    expect(stepRegistry.get('stuck')).toBe(step);
+    registry.unregisterPack('captured-address');
+    expect(readType).toHaveBeenCalledOnce();
+    expect(registry.getPackRegistration('captured-address')).toBeNull();
+    expect(stepRegistry.get('stuck')).toBeUndefined();
     expect(getPackCommands()).toEqual([]);
+    expect(() => registry.unregisterPack('captured-address')).toThrow('is not registered');
   });
 });
 
-// The rollback's rule is that a refused pack leaves nothing of itself behind, and takes nothing of anyone
-// else's with it. registerPack registers every kind of contribution through one table whose entries hand
-// back their own undo, and the rollback and unregisterPack both run those — so what this pins is the rule,
-// across the kinds, rather than three hand-written lists agreeing.
-// A step type's build, runtime and frontend facets may come from different packs — that is what merging is
-// for. Removing one pack used to drop the merged type outright, so the other pack's facet went with it until
-// the app restarted. Reload is where that shows, being a teardown and a registration.
+// A refused candidate leaves accepted lookups unchanged. Facets from different packs merge; removing
+// one owner must retain every facet belonging to the others.
 describe('a type two packs contribute facets of', () => {
   it("keeps the facets of the pack that stays when the other unregisters", () => {
     add({ id: 'build-pack', steps: [{ type: 'shared', kind: 'step', build: build('Shared') }] });
