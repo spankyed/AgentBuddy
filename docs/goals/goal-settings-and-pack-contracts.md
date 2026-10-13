@@ -2409,3 +2409,34 @@ UI behavior, then continue native/all-kind discovery and reader migration. Entit
 delivery, pane boundaries, supported consumed APIs, dependency provenance and the final goal-wide
 review remain required. The independent process shutdown cleanup race is still open. This checkpoint
 is not final strict `--all` on finished committed source; no incomplete plans are archived.
+
+
+### Coordinated API shutdown checkpoint (2026-10-13)
+
+`3b6bf3059` closes the recorded normal-quit API/fixture cleanup race. Electron cancels quit while
+awaiting actual API child exit, shares repeated requests, and resumes ordinary quit after completion.
+Relaunch and startup-error quit use the same boundary; pending starts cannot spawn after shutdown
+begins. Removed fire-and-forget API kill and the duplicate last-window handler. Existing platform
+window policy remains in the application terminator.
+
+Process shutdown no longer treats a delivered signal or an expired deadline as successful exit.
+Concurrent stops retain one waiter, exit clears deadline/escalation timers, timeout rejects, and a
+later retry recognizes an exit that occurred after timeout. A refused shutdown leaves quit cancelled
+with a diagnostic. Real app fixtures capture the API pid and fail if it survives Electron close.
+No deletion retries, suppressed cleanup errors, longer timeouts or forced Electron self-kill were added.
+
+The initial 51 main checks and main/testing typechecks pass. Final review's ten focused checks pass;
+removing quit cancellation and resolving timeout instead of rejecting each fail the intended assertions,
+and restored checks pass. Initial strict passes all 30 gates in 485.3 seconds (one cached). Final strict
+on reviewed source passes all 30 gates in 226.6 seconds (18 cached), with fresh external app acceptance
+in 160.2 seconds and packaged app acceptance in 7.8 seconds. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T23-09-45Z-96278`;
+`node_modules/.cache/apack-chain/runs/2026-10-13T23-18-58Z-29821`;
+`/private/tmp/apack-coordinated-shutdown-strict-final.log`.
+
+The replacement plan's leading contract now agrees with implemented controls, ownership and explicit
+fork restoration. The independent native Electron hidden-window stall is not claimed fixed by this
+coordination. Continue remaining replacement acceptance auditing and all-kind/native discovery and
+reader migration, followed by navigation/stale delivery, frontend boundaries, supported consumed APIs,
+dependency provenance and final goal-wide review. Final strict `--all` on finished committed source
+and archival remain due; this checkpoint does not complete or narrow the full goal.
