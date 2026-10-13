@@ -2234,3 +2234,25 @@ that role, and the full clone/edit/restart/reload acceptance matrix. All remaini
 navigation, frontend boundaries, consumed APIs, dependency provenance and final audit remain required.
 The separate API/fixture shutdown race is not declared fixed by a passing run. No plans are archived;
 this is not final strict `--all` acceptance or completion of the replacement workstream/full goal.
+
+
+### Optional window-local Threads checkpoint (2026-10-13)
+
+`7ef47f69b` removes Welcome's throwing process-global designation lookup. The shell resolves optional
+Threads from its injected window registry, then uses existing selection behavior; missing/non-frontend
+providers keep the current plugin while onboarding advances. No fallback feature or actor is created.
+The host-only case follows actual renderer bootstrap, which registers native host frontends first.
+
+Six new cases cover host-only and alternate-plugin windows, an alternate Threads provider, a
+backend-only role, provider removal and two independent window registries. All 23 focused tests and
+the host typecheck pass. A hardcoded default-setup role mutation fails and was restored; an ineffective
+extra availability guard was removed because selection already handles absence. Strict validation
+passes all 30 gates in 331.9s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-32-47Z-87954`. See
+[the optional-role evidence](../plans/replaceable-shipped-packs.md#optional-threads-during-onboarding-2026-10-13).
+
+Next continue the app source/advertised-id catalog and provenance contract, live pack controls and
+app-source update offers, followed by the complete replacement restart/reload acceptance matrix.
+All other all-kind discovery, navigation, frontend boundaries, API consumption, dependency provenance
+and final-audit requirements remain in scope. The independent API/fixture shutdown race remains open;
+no plans are archived and final strict `--all` is still required.
