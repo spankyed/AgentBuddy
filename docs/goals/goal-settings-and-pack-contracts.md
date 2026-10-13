@@ -1409,8 +1409,8 @@ Integrated extraction checkpoint validation passes: `npm run chain -- --strict -
 authoring/application checks. Final host-only UI acceptance passes both tests in 6.0s at
 `/private/tmp/apack-settings-extraction-host-only-checkpoint.log` on the same built candidate.
 
-Commit the integrated app/pack/feature extraction: obsolete pack assembly, section contracts and aliases
-are absent; declarations, generated contracts, common writer, caller-bound settings, forms, restore,
+Checkpoint `f3416ad2f` commits the integrated app/pack/feature extraction. Obsolete pack assembly,
+section contracts and aliases are absent; declarations, generated contracts, common writer, caller-bound settings, forms, restore,
 onboarding and guides move together. The supported administration/global-service mismatch remains an
 explicit Phase 6 item; no full-goal or all-kind-discovery completion is claimed. Keep the unexplained
 historical revision discrepancy recorded with its failure-only capture. Next extend the catalog and
