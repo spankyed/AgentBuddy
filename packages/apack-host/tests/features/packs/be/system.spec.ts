@@ -459,7 +459,7 @@ describe('a decision that could not be saved', () => {
 });
 
 describe('a pack that is gone', () => {
-  it('leaves no row behind when it is uninstalled', async () => {
+  it('records deliberate removal when it is uninstalled', async () => {
     const system = runPacksSystem();
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
@@ -472,7 +472,7 @@ describe('a pack that is gone', () => {
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
-      expect(readInstalledPacks()).toEqual([]);
+      expect(readInstalledPacks()).toEqual([{ id: PACK_ID, enabled: true, suppressAppInstall: true }]);
     } finally {
       system.stop();
     }

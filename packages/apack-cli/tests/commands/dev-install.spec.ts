@@ -14,7 +14,7 @@ let userDataDir: string;
 vi.mock('@apackdev/sdk/env', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@apackdev/sdk/env')>()),
   resolveAppEnvironment: () => ({
-    env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'),
+    env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'), installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
     apiPortFile: path.join(userDataDir, 'api-port'), apiTokenFile: path.join(userDataDir, 'api-token'),
   }),
 }));
@@ -35,7 +35,7 @@ describe('apack pack dev', () => {
 
     await installToApp('/pack');
 
-    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), { hostVersion: '0.9.1', packFormat: 3 });
+    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), expect.objectContaining({ hostVersion: '0.9.1', packFormat: 3, installedPacksFile: path.join(userDataDir, 'installed-packs.json'), accept: expect.any(Function) }));
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
@@ -46,8 +46,8 @@ describe('apack pack dev', () => {
     await installToApp('/pack');
 
     expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([
-      { hostVersion: undefined, packFormat: undefined },
-      { hostVersion: '1.0.0', packFormat: 1 },
+      expect.objectContaining({ hostVersion: undefined, packFormat: undefined, installedPacksFile: path.join(userDataDir, 'installed-packs.json') }),
+      expect.objectContaining({ hostVersion: '1.0.0', packFormat: 1, installedPacksFile: path.join(userDataDir, 'installed-packs.json') }),
     ]);
   });
 });

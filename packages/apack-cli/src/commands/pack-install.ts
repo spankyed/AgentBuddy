@@ -50,10 +50,15 @@ Options:
     const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
     const sourceKind = detectSourceKind(source);
     const resolvedInput = sourceKind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
+    const options = { hostVersion, packFormat, installedPacksFile,
+      accept: (candidate: Awaited<ReturnType<typeof installPack>>) => {
+        recordCliInstall(installedPacksFile, candidate.id, sourceKind === undefined ? source : undefined);
+        return undefined;
+      },
+    };
     const result = sourceKind === 'local'
-      ? await installPackFromLocal(resolvedInput, packsDir, { hostVersion, packFormat })
-      : await installPack(resolvedInput, sourceKind === 'registry' ? 'url' : sourceKind, packsDir, { hostVersion, packFormat });
-    recordCliInstall(installedPacksFile, result.id, sourceKind === undefined ? source : undefined);
+      ? await installPackFromLocal(resolvedInput, packsDir, options)
+      : await installPack(resolvedInput, sourceKind === 'registry' ? 'url' : sourceKind, packsDir, options);
     return { result, hostVersion };
   });
 

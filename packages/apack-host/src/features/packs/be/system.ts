@@ -6,7 +6,7 @@ import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { getAppVersion, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { HOST_PACK_ID, PACK_ID_PATTERN, resolveName } from '@apackdev/sdk/ids';
-import { forgetPack, packRecord, packRecords, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
+import { packRecord, packRecords, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
 import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
@@ -281,6 +281,7 @@ export function createPacksSystem(registry: PackRegistry) {
         let installingId: string | undefined;
         let startAccepted: (() => boolean) | undefined;
         runInstall(packSlug, ev.sourceKind, undefined, {
+          installedPacksFile: resolveAppEnvironment().installedPacksFile,
           sha256: ev.sha256,
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
@@ -362,8 +363,7 @@ export function createPacksSystem(registry: PackRegistry) {
         teardownPack(registry, packId, system.get(HOST.bus));
         broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
 
-        runUninstall(packId).then(() => {
-          forgetPack(packId);
+        runUninstall(packId, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile }).then(() => {
           registry.refreshCatalog(resolveAppEnvironment().packsDir);
 
           broadcastToPlugin('packs', {

@@ -33,6 +33,8 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
     }
     const result = await (options.install ?? installPackFromGitHub)(source, context.packsDir, {
       hostVersion: host.version, packFormat: host.packFormat,
+      installedPacksFile: context.installedPacksFile,
+      accept: candidate => { recordCliInstall(context.installedPacksFile, candidate.id, source); },
       beforePlace: manifest => {
         if (manifest.id !== id || manifest.version !== version || manifest.builtIn) {
           throw new Error(`Expected external pack ${id} v${version}, received ${manifest.id} v${manifest.version}.`);
@@ -45,7 +47,6 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
         }
       },
     });
-    recordCliInstall(context.installedPacksFile, id, source);
     return { id, version: result.version, upgraded: true };
   });
 }

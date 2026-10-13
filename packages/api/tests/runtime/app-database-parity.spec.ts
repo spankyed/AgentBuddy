@@ -42,7 +42,7 @@ function snapshot(query: EarsQuery) {
  */
 async function bootApi() {
   const app = openAppStore();
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
   loadAppPacks(app.packs, new Set(installed.map((result: { id: string }) => result.id)));
   await app.store.hydrate();
   return app;

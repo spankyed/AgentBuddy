@@ -1,3 +1,4 @@
+import { recordCliInstall } from '../app/installed-packs';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -78,9 +79,11 @@ function reportReload(result: DevReload, what: string): void {
 
 /** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
 export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
-  const { packsDir, userDataDir } = resolveAppEnvironment(place);
+  const { packsDir, userDataDir, installedPacksFile } = resolveAppEnvironment(place);
   const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
-  return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
+  return installPackFromLocal(root, packsDir, { hostVersion, packFormat, installedPacksFile,
+    accept: candidate => { recordCliInstall(installedPacksFile, candidate.id); },
+  });
 }
 
 /**

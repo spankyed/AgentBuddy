@@ -45,7 +45,7 @@ beforeAll(async () => {
   }));
   // The API's boot, for the built-in packs
   // The app installs the packs it ships, then loads every installed pack
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
   loadAppPacks(packs, new Set(installed.map((result: { id: string }) => result.id)));
   await store.hydrate();
   startPacks(packs);

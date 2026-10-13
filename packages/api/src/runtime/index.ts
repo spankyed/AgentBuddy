@@ -159,8 +159,8 @@ export async function setupBackend(): Promise<void> {
   forwardSecretsChanges(packs);
 
   // ── Install the packs the app ships, so every pack is an installed pack ────────────
-  // Before loading, not beside it: a pack has to be in the packs dir to be discovered there. A copy whose
-  // integrity matches this build's is left alone, so only a first boot and a version bump write anything
+  // Install before discovery. Ownership, shipped source revision and deliberate removal decide refresh;
+  // matching bytes never grant app ownership of an existing user artifact.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
   const shippedIds = new Set<string>();
   if (!shippedDir) {
@@ -168,14 +168,14 @@ export async function setupBackend(): Promise<void> {
     // nothing looks the same either way: on a fresh data dir both give an app with no plugins
     console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
   } else {
-    const results = await installShippedPacks(shippedDir, appContext.packsDir, { hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
+    const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
     if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
     for (const result of results) {
       // Shipped whatever the install came to: the app refuses to uninstall it either way, and a pack whose
       // install failed is one the Packs view reports rather than one it offers to remove
       shippedIds.add(result.id);
       if (result.outcome === 'failed') console.error(`[packs] Could not install ${result.id}, which this app ships: ${result.error}`);
-      else if (result.outcome !== 'current') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
+      else if (result.outcome === 'installed' || result.outcome === 'updated') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
     }
   }
 

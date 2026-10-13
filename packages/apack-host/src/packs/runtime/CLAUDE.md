@@ -92,8 +92,8 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
 2. prepareHostDataDirs()           — record host version; recover staging in packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@apackdev/host/secrets)
-4. installShippedPacks()           — each pack the app ships into packs/<id>, when its files differ from the
-                                     installed copy's; before loading, since a pack is loaded from packs/
+4. installShippedPacks()           — install absent shipped ids unless deliberately removed; refresh only
+                                     app-owned copies when the shipped source revision changes
 5. loadAppPacks()                  — discover + reconcile installed packs + load enabled, shipped ids first;
                                      registerPack() each, with where it was found (PackOrigin)
 6. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
@@ -193,7 +193,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 ### Reload (`reload.ts`)
 
 `POST /dev/reload { packId }` (from `apack pack dev` and `apack pack build --watch`; one reload per pack at a time) calls `reloadPackById(registry, …)` on the app's registry, which re-requires the pack's built runtime from the directory the registry says it came from. Either way:
-0. refresh the installed copy of a pack the app ships, `installShippedPacks(…, { only: packId })` — the same comparison the boot makes, so it writes nothing when the installed copy already holds the shipped build, and a pack the app does not ship matches no shipped id and nothing happens. A pack is loaded from `packsDir`, so a rebuild in the checkout reaches the app only once this has run; without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit. A refresh that fails throws, because the edit is what the reload was for
+0. refresh the installed copy only when its update ownership is `app` and the shipped source revision changed. `installShippedPacks` receives the target profile's record file and `only: packId`. User-owned forks and deliberate removals are preserved. The refresh accepts registration inside the filesystem/record rollback boundary; refusal preserves the incumbent. An accepted installation uses its returned starter after publication and returns without registering the same candidate again. Initialization effects remain outside rollback. When no shipped installation is needed, continue the ordinary runtime reload below.
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
 2. prepare and commit the fresh registration with `replacePack` (or initially register a pack not yet running); refusal leaves the incumbent resources untouched. Successful publication invalidates derived lookup caches and retires the old binding; retirement errors are logged without restoring it
 3. run old shutdown hooks and register new `onShutdown`; initialize by refreshing declaration data, running `onInit`, migrations and content apply. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed

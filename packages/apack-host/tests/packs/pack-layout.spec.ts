@@ -813,7 +813,7 @@ describe('uninstallPack', () => {
     const packsDir = path.join(tmp, 'data', 'packs');
     fs.mkdirSync(path.join(packsDir, 'demo-pack'), { recursive: true });
 
-    await expect(uninstallPack(packId, packsDir)).rejects.toThrow(`"${packId}" is not a pack id`);
+    await expect(uninstallPack(packId, packsDir, { installedPacksFile: path.join(tmp, 'installed-packs.json') })).rejects.toThrow(`"${packId}" is not a pack id`);
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(true);
   });
 
@@ -821,7 +821,7 @@ describe('uninstallPack', () => {
     const packsDir = path.join(tmp, 'packs');
     fs.mkdirSync(path.join(packsDir, 'demo-pack'), { recursive: true });
 
-    await uninstallPack('demo-pack', packsDir);
+    await uninstallPack('demo-pack', packsDir, { installedPacksFile: path.join(tmp, 'installed-packs.json') });
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
     expect(fs.existsSync(packsDir)).toBe(true);
   });

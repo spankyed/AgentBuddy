@@ -77,9 +77,9 @@ and the pack would not load at all. User-owned packs get the shipped version off
 update**, which is what a fork wants and which reuses `checkForUpdates`/`availableVersion`/`UPDATE_PACK`
 for installed packs. An absent deliberately removed pack needs explicit restoration, not an enable toggle.
 
-**Absence means `'user'`.** The app only overwrites what it can prove it placed. That also means the CLI
-never has to start writing records — a CLI install is a user install, which is simply true — and it means
-no settings migration to default this field. Every new shipped installation records app ownership;
+**Absence means `'user'`.** The app only refreshes what it can prove it owns. CLI/app/dev installation
+records user ownership with the selected source before publication; unrecorded existing artifacts are
+also user-owned. No migration or byte-based adoption supplies app ownership. Every new shipped installation records app ownership;
 unrecorded artifacts remain user-owned. There are no users requiring automatic adoption of historical
 installs. Developer backup conversion, if needed, is a separate explicit operation on a copy.
 
@@ -90,9 +90,8 @@ user's choice.
 
 **Disable and uninstall remain different operations.** Disable keeps the artifact and discoverable
 settings/help/metadata, changing eligibility and runtime availability. Uninstall removes the artifact and
-its declarations, preserving stored settings overrides. Record explicit suppression of automatic shipped
-installation separately from `enabled`; otherwise a disabled installed pack and an intentionally absent
-pack become indistinguishable. Settle that host-owned record field during implementation. Restoration
+its declarations, preserving stored settings overrides. Record `suppressAppInstall: true` separately from `enabled`; otherwise a disabled installed pack and an intentionally absent
+pack become indistinguishable. Boot pruning retains this marker. `shippedRevision` records the published source-content identity last accepted for an app-owned install, separate from the runtime nonce and installed artifact receipt. Restoration
 explicitly installs the shipped artifact again; enabling alone does not install a missing artifact.
 
 **The toggle is hidden, not refused.** The Packs view shows no toggle for shipped packs by default; a
@@ -284,3 +283,37 @@ The unchanged-source awake recheck passes all 30 strict gates in 247.3s (21 cach
 cleanup race remains unresolved; passing this run does not establish its repair. The next replacement
 checkpoint must implement explicit update ownership and removal suppression, not reintroduce a
 replacement window or use runtime metadata as the discovery catalog.
+
+
+### Explicit update ownership and removal suppression (2026-10-13)
+
+Selected record contract: `updatesWith: 'app' | 'user'` (absence means user ownership),
+`shippedRevision` (deterministic published-source content/layout identity for app ownership), and
+`suppressAppInstall: true` (deliberate removal, distinct from enablement). Strict reads refuse invalid
+ownership or revision values. There is no historical-file adoption or conversion.
+
+Boot and id-specific refresh require the target profile's record file. Existing unrecorded/user-owned
+artifacts stay untouched; matching bytes confer no ownership. App-managed copies update only when the
+shipped source revision changes, preserving enablement. Dirty/invalid installed bytes are diagnosed by
+artifact admission, not automatically repaired on each boot. Outcomes distinguish `unchanged` source
+identity, `preserved` user artifacts and `suppressed` installation; they are not health reports.
+
+Installation decisions participate in synchronous acceptance: save them before registration, restore
+them and files on refusal, and initialize after publication. Actual shipped reload also uses transactional
+registration there, retaining runtime/catalog/files/records on collision. App/CLI/dev installs explicitly
+choose user ownership, clearing app revision/suppression; CLI source recording also precedes acceptance.
+Uninstall records removal before deleting files and restores prior records on deletion failure. Boot
+pruning retains deliberate removal. Settings/database effects remain outside filesystem/record rollback.
+
+Focused coverage includes repeated boot and removal, byte-identical unrecorded artifacts, real user
+installation across a shipped rebuild, disabled refresh, candidate/refusal/record-write/deletion failure,
+and actual app-owned reload collision with the incumbent catalog/runtime retained. Five ownership,
+suppression, pruning, record-write and rollback mutations fail and were restored. Explicit replace/restore,
+app-source update offers, provenance-only controls, archive eligibility and final acceptance remain
+required; this is not completion of the shipped replacement workstream or the larger goal.
+
+Checkpoint validation passes 169 focused host tests, seven CLI caller tests and CLI/testing typechecks.
+All 30 strict gates pass in 356.8s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T19-24-50Z-88047`. The independent API/fixture shutdown
+cleanup race remains open despite this passing run. Final goal `--all` and complete shipped replacement
+acceptance remain outstanding.

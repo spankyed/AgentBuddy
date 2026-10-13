@@ -16,7 +16,7 @@ export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, SourcePa
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
-  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes, forgetPack,
+  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes,
 } from './installed.ts';
 export type { PackRecord } from './installed.ts';
 

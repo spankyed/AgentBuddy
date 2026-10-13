@@ -53,7 +53,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
  * loaded — shipped ones first, which is what keeps a designation theirs
  */
 async function bootPacks(app: ReturnType<typeof openAppStore>) {
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
   return loadAppPacks(app.packs, new Set(installed.map((result) => result.id)));
 }
 

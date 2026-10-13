@@ -8,6 +8,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
+import { acceptInstalledPack } from './lifecycle.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -85,23 +86,30 @@ export async function reloadPackById(
   const { packsDir } = resolveAppEnvironment();
   const packDir = path.join(packsDir, packId);
 
-  // A pack the app ships is rebuilt in the checkout and loaded from `packsDir`, so the rebuild reaches the
-  // app only once the installed copy carries it. `installShippedPacks` is the same comparison the boot
-  // makes and writes nothing when the two agree, so asking here costs a pack's worth of hashing on a
-  // reload that changed nothing — and a reload of any other pack matches no shipped id and does nothing.
-  // Without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit.
+  // Refresh app-managed copies when the shipped source changes; user-owned forks stay in place.
+  // Acceptance couples filesystem/record rollback with registration before post-publication startup.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
+  let startInstalled: (() => boolean) | undefined;
   if (shippedDir) {
     for (const result of await installShippedPacks(shippedDir, packsDir, {
+      installedPacksFile: resolveAppEnvironment().installedPacksFile,
       only: packId,
       hostVersion: getAppVersion(),
       packFormat: PACK_SNAPSHOT_FORMAT,
+      accept: candidate => {
+        startInstalled = acceptInstalledPack(registry, candidate.id, backendActor);
+      },
     })) {
       // The author's edit is the point of the reload, so a refresh that failed is the answer rather than a
       // note beside a reload of the previous build
       if (result.outcome === 'failed') throw new Error(`Could not refresh the installed copy of ${packId}, which this app ships: ${result.error}`);
-      if (result.outcome !== 'current') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
+      if (result.outcome === 'installed' || result.outcome === 'updated') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
     }
+  }
+
+  if (startInstalled) {
+    if (!startInstalled()) throw new Error(`Accepted ${packId}, but ${registry.loadProblem(packId)}`);
+    return;
   }
 
   if (!fs.existsSync(packDir)) {
