@@ -49,7 +49,7 @@ export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOI
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap' | 'isPluginReplacing'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers a message a system sent to a frontend plugin */
@@ -202,9 +202,6 @@ export function createBusMachine(options: BusOptions) {
         const answering = event.message.answering !== undefined;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
-          // A pack mid-replacement has no systems running and no plugins registered until its
-          // replacement lands. Dropping is right; saying something went wrong is not.
-          if (options.registry.isPluginReplacing(pluginId)) return;
           // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
           // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
           // differently — which is why `answering` is in the key now that it changes the wording

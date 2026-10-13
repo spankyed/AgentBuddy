@@ -205,7 +205,7 @@ describe('captured contribution addresses', () => {
     const step: StepDefinition = { get type() { return readType(); }, kind: 'step' };
     registry.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
     expect(stepRegistry.get('stuck')).toBe(step);
-    expect(registry.getPackExtensions('captured-address')?.steps).toEqual(['stuck']);
+    expect(registry.steps()[0]).toBe(step);
     add({ id: 'another-pack' });
     expect(stepRegistry.get('stuck')).toBe(step);
     registry.unregisterPack('captured-address');

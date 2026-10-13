@@ -253,3 +253,34 @@ After removing teardown-first installation, production callers no longer request
 rather than retaining an unused lifecycle. Teardown is also the remaining production consumer of
 `getPackExtensions`, used only for system ids; migrate it to the lifecycle accessor before deleting
 that obsolete discovery projection. Preserve actual teardown and frontend readiness behavior.
+
+
+### Removal of teardown-first replacement glue (2026-10-13)
+
+Removed the teardown `replacing` option, registry replacement-window map and marker methods, and bus
+suppression of drops to missing plugins. Transactional replacement keeps an incumbent registered until
+acceptance, so a temporary unregistered window is no longer a lifecycle to model. Genuine teardown
+always announces removal; absent or invalid plugin delivery remains observable.
+
+Removed `getPackExtensions` and its runtime metadata assembly. Teardown queries registered system ids;
+presence checks query registration; installed information continues using catalog declarations. Tests
+use the relevant runtime lookup rather than recreating the removed metadata projection. The test-app
+registry contract also loses its unused suppression method. No aliases or fallback path remain.
+
+Focused checks pass 226 tests and the host typecheck. Three composed bus cases cover refused candidate
+retention, valid delivery plus invalid-event reporting after acceptance, and reporting after genuine
+removal. Suppressing drop reports fails two of those tests; the source was restored and the focused suite
+passed again. This removes obsolete mechanics; shipped update ownership, removal suppression and
+explicit replace/restore behavior remain required.
+
+Initial strict validation stopped in the host unit step without reported assertion failures. The machine
+power log records Low Power Sleep at 14:19:10 and wake at 14:43:24 (1,454 seconds), coinciding with
+the step's 1,469.6-second elapsed timeout. Initial evidence is
+`node_modules/.cache/apack-chain/runs/2026-10-13T18-17-26Z-49534`. Recheck the unchanged source while
+awake; do not extend suite deadlines or interpret the sleep interval as test execution cost.
+
+The unchanged-source awake recheck passes all 30 strict gates in 247.3s (21 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T18-48-01Z-55317`. The separate API/fixture shutdown
+cleanup race remains unresolved; passing this run does not establish its repair. The next replacement
+checkpoint must implement explicit update ownership and removal suppression, not reintroduce a
+replacement window or use runtime metadata as the discovery catalog.

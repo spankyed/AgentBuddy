@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
-import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
+import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import type { HostServices, SettingsService } from '@apackdev/sdk/services';
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
@@ -77,16 +77,6 @@ export interface PackFeatureSummary {
   hasSystem: boolean;
   hasPlugin: boolean;
   services: readonly string[];
-}
-
-function featureSummaries(reg: PackRegistration): PackFeatureSummary[] {
-  return featuresOf(reg).map(({ featureId, feature }) => ({
-    id: featureId,
-    ...(feature.designation ? { designation: feature.designation } : {}),
-    hasSystem: !!feature.system,
-    hasPlugin: !!feature.plugin,
-    services: feature.services ?? [],
-  }));
 }
 
 export interface PackExtensions {
@@ -208,18 +198,6 @@ export interface PackRegistry extends PackRegistryView {
   registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void;
   unregisterPack(packId: string): void;
   /**
-   * Notes that a pack is being replaced, so the plugins it owns are expected to be missing until its
-   * replacement registers. Cleared when the pack registers again, or is torn down for good.
-   */
-  markPackReplacing(packId: string): void;
-  /**
-   * Whether a plugin's pack is mid-replacement. A send to it is still dropped — its systems are
-   * stopped and there is nothing to receive — but it is an expected drop, not a mistake to report.
-   */
-  isPluginReplacing(pluginId: string): boolean;
-  /** Ends a replacement window, whether or not anything took the pack's place */
-  clearPackReplacing(packId: string): void;
-  /**
    * Notes why an installed pack isn't running: the loader skipped it, or its registration was refused. The Packs
    * view shows it in place of the pack's enabled state. Cleared when the pack registers or is torn down.
    */
@@ -298,7 +276,6 @@ export interface PackRegistry extends PackRegistryView {
    * policy mechanism.
    */
   packContentTargets(packIds?: Iterable<string>): PackContentTarget[];
-  getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
   /** Runs every registered shutdown hook (the app exiting) */
@@ -392,8 +369,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
   let registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   let origins = new Map<string, PackOrigin>();
-  /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
-  const replacingPacks = new Map<string, Set<string>>();
   /** Pack id → why it failed to load. Only for packs not in `registrations`: registering one removes its entry */
   const loadProblems = new Map<string, string>();
   let admitted = new Map<string, AdmittedPackContributions>();
@@ -600,7 +575,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     tables = nextTables;
     if (binding) { bindings.set(registration.id, binding); binding.activate(); }
     else bindings.delete(registration.id);
-    replacingPacks.delete(registration.id);
     loadProblems.delete(registration.id);
     changed();
     return previousBinding?.dispose() ?? [];
@@ -645,10 +619,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     return map;
   }
 
-  function ownedPluginIds(reg: PackRegistration): string[] {
-    return featuresOf(reg).filter(({ feature }) => feature.plugin).map(({ ref }) => ref);
-  }
-
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
     const map = new Map<string, PluginEventTypes>();
     // Each pack's plugins are under its own refs, the host's included, so no pack reaches another's entry
@@ -679,20 +649,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     }),
     registerContentRuntime,
     unregisterPack,
-
-    markPackReplacing(packId) {
-      const reg = registrations.get(packId);
-      if (reg) replacingPacks.set(packId, new Set(ownedPluginIds(reg)));
-    },
-
-    isPluginReplacing(pluginId) {
-      for (const plugins of replacingPacks.values()) if (plugins.has(pluginId)) return true;
-      return false;
-    },
-
-    clearPackReplacing(packId) {
-      replacingPacks.delete(packId);
-    },
 
     recordLoadProblem(packId, problem) {
       loadProblems.set(packId, problem);
@@ -761,29 +717,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
         manifest: { id: origin.id, dependencies: origin.manifest?.dependencies },
         dir: origin.dir,
       }));
-    },
-
-    getPackExtensions(packId) {
-      const reg = registrations.get(packId);
-      if (!reg) return null;
-
-      const contribution = admitted.get(packId)!;
-      const bootHooks: string[] = [];
-      if (reg.boot?.onInit) bootHooks.push('onInit');
-      if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
-
-      return {
-        systems: systemsOf(reg).map(({ ref }) => ref),
-        services: [...contribution.services.keys()],
-        steps: contribution.steps.map(([type]) => type),
-        artifacts: contribution.artifacts.map(([type]) => type),
-        blocks: contribution.blocks.map(([type]) => type),
-        relKinds: reg.ears?.relKinds ?? {},
-        // Both lines: the view counts what the pack declares, not what one runner will reach
-        migrationCount: MIGRATION_LINES.reduce((n, line) => n + (reg.migrations?.[line]?.length ?? 0), 0),
-        bootHooks,
-        features: featureSummaries(reg),
-      };
     },
 
     ...shutdownHooks,

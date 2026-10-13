@@ -259,7 +259,7 @@ describe('pack-loader', () => {
 // consequence of loading in two calls, so it is something to assert rather than something structural.
 describe('loadAppPacks', () => {
   afterEach(() => {
-    for (const id of ['role-shipped', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
+    for (const id of ['role-shipped', 'role-taker']) if (registry.getPackRegistration(id)) registry.unregisterPack(id);
   });
 
   it('registers a pack this app shipped before one it did not', () => {

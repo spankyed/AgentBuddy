@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
+  if (registry.getPackRegistration(PACK_ID)) registry.unregisterPack(PACK_ID);
   registry.clearLoadProblem(PACK_ID);
   if (origEnv.env === undefined) delete process.env.APACK_ENV;
   else process.env.APACK_ENV = origEnv.env;
@@ -128,7 +128,7 @@ describe('installing over a pack that is already running', () => {
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
       expect(system.sent.map(e => e.type)).toContain('RELOAD_PACK');
       // Registered once, by the copy that was just installed
-      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
     } finally {
       system.stop();
@@ -170,7 +170,7 @@ describe('a community release checksum pin', () => {
       expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_INSTALL_COMPLETE');
       const installed = JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf8'));
       expect(installed.version).toBe('1.0.0');
-      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
     } finally {
       system.stop();
       vi.unstubAllGlobals();
@@ -743,7 +743,7 @@ describe('live updates preserve availability and enablement', () => {
 describe('updating to a release that holds another pack', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    if (registry.getPackExtensions('shipped-pack')) registry.unregisterPack('shipped-pack');
+    if (registry.getPackRegistration('shipped-pack')) registry.unregisterPack('shipped-pack');
   });
 
   async function updateTo(releaseId: string) {
@@ -935,7 +935,7 @@ describe('a user answering for one of a pack’s content items', () => {
   });
 
   afterEach(() => {
-    if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
+    if (registry.getPackRegistration(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
   });
 
   const entityOf = (key: string, entity: 'Action' | 'PackPrompt') =>

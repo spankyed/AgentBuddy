@@ -10,30 +10,19 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-lifecycle');
 
-/**
- * Stops and unregisters a pack. `replacing` means an activation of the same pack follows (an update):
- * the caller sends PACK_CHANGED once that completes, so running systems never see the pack missing.
- */
+/** Stops and unregisters a pack, then publishes its removal. */
 export function teardownPack(
   registry: PackRegistry,
   packId: string,
   busActor: import('xstate').AnyActorRef,
-  { replacing = false }: { replacing?: boolean } = {},
 ): void {
-  const extensions = registry.getPackExtensions(packId);
-  const systemIds = extensions?.systems ?? [];
+  const systemIds = registry.getRegisteredPackSystemIds(packId);
 
   logger.info(`Tearing down pack: ${packId}`);
 
   registry.runShutdownHooksForKey(packId);
   // Whatever stopped it loading is no longer the pack's state: it is disabled, gone, or about to be activated again
   registry.clearLoadProblem(packId);
-
-  // An update tears the pack down, downloads the new release, then activates it — so its plugins are
-  // missing for as long as the download takes, and a send to one of them in that window is expected
-  // rather than a mistake. Marked before unregistering, while the registration still says which
-  // plugins are the pack's; registering the replacement clears it.
-  if (replacing) registry.markPackReplacing(packId);
 
   // Asked, not caught: unregisterPack also throws when a contribution couldn't be taken back out, and
   // reporting that as a pack nobody had registered is the wrong story. The pack is unregistered either
@@ -57,7 +46,7 @@ export function teardownPack(
     busActor.send({ type: 'TEARDOWN_PACK', systemIds });
   }
   // The systems still running read what the pack registered (its slash commands, say)
-  if (!replacing) busActor.send({ type: 'PACK_CHANGED', packId });
+  busActor.send({ type: 'PACK_CHANGED', packId });
 
   logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
 }

@@ -17,7 +17,7 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 const registry = createNativePackTestRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackExtensions, getRegisteredEntityTypes, getRegisteredServices,
+  getPackRegistration, getRegisteredEntityTypes, getRegisteredServices,
   registerPack, systemIds, pluginIds, unregisterPack,
 } = registry;
 
@@ -204,7 +204,7 @@ describe('registerPack entities', () => {
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
     registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
-    expect(getPackExtensions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
+    expect(getPackRegistration('first-pack')?.ears?.relKinds).toEqual({ PINNED: 'pinned' });
   });
 
   it.each([
@@ -216,7 +216,7 @@ describe('registerPack entities', () => {
     [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],
   ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
     expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
-    expect(getPackExtensions('first-pack')).toBeNull();
+    expect(getPackRegistration('first-pack')).toBeNull();
   });
 
 });
@@ -229,7 +229,7 @@ describe('registerPack feature settings', () => {
     const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
       .toThrow(/defaults/);
-    expect(getPackExtensions('bad-pack')).toBeNull();
+    expect(getPackRegistration('bad-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
     expect(getSettingsCatalog().features).toEqual({});
   });
@@ -252,7 +252,7 @@ describe('registerPack content writers', () => {
     expect(() => registerPack(other as unknown as PackRegistration))
       .toThrow('Content writers for "Memo" are already registered by pack "memo-pack"');
 
-    expect(getPackExtensions('other-pack')).toBeNull();
+    expect(getPackRegistration('other-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBe(memoHooks);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(artifactRegistry.has('card-view')).toBe(false);
@@ -281,7 +281,7 @@ describe('registerPack commands', () => {
     expect(() => registerPack({ id: 'other-pack', steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
       .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
 
-    expect(getPackExtensions('other-pack')).toBeNull();
+    expect(getPackRegistration('other-pack')).toBeNull();
     expect(getPackCommands()).toEqual(commands);
   });
 
@@ -307,8 +307,7 @@ describe('packContentTargets', () => {
     registered.push('nowhere-pack');
 
     expect(registry.packContentTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
-    // Still reported as a boot hook the pack declares, which is a different question
-    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['onInit']);
+    expect(getPackRegistration('nowhere-pack')?.boot?.onInit).toBeTypeOf('function');
   });
 
   /**

@@ -282,51 +282,34 @@ describe('a drop whose report produces another droppable send', () => {
   });
 });
 
-/**
- * Updating a pack tears it down, downloads the new release, then activates it — so its plugins belong
- * to nobody for as long as the download takes. Sends in that window are still dropped, because there
- * is nothing running to receive them, but they are expected: nothing went wrong.
- */
-describe('a plugin whose pack is being replaced', () => {
-  it('has its sends dropped without reporting anything', async () => {
-    registry.markPackReplacing('memo-pack');
-    registry.unregisterPack('memo-pack');
-    // Catalog subscribers publish the declaration change before the send measured here.
-    outgoing.length = 0;
-
+describe('plugin delivery during transactional replacement', () => {
+  it('keeps delivering through the incumbent after candidate refusal', async () => {
+    const previous = registry.getPackRegistration('memo-pack');
+    expect(() => registry.replacePack({ id: 'memo-pack', features: {} })).toThrow();
+    expect(registry.getPackRegistration('memo-pack')).toBe(previous);
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
-
-    expect(delivered()).toEqual([]);
+    expect(delivered()).toHaveLength(1);
     expect(takeSystemErrors()).toEqual([]);
-    // Put it back so afterEach's unregister finds it
-    registry.registerPack({
-      id: 'memo-pack',
-      features: memoFeatures,
-    });
   });
 
-  it('reports again once the replacement registers', async () => {
-    registry.markPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(true);
-
-    // Re-registering is what closes the window, so the same registration is enough to reopen reporting
-    registry.unregisterPack('memo-pack');
-    registry.registerPack({
-      id: 'memo-pack',
-      features: memoFeatures,
-    });
-    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
-
+  it('delivers through an accepted replacement without suppressing invalid events', async () => {
+    registry.replacePack({ id: 'memo-pack', features: memoFeatures });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
+    expect(delivered()).toHaveLength(1);
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors()).toHaveLength(1);
   });
 
-  // An update whose activation also fails would otherwise leave the window open for the rest of the run
-  it('stops being expected when the window is closed with nothing in its place', () => {
-    registry.markPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(true);
-    registry.clearPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
+  it('reports sends to a genuinely removed pack', async () => {
+    registry.unregisterPack('memo-pack');
+    outgoing.length = 0;
+    try {
+      await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
+      expect(delivered()).toEqual([]);
+      expect(takeSystemErrors()[0]?.message).toContain('no registered pack declares');
+    } finally {
+      registry.registerPack({ id: 'memo-pack', features: memoFeatures });
+    }
   });
 });
 
