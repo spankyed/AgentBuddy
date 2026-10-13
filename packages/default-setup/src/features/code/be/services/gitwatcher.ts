@@ -57,8 +57,8 @@ export class GitWatcherService {
     return Array.from(this.openFiles)
   }
 
-  async startWatching(): Promise<void> {
-    if (this.isWatching) {
+  async startWatching(signal: AbortSignal): Promise<void> {
+    if (this.isWatching || signal.aborted) {
       return
     }
 
@@ -86,6 +86,9 @@ export class GitWatcherService {
       // Fall through with original gitDir
     }
 
+    // Do not create handles after the owner cancels asynchronous filesystem preflight.
+    if (signal.aborted) return;
+
     // Watch specific git files that indicate status changes (staged/committed changes)
     const watchPaths = [
       path.join(gitDir, 'index'),           // Staging area changes
@@ -111,6 +114,7 @@ export class GitWatcherService {
       }
     })
 
+    const gitWatcher = this.gitWatcher;
     this.gitWatcher
       .on('change', (filePath) => {
         this.handleFileChange('change', filePath)
@@ -125,6 +129,7 @@ export class GitWatcherService {
         logger.error('Git watcher error', { error })
       })
       .on('ready', () => {
+        if (this.gitWatcher !== gitWatcher) return;
         logger.info('Git watcher ready')
         this.isWatching = true
       })
@@ -187,6 +192,7 @@ export class GitWatcherService {
   }
 
   private handleFileChange(changeType: 'add' | 'change' | 'unlink', filePath: string) {
+    if (!this.gitWatcher && !this.workingDirWatcher) return;
     // Debounce git status refresh globally (we only need one refresh for all changes)
     if (this.gitStatusDebounceTimeout) {
       clearTimeout(this.gitStatusDebounceTimeout)
@@ -196,6 +202,7 @@ export class GitWatcherService {
     // instead of racing with it on a timer
     if (this.gitRepository?.isWriteInProgress) {
       this.gitRepository.onWriteComplete(() => {
+        if (!this.gitWatcher && !this.workingDirWatcher) return;
         // Re-debounce: another write may have started in the meantime
         if (this.gitStatusDebounceTimeout) {
           clearTimeout(this.gitStatusDebounceTimeout)
@@ -239,17 +246,12 @@ export class GitWatcherService {
   }
 
   async stopWatching(): Promise<void> {
-    if (this.gitWatcher) {
-      await this.gitWatcher.close()
-      this.gitWatcher = undefined
-    }
-
-    if (this.workingDirWatcher) {
-      await this.workingDirWatcher.close()
-      this.workingDirWatcher = undefined
-    }
-
+    const watchers = [this.gitWatcher, this.workingDirWatcher];
+    this.gitWatcher = undefined;
+    this.workingDirWatcher = undefined;
     this.isWatching = false
+    this.onGitChangeCallback = undefined;
+    this.onFileChangeCallback = undefined;
 
     // Clear all debounce timeouts
     if (this.gitStatusDebounceTimeout) {
@@ -264,6 +266,7 @@ export class GitWatcherService {
 
     // Clear open files set
     this.openFiles.clear()
+    await Promise.all(watchers.map(watcher => watcher?.close()));
   }
 
   isActive(): boolean {

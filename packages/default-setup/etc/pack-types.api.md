@@ -1835,7 +1835,7 @@ declare class GitWatcherService {
     unregisterOpenFile(filePath: string): void;
     isFileOpen(filePath: string): boolean;
     getOpenFiles(): string[];
-    startWatching(): Promise<void>;
+    startWatching(signal: AbortSignal): Promise<void>;
     private handleFileChange;
     stopWatching(): Promise<void>;
     isActive(): boolean;

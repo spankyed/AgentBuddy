@@ -1152,3 +1152,37 @@ A further source audit found Code starts Git watchers through async actions and 
 cleanup. Its service can finish async startup after the owner stops. Replace this with an actor-owned
 watcher resource and prove directory handoff, stop-during-start and teardown against real watcher
 lifetime. Do not use that cleanup as a claimed fix for the native hidden-window reproduction.
+
+
+Watcher ownership implementation: one callback actor owns the Code instance's current watcher.
+Directory changes send it the newly selected watcher/repository. It serializes close/start, skips
+superseded pending selections and suppresses callbacks immediately on replacement or owner stop.
+Cleanup waits for in-flight startup before closing the created handles; no late callback may refresh
+stopped children. Remove the two async watcher actions and the unawaited close from directory assignment.
+Verify deferred startup/close with controlled resources and verify actual Code stop closes real Git
+watchers. This introduces no new feature or settings definition and makes no native quit claim.
+
+
+The owned watcher resource is implemented. Directory handoff retires callbacks synchronously, aborts
+in-flight filesystem preflight, waits for close/start settlement and skips superseded selections.
+Actor stop uses the same cleanup. GitWatcherService requires a startup cancellation signal and creates
+no handles after cancelled preflight. Closing retires both callbacks, clears timers and ignores deferred
+repository-write completion; late ready events cannot mark a detached watcher active. Code's commit
+child also owns its status/history debounce through an invoked callback actor, removing a timer that
+previously sent events to a stopped actor. No feature, stored lifecycle field or compatibility layer is added.
+
+Focused checks pass (12): controlled pending startup/close and failed-start recovery, actual cancellation
+before handle creation, deferred write notification retirement, real Code stop and debounce cancellation.
+Removing the startup or deferred-notification guard fails its regression; restored source passes.
+The initial broad run caught the intended facade signature change and a test helper using an unsupported
+Promise lib declaration. The facade is updated and the helper uses the repository's configured lib.
+The first watcher spy observed a separate module namespace; the corrected probe instruments the shared
+FSWatcher prototype and both guard mutations prove it observes the actual producer.
+
+Strict sequential validation passes (232.3s, 16 cached), including integration and external app checks:
+`node_modules/.cache/apack-chain/runs/2026-10-13T06-25-13Z-75617`.
+The preceding concurrent run passes all 21 main external-app tests, including restore, and its bundled
+UI assertion; only the bundled worker's native teardown times out. Evidence:
+`2026-10-13T06-20-27Z-47998` in the same runs directory. Its unchanged standalone rerun passes. Neither
+that pass nor resource cleanup resolves the independently reproduced native hidden-window quit loop.
+All other discovery, navigation/boundary and supported-API work remains required.

@@ -23,11 +23,12 @@ import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 
 const cliLogger = createLogger('code');
-import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
+import { setup, enqueueActions, assign, sendTo, type AnyActorRef } from 'xstate'
 
 import { defineSystem } from '@apackdev/sdk/framework'
 import { GitRepository } from './services/git.ts'
 import { GitWatcherService } from './services/gitwatcher.ts'
+import { gitWatcherActor } from './git-watcher-actor.ts'
 
 // child systems; their events come from the contract, which is where every child's now live
 import { explorerSystem } from './features/explorer.ts'
@@ -81,6 +82,7 @@ function resolveInitialDirectory(
 export const systemMachine = setup({
   types: codeSpec.types,
   actors: {
+    gitWatcherActor,
     explorerSystem,
     searchSystem,
     commitSystem,
@@ -163,12 +165,8 @@ export const systemMachine = setup({
         )
         return repo
       },
-      gitWatcher: ({ event, context }) => {
+      gitWatcher: ({ event }) => {
         const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
-        // Stop the old watcher before creating new one
-        if (context.gitWatcher) {
-          context.gitWatcher.stopWatching()
-        }
         return new GitWatcherService(ev.path)
       }
     }),
@@ -271,48 +269,9 @@ export const systemMachine = setup({
       })
     },
     
-    setupGitWatcher: async ({ context, self }) => {
-      if (!context.gitWatcher || !context.gitRepository) {
-        // No directory selected yet
-        return
-      }
-
-      // Give the watcher a reference to the git repo for write-in-progress checks
-      context.gitWatcher.setGitRepository(context.gitRepository)
-
-      // Set up the callback for git changes
-      context.gitWatcher.setChangeCallback(() => {
-        // Clear git cache when git status changes
-        context.gitRepository?.clearCache()
-
-        // Notify commit system of changes (commit system forwards to PR system)
-        child(self, 'commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      })
-
-      // Start watching git changes
-      await context.gitWatcher.startWatching()
-    },
-
-    restartGitWatcher: async ({ context, self }) => {
-      if (!context.gitWatcher || !context.gitRepository) {
-        return
-      }
-
-      // Give the watcher a reference to the git repo for write-in-progress checks
-      context.gitWatcher.setGitRepository(context.gitRepository)
-
-      // Set up the callback for git changes (same as setupGitWatcher)
-      context.gitWatcher.setChangeCallback(() => {
-        // Clear git cache when git status changes
-        context.gitRepository?.clearCache()
-
-        // Notify commit system of changes (commit system forwards to PR system)
-        child(self, 'commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      })
-
-      // Start watching git changes
-      await context.gitWatcher.startWatching()
-    }
+    selectGitWatcher: sendTo('gitWatcher', ({ context }) => ({
+      type: 'WATCH', selection: { watcher: context.gitWatcher, repository: context.gitRepository },
+    })),
   })
 }).createMachine({
   id: 'code',
@@ -339,7 +298,13 @@ export const systemMachine = setup({
       gitWatcher: baseDir ? new GitWatcherService(baseDir) : null
     }
   },
-  entry: ['spawnFeatureActors', 'setupGitWatcher'],
+  entry: 'spawnFeatureActors',
+  invoke: {
+    id: 'gitWatcher', src: 'gitWatcherActor',
+    input: ({ context, self }) => ({ watcher: context.gitWatcher, repository: context.gitRepository,
+      onChange: () => child(self, 'commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' }),
+    }),
+  },
   states: {
     idle: {
       on: {
@@ -358,7 +323,7 @@ export const systemMachine = setup({
         SET_BASE_DIRECTORY: [
           {
             guard: ({ context, event }) => event.path !== context.baseDirectory,
-            actions: ['rememberBaseDirectory', 'updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher'],
+            actions: ['rememberBaseDirectory', 'updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'selectGitWatcher'],
           },
           { actions: 'rememberBaseDirectory' },
         ],

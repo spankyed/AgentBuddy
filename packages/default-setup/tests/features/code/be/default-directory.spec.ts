@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { getTestSettings, startApp } from '@apackdev/testing/harness';
 
 const dirs: string[] = [];
@@ -26,6 +27,17 @@ const setCodeSetting = (key: string, value: unknown) =>
 const explorerDirectory = () => (app!.system('code').getSnapshot().context as { baseDirectory: string | null }).baseDirectory;
 
 describe("the code explorer's directory", () => {
+  it('closes real Git watchers when the Code actor stops', async () => {
+    const directory = tempDir();
+    execFileSync('git', ['init', '--quiet', directory]);
+    app = await startApp({ systems: ['code', 'host/settings'] });
+    await setCodeSetting('defaultBaseDirectory', directory);
+    const watcher = app.system('code').getSnapshot().context.gitWatcher;
+    await expect.poll(() => watcher.isActive()).toBe(true);
+    app.stop();
+    await expect.poll(() => watcher.isActive()).toBe(false);
+  });
+
   it('retains the repository and watcher for repeated selection while remembering an explicit choice', async () => {
     app = await startApp({ systems: ['code', 'host/settings'] });
     await app.connect();

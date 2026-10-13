@@ -2,7 +2,7 @@ import { featureSettings } from '#generated/settings.ts';
 
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
-import { assign, setup, type AnyActorRef } from 'xstate'
+import { assign, setup, enqueueActions, fromCallback, type AnyActorRef } from 'xstate'
 
 import { GitRepository, StashConflictError } from '../services/git.ts'
 import { GitWatcherService } from '../services/gitwatcher.ts'
@@ -19,7 +19,6 @@ export interface CodeCommitSystemContext {
   gitWatcher: GitWatcherService | null
   /** The code system, which routes a `pr.*` event to its pull request child */
   code?: AnyActorRef
-  _statusRefreshTimer?: ReturnType<typeof setTimeout>
 }
 
 export type Event = 
@@ -65,22 +64,25 @@ export const commitSystem = setup({
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null; code?: AnyActorRef }
   },
+  actors: {
+    statusRefresh: fromCallback<{ type: 'REFRESH' }>(({ receive, sendBack }) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      receive(() => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          timer = undefined;
+          sendBack({ type: 'commit.GET_GIT_STATUS' });
+          sendBack({ type: 'commit.LOG_LIST' });
+        }, 150);
+      });
+      return () => clearTimeout(timer);
+    }),
+  },
   actions: handlers.actions({
-    handleGitStatusChanged: ({ context, self }) => {
-      // Debounce: collapse rapid status-change notifications into one refresh.
-      // This prevents double-refresh from write-action + watcher both triggering.
-      if (context._statusRefreshTimer) {
-        clearTimeout(context._statusRefreshTimer)
-      }
-      context._statusRefreshTimer = setTimeout(() => {
-        context._statusRefreshTimer = undefined
-        self.send({ type: 'commit.GET_GIT_STATUS' })
-        self.send({ type: 'commit.LOG_LIST' })
-      }, 150)
-
-      // Also notify the PR system to refresh
+    handleGitStatusChanged: enqueueActions(({ context, enqueue }) => {
+      enqueue.sendTo('statusRefresh', { type: 'REFRESH' });
       context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
-    },
+    }),
 
     getGitStatus: ({ context }) => {
       if (!requireGitRepository(context)) return
@@ -768,6 +770,7 @@ export const commitSystem = setup({
 }).createMachine({
   id: 'commit',
   initial: 'idle',
+  invoke: { id: 'statusRefresh', src: 'statusRefresh' },
   context: ({ input }) => {
     const baseDir = input?.baseDirectory
     return {
