@@ -2016,3 +2016,30 @@ an incumbent. The shell retires old frontends in its unload-before-reload path. 
 registry replacement plus shell handoff is still required to preserve bindings/settings resources.
 Native/all-kind metadata, remaining static readers, navigation, boundaries, freshness and all three
 Phase 6 streams remain open. No plans are archived; final `--all` acceptance remains outstanding.
+
+
+### Prepared frontend publication checkpoint (2026-10-13)
+
+`5d1c4653d` replaces the frontend contribution undo log with captured candidate tables and explicit
+prepared register, replace and remove operations. A host-owned settings gate keeps candidates pending
+and revokes retained ports/subscriptions on refusal or retirement, even when generated cleanup fails.
+Collision checks and component loaders run before publication. Accepted membership is captured once;
+rebuilding or removal does not rerun authored getters/loaders. Stale or disposed preparations refuse.
+Cleanup errors after accepted publication are diagnostics rather than false replacement failures.
+
+The loader joins prepared CSS to the registry commit before observers see new forms. Failed replacements
+preserve old lookup data, styles and authority. A replacement with no frontend removes the previous
+frontend without a placeholder registration. This is a local registry/loader guarantee: the shell's
+reconnect path still unloads first, and frontend actor handoff is not yet implemented.
+
+Evidence: 335 focused host checks pass. Mutations that retire the incumbent early, grant pending writes,
+or publish tables before binding each fail the intended regression; sources were restored before
+validation. Final strict sequential chain passed in 358.6s (one of 30 gates cached), including actual
+external-pack app and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T14-50-35Z-99576`;
+`/private/tmp/apack-fe-transaction-strict-chain-final.log`.
+
+Next audit and implement shell handoff, preserving accepted actors through refused replacements and
+removing genuinely absent owners after an authoritative read. Native/all-kind metadata, source/dependency
+freshness, navigation, frontend boundaries and all three Phase 6 streams remain required. No plans are
+archived; full requirement review and final strict `--all` acceptance remain outstanding.
