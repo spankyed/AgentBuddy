@@ -1662,3 +1662,35 @@ remaining hidden plugin/step/reference/editor/hook metadata and accepted assets/
 the complete data contract. Full freshness, navigation, frontend boundaries and all three Phase 6
 workstreams remain required. This resource checkpoint adds no feature, stored lifecycle field, settings
 assembly or compatibility path, and does not complete or archive the goal.
+
+### Native declaration lifetime checkpoint (2026-10-13)
+
+Commit `9e9bbb7ac` removes registration-derived `refreshNative`. Host composition admits its feature
+data before binding systems. Native runtime bindings require an admitted owner and matching
+feature IDs, dependencies and settings. Shared settings schemas validate native admission; malformed/null
+records cannot silently become absent definitions. The catalog owns immutable copies, and runtime unload
+or failed registration preserves admitted data until explicit removal.
+
+Authored test stand-ins use `nativePackDeclarationFixture` and `createNativePackTestRegistry`; the latter
+is available only through the host's testing entry, not its pack runtime bridge. Real API fixtures admit
+their data explicitly. Direct production-registry regressions prove the lifetime and binding contract.
+Twenty-six focused native/settings discovery cases pass; removing the binding guard fails 11 cases and
+removing data admission validation fails nine. Restored source passes. Evidence:
+`/private/tmp/apack-native-{binding,data}-guard-mutation.log` and
+`/private/tmp/apack-native-declaration-restored-spec.log`.
+
+The first strict run exposed an unrelated use of executable registration in the build compiler. Its
+definition loader already merges/checks build facets, so the CLI now uses `compilePack`'s direct definition
+contract instead of constructing a host registry to retrieve those values again. Both compiler-isolation
+checks pass. SDK reports and package trees were regenerated and reviewed; reordered inferred schema
+properties introduce no additional contract changes.
+
+The strict sequential chain passes (376.4s, one cached), including external app, smoke and packaged
+authoring checks. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T08-16-40Z-47831` and
+`/private/tmp/apack-native-declaration-strict-chain.log`. Its unit suites pass 4,081 host and 831 shipped-pack
+cases; no assertion or deadline was weakened. This successful run does not prove the previously reproduced
+intermittent native shutdown issue is fixed.
+
+This closes native declaration lifetime, not all-kind native discovery. Native metadata/binding coverage,
+remaining executable discovery fields, accepted frontend assets, full freshness, navigation, frontend
+boundaries and all three Phase 6 workstreams remain required. The goal stays active; nothing is archived.
