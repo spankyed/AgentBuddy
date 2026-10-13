@@ -48,6 +48,7 @@ export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
   sealPackBuild, stagePack, verifyPack, readPackIntegrity, readPackArtifact, isPackLayout,
   packFrontendFiles,
+  packArtifactRevision, readPackAsset,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
   staleBuildOutput,

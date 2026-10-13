@@ -72,16 +72,35 @@ test('advanced settings JSON provides declared completion, descriptions and vali
 });
 
 test('pack plugin renders with its own styles', async ({ appPage, app }) => {
-  await app.waitForPlugin('memos');
-  await app.navigate('memos');
+  const network = await appPage.context().newCDPSession(appPage);
+  const resources: string[] = [];
+  network.on('Network.requestWillBeSent', event => {
+    if (event.request.url.startsWith('pack://e2e-fixture/')) resources.push(event.request.url);
+  });
+  await network.send('Network.enable');
+  await network.send('Network.setCacheDisabled', { cacheDisabled: true });
+  try {
+    await appPage.reload();
+    await waitForAppReady(appPage);
+    await app.waitForPlugin('memos');
+    await app.navigate('memos');
 
-  const canvas = appPage.getByTestId('memos-canvas');
-  await expect(canvas).toBeVisible({ timeout: 10_000 });
-  await expect(canvas).toHaveCSS('padding-top', '13px');
+    const canvas = appPage.getByTestId('memos-canvas');
+    await expect(canvas).toBeVisible({ timeout: 10_000 });
+    await expect(canvas).toHaveCSS('padding-top', '13px');
+    const style = await appPage.locator('link[data-pack-id="e2e-fixture"]').getAttribute('href');
+    const artifactBase = style!.replace(/runtime\/fe\.css$/, '');
+    expect(artifactBase).toMatch(/^pack:\/\/e2e-fixture\/artifacts\/[a-f0-9]{64}\/$/);
+    expect(resources.filter(url => url.endsWith('.js') && !url.endsWith('/fe.js')).length).toBeGreaterThan(0);
+    expect(resources.every(url => url.startsWith(artifactBase))).toBe(true);
 
-  // The form is data-independent (the memo list grows across runs), so it can be a stable
-  // baseline that catches pack styles regressing. Update with: npm run test:external-pack -- -u
-  await expect(canvas.locator('form')).toHaveScreenshot('memos-form.png', { maxDiffPixelRatio: 0.01 });
+    // The form is data-independent (the memo list grows across runs), so it can be a stable
+    // baseline that catches pack styles regressing. Update with: npm run test:external-pack -- -u
+    await expect(canvas.locator('form')).toHaveScreenshot('memos-form.png', { maxDiffPixelRatio: 0.01 });
+  } finally {
+    await network.send('Network.setCacheDisabled', { cacheDisabled: false });
+    await network.detach();
+  }
 });
 
 test('add memo round-trip through the pack backend', async ({ appPage, app }) => {

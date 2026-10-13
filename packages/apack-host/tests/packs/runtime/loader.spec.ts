@@ -1071,59 +1071,47 @@ describe('contentRevision', () => {
   });
 });
 
-describe('loaded packs: the packs.loaded entries', () => {
-  it('publishes the declaration and artifact identities accepted by the installed backend loader', () => {
+describe('loaded packs: accepted frontend assets', () => {
+  it('publishes the file membership and identities accepted by the installed backend loader', () => {
     const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'identity', { id: 'identity', name: 'Identity', version: '1.0.0' });
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
     sealPack(dir);
     const [accepted] = loadExternalPacks();
     expect(accepted.origin.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
+    expect(accepted.origin.artifactFiles?.[PACK_LAYOUT.feEntry]).toMatch(/^[a-f0-9]{64}$/);
     expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin] })[0]).toMatchObject({
       id: 'identity', declarationRevision: accepted.origin.declarationRevision, artifactRevision: accepted.origin.artifactRevision,
+      feEntry: PACK_LAYOUT.feEntry,
     });
   });
-  // Every pack is listed, with the files the renderer fetches its frontend from when it has them. A pack
-  // the app ships keeps its built files in `dist/`, which is the only thing that differs
-  it('lists every pack, with where to fetch each frontend from', () => {
-    const withFrontend = path.join(tmpDir, 'with-fe');
-    fs.mkdirSync(path.join(withFrontend, 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.js'), '');
-    fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.css'), '');
-    const backendOnly = path.join(tmpDir, 'be-only');
-    fs.mkdirSync(backendOnly);
-    // A pack the app ships, in the same layout as any other: it is installed
-    const shipped = path.join(tmpDir, 'shipped');
-    fs.mkdirSync(path.join(shipped, 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(shipped, 'runtime', 'fe.js'), '');
-    const pack = (id: string, dir: string) => ({ declarationRevision: 'fixture-revision', id, name: id, version: '2.0.0', dir, shipped: false });
-    const loaded = {
-      loadedPacks: () => [
-        { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: shipped, shipped: true },
-        pack('with-fe', withFrontend),
-        pack('be-only', backendOnly),
-      ],
-    };
 
+  it('lists every runtime using admitted membership, without reading the current filesystem', () => {
+    const revision = 'a'.repeat(64);
+    const pack = (id: string, files: string[]) => ({ declarationRevision: 'fixture-revision', artifactRevision: revision,
+      artifactFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])),
+      id, name: id, version: '2.0.0', dir: '/not-an-installed-directory', shipped: false });
+    const loaded = { loadedPacks: () => [pack('with-fe', [PACK_LAYOUT.feEntry, PACK_LAYOUT.feStyles]), pack('be-only', [])] };
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'shipped-pack', declarationRevision: 'fixture-revision', name: 'Shipped', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
-      { id: 'with-fe', declarationRevision: 'fixture-revision', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
-      // Listed with no frontend files: it has systems the renderer must know are running
-      { id: 'be-only', declarationRevision: 'fixture-revision', name: 'be-only', version: '2.0.0' },
+      { id: 'with-fe', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'with-fe', version: '2.0.0', feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
+      { id: 'be-only', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'be-only', version: '2.0.0' },
     ]);
   });
 
-  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `apack pack dev`
-  // rebuild keeps its version, so the revision follows the files
-  it("gives a frontend a revision that changes with its files, and only with them", () => {
-    const dir = path.join(tmpDir, 'with-fe');
-    fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default {};');
-    const loaded = { shippedPacks: () => [], loadedPacks: () => [{ declarationRevision: 'fixture-revision', id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, shipped: false }] };
-    const revision = () => getLoadedPackEntries(loaded)[0].feRevision;
-
-    const first = revision();
-    expect(revision()).toBe(first);
-    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default { features: {} };');
-    expect(revision()).not.toBe(first);
+  it('keeps the accepted frontend identity and membership after files change or disappear', () => {
+    const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'identity', { id: 'identity', name: 'Identity', version: '1.0.0' });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
+    sealPack(dir);
+    const [accepted] = loadExternalPacks();
+    const loaded = { loadedPacks: () => [accepted.origin] };
+    const previous = getLoadedPackEntries(loaded);
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default { changed: true };');
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feStyles), 'body {}');
+    expect(getLoadedPackEntries(loaded)).toEqual(previous);
+    sealPack(dir);
+    const [replacement] = loadExternalPacks();
+    expect(replacement.origin.artifactRevision).not.toBe(accepted.origin.artifactRevision);
+    expect(getLoadedPackEntries({ loadedPacks: () => [replacement.origin] })[0].feStyles).toBe(PACK_LAYOUT.feStyles);
+    fs.rmSync(path.join(dir, PACK_LAYOUT.feEntry));
+    expect(getLoadedPackEntries(loaded)).toEqual(previous);
   });
 });

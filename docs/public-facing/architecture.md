@@ -87,8 +87,8 @@ Every pack's frontend is loaded at runtime, the ones the app ships included. A d
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@apackdev/host/fe`, over the window's `importModule` and stylesheet I/O):
-   - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
-   - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
+   - loads `pack://<id>/artifacts/<revision>/runtime/fe.css` as a `<link>` when the pack has styles;
+   - imports `pack://<id>/artifacts/<revision>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
 3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED` and asks them to publish, so they send their startup data once the plugin actors exist.

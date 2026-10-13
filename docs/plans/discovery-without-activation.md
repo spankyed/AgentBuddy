@@ -107,20 +107,42 @@ validation leave the installed artifact and skip teardown. Hook refusals retain 
 candidate; directory replacement's existing rollback remains. None of these guards rolls back arbitrary
 hook/activation effects or proves transactional catalog publication.
 
-### Remaining accepted frontend asset delivery audit
+### Accepted frontend asset delivery checkpoint
 
-`getLoadedPackEntries` still discovers frontend files and rehashes their current on-disk bytes instead
-of projecting the accepted origin/catalog artifact. `pack://` still reads the current filesystem and
-can fall back from an installed pack to shipped `dist`. A replaced/missing installed file can therefore
-be supplied by a different artifact. The entry's query-string revision also does not propagate to a
-relative chunk import: that chunk can be read from a newer tree beneath an older entry module.
+The installed loader retains the verified artifact revision and immutable file membership/checksums.
+`getLoadedPackEntries` and client-readiness classification project those accepted files without rehashing
+current disk bytes. Verified installed catalog entries retain the same receipt and derived revision,
+including disabled entries and the previous accepted entry when a replacement is refused.
 
-The catalog delivery checkpoint must retain asset membership/checksums and the full accepted artifact
-identity, project frontend metadata from it, and carry identity through the module URL base so relative
-chunks and stylesheet assets share it. Serving must verify the requested bytes and refuse another
-artifact or source fallback. Coordinate eligibility/unload and stale frontend completion with the same
-catalog revision. Preserve source/HMR as an explicit development path; do not build a second runtime
-asset inventory or use disk rehashing to manufacture a new identity for an already accepted backend.
+Installed frontends use `pack://<id>/artifacts/<revision>/<file>`. The identity belongs to the URL base,
+so relative chunks, styles and font/image requests retain it. Main reads the receipt, compares its identity
+and verifies the exact returned bytes against the listed checksum. Unlisted, missing or changed files,
+replacement receipts and symlinks fail. No installed request falls back to shipped output or development.
+Stylesheet failures reject before frontend registration/settings binding rather than report success.
+Concurrent callers share the actual pending outcome, and unload settles pending loads; finding a link
+in the document is not proof that its bytes have loaded.
+
+Source/HMR is an explicit separate route: a development API advertises its live local Vite base URL,
+and the renderer loads that graph directly. Monorepo source modules still use the renderer's Vite graph.
+A failed source import has no disk fallback. The external fixture uses an async canvas to exercise actual
+relative chunk delivery with the same artifact base as its styles.
+
+Keep the asset reader below descriptor/compiler imports. Importing the broad host packs barrel into
+Electron main pulled SDK schema code into that bundle, whose external AJV import resolved the root's
+different dependency version and prevented startup. `packs/assets` now depends only on Node builtins
+and the shared data/path definitions in `layout-paths`; main imports that entry directly. No vendor import
+or validation is weakened to accommodate the wrong dependency. The general bundled-dependency owner
+resolution issue belongs in the remaining consumed-API/tool provenance audit.
+
+Chromium did not expose these custom-protocol requests through Resource Timing. The app regression
+uses an owned CDP network session with caching disabled during its checks and restores that setting
+before detaching. It verifies actual chunk/style request bases while the async canvas renders.
+
+This closes installed byte delivery, not the complete discovery contract. Source/dependency catalog
+projections currently lack an installed receipt; they must not manufacture one from their current files.
+Their complete descriptor/provenance/freshness admission still needs migration. Runtime-loaded entries
+remain execution state; static frontend declarations and window activation/retry coordination must still
+move to the common descriptor/catalog before the shell becomes a discovery consumer.
 
 This is the reader foundation, not a completed descriptor/catalog: settings data, contribution metadata,
 asset/binding identities and coherent catalog refresh are still required. Installed manifest discovery and

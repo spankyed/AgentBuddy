@@ -100,10 +100,10 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 ## Protocols
 
-- **`pack://<packId>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
-  - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
-  - While `apack pack dev` runs, `devServerUrl(userDataDir, packId, path)` (`@apackdev/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
-  - Serves from disk with a small MIME table.
+- **`pack://<packId>/artifacts/<revision>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
+  - The owner is a pack ID and the revision is the accepted receipt identity. Relative module imports, styles and fonts retain that revision in their URL base.
+  - Serves only the installed copy. The receipt must still match the requested revision, and the exact returned bytes must match its listed checksum. Missing/changed files and symlinks fail; there is no shipped or development fallback.
+  - Development is separate: the API advertises a live local Vite base URL only in the development environment. The renderer imports that source graph directly; monorepo source frontends use the renderer's Vite graph. Neither is an installed asset request.
 - **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/apack/media`. Branching on `app.isPackaged` here would put the layout rule in both main and the API, where a mismatch serves every image a 404.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).
 

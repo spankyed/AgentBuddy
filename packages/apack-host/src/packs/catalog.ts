@@ -1,5 +1,5 @@
 import { discoverPackDirectories } from './discovery.ts';
-import { readPackArtifact } from './layout.ts';
+import { readPackArtifact, packArtifactRevision, type PackIntegrity } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
@@ -15,12 +15,16 @@ export interface PackCatalogEntry {
   readonly snapshot: CatalogData<PackSnapshot>;
   readonly dir: string;
   readonly enabled: boolean;
+  /** Verified installed asset receipt; source/dependency data projections do not manufacture one. */
+  readonly integrity?: CatalogData<PackIntegrity>;
+  readonly artifactRevision?: string;
 }
 
 export interface PackCatalogSource {
   snapshot: unknown;
   dir: string;
   enabled: boolean;
+  integrity?: PackIntegrity;
 }
 
 /** Source authoring declares its manifest before a bundle exists; this is not installed admission. */
@@ -162,7 +166,11 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         const id = result.snapshot.manifest.id;
         const other = next.get(id);
         if (other) throw new Error(`Pack "${id}" is declared twice: ${other.dir} and ${source.dir}`);
-        next.set(id, { ...candidate, snapshot: result.snapshot });
+        if (candidate.integrity && (candidate.integrity.id !== id || candidate.integrity.version !== result.snapshot.manifest.version)) {
+          throw new Error(`Pack "${id}" asset receipt does not match its declarations`);
+        }
+        next.set(id, { ...candidate, snapshot: result.snapshot,
+          ...(candidate.integrity && { artifactRevision: packArtifactRevision(candidate.integrity) }) });
       }
       publish([...next.values()], current.native);
     },
@@ -180,8 +188,8 @@ export type ContributionCatalog = ReturnType<typeof createContributionCatalog>;
 export function readInstalledContributionCatalog(packsDir: string, disabled: ReadonlySet<string>): ContributionCatalog {
   const catalog = createContributionCatalog(appSettingsDefinition);
   catalog.replace(discoverPackDirectories(packsDir).map(dir => {
-    const { snapshot } = readPackArtifact(dir);
-    return { snapshot, dir, enabled: !disabled.has(snapshot.manifest.id) };
+    const { snapshot, integrity } = readPackArtifact(dir);
+    return { snapshot, integrity, dir, enabled: !disabled.has(snapshot.manifest.id) };
   }));
   return catalog;
 }

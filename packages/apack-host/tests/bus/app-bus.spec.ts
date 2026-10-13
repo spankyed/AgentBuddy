@@ -49,6 +49,7 @@ beforeEach(() => {
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
   registry.registerPack({ id: 'fe-pack', features: { feature: { system: { machine: recorder('fe-pack'), receives: ['CLIENT_CONNECTED'] } } } }, { declarationRevision: 'fixture-revision',
+    artifactRevision: 'a'.repeat(64), artifactFiles: { 'runtime/fe.js': 'b'.repeat(64) },
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, shipped: false,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0', features: { feature: { system: { entry: 'system.ts' } } } },
   });

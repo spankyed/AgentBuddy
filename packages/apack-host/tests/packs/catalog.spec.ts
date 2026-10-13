@@ -35,6 +35,13 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Do not activate');`);
       sealPack(dir);
       const catalog = readInstalledContributionCatalog(packsDir, new Set(['help-pack']));
+      const accepted = readPackArtifact(dir);
+      expect(catalog.get('help-pack')?.artifactRevision).toBe(accepted.revision);
+      expect(catalog.get('help-pack')?.integrity?.files).toEqual(accepted.integrity.files);
+      expect(() => {
+        // @ts-expect-error The accepted asset receipt is immutable at the reader boundary.
+        catalog.get('help-pack')!.integrity!.files[PACK_LAYOUT.runtimeEntry] = 'changed';
+      }).toThrow();
       expect(catalog.help().articles).toEqual([{ ...snapshot.help[0], packId: 'help-pack', packName: 'Help' }]);
       expect(catalog.get('help-pack')?.enabled).toBe(false);
       expect(fs.existsSync(marker)).toBe(false);

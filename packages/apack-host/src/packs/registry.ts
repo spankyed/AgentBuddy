@@ -175,6 +175,8 @@ export interface PackOrigin {
   declarationRevision: string;
   /** Verified installed file identity; absent only for native registrations supplied by the host. */
   artifactRevision?: string;
+  /** File membership/checksums admitted with this runtime, never reconstructed from changed disk bytes. */
+  artifactFiles?: Readonly<Record<string, string>>;
   name: string;
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
@@ -345,13 +347,13 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
     for (const dir of discoverPackDirectories(packsDir)) {
       try {
-        const { snapshot } = readPackArtifact(dir);
-        sources.push({ snapshot, dir, enabled: !disabled.has(snapshot.manifest.id) });
+        const { snapshot, integrity } = readPackArtifact(dir);
+        sources.push({ snapshot, integrity, dir, enabled: !disabled.has(snapshot.manifest.id) });
       } catch (error) {
         const previous = previousByDir.get(dir);
         const id = previous?.snapshot.manifest.id ?? path.basename(dir);
         problems.set(id, `its declarations were refused: ${error instanceof Error ? error.message : String(error)}`);
-        if (previous) sources.push({ snapshot: previous.snapshot, dir, enabled: !disabled.has(id) });
+        if (previous) sources.push({ snapshot: previous.snapshot, integrity: previous.integrity, dir, enabled: !disabled.has(id) });
       }
     }
     catalog.replace(sources);

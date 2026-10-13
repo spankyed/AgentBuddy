@@ -21,44 +21,14 @@ import * as tar from 'tar';
 import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
+import { readPackIntegrity, packArtifactRevision } from './assets.ts';
 
-/**
- * The layout's major version, which `verifyPack` and the loader refuse a mismatch of.
- *
- * **Bump it whenever a path in `PACK_LAYOUT` changes.** A pack built against an older layout is still a
- * readable directory, so nothing else notices: it is found, registered, and quietly contributes whichever
- * part has moved — no error, no missing file, just an app running without content it was given. The
- * version is what turns that into a refusal naming the pack and asking for a rebuild.
- */
-export const PACK_LAYOUT_VERSION = 2;
-
-export const PACK_LAYOUT = {
-  manifest: 'apack.json',
-  integrity: 'integrity.json',
-  runtimeDir: 'runtime',
-  runtimeEntry: 'runtime/index.cjs',
-  feEntry: 'runtime/fe.js',
-  feStyles: 'runtime/fe.css',
-  contentDir: 'runtime/content',
-  buildDir: 'build',
-  stepsBuild: 'build/steps.build.mjs',
-  typesDir: 'types',
-  snapshot: 'types/snapshot.json',
-} as const;
+export { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
+export { readPackIntegrity, packArtifactRevision, readPackAsset } from './assets.ts';
 
 /** Sections `apack pack build` writes into dist/ and staging copies into the staged pack. */
 const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir] as const;
-
-export interface PackIntegrity {
-  formatVersion: number;
-  id: string;
-  version: string;
-  hostVersion?: string;
-  sdkVersion?: string;
-  provenance?: { repo?: string; commit?: string };
-  /** sha256 of every file in the pack except integrity.json, keyed by pack-relative path. */
-  files: Record<string, string>;
-}
 
 /** The accepted installed build: declarations and the complete file inventory verified together. */
 export interface PackArtifact {
@@ -116,11 +86,8 @@ export interface LoadedPackEntry {
   feEntry?: string;
   /** The pack's runtime/fe.css, when it has one */
   feStyles?: string;
-  /**
-   * Changes whenever those files do. The renderer puts it in the URLs it loads them from: a module or stylesheet is
-   * cached by URL, so without it an updated pack kept its old frontend until the window reloaded
-   */
-  feRevision?: string;
+  /** Explicit source delivery for apack pack dev; never used by an installed artifact request. */
+  developmentBaseUrl?: string;
 }
 
 /** A pack's frontend files, pack-relative: its FE entry and stylesheet when `apack pack build` wrote them */
@@ -141,16 +108,15 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
-  return registry.loadedPacks().map(({ id, name, version, dir, declarationRevision, artifactRevision }) => {
-    const { entry, styles } = packFrontendFiles(dir);
+  return registry.loadedPacks().map(({ id, name, version, declarationRevision, artifactRevision, artifactFiles }) => {
+    const entry = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined;
+    const styles = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined;
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
     if (!entry && !styles) return { id, name, version, declarationRevision, artifactRevision };
-    const feRevision = crypto.createHash('sha256')
-      .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
-      .digest('hex').slice(0, 16);
-    return { id, name, version, declarationRevision, artifactRevision, feEntry: entry, feStyles: styles, feRevision };
+    if (!artifactRevision) throw new Error(`Pack "${id}" frontend has no accepted artifact identity`);
+    return { id, name, version, declarationRevision, artifactRevision, feEntry: entry, feStyles: styles };
   });
 }
 
@@ -160,7 +126,7 @@ export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>
  * frontend being fetched over `pack://` like any other.
  */
 export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'loadedPacks'>): string[] {
-  return registry.loadedPacks().filter((pack) => packFrontendFiles(pack.dir).entry).map((pack) => pack.id);
+  return getLoadedPackEntries(registry).filter(pack => pack.feEntry).map(pack => pack.id);
 }
 
 /**
@@ -244,11 +210,6 @@ export function stagePack(
     fs.rmSync(incoming, { recursive: true, force: true });
   }
 }
-export function readPackIntegrity(dir: string): PackIntegrity {
-  const integrityPath = path.join(dir, PACK_LAYOUT.integrity);
-  if (!fs.existsSync(integrityPath)) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}`);
-  return JSON.parse(fs.readFileSync(integrityPath, 'utf-8'));
-}
 
 /**
  * Why the apack reading pack snapshot format `appFormat` (this process's by default, which in the app is the
@@ -269,8 +230,7 @@ export function readPackArtifact(dir: string): PackArtifact {
   for (const [file, bytes] of [[PACK_LAYOUT.snapshot, snapshotBytes], [PACK_LAYOUT.manifest, manifestBytes]] as const) {
     if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified artifact; retry with the complete pack');
   }
-  const files = Object.entries(integrity.files).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  const revision = sha256(JSON.stringify({ formatVersion: integrity.formatVersion, files }));
+  const revision = packArtifactRevision(integrity);
   return { snapshot, integrity, revision };
 }
 

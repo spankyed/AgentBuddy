@@ -79,10 +79,12 @@ export function loadSingleExternalPack(
   // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
   let declarationRevision: string;
   let artifactRevision: string;
+  let artifactFiles: Readonly<Record<string, string>>;
   try {
     const artifact = readPackArtifact(dir);
     const snapshot = artifact.snapshot;
     artifactRevision = artifact.revision;
+    artifactFiles = Object.freeze({ ...artifact.integrity.files });
     declarationRevision = snapshot.declarationRevision;
     if (declarationRevision !== _declarationRevision(manifest)) return skipped(manifest, 'its manifest does not match its built declarations; rebuild and install the complete pack');
     const hostSdk = getHostSdkVersion();
@@ -109,7 +111,7 @@ export function loadSingleExternalPack(
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, dir, shipped: shippedIds.has(manifest.id), manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, artifactFiles, dir, shipped: shippedIds.has(manifest.id), manifest },
   };
 }
 

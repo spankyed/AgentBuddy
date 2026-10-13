@@ -92,6 +92,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Backups: packs reach export and import through services.appData
   ['@apackdev/host/backup', 'host backups, reached by packs through services.appData'],
   // The apack pack dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  ['@apackdev/host/packs/assets', 'verified asset byte delivery by Electron main, never a pack runtime API'],
   ['@apackdev/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `apack db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.

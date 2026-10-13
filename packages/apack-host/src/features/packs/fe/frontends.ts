@@ -9,9 +9,9 @@ import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
 /** A window's stylesheets for a pack: added once per href, and taken out together when the pack goes */
 export interface PackFrontendStyles {
-  /** Adds the stylesheet at `href` for `packId`, unless it is already there. Resolves when it has loaded or failed. */
+  /** Shares the actual load outcome for this href; a failed or cancelled load rejects. */
   add(packId: string, href: string): Promise<void>;
-  /** Removes every stylesheet added for `packId` */
+  /** Removes this pack's styles and settles any pending loads. */
   remove(packId: string): void;
 }
 
@@ -44,9 +44,9 @@ const REGISTRATION_KEYS = [
   'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
-/** A pack file's URL, carrying the frontend's revision: a browser caches a module or stylesheet by its URL */
-function packFileUrl(packBaseUrl: string, file: string, revision?: string): string {
-  return `${packBaseUrl}/${file}${revision ? `?v=${revision}` : ''}`;
+/** A revision belongs in the base URL so relative imports retain it too. */
+function packFileUrl(packBaseUrl: string, file: string): string {
+  return `${packBaseUrl}/${file}`;
 }
 
 /**
@@ -59,13 +59,12 @@ export async function loadPackFEEntry(
   io: PackFrontendIO,
   entry: string,
   packBaseUrl: string,
-  revision?: string,
   source?: () => Promise<{ default?: unknown }>,
 ): Promise<PackFERegistration | null> {
-  const url = source ? `${packBaseUrl} (from source)` : packFileUrl(packBaseUrl, entry, revision);
+  const url = source ? `${packBaseUrl} (from source)` : packFileUrl(packBaseUrl, entry);
   let mod: { default?: unknown };
   try {
-    mod = source ? await source() : await io.importModule(packFileUrl(packBaseUrl, entry, revision));
+    mod = source ? await source() : await io.importModule(url);
   } catch (err) {
     // The pack:// URL names the pack; the E2E fixture matches on it
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
@@ -94,11 +93,15 @@ export async function loadPackFEEntry(
 export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): ShellPackFrontends {
   return {
     async load(pack: LoadedPackEntry): Promise<Plugin[] | null> {
-      const packBaseUrl = `pack://${pack.id}`;
       // Served from source, the pack's styles come through its own module graph with the rest of it
       const source = io.devFrontends?.[pack.id];
+      const fromSource = !!source || !!pack.developmentBaseUrl;
+      if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.artifactRevision ?? '')) {
+        throw new Error(`Pack "${pack.id}" frontend has no accepted artifact identity`);
+      }
+      const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/artifacts/${pack.artifactRevision}`;
       const loadStyles = async () => {
-        if (pack.feStyles && !source) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
+        if (pack.feStyles && !fromSource) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
       };
       // A pack served from source has a frontend whatever its built manifest says, since the map holds only
       // packs whose codegen wrote one
@@ -107,7 +110,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         return null;
       }
 
-      const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, pack.feRevision, source);
+      const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
       if (!registration) throw new Error(`Pack "${pack.id}" has no frontend registration`);
       const problem = _packDeclarationProblem(pack, registration);
       if (problem) throw new Error(problem);
