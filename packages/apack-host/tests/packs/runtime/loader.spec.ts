@@ -1110,12 +1110,24 @@ describe('loaded packs: accepted frontend assets', () => {
     const revision = 'a'.repeat(64);
     const pack = (id: string, files: string[]) => ({ declarationRevision: 'fixture-revision', artifactRevision: revision,
       artifactFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])),
+      manifest: { id, name: id, version: '2.0.0' },
       id, name: id, version: '2.0.0', dir: '/not-an-installed-directory', shipped: false });
     const loaded = { loadedPacks: () => [pack('with-fe', [PACK_LAYOUT.feEntry, PACK_LAYOUT.feStyles]), pack('be-only', [])] };
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'with-fe', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'with-fe', version: '2.0.0', feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
+      { id: 'with-fe', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'with-fe', version: '2.0.0', manifest: { id: 'with-fe', name: 'with-fe', version: '2.0.0' }, feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
       { id: 'be-only', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'be-only', version: '2.0.0' },
     ]);
+  });
+
+  it('hands the renderer an owned declaration copy rather than a mutable backend origin', () => {
+    const manifest = { id: 'copy', name: 'Copy', version: '1.0.0' };
+    const origin = { id: manifest.id, name: manifest.name, version: manifest.version, manifest,
+      declarationRevision: _declarationRevision(manifest), artifactRevision: 'a'.repeat(64),
+      artifactFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy', shipped: false };
+    const loaded = { loadedPacks: () => [origin] };
+    getLoadedPackEntries(loaded)[0].manifest!.name = 'Changed by reader';
+    expect(manifest.name).toBe('Copy');
+    expect(getLoadedPackEntries(loaded)[0].manifest?.name).toBe('Copy');
   });
 
   it('keeps the accepted frontend identity and membership after files change or disappear', () => {

@@ -2019,9 +2019,9 @@ export type { ImportMode } from '@apackdev/sdk/utils';
 
     const entries = monacoEntries.map(([name, def]) => {
       const globalsObj = Object.entries(def.globals!)
-        .map(([k, v]) => `      ${k}: '${v}',`)
+        .map(([k, v]) => `      ${JSON.stringify(k)}: ${JSON.stringify(v)},`)
         .join('\n');
-      return `  ${name}: {\n    prefix: '${def.prefix}',\n    schema: ${name}Schema,\n    globals: {\n${globalsObj}\n    },\n  },`;
+      return `  ${name}: {\n    prefix: ${JSON.stringify(def.prefix ?? "")},\n    schema: ${name}Schema,\n    globals: {\n${globalsObj}\n    },\n  },`;
     });
 
     return `${HEADER}

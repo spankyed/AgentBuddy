@@ -1,6 +1,7 @@
 import { BOOT_HOOK_NAMES } from '@apackdev/sdk/build';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
+import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
 
 /** Content bindings provide data operations, independently of backend activation. */
@@ -115,25 +116,4 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if (hooks.includes(hook) && typeof actual[hook] !== 'function') return problem(`boot.${hook}`);
     }
   }
-}
-
-function namedBindings(actual: unknown, key: string, expected: readonly string[]): Map<string, Record<string, unknown>> | undefined {
-  if (actual === undefined) actual = [];
-  if (!Array.isArray(actual)) return;
-  const bindings = new Map<string, Record<string, unknown>>();
-  for (const binding of actual) {
-    if (!isPlainObject(binding) || typeof binding[key] !== 'string' || bindings.has(binding[key])) return;
-    bindings.set(binding[key], binding);
-  }
-  return sameNames([...bindings.keys()], expected) ? bindings : undefined;
-}
-
-function sameNames(actual: unknown, expected: readonly string[]): boolean {
-  if (!Array.isArray(actual) || actual.some(name => typeof name !== 'string')) return false;
-  const names = new Set(actual);
-  return names.size === actual.length && names.size === expected.length && expected.every(name => names.has(name));
-}
-
-function sameKeys(actual: unknown, expected: readonly string[]): boolean {
-  return isPlainObject(actual) && sameNames(Object.keys(actual), expected);
 }

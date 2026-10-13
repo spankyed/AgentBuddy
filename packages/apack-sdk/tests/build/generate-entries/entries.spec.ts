@@ -201,6 +201,18 @@ describe('generated backend entry', () => {
 
 describe('generated registrations', () => {
   // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
+  it('emits an empty omitted DSL prefix and quotes declared strings as data', async () => {
+    const files = await generate({ dsl: {
+      plain: { entry: 'src/plain.ts', targets: ['monaco'], globals: { 'quotedName': "typeof author['book']" } },
+      scoped: { entry: 'src/scoped.ts', targets: ['monaco'], prefix: "author's:", globals: { item: 'Item' } },
+    } });
+    const code = files['src/__generated__/dsl-types-fe.ts'];
+    expect(code).toContain('prefix: "",');
+    expect(code).toContain(`prefix: ${JSON.stringify("author's:")},`);
+    expect(code).toContain(`${JSON.stringify('quotedName')}: ${JSON.stringify("typeof author['book']")},`);
+    expect(code).not.toContain("prefix: 'undefined'");
+  });
+
   it("carry the pack's appliers and DSL types, which their modules only export", async () => {
     const files = await generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
@@ -215,10 +227,10 @@ describe('generated registrations', () => {
     expect(files['src/__generated__/dsl-types-fe.ts']).toContain([
       'export const dslTypes: Record<string, DslTypeConfig> = {',
       '  memo: {',
-      "    prefix: 'memo:',",
+      '    prefix: "memo:",',
       '    schema: memoSchema,',
       '    globals: {',
-      "      memos: 'typeof _dsl.memos',",
+      '      "memos": "typeof _dsl.memos",',
     ].join('\n'));
     for (const [file, content] of Object.entries(files)) {
       expect(content, file).not.toMatch(/^import '[^']+';$/m);
