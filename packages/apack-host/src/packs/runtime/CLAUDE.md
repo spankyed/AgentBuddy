@@ -1,6 +1,6 @@
 # Pack runtime (`@apackdev/host/packs/runtime`)
 
-The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, writing, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@apackdev/host/packs` (`packages/apack-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@apackdev/host/bus` (`tests/boundaries.spec.ts`).
+The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, writing, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../registry.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@apackdev/host/packs` (`packages/apack-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@apackdev/host/bus` (`tests/boundaries.spec.ts`).
 
 The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@apackdev/sdk/logger`) and the app version through `getAppVersion()` (`@apackdev/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by is a constant (`appPartitionPolicy()`), so nothing here touches it. Modules here import each other and the rest of host by relative `.ts` path.
 
@@ -12,7 +12,7 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`), under `user
 
 | Path | Contents |
 |------|----------|
-| `packs/<id>/` | Every installed pack, the ones the app ships included, in the pack layout (`apack.json`, `integrity.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json`; see `apack-host/src/packs/pack-layout.ts`) |
+| `packs/<id>/` | Every installed pack, the ones the app ships included, in the pack layout (`apack.json`, `integrity.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json`; see `apack-host/src/packs/layout.ts`) |
 | `installed-packs.json` | Install state and `enabled` flag, for the packs that have a row |
 
 Hidden `.<id>.installing-*` and `.<id>.previous-*` dirs are installs in progress; discovery skips them and `prepareHostDataDirs` cleans up stale ones at boot.
@@ -68,15 +68,15 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 
 | File | Purpose |
 |------|---------|
-| `pack-discovery.ts` | `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
-| `pack-registration.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
-| `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, feature settings defaults, commands, shutdown hooks |
-| `installed-packs.ts` | `installed-packs.json` CRUD |
-| `module-bridge.ts` | `withModuleBridge()` |
-| `pack-layout.ts` | Pack layout, stage/verify, archives, `packFileHashes`/`stagedFileHashes` |
-| `pack-installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); `installShippedPacks`; uninstall; `checkDependencies` |
+| `discovery.ts` | `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
+| `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
+| `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, commands, shutdown hooks |
+| `installed.ts` | `installed-packs.json` CRUD |
+| `bridge.ts` | `withModuleBridge()` |
+| `layout.ts` | Pack layout, stage/verify, archives, `packFileHashes`/`stagedFileHashes` |
+| `installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); `installShippedPacks`; uninstall; `checkDependencies` |
 | `staging.ts` | Staging dir names, `recoverStagingDirs`, `prepareHostDataDirs` |
-| `pack-updater.ts`, `github.ts` | Update checks against GitHub releases |
+| `updater.ts`, `github.ts` | Update checks against GitHub releases |
 | `host-info.ts` | Records the app version in the data dir for `apack pack install` |
 
 The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries()`.
@@ -169,9 +169,9 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus)` — reads `packs/<id>/apack.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered, with why recorded as its load problem. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads `packs/<id>/apack.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered, with why recorded as its load problem. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
-`teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its appliers included, and the cached event validation map and partition policy), clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
+`teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its appliers included, and the cached event validation map and partition policy), clears the pack's require cache, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 
 Update tears down with `replacing`, installs the release the update check found, and activates with writing; if the install fails it reactivates the previous copy. The activation sends `PACK_CHANGED`; when neither activation succeeds, the update sends it itself, since the pack is then gone.
 
@@ -181,7 +181,7 @@ Update tears down with `replacing`, installs the release the update check found,
 0. refresh the installed copy of a pack the app ships, `installShippedPacks(…, { only: packId })` — the same comparison the boot makes, so it writes nothing when the installed copy already holds the shipped build, and a pack the app does not ship matches no shipped id and nothing happens. A pack is loaded from `packsDir`, so a rebuild in the checkout reaches the app only once this has run; without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit. A refresh that fails throws, because the edit is what the reload was for
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
-3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-apply and `updateLoadedPack()`. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
+3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-apply. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`, then asks them to publish
 5. send the bus `PACK_CHANGED`
 
@@ -191,17 +191,32 @@ The app's migrations run only at boot (and in an app reset). An external pack's 
 
 ## Client startup data for packs with frontends
 
-`getPacksWithClientLoadedFrontends(registry)` (`../pack-layout.ts`) lists registered external packs whose layout has a `runtime/fe.js` (`packFrontendFiles()`). The app bus (`createAppBus()` in `apack-host/src/bus/app-bus.ts`, passing it to `createBusMachine` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't ask them to publish on their `ACTIVATE_PACK`.
+`getPacksWithClientLoadedFrontends(registry)` (`../layout.ts`) projects frontend membership from the
+receipt retained with each accepted backend runtime. It does not rediscover files on disk. The app bus
+(`createAppBus()` in `apack-host/src/bus/app.ts`) skips these packs when broadcasting a connection's
+`CLIENT_CONNECTED`, until this window accepts their frontend.
 
-The renderer loads each such pack's frontend, then calls `trpc.bus.packClientReady({ packId })`, which sends the pack's running systems `CLIENT_CONNECTED` and asks them to publish (`PACK_CLIENT_CONNECTED` on the bus). It calls it again for every loaded pack when its bus subscription reconnects.
+After successful frontend acceptance, the renderer calls `trpc.bus.packClientReady({ packId })`, which
+sends the pack's systems `CLIENT_CONNECTED` and asks them to publish. A failed frontend remains unloaded
+and may retry on a later load request; it is never announced ready. Reconnection accepts fresh bindings.
 
 ## External pack FE entry convention
 
-A pack's frontend files are found on disk, not declared in the manifest: `packFrontendFiles(layoutDir)` (`@apackdev/host/packs`) returns `{ entry?: 'runtime/fe.js', styles?: 'runtime/fe.css' }` for whichever of the two `apack pack build` emitted.
+The `packs.loaded` query reports accepted `feEntry` and `feStyles` receipt members, declaration identity
+and artifact identity. Installed modules and styles use `pack://{packId}/artifacts/{artifactRevision}/…`,
+so relative chunks inherit that same revision. The main protocol verifies the requested receipt and exact
+file bytes; it never serves a changed file or substitutes a shipped copy. Development source delivery is
+explicit and uses its own module graph.
 
-The `packs.loaded` query reports them as `feEntry` and `feStyles`. The frontend's `createPackFrontends` (`features/packs/fe/frontends.ts`, over the window's I/O) loads the styles, then imports `pack://{packId}/{feEntry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions?, dslTypes? }`. It calls the window's registry's `registerPackFE()` with it, and the shell sends itself `PACK_FRONTEND_LOADED` (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
+`createPackFrontends` imports a default `PackFERegistration` whose owner and declaration identity must
+match the backend. It awaits styles and obtains host-bound settings before registration. Unload or the
+loader actor's cancellation invalidates pending work; a late settings grant is disposed before it can
+register. Only successful registration reports `PACK_FRONTEND_LOADED`; styles-only packs return null
+and do not announce frontend readiness.
 
-External pack FE modules cannot call `registerPackFE()` themselves: the renderer's registry (`createFePackRegistry()`, `renderer/src/core/fe-host.ts`) isn't theirs to reach, and they register nothing when imported. The host always mediates; pack frontends read what's registered through the SDK's lookups.
+External modules contribute through the host's `registerPackFE()`; they do not access the renderer's
+registry directly. The SDK exposes its read view. The registry undo log releases contributions and
+settings bindings, and unloading removes styles even if a contribution's cleanup throws.
 
 ## Tests
 

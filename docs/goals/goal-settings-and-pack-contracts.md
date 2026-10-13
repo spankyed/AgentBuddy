@@ -1735,3 +1735,33 @@ The goal remains active across Phases 0–7. Source/dependency projections do no
 admission; static native/plugin/step/reference/editor/hook metadata and the window activation/retry/stale
 binding coordinator remain unfinished. Full freshness, navigation, fault boundaries and all three Phase 6
 workstreams still require their own implementation and evidence. Nothing is archived.
+
+### PR review: frontend cancellation and truthful readiness (2026-10-13)
+
+Reviewed branch `988a8ff77` against the goal rather than treating its green checkpoints as completion.
+The branch changes 467 files relative to master. Existing settings ownership and installed receipt
+verification are retained; the following concrete frontend defects are corrected in this checkpoint:
+
+- An import or settings grant completed after unload/reconnection could still register contributions.
+  The frontend load now checks its attempt identity after asynchronous boundaries; actor disposal aborts
+  pending acceptance. A stale settings grant is disposed, and an older failed attempt cannot remove a
+  newer attempt's styles.
+- Failed frontend loads sent PACK_FRONTEND_LOADED with an empty list, falsely recording success,
+  announcing readiness and suppressing retries. Only successful loads now send that event. Failed packs
+  remain retryable without blocking other packs.
+- Unregister cleanup could throw before removing styles. Styles now leave in a finally block.
+- Runtime documentation still described unversioned assets and failed loads as loaded. Corrected those
+  contracts and obsolete module names in the runtime guide.
+
+Validation: 96 related frontend checks and host typecheck pass. Removing the cancellation guard is
+caught by the delayed-completion regressions; the guard is restored and focused checks pass. Strict
+sequential chain passes in 327.2s (one of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T09-47-35Z-63880`; log
+`/private/tmp/apack-pr-review-lifecycle-chain.log`. This is checkpoint validation, not final --all closure.
+
+The review also found a post-registration reload initialization exception can leave old actors running
+against a newly accepted registration; fix and validate that next. All-kind/native discovery, catalog
+consumer migration, complete source/dependency freshness, entity navigation, pane/form boundaries and
+all three Phase 6 streams remain incomplete. Generated settings access is scoped, but supported global
+SDK/AppData administration paths still need the declared-capability audit. Do not describe this goal or
+its owner-only policy as complete, and do not archive its plans.

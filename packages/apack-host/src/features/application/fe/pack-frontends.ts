@@ -21,6 +21,7 @@ function messageOf(err: unknown): string {
 export function packFrontendLoader(client: ShellClient, packFrontends: ShellPackFrontends) {
   return fromCallback<ShellEvent, { loadedPackIds: string[] }>(({ sendBack, input }) => {
     let stopped = false;
+    const controller = new AbortController();
     const failedPacks: { packId: string; error: string }[] = [];
 
     client.loadedPacks().then(async (loadedPacks) => {
@@ -29,15 +30,12 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
         if (input.loadedPackIds.includes(pack.id)) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
-          const plugins = await packFrontends.load(pack);
+          const plugins = await packFrontends.load(pack, controller.signal);
           if (stopped) return;
           sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins });
         } catch (err: unknown) {
           if (stopped) return;
           failedPacks.push({ packId: pack.id, error: messageOf(err) });
-          // Reported as loaded with nothing, like a frontend that failed to import: its systems are asked for their
-          // startup data and the loader doesn't come back to it
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins: [] });
         }
       }
       if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', failedPacks });
@@ -45,7 +43,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
       if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', loadedPacksError: messageOf(err), failedPacks });
     });
 
-    return () => { stopped = true; };
+    return () => { stopped = true; controller.abort(); };
   });
 }
 

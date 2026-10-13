@@ -148,12 +148,29 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    expect(app.getSnapshot().context.packsWithFrontend).toEqual(['bad', 'good']);
+    expect(app.getSnapshot().context.packsWithFrontend).toEqual(['good']);
     expect(app.system.get('good-plugin')).toBeDefined();
+    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['good']);
+    expect(packClientReady).not.toHaveBeenCalledWith('bad');
     // The failure names the pack, not the read, which succeeded
     expect(toastError).toHaveBeenCalledWith("Couldn't load bad", 'styles blew up');
     expect(toastError).toHaveBeenCalledTimes(1);
     expect(warn).not.toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', expect.anything());
+  });
+
+  it('retries a failed frontend on the next load request without announcing it ready', async () => {
+    loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+    loadPackFrontend.mockRejectedValueOnce(new Error('temporary import failure'));
+    loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+    connect();
+    await settle();
+    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual([]);
+    expect(packClientReady).not.toHaveBeenCalled();
+    app.send({ type: 'LOAD_PACK_FRONTENDS' });
+    await settle();
+    expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
+    expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
   it('tells the user about a failed read only while no read has succeeded', async () => {

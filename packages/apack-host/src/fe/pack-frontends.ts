@@ -8,7 +8,7 @@ import type { LoadedPackEntry } from '../packs/layout.ts';
 /** Loads and unloads external packs' frontends (the renderer imports them from `pack://`) */
 export interface ShellPackFrontends {
   /** Loads a pack's frontend: the plugins it exports, or null for a pack with no frontend code. Throws when it fails */
-  load(pack: LoadedPackEntry): Promise<Plugin[] | null>;
+  load(pack: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null>;
   /** Takes out what a pack's frontend registered */
   unload(packId: string): void;
 }

@@ -91,39 +91,68 @@ export async function loadPackFEEntry(
  * has told already); `unload` undoes both, for a pack deactivated and for a load that finished after it was.
  */
 export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): ShellPackFrontends {
+  const attempts = new Map<string, object>();
   return {
-    async load(pack: LoadedPackEntry): Promise<Plugin[] | null> {
-      // Served from source, the pack's styles come through its own module graph with the rest of it
-      const source = io.devFrontends?.[pack.id];
-      const fromSource = !!source || !!pack.developmentBaseUrl;
-      if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.artifactRevision ?? '')) {
-        throw new Error(`Pack "${pack.id}" frontend has no accepted artifact identity`);
-      }
-      const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/artifacts/${pack.artifactRevision}`;
-      const loadStyles = async () => {
-        if (pack.feStyles && !fromSource) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
+    async load(pack: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
+      const attempt = {};
+      attempts.set(pack.id, attempt);
+      const checkCurrent = () => {
+        if (signal?.aborted || attempts.get(pack.id) !== attempt) {
+          throw new Error(`Pack "${pack.id}" frontend load was cancelled`);
+        }
       };
-      // A pack served from source has a frontend whatever its built manifest says, since the map holds only
-      // packs whose codegen wrote one
-      if (!pack.feEntry && !source) {
-        await loadStyles();
-        return null;
-      }
+      const cancel = () => {
+        if (attempts.get(pack.id) === attempt) {
+          attempts.delete(pack.id);
+          io.styles.remove(pack.id);
+        }
+      };
+      signal?.addEventListener('abort', cancel, { once: true });
+      try {
+        checkCurrent();
+        // Served from source, the pack's styles come through its own module graph with the rest of it
+        const source = io.devFrontends?.[pack.id];
+        const fromSource = !!source || !!pack.developmentBaseUrl;
+        if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.artifactRevision ?? '')) {
+          throw new Error(`Pack "${pack.id}" frontend has no accepted artifact identity`);
+        }
+        const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/artifacts/${pack.artifactRevision}`;
+        const loadStyles = async () => {
+          if (pack.feStyles && !fromSource) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
+        };
+        // A pack served from source has a frontend whatever its built manifest says, since the map holds only
+        // packs whose codegen wrote one
+        if (!pack.feEntry && !source) {
+          await loadStyles();
+          checkCurrent();
+          return null;
+        }
 
-      const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
-      if (!registration) throw new Error(`Pack "${pack.id}" has no frontend registration`);
-      const problem = _packDeclarationProblem(pack, registration);
-      if (problem) throw new Error(problem);
-      if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);
-      await loadStyles();
-      const settings = registration.bindSettings ? await io.settingsForPack!(pack) : undefined;
-      // Once handed to the registry, the same undo log releases provisional and registered bindings.
-      return packs.registerPackFE(registration, settings);
+        const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
+        checkCurrent();
+        if (!registration) throw new Error(`Pack "${pack.id}" has no frontend registration`);
+        const problem = _packDeclarationProblem(pack, registration);
+        if (problem) throw new Error(problem);
+        if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);
+        await loadStyles();
+        checkCurrent();
+        const settings = registration.bindSettings ? await io.settingsForPack!(pack) : undefined;
+        try { checkCurrent(); }
+        catch (error) { settings?.dispose(); throw error; }
+        // Once handed to the registry, the same undo log releases provisional and registered bindings.
+        return packs.registerPackFE(registration, settings);
+      } catch (error) {
+        cancel();
+        throw error;
+      } finally {
+        signal?.removeEventListener('abort', cancel);
+      }
     },
 
     unload(packId: string): void {
-      packs.unregisterPackFE(packId);
-      io.styles.remove(packId);
+      attempts.delete(packId);
+      try { packs.unregisterPackFE(packId); }
+      finally { io.styles.remove(packId); }
     },
   };
 }

@@ -92,6 +92,49 @@ describe('loadPackFEEntry', () => {
 });
 
 describe("a pack's frontend", () => {
+  it.each(['unload', 'abort'] as const)('does not register an import completed after %s', async action => {
+    const { io, styles } = fakeIO();
+    let finish!: (value: { default: unknown }) => void;
+    io.importModule = () => new Promise(resolve => { finish = resolve; });
+    const { registry, registered } = fakeRegistry();
+    const frontends = createPackFrontends(io, registry);
+    const controller = new AbortController();
+    const pending = frontends.load({ id: 'ext', name: 'Ext', version: '1.0.0',
+      declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
+    }, controller.signal);
+    const refused = expect(pending).rejects.toThrow('cancelled');
+    if (action === 'unload') frontends.unload('ext');
+    else controller.abort();
+    finish({ default: { id: 'ext', declarationRevision: 'current', features: {} } });
+    await refused;
+    expect(registered).toEqual([]);
+    expect(styles).toEqual([]);
+  });
+
+  it('disposes a settings grant completed after unload', async () => {
+    const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: {
+      id: 'ext', declarationRevision: 'current', features: {}, bindSettings: vi.fn(),
+    } });
+    const binding = { port: {} as SettingsPort, dispose: vi.fn() };
+    let finish!: (value: typeof binding) => void;
+    let requested!: () => void;
+    const request = new Promise<void>(resolve => { requested = resolve; });
+    io.settingsForPack = () => { requested(); return new Promise(resolve => { finish = resolve; }); };
+    const { registry, registered } = fakeRegistry();
+    const frontends = createPackFrontends(io, registry);
+    const pending = frontends.load({ id: 'ext', name: 'Ext', version: '1.0.0',
+      declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
+    });
+    const refused = expect(pending).rejects.toThrow('cancelled');
+    await request;
+    frontends.unload('ext');
+    finish(binding);
+    await refused;
+    expect(binding.dispose).toHaveBeenCalledOnce();
+    expect(registered).toEqual([]);
+    expect(styles).toEqual([]);
+  });
+
   it('loads explicit development modules directly without installed styles or a disk fallback', async () => {
     const url = 'http://localhost:5199';
     const registration = { id: 'ext', declarationRevision: 'current', features: {} };
