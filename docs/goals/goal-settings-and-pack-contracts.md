@@ -1631,3 +1631,34 @@ and stop-during-start checks required next. This is separate from the native min
 All Phases 0–7 remain active. This checkpoint does not complete native all-kind declarations, remaining
 metadata, asset/binding and source/dependency freshness, navigation, frontend boundaries or any of the
 three Phase 6 workstreams. Do not archive or declare completion from these narrower checks.
+
+
+### Code-owned watcher and debounce checkpoint (2026-10-13)
+
+Commit `7d1389ded` replaces duplicate async watcher actions and unawaited handoff with one invoked
+resource actor. It retires callbacks immediately, cancels pending filesystem preflight, serializes
+close/start settlement, skips superseded selections and closes on Code stop. GitWatcherService requires
+a startup signal, ignores late ready/write-completion events after close and clears callbacks/timers
+before native handle close. The commit child's debounce is also an invoked resource, eliminating its
+post-stop refresh events. The intentional signal signature is reflected in the pack facade report.
+
+Twelve focused cases pass, covering controlled pending startup and close, failed startup recovery,
+actual preflight cancellation, deferred repository notification retirement, real Git watcher teardown,
+coalescing and timer cancellation. Removing either startup cancellation or write-completion retirement
+fails its regression; restored source passes. The earlier watcher probe observed the wrong module
+namespace and was replaced by a shared-prototype probe, then verified with both mutations.
+Evidence: `/private/tmp/apack-code-owned-resources-final-spec.log`,
+`/private/tmp/apack-watcher-mutation-{startup,write-completion}.log`.
+
+Strict sequential validation passes (232.3s, 16 cached), including integration and external app checks:
+`node_modules/.cache/apack-chain/runs/2026-10-13T06-25-13Z-75617`.
+The preceding concurrent run passes all 21 main external-app cases and the bundled UI assertion; its
+bundled worker teardown hits the separately reproduced native quit loop. Evidence:
+`2026-10-13T06-20-27Z-47998` in the same directory. No assertion/deadline is relaxed, and native lifecycle
+acceptance remains open. The initial report mismatch and test Promise-lib error are corrected.
+
+Return to declaration/catalog work next: native declarations must have an independent lifetime, and
+remaining hidden plugin/step/reference/editor/hook metadata and accepted assets/bindings must move to
+the complete data contract. Full freshness, navigation, frontend boundaries and all three Phase 6
+workstreams remain required. This resource checkpoint adds no feature, stored lifecycle field, settings
+assembly or compatibility path, and does not complete or archive the goal.
