@@ -2186,3 +2186,28 @@ archive eligibility and the replacement plan's complete restart/reload acceptanc
 discovery, navigation, boundary, consumed-API/provenance and final-audit requirements remain in scope.
 The independent API/fixture shutdown cleanup race remains unresolved. No plans are archived, and this
 is not final strict `--all` acceptance or completion of the shipped replacement workstream.
+
+
+### Explicit CLI replace/restore checkpoint (2026-10-13)
+
+`85a7e955b` adds `pack replace <id> <source>` and `pack restore <id> --host <path|beta>`, independent
+of `--profile` storage. Replacement validates the explicit id and chooses user-managed updates; plain
+install refuses an app-managed incumbent. Restoration selects a declared shipped artifact without
+activation, cwd inference, launch or download, re-enables it and records app ownership. Its accepted
+record preparation shares boot's helper. Refusal retains the prior artifact/record or removal marker.
+
+A composed CLI cycle covers restore, user replacement, boot preservation, uninstall suppression and
+restoration. App/pack preferences are written to real LMDB, closed before mutation and read back after
+restoration. Poisoned executable pack entries prove these offline operations do not activate code.
+Other checks cover identity/compatibility, running-app locks, custom profile isolation, host precedence,
+missing/duplicate ids and cached-only beta selection. Twenty-eight focused CLI and 27 host tests pass;
+five identity/intent/enablement/offline mutations fail and were restored. Host and CLI/testing typechecks
+pass. Strict validation passes all 30 gates in 325.8s (one cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T20-01-02Z-23338`. See
+[the CLI replacement evidence](../plans/replaceable-shipped-packs.md#cli-replacerestore-checkpoint-2026-10-13).
+
+Next complete the advertised shipped-id/source identity catalog, live app UI controls, app-source update
+offers, archive eligibility and the full restart/reload acceptance matrix. All remaining discovery,
+navigation, pane boundaries, supported APIs, dependency provenance and final-audit requirements remain
+in scope. The independently recorded API/fixture shutdown race remains open. No plans are archived,
+and this checkpoint does not satisfy final strict `--all` or complete the replacement workstream.
