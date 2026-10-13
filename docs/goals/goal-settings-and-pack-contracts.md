@@ -2330,3 +2330,28 @@ cloned-source edit/build/restart/reload/multiple-window matrix. Every remaining 
 navigation/stale-delivery, pane-boundary, consumed-API, dependency-provenance and final-audit requirement
 remains required. The independent process shutdown race remains open. No plans are archived; final
 strict `--all` on finished committed source remains due.
+
+
+### CLI source-host and default reservation checkpoint (2026-10-13)
+
+`98234a39a` requires a selected/associated offline host for ordinary pack installation, sharing source
+selection with restoration. Cwd and storage profile do not choose a source. Explicit selection wins;
+uncached beta refuses without fetching. Named replacement remains independent of source selection.
+The guard checks current advertisements (including invalid claims) and installation ownership before
+placement, preventing a source change during download from bypassing reservation. Native host is refused.
+
+All 34 focused CLI tests pass, including actual bin execution, absent/disabled/failed/removed/invalid
+advertisements, offline selection, explicit precedence, custom profile isolation and late advertisement.
+Removing protection makes all six targeted regressions fail; restored source passes. The first strict
+run exposed the packaged-authoring shell's missing host argument after app checks passed. Its caller
+now supplies the known build host. Final strict validation passes all 30 gates in 97.2s (21 cached),
+with fresh packaged authoring/app acceptance. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T22-12-00Z-78713`;
+`/private/tmp/apack-cli-source-guard-strict-chain-final.log`. See
+[the CLI selection/reservation contract](../plans/replaceable-shipped-packs.md#cli-source-selection-and-reservation-working-implementation-2026-10-13).
+
+Next finish selected-copy provenance cleanup and the actual cloned-source edit/build/restart/reload/
+multiple-window acceptance matrix. Every remaining all-kind discovery, navigation/stale delivery,
+pane boundary, API consumption, dependency provenance and final-audit requirement remains required.
+The independent process shutdown race is still open. No plans are archived; final full-goal strict
+`--all` on finished committed source remains due.
