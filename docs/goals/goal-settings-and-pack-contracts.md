@@ -1474,7 +1474,8 @@ Backend/content binding checkpoint validation passes: `npm run chain -- --strict
 and `/private/tmp/apack-discovery-backend-content-chain.log`. This includes public contracts/reports,
 host/pack unit tests, complete integration, runtime build, external app, smoke and packaged authoring.
 The earlier content-versus-backend integration failure is resolved through distinct checked operations,
-not a validation exemption. Commit this usable checkpoint before further source changes.
+not a validation exemption. Checkpoint `a76d66235` commits the validated backend/content contracts,
+callers, fixtures, reports and documentation.
 
 Next continue the complete discovery inventory: remaining backend contribution kinds and implementation
 shape checks, frontend declaration membership and static metadata/assets, common catalog projections and
