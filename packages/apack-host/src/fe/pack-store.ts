@@ -4,9 +4,10 @@ import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig, SettingsP
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
+import { createDesignationStore, createOwnedStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { createAppExtensionSlots } from './app-extensions.ts';
+import { _mergeStepDefinitions, type StepDefinition } from '@apackdev/sdk/steps';
+import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -14,13 +15,6 @@ import { createLogger } from '@apackdev/sdk/logger';
 type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
 
 const formKey = (target: SettingsTarget): string => settingsTargetPath(target).join('/');
-
-interface PackFEExtensions {
-  /** The plugins this pack added */
-  plugins: Plugin[];
-  /** Takes back everything it added, as recorded where each part went in */
-  undo: () => unknown;
-}
 
 /** Host-owned settings resource for one accepted frontend, including transport cleanup. */
 export interface FrontendSettingsBinding {
@@ -32,6 +26,12 @@ export interface FrontendSettingsBinding {
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
   registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  /** Prepare a fresh or replacement frontend without publishing it; disposal cancels only this candidate. */
+  preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean): PreparedFrontend;
+  /** Replace an existing owner; failure preserves its accepted resources. */
+  replacePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  hasPackFE(packId: string): boolean;
+  prepareUnregisterPackFE(packId: string): PreparedFrontend;
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
@@ -53,198 +53,211 @@ type AddressedRegistration = PackFERegistration & {
 };
 
 function addressed(registration: PackFERegistration): AddressedRegistration {
-  const features = Object.entries(registration.features ?? {});
+  const features = Object.entries(registration.features ?? {}).map(([id, feature]) => [id, { ...feature }] as const);
+  const roles = new Map<string, FeatureRef>();
+  for (const [id, feature] of features) {
+    if (!feature.designation) continue;
+    if (roles.has(feature.designation)) throw new Error(`Pack "${registration.id}" declares designation "${feature.designation}" twice`);
+    roles.set(feature.designation, resolveName(id, registration.id));
+  }
   return {
     ...registration,
+    features: Object.fromEntries(features),
     addressed: features.flatMap(([featureId, feature]) => feature.plugin
       ? [{ plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin, default: feature.default }]
       : []),
-    roles: Object.fromEntries(features.flatMap(([featureId, { designation }]) =>
-      designation ? [[designation, resolveName(featureId, registration.id)]] : [])),
+    roles: Object.fromEntries(roles),
   };
 }
 
-/**
- * Pushes each of `items` onto `list`, recording how to take that item back out.
- *
- * Removal is by value, which is safe only where no two packs can contribute the same object. Its one
- * caller is the plugin list, and a plugin comes from the pack's own feature, so it cannot be shared. For a
- * kind that can be, use `createOwnedList`.
- */
-function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => void) => void): void {
-  for (const item of items ?? []) {
-    list.push(item);
-    undo(() => {
-      const idx = list.indexOf(item);
-      if (idx >= 0) list.splice(idx, 1);
-    });
-  }
+/** A staged frontend cannot change the published view until its commit. */
+export interface PreparedFrontend {
+  plugins: Plugin[];
+  /** Commit other prepared host resources after revision checks, before publishing the lookup view. */
+  commit(beforePublish?: () => void): Plugin[];
+  dispose(): void;
 }
 
-/**
- * A list of contributions kept with the pack that made each, for a kind whose items have no key to collide
- * on — which is every kind `createOwnedStore` cannot hold.
- *
- * Removal is by **contribution**, not by value. Two packs can contribute the same object: `@apackdev/sdk` is
- * a shared instance, so a tiptap plugin a dependency exports is the same reference in both packs, and
- * removing it by `indexOf` takes the first occurrence — which may be the other pack's, leaving the
- * unregistered pack's behind.
- */
-function createOwnedList<T>() {
-  let held: Array<{ owner: string; value: T }> = [];
+type DefinitionEntry<T> = readonly [string, T];
+interface FrontendContributions {
+  id: string;
+  addressed: AddressedRegistration['addressed'];
+  roles: Record<string, FeatureRef>;
+  forms: Array<readonly [string, SettingsForm]>;
+  steps: Array<DefinitionEntry<StepDefinition>>;
+  artifacts: Array<DefinitionEntry<ArtifactDefinition>>;
+  blocks: Array<DefinitionEntry<BlockDefinition>>;
+  tiptapPlugins: TiptapPlugin[];
+  appExtensions: Array<readonly [string, SettingsForm]>;
+  dslTypes: Array<readonly [string, DslTypeConfig]>;
+  bindSettings: PackFERegistration['bindSettings'];
+}
+
+function capture(registration: PackFERegistration): FrontendContributions {
+  const reg = addressed({ ...registration });
+  checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
+  checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
-    register(owner: string, items: readonly T[] | undefined): void {
-      for (const value of items ?? []) held.push({ owner, value });
-    },
-    unregister(owner: string): void {
-      held = held.filter((entry) => entry.owner !== owner);
-    },
-    /** In registration order, which is load-bearing: tiptap resolves equal-priority extensions by it */
-    all: (): T[] => held.map((entry) => entry.value),
+    id: reg.id, addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
+    forms: [
+      ...Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.settingsForm
+        ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
+      ...Object.entries(reg.settingsForms ?? {}).map(([id, component]) => [formKey({ kind: 'pack', packId: reg.id, groupId: id }), component] as const),
+    ],
+    steps: (reg.steps ?? []).map(value => [value.type, value]),
+    artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
+    blocks: (reg.blocks ?? []).map(value => [value.type, value]),
+    tiptapPlugins: [...(reg.tiptapPlugins ?? [])],
+    appExtensions: Object.entries(reg.appExtensions ?? {}), dslTypes: Object.entries(reg.dslTypes ?? {}),
   };
 }
 
-/** A new, empty frontend registry */
+function buildTables(packs: Iterable<FrontendContributions>) {
+  const plugins: Plugin[] = [];
+  let defaultPlugin: Plugin | undefined;
+  const designations = createDesignationStore();
+  const steps = createOwnedStore<StepDefinition>(_mergeStepDefinitions);
+  const artifacts = createOwnedStore<ArtifactDefinition>();
+  const blocks = createOwnedStore<BlockDefinition>();
+  const appExtensions = createOwnedStore<SettingsForm>();
+  const dslTypes = createOwnedStore<DslTypeConfig>();
+  const forms = new Map<string, SettingsForm>();
+  const tiptapPlugins: TiptapPlugin[] = [];
+  for (const pack of packs) {
+    designations.register(pack.roles);
+    plugins.push(...pack.addressed.map(({ plugin }) => plugin));
+    defaultPlugin ??= pack.addressed.find(feature => feature.default)?.plugin;
+    for (const [key, value] of pack.forms) forms.set(key, value);
+    for (const [key, value] of pack.steps) steps.set(key, value, pack.id);
+    for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
+    for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
+    for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
+    for (const [key, value] of pack.dslTypes) dslTypes.set(key, value, pack.id);
+    tiptapPlugins.push(...pack.tiptapPlugins);
+  }
+  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins };
+}
+
+/** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
 export function createFePackRegistry(): FePackRegistry {
   const logger = createLogger('pack-frontends');
-  const allPlugins: Plugin[] = [];
-  let defaultPlugin: Plugin | undefined;
-  const packExtensions = new Map<string, PackFEExtensions>();
-  const designations = createDesignationStore();
-  const steps = createStepStore();
-  const artifacts = createDefinitionStore<ArtifactDefinition>();
-  const blocks = createDefinitionStore<BlockDefinition>();
-  const tiptapPlugins = createOwnedList<TiptapPlugin>();
-  const appExtensions = createAppExtensionSlots();
-  const dslTypes = createOwnedStore<DslTypeConfig>();
-  const settingsForms = createOwnedStore<SettingsForm>();
-  let publishedForms: ReadonlyMap<string, SettingsForm> = new Map();
+  let accepted = new Map<string, FrontendContributions>();
+  let tables = buildTables(accepted.values());
+  const bindings = new Map<string, ReturnType<typeof createFrontendSettingsBinding>>();
   const formListeners = new Set<() => void>();
+  let revision = 0;
+  let changing = false;
+  function mutate<T>(operation: () => T): T {
+    if (changing) throw new Error('A frontend registry change is already in progress');
+    changing = true;
+    try { return operation(); } finally { changing = false; }
+  }
   function publishForms() {
-    publishedForms = new Map(settingsForms.entries());
     for (const listener of formListeners) {
       try { listener(); }
       catch (error) { logger.error('Settings form listener failed', error instanceof Error ? error : new Error(String(error))); }
     }
   }
-
-  /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
-  const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
-    // First, so a role another pack plays refuses the pack before anything else of it is in, as the backend's does
-    (reg, undo) => {
-      designations.register(reg.roles);
-      undo(() => designations.unregister(reg.roles));
-    },
-    (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
-    (reg, undo) => {
-      const register = (target: SettingsTarget, component: SettingsForm) => {
-        const key = formKey(target);
-        settingsForms.set(key, component, reg.id);
-        undo(() => settingsForms.remove(key, reg.id));
-      };
-      for (const [featureId, feature] of Object.entries(reg.features ?? {})) {
-        if (feature.settingsForm) register({ kind: 'feature', featureRef: resolveName(featureId, reg.id) }, feature.settingsForm);
-      }
-      for (const [groupId, component] of Object.entries(reg.settingsForms ?? {})) {
-        register({ kind: 'pack', packId: reg.id, groupId }, component);
-      }
-    },
-    // The first pack to claim the default keeps it
-    (reg, undo) => {
-      const claim = reg.addressed.find((feature) => feature.default);
-      if (!claim || defaultPlugin) return;
-      defaultPlugin = claim.plugin;
-      undo(() => { defaultPlugin = undefined; });
-    },
-    (reg, undo) => {
-      tiptapPlugins.register(reg.id, reg.tiptapPlugins);
-      undo(() => tiptapPlugins.unregister(reg.id));
-    },
-    (reg, undo) => {
-      for (const [slot, component] of Object.entries(reg.appExtensions ?? {})) {
-        appExtensions.register(slot, component, reg.id);
-        undo(() => appExtensions.unregister(slot, reg.id));
-      }
-    },
-    definitions(artifacts, (reg) => reg.artifacts),
-    definitions(blocks, (reg) => reg.blocks),
-    // Each step's components, loaded once, off the pack's own `fe` — the object every merged definition of the type
-    // hands out, since merging keeps the facet by reference. Loaded here, `loadComponents` (the pack's own code)
-    // can't run inside another pack's registration and fail it.
-    definitions(steps, (reg) => reg.steps, (step) => {
-      if (step.fe?.loadComponents && !step.fe.components) step.fe.components = step.fe.loadComponents();
-    }),
-    (reg, undo) => {
-      for (const [name, config] of Object.entries(reg.dslTypes ?? {})) {
-        dslTypes.set(name, config, reg.id);
-        undo(() => dslTypes.remove(name, reg.id));
-      }
-    },
-  ];
-
-  function registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[] {
-    const packId = registration.id;
-    let reg: AddressedRegistration;
+  function retire(binding: ReturnType<typeof createFrontendSettingsBinding> | undefined) {
+    const errors = binding?.dispose() ?? [];
+    if (errors.length) logger.error('Frontend resource retirement failed', new AggregateError(errors, 'Frontend resource retirement failed'));
+  }
+  function prepareChange(id: string, next: Map<string, FrontendContributions>, projected: ReturnType<typeof buildTables>,
+    binding: ReturnType<typeof createFrontendSettingsBinding> | undefined, plugins: Plugin[]): PreparedFrontend {
+    const before = revision;
+    let state: 'pending' | 'committed' | 'disposed' = 'pending';
+    const discard = () => {
+      if (state !== 'pending') return;
+      state = 'disposed';
+      retire(binding);
+    };
+    const dispose = () => { if (changing) discard(); else mutate(discard); };
+    return {
+      plugins,
+      commit(beforePublish) {
+        try { return mutate(() => {
+          if (state !== 'pending') throw new Error('Only a pending frontend may commit');
+          if (revision !== before) throw new Error('The frontend registry changed while this candidate was prepared');
+          beforePublish?.();
+          if (state !== 'pending') throw new Error('Frontend preparation was disposed before publication');
+          binding?.activate();
+          const previous = bindings.get(id);
+          accepted = next;
+          tables = projected;
+          if (binding) bindings.set(id, binding); else bindings.delete(id);
+          state = 'committed';
+          revision++;
+          retire(previous);
+          publishForms();
+          return plugins;
+        }); } catch (error) { dispose(); throw error; }
+      },
+      dispose,
+    };
+  }
+  function prepareUnregisterPackFE(id: string): PreparedFrontend {
+    return mutate(() => {
+      if (!accepted.has(id)) throw new Error(`Pack "${id}" frontend is not registered`);
+      const next = new Map(accepted);
+      next.delete(id);
+      return prepareChange(id, next, buildTables(next.values()), undefined, []);
+    });
+  }
+  function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
+    const binding = createFrontendSettingsBinding(settings);
     try {
-      if (packExtensions.has(packId)) throw new Error(`Pack "${packId}" frontend is already registered`);
-      checkFeatureIds(packId, Object.keys(registration.features ?? {}));
-      checkFeatureIds(packId, Object.keys(registration.settingsForms ?? {}));
-      reg = addressed(registration);
+      return mutate(() => {
+        const { id, ...definition } = registration;
+        if (accepted.has(id) !== replacing) throw new Error(replacing
+          ? `Pack "${id}" frontend is not registered` : `Pack "${id}" frontend is already registered`);
+        const candidate = capture({ ...definition, id });
+        const next = new Map(accepted);
+        next.set(id, candidate);
+        buildTables(next.values());
+        // Only the candidate's loaders execute; rebuilding lookup tables never reruns pack code.
+        candidate.steps = candidate.steps.map(([type, step]) => {
+          const fe = step.fe;
+          return fe?.loadComponents && !fe.components
+            ? [type, { ...step, fe: { ...fe, components: fe.loadComponents() } }] : [type, step];
+        });
+        const projected = buildTables(next.values());
+        binding.bind(candidate.bindSettings);
+        return prepareChange(id, next, projected, binding, candidate.addressed.map(({ plugin }) => plugin));
+      });
     } catch (error) {
-      settings?.dispose();
+      if (changing) retire(binding); else mutate(() => retire(binding));
       throw error;
     }
-    // All or nothing: a throw partway (a step's `loadComponents`, a role collision) leaves the registry as it was
-    const undos = addContributions(reg, [
-      (_, undo) => { if (settings) undo(() => settings.dispose()); },
-      ...contributions,
-      (accepted, undo) => {
-        if (!accepted.bindSettings) return;
-        if (!settings) throw new Error(`Pack "${accepted.id}" frontend requires host-bound settings access`);
-        undo(accepted.bindSettings(settings.port));
-      },
-    ]);
-    const plugins = reg.addressed.map(({ plugin }) => plugin);
-    packExtensions.set(packId, { plugins, undo: undos.undoAll });
-    publishForms();
-    return plugins;
   }
-
-  function unregisterPackFE(packId: string): Plugin[] {
-    const contrib = packExtensions.get(packId);
-    if (!contrib) return [];
-
-    try { contrib.undo(); }
-    finally {
-      packExtensions.delete(packId);
-      publishForms();
-    }
-    return contrib.plugins;
+  const accept = (registration: PackFERegistration, settings: FrontendSettingsBinding | undefined, replacing: boolean) => {
+    const prepared = preparePackFE(registration, settings, replacing);
+    try { return prepared.commit(); } finally { prepared.dispose(); }
+  };
+  function unregisterPackFE(id: string): Plugin[] {
+    const previous = accepted.get(id);
+    if (!previous) return [];
+    const prepared = prepareUnregisterPackFE(id);
+    try { prepared.commit(); } finally { prepared.dispose(); }
+    return previous.addressed.map(({ plugin }) => plugin);
   }
 
   return {
-    registerPackFE,
+    preparePackFE,
+    prepareUnregisterPackFE,
+    hasPackFE: id => accepted.has(id),
+    registerPackFE: (registration, settings) => accept(registration, settings, false),
+    replacePackFE: (registration, settings) => accept(registration, settings, true),
     unregisterPackFE,
-    getRegisteredPlugins: () => allPlugins,
-    getAppExtension: appExtensions.get,
-    settingsForm: target => publishedForms.get(formKey(target)),
+    getRegisteredPlugins: () => [...tables.plugins],
+    getAppExtension: key => tables.appExtensions.get(key),
+    settingsForm: target => tables.forms.get(formKey(target)),
     onSettingsFormsChanged(listener) { formListeners.add(listener); return () => { formListeners.delete(listener); }; },
-
-    // The SDK's frontend lookups (FePackRegistryView)
-    designation: designations.get,
-    step: steps.get,
-    steps: steps.all,
-    artifact: artifacts.get,
-    artifacts: artifacts.all,
-    block: blocks.get,
-    blocks: blocks.all,
-    plugins: () => allPlugins,
-    // **No throwing counterpart, because at startup the answer is legitimately "not yet".** Every pack's
-    // frontend loads after the window is up, so a caller demanding a default plugin could not run at all:
-    // the shell waits for one instead (`wantsDefaultPlugin`). Absent until a pack claims it
-    defaultPlugin: () => defaultPlugin,
-    tiptapPlugins: tiptapPlugins.all,
-    appExtension: appExtensions.get,
-    dslTypes: () => dslTypes.entries(),
+    designation: key => tables.designations.get(key),
+    step: key => tables.steps.get(key), steps: () => tables.steps.all(),
+    artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
+    block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
+    plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,
+    tiptapPlugins: () => [...tables.tiptapPlugins],
+    appExtension: key => tables.appExtensions.get(key), dslTypes: () => new Map(tables.dslTypes.entries()),
   };
 }

@@ -54,9 +54,20 @@ function fakeIO(modules: Record<string, unknown> = {}) {
 function fakeRegistry() {
   const registered: PackFERegistration[] = [];
   const unregistered: string[] = [];
+  const active = new Set<string>();
   const registry = {
-    registerPackFE: (registration: PackFERegistration) => { registered.push(registration); return [{ id: 'memo-pack/memos' }] as unknown as Plugin[]; },
-    unregisterPackFE: (packId: string) => { unregistered.push(packId); return [] as Plugin[]; },
+    registerPackFE: (registration: PackFERegistration) => { registered.push(registration); active.add(registration.id); return [{ id: 'memo-pack/memos' }] as unknown as Plugin[]; },
+    hasPackFE: (id: string) => active.has(id),
+    preparePackFE(registration: PackFERegistration, settings?: { dispose(): void }) {
+      let committed = false;
+      return {
+        plugins: [],
+        commit(beforePublish?: () => void) { beforePublish?.(); committed = true; return registry.registerPackFE(registration, settings as never); },
+        dispose() { if (!committed) { settings?.dispose(); committed = true; } },
+      };
+    },
+    prepareUnregisterPackFE: (id: string) => ({ plugins: [], commit(beforePublish?: () => void) { beforePublish?.(); registry.unregisterPackFE(id); return []; }, dispose() {} }),
+    unregisterPackFE: (packId: string) => { active.delete(packId); unregistered.push(packId); return [] as Plugin[]; },
   } as unknown as FePackRegistry;
   return { registry, registered, unregistered };
 }
@@ -239,14 +250,15 @@ describe("a pack's frontend", () => {
     const registration = { id: 'ext', declarationRevision: 'current', features: {} };
     const { io, styles } = fakeIO({
       [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration,
-      [`pack://ext/artifacts/${nextRevision}/runtime/fe.js`]: registration,
+      [`pack://ext/artifacts/${nextRevision}/runtime/fe.js`]: { ...registration, bindSettings: () => { throw new Error('candidate refused'); } },
     });
+    io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose: vi.fn() });
     const registry = createFePackRegistry();
     const frontends = createPackFrontends(io, registry);
     const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
-    await expect(frontends.load({ ...pack, artifactRevision: nextRevision })).rejects.toThrow('already registered');
+    await expect(frontends.load({ ...pack, artifactRevision: nextRevision })).rejects.toThrow('candidate refused');
     expect(styles).toEqual([{ packId: 'ext', href: `pack://ext/artifacts/${artifactRevision}/runtime/fe.css` }]);
     expect(() => registry.registerPackFE(registration)).toThrow('already registered');
     frontends.unload('ext');
@@ -285,6 +297,50 @@ describe("a pack's frontend", () => {
     expect(transportDispose).toHaveBeenCalledOnce();
     expect(styles).toEqual([]);
     expect(() => registry.registerPackFE({ id: 'ext', features: {} })).not.toThrow();
+  });
+
+  it('publishes replacement styles with the new registry view and retires old authority afterward', async () => {
+    const nextRevision = 'b'.repeat(64);
+    const revoke = vi.fn();
+    const dispose = vi.fn();
+    const old = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => revoke };
+    const next = { id: 'ext', declarationRevision: 'current', features: {} };
+    const { io, styles } = fakeIO({
+      [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: old,
+      [`pack://ext/artifacts/${nextRevision}/runtime/fe.js`]: next,
+    });
+    io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose });
+    const registry = createFePackRegistry();
+    const frontends = createPackFrontends(io, registry);
+    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+      declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
+    await frontends.load(pack);
+    const observations: string[] = [];
+    registry.onSettingsFormsChanged(() => observations.push(styles[0].href));
+    await frontends.load({ ...pack, artifactRevision: nextRevision });
+    expect(observations).toEqual([`pack://ext/artifacts/${nextRevision}/runtime/fe.css`]);
+    expect(styles).toHaveLength(1);
+    expect(revoke).toHaveBeenCalledOnce();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(registry.hasPackFE('ext')).toBe(true);
+  });
+
+  it('retires an accepted frontend when the replacement has no executable frontend or stylesheet', async () => {
+    const revoke = vi.fn();
+    const dispose = vi.fn();
+    const registration = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: () => revoke };
+    const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
+    io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose });
+    const registry = createFePackRegistry();
+    const frontends = createPackFrontends(io, registry);
+    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+      declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
+    await frontends.load(pack);
+    expect(await frontends.load({ ...pack, feEntry: undefined, feStyles: undefined })).toBeNull();
+    expect(registry.hasPackFE('ext')).toBe(false);
+    expect(revoke).toHaveBeenCalledOnce();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(styles).toEqual([]);
   });
 
   it('loads styles-only packs without executing or registering a frontend', async () => {
@@ -351,8 +407,10 @@ describe("a pack's frontend", () => {
     const binding = { port: {} as SettingsPort, dispose: vi.fn() };
     const settingsForPack = vi.fn(async () => binding);
     io.settingsForPack = settingsForPack;
-    const registerPackFE = vi.fn(() => []);
-    const packs = { registerPackFE } as unknown as FePackRegistry;
+    const registerPackFE = vi.fn((_registration: PackFERegistration, _resource: unknown) => []);
+    const packs = { hasPackFE: () => false, preparePackFE: (reg: PackFERegistration, resource: unknown) => ({
+      commit: () => registerPackFE(reg, resource), dispose: () => {},
+    }) } as unknown as FePackRegistry;
     const pack = { manifest: declaration('ext'), id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js' };
     await createPackFrontends(io, packs).load(pack);
     expect(settingsForPack).toHaveBeenCalledWith(pack);

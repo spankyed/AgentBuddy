@@ -5,7 +5,7 @@ import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
 import { frontendBindingProblem } from '../../../fe/declaration-binding.ts';
 import { _packDeclarationProblem } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
-import type { FePackRegistry, FrontendSettingsBinding } from '../../../fe/pack-store.ts';
+import type { FePackRegistry, FrontendSettingsBinding, PreparedFrontend } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
 /** One attempt owns its prepared stylesheet; another attempt cannot dispose it. */
@@ -105,6 +105,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
     async load(pack: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
       const attempt = {};
       let style: PackFrontendStyle | undefined;
+      let prepared: PreparedFrontend | undefined;
       attempts.set(pack.id, attempt);
       const checkCurrent = () => {
         if (signal?.aborted || attempts.get(pack.id) !== attempt) {
@@ -115,6 +116,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         if (attempts.get(pack.id) === attempt) {
           attempts.delete(pack.id);
         }
+        prepared?.dispose();
         style?.dispose();
       };
       signal?.addEventListener('abort', cancel, { once: true });
@@ -145,7 +147,10 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         if (!pack.feEntry && !source) {
           await loadStyles();
           checkCurrent();
-          commitStyles();
+          if (packs.hasPackFE(pack.id)) {
+            prepared = packs.prepareUnregisterPackFE(pack.id);
+            prepared.commit(() => { checkCurrent(); commitStyles(); });
+          } else commitStyles();
           return null;
         }
 
@@ -161,15 +166,10 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         const settings = registration.bindSettings ? await io.settingsForPack!(pack) : undefined;
         try { checkCurrent(); }
         catch (error) { settings?.dispose(); throw error; }
-        // Once handed to the registry, the same undo log releases provisional and registered bindings.
-        const plugins = packs.registerPackFE(registration, settings);
-        try { checkCurrent(); commitStyles(); }
-        catch (error) {
-          // This registration was fresh: duplicate owners are refused before mutation.
-          packs.unregisterPackFE(pack.id);
-          throw error;
-        }
-        return plugins;
+        // The prepared registry owns provisional authority; publication and CSS share one host commit.
+        prepared = packs.preparePackFE(registration, settings, packs.hasPackFE(pack.id));
+        checkCurrent();
+        return prepared.commit(() => { checkCurrent(); commitStyles(); });
       } catch (error) {
         cancel();
         throw error;
