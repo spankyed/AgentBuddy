@@ -2379,3 +2379,33 @@ Next complete the actual cloned-source edit/build/install/restart/reload/multipl
 matrix. Every remaining all-kind discovery, navigation/stale delivery, pane-boundary, API consumption,
 dependency provenance and final-audit requirement remains required. The independent process shutdown
 race remains open. No plans are archived; final full-goal strict `--all` on finished committed source is due.
+
+
+### Real default fork and normal-boot lifecycle checkpoint (2026-10-13)
+
+`29015d951` adds real external-source acceptance: copy default-setup outside the checkout, edit its
+manifest display name and Notes plugin label, build and archive with the public CLI, replace through
+the live app, and verify both windows and actual dev reload use the accepted frontend. A preference
+acknowledged by another settings window survives replacement and reload. The clone borrows the test
+toolchain; published-package hermeticity is covered separately, not claimed by this case.
+
+A repository-owned runner performs four normal Electron launches over isolated temporary storage.
+It verifies the exact installed fork receipt, label, user ownership and preference after restart;
+restores app ownership, uninstalls the default and its dependent test fixture through offline CLI;
+proves host-only boot retains removal suppression and host settings; then restores the default and
+verifies original frontend, app ownership and preferences after another boot. Public test storage
+isolation remains unchanged. The runner is included in the gate's fingerprint inputs.
+
+Two full-run collection refusals exposed macOS path aliasing: JavaScript realpath preserves supplied
+case while native realpath returns on-disk casing. Canonicalizing the runner's checkout before using
+the existing Playwright resolver fixes the duplicate module identity. All targeted lifecycle launches
+and final strict validation pass: 30 gates, 193.2 seconds, 22 cached; the full external-pack app gate ran
+freshly in 151.8 seconds. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T23-02-15Z-81766`;
+`/private/tmp/apack-real-fork-strict-chain-canonical.log`.
+
+Next audit replacement acceptance against its remaining criteria, including actual app-source update
+UI behavior, then continue native/all-kind discovery and reader migration. Entity navigation and stale
+delivery, pane boundaries, supported consumed APIs, dependency provenance and the final goal-wide
+review remain required. The independent process shutdown cleanup race is still open. This checkpoint
+is not final strict `--all` on finished committed source; no incomplete plans are archived.
