@@ -59,6 +59,19 @@ function assertIncumbent(f: ReturnType<typeof fixture>) {
 }
 
 describe('accepted pack replacement', () => {
+  it.each(['__proto__', 'constructor', 'toString'])('publishes, replaces and removes the exact repository key %s', name => {
+    const f = fixture();
+    f.next.repositories = { [name]: { owner: 'candidate' } };
+    f.registry.replacePack(f.next);
+    expect(engine.query.repository[name]).toBe(f.next.repositories[name]);
+    expect(Object.hasOwn(engine.admin.repositories(), name)).toBe(true);
+    expect(() => engine.query.repository.owner).toThrow('is not registered');
+    f.registry.unregisterPack('incumbent');
+    expect(engine.admin.repositories()).toEqual({});
+    expect(() => engine.query.repository[name]).toThrow('is not registered');
+    expect(() => engine.query.repository.owner).toThrow('is not registered');
+  });
+
   it('retains the same incumbent handle and subscription when candidate binding refuses', () => {
     const f = fixture();
     f.next.bindSettings = () => {
