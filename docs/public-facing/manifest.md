@@ -451,7 +451,7 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 |---|---|---|
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
-| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
+| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission uses an empty prefix, matching all model paths |
 | `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apackdev/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
 | `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
 

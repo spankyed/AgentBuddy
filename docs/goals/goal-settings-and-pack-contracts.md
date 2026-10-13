@@ -1970,3 +1970,27 @@ The goal remains open: native/all-kind descriptors, remaining static consumers a
 freshness, navigation, frontend boundaries and all three Phase 6 streams are still required. Next
 implementation review should remove the obsolete runtime pack-information projection and complete
 native/frontend declaration coverage. No plans are archived; final `--all` acceptance remains outstanding.
+
+
+### Frontend declaration membership checkpoint (2026-10-13)
+
+`c67329374` closes the frontend stamp-only admission gap for currently declared member identities.
+Installed frontend delivery includes an owned declaration copy. Missing data refuses before import;
+matching-stamp undeclared features, roles/defaults, forms, extensions and facets refuse before new styles,
+settings authority or component factories. Top-level and feature key coverage is checked against SDK
+registration types. Name/key validation is shared with backend admission and stays browser-safe.
+
+Evidence: 147 focused host checks and 38 producer checks pass; bypassing frontend acceptance fails four
+same-stamp seam regressions, and bypassing the role guard fails its regression. Final review found that
+an omitted DSL prefix became the string "undefined"; codegen and admission now agree on an empty
+prefix and codegen quotes prefix/global strings correctly. The final strict chain passed in 370.9s
+(one of 30 gates cached), including integration, real external-pack app, smoke and packaged authoring.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T13-31-33Z-2547`;
+`/private/tmp/apack-fe-membership-strict-chain-final.log`.
+
+The initial plugin metadata audit remains unfinished: labels/icons/pinning/routes/shortcuts still live
+in executable definitions, and native/all-kind declarations are incomplete. The owning discovery plan
+also records concrete frontend replacement hazards: failure can remove incumbent styles and late
+factory failure can retire incumbent bindings. Complete resource transactions and declarative metadata
+before claiming Phase 3 done. Navigation, boundaries, source/dependency freshness and all three Phase 6
+streams remain required; no plans are archived and final `--all` acceptance remains outstanding.

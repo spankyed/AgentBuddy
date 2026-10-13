@@ -854,3 +854,28 @@ Focused checks and guard mutations cover record preservation, directory-owner re
 invalid offline schemas, incomplete/stale named snapshots and invalid-installation removal. Native
 all-kind metadata, static shell/reference/editor discovery, complete source/dependency freshness and
 atomic installation/runtime publication remain separate required work.
+
+
+### Frontend declaration membership checkpoint (2026-10-13)
+
+`c67329374` forwards an owned copy of active backend declarations with installed frontend delivery.
+Missing declaration data refuses before import. After import, the declaration stamp is necessary but
+not sufficient: feature IDs, designation/default claims, custom forms, step types/kinds/facet presence,
+artifact/block types/viewers, app-extension slots and DSL names/prefix/globals must agree before styles,
+settings grants or component factories are used. Shared name/key checks serve backend and frontend
+admission without importing Node modules into the renderer. Unsupported top-level/feature fields refuse.
+
+Codegen now gives an omitted DSL prefix the empty prefix and quotes prefix/global strings as JSON data;
+the frontend check uses the same default. This fixes valid omitted/quoted declarations rather than
+accepting the producer's literal "undefined" as metadata.
+
+This does not complete frontend discovery. Plugin presentation/route/shortcut metadata and stable
+anonymous editor contribution identities still require declarations; native frontend admission still
+needs the complete native model. Icon identity and DSL asset bytes are not established by member-name
+checks. The renderer still has to move static readers off runtime registrations.
+
+Frontend replacement must also become transactional: styles are currently keyed only by pack ID and
+failed loads can remove an incumbent stylesheet; the frontend store's replacement can retire incumbent
+resources before a late factory failure. Stage owned style/settings/contribution resources, publish once,
+and retire the old resources after acceptance. Prove failure/cancellation keeps the incumbent resources
+usable; a metadata guard alone is not that proof. Arbitrary module side effects remain outside rollback.
