@@ -149,6 +149,21 @@ describe('activating and tearing down a pack at runtime', () => {
     bus.send.mockReset();
   });
 
+  it('removes a failed initialization binding while retaining installed declarations', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
+    const source = path.join(tmpDir, PACK_ID);
+    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', boot: { hooks: 'hooks.ts' } });
+    writeBuild(source, PACK_ID, "{}, boot: { onInit() { throw new Error('init refused'); }, onShutdown() { globalThis.activatePackRuns.push('shutdown'); } }");
+    await installPackFromLocal(source, packsDir());
+    expect(activatePack(registry, PACK_ID, bus as never)).toBe(false);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    expect(registry.loadProblem(PACK_ID)).toContain('init refused');
+    expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
+    expect(runs).toEqual(['shutdown']);
+    expect(bus.send).not.toHaveBeenCalled();
+  });
+
   it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
     await install();
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');

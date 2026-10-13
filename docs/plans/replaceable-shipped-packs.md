@@ -67,7 +67,7 @@ migration routing), `canUninstall` (a capability answering a presentation questi
 exactly one job and one consumer.
 
 ```ts
-// in pack-records.json, per pack
+// in installed-packs.json, per pack
 updatesWith: 'app' | 'user'
 ```
 
@@ -79,8 +79,9 @@ for installed packs. An absent deliberately removed pack needs explicit restorat
 
 **Absence means `'user'`.** The app only overwrites what it can prove it placed. That also means the CLI
 never has to start writing records — a CLI install is a user install, which is simply true — and it means
-no new settings migration merely to default this field. Renaming the record file does require a
-stored-data migration, and existing install ownership needs the reconciliation described below.
+no settings migration to default this field. Every new shipped installation records app ownership;
+unrecorded artifacts remain user-owned. There are no users requiring automatic adoption of historical
+installs. Developer backup conversion, if needed, is a separate explicit operation on a copy.
 
 **Replacement is an explicit act, not an inference.** Proposed `apack pack replace <id> <source>` and the UI's
 "Replace default"; a plain install onto a shipped id is refused and points at `replace`. Inferring intent
@@ -105,16 +106,14 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
 
 1. **Support deliberate replacement.** Re-audit the current install refusal and replace it with explicit
    intent checks; do not blindly revert historical commits.
-2. **Rename `installed-packs.json` to `pack-records.json`** and add `updatesWith`. The file's own header
-   opens by denying its name (*"not the list of installed packs — `packs/<id>/` is"*), and the code already
-   says record (`PackRecord`, `recordInstalled`, `packRecord`). Read the old file once if present, write the
-   new name through an idempotent stored-data migration, preserving enabled choices and provenance.
-   Use the record terminology established by the completed naming goal; rename the file only if
-   the remaining contract requires it.
-3. **Boot:** install when the id is absent *unless* the record suppresses automatic installation; re-install on shipped
-   artifact revision change only where `updatesWith === 'app'`. Stop hash-comparing on every boot. Reconcile existing
-   installs once — copies matching the shipped artifact may be adopted as app-managed, so mark those `'app'`, or every current install
-   silently becomes a fork.
+2. **Extend the current install-record contract** with update ownership and removal suppression.
+   Retain `installed-packs.json` unless the implementation establishes a separate reason to rename it.
+   Use the completed naming conventions. Change owned callers, fixtures and documentation together;
+   do not add old-file reads, conversion or ownership inference for historical developer data.
+3. **Boot:** install when the id is absent *unless* the record suppresses automatic installation;
+   record new shipped installations as `updatesWith: 'app'`. Refresh a changed shipped artifact only
+   where that field is `'app'`. Stop hash-comparing on every boot. Matching bytes alone never grant the
+   app ownership of an existing unrecorded artifact. An explicit restoration can choose app ownership.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
    author lives in. Verify that `apack pack dev` in the fork's own directory is the path that serves them.
 5. **Proposed `apack pack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
@@ -132,7 +131,8 @@ contracts so no intermediate checkpoint silently overwrites a fork.
 
 ## Footguns, named because each was nearly missed
 
-- **Every existing install silently becomes a fork** without the one-time reconciliation in step 3.
+- **Unrecorded artifacts are user-owned by design.** Do not silently adopt them from byte equality;
+  a developer who wants an app-managed copy restores it explicitly.
 - **The update offer has no version line to compare.** A shipped pack has no GitHub release, so the offer
   comes from the shipped dir's manifest; and a fork at `0.9.0` against a shipped `0.4.0` makes
   `compareVersions` offer nothing. The offer must read "the app ships X", not "X is newer than yours".
@@ -173,8 +173,8 @@ Required cases, after checking which current specs already cover them:
 - a fork installed at a shipped id **survives a restart**, and survives a `/dev/reload`
 - an **app-owned** pack is still re-installed when the shipped build changes with the app version
 - an app-owned pack uninstalled through the CLI **stays gone** across a restart, and comes back through explicit restoration
-- an existing install matching the shipped artifact is reconciled to `'app'`; a differing copy is
-  preserved as user-owned instead of guessed to be app-owned
+- an unrecorded artifact remains user-owned even when its bytes match the shipped copy; explicit
+  restoration records app ownership, with no historical-format read or automatic conversion
 - `apack pack archive` archives a clone of `default-setup`
 
 Replace the historical hash-repair invariant with the selected update contract: unchanged app-owned

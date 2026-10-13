@@ -22,7 +22,7 @@ to new APIs without reopening the completed naming project.
 
 Finished when:
 - Phases 0–7 meet their Done when conditions, including all three Phase 6 workstreams.
-- Host, pack and feature settings use the common declarative contract and migrated stored data.
+- Host, pack and feature settings use the common declarative contract and current-format stored data.
 - Every supported contribution is discoverable without executable pack/dependency activation;
   generated bindings, catalog identities, updates and source-build freshness agree.
 - Entity navigation, frontend boundaries, supported consumed APIs, dependency provenance and
@@ -1765,3 +1765,59 @@ consumer migration, complete source/dependency freshness, entity navigation, pan
 all three Phase 6 streams remain incomplete. Generated settings access is scoped, but supported global
 SDK/AppData administration paths still need the declared-capability audit. Do not describe this goal or
 its owner-only policy as complete, and do not archive its plans.
+
+### PR review: completeness audit (2026-10-13)
+
+Review base: `988a8ff77`; frontend corrections are committed in `a8ba9d801`. Review follows
+responsibility boundaries and their failure paths, not the historical progress entries as acceptance
+claims. The implementation is a set of validated checkpoints, not a finished goal. This table records
+what still prevents closure; the linked plans retain their complete acceptance criteria.
+
+| Area | Implemented evidence | Remaining requirement / authoritative code |
+|---|---|---|
+| Settings ownership | Host app, pack groups and feature definitions share schema/default validation; old default-setup app-settings assembly is removed. Integrated and real app acceptance is recorded above. | Finish the supported global administration/API audit before claiming owner policy holds through every supported route. `services/app-data.ts` and SDK `services/index.ts` still expose reset/import and ambient service access. |
+| Settings lifecycle | Current-format import preflight, sparse overrides, effective snapshots, comparison writes, window binding disposal and custom forms have checks. | Preserve these assertions when migrating declaration consumers and replacement. A passing restore fixture does not imply rollback of later migration or arbitrary pack effects. |
+| Descriptor/build admission | `parseSnapshot`, declaration stamps, staged publication and full installed receipts reject invalid/stale artifacts. Reports/schema checks pass. | Dependency/tool input provenance and complete source/watch publication remain incomplete; accepted installed receipts must not be invented for source/cache projections. |
+| Native discovery | Native identity/settings declarations precede runtime binding and survive unload. | `NativePackDeclaration` still lacks all-kind contribution metadata; runtime/native registration is not a complete discovery source. |
+| Backend binding | Contribution identity/membership, settings and content bindings are checked before registration. | Hidden hook exports, migration descriptions and other runtime-only metadata still need descriptor materialization. Keep actual queries/appliers executable. |
+| Frontend acceptance | Accepted bytes/revisioned chunks/styles and declaration stamps are checked; cancellation, stale settings disposal and retry are now covered. | Full declared frontend membership/static plugin metadata and one catalog-driven navigation/readiness coordinator remain unfinished. A matching declaration stamp alone is not complete membership validation. |
+| Information consumers | Settings/help use catalog data. | Packs information still joins disk manifests/runtime extensions and calls `packFrontendFiles`; disabled/failed contributions can lose their metadata. Palette/editor/reference readers need their complete data projections. |
+| Entity navigation | Existing executable navigation remains available. | Phase 4's declarative destinations, owner/destination distinction, short-code resolution and stale readiness delivery are not implemented. |
+| Frontend fault boundaries | Import/registration failures have containment and runtime contributions have undo logs. | Canvas, panel and custom-form recovery boundaries and real throwing-contribution fixtures remain unimplemented. Cancellation alone does not satisfy Phase 5. |
+| API consumption | Generated settings lifetimes receive caller-bound access. | Required consumed APIs/provider availability and the actual supported ambient/global surface need the separate Phase 6 contract. This is not a JavaScript sandbox. |
+| Dependency provenance | Snapshots/receipts identify built declaration/file data. | Exact dependency version, origin/content identity, linked development and cache reuse/inspection remain incomplete. The main bundle's previously exposed AJV owner-resolution problem still warrants the tool/dependency audit; the asset reader was corrected with a leaf import. |
+| Shipped replacement | Installation and receipt checks protect pre-publication failures. | Explicit update ownership/removal suppression and replacement/restoration are not implemented; current shipped refresh can overwrite a fork and `canUninstall` still conflates policy. |
+| Final acceptance | Strict checkpoint chains pass, including isolated app/packaged checks. | Final --all validation on the finished committed tree and requirement-by-requirement closure remain due. The independently reproduced intermittent native Electron shutdown issue remains recorded, not declared fixed by a later pass. |
+
+Additional runtime review fixes are validated in the next checkpoint: initialization errors on
+reload no longer skip actor restart after a committed registry swap; failed activation releases runtime
+contributions and records its failure while retaining installed declarations; service/repository
+collision checks use own properties rather than inherited Object members; obsolete loader EARS fill-in
+is removed. Focused runtime checks pass (149 tests). Mutating the reload guard fails one regression;
+restoring inherited-property collision checks fails two. The frontend cancellation mutation fails three.
+All mutated source is restored.
+
+The replacement plan still prescribed old-file conversion and one-time historical ownership adoption,
+contradicting the user's no-compatibility decision. Removed both: new shipped installs explicitly record
+app ownership, unrecorded artifacts remain user-owned even with identical bytes, and restoration is
+explicit. The roadmap and goal now say current-format stored data. Future deliberate versioned data
+migrations remain separate; developer backup conversion does not belong in boot/import behavior.
+
+A further blocking runtime defect is confirmed: reload's unregister/register/restore sequence restores
+registration metadata after refusal, but unregister already revoked incumbent settings handles. A Node
+`--import tsx` probe using the real registry and `_createPackServices` returns the prior value before the
+sequence; after restoring the same registration, the captured handle throws "Pack settings binding has
+been revoked" while a newly constructed handle works. The existing reload rollback fixture has no
+settings binding and therefore misses this regression. Do not make disposed handles revive as a fix.
+The replacement transaction must retain incumbent resources until candidate acceptance commits, and
+release only provisional candidate resources on refusal. Cover late contribution/binding failure, not
+only a pure preflight collision. See the corrective checkpoint in the discovery plan.
+
+Fix transactional reload rollback next, then continue in goal order: complete discovery/freshness and
+its consumers, entity navigation and frontend boundaries, then all three Phase 6 streams. Do not close
+or archive the goal from this review.
+
+Runtime checkpoint validation: strict sequential chain passes in 327.3s (one of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T09-57-40Z-95167`; log
+`/private/tmp/apack-pr-review-runtime-chain.log`. The isolated handle probe performs no production-data
+reads/writes. This successful chain does not cover the newly identified transactional rollback defect.

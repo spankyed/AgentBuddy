@@ -7,6 +7,7 @@ import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-lifecycle');
 
@@ -108,10 +109,17 @@ export function activatePack(
   if (boot?.onShutdown) {
     registry.registerShutdownHook(boot.onShutdown, packId);
   }
-  boot?.onInit?.();
-  // The pack is registered by now, so its migrations and content are read from the registry like a boot's
-  runPackMigrations(registry.packMigrationTargets('pack', [packId]));
-  applyPacks(registry.packContentTargets([packId]));
+  try {
+    boot?.onInit?.();
+    // Initialization may write data; cleanup below removes runtime contributions, not those effects.
+    runPackMigrations(registry.packMigrationTargets('pack', [packId]));
+    applyPacks(registry.packContentTargets([packId]));
+  } catch (error) {
+    registry.runShutdownHooksForKey(packId);
+    try { registry.unregisterPack(packId); }
+    catch (cleanupError) { logger.error(`Cleaning up failed activation of ${packId}:`, cleanupError as Error); }
+    return failed(`initialization failed: ${errorMessage(error)}`);
+  }
 
   // The running systems read what the pack registered and applied (the chat's slash commands, say). Sent
   // before its own systems start: they send their startup data when they do

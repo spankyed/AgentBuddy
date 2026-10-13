@@ -42,6 +42,15 @@ describe('registerPack services', () => {
     expect(getRegisteredServices()).not.toHaveProperty(name);
   });
 
+  it.each(['constructor', 'toString'])('only treats an owned service named %s as a collision', name => {
+    register('unrelated-pack', {});
+    register('first-pack', { [name]: 1 });
+    expect(Object.hasOwn(getRegisteredServices(), name)).toBe(true);
+    expect(getRegisteredServices()[name]).toBe(1);
+    expect(() => register('second-pack', { [name]: 2 })).toThrow(`pack "second-pack" vs "first-pack"`);
+    expect(getRegisteredServices()[name]).toBe(1);
+  });
+
   it('registers distinct services', () => {
     register('first-pack', { llm: 1 });
     register('second-pack', { search: 2 });

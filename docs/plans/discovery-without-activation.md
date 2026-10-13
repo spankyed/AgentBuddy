@@ -760,3 +760,31 @@ host's testing entry for fixture admission/binding/removal. Production compositi
 The build compiler is another distinct consumer: `PackConfig.loadDefinitions` already merges and checks
 the build-only facets. Pass those definitions directly through `compilePack`'s existing contract; do not
 register an executable pack in an otherwise unused host registry merely to retrieve them again.
+
+### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
+
+`reload.ts` currently unregisters the old registration before trying the new one, then re-registers
+it on refusal. That is not a resource rollback. `unregisterPack` consumes the incumbent undo log;
+`_createPackServices` revokes its captured settings handles and creates a new binding lifetime.
+Re-registering the same runtime object cannot revive the handles its module or actor already captured.
+A real registry/generated-binding probe confirms this; the old rollback fixture has no settings binding.
+
+The next checkpoint must settle and implement replacement as one admission transaction. Keep the
+incumbent's accepted contributions, origin and binding resources until the candidate can commit.
+Failed candidate admission releases its own provisional resources and leaves incumbent handles and
+actors usable. Successful replacement retires incumbent resources exactly once; ordinary unload still
+revokes every captured handle. Do not introduce a disposal exception, a reusable stale handle, or a
+retain-binding flag threaded through unrelated teardown callers.
+
+Pure declaration/collision preflight is useful but insufficient: contribution installation or settings
+binding can still throw after it. Audit owned stores and global repository registration so releasing an
+old resource cannot remove its replacement. Readers must observe accepted state, not an intermediate
+unregistered pack. Reuse existing admission/ownership mechanisms and distinguish their resource
+transaction from arbitrary pack initialization, migration or applier effects, which cannot be promised
+rolled back. Installed artifact/catalog publication and runtime activation remain distinct transitions.
+
+Required regressions use actual generated settings handles: a refused replacement retains the same
+incumbent handle and settings subscription; a late binding/contribution failure leaves prior definitions
+and origin intact; a successful replacement revokes old handles and exposes new ones; cleanup errors
+are reported without skipping owned-resource retirement. Add an actual reload fixture with a bound
+handle; registration-map equality alone is not its acceptance criterion.

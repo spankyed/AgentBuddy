@@ -20,7 +20,7 @@ Deliver the remaining work in this order:
 
 1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
-2. Complete settings ownership, stored-data migration, typed access, shared/owner mutation policy,
+2. Complete settings ownership, current-format stored data, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
 3. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
@@ -39,7 +39,7 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 |---|---|
 | Naming — complete | Use the completed contracts as the starting baseline; do not repeat their refactors |
 | Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
-| Settings | Host/pack/feature ownership, stored-data migration, schema-backed handles and policy, custom forms and window runtime work on that foundation |
+| Settings | Host/pack/feature ownership, current-format stored data, schema-backed handles and policy, custom forms and window runtime work on that foundation |
 | Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
 | Navigation and boundaries | Catalog destinations drive entity opening; failing panes/forms leave the shell usable |
 | API consumption, provenance, replacement | Independent follow-ups reuse catalog identities and caller binding; replacement distinguishes update ownership, disable and removal |

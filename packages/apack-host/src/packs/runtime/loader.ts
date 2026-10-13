@@ -102,13 +102,6 @@ export function loadSingleExternalPack(
   const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision);
   if ('problem' in registration) return registration;
 
-  // The one thing the app adds to what a pack registered: the entity types its manifest declares, for a
-  // pack whose registration names none. Written onto the pack module's own object, which is safe only
-  // because it is the same value every load — nothing is *taken off* a registration any more
-  if (!registration.ears && (manifest.entities || manifest.relKinds)) {
-    registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
-  }
-
   return {
     registration,
     origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, artifactFiles, dir, shipped: shippedIds.has(manifest.id), manifest },

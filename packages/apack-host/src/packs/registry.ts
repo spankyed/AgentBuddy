@@ -471,7 +471,7 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
   function firstTaken(keys: readonly string[], held: (reg: PackRegistration) => object | undefined): { key: string; holder: string } | undefined {
     for (const [holder, existing] of registrations) {
       const holds = held(existing) ?? {};
-      const key = keys.find((k) => k in holds);
+      const key = keys.find((k) => Object.hasOwn(holds, k));
       if (key) return { key, holder };
     }
     return undefined;

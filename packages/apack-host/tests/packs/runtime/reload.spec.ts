@@ -254,6 +254,22 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     expect(loggedErrors).toEqual([]);
   });
 
+  it('restarts actors after a committed replacement even when its initialization throws', async () => {
+    const dir = writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    const entry = path.join(dir, PACK_LAYOUT.runtimeEntry);
+    fs.writeFileSync(entry, fs.readFileSync(entry, 'utf-8').replace(
+      'module.exports.compiledDirAtInit = module.exports.getCompiledDir();',
+      "throw new Error('initialization failed');",
+    ));
+    sealPack(dir);
+    bus.send.mockClear();
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: SHIPPED_ID });
+    expect(loggedErrors.join('\n')).toContain('initialization failed');
+  });
+
   it('still restarts the systems when the apply after registering throws, and says why', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));

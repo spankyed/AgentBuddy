@@ -72,7 +72,7 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 | `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, commands, shutdown hooks |
 | `installed.ts` | `installed-packs.json` CRUD |
-| `bridge.ts` | `withModuleBridge()` |
+| `module-bridge.ts` | `withModuleBridge()` |
 | `layout.ts` | Pack layout, stage/verify, archives, `packFileHashes`/`stagedFileHashes` |
 | `installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); `installShippedPacks`; uninstall; `checkDependencies` |
 | `staging.ts` | Staging dir names, `recoverStagingDirs`, `prepareHostDataDirs` |
@@ -169,7 +169,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus)` — reads `packs/<id>/apack.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered, with why recorded as its load problem. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads `packs/<id>/apack.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when reading, loading, registration or initialization fails, with why recorded as its load problem. Initialization failure runs shutdown cleanup and unregisters provisional contributions; it does not undo arbitrary data effects. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
 `teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its appliers included, and the cached event validation map and partition policy), clears the pack's require cache, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 
@@ -182,6 +182,8 @@ Update tears down with `replacing`, installs the release the update check found,
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
 3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-apply. A reload can be the first this app has seen of a pack, since `apack pack dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
+Initialization and apply errors after the registration swap are logged; actor restart still runs because the old registration has already left.
+
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`, then asks them to publish
 5. send the bus `PACK_CHANGED`
 

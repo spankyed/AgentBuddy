@@ -309,6 +309,13 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'content'));
   });
 
+  it('refuses omitted EARS bindings instead of filling them from the manifest', () => {
+    makeBundledPack('missing-ears', registration('missing-ears', 'ears: undefined,'));
+    const problems = { recordLoadProblem: vi.fn() };
+    expect(loadExternalPacks(problems)).toEqual([]);
+    expect(problems.recordLoadProblem).toHaveBeenCalledWith('missing-ears', expect.stringContaining('ears.entities'));
+  });
+
   it("registers the runtime's content writers and feature settings with the pack", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
     const { getSettingsCatalog } = await import('@apackdev/sdk/framework');
