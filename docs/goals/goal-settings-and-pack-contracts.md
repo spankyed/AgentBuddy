@@ -2278,3 +2278,31 @@ offers and provenance-only uninstall/toggle decisions, then complete the externa
 acceptance matrix. Every remaining all-kind discovery, navigation, pane-boundary, API consumption,
 dependency provenance and final-audit requirement remains required. The independent API/fixture cleanup
 race is still open. No plans are archived; final strict `--all` on finished committed source remains due.
+
+
+### Live default controls and runtime retirement checkpoint (2026-10-13)
+
+`f5eb580b2` connects source offers to live default-id install guards and explicit replace/restore
+requests. All installed packs have disable/remove controls, with update ownership shown separately.
+Missing defaults can be restored or replaced by explicit id; restoration confirms the selected source
+revision. Removed `canUninstall` and the shipping-based runtime/presentation restrictions. Source
+failures and installed load failures stay visible; the native host remains non-removable.
+
+Real Electron acceptance exposed two API crashes from revoking generated settings authority before
+old actor/subscription cleanup, first during disable and then during active restoration. Bus teardown
+now waits for actor completion; runtime replacement publishes checked candidates and retires incumbent
+bindings through the same stop boundary. Ordinary dev reload follows that coordinator. Enablement
+persistence precedes runtime changes, and failed deletion no longer itself stops the incumbent.
+
+One hundred focused host tests, nine renderer checks and targeted actual Electron acceptance pass;
+three advertisement/id/retirement mutations fail and were restored. Strict validation passes all 30
+gates in 357.0s (one cached), including the real disable/remove/user-replace/app-restore cycle and
+packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T21-28-44Z-84566`;
+`/private/tmp/apack-live-controls-strict-chain-final.log`. Detailed failures, contract corrections and
+limits are in [the replacement plan](../plans/replaceable-shipped-packs.md#actor-and-binding-retirement-correction-2026-10-13).
+
+Next finish app-source update offers, standalone CLI advertised-id/host selection, selected-copy
+provenance cleanup and the full cloned-source edit/build/restart/reload/multiple-window matrix. All
+remaining all-kind discovery, navigation/stale delivery, pane boundaries, API consumption, dependency
+provenance and final-audit requirements remain required. The independent process shutdown cleanup
+race remains unresolved. No plans are archived; final strict `--all` on finished committed source is due.
