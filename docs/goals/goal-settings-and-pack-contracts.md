@@ -1919,3 +1919,28 @@ declarations and frontend static metadata, reference/editor/content indexes, cat
 readers, full source/dependency freshness and all later goal phases remain required. Continue those
 contracts before entity navigation, frontend fault boundaries and the three separate Phase 6 streams;
 only the full requirement audit and final --all run can close/archive this goal.
+
+
+### Installed pack information review checkpoint (2026-10-13)
+
+`6c876c9ba` moves the Packs view to accepted catalog declarations instead of raw manifests and
+runtime contribution inventory. Disabled packs retain metadata; refused replacements retain the last
+accepted metadata. Unreadable new artifacts remain visible with a diagnostic and absent version.
+Frontend availability uses the accepted receipt, not file existence. Refusal diagnostics now belong to
+the immutable catalog publication, so listeners cannot observe an updated catalog with stale diagnostics.
+Diagnostic-only updates preserve the settings projection's identity and revision.
+
+Evidence: 55 focused host checks and six renderer checks pass. Dropping disabled declarations and
+omitting catalog diagnostics each produces a failing regression; restored checks pass. Strict validation
+first found two lint errors, then the existing settings-identity regression; both were corrected without
+weakening checks. The final strict chain passed in 331.2s (one of 30 gates cached), including real
+external-pack app, smoke and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T12-14-27Z-80260`;
+`/private/tmp/apack-catalog-review-strict-chain-final.log`.
+
+This is a Phase 3 consumer checkpoint, not goal completion. Raw installed discovery in the loader and
+offline schema tools, native/all-kind metadata, eligibility, and the three Phase 6 streams remain open.
+Next review target: `loadExternalPacks()` prunes installation records using successfully parsed manifests;
+a malformed installed manifest can therefore lose its recorded disabled choice. Prove this with an
+isolated boot regression while migrating installed inventory to the common admission boundary.
+No plans are archived, and final `--all` acceptance remains outstanding.

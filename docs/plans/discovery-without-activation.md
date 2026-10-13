@@ -263,7 +263,7 @@ current readers. Nested contribution lists matter as much as top-level keys.
 | Editor contributions | DSL declarations, app-extension slot paths and a Tiptap module path | Individually identify editor extensions; expose static DSL assets and slot metadata without module evaluation |
 | Help/content/datasets | Help source path, formats, sources/datasets and writer paths | Publish readable help and compiled-content indexes/assets; separate declared content from rows an applier creates |
 | Services/repositories/events | Provided names, contract source paths and generated type declarations | Publish callable API/event contracts and required dependencies as data/type artifacts; no service construction for inspection |
-| Hooks/migrations | Hook module and migration targets/lines | Declare hook presence and migration descriptions; implementations stay executable references |
+| Hooks/migrations | Explicit hook exports and keyed migration descriptions/up references | Data and binding checks landed in `3ec4f0a77`; installed details consume them in `6c876c9ba`. Complete native coverage with the remaining kinds |
 
 This table is the starting audit, not a second author-maintained manifest. Before implementation, expand
 it against the current types and codegen, including frontend-only contributions and the dependency tree.
@@ -522,11 +522,12 @@ those implement behavior beyond discovery.
 
 ### Pack information: stop using registration as an inventory
 
-`features/packs/be/system.ts::toInstalledPackSummaries()` joins installed manifests with
-`registry.getPackExtensions()`. Disabled or failed packs therefore lose contribution details.
-`registry.ts::featureSummaries()` and the listing part of `getPackExtensions()` duplicate information that
-belongs in the descriptor. Replace these projections and their empty-extension fallback with a catalog
-view joined to host-owned installation records, activation outcomes and applied-content offers.
+Implemented in `6c876c9ba`: `toInstalledPackSummaries()` reads accepted catalog declarations,
+joined to host-owned installation records, activation diagnostics and applied-content offers.
+Disabled packs retain features, provided services, extension keys, migrations and hook presence.
+Frontend availability comes from the accepted asset receipt. Refused replacements retain accepted
+metadata; unreadable installations remain visible with a refusal and no invented version.
+Catalog diagnostics publish atomically before listeners, without replacing unchanged settings definitions.
 
 Separate pack information types from the runtime registry module. Keep declared, eligible and active
 states explicit; frontend and backend outcomes may differ, including between windows. Do not turn the
