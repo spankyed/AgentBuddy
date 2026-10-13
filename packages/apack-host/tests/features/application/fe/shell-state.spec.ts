@@ -46,7 +46,7 @@ it('stays where it is when the plugin last open is not one it has', () => {
 
 // An external pack's frontend loads after the window connects, so its plugin arrives later
 const memos = plugin('memo-pack/memos');
-const loadMemoPack = (target = app) => target.send({ type: 'PACK_FRONTEND_LOADED', packId: 'memo-pack', plugins: [memos] });
+const loadMemoPack = (target = app) => target.send({ type: 'PACK_FRONTEND_LOADED', runtimeRevision: 'runtime', packId: 'memo-pack', plugins: [memos] });
 
 it("opens on the plugin last open once its pack's frontend adds it", () => {
   connect({ lastActivePlugin: 'memo-pack/memos' });

@@ -2,6 +2,7 @@
 // listening is reported as main recorded it, message and stack apart, so the error page can lay them out.
 import { afterEach, expect, it, vi } from 'vitest';
 
+const ready = vi.fn(async () => {});
 const mutate = vi.fn<(message: unknown) => Promise<void>>();
 type Subscription = {
   onStarted(): void;
@@ -12,7 +13,7 @@ const subscribe = vi.fn((_input: unknown, _handlers: Subscription) => ({ unsubsc
 const openHost = vi.fn(async () => 'host-access');
 vi.mock('@/transport', () => ({
   trpc: {
-    bus: { sub: { subscribe }, send: { mutate: (m: unknown) => mutate(m) } },
+    bus: { packClientReady: { mutate: ready }, sub: { subscribe }, send: { mutate: (m: unknown) => mutate(m) } },
     settings: { openHost: { mutate: openHost }, close: { mutate: async () => {} } },
   },
   reconnectApiClient: () => false,
@@ -131,4 +132,10 @@ it('reports an API process that stopped, message and stack apart', async () => {
   stop();
 
   expect(onFailed).toHaveBeenCalledWith({ message: 'Backend process exited unexpectedly (code 1)', stack: 'at api' });
+});
+
+
+it('acknowledges the accepted frontend lifetime rather than its pack name alone', async () => {
+  await feClient.packClientReady('example', 'accepted-runtime');
+  expect(ready).toHaveBeenCalledWith({ packId: 'example', runtimeRevision: 'accepted-runtime' });
 });

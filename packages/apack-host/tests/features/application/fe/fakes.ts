@@ -20,14 +20,14 @@ export function fakeClient() {
   };
   const mocks = {
     send: vi.fn<(message: Message) => void>(),
-    packClientReady: vi.fn<(packId: string) => Promise<void>>(() => Promise.resolve()),
+    packClientReady: vi.fn<(packId: string, runtimeRevision: string) => Promise<void>>(() => Promise.resolve()),
     // A test gives only the fields of a loaded pack the shell reads
     loadedPacks: vi.fn<() => Promise<Array<Partial<LoadedPackEntry> & { id: string }>>>(() => Promise.resolve([])),
     describeConnection: vi.fn<() => Promise<string>>(() => Promise.resolve('')),
   };
   const client: ShellClient = {
     ...mocks,
-    loadedPacks: () => mocks.loadedPacks() as Promise<LoadedPackEntry[]>,
+    loadedPacks: async () => (await mocks.loadedPacks()).map(pack => ({ runtimeRevision: 'runtime', ...pack })) as LoadedPackEntry[],
     subscribe: (next) => {
       connection = next;
       return () => { if (connection === next) connection = undefined; };

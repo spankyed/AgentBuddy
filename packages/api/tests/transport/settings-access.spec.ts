@@ -174,3 +174,22 @@ it('registers connection cleanup once across distinct procedure context objects 
   closed.abort();
   for (const credential of credentials) expect(() => live.access.resolve('shared-socket', credential)).toThrow('unavailable');
 });
+
+
+it('accepts frontend readiness only for the current installed runtime, including identical-origin replacement', async () => {
+  packs.unregisterPack('consumer');
+  const acceptedOrigin = origin();
+  const registration = { id: 'consumer', dependencies: { owner: '*' } };
+  packs.registerPack(registration, acceptedOrigin);
+  const first = packs.getPackRuntime('consumer')!.runtimeRevision;
+  const ready = connection();
+  try {
+    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: first })).resolves.toBeUndefined();
+    packs.replacePack(registration, acceptedOrigin);
+    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: first })).rejects.toThrow('unavailable pack runtime');
+    const current = packs.getPackRuntime('consumer')!.runtimeRevision;
+    expect(current).not.toBe(first);
+    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: current })).resolves.toBeUndefined();
+    await expect(ready.bus.packClientReady({ packId: 'missing', runtimeRevision: current })).rejects.toThrow('unavailable pack runtime');
+  } finally { ready.closed.abort(); }
+});

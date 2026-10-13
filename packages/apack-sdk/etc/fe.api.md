@@ -638,7 +638,7 @@ required: true;
 };
 }>, () => VNode<RendererNode, RendererElement, {
 [key: string]: any;
-}>[] | undefined, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
+}> | null, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
 plugin: {
 type: StringConstructor;
 required: true;

@@ -94,7 +94,7 @@ export const feClient: ShellClient = {
     };
   },
 
-  packClientReady: (packId) => trpc.bus.packClientReady.mutate({ packId }),
+  packClientReady: (packId, runtimeRevision) => trpc.bus.packClientReady.mutate({ packId, runtimeRevision }),
 
   loadedPacks: () => trpc.packs.loaded.query(),
 

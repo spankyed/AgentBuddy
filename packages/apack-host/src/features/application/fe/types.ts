@@ -6,6 +6,7 @@ import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
+import type { ApplicationPluginEvents } from '../events.ts';
 import type { BreadcrumbItem } from './trail.ts';
 
 /** Where the panel sizes the user sets are kept, so the next window opens with them */
@@ -139,14 +140,8 @@ export interface ShellContext {
   packLoadQueued: boolean;
   /** Accepted frontends need fresh backend-bound resources after reconnect. */
   packFrontendsNeedRefresh: boolean;
-  /**
-   * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
-   * nothing — so ordinary activation reads skip it. Reconnect refreshes accepted resources; removal drops it.
-   *
-   * Not the registered packs: one whose frontend is styles alone, exported nothing, or failed to load
-   * registers nothing. Failed candidates are not recorded as accepted.
-   */
-  packFrontendsLoaded: string[];
+  /** Accepted frontend resources by backend lifetime; failed candidates retain the prior revision. */
+  acceptedPackRuntimes: Record<string, string>;
   /**
    * Of those, the packs whose frontend entry loaded — so their systems are waiting for the startup data this
    * window's CLIENT_CONNECTED held back. A pack with no frontend code isn't one: the bus sent its systems that
@@ -160,6 +155,7 @@ export interface ShellContext {
 }
 
 export type ShellEvent =
+  | ApplicationPluginEvents
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
   | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: string; call?: string } & RequestSender)
@@ -202,5 +198,5 @@ export type ShellEvent =
    * A pack's frontend was accepted, with its plugins, or null for a pack without frontend code.
    * Refused candidates do not emit this event.
    */
-  | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] | null }
+  | { type: 'PACK_FRONTEND_LOADED'; packId: string; runtimeRevision: string; plugins: Plugin[] | null }
   | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };

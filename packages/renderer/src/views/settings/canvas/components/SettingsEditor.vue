@@ -10,9 +10,9 @@
     <p v-if="description" class="mb-6 text-sm text-neutral-400">{{ description }}</p>
     <template v-if="form">
       <PluginScope v-if="plugin" :plugin="plugin">
-        <component :is="form" :settings="value" @update-setting="update" />
+        <component :is="form" :key="formRevision" :settings="value" @update-setting="update" />
       </PluginScope>
-      <component v-else :is="form" :settings="value" @update-setting="update" />
+      <component v-else :is="form" :key="formRevision" :settings="value" @update-setting="update" />
     </template>
     <div v-else class="text-sm text-neutral-400">
       <p>A custom form is unavailable for these preferences.</p>
@@ -30,10 +30,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type Component } from 'vue';
+import { onScopeDispose, ref, type Component } from 'vue';
 import { PluginScope, usePlugin } from '@apackdev/sdk/fe';
 import type { SettingUpdate, SettingsTarget } from '@apackdev/sdk/types';
-import type { FeatureRef } from '@apackdev/sdk/ids';
+import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
+import { fePacks } from '@/runtime/packs';
 import type { SettingsState } from '@apackdev/host/fe';
 import { RotateCcw } from 'lucide-vue-next';
 import ConfirmationDialog from '@apackdev/ui/design/ConfirmationDialog';
@@ -44,6 +45,12 @@ const props = defineProps<{
   form?: Component; value: unknown; plugin?: FeatureRef;
 }>();
 const actor: SettingsState = usePlugin();
+const formRevision = ref(0);
+onScopeDispose(fePacks.onSettingsFormsChanged(packId => {
+  const target = props.target;
+  const owner = target.kind === 'pack' ? target.packId : target.kind === 'feature' ? splitRef(target.featureRef)?.packId : undefined;
+  if (owner === packId) formRevision.value++;
+}));
 const confirmReset = ref(false);
 const { saveStatus, problems, updateSettings, resetSettings } = useSettingsSaveStatus();
 const update = (event: SettingUpdate) => updateSettings({

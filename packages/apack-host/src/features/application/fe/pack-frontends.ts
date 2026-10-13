@@ -13,11 +13,11 @@ function messageOf(err: unknown): string {
 }
 
 /**
- * Ordinary activation reads skip accepted owners. Reconnect refreshes them through the transactional loader.
+ * Ordinary reads skip matching accepted lifetimes; changed revisions and reconnect refresh their resources.
  * Only a successful authoritative list can remove an owner; failed reads and candidates preserve incumbents.
  */
 export function packFrontendLoader(client: ShellClient, packFrontends: ShellPackFrontends) {
-  return fromCallback<ShellEvent, { loadedPackIds: string[]; refresh: boolean }>(({ sendBack, input }) => {
+  return fromCallback<ShellEvent, { acceptedPackRuntimes: Record<string, string>; refresh: boolean }>(({ sendBack, input }) => {
     let stopped = false;
     const controller = new AbortController();
     const failedPacks: { packId: string; error: string }[] = [];
@@ -25,17 +25,17 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
     client.loadedPacks().then(async (loadedPacks) => {
       if (stopped) return;
       const present = new Set(loadedPacks.map(pack => pack.id));
-      for (const packId of input.loadedPackIds) {
+      for (const packId of Object.keys(input.acceptedPackRuntimes)) {
         if (!present.has(packId)) sendBack({ type: 'PACK_PLUGINS_UNLOADED', packId });
       }
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (!input.refresh && input.loadedPackIds.includes(pack.id)) continue;
+        if (!input.refresh && input.acceptedPackRuntimes[pack.id] === pack.runtimeRevision) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
           const plugins = await packFrontends.load(pack, controller.signal);
           if (stopped) return;
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins });
+          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, runtimeRevision: pack.runtimeRevision, plugins });
         } catch (err: unknown) {
           if (stopped) return;
           failedPacks.push({ packId: pack.id, error: messageOf(err) });
@@ -55,8 +55,8 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
  * with frontend code, the ones the app ships included, since that frontend loads after it; each is asked for once
  * its load finished, whether it added plugins or not, so its systems without plugins get it too.
  */
-export function announcePackClientReady(client: ShellClient, packId: string): void {
-  client.packClientReady(packId).catch((err: unknown) => {
+export function announcePackClientReady(client: ShellClient, packId: string, runtimeRevision: string): void {
+  client.packClientReady(packId, runtimeRevision).catch((err: unknown) => {
     console.warn(`[shell] Couldn't request startup data for pack ${packId}:`, err);
   });
 }

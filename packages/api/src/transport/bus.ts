@@ -89,8 +89,11 @@ export const systemBusRouter = router({
    * is the right reach for it: the data is for every window showing the plugin, not for whoever connected.
    */
   packClientReady: procedure
-    .input(z.object({ packId: z.string().min(1) }))
+    .input(z.object({ packId: z.string().min(1), runtimeRevision: z.string().min(1) }).strict())
     .mutation(({ input }) => {
+      if (appPacks.getPackRuntime(input.packId)?.runtimeRevision !== input.runtimeRevision) {
+        throw new TRPCError({ code: 'CONFLICT', message: 'The frontend belongs to an unavailable pack runtime.' });
+      }
       logger.info(`→ Pack client ready: "${input.packId}"`, { packId: input.packId });
       rootEvents.emitPackClientConnected(input.packId);
     }),

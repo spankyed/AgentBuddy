@@ -216,7 +216,8 @@
     "vite": "^7.0.0",
     "vitest": "^3.2.4",
     "xstate": "^5.19.2",
-    "zod-to-json-schema": "^3.25.0"
+    "zod-to-json-schema": "^3.25.0",
+    "jsdom": "^26.1.0"
   },
   "publishConfig": {
     "access": "public",

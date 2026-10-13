@@ -6,6 +6,7 @@ import { createActor, type EventFromLogic } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
 import { resetTestData, testRootEvents } from '@apackdev/sdk/testing';
 import '../../packs/runtime/test-host.ts';
+import { registry } from '../../packs/runtime/test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { createApplicationSystem } from '../../../src/features/application/be/system.ts';
 
@@ -14,6 +15,8 @@ const withDefaults = (visibility: Record<string, boolean>, pluginIds: string[] =
   pluginDefaults: () => visibility,
   pluginIds: () => pluginIds,
   shippedPacks: () => [],
+  loadedPacks: () => [],
+  getPackRuntime: () => null,
 });
 
 let stop: (() => void) | undefined;
@@ -77,4 +80,39 @@ describe('the host application system', () => {
 
     expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', call: expect.any(String), event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
   });
+});
+
+
+it('publishes accepted runtime lifetimes through ordinary state requests without persisting them', () => {
+  const sent: Message[] = [];
+  const stopListening = testRootEvents.onPluginSend(message => { sent.push(message); });
+  const actor = createActor(createApplicationSystem(registry)).start();
+  const id = 'runtime-publication';
+  const origin = { id, declarationRevision: 'fixture', name: 'Runtime publication', version: '1.0.0', dir: '/fixture/runtime-publication', shipped: false };
+  try {
+    registry.registerPack({ id }, origin);
+    const before = structuredClone(appState.get());
+    actor.send({ type: 'SEND_STATE' });
+    expect(sent.find(message => message.event.type === 'PACK_RUNTIMES_UPDATED')?.event).toEqual({
+      type: 'PACK_RUNTIMES_UPDATED', runtimes: { [id]: registry.getPackRuntime(id)!.runtimeRevision },
+    });
+    const first = registry.getPackRuntime(id)!.runtimeRevision;
+    registry.replacePack({ id }, origin);
+    sent.length = 0;
+    actor.send({ type: 'SEND_STATE' });
+    const current = registry.getPackRuntime(id)!.runtimeRevision;
+    expect(current).not.toBe(first);
+    expect(sent.find(message => message.event.type === 'PACK_RUNTIMES_UPDATED')?.event).toEqual({
+      type: 'PACK_RUNTIMES_UPDATED', runtimes: { [id]: current },
+    });
+    registry.unregisterPack(id);
+    sent.length = 0;
+    actor.send({ type: 'SEND_STATE' });
+    expect(sent.find(message => message.event.type === 'PACK_RUNTIMES_UPDATED')?.event).toEqual({ type: 'PACK_RUNTIMES_UPDATED', runtimes: {} });
+    expect(appState.get()).toEqual(before);
+  } finally {
+    if (registry.getPackRegistration(id)) registry.unregisterPack(id);
+    actor.stop();
+    stopListening();
+  }
 });

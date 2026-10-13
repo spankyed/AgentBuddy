@@ -340,3 +340,36 @@ describe('pack lifecycle before a client connects', () => {
     expect(received).toEqual(['first-pack']);
   });
 });
+
+
+it('waits for frontend readiness before requesting state from a reloaded frontend-bearing pack', async () => {
+  const publishing = (label: string) => ({ id: 'first-pack', features: { feature: { system: {
+    machine: setup({}).createMachine({ on: {
+      CLIENT_CONNECTED: { actions: () => received.push(`${label}: connected`) },
+      SEND_STATE: { actions: () => received.push(`${label}: state`) },
+      PACK_CHANGED: { actions: () => received.push(`${label}: changed`) },
+    } }), receives: ['CLIENT_CONNECTED'],
+  } } } });
+  unregisterPack('first-pack');
+  const origin = loaded('first-pack', withFrontend);
+  registerPack(publishing('initial'), origin);
+  bus.stop();
+  bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
+  rootEvents.emitConnected();
+  await flush();
+  expect(received).toEqual([]);
+  rootEvents.emitPackClientConnected('first-pack');
+  await flush();
+  expect(received).toEqual(['initial: connected', 'initial: state']);
+  received.length = 0;
+  unregisterPack('first-pack');
+  registerPack(publishing('replacement'), origin);
+  bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack/feature'] });
+  bus.send({ type: 'PACK_CHANGED', packId: 'first-pack' });
+  bus.send({ type: 'DATA_REPLACED' });
+  await flush();
+  expect(received).toEqual(['replacement: changed']);
+  rootEvents.emitPackClientConnected('first-pack');
+  await flush();
+  expect(received).toEqual(['replacement: changed', 'replacement: connected', 'replacement: state']);
+});

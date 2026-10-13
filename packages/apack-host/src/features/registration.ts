@@ -4,6 +4,7 @@
 import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 import type { PackFeatureSystem, PackRegistration } from '@apackdev/sdk/framework';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
+import { APPLICATION_PLUGIN_EVENT_TYPES } from './application/events.ts';
 import { hostFeatureIds } from './declaration.ts';
 import type { InstalledPackSummary } from '../packs/registry.ts';
 import { helpSystem, helpEvents } from './help/be/system.ts';
@@ -47,7 +48,7 @@ export function hostRegistration(systems: { application?: PackFeatureSystem; pac
   return {
     id: HOST_PACK_ID,
     features: {
-      [hostFeatureIds.application]: { ...(systems.application && { system: systems.application }), plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] } },
+      [hostFeatureIds.application]: { ...(systems.application && { system: systems.application }), plugin: { receives: [...HOST_PLUGIN_EVENT_TYPES['host/application'], ...APPLICATION_PLUGIN_EVENT_TYPES] } },
       [hostFeatureIds.help]: { system: { machine: helpSystem, receives: [...helpEvents] } },
       [hostFeatureIds.packs]: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
       // The app's settings: the store's system, and the Settings view the renderer draws. It takes what its own

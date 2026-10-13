@@ -34,10 +34,18 @@ export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('S
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
  * application plugin the visibility again when a choice or a pack's defaults change, so every window agrees.
  */
-export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefaults'>) {
+export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefaults' | 'loadedPacks' | 'getPackRuntime'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
     actions: handlers.actions({
+      sendRuntimes: () => {
+        const runtimes = Object.fromEntries(registry.loadedPacks().map(({ id }) => {
+          const runtime = registry.getPackRuntime(id);
+          if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
+          return [id, runtime.runtimeRevision];
+        }));
+        broadcastToPlugin('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
+      },
       sendVisibility: () => {
         broadcastToPlugin('application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
@@ -58,7 +66,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefa
         actions: ({ event }) => appState.update({ lastActivePlugin: event.plugin }),
       },
       // A pack coming or going brings or takes its features' defaults
-      SEND_STATE: { actions: 'sendVisibility' },
+      SEND_STATE: { actions: ['sendVisibility', 'sendRuntimes'] },
     },
   });
 }

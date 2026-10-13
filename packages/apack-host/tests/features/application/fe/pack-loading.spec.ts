@@ -58,7 +58,7 @@ describe('loading pack frontends from the loaded packs', () => {
     expect(loadPackFrontend).toHaveBeenCalledTimes(1);
     expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('ext/own');
     expect(app.system.get('ext/own')).toBeDefined();
-    expect(packClientReady).toHaveBeenCalledWith('ext');
+    expect(packClientReady).toHaveBeenCalledWith('ext', 'runtime');
   });
 
   // Every pack's frontend is loaded the same way, the one the app ships included: nothing here reads which
@@ -120,9 +120,9 @@ describe('loading pack frontends from the loaded packs', () => {
     releaseLoad([plugin('ext/own')]);
     await settle();
 
-    const { plugins, packFrontendsLoaded } = app.getSnapshot().context;
+    const { plugins, acceptedPackRuntimes } = app.getSnapshot().context;
     expect(plugins.map(p => p.id)).toEqual(['notes']);
-    expect(packFrontendsLoaded).toEqual([]);
+    expect(acceptedPackRuntimes).toEqual({});
     expect(app.system.get('ext/own')).toBeUndefined();
     expect(packClientReady).not.toHaveBeenCalled();
     // What the dropped load registered is undone
@@ -150,7 +150,7 @@ describe('loading pack frontends from the loaded packs', () => {
 
     expect(app.getSnapshot().context.packsWithFrontend).toEqual(['good']);
     expect(app.system.get('good-plugin')).toBeDefined();
-    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['good']);
+    expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ 'good': 'runtime' });
     expect(packClientReady).not.toHaveBeenCalledWith('bad');
     // The failure names the pack, not the read, which succeeded
     expect(toastError).toHaveBeenCalledWith("Couldn't load bad", 'styles blew up');
@@ -164,13 +164,13 @@ describe('loading pack frontends from the loaded packs', () => {
     loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
     connect();
     await settle();
-    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual([]);
+    expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({});
     expect(packClientReady).not.toHaveBeenCalled();
     app.send({ type: 'LOAD_PACK_FRONTENDS' });
     await settle();
     expect(loadPackFrontend).toHaveBeenCalledTimes(2);
-    expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
-    expect(packClientReady).toHaveBeenCalledWith('ext');
+    expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ 'ext': 'runtime' });
+    expect(packClientReady).toHaveBeenCalledWith('ext', 'runtime');
   });
 
   it('tells the user about a failed read only while no read has succeeded', async () => {
@@ -202,8 +202,8 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    const { packFrontendsLoaded, packsWithFrontend } = app.getSnapshot().context;
-    expect(packFrontendsLoaded).toEqual(['styles-only']);
+    const { acceptedPackRuntimes, packsWithFrontend } = app.getSnapshot().context;
+    expect(acceptedPackRuntimes).toEqual({ 'styles-only': 'runtime' });
     // It has no systems waiting on a frontend, so it's neither merged nor announced
     expect(packsWithFrontend).toEqual([]);
     expect(packClientReady).not.toHaveBeenCalled();
@@ -229,14 +229,14 @@ it('discards a late result from the lost connection before accepting a fresh reg
   connect();
   await settle();
   expect(loadPackFrontend).toHaveBeenCalledTimes(2);
-  expect(packClientReady.mock.calls).toEqual([['ext']]);
+  expect(packClientReady.mock.calls).toEqual([['ext', 'runtime']]);
   release([plugin('ext/stale')]);
   await settle();
   expect(unloadPackFrontend).not.toHaveBeenCalled();
   expect(loadPackFrontend).toHaveBeenCalledTimes(2);
   expect(app.system.get('ext/stale')).toBeUndefined();
   expect(app.system.get('ext/new')).toBeDefined();
-  expect(packClientReady.mock.calls).toEqual([['ext']]);
+  expect(packClientReady.mock.calls).toEqual([['ext', 'runtime']]);
 
 });
 
@@ -290,7 +290,7 @@ it('keeps the accepted frontend and selection when a reconnect read fails', asyn
   await settle();
   expect(app.system.get('ext/own')).toBe(previous);
   expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
-  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ 'ext': 'runtime' });
   expect(unloadPackFrontend).not.toHaveBeenCalled();
 });
 
@@ -334,7 +334,7 @@ it('removes an absent owner only after an authoritative reconnect read', async (
   expect(previous?.getSnapshot().status).toBe('stopped');
   expect(app.system.get('ext/own')).toBeUndefined();
   expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
-  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual([]);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({});
 });
 
 it('reconciles removed plugins when an accepted replacement has no frontend', async () => {
@@ -354,7 +354,7 @@ it('reconciles removed plugins when an accepted replacement has no frontend', as
   expect(app.getSnapshot().context.plugins.map(plugin => plugin.id)).toEqual(['notes']);
   expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
   expect(app.getSnapshot().context.packsWithFrontend).toEqual([]);
-  expect(app.getSnapshot().context.packFrontendsLoaded).toEqual(['ext']);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ 'ext': 'runtime' });
   expect(packClientReady).not.toHaveBeenCalled();
   expect(unloadPackFrontend).not.toHaveBeenCalled();
 });
@@ -380,4 +380,84 @@ it('publishes new plugin definitions without duplicate actors or changing tab or
   expect(app.getSnapshot().context.plugins.map(plugin => plugin.id)).toEqual(order);
   expect(app.getSnapshot().context.pluginVisibility).toEqual({ 'ext/own': false });
   expect(unloadPackFrontend).not.toHaveBeenCalled();
+});
+
+
+it('refreshes only changed runtimes and leaves unrelated actors and selection intact', async () => {
+  const entries = [{ id: 'ext', runtimeRevision: 'first' }, { id: 'other', runtimeRevision: 'unchanged' }];
+  loadedPacksQuery.mockResolvedValue(entries);
+  loadPackFrontend.mockImplementation(pack => Promise.resolve([plugin(`${pack.id}/own`)]));
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'other/own' });
+  const other = app.system.get('other/own');
+  const previous = app.system.get('ext/own');
+  loadPackFrontend.mockClear();
+  packClientReady.mockClear();
+  loadedPacksQuery.mockResolvedValue([{ ...entries[0], runtimeRevision: 'second' }, entries[1]]);
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second', other: 'unchanged' } } });
+  await settle();
+  expect(loadPackFrontend.mock.calls.map(([pack]) => pack.id)).toEqual(['ext']);
+  expect(app.system.get('other/own')).toBe(other);
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.system.get('ext/own')).not.toBe(previous);
+  expect(app.getSnapshot().context.activePlugin.id).toBe('other/own');
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'second', other: 'unchanged' });
+  expect(packClientReady.mock.calls).toEqual([['ext', 'second']]);
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
+});
+
+it('keeps the accepted epoch on refusal and retries a changed runtime on the next request', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'first' }]);
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  const previous = app.system.get('ext/own');
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'second' }]);
+  loadPackFrontend.mockRejectedValueOnce(new Error('candidate refused'));
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
+  await settle();
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'first' });
+  app.send({ type: 'LOAD_PACK_FRONTENDS' });
+  await settle();
+  expect(loadPackFrontend).toHaveBeenCalledTimes(3);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'second' });
+  expect(packClientReady.mock.calls).toEqual([['ext', 'first'], ['ext', 'second']]);
+});
+
+it('uses runtime publication as a reconciliation hint and ignores unchanged revisions', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'current' }]);
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  const previous = app.system.get('ext/own');
+  loadedPacksQuery.mockClear();
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'current' } } });
+  await settle();
+  expect(loadedPacksQuery).not.toHaveBeenCalled();
+  // An older publication omitting this owner cannot remove it; the authoritative read still lists it.
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: {} } });
+  await settle();
+  expect(loadedPacksQuery).toHaveBeenCalledOnce();
+  expect(app.system.get('ext/own')).toBe(previous);
+  expect(loadPackFrontend).toHaveBeenCalledOnce();
+  expect(unloadPackFrontend).not.toHaveBeenCalled();
+});
+
+it('queues a newer runtime received during preparation and accepts the latest revision afterward', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'first' }]);
+  let release!: (plugins: Plugin[]) => void;
+  loadPackFrontend.mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'second' }]);
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
+  expect(app.getSnapshot().context.packLoadQueued).toBe(true);
+  release([plugin('ext/own')]);
+  await settle();
+  expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'second' });
+  expect(packClientReady.mock.calls).toEqual([['ext', 'first'], ['ext', 'second']]);
 });

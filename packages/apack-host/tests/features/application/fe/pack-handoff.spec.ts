@@ -6,7 +6,7 @@ import { fakeSettings } from '@apackdev/sdk/testing';
 import { createFePackRegistry, createPackFrontends, createShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin, settle } from './fakes.ts';
 
-it('reconnects the real shell, loader and generated settings to a cached frontend module', async () => {
+it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loader and generated settings to a cached module after %s', async mode => {
   const packs = createFePackRegistry();
   const { id: _hostId, ...hostPlugin } = plugin('host/notes');
   packs.registerPackFE({ id: 'host', features: { notes: { plugin: hostPlugin } } });
@@ -24,9 +24,10 @@ it('reconnects the real shell, loader and generated settings to a cached fronten
     settingsForPack: async () => { const index = attempt++; return { port: sources[index], dispose: disposed[index] }; },
   }, packs);
   const shell = fakeShell({ plugins: packs.getRegisteredPlugins() });
-  shell.client.loadedPacks.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js', artifactRevision: 'a'.repeat(64),
+  const entry = { runtimeRevision: 'first', id: 'ext', feEntry: 'runtime/fe.js', artifactRevision: 'a'.repeat(64),
     declarationRevision: 'current', manifest: { id: 'ext', name: 'Example', version: '1.0.0',
-      features: { own: { plugin: { entry: 'src/plugin.ts' } } } } }]);
+      features: { own: { plugin: { entry: 'src/plugin.ts' } } } } };
+  shell.client.loadedPacks.mockResolvedValue([entry]);
   const app = createActor(createShellMachine({ ...shell.options, packs, packFrontends: frontends }), {
     systemId: 'host/application', input: { ownsLastActivePlugin: false },
   }).start();
@@ -39,10 +40,17 @@ it('reconnects the real shell, loader and generated settings to a cached fronten
     const actor = app.system.get('ext/own');
     expect(actor).toBeDefined();
     const old = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
-    shell.client.dropConnection();
-    expect(app.system.get('ext/own')).toBe(actor);
-    shell.client.connect();
+    shell.client.loadedPacks.mockResolvedValue([{ ...entry, runtimeRevision: 'second' }]);
+    if (mode === 'reconnect') {
+      shell.client.dropConnection();
+      expect(app.system.get('ext/own')).toBe(actor);
+      shell.client.connect();
+    } else {
+      shell.client.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
+      expect(app.system.get('ext/own')).toBe(actor);
+    }
     await settle();
+    expect(shell.client.packClientReady.mock.calls).toEqual([['ext', 'first'], ['ext', 'second']]);
     expect(imported).toHaveBeenCalledTimes(2);
     expect(imported.mock.calls[0]).toEqual(imported.mock.calls[1]);
     expect(shell.notify.error).not.toHaveBeenCalled();

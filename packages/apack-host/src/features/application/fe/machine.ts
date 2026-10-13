@@ -118,7 +118,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 
       mergePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
-        const { packId, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
+        const { packId, runtimeRevision, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
 
         // The pack was unloaded while its frontend was loading: keep its plugins out, since nothing would ever take
         // them out again, and undo what the load registered
@@ -128,9 +128,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           return;
         }
 
-        const packFrontendsLoaded = context.packFrontendsLoaded.includes(packId)
-          ? context.packFrontendsLoaded
-          : [...context.packFrontendsLoaded, packId];
+        const acceptedPackRuntimes = { ...context.acceptedPackRuntimes, [packId]: runtimeRevision };
 
         // Only an accepted load reaches this action. Replace this owner's actors and view together;
         // failed candidates never retire the incumbent or disturb its selection.
@@ -152,7 +150,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const packsWithFrontend = packPlugins === null
           ? context.packsWithFrontend.filter(id => id !== packId)
           : context.packsWithFrontend.includes(packId) ? context.packsWithFrontend : [...context.packsWithFrontend, packId];
-        enqueue.assign({ plugins, packFrontendsLoaded, packsWithFrontend, defaultPlugin,
+        enqueue.assign({ plugins, acceptedPackRuntimes, packsWithFrontend, defaultPlugin,
           ...(activePlugin ? { activePlugin } : {}) });
         if (newPlugins.length > 0) {
           // Visibility is the host's (AppState, sent on each connection); unset shows the plugin
@@ -195,14 +193,14 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
             if (actor) notifyPluginActor(actor, activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
           });
         }
-        if (packPlugins !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId));
+        if (packPlugins !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId, runtimeRevision));
       }),
 
       // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after
       // it, whatever the frontend turned out to add — a pack that exported no plugin has systems waiting too
       announceLoadedPacks: ({ context }) => {
         if (!context.packFrontendsNeedRefresh) {
-          for (const packId of context.packsWithFrontend) announcePackClientReady(client, packId);
+          for (const packId of context.packsWithFrontend) announcePackClientReady(client, packId, context.acceptedPackRuntimes[packId]!);
         }
       },
 
@@ -214,7 +212,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           return;
         }
         enqueue.assign({ packLoadRunning: true, packLoadQueued: false });
-        enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded, refresh: context.packFrontendsNeedRefresh } });
+        enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { acceptedPackRuntimes: context.acceptedPackRuntimes, refresh: context.packFrontendsNeedRefresh } });
       }),
 
       /** The loader finished: run it again when a load was asked for meanwhile, and report what failed */
@@ -230,7 +228,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (context.packLoadQueued) {
           enqueue.assign({ packLoadQueued: false });
           // The packs this run loaded are in context already: the loader sends its results before settling
-          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded, refresh } });
+          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { acceptedPackRuntimes: context.acceptedPackRuntimes, refresh } });
         } else {
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
@@ -290,9 +288,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (context.packsWithFrontend.includes(packId)) {
           enqueue.assign({ packsWithFrontend: context.packsWithFrontend.filter(id => id !== packId) });
         }
-        if (context.packFrontendsLoaded.includes(packId)) {
-          enqueue.assign({ packFrontendsLoaded: context.packFrontendsLoaded.filter(id => id !== packId) });
-        }
+        enqueue.assign({ acceptedPackRuntimes: Object.fromEntries(Object.entries(context.acceptedPackRuntimes).filter(([id]) => id !== packId)) });
         if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
           // It's being loaded right now: its result is dropped instead of adding plugins nothing removes
           enqueue.assign({ packsUnloadedWhileLoading: [...context.packsUnloadedWhileLoading, packId] });
@@ -554,7 +550,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         packLoadRunning: false,
         packLoadQueued: false,
         packFrontendsNeedRefresh: false,
-        packFrontendsLoaded: [],
+        acceptedPackRuntimes: {},
         packsWithFrontend: [],
         packsUnloadedWhileLoading: [],
         loadedPacksRead: false,
@@ -647,6 +643,16 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       LOAD_PACK_FRONTENDS: { actions: 'loadPackFrontends' },
       PACK_FRONTENDS_SETTLED: { actions: 'finishPackFrontendLoad' },
       PACK_FRONTEND_LOADED: { actions: 'mergePackPlugins' },
+      PACK_RUNTIMES_UPDATED: {
+        actions: enqueueActions(({ context, event, enqueue }) => {
+          const { runtimes } = typeOf('PACK_RUNTIMES_UPDATED', event);
+          const accepted = context.acceptedPackRuntimes;
+          if (Object.keys(accepted).length !== Object.keys(runtimes).length
+            || Object.entries(runtimes).some(([id, revision]) => accepted[id] !== revision)) {
+            enqueue.raise({ type: 'LOAD_PACK_FRONTENDS' });
+          }
+        }),
+      },
       PACK_PLUGINS_UNLOADED: { actions: 'removePackPlugins' },
       PLUGIN_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
       SET_PLUGIN_VISIBILITY: { actions: 'setPluginVisibility' },

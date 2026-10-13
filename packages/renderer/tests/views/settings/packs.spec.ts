@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, ref, shallowRef, type App } from 'vue';
+import { createApp, defineComponent, h, nextTick, onUnmounted, ref, shallowRef, type App } from 'vue';
 import type { SettingsSnapshot } from '@apackdev/sdk/types';
 
 const { update, reset, send } = vi.hoisted(() => ({ update: vi.fn(), reset: vi.fn(), send: vi.fn() }));
@@ -12,6 +12,8 @@ vi.mock('@/views/settings/save', () => ({ useSettingsSaveStatus: () => ({
 }) }));
 vi.mock('@/runtime/settings', () => ({ useWindowSettingsSnapshot: () => snapshot }));
 import { fePacks } from '@/runtime/packs';
+import { _createFeSettings } from '@apackdev/sdk/fe';
+import { fakeSettings } from '@apackdev/sdk/testing';
 import PacksTab from '@/views/settings/canvas/tabs/PacksTab.vue';
 
 const definition = { title: 'Preferences', schema: { type: 'object' }, defaults: { name: 'Default' } };
@@ -70,4 +72,37 @@ it('uses the selected qualified owner even when a form emits a different target'
     target: { kind: 'pack', packId: 'second', groupId: 'preferences' },
     path: ['name'], value: 'Edited', condition: undefined,
   });
+});
+
+
+it('remounts a cached custom form for its binding lifetime and preserves it on unrelated publication', async () => {
+  const generated = _createFeSettings();
+  const target = { kind: 'pack', packId: 'first', groupId: 'preferences' } as const;
+  const mounted = vi.fn();
+  const disposed = vi.fn();
+  const CachedForm = defineComponent({ setup() {
+    mounted();
+    const handle = generated.useSettings<{ name: string }>(target);
+    onUnmounted(disposed);
+    return () => h('button', { 'data-cached-form': '', onClick: () => handle.set({ path: ['name'], value: 'Saved' }) }, handle.value.value?.name);
+  } });
+  const first = fakeSettings({ packs: { first: { preferences: { name: 'Original binding' } } } });
+  const second = fakeSettings({ packs: { first: { preferences: { name: 'New binding' } } } });
+  const registration = { id: 'first', settingsForms: { preferences: CachedForm }, bindSettings: generated.bindSettings };
+  fePacks.registerPackFE(registration, { port: first, dispose() {} });
+  const element = render();
+  expect(element.textContent).toContain('Original binding');
+  fePacks.registerPackFE({ id: 'second', settingsForms: { preferences: form } });
+  await nextTick();
+  expect(mounted).toHaveBeenCalledOnce();
+  expect(disposed).not.toHaveBeenCalled();
+  fePacks.replacePackFE(registration, { port: second, dispose() {} });
+  await nextTick();
+  expect(element.textContent).toContain('New binding');
+  expect(mounted).toHaveBeenCalledTimes(2);
+  expect(disposed).toHaveBeenCalledOnce();
+  element.querySelector<HTMLButtonElement>('[data-cached-form]')!.click();
+  await nextTick();
+  expect(second.get(target)).toEqual({ name: 'Saved' });
+  expect(first.updates).toEqual([]);
 });

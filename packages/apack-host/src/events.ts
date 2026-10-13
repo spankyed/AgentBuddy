@@ -13,6 +13,7 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import type { Contract as PacksContract } from './features/packs/be/contract.ts';
 import type { Contract as SettingsContract } from './features/settings/be/contract.ts';
 import type { SettingsPluginEvents } from './features/settings/be/system.ts';
+import type { ApplicationPluginEvents } from './features/application/events.ts';
 import type { OutgoingPacksEvents } from './features/registration.ts';
 
 /**
@@ -21,7 +22,7 @@ import type { OutgoingPacksEvents } from './features/registration.ts';
  * pack may send. The Packs view takes only the latter.
  */
 type HostPlugins = WithOwnNames<typeof HOST_PACK_ID, {
-  'host/application': HostPluginEvents['host/application'];
+  'host/application': HostPluginEvents['host/application'] | ApplicationPluginEvents;
   'host/packs': OutgoingPacksEvents;
   'host/settings': HelpOutgoing | SettingsPluginEvents | HostPluginEvents['host/settings'];
 }>;

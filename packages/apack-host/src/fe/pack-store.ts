@@ -40,7 +40,7 @@ export interface FePackRegistry extends FePackRegistryView {
   /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
   settingsForm(target: SettingsTarget): SettingsForm | undefined;
   /** The accepted forms change only after a registration or removal commits. */
-  onSettingsFormsChanged(listener: () => void): () => void;
+  onSettingsFormsChanged(listener: (packId: string) => void): () => void;
 }
 
 /**
@@ -144,7 +144,7 @@ export function createFePackRegistry(): FePackRegistry {
   let accepted = new Map<string, FrontendContributions>();
   let tables = buildTables(accepted.values());
   const bindings = new Map<string, ReturnType<typeof createFrontendSettingsBinding>>();
-  const formListeners = new Set<() => void>();
+  const formListeners = new Set<(packId: string) => void>();
   let revision = 0;
   let changing = false;
   function mutate<T>(operation: () => T): T {
@@ -152,9 +152,9 @@ export function createFePackRegistry(): FePackRegistry {
     changing = true;
     try { return operation(); } finally { changing = false; }
   }
-  function publishForms() {
+  function publishForms(packId: string) {
     for (const listener of formListeners) {
-      try { listener(); }
+      try { listener(packId); }
       catch (error) { logger.error('Settings form listener failed', error instanceof Error ? error : new Error(String(error))); }
     }
   }
@@ -188,7 +188,7 @@ export function createFePackRegistry(): FePackRegistry {
           state = 'committed';
           revision++;
           retire(previous);
-          publishForms();
+          publishForms(id);
           return plugins;
         }); } catch (error) { dispose(); throw error; }
       },
