@@ -1019,3 +1019,46 @@ Continue accepted-runtime state publication and per-owner live frontend refresh,
 update publication. Native/all-kind metadata, remaining static consumers, complete source/dependency
 freshness, navigation, boundaries and all three Phase 6 streams remain required. This checkpoint closes
 one demonstrated source-contract defect; full `--all` acceptance and archival remain outstanding.
+
+
+### Live frontend refresh, readiness and mounted lifetimes (2026-10-13)
+
+`ed8904dd1` publishes accepted runtime revisions through the application system's normal `SEND_STATE`
+path, using a private host event and checked host inbox. The shell retains accepted revisions instead of
+an ID-only loaded list. Publication is a reconciliation hint: the loader reads authoritative entries,
+refreshes changed owners, skips matching lifetimes, and removes absent owners only after a successful
+read. Failure preserves the prior accepted revision/resources; later requests retry the changed owner.
+Revisions received during preparation queue another read. Unchanged owners retain actors and selection.
+
+Frontend readiness now names the accepted runtime revision. The API refuses stale/unavailable owners,
+including identical-origin replacements. The bus records awaiting frontend owners per actor instance:
+reload/activation wait, readiness releases them, and removal clears them. Both `CLIENT_CONNECTED` and
+`SEND_STATE` requests wait; `PACK_CHANGED` and `DATA_REPLACED` facts still reach their systems. Review
+explicitly caught the latter state-publication path after the initial recorder checked only connection.
+
+The real dev-reload check exposed a mounted-lifetime bug: Vue reused a cached canvas whose setup had
+captured the stopped actor. `PluginScope` now follows shell actor changes and keys its subtree by actor
+session, disposing obsolete content and leaving unchanged scopes mounted. Cached custom forms without
+actors had the analogous binding problem. Registry form notifications identify their changed owner;
+SettingsEditor remounts that owner's form even for the same component object and preserves unrelated forms.
+The SDK's inferred render return report is regenerated; jsdom is an explicit SDK test dependency.
+
+Evidence: 173 focused host/bus cases, 24 API/bus cases, 57 SDK frontend cases and renderer lifetime checks
+pass. Eleven mutations cover revision comparison, publication, false failed acceptance, stale readiness,
+early startup, missing waiting state/publication filtering, missing actor follow/key, and missing form
+key/owner filtering; intended regressions fail and sources are restored. The real cached-module reload
+passes, checking changed frontend revision and actor identity before interacting with the new canvas.
+The endpoint commits backend work; renderer acceptance follows asynchronously. Earlier typecheck and
+host-inbox assertions were corrected, with no validation rule or deadline relaxed.
+
+Final strict sequential validation passes in 385.9s, all 30 gates, including real external-pack app,
+smoke and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T17-20-14Z-50190`;
+`/private/tmp/apack-live-refresh-lifetimes-strict-chain.log`.
+
+This closes ordinary live frontend refresh and standard startup requests. It does not provide rollback
+of arbitrary module/actor side effects, preserve arbitrary component-local drafts across actor replacement,
+or establish per-window epoch filtering for all outgoing messages. Installed install/update pre-teardown
+paths still require coordinated publication. Native/all-kind descriptors and static consumers, complete
+freshness, navigation, frontend fault boundaries and all three Phase 6 streams remain required. Final
+requirement audit, strict `--all` on completed committed source, and archival remain outstanding.

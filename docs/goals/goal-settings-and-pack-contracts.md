@@ -2086,3 +2086,17 @@ See [the discovery evidence](../plans/discovery-without-activation.md#source-api
 The API freshness follow-up from the previous checkpoint is resolved. Continue runtime state publication
 and targeted live frontend refresh. Installed update publication and every remaining discovery, navigation,
 boundary and Phase 6 requirement remain open; no plans are archived.
+
+
+### Live frontend refresh and mounted lifetime checkpoint (2026-10-13)
+
+`ed8904dd1` connects runtime state publication to revision-aware frontend refresh and readiness.
+Standard startup requests wait for frontend acceptance. Real dev reload exposed cached Vue content
+retaining stopped actors; actor scopes and owner forms now remount for their resource lifetime, preserving
+unrelated content. Eleven guard mutations fail and were restored. Final strict validation passes all 30
+gates in 385.9s, evidence `node_modules/.cache/apack-chain/runs/2026-10-13T17-20-14Z-50190`.
+See [the discovery evidence and limits](../plans/discovery-without-activation.md#live-frontend-refresh-readiness-and-mounted-lifetimes-2026-10-13).
+
+Ordinary live refresh is delivered. Coordinated installed updates, complete native/static discovery,
+source/dependency freshness, navigation/stale delivery, pane boundaries and all Phase 6 streams remain
+required. No plans are archived; the complete goal audit and final strict `--all` remain outstanding.
