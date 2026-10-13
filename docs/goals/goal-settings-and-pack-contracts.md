@@ -2073,3 +2073,16 @@ See [the discovery evidence](../plans/discovery-without-activation.md#accepted-r
 Next fix the demonstrated API declaration build prerequisite in the chain, then publish runtime revisions
 and use them for targeted live frontend refresh. Those integrations, installed update publication and
 all remaining discovery/navigation/boundary/Phase 6 work remain required. No plans are archived.
+
+
+### Source API contract checkpoint (2026-10-13)
+
+`6913dbae8` closes stale renderer API types through workspace source resolution and removes the API's
+alias/build glue. The API suite's newly exposed root metadata cache input is declared; removing either
+that input or the source condition fails its guard. Final strict chain passes in 228.7s (18 of 30 cached),
+evidence `node_modules/.cache/apack-chain/runs/2026-10-13T16-12-12Z-81950`.
+See [the discovery evidence](../plans/discovery-without-activation.md#source-api-contract-freshness-2026-10-13).
+
+The API freshness follow-up from the previous checkpoint is resolved. Continue runtime state publication
+and targeted live frontend refresh. Installed update publication and every remaining discovery, navigation,
+boundary and Phase 6 requirement remain open; no plans are archived.

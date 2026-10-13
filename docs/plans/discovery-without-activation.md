@@ -992,3 +992,30 @@ build prerequisite remains an open freshness defect; fix that dependency rather 
 prebuilds before final acceptance. Then publish accepted runtime state through the application system's
 normal state publication and compare per-owner revisions in the shell's loader. Live frontend refresh,
 installed update publication, complete native/static descriptors and every later goal phase remain open.
+
+
+### Source API contract freshness (2026-10-13)
+
+`6913dbae8` closes the API declaration freshness defect recorded above. Workspace TypeScript resolves
+`@app/api` to `src/types.ts` through the existing source condition; other type consumers use the compiled
+entry, and runtime resolution keeps the compiled server. The API's imports are now file-relative in source,
+tests and scripts, making the contract portable across package compiler contexts. Removed the API alias
+resolver, Vite paths plugin, tsconfig alias maps and unused dependency/lock entries. No new build step,
+manual prebuild requirement or compatibility alias is introduced.
+
+Evidence: renderer and API typechecks pass; 121 API cases and 67 focused pipeline cases pass. The compiler
+resolution regression hides API build output, including its workspace symlink, and still resolves the
+source entry. Removing the source condition fails that regression. Actual Node resolution under the source
+condition retains `dist/server.js` without importing it. Strict review exposed the API suite's missing root
+package metadata cache input; the suite now declares it explicitly. Removing it fails the existing coverage
+guard. The source-condition inventory assertion was also updated for the API's type-only contribution.
+
+Final strict sequential validation passes in 228.7s (18 of 30 cached), including integration, real external
+pack, smoke and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T16-12-12Z-81950`;
+`/private/tmp/apack-api-source-contract-strict-chain-complete.log`.
+
+Continue accepted-runtime state publication and per-owner live frontend refresh, then coordinated installed
+update publication. Native/all-kind metadata, remaining static consumers, complete source/dependency
+freshness, navigation, boundaries and all three Phase 6 streams remain required. This checkpoint closes
+one demonstrated source-contract defect; full `--all` acceptance and archival remain outstanding.
