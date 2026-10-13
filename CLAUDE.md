@@ -949,8 +949,8 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 
 **A migration declares which version line it is on, and nothing infers it.** A pack files each one in
 `apack.json` under `migrations.app` or `migrations.pack`, keyed by the version it targets — because a bare
-version does not say what it is a version of. The module states only `description` and `up()`
-(`DeclaredMigration`, `@apackdev/sdk/framework`); codegen assembles the `PackMigration { target, … }` the
+version does not say what it is a version of. The manifest entry declares its description and `up` export target; the module exports only `up()`.
+Codegen assembles the `PackMigration { target, … }` the
 runners take from the manifest key, so a version is written in exactly one place and the line in exactly
 one. There is no `src/migrations/index.ts` — the manifest is the list.
 

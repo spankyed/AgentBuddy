@@ -35,10 +35,19 @@ export interface SourcePackDeclaration {
   readonly help?: CatalogData<HelpDocument[]>;
 }
 
+/** A visible installed directory whose candidate declarations could not be accepted. */
+export interface PackCatalogProblem {
+  readonly id: string;
+  readonly dir: string;
+  readonly enabled: boolean;
+  readonly message: string;
+}
+
 export interface PackCatalogSnapshot {
   readonly revision: number;
   readonly appSettings: CatalogData<SettingsDefinition>;
   readonly packs: readonly PackCatalogEntry[];
+  readonly problems: readonly PackCatalogProblem[];
   readonly native: readonly CatalogData<NativePackDeclaration>[];
   readonly sourcePacks: readonly SourcePackDeclaration[];
 }
@@ -62,15 +71,17 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   const logger = createLogger('pack-catalog');
   const app = immutable(appSettings);
   _compileSettingsDefinition(app);
-  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], native: [], sourcePacks: [] });
+  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [] });
   let byId = new Map<string, PackCatalogEntry>();
   const listeners = new Set<() => void>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
   let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
 
-  function publish(packs: readonly PackCatalogEntry[], native: readonly NativePackDeclaration[], sourcePacks = current.sourcePacks): void {
-    if (isDeepStrictEqual(current.packs, packs) && isDeepStrictEqual(current.native, native) && isDeepStrictEqual(current.sourcePacks, sourcePacks)) return;
+  function publish(packs: readonly PackCatalogEntry[], native: readonly NativePackDeclaration[], sourcePacks = current.sourcePacks, catalogProblems = current.problems): void {
+    const declarationsChanged = !isDeepStrictEqual(current.packs, packs)
+      || !isDeepStrictEqual(current.native, native) || !isDeepStrictEqual(current.sourcePacks, sourcePacks);
+    if (!declarationsChanged && isDeepStrictEqual(current.problems, catalogProblems)) return;
     const manifests = [...packs.map(({ snapshot }) => snapshot.manifest), ...sourcePacks.map(source => source.manifest)];
     const definitions = [...native, ...manifests.map(manifest => ({
       id: manifest.id, dependencies: manifest.dependencies,
@@ -98,8 +109,9 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         }
       }
     }
-    const next = immutable({ revision: current.revision + 1, appSettings: app, packs, native, sourcePacks });
-    const projection = immutable({ revision: next.revision, app, packs: groups, features, dependencies });
+    const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks });
+    // A diagnostic-only publication leaves accepted settings definitions and their identity intact.
+    const projection = declarationsChanged ? immutable({ revision: next.revision, app, packs: groups, features, dependencies }) : settings;
     const helpOwners = [
       ...packs.map(({ snapshot }) => ({ manifest: snapshot.manifest, help: snapshot.help })),
       ...sourcePacks.map(source => ({ manifest: source.manifest, help: source.help })),
@@ -157,7 +169,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       hasOwn(settings.features, ref) ? settings.features[ref] : undefined,
 
     /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
-    replace(sources: readonly PackCatalogSource[]): void {
+    replace(sources: readonly PackCatalogSource[], problems: readonly PackCatalogProblem[] = []): void {
       const next = new Map<string, PackCatalogEntry>();
       for (const source of sources) {
         const candidate = immutable(source);
@@ -172,7 +184,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         next.set(id, { ...candidate, snapshot: result.snapshot,
           ...(candidate.integrity && { artifactRevision: packArtifactRevision(candidate.integrity) }) });
       }
-      publish([...next.values()], current.native);
+      publish([...next.values()], current.native, current.sourcePacks, problems);
     },
 
     onChanged(listener: () => void): () => void {

@@ -39,6 +39,15 @@ describe('an installed pack in the Packs view', () => {
   });
 });
 
+describe('unavailable pack declarations', () => {
+  it('shows the refusal without inventing a version', () => {
+    const el = render({ pack: pack({ version: undefined, loadProblem: 'its declarations were refused: invalid snapshot' }) });
+    expect(el.textContent).toContain('Pack metadata is unavailable');
+    expect(el.querySelector('[data-testid="pack-load-problem"]')?.textContent).toContain('invalid snapshot');
+    expect(el.textContent).not.toContain('vundefined');
+  });
+});
+
 /**
  * **The two kinds of decision a pack's content can leave the user, and the buttons each one gets.** The
  * view decides nothing — it emits the content key and the system writes — so what is worth holding here is

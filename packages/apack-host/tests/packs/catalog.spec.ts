@@ -109,6 +109,26 @@ describe('contribution catalog data', () => {
     expect(catalog.getSnapshot().revision).toBe(2);
   });
 
+  it('publishes diagnostics atomically, owns them, and retains them through other declaration changes', () => {
+    const catalog = createContributionCatalog(app);
+    const problems = [{ id: 'broken', dir: '/packs/broken', enabled: false, message: 'Invalid snapshot' }];
+    const seen: string[][] = [];
+    catalog.onChanged(() => seen.push(catalog.getSnapshot().problems.map(problem => problem.message)));
+    catalog.replace([source('first')], problems);
+    const previous = catalog.getSnapshot();
+    problems[0].message = 'Changed input';
+    expect(previous.problems[0].message).toBe('Invalid snapshot');
+    expect(Object.isFrozen(previous.problems[0])).toBe(true);
+    expect(() => catalog.replace([{ ...source('broken'), snapshot: {} }], [])).toThrow();
+    expect(catalog.getSnapshot()).toBe(previous);
+    catalog.setNative([{ id: 'native' }]);
+    expect(catalog.getSnapshot().problems).toEqual(previous.problems);
+    const acceptedSettings = catalog.settings();
+    catalog.replace([source('first')]);
+    expect(catalog.settings()).toBe(acceptedSettings);
+    expect(seen).toEqual([['Invalid snapshot'], ['Invalid snapshot'], []]);
+  });
+
   it('preserves revision and snapshot identity when declarations have not changed', () => {
     const catalog = createContributionCatalog(app);
     const listener = vi.fn();

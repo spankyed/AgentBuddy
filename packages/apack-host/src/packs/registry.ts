@@ -29,7 +29,7 @@ import type { PackContentTarget } from './runtime/apply.ts';
 import { createOwnedStore, createDesignationStore } from './extensions.ts';
 import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
-import { createContributionCatalog, type ContributionCatalog, type PackCatalogSource } from './catalog.ts';
+import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
 import { readPackArtifact } from './layout.ts';
 import { disabledPackIds } from './installed.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
@@ -105,7 +105,8 @@ export interface PackExtensions {
 export interface InstalledPackSummary extends PackExtensions {
   id: string;
   name: string;
-  version: string;
+  /** Absent when this installed artifact has no accepted declarations. */
+  version?: string;
   enabled: boolean;
   /**
    * Whether the app offers to uninstall it. False for whatever this app ships, which it needs to run — the
@@ -408,13 +409,12 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
   const shutdownHooks = createShutdownHooks();
 
   let catalogDir: string | undefined;
-  const declarationProblems = new Map<string, string>();
 
   function refreshCatalog(packsDir = installedPacksDir?.() ?? catalogDir, disabled?: ReadonlySet<string>): void {
     if (!packsDir) return;
     disabled ??= disabledPackIds();
     const sources: PackCatalogSource[] = [];
-    const problems = new Map<string, string>();
+    const problems: PackCatalogProblem[] = [];
     const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
     for (const dir of discoverPackDirectories(packsDir)) {
       try {
@@ -423,13 +423,11 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
       } catch (error) {
         const previous = previousByDir.get(dir);
         const id = previous?.snapshot.manifest.id ?? path.basename(dir);
-        problems.set(id, `its declarations were refused: ${error instanceof Error ? error.message : String(error)}`);
+        problems.push({ id, dir, enabled: !disabled.has(id), message: `its declarations were refused: ${error instanceof Error ? error.message : String(error)}` });
         if (previous) sources.push({ snapshot: previous.snapshot, integrity: previous.integrity, dir, enabled: !disabled.has(id) });
       }
     }
-    catalog.replace(sources);
-    declarationProblems.clear();
-    for (const [id, problem] of problems) declarationProblems.set(id, problem);
+    catalog.replace(sources, problems);
     catalogDir = packsDir;
   }
 
@@ -697,7 +695,7 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     recordLoadProblem(packId, problem) {
       loadProblems.set(packId, problem);
     },
-    loadProblem: (packId) => declarationProblems.get(packId) ?? loadProblems.get(packId),
+    loadProblem: (packId) => catalog.getSnapshot().problems.find(problem => problem.id === packId)?.message ?? loadProblems.get(packId),
     clearLoadProblem(packId) {
       loadProblems.delete(packId);
     },

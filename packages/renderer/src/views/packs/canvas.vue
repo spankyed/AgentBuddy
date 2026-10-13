@@ -106,7 +106,7 @@
               <div class="flex flex-col min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-sm text-neutral-200">{{ pack.name }}</span>
-                  <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+                  <span v-if="pack.version" class="text-xs text-neutral-600">v{{ pack.version }}</span>
                   <span
                     v-if="pack.availableVersion"
                     class="w-2 h-2 rounded-full bg-emerald-400"
@@ -171,7 +171,7 @@
             <div class="flex flex-col min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-sm text-neutral-200">{{ pack.name }}</span>
-                <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+                <span v-if="pack.version" class="text-xs text-neutral-600">v{{ pack.version }}</span>
               </div>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="text-xs text-neutral-500">{{ pack.id }}</span>
@@ -184,9 +184,12 @@
                   <span class="text-xs text-neutral-500">UI</span>
                 </template>
               </div>
+              <p v-if="pack.loadProblem" class="text-xs text-red-400 mt-1 break-words" data-testid="pack-load-problem">
+                Failed to load: {{ pack.loadProblem }}
+              </p>
               <ContentOfferNotice :count="pack.contentOffers.length" />
             </div>
-            <span class="text-xs text-neutral-600 flex-shrink-0">Always active</span>
+            <span class="text-xs text-neutral-600 flex-shrink-0">{{ pack.loadProblem ? 'Unavailable' : pack.enabled ? 'Enabled' : 'Disabled' }}</span>
           </div>
         </div>
       </div>

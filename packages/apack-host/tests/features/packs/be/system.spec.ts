@@ -1,4 +1,4 @@
-import { sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
+import { sealPack, sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -8,7 +8,7 @@ import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
 import { _appDirOf, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
-import { readInstalledPacks } from '../../../../src/packs/installed.ts';
+import { readInstalledPacks, setPackEnabled } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../../src/packs/installer.ts';
@@ -17,7 +17,7 @@ import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
+import { readPackArtifact, createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
@@ -287,6 +287,77 @@ describe('a pack with nothing recorded about it', () => {
     } finally {
       system.stop();
     }
+  });
+});
+
+describe('pack information without activation', () => {
+  const list = (system: ReturnType<typeof runPacksSystem>) => {
+    system.sent.length = 0;
+    system.send({ type: 'GET_INSTALLED_PACKS' });
+    const event = emitted(system.sent).find(event => event.type === 'PACKS_LIST');
+    expect(event).toBeDefined();
+    return (event!.packs as InstalledPackSummary[]).find(pack => pack.id === PACK_ID)!;
+  };
+
+  it('lists disabled declarations without executing modules or reading undeclared frontend files', () => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
+      entities: { Memo: 'Memo' }, relKinds: { Child: 'parent' },
+      features: { notes: { designation: 'notes', system: { entry: 'src/system.ts' },
+        plugin: { entry: 'src/plugin.ts' }, services: { notesApi: 'src/api.ts#notesApi' } } },
+      extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
+      migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
+      boot: { onInit: 'src/hooks.ts#onInit' } };
+    fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'types'));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
+    const marker = path.join(tmpDir, 'executed');
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
+    sealPack(dir);
+    expect(() => readPackArtifact(dir)).not.toThrow();
+    setPackEnabled(PACK_ID, false);
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    // A file that was never part of the accepted artifact must not advertise available frontend code.
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not import");');
+    const system = runPacksSystem();
+    try {
+      expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: false,
+        entities: manifest.entities, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
+        systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
+        migrationCount: 1, bootHooks: ['onInit'],
+        features: [{ id: 'notes', designation: 'notes', hasSystem: true, hasPlugin: true, services: ['notesApi'] }] });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(fs.existsSync(marker)).toBe(false);
+    } finally { system.stop(); }
+  });
+
+  it('retains accepted metadata and publishes a replacement refusal before notifying readers', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const observations: Array<string | undefined> = [];
+    const stop = registry.catalog.onChanged(() => observations.push(registry.loadProblem(PACK_ID)));
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id: PACK_ID, name: 'Unaccepted', version: '9.0.0' }));
+    const system = runPacksSystem();
+    try {
+      const pack = list(system);
+      expect(pack).toMatchObject({ name: 'Reinstall Pack', version: '1.0.0', loadProblem: expect.stringContaining('declarations were refused') });
+      expect(observations).toEqual([pack.loadProblem]);
+    } finally { stop(); system.stop(); }
+  });
+
+  it('shows unreadable installations without trusting their manifest metadata', () => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
+    const system = runPacksSystem();
+    try {
+      expect(list(system)).toMatchObject({ id: PACK_ID, name: PACK_ID, enabled: true,
+        loadProblem: expect.stringContaining('declarations were refused') });
+      expect(list(system).version).toBeUndefined();
+    } finally { system.stop(); }
   });
 });
 

@@ -3,20 +3,20 @@ import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
-import { getAppVersion } from '@apackdev/sdk/env';
+import { getAppVersion, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { HOST_PACK_ID, PACK_ID_PATTERN } from '@apackdev/sdk/ids';
-import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
+import { HOST_PACK_ID, PACK_ID_PATTERN, resolveName } from '@apackdev/sdk/ids';
+import { forgetPack, packRecord, packRecords, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
-import type { PackExtensions, InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
-import { packFrontendFiles, PACK_LAYOUT } from '../../../packs/layout.ts';
-import { installedPacks, type InstalledPack } from '../../../packs/discovery.ts';
+import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
+import { PACK_LAYOUT } from '../../../packs/layout.ts';
+import { installedPacks } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
-import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
 import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@apackdev/sdk/utils';
 import { appliedContent } from '../../../app-state/index.ts';
 import { contentEntity, contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@apackdev/sdk/content';
@@ -31,21 +31,6 @@ export const packsSpec = defineSystem<Contract>();
  */
 function toContentSelection(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
-}
-
-function mergeExtensions(base: Omit<InstalledPackSummary, keyof PackExtensions>, contrib: PackExtensions | null): InstalledPackSummary {
-  return {
-    ...base,
-    systems: contrib?.systems ?? [],
-    services: contrib?.services ?? [],
-    steps: contrib?.steps ?? [],
-    artifacts: contrib?.artifacts ?? [],
-    blocks: contrib?.blocks ?? [],
-    relKinds: contrib?.relKinds ?? {},
-    migrationCount: contrib?.migrationCount ?? 0,
-    bootHooks: contrib?.bootHooks ?? [],
-    features: contrib?.features ?? [],
-  };
 }
 
 /**
@@ -69,36 +54,56 @@ function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOff
   };
 }
 
-/** The view lists installed packs, including disabled ones; the registry supplies runtime contributions. */
-function toInstalledPackSummaries(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): InstalledPackSummary[] {
-  return packs.map(({ manifest, dir, record }) => {
-    const entities = manifest.entities ?? {};
-    const contrib = registry.getPackExtensions(record.id);
-    return mergeExtensions({
-      id: record.id,
-      name: manifest.name,
-      version: manifest.version,
-      enabled: record.enabled,
-      canUninstall: canUninstall(record.id),
-      entityCount: Object.keys(entities).length,
-      hasFrontend: !!packFrontendFiles(dir).entry,
-      hostVersion: manifest.hostVersion,
-      description: manifest.description,
-      entities,
-      permissions: manifest.permissions ?? [],
-      dir,
-      installedAt: record.installedAt,
-      installedFrom: record.installedFrom,
-      availableVersion: record.availableVersion,
-      updateCheckError: record.updateCheckError,
-      loadProblem: registry.loadProblem(record.id),
-      ...contentOffersOf(record.id),
-    }, contrib);
+/** Accepted declarations describe a pack independently of whether its executable bindings are running. */
+function toInstalledPackSummaries(registry: PackRegistry, canUninstall: (packId: string) => boolean): InstalledPackSummary[] {
+  const catalog = registry.catalog.getSnapshot();
+  const records = packRecords();
+  const base = (id: string, dir: string, enabled: boolean) => {
+    const record = packRecord(id, records);
+    return {
+      id, dir, enabled, canUninstall: canUninstall(id),
+      installedAt: record.installedAt, installedFrom: record.installedFrom,
+      availableVersion: record.availableVersion, updateCheckError: record.updateCheckError,
+      loadProblem: registry.loadProblem(id), ...contentOffersOf(id),
+    };
+  };
+  const packs: InstalledPackSummary[] = catalog.packs.map(({ snapshot, integrity, dir, enabled }) => {
+    const { manifest } = snapshot;
+    const features = Object.entries(manifest.features ?? {}).map(([id, feature]) => ({
+      id, designation: feature.designation, hasSystem: !!feature.system, hasPlugin: !!feature.plugin,
+      services: Object.keys(feature.services ?? {}),
+    }));
+    const extensions = manifest.extensions;
+    return {
+      ...base(manifest.id, dir, enabled), name: manifest.name, version: manifest.version,
+      description: manifest.description, hostVersion: manifest.hostVersion,
+      permissions: [...(manifest.permissions ?? [])], entities: { ...manifest.entities },
+      entityCount: Object.keys(manifest.entities ?? {}).length,
+      hasFrontend: !!integrity && hasOwn(integrity.files, PACK_LAYOUT.feEntry),
+      features, systems: features.filter(feature => feature.hasSystem).map(feature => resolveName(feature.id, manifest.id)),
+      services: [...Object.keys(extensions?.services ?? {}), ...features.flatMap(feature => feature.services)],
+      steps: Object.keys(extensions?.steps ?? {}), artifacts: Object.keys(extensions?.artifacts ?? {}),
+      blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ...manifest.relKinds },
+      migrationCount: Object.values(manifest.migrations ?? {}).reduce((count, line) => count + Object.keys(line).length, 0),
+      bootHooks: Object.keys(manifest.boot ?? {}),
+    };
   });
+  const accepted = new Set(packs.map(pack => pack.id));
+  for (const problem of catalog.problems) {
+    if (accepted.has(problem.id)) continue;
+    packs.push({
+      ...base(problem.id, problem.dir, problem.enabled), name: problem.id,
+      entities: {}, entityCount: 0, hasFrontend: false, permissions: [],
+      systems: [], services: [], steps: [], artifacts: [], blocks: [], relKinds: {},
+      migrationCount: 0, bootHooks: [], features: [],
+    });
+  }
+  return packs;
 }
 
 function emitPacksList(registry: PackRegistry, canUninstall: (packId: string) => boolean) {
-  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toInstalledPackSummaries(registry, installedPacks(), canUninstall) });
+  registry.refreshCatalog(resolveAppEnvironment().packsDir);
+  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toInstalledPackSummaries(registry, canUninstall) });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
@@ -379,7 +384,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         runUninstall(packId).then(() => {
           forgetPack(packId);
-          registry.refreshCatalog();
+          registry.refreshCatalog(resolveAppEnvironment().packsDir);
 
           broadcastToPlugin('packs', {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -541,7 +546,7 @@ export function createPacksSystem(registry: PackRegistry) {
             error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time apack starts.`),
           });
         }
-        registry.refreshCatalog();
+        registry.refreshCatalog(resolveAppEnvironment().packsDir);
         broadcastToPlugin('packs', {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,

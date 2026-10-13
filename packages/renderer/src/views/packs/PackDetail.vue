@@ -14,13 +14,13 @@
           <span
             v-if="!pack.canUninstall"
             class="px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded cursor-default"
-            title="Always active — cannot be disabled or removed"
+            title="Bundled with the app"
           >Built-in</span>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-neutral-500">{{ pack.id }}</span>
           <span class="text-neutral-700">&middot;</span>
-          <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+          <span v-if="pack.version" class="text-xs text-neutral-600">v{{ pack.version }}</span>
           <template v-if="pack.availableVersion">
             <span class="text-neutral-700">&middot;</span>
             <span class="px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded">
@@ -36,6 +36,11 @@
       <p v-if="pack.updateCheckError" class="text-xs text-amber-400" data-testid="pack-update-check-error">
         Update check: {{ pack.updateCheckError }}
       </p>
+
+      <p v-if="pack.loadProblem" class="text-xs text-red-400 break-words" data-testid="pack-load-problem">
+        Failed to load: {{ pack.loadProblem }}
+      </p>
+      <p v-if="!pack.version" class="text-sm text-neutral-400">Pack metadata is unavailable.</p>
 
       <!-- Description -->
       <p v-if="pack.description" class="text-sm text-neutral-400">{{ pack.description }}</p>
@@ -58,7 +63,7 @@
             <p class="text-sm text-neutral-200">{{ offer.label }}</p>
             <p class="text-xs text-neutral-400 mt-0.5">
               {{ offer.kind === 'update'
-                ? `You changed this, and ${pack.name} v${pack.version} ships a newer version.`
+                ? `You changed this, and ${pack.name}${pack.version ? ` v${pack.version}` : ''} ships a newer version.`
                 : `You changed this, and ${pack.name} no longer ships it.` }}
             </p>
           </div>
@@ -72,7 +77,7 @@
               </ul>
             </div>
             <div class="min-w-0">
-              <p class="text-neutral-500 mb-1">{{ offer.kind === 'update' ? `${pack.name} v${pack.version}` : 'The pack' }}</p>
+              <p class="text-neutral-500 mb-1">{{ offer.kind === 'update' ? `${pack.name}${pack.version ? ` v${pack.version}` : ''}` : 'The pack' }}</p>
               <p class="text-neutral-400">
                 {{ offer.kind === 'update'
                   ? 'Replaces the whole item, your changes included.'
@@ -122,10 +127,7 @@
 
       <!-- Status / Controls -->
       <section v-if="pack.canUninstall" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
-        <span v-if="pack.loadProblem" class="text-sm text-red-400 min-w-0 mr-3 break-words" data-testid="pack-load-problem">
-          Failed to load: {{ pack.loadProblem }}
-        </span>
-        <span v-else class="text-sm text-neutral-300">{{ pack.enabled ? 'Enabled' : 'Disabled' }}</span>
+        <span class="text-sm text-neutral-300">{{ pack.loadProblem ? 'Unavailable' : pack.enabled ? 'Enabled' : 'Disabled' }}</span>
         <div class="flex items-center gap-3 flex-shrink-0">
           <button
             class="relative w-9 h-5 rounded-full transition-colors"
