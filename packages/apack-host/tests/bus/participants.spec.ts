@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Being addressable without a pack having registered you.
 //
 // A system and a plugin are addressable because a pack declared them; the bus checks every outgoing message
@@ -16,10 +17,9 @@ import { createAppBus } from '../../src/bus/index.ts';
 import { createParticipantClaims } from '../../src/bus/participants.ts';
 import { HOST } from '../../src/refs.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));

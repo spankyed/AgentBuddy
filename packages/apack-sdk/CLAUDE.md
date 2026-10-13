@@ -159,6 +159,10 @@ This is the in-memory runtime that `@apackdev/testing/harness` drives (see `pack
 - `startFeTestRuntime(options?)` / `stopFeTestRuntime()` (`fe-runtime.ts`): the frontend host for a test file, the counterpart of `startTestRuntime` for code that reads `boundFeHost()` (a plugin, a tiptap or DSL registry). It binds `bindFeHost` with nothing registered and every member a test doesn't pass standing in as unusable (the shell's stand-in fails naming `startShell` from `@apackdev/testing/harness`, since the real shell is the host's), so an extension that registers itself on import shows up as one this returned; the start call returns the stop function (`const stop = startFeTestRuntime(); afterAll(stop);`). Packs bind and unbind per file, which the renderer never does, so this lifecycle lives here rather than in the host's `unbindFeHost`. `fakeSettings(document?)` (`fake-settings.ts`) is the usable `settings` to pass it: a port over an in-memory document, where a change a component makes is what the next read returns and `updates` records how each was addressed.
 - `resetTestData` (installs a fresh engine, carrying over the registered repositories, so nothing is shared with the test before), `entityIds`, `dropAttribute`, `takeSystemErrors` (the recorded `SYSTEM_ERROR` events), `addTestSecret`, and `fakeInference` (`fake-inference.ts`). `testRootEvents` has no bus actor: a test of `broadcastToPlugin` listens with `onPluginSend`, and `@apackdev/testing`'s `startApp` delivers them.
 
+`nativePackDeclarationFixture(registration)` extracts declaration data from an authored native test
+fixture before its runtime stand-ins register. It is a test composition helper, never a production
+discovery path. Host composition admits independent declarations before constructing runtime bindings.
+
 ## A pack on disk (`src/testing/pack-fixture.ts`, `@apackdev/sdk/testing/pack-fixture`)
 
 `packFixture(options?)` writes a complete pack directory and returns its path — for the specs whose subject is

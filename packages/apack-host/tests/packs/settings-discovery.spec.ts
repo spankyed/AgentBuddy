@@ -1,10 +1,10 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Settings discovery uses verified declarations regardless of whether executable code can activate.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PACK_LAYOUT } from '../../src/packs/layout.ts';
 import { sealPack } from './runtime/artifact-fixture.ts';
 
@@ -32,7 +32,7 @@ function install(id: string, name = ''): string {
 it('discovers verified disabled and activation-failed definitions without executing code', () => {
   install('disabled');
   install('failed');
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
   registry.refreshCatalog(packsDir, new Set(['disabled']));
   expect(Object.keys(registry.settingsCatalog().features)).toEqual(['disabled/memos', 'failed/memos']);
   expect(registry.catalog.get('disabled')?.enabled).toBe(false);
@@ -45,7 +45,7 @@ it('discovers verified disabled and activation-failed definitions without execut
 
 it('retains accepted declarations and reports a malformed replacement instead of silently removing settings', () => {
   const dir = install('memo-pack', 'Accepted');
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
   registry.refreshCatalog(packsDir, new Set());
   const previous = registry.settingsCatalog();
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{ broken');
@@ -61,7 +61,7 @@ it('retains accepted declarations and reports a malformed replacement instead of
 
 it('publishes removal only after the installed directory is gone', () => {
   const dir = install('memo-pack');
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
   registry.refreshCatalog(packsDir, new Set());
   fs.rmSync(dir, { recursive: true });
   registry.refreshCatalog(packsDir, new Set());
@@ -70,10 +70,10 @@ it('publishes removal only after the installed directory is gone', () => {
 });
 
 it('refuses invalid native declarations atomically and retains other contributions', () => {
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
   registry.registerPack({ id: 'accepted', features: { memos: { settings: definition } } });
   const previous = registry.settingsCatalog();
-  expect(() => registry.registerPack({ id: 'bad-pack', features: { memos: { settings: { ...definition, defaults: { name: 1 } } } } })).toThrow('Invalid settings defaults');
+  expect(() => registry.registerPack({ id: 'bad-pack', features: { memos: { settings: { ...definition, defaults: { name: 1 } } } } })).toThrow('features.memos.settings.defaults.name: must be string');
   expect(registry.settingsCatalog()).toBe(previous);
   expect(registry.getPackRegistration('accepted')).not.toBeNull();
   expect(registry.getPackRegistration('bad-pack')).toBeNull();

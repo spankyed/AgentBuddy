@@ -82,6 +82,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
   ['@apackdev/host/bus', 'host bus core, composed by the API and the test harness'],
   ['@apackdev/host/features', "the app's own features (the pack `host`), registered by the API and the harness"],
+  ['@apackdev/host/testing', 'test fixture composition, never a pack runtime dependency'],
   // The pack runtime itself: the app loads packs with it; pack code never requires it
   ['@apackdev/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
   // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them

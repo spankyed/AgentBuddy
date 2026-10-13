@@ -1,5 +1,5 @@
-// apack pack build compiles with the step definitions it loads into a registry of its own: a registry the process
-// has bound (an app's, a test's) sees none of them.
+// apack pack build passes build definitions directly to the compiler; it never registers them in the
+// runtime registry the process has bound (an app's or a test's).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -79,7 +79,7 @@ async function compiledContent(root: string): Promise<string> {
 describe('a build', () => {
   it('compiles flows against the steps it loaded, and leaves the bound registry untouched', async () => {
     const root = pack('note');
-    expect(await compiledContent(root), 'the flow compiled, so the build loaded its steps into a registry of its own')
+    expect(await compiledContent(root), 'the flow compiled using its loaded step definitions')
       .toMatch(/flows: 1/);
     expect(bound.steps(), 'and the registry this process bound saw none of them').toEqual([]);
     expect(stepRegistry.all()).toEqual([]);
@@ -90,8 +90,8 @@ describe('a build', () => {
   });
 
   /**
-   * **What stops the case above passing over a build that loaded nothing.** Two empty registries are equally
-   * true of a build whose own registry was empty, so the discriminating claim is this one: name a step no
+   * **What stops the case above passing over a build that loaded nothing.** The bound registry remains empty
+   * even if the compiler loads no definitions, so the discriminating claim is this one: name a step no
    * definition declares and the flow compiles to nothing, with no count reported for it.
    */
   it('compiles no flow whose step is one no definition declares', async () => {

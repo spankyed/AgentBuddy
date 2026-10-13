@@ -3,14 +3,15 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
 import { resetTestData, startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
-import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
+import type { PackOrigin } from '@apackdev/host/packs';
 import { createAppBus, HOST } from '@apackdev/host/bus';
 import { createSettingsSystem, hostRegistration, settingsEvents } from '@apackdev/host/features';
 import { createSettingsAccess, createSettingsService, createSettingsStore } from '@apackdev/host/settings';
 import { HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createWindowSettingsRuntime } from '@apackdev/host/fe';
 
-const live = vi.hoisted(() => ({ packs: undefined as unknown as ReturnType<typeof createPackRegistry>, access: undefined as unknown as ReturnType<typeof createSettingsAccess> }));
+const live = vi.hoisted(() => ({ packs: undefined as unknown as ReturnType<typeof createNativePackTestRegistry>, access: undefined as unknown as ReturnType<typeof createSettingsAccess> }));
 vi.mock('@/runtime', () => ({
   get appPacks() { return live.packs; }, get appSettingsAccess() { return live.access; },
   appClaims: { clientFor: () => undefined },
@@ -19,7 +20,7 @@ vi.mock('@/transport/emitter', async () => ({ rootEvents: (await import('@apackd
 const { systemBusRouter } = await import('@/transport/bus');
 const { settingsRouter } = await import('@/transport/settings');
 
-const packs = createPackRegistry();
+const packs = createNativePackTestRegistry();
 const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog, onCatalogChanged: packs.onCatalogChanged }));
 startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));

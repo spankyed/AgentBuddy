@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Who hears the outcome of a settings write, which is the one branch the change rests on.
 //
 // `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` plugin, so a sender that
@@ -13,10 +14,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Reply } from '@apackdev/sdk/events';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../../src/app-state/index.ts';
-import { createPackRegistry } from '../../../src/packs/registry.ts';
 import { answerSettings } from '../../../src/features/settings/be/answer.ts';
 
-startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createPackRegistry() });
+startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createNativePackTestRegistry() });
 
 /** Every message the bus would have carried, which is where both arms end up and so where they are told apart */
 let sent: Array<{ to?: string; type: string }>;

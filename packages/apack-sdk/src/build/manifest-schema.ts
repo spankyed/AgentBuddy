@@ -74,6 +74,16 @@ const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
   return raw;
 }, SettingsDefinitionValueSchema);
 
+/** @internal Host composition admits the same settings data without external-pack entry paths. */
+export const _NativePackDeclarationSchema = z.object({
+  id: z.string().regex(PACK_ID_PATTERN),
+  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), z.string()).optional(),
+  settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
+  features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
+    settings: SettingsDefinitionSchema.optional(),
+  }).strict()).optional(),
+}).strict();
+
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
   defaultLabel: z.string().describe('Fallback label when primaryField is empty.').optional(),

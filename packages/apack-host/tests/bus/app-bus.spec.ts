@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // The app's bus on the SDK's bound root event bus (the test host's here): a connecting client reaches the
 // registered systems, except those of a loaded pack with frontend code, which wait for the client to load it.
 import * as fs from 'node:fs';
@@ -9,10 +10,9 @@ import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import type { Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { appState, HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 // The app's state, which the application plugin's CLIENT_CONNECTED reports

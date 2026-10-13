@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // createHostRuntime assembles the app the SDK binds: the given bus and version, the engine, the registered packs,
 // and the host's services over the store. A reset leaves the app as a fresh boot does.
 import { secretRedaction } from '../../src/secrets/redaction.ts';
@@ -12,7 +13,6 @@ import { createHostRuntime } from '../../src/services/index.ts';
 import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
 import { filesystem } from '../../src/services/filesystem.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { startPacks } from '../../src/packs/runtime/start.ts';
 
@@ -49,7 +49,7 @@ describe('createHostRuntime', () => {
     const secondEngine = newEngine();
     const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({
       store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents },
-      appVersion: '1.2.3', packs: createPackRegistry(),
+      appVersion: '1.2.3', packs: createNativePackTestRegistry(),
     });
     const first = runtime(firstEngine);
     const second = runtime(secondEngine);
@@ -65,7 +65,7 @@ describe('createHostRuntime', () => {
   it('holds the bus, version, engine, registered packs and host services', () => {
     // The services reach the store only when called
     const engine = newEngine();
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     const runtime = createHostRuntime({ store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     // What log redaction masks: the host's own check over the values its secrets store has handled
     expect(runtime.redaction).toBe(secretRedaction);
@@ -94,7 +94,7 @@ describe('createHostRuntime', () => {
     const id = engine.query.tx('Memo-1').put('title', 'kept?').id();
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     const runtime = createHostRuntime({ store, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
@@ -125,7 +125,7 @@ describe('startPacks', () => {
   it("runs no pack migration or apply when the app's migrations failed", () => {
     order.length = 0;
     appMigrations.succeed = false;
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     packs.registerPack({ id: 'late-written-pack' });
     packs.registerPack({ id: 'late-pack' }, externalOrigin('late-pack', 'Late'));
     try {

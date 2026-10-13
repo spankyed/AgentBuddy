@@ -303,6 +303,8 @@ export interface PackRegistry extends PackRegistryView {
 
 /** A new, empty registry */
 export interface PackRegistryOptions {
+  /** Native data is admitted before executable registration and survives runtime unload. */
+  nativeDeclarations?: readonly import('@apackdev/sdk/framework').NativePackDeclaration[];
   /**
    * The app's packs dir: the installed packs, running or not. A pack there that isn't registered (disabled, or one that
    * didn't load) keeps its settings, so its features count among the features with settings. None when omitted (a
@@ -313,7 +315,7 @@ export interface PackRegistryOptions {
   settingsForPack?: (packId: string) => SettingsService;
 }
 
-export function createPackRegistry({ installedPacksDir, settingsForPack }: PackRegistryOptions = {}): PackRegistry {
+export function createPackRegistry({ installedPacksDir, settingsForPack, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   const origins = new Map<string, PackOrigin>();
@@ -328,6 +330,7 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
   const contentWriters = createContentWriterStore();
   const appliers = createApplierStore();
   const catalog = createContributionCatalog(appSettingsDefinition);
+  catalog.setNative(nativeDeclarations);
   const commands = createCommandStore();
   const shutdownHooks = createShutdownHooks();
 
@@ -357,12 +360,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
     catalogDir = packsDir;
   }
 
-  function refreshNative(): void {
-    catalog.setNative([...registrations.values()].filter(reg => !origins.has(reg.id)).map(reg => ({
-      id: reg.id, dependencies: reg.dependencies, settings: reg.settings,
-      features: Object.fromEntries(Object.entries(reg.features ?? {}).map(([id, feature]) => [id, { settings: feature.settings }])),
-    })));
-  }
 
   /** Bumped by every write, so whatever is derived from the registrations is rebuilt on its next read */
   let revision = 0;
@@ -506,6 +503,22 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
       throw new Error(`Pack "${registration.id}" runtime identity does not match its accepted origin "${origin.id}"`);
     }
     checkFeatureIds(registration.id, Object.keys(registration.features ?? {}));
+    if (!origin) {
+      const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
+      if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
+      const runtimeFeatures = registration.features === undefined ? {} : registration.features;
+      const settingsOf = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
+        Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]));
+      if (!runtimeFeatures || typeof runtimeFeatures !== 'object' || Array.isArray(runtimeFeatures)
+        || Object.values(runtimeFeatures).some(feature => !feature || typeof feature !== 'object' || Array.isArray(feature))
+        || !isDeepStrictEqual(Object.keys(runtimeFeatures).sort(), Object.keys(declaration.features ?? {}).sort())
+        || !isDeepStrictEqual(registration.dependencies === undefined ? {} : registration.dependencies, declaration.dependencies ?? {})
+        || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, declaration.settings ?? {})
+        || !isDeepStrictEqual(settingsOf(runtimeFeatures), settingsOf(declaration.features))) {
+        throw new Error(`Native pack "${registration.id}" runtime does not match its admitted declarations`);
+      }
+    }
+
 
     const source = catalog.getSnapshot().sourcePacks.find(pack => pack.manifest.id === registration.id);
     if (source && (registration.declarationRevision !== source.declarationRevision || origin?.declarationRevision !== source.declarationRevision)) {
@@ -558,14 +571,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
       changed();
       throw err;
     }
-    try { refreshNative(); }
-    catch (error) {
-      undos.undoAll();
-      registrations.delete(registration.id);
-      origins.delete(registration.id);
-      changed();
-      throw error;
-    }
     packUndos.set(registration.id, undos);
     loadProblems.delete(registration.id);
     changed();
@@ -582,7 +587,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
     registrations.delete(packId);
     origins.delete(packId);
     changed();
-    refreshNative();
 
     if (failures.length > 0) {
       throw new Error(`Pack "${packId}" is unregistered, but ${failures.length} of its contributions could not be taken back out: ${failures.join('; ')}`);

@@ -711,3 +711,30 @@ is full discovery of the supported contract, enforced at contribution boundaries
 The separate [pack security isolation goal](../goals/goal-pack-security-isolation.md) owns confinement
 and resource permission enforcement. Discovery supplies inspectable declarations; it does not grant
 access or prove that executable pack code is confined.
+
+
+### Native declaration lifetime checkpoint
+
+Remove `refreshNative`: activation must not manufacture declarations or withdraw them on unload.
+Host composition admits its data before binding native systems. Bare native registration requires an
+already admitted owner; it checks feature identities, dependencies and current settings definitions.
+Installed/source admission remains through its existing verified paths. Native declarations are removed
+only by an explicit catalog operation, so failed activation and runtime unload preserve discoverable data.
+
+Migrate test stand-ins through a test-only fixture composer that admits the fixture's authored data
+before binding and explicitly removes its fixture definition on removal. It must not become a production
+registration fallback. Add direct registry checks proving declaration-before-activation, unload/failure
+preservation and refusal of missing or mismatched native declarations. Use the existing common catalog.
+This lifetime checkpoint retains the current native settings/identity projection; all-kind native metadata,
+complete bindings, assets and reader migration remain required before claiming full native discovery.
+
+Native data admission also validates the original candidate shape through the shared settings schemas;
+null records, malformed feature definitions and unknown fields cannot become an empty declaration.
+The catalog owns immutable copies. Runtime matching defaults only absent fields, never explicit nulls.
+Use `nativePackDeclarationFixture` for authored test data and `createNativePackTestRegistry` from the
+host's testing entry for fixture admission/binding/removal. Production composition supplies
+`nativeDeclarations` explicitly; it never invokes either test composer to discover its own runtime.
+
+The build compiler is another distinct consumer: `PackConfig.loadDefinitions` already merges and checks
+the build-only facets. Pass those definitions directly through `compilePack`'s existing contract; do not
+register an executable pack in an otherwise unused host registry merely to retrieve them again.

@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // The counterpart of client-events.spec.ts: a client's event is checked against what a system accepts,
 // and a system's event against what the plugin declares it receives. A send nobody declared is reported
 // as a system error and dropped, rather than thrown — the caller is a running system.
@@ -8,10 +9,9 @@ import { onLog } from '@apackdev/sdk/logger';
 import type { Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const machine = setup({}).createMachine({});

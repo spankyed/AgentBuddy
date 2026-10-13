@@ -74,7 +74,7 @@ export type { PackSnapshotValidation } from './snapshot.ts';
 
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
-  ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
+  ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN, _NativePackDeclarationSchema,
   BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema, MigrationsSchema, MIGRATION_LINES, MIGRATION_TARGET_PATTERN,
 } from './manifest-schema.ts';

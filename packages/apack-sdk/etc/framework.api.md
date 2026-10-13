@@ -149,6 +149,20 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
+export interface NativePackDeclaration {
+    // (undocumented)
+    dependencies?: Record<string, string>;
+    // (undocumented)
+    features?: Record<string, {
+        settings?: SettingsDefinition;
+    }>;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    settings?: Record<string, SettingsDefinition>;
+}
+
+// @public
 export function onPackCatalogChanged(listener: () => void): () => void;
 
 // @public

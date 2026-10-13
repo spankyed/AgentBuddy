@@ -4,6 +4,7 @@ import type { SettingsAdmin } from '../services/settings.ts';
 // (its query, repository and content-writer registries) instead of a copy.
 import { createEarsEngine, installEngine, type EarsEngine } from '@apackdev/ears';
 import type { ContentRuntime } from '../framework/content-runtime.ts';
+export { nativePackDeclarationFixture } from './pack-declaration.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';

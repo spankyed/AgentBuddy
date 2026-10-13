@@ -26,7 +26,7 @@ import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { PACK_LAYOUT, sealPackBuild, verifyPack, createPackRegistry } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild, verifyPack } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { resolveDeps } from './generate';
@@ -176,15 +176,10 @@ async function buildIntoStaging(args: string[]) {
   let result: { counts: Record<string, number>; warnings: string[] } | null = null;
 
   if (packConfig) {
-    // What the content compiles with (the dependencies' steps and the pack's), in this build's own registry: a registry
-    // the process has bound (an app's, a test's) is never touched
-    const registry = createPackRegistry();
-    registry.registerPack({ id: manifest.id, ...await packConfig.loadDefinitions?.() });
     const options: CompilePackOptions = {
       packDir,
       outputDir: contentOutputDir,
       packConfig,
-      definitions: { steps: registry.steps(), artifacts: registry.artifacts(), blocks: registry.blocks() },
       importModule: importPackModule,
     };
 

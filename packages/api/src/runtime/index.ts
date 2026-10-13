@@ -11,7 +11,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadAppPacks, startPacks } from '@apackdev/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
-  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
+  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents,
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
@@ -96,6 +96,7 @@ export function openAppStore(): AppStore {
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
   let runtime: HostRuntime;
   const packs = createPackRegistry({
+    nativeDeclarations: [hostDeclaration],
     installedPacksDir: () => resolveAppEnvironment().packsDir,
     settingsForPack: (packId) => runtime.services.settings.forPack(packId),
   });

@@ -14,8 +14,8 @@ vi.mock('@apackdev/host/app-state', () => ({
   HOST_ENTITY_TYPES: ['AppState'],
 }));
 
-const { createPackRegistry } = await import('@apackdev/host/packs');
-const registry = createPackRegistry();
+const { createNativePackTestRegistry } = await import('@apackdev/host/testing');
+const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@apackdev/host/bus');
 const { rootEvents } = await import('@/transport/emitter');

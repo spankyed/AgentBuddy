@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { _createPackServices } from '@apackdev/sdk/services';
 import { createSettingsStore, createSettingsService } from '../../src/features/settings/be/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,12 +10,11 @@ import { SDK_ENTITIES } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { HOST } from '../../src/refs.ts';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ packs: registry });
 const {
   getPackExtensions, getRegisteredEntityTypes, getRegisteredServices,
@@ -341,8 +341,8 @@ describe('packContentTargets', () => {
 
 
 describe('runtime settings admission', () => {
-  let admission: ReturnType<typeof createPackRegistry>;
-  beforeEach(() => { admission = createPackRegistry(); });
+  let admission: ReturnType<typeof createNativePackTestRegistry>;
+  beforeEach(() => { admission = createNativePackTestRegistry(); });
   const manifest = { id: 'settings-pack', name: 'Settings', version: '1.0.0', features: { widget: {} } };
   const origin = {
     id: manifest.id, name: manifest.name, version: manifest.version, manifest,
@@ -385,7 +385,7 @@ describe('registered settings authority', () => {
 
   it('binds the accepted pack and revokes retained access when it unregisters', () => {
     const scoped = vi.fn((id: string) => admin.forPack(id));
-    const packs = createPackRegistry({ settingsForPack: scoped });
+    const packs = createNativePackTestRegistry({ settingsForPack: scoped });
     const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
     const generated = _createPackServices();
     const target = { kind: 'feature', featureRef: 'caller-pack/widget' } as const;
@@ -403,7 +403,7 @@ describe('registered settings authority', () => {
   });
 
   it('enforces dependency and owner policies through the injected runtime service', () => {
-    const packs = createPackRegistry({ settingsForPack: id => admin.forPack(id) });
+    const packs = createNativePackTestRegistry({ settingsForPack: id => admin.forPack(id) });
     const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
     const generated = _createPackServices();
     const definition = { defaults: { count: 1 }, schema: { type: 'object' } };
@@ -428,7 +428,7 @@ describe('registered settings authority', () => {
   it('does not supply authority to a refused registration', () => {
     const scoped = vi.fn();
     const bindSettings = vi.fn();
-    const packs = createPackRegistry({ settingsForPack: scoped });
+    const packs = createNativePackTestRegistry({ settingsForPack: scoped });
     expect(() => packs.registerPack({ id: 'refused-pack', services: { settings: {} }, bindSettings }))
       .toThrow('Service collision');
     expect(scoped).not.toHaveBeenCalled();
@@ -436,7 +436,7 @@ describe('registered settings authority', () => {
   });
 
   it('revokes injected authority if catalog publication refuses the declaration', () => {
-    const packs = createPackRegistry({ settingsForPack: id => admin.forPack(id) });
+    const packs = createNativePackTestRegistry({ settingsForPack: id => admin.forPack(id) });
     const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
     const generated = _createPackServices();
     expect(() => packs.registerPack({ id: 'invalid-pack', bindSettings: generated.bindSettings,

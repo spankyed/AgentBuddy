@@ -1,9 +1,9 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { ManifestSchema, _declarationRevision } from '@apackdev/sdk/build';
 import type { ContentRuntime } from '@apackdev/sdk/framework';
 import { startTestRuntime, resetTestData } from '@apackdev/sdk/testing';
 import { installedEngine } from '@apackdev/ears';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
@@ -24,10 +24,10 @@ const runtime: ContentRuntime = { id: manifest.id, declarationRevision,
   entities: manifest.entities!, relKinds: {}, repositories: { contentQueries: queries },
   contentWriters: { ContentThing: writer } };
 
-let registry: ReturnType<typeof createPackRegistry>;
+let registry: ReturnType<typeof createNativePackTestRegistry>;
 beforeEach(() => {
   startTestRuntime({ entityTypes: ['ContentThing'] });
-  registry = createPackRegistry();
+  registry = createNativePackTestRegistry();
   registry.catalog.setSources([{ manifest, declarationRevision, dir: origin.dir }]);
 });
 afterEach(() => {

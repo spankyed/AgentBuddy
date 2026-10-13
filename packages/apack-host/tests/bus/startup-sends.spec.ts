@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A system sends as it starts — to another system, or its plugin's first report — and the bus hears the root
 // events before it starts any system, so nothing a system sends while starting is lost.
 import { afterEach, expect, it } from 'vitest';
@@ -6,9 +7,8 @@ import { untypedSendToSystem } from '@apackdev/sdk/events';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const sender = setup({}).createMachine({ entry: () => untypedSendToSystem('boot-pack/receiver', { type: 'PING' }) });

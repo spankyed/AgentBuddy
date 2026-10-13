@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Registries are instances: two in one process hold their own packs, and the SDK's lookups read the bound one.
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
@@ -7,7 +8,6 @@ import { services } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
 const pack = (id: string, role: string, step: string, service: string, featureId: string): PackRegistration => ({
@@ -25,8 +25,8 @@ const pack = (id: string, role: string, step: string, service: string, featureId
 });
 
 describe('two registries in one process', () => {
-  const bound = createPackRegistry();
-  const other = createPackRegistry();
+  const bound = createNativePackTestRegistry();
+  const other = createNativePackTestRegistry();
   startTestRuntime({ packs: bound });
   bound.registerPack(pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'));
   other.registerPack(pack('card-pack', 'cards', 'card_step', 'cardService', 'cards'));

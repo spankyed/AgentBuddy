@@ -1,15 +1,15 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // What bus.send accepts: each registered system's incoming events, kept current by registration itself.
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackFeature } from '@apackdev/sdk/framework';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/registration.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
-const { getEventValidationMap, registerPack, unregisterPack } = createPackRegistry();
+const { getEventValidationMap, registerPack, unregisterPack } = createNativePackTestRegistry();
 
 const machine = setup({}).createMachine({});
 
@@ -31,7 +31,7 @@ describe('getEventValidationMap', () => {
   // The registry makes every ref `<packId>/<featureId>`, so a feature id naming another pack's feature is refused
   it('refuses a feature id that is not one segment', () => {
     expect(() => registerPack({ id: 'stray-pack', features: { 'other-pack/logs': { system: { machine, receives: [] } } } }))
-      .toThrow(`Pack "stray-pack": feature "other-pack/logs" isn't a feature id`);
+      .toThrow('Invalid native declarations: features.other-pack/logs');
   });
 
   // The host is a pack like any other: its features' systems are checked the same way
@@ -44,7 +44,7 @@ describe('getEventValidationMap', () => {
 });
 
 describe('getPluginEventValidationMap', () => {
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
 
   it('follows packs registering and unregistering, with no manual invalidation', () => {
     expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
@@ -74,7 +74,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
   // A pack names its own features, and the host is the pack `host`, so `application` in a manifest is this
   // pack's `application` feature and never the host's plugin.
   it("cannot add event types to the host's plugin, because a pack's feature is under its own pack", () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     const host = registry.getPluginEventValidationMap().get('host/application');
 
     registry.registerPack({ id: 'impostor-pack', features: { application: plugin(['ANYTHING']) } });
@@ -85,7 +85,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
 
   // Each pack's plugin has its own address, so neither can widen or shadow the other's contract
   it("gives a second pack naming the same feature its own entry, leaving the first's", () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     registry.registerPack({ id: 'first-pack', features: { memos: plugin(['MEMO_ADDED']) } });
     registry.registerPack({ id: 'second-pack', features: { memos: plugin(['HIJACKED']) } });
 
@@ -94,17 +94,12 @@ describe('a pack cannot widen a plugin it does not own', () => {
   });
 });
 
-/**
- * Registering a pack's extensions is observable: catalog publication notifies its listeners,
- * and default-setup's settings system reacts by sending to its plugin. A send reaches the bus while it
- * is idle, so the bus checks it synchronously — inside registerPack. With the pack listed last, that
- * send was checked against a registry that did not yet contain the pack sending it.
- */
-describe('a pack registering', () => {
-  it('is listed before its extensions are registered, so a listener sees its plugins', () => {
-    const registry = createPackRegistry();
+describe('native fixture admission', () => {
+  it('publishes declarations before binding plugins, independently of runtime validation maps', () => {
+    const registry = createNativePackTestRegistry();
     let seen: Set<string> | undefined = 'unset' as never;
     const stop = registry.onCatalogChanged(() => {
+      expect(registry.settingsCatalog().features['memo-pack/memos']).toBeDefined();
       seen = registry.getPluginEventValidationMap().get('memo-pack/memos');
     });
     registry.registerPack({
@@ -112,12 +107,13 @@ describe('a pack registering', () => {
       features: { memos: { ...plugin(['MEMO_ADDED']), settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } } },
     });
     stop();
-    expect(seen).toEqual(receives('MEMO_ADDED'));
+    expect(seen).toBeUndefined();
+    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED'));
   });
 
   // The rollback has to take it back out again, or a refused pack stays listed
   it('is unlisted again when its extensions are refused', () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     // Two appliers for one key: refused partway through registering the extensions
     expect(() => registry.registerPack({
       id: 'clumsy-pack',
@@ -131,7 +127,7 @@ describe('a pack registering', () => {
 
 describe('a host plugin', () => {
   it('is checked with the event types its registration declares', () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     registry.registerPack(hostRegistration());
     expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
     expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'));
@@ -139,7 +135,7 @@ describe('a host plugin', () => {
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
   it("keeps its ref whatever a pack names its own feature", () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     registry.registerPack({ id: 'owner-pack', features: { packs: plugin(['NOT_THE_HOSTS']) } });
     registry.registerPack(hostRegistration());
     expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));

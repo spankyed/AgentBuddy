@@ -16,13 +16,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
-import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, fakeInference, type FakeInference } from '@apackdev/sdk/testing';
+import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, fakeInference, nativePackDeclarationFixture, type FakeInference } from '@apackdev/sdk/testing';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
-import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apackdev/host/features';
+import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
 import { getSettingsCatalog, onPackCatalogChanged, type ContentRuntime } from '@apackdev/sdk/framework';
@@ -66,7 +66,7 @@ const serviceMocks = new Map<string, unknown>();
 let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
-const registry = createPackRegistry({ settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
+const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration], settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
 // The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
 // two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
 // pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write
@@ -104,12 +104,17 @@ const packsWithMocks: PackRegistryView = {
  * settings, appliers, services and the rest are what the pack under test then reads. Unregister it when the test is done.
  */
 export function registerPack(registration: PackRegistration): void {
-  registry.registerPack(registration);
+  const declaration = nativePackDeclarationFixture(registration);
+  const before = registry.catalog.getSnapshot().native;
+  registry.catalog.setNative([...before.filter(pack => pack.id !== declaration.id), declaration]);
+  try { registry.registerPack(registration); }
+  catch (error) { registry.catalog.setNative(before); throw error; }
 }
 
 /** Unregisters a pack `registerPack` registered */
 export function unregisterPack(packId: string): void {
   registry.unregisterPack(packId);
+  registry.catalog.setNative(registry.catalog.getSnapshot().native.filter(pack => pack.id !== packId));
 }
 
 /**

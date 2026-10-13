@@ -542,7 +542,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     services?: Record<string, string> | undefined;
-    designation?: string | undefined;
     settings?: {
         schema: Record<string, unknown>;
         defaults: Record<string, unknown>;
@@ -551,6 +550,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         description?: string | undefined;
         access?: "shared" | "owner" | undefined;
     } | undefined;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -569,8 +569,8 @@ export const FeatureEntrySchema: z.ZodObject<{
     references?: string | undefined;
 }, {
     services?: Record<string, string> | undefined;
-    designation?: string | undefined;
     settings?: unknown;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     system?: {
         entry: string;
@@ -744,7 +744,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -753,6 +752,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -771,8 +771,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: unknown;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1033,6 +1033,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }>>;
     }, "strict", z.ZodTypeAny, {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1043,14 +1051,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             prefix?: string | undefined;
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
-        }> | undefined;
-        settings?: Record<string, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
             path: string;
@@ -1091,6 +1091,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     }, {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, unknown> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1102,7 +1103,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        settings?: Record<string, unknown> | undefined;
         help?: {
             path: string;
         } | undefined;
@@ -1390,7 +1390,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -1399,6 +1398,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1434,6 +1434,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1444,14 +1452,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             prefix?: string | undefined;
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
-        }> | undefined;
-        settings?: Record<string, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
             path: string;
@@ -1538,8 +1538,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: unknown;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1575,6 +1575,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, unknown> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1586,7 +1587,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        settings?: Record<string, unknown> | undefined;
         help?: {
             path: string;
         } | undefined;
@@ -1672,7 +1672,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -1681,6 +1680,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1716,6 +1716,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1726,14 +1734,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             prefix?: string | undefined;
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
-        }> | undefined;
-        settings?: Record<string, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
             path: string;
@@ -1820,8 +1820,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: unknown;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1857,6 +1857,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, unknown> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -1868,7 +1869,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        settings?: Record<string, unknown> | undefined;
         help?: {
             path: string;
         } | undefined;
@@ -1954,7 +1954,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
-        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -1963,6 +1962,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description?: string | undefined;
             access?: "shared" | "owner" | undefined;
         } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         system?: {
             entry: string;
@@ -1998,6 +1998,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
+        settings?: Record<string, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }> | undefined;
         fe?: {
             tiptapPlugins?: string | undefined;
             appExtensions?: Record<string, string> | undefined;
@@ -2008,14 +2016,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             prefix?: string | undefined;
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
-        }> | undefined;
-        settings?: Record<string, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "shared" | "owner" | undefined;
         }> | undefined;
         help?: {
             path: string;
@@ -2149,6 +2149,111 @@ export const MigrationsSchema: z.ZodObject<{
 }, {
     app?: Record<string, string> | undefined;
     pack?: Record<string, string> | undefined;
+}>;
+
+// @internal
+export const _NativePackDeclarationSchema: z.ZodObject<{
+    id: z.ZodString;
+    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    settings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
+        schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        title: z.ZodOptional<z.ZodString>;
+        description: z.ZodOptional<z.ZodString>;
+        form: z.ZodOptional<z.ZodString>;
+        access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
+    }, "strict", z.ZodTypeAny, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }>, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }, unknown>>>;
+    features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+            schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+            defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+            title: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            form: z.ZodOptional<z.ZodString>;
+            access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
+        }, "strict", z.ZodTypeAny, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }>, {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        }, unknown>>;
+    }, "strict", z.ZodTypeAny, {
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
+    }, {
+        settings?: unknown;
+    }>>>;
+}, "strict", z.ZodTypeAny, {
+    id: string;
+    dependencies?: Record<string, string> | undefined;
+    features?: Record<string, {
+        settings?: {
+            schema: Record<string, unknown>;
+            defaults: Record<string, unknown>;
+            form?: string | undefined;
+            title?: string | undefined;
+            description?: string | undefined;
+            access?: "shared" | "owner" | undefined;
+        } | undefined;
+    }> | undefined;
+    settings?: Record<string, {
+        schema: Record<string, unknown>;
+        defaults: Record<string, unknown>;
+        form?: string | undefined;
+        title?: string | undefined;
+        description?: string | undefined;
+        access?: "shared" | "owner" | undefined;
+    }> | undefined;
+}, {
+    id: string;
+    dependencies?: Record<string, string> | undefined;
+    features?: Record<string, {
+        settings?: unknown;
+    }> | undefined;
+    settings?: Record<string, unknown> | undefined;
 }>;
 
 // @public (undocumented)

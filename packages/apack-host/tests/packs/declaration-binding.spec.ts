@@ -1,7 +1,7 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { expect, it } from 'vitest';
 import { ManifestSchema } from '@apackdev/sdk/build';
 import { backendBindingProblem } from '../../src/packs/declaration-binding.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const manifest = ManifestSchema.parse({
   id: 'example', name: 'Example', version: '1.0.0',
@@ -59,7 +59,7 @@ it.each(['features', 'services', 'repositories'])('refuses explicit null %s even
 });
 
 it('refuses undeclared services before registration, catalog publication or authority binding', () => {
-  const registry = createPackRegistry();
+  const registry = createNativePackTestRegistry();
   const catalog = registry.settingsCatalog();
   let bound = false;
   const empty = ManifestSchema.parse({ id: 'undeclared', name: 'Undeclared', version: '1.0.0' });

@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
 import * as fs from 'node:fs';
@@ -13,14 +14,13 @@ import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ packs: registry });
 const register = (pack: PackRegistration) => registry.registerPack(pack);
 const unregister = (packId: string) => registry.unregisterPack(packId);

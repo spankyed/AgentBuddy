@@ -1,8 +1,8 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A pack's content may reference what a pack it depends on written, so it has to apply after it. Discovery
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packContentOrder } from '../../src/packs/discovery.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const pack = (id: string, ...deps: string[]) => ({
   id,
@@ -73,7 +73,7 @@ describe('the order the registry hands out', () => {
   });
 
   it('puts a dependency before the pack that names it, whichever order they registered in', () => {
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     registry.registerPack({ id: 'dependent' }, origin('dependent', 'provider'));
     registry.registerPack({ id: 'provider' }, origin('provider'));
 
@@ -89,7 +89,7 @@ describe('the order the registry hands out', () => {
 
   it('keeps that order in a subset, and reports a cycle once per pack set rather than per call', () => {
     const warnings = captureWarnings();
-    const registry = createPackRegistry();
+    const registry = createNativePackTestRegistry();
     registry.registerPack({ id: 'a' }, origin('a', 'b'));
     registry.registerPack({ id: 'b' }, origin('b', 'a'));
     registry.registerPack({ id: 'c' }, origin('c'));

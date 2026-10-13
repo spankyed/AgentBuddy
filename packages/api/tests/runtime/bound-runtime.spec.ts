@@ -46,6 +46,7 @@ describe('the bound app', () => {
   });
 
   it("reads the registered packs' services and systems", () => {
+    packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bound-pack', features: { memos: {} } }]);
     const memoService = { ping: () => 'pong' };
     registerPack({ id: 'bound-pack', features: { memos: { system: { machine: {} as never, receives: ['PING'] } } }, services: { memoService } });
     const incoming: unknown[] = [];

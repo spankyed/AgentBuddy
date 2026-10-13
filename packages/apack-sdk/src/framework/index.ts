@@ -9,4 +9,4 @@ export { getPackCommands, type PackCommand } from './pack-commands.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
 export { _packDeclarationProblem } from './declaration-binding.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';
-export { onPackCatalogChanged } from './pack-catalog.ts';
+export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';

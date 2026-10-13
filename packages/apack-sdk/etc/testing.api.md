@@ -143,6 +143,9 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @public
+export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration;
+
+// @public
 export function population<T>(what: string, xs: readonly T[], opts?: {
     atLeast?: number;
 }): readonly T[];

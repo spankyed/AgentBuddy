@@ -3,8 +3,8 @@ import { readPackArtifact } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
-import { parseSnapshot, ManifestSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog } from '@apackdev/sdk/framework';
+import { parseSnapshot, ManifestSchema, _NativePackDeclarationSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -35,16 +35,8 @@ export interface PackCatalogSnapshot {
   readonly revision: number;
   readonly appSettings: CatalogData<SettingsDefinition>;
   readonly packs: readonly PackCatalogEntry[];
-  readonly native: readonly NativePackDeclaration[];
+  readonly native: readonly CatalogData<NativePackDeclaration>[];
   readonly sourcePacks: readonly SourcePackDeclaration[];
-}
-
-/** Host/test composition declares data directly; installed packs always require verified artifacts. */
-export interface NativePackDeclaration {
-  id: string;
-  dependencies?: Record<string, string>;
-  settings?: Record<string, SettingsDefinition>;
-  features?: Record<string, { settings?: SettingsDefinition }>;
 }
 
 /** Own immutable data; neither input mutation nor a reader can change a committed catalog. */
@@ -147,7 +139,13 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       });
       publish(current.packs, current.native, next);
     },
-    setNative: (declarations: readonly NativePackDeclaration[]): void => publish(current.packs, declarations),
+    setNative(declarations: readonly NativePackDeclaration[]): void {
+      for (const declaration of declarations) {
+        const result = _NativePackDeclarationSchema.safeParse(declaration);
+        if (!result.success) throw new Error(`Invalid native declarations: ${result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
+      }
+      publish(current.packs, declarations);
+    },
     packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
       hasOwn(settings.packs, packId) ? settings.packs[packId] : emptySettings,
 
