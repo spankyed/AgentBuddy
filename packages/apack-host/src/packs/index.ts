@@ -7,7 +7,7 @@ export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
 export {
-  discoverPacks, enabledExternalPacks, installedPacks,
+  discoverPacks, installedPacks,
 } from './discovery.ts';
 export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
 export { createContributionCatalog, readInstalledContributionCatalog } from './catalog.ts';

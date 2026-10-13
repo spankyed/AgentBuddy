@@ -1,8 +1,8 @@
 /**
  * What the app has recorded about the external packs it has.
  *
- * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `enabledExternalPacks`
- * (`discovery.ts`) derives it. This file is a side table keyed by pack id, holding only what the
+ * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `readInstalledPackArtifacts`
+ * (`discovery.ts`) reads it independently of artifact validity. This file is a side table keyed by pack id, holding only what the
  * directory cannot say: the user's enabled choice, where an install came from, and what the last apply and
  * update check found. A pack with no row is installed all the same; development installs can write
  * the directory without recording an update source.

@@ -1,5 +1,5 @@
-import { discoverPackDirectories } from './discovery.ts';
-import { readPackArtifact, packArtifactRevision, type PackIntegrity } from './layout.ts';
+import { readInstalledPackArtifacts } from './discovery.ts';
+import { packArtifactRevision, type PackIntegrity } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
@@ -199,9 +199,10 @@ export type ContributionCatalog = ReturnType<typeof createContributionCatalog>;
 /** Offline tools refuse incomplete installed definitions instead of treating invalid packs as absent. */
 export function readInstalledContributionCatalog(packsDir: string, disabled: ReadonlySet<string>): ContributionCatalog {
   const catalog = createContributionCatalog(appSettingsDefinition);
-  catalog.replace(discoverPackDirectories(packsDir).map(dir => {
-    const { snapshot, integrity } = readPackArtifact(dir);
-    return { snapshot, integrity, dir, enabled: !disabled.has(snapshot.manifest.id) };
+  catalog.replace(readInstalledPackArtifacts(packsDir).map(entry => {
+    if (!entry.artifact) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
+    const { snapshot, integrity } = entry.artifact;
+    return { snapshot, integrity, dir: entry.dir, enabled: !disabled.has(entry.id) };
   }));
   return catalog;
 }

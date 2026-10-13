@@ -5,7 +5,6 @@ import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
 import { installShippedPacks } from '../installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
@@ -115,8 +114,7 @@ export async function reloadPackById(
   }
 
   await reloadPack(registry, packId, backendActor, () => {
-    const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-    const pack = loadSingleExternalPack(manifest, packDir);
+    const pack = loadSingleExternalPack(packDir);
     if ('problem' in pack) {
       // A pack still running keeps its previous runtime, so only one that isn't has a load problem to show
       if (!registry.getPackRegistration(packId)) registry.recordLoadProblem(packId, pack.problem);

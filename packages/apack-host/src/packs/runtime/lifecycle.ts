@@ -3,7 +3,6 @@ import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../registry.ts';
-import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
@@ -85,17 +84,7 @@ export function activatePack(
 
   if (!fs.existsSync(packDir)) return failed(`pack directory not found: ${packDir}`);
 
-  const manifestPath = path.join(packDir, 'apack.json');
-  if (!fs.existsSync(manifestPath)) return failed(`no apack.json found in ${packDir}`);
-
-  let manifest: PackManifest;
-  try {
-    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  } catch (err) {
-    return failed(`its apack.json could not be read: ${(err as Error).message}`, err as Error);
-  }
-
-  const pack = loadSingleExternalPack(manifest, packDir);
+  const pack = loadSingleExternalPack(packDir);
   if ('problem' in pack) return failed(pack.problem);
 
   // A refused registration is recorded as the load problem by registerExternalPacks

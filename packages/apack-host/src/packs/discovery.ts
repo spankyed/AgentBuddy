@@ -3,6 +3,9 @@ import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { packRecord, packRecords, type PackRecord } from './installed.ts';
+import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
+import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
+import { PACK_LAYOUT, readPackArtifact, type PackArtifact } from './layout.ts';
 import type { PackManifest } from '@apackdev/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -19,52 +22,49 @@ export function discoverPackDirectories(packsDir: string): string[] {
     .map(entry => path.join(packsDir, entry.name));
 }
 
-export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
-  const results: { manifest: PackManifest; dir: string }[] = [];
-  for (const packDir of discoverPackDirectories(packsDir)) {
-    const entryName = path.basename(packDir);
-    const manifestPath = path.join(packDir, 'apack.json');
+/** Directory presence is installation evidence even when its artifact cannot be admitted. */
+export type InstalledPackArtifact = { id: string; dir: string } & (
+  | { artifact: PackArtifact; problem?: never }
+  | { artifact?: never; problem: string }
+);
 
-    if (!fs.existsSync(manifestPath)) {
-      logger.warn(`Skipping ${entryName}: no apack.json`);
-      continue;
-    }
-
-    try {
-      const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (!raw.id || !raw.name || !raw.version) {
-        logger.warn(`Skipping ${entryName}: manifest missing id, name, or version`);
-        continue;
-      }
-      results.push({ manifest: raw as PackManifest, dir: packDir });
-    } catch {
-      logger.warn(`Skipping ${entryName}: failed to parse apack.json`);
-    }
+/** Read a managed installed directory; producer/staging directories use readPackArtifact directly. */
+export function readInstalledPackArtifact(dir: string): PackArtifact {
+  const id = path.basename(dir);
+  if (!PACK_ID_PATTERN.test(id)) throw new Error(`Invalid installed pack directory "${id}"`);
+  const artifact = readPackArtifact(dir);
+  if (artifact.snapshot.manifest.id !== id) {
+    throw new Error(`Installed directory "${id}" contains pack "${artifact.snapshot.manifest.id}"`);
   }
+  if (!hasOwn(artifact.integrity.files, PACK_LAYOUT.runtimeEntry)) {
+    throw new Error(`Installed pack "${id}" has no ${PACK_LAYOUT.runtimeEntry} asset in its receipt`);
+  }
+  return artifact;
+}
 
-  return results;
+/** One data-only admission path for installed inventory, with a refusal for every invalid directory. */
+export function readInstalledPackArtifacts(packsDir: string): InstalledPackArtifact[] {
+  return discoverPackDirectories(packsDir).map(dir => {
+    const id = path.basename(dir);
+    try { return { id, dir, artifact: readInstalledPackArtifact(dir) }; }
+    catch (error) { return { id, dir, problem: errorMessage(error) }; }
+  });
+}
+
+export function discoverPacks(packsDir: string): DiscoveredPack[] {
+  return readInstalledPackArtifacts(packsDir).flatMap(entry => {
+    if (!entry.artifact) {
+      logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
+      return [];
+    }
+    return [{ manifest: entry.artifact.snapshot.manifest, dir: entry.dir }];
+  });
 }
 
 /** A pack found in a packs directory, with the manifest read from it */
 export interface DiscoveredPack {
   manifest: PackManifest;
   dir: string;
-}
-
-/**
- * The external packs a data dir has enabled: everything `discovered` in its packs directory, minus the
- * ids `disabled` names.
- *
- * The directory is the list. A pack the record has never heard of is installed and enabled — which is
- * what an `apack pack install` outside the app leaves behind, and what `apack pack dev` leaves when it installs
- * into a running one. The record only ever takes packs away from this list.
- *
- * The caller reads `disabled`, because what an unreadable record means depends on who is asking: the app
- * carries on with everything enabled and says so, while a tool reading someone else's data dir refuses
- * rather than answer differently from the app it is standing in for.
- */
-export function enabledExternalPacks(discovered: DiscoveredPack[], disabled: ReadonlySet<string>): DiscoveredPack[] {
-  return discovered.filter(({ manifest }) => !disabled.has(manifest.id));
 }
 
 /** A pack the app has: what its directory says, with what the app has recorded about it. */
@@ -75,19 +75,13 @@ export interface InstalledPack extends DiscoveredPack {
 /**
  * Every pack in the packs directory, enabled or not, with what the app has recorded about it.
  *
- * What the Packs view lists and what an install, update or toggle acts on. A pack with no row is here
+ * The admitted artifacts an install, update or toggle can act on; the catalog also lists refusals. A pack with no row is here
  * like any other: the directory is what makes it installed.
  */
 export function installedPacks(packsDir = resolveAppEnvironment().packsDir): InstalledPack[] {
   const records = packRecords();
   return discoverPacks(packsDir).map(pack => ({ ...pack, record: packRecord(pack.manifest.id, records) }));
 }
-
-/** The ids of the packs in `discovered`, for `forgetPacksExcept`. */
-export function discoveredPackIds(discovered: DiscoveredPack[]): ReadonlySet<string> {
-  return new Set(discovered.map(({ manifest }) => manifest.id));
-}
-
 
 /** A pack and what it declares it depends on (`apack.json` `dependencies`), as the apply order reads it */
 export interface PackDependents {

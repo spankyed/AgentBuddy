@@ -18,14 +18,14 @@ describe('a file readInstalledSchema cannot use', () => {
   it("names the pack's manifest, whichever pack it is", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'bookmarks', entities: { Bookmark: 'Bookmark' } }] });
     write(manifestFile(dir, 'bookmarks'), { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', relKinds: 'nonsense' });
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${manifestFile(dir, 'bookmarks')}: the manifest's relKinds isn't a set of names`);
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Pack "bookmarks" declarations in ${path.dirname(manifestFile(dir, 'bookmarks'))}: its manifest does not match its built declarations`);
   });
 
   // The pack the app ships is read exactly the same way, from the same place
   it("names the manifest of a pack the app ships", () => {
     const dir = dataDirWithPacks();
     write(manifestFile(dir, 'core'), { id: 'core', name: 'Core', version: '1.0.0', entities: ['Note'] });
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${manifestFile(dir, 'core')}: the manifest's entities isn't a set of names`);
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Pack "core" declarations in ${path.dirname(manifestFile(dir, 'core'))}: its manifest does not match its built declarations`);
   });
 
   it("refuses a registry it can't read, rather than taking in packs the app leaves out", () => {
@@ -34,9 +34,9 @@ describe('a file readInstalledSchema cannot use', () => {
     expect(readInstalledSchema(schemaContext(dir)).getRegisteredEntityTypes().has('Hidden')).toBe(false);
 
     write(registry, 'not json');
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${registry} isn't readable the installed packs`);
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Cannot read ${registry}`);
     write(registry, { packs: 'nonsense' });
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${registry} lists no installed packs`);
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Cannot read ${registry}: Invalid installed pack records`);
   });
 });
 
@@ -46,6 +46,6 @@ describe('packs declaring the same name', () => {
     expect(() => readInstalledSchema(schemaContext(colliding))).toThrow('Two packs declare the entity type Shared: "a" and "b"');
 
     const overApp = dataDirWithPacks({ external: [{ id: 'a', entities: { Flow: 'Flow' } }] });
-    expect(() => readInstalledSchema(schemaContext(overApp))).toThrow('Two packs declare the entity type Flow: "apack" and "a"');
+    expect(() => readInstalledSchema(schemaContext(overApp))).toThrow('"Flow" is defined by the SDK and available to every pack: remove it');
   });
 });

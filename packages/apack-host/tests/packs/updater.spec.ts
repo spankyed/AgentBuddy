@@ -1,3 +1,4 @@
+import { writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -145,8 +146,7 @@ describe('checkForUpdates', () => {
   /** The pack on disk, which is what makes it installed and where its version comes from */
   function installed(id: string, version: string) {
     const dir = path.join(_appDirOf(userDataDir), 'packs', id);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version }));
+    writeInstalledPackFixture(dir, { id, name: id, version });
   }
 
   it('checks every time, replacing what an earlier check recorded', async () => {

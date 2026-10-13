@@ -13,6 +13,7 @@ import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@apackdev/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, contentFile } from '@apackdev/sdk/build';
 import type { ApplyRecord } from '@apackdev/sdk/utils';
+import { recordInstalled, setPackEnabled, readInstalledPacks } from '../../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
@@ -90,6 +91,33 @@ describe('pack-loader', () => {
       } finally { unsubscribe(); }
     });
 
+    it('refuses directory owner mismatches before executing a runtime', () => {
+      const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'local-pack', { id: 'other-pack', name: 'Other', version: '1.0.0' });
+      const marker = path.join(tmpDir, 'owner-mismatch-executed');
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes');`);
+      sealPack(dir);
+      const recordLoadProblem = vi.fn();
+      expect(loadExternalPacks({ recordLoadProblem })).toEqual([]);
+      expect(recordLoadProblem).toHaveBeenCalledWith('local-pack', 'Installed directory "local-pack" contains pack "other-pack"');
+      expect(fs.existsSync(marker)).toBe(false);
+    });
+
+    it('retains a disabled choice and update provenance while an installed manifest is unreadable', () => {
+      const packsDir = path.join(_appDirOf(tmpDir), 'packs');
+      const manifest = { id: 'kept-pack', name: 'Kept', version: '1.0.0' };
+      const dir = makePack(packsDir, manifest.id, manifest);
+      recordInstalled(manifest.id, 'owner/kept-pack');
+      setPackEnabled(manifest.id, false);
+      recordInstalled('removed-pack', 'owner/removed-pack');
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
+      const problems = vi.fn();
+      expect(loadExternalPacks({ recordLoadProblem: problems })).toEqual([]);
+      expect(readInstalledPacks()).toEqual([expect.objectContaining({ id: manifest.id, enabled: false, installedFrom: 'owner/kept-pack' })]);
+      makePack(packsDir, manifest.id, manifest);
+      expect(loadExternalPacks()).toEqual([]);
+      expect(readInstalledPacks()[0].enabled).toBe(false);
+    });
+
     it('discovers and loads a valid pack, with the system events its manifest adds', () => {
       const packsDir = path.join(_appDirOf(tmpDir), 'packs');
       makePack(packsDir, 'test-pack', {
@@ -119,7 +147,7 @@ describe('pack-loader', () => {
       expect(fs.existsSync(marker)).toBe(false);
     });
 
-    it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
+    it("refuses an unsealed pack directory with its artifact diagnostic", () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
       fs.rmSync(path.join(packDir, PACK_LAYOUT.integrity));
       const warnings: string[] = [];
@@ -128,7 +156,7 @@ describe('pack-loader', () => {
       });
       try {
         expect(loadExternalPacks()).toEqual([]);
-        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with apack pack install or apack pack dev$/)]);
+        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: Not a pack layout: no integrity\.json in .*; rebuild the complete pack$/)]);
       } finally {
         unsubscribe();
       }

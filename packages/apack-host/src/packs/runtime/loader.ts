@@ -4,11 +4,10 @@ import Module from 'module';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { _packDeclarationProblem, type PackRegistration } from '@apackdev/sdk/framework';
-import { _declarationRevision } from '@apackdev/sdk/build';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
-import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
+import { readInstalledPackArtifact, readInstalledPackArtifacts, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
-import { PACK_LAYOUT, readPackArtifact, isPackLayout } from '../layout.ts';
+import { PACK_LAYOUT } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -55,50 +54,31 @@ export interface PackLoadProblem {
 /** Where the loader records why it skipped a pack: the app's registry, which the Packs view reads it from */
 export type LoadProblemSink = Pick<PackRegistry, 'recordLoadProblem'>;
 
-function skipped(manifest: PackManifest, problem: string): PackLoadProblem {
-  logger.warn(`Skipping ${manifest.id}: ${problem}`);
+function skipped(id: string, problem: string): PackLoadProblem {
+  logger.warn(`Skipping ${id}: ${problem}`);
   return { problem };
 }
 
 /** Reads an installed pack and its runtime, or says why it can't be loaded */
 export function loadSingleExternalPack(
-  manifest: PackManifest,
   dir: string,
   shippedIds: ReadonlySet<string> = new Set(),
 ): LoadedPack | PackLoadProblem {
-  // The same semver check the installer applies, so any range a pack declares is honored
+  let artifact;
+  try { artifact = readInstalledPackArtifact(dir); }
+  catch (error) { return skipped(path.basename(dir), (error as Error).message); }
+  const { snapshot, integrity, revision: artifactRevision } = artifact;
+  const { manifest, declarationRevision } = snapshot;
+  const artifactFiles = Object.freeze({ ...integrity.files });
   const appVersion = getAppVersion();
   if (!isHostCompatible(manifest.hostVersion, appVersion)) {
-    return skipped(manifest, `requires host ${manifest.hostVersion}, running ${appVersion}`);
+    return skipped(manifest.id, `requires host ${manifest.hostVersion}, running ${appVersion}`);
   }
-
+  const hostSdk = getHostSdkVersion();
+  if (snapshot.sdkVersion && hostSdk && snapshot.sdkVersion.split('.')[0] !== hostSdk.split('.')[0]) {
+    logger.warn(`Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`);
+  }
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
-  if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack pack install or apack pack dev`);
-  }
-  // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
-  let declarationRevision: string;
-  let artifactRevision: string;
-  let artifactFiles: Readonly<Record<string, string>>;
-  try {
-    const artifact = readPackArtifact(dir);
-    const snapshot = artifact.snapshot;
-    artifactRevision = artifact.revision;
-    artifactFiles = Object.freeze({ ...artifact.integrity.files });
-    declarationRevision = snapshot.declarationRevision;
-    if (declarationRevision !== _declarationRevision(manifest)) return skipped(manifest, 'its manifest does not match its built declarations; rebuild and install the complete pack');
-    const hostSdk = getHostSdkVersion();
-    if (snapshot.sdkVersion && hostSdk) {
-      const packMajor = snapshot.sdkVersion.split('.')[0];
-      const hostMajor = hostSdk.split('.')[0];
-      if (packMajor !== hostMajor) {
-        logger.warn(
-          `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
-        );
-      }
-    }
-  } catch (error) { return skipped(manifest, (error as Error).message); }
-
   const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision);
   if ('problem' in registration) return registration;
 
@@ -154,23 +134,30 @@ export function clearPackRequireCache(packDir: string): void {
  */
 export function loadExternalPacks(problems?: LoadProblemSink, shippedIds: ReadonlySet<string> = new Set()): LoadedPack[] {
   const { packsDir } = resolveAppEnvironment();
-  const discovered = discoverPacks(packsDir);
+  const discovered = readInstalledPackArtifacts(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
-  forgetPacksExcept(discoveredPackIds(discovered));
+  forgetPacksExcept(new Set(discovered.map(entry => entry.id)));
   // **The packs this app ships load first, and that is a guarantee rather than an accident of readdir.**
   // Registration order decides who wins a designation or a plugin id, so an installed pack that claimed
   // `brain` would take it from the pack the app needs if it happened to be discovered first. Two separate
   // load calls used to make this ordering structural; with one list it has to be said.
-  const enabled = enabledExternalPacks(discovered, disabledPackIds())
-    .sort((a, b) => Number(shippedIds.has(b.manifest.id)) - Number(shippedIds.has(a.manifest.id)));
+  const disabled = disabledPackIds();
+  const enabled = discovered.filter(entry => !disabled.has(entry.id))
+    .sort((a, b) => Number(shippedIds.has(b.id)) - Number(shippedIds.has(a.id)));
 
   if (enabled.length === 0) return [];
 
   logger.info(`Loading ${enabled.length} pack(s)`);
   const loaded: LoadedPack[] = [];
 
-  for (const { manifest, dir } of enabled) {
-    const pack = loadSingleExternalPack(manifest, dir, shippedIds);
+  for (const entry of enabled) {
+    if (!entry.artifact) {
+      logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
+      problems?.recordLoadProblem(entry.id, entry.problem);
+      continue;
+    }
+    const { dir, artifact: { snapshot: { manifest } } } = entry;
+    const pack = loadSingleExternalPack(dir, shippedIds);
     if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
     else loaded.push(pack);
   }

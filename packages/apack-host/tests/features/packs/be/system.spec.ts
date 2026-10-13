@@ -1,4 +1,4 @@
-import { sealPack, sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture, sealPack, sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
 import { _appDirOf, resolveAppEnvironment } from '@apackdev/sdk/env';
-import { resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { startTestRuntime, resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
 import { readInstalledPacks, setPackEnabled } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
@@ -346,6 +346,18 @@ describe('pack information without activation', () => {
       expect(pack).toMatchObject({ name: 'Reinstall Pack', version: '1.0.0', loadProblem: expect.stringContaining('declarations were refused') });
       expect(observations).toEqual([pack.loadProblem]);
     } finally { stop(); system.stop(); }
+  });
+
+  it('can remove an unreadable installation without treating its manifest as authority', async () => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).some(event => event.type === 'PACK_UNINSTALL_COMPLETE')).toBe(true));
+      expect(fs.existsSync(dir)).toBe(false);
+    } finally { system.stop(); }
   });
 
   it('shows unreadable installations without trusting their manifest metadata', () => {
@@ -747,7 +759,7 @@ describe('importing a pack’s content', () => {
  * **The three answers a user gives to one content item**, which are the only requests in the app that write
  * a pack's content over what the user has made of it, or remove it.
  *
- * The fixture is two entries over two SDK entity types, which is default-setup's own shape: one that offers
+ * The fixture has two entries: an SDK action and a pack-owned prompt with its own writer, one that offers
  * and one that does not. Two entries rather than one because the thing most worth holding here is what a
  * request about *one* item does to everything else — the answer was "overwrites all of it", and nothing
  * could have said so with a single entry.
@@ -755,7 +767,7 @@ describe('importing a pack’s content', () => {
 describe('a user answering for one of a pack’s content items', () => {
   const CONTENT_PACK = 'content-pack';
   const ACTION_KEY = `${CONTENT_PACK}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
-  const PROMPT_KEY = `${CONTENT_PACK}:prompts/${encodeURIComponent(JSON.stringify(['Prompt', 'Greet']))}`;
+  const PROMPT_KEY = `${CONTENT_PACK}:pack-prompts/${encodeURIComponent(JSON.stringify(['PackPrompt', 'Greet']))}`;
 
   /**
    * The pack as installed, in the data dir's packs directory — which is where the restore looks, because
@@ -766,14 +778,19 @@ describe('a user answering for one of a pack’s content items', () => {
     const content = path.join(dir, PACK_LAYOUT.contentDir);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(content, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
+    writeInstalledPackFixture(dir, { id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0',
+      entities: { PackPrompt: 'PackPrompt' },
+      content: { sources: { actions: 'src/actions', 'pack-prompts': { path: 'src/prompts', format: 'pack-prompts', onUserEdit: 'offer' } },
+        formats: { 'pack-prompts': { format: 'json', entity: 'PackPrompt', identity: ['label'] } },
+        writers: { PackPrompt: 'src/writers.ts#promptWriter' } } });
     fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
     fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));
-    fs.writeFileSync(path.join(content, 'prompts.content.json'), JSON.stringify({
-      records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
+    fs.writeFileSync(path.join(content, 'pack-prompts.content.json'), JSON.stringify({
+      records: [{ entity: 'PackPrompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
     }));
+    sealPack(dir);
     return dir;
   }
 
@@ -781,21 +798,27 @@ describe('a user answering for one of a pack’s content items', () => {
   const removed: string[] = [];
 
   function registerContentPack(): void {
+    const dir = path.join(resolveAppEnvironment().packsDir, CONTENT_PACK);
+    const { snapshot, integrity, revision } = readPackArtifact(dir);
+    const manifest = snapshot.manifest;
     registry.registerPack({
+      declarationRevision: snapshot.declarationRevision,
+      ears: { entities: { ...manifest.entities }, relKinds: {} },
       id: CONTENT_PACK,
       appliers: [
         createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),
-        createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'], onUserEdit: 'offer' }),
+        createFormatApplier({ key: 'pack-prompts', entities: ['PackPrompt'], identity: ['label'], onUserEdit: 'offer' }),
       ],
       contentWriters: {
-        Prompt: {
+        PackPrompt: {
           remove(id) {
             removed.push(id);
             untypedTx(id).update('deleted' as never, true);
           },
         },
       },
-    });
+    }, { id: manifest.id, name: manifest.name, version: manifest.version, manifest, dir, shipped: false,
+      declarationRevision: snapshot.declarationRevision, artifactRevision: revision, artifactFiles: integrity.files });
   }
 
   const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
@@ -804,6 +827,7 @@ describe('a user answering for one of a pack’s content items', () => {
   beforeEach(() => {
     resetTestData();
     removed.length = 0;
+    startTestRuntime({ entityTypes: ['PackPrompt'] });
     dir = contentPack('v1');
     registerContentPack();
     // The apply that writes both items and records what it wrote, which is what makes the rest an answer
@@ -814,7 +838,7 @@ describe('a user answering for one of a pack’s content items', () => {
     if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
   });
 
-  const entityOf = (key: string, entity: 'Action' | 'Prompt') =>
+  const entityOf = (key: string, entity: 'Action' | 'PackPrompt') =>
     (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
 
   /**
@@ -824,7 +848,7 @@ describe('a user answering for one of a pack’s content items', () => {
    * edited under every other entry — on a click that asked for one.
    */
   it('writes the item the user asked for, and nothing of any other entry', () => {
-    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    const prompt = entityOf(PROMPT_KEY, 'PackPrompt')!;
     untypedTx(prompt as never).update('description' as never, 'mine');
     fs.rmSync(dir, { recursive: true, force: true });
     contentPack('v2');
@@ -848,7 +872,7 @@ describe('a user answering for one of a pack’s content items', () => {
    * and skip the second, which for a note is the user's undo.
    */
   it('removes a deleted item through its pack’s own writer', () => {
-    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    const prompt = entityOf(PROMPT_KEY, 'PackPrompt')!;
 
     const system = runPacksSystem();
     try {
@@ -871,6 +895,7 @@ describe('a user answering for one of a pack’s content items', () => {
     appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
     // The content no longer holds an item under that label, so the selection matches no record
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.contentDir, 'actions.content.json'), JSON.stringify({ records: [] }));
+    sealPack(dir);
 
     const system = runPacksSystem();
     try {

@@ -18,7 +18,8 @@ import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 import { mintProfile, openProfile } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/pack-host';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { sealPackBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 
 // `--profile` resolves a name through the CLI's own data dir, which is the real one on this machine.
 // Pointing it at a temp tree is the only way to test the lookup without reading whatever profiles the
@@ -1043,9 +1044,14 @@ describe('apack db import', () => {
     const dir = await appDataDir();
     const source = await appDataDir();
     // A pack was installed when the backup was made and declared Bookmark, which the target dir's packs don't
-    const manifestFile = path.join(_appDirOf(source), 'packs', 'bookmarks', PACK_LAYOUT.manifest);
-    fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
-    fs.writeFileSync(manifestFile, JSON.stringify({ id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', entities: { Bookmark: 'Bookmark' } }));
+    const packDir = path.join(_appDirOf(source), 'packs', 'bookmarks');
+    const manifest = { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', entities: { Bookmark: 'Bookmark' } };
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.typesDir), { recursive: true });
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.runtimeDir), { recursive: true });
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Offline discovery must not activate");');
+    sealPackBuild(packDir, manifest);
     await write(source, () => {
       untypedTx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
       untypedTx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');

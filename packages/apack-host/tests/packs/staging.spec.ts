@@ -1,3 +1,4 @@
+import { writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -5,7 +6,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs } from '../../src/packs/staging.ts';
 import { stagingDirName } from '../../src/replace-dir.ts';
-import { discoverPacks, enabledExternalPacks } from '../../src/packs/discovery.ts';
+import { discoverPacks } from '../../src/packs/discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
 
 const recordedPacks = () => readInstalledPacks();
@@ -38,8 +39,7 @@ const mkdir = (name: string) => fs.mkdirSync(path.join(packsDir, name));
 const remaining = () => fs.readdirSync(packsDir).sort();
 
 function writePack(name: string, id = 'demo-pack'): void {
-  fs.mkdirSync(path.join(packsDir, name), { recursive: true });
-  fs.writeFileSync(path.join(packsDir, name, 'apack.json'), JSON.stringify({ id, name: 'Demo', version: '1.0.0' }));
+  writeInstalledPackFixture(path.join(packsDir, name), { id, name: 'Demo', version: '1.0.0' });
 }
 
 describe('recoverStagingDirs', () => {
@@ -72,7 +72,7 @@ describe('recoverStagingDirs', () => {
 
     expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
-    expect(enabledExternalPacks(discoverPacks(packsDir), new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
+    expect(discoverPacks(packsDir).map((p) => p.manifest.id)).toEqual(['demo-pack']);
     expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 

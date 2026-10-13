@@ -1,3 +1,4 @@
+import { writeInstalledPackFixture } from './artifact-fixture.ts';
 import { sealBuild } from './artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -281,8 +282,7 @@ describe('registry source and update tracking', () => {
   /** The pack on disk, which is what makes it installed and where its version comes from */
   function installed(id: string, version = '1.0.0') {
     const dir = path.join(packsDir(), id);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version }));
+    writeInstalledPackFixture(dir, { id, name: id, version });
   }
 
   it('records where an install came from', async () => {

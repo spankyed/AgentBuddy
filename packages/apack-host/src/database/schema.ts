@@ -1,13 +1,14 @@
-// The EARS names and partition policy of the packs installed in a data dir, read from their manifests without
+// The EARS names and partition policy of the packs installed in a data dir, read from validated artifacts without
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AppEnvironment } from '@apackdev/sdk/env';
-import type { PackManifest, PackSnapshot } from '@apackdev/sdk/build';
+import { parseSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { readInstalledPacks } from '../packs/installed.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { PACK_LAYOUT } from '../packs/layout.ts';
-import { discoverPacks, enabledExternalPacks } from '../packs/discovery.ts';
+import { readInstalledPackArtifacts } from '../packs/discovery.ts';
 
 /** What opening a database needs from the packs: which names are entity types, and where each type is stored */
 export interface DatabaseSchema {
@@ -48,7 +49,7 @@ export interface InstalledSchema extends DatabaseSchema {
 /** The directories and files of a data dir the schema is read from */
 export type SchemaContext = Pick<AppEnvironment, 'userDataDir' | 'packsDir' | 'installedPacksFile'>;
 
-function readJSON<T>(file: string, what: string): T {
+function readJSON(file: string, what: string): unknown {
   let parsed: unknown;
   try {
     parsed = JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -56,38 +57,19 @@ function readJSON<T>(file: string, what: string): T {
     throw new Error(`${file} isn't readable ${what}: ${(error as Error).message}`);
   }
   if (!parsed || typeof parsed !== 'object') throw new Error(`${file} isn't ${what}`);
-  return parsed as T;
-}
-
-/** A manifest's entity types and relation kinds, whatever else it holds */
-function packEARS(manifest: PackManifest | undefined, file: string): PackManifest {
-  if (!manifest || typeof manifest !== 'object') throw new Error(`${file} holds no pack manifest`);
-  for (const [field, names] of [['entities', manifest.entities], ['relKinds', manifest.relKinds]] as const) {
-    if (names !== undefined && (typeof names !== 'object' || Array.isArray(names))) {
-      throw new Error(`${file}: the manifest's ${field} isn't a set of names`);
-    }
-  }
-  return manifest;
+  return parsed;
 }
 
 /**
- * The packs `installed-packs.json` lists as disabled. A file it can't read is refused rather than read as "nothing is
- * disabled", which would take in packs the app leaves out.
- */
-function disabledPacks(installedPacksFile: string): Set<string> {
-  if (!fs.existsSync(installedPacksFile)) return new Set();
-  const { packs } = readJSON<{ packs?: unknown }>(installedPacksFile, 'the installed packs');
-  if (!Array.isArray(packs)) throw new Error(`${installedPacksFile} lists no installed packs`);
-  return new Set(packs.filter((pack) => (pack as { enabled?: unknown }).enabled === false).map((pack) => String((pack as { id?: unknown }).id)));
-}
-
-/**
- * Every enabled pack installed in the data dir, read from its own `apack.json`: everything in `packsDir`
+ * Every enabled pack installed in the data dir, admitted through the common artifact reader: everything in `packsDir`
  * that the registry doesn't list as disabled, since the app registers a pack it hasn't listed yet as enabled.
  */
 function installedManifests({ packsDir, installedPacksFile }: SchemaContext): PackManifest[] {
-  return enabledExternalPacks(discoverPacks(packsDir), disabledPacks(installedPacksFile))
-    .map(({ manifest, dir }) => packEARS(manifest, path.join(dir, 'apack.json')));
+  const disabled = new Set(readInstalledPacks(installedPacksFile, { strict: true }).filter(pack => !pack.enabled).map(pack => pack.id));
+  return readInstalledPackArtifacts(packsDir).filter(entry => !disabled.has(entry.id)).map(entry => {
+    if (!entry.artifact) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
+    return entry.artifact.snapshot.manifest;
+  });
 }
 
 /**
@@ -111,16 +93,11 @@ function addNames(names: Record<string, string>, owners: Map<string, string>, pa
  * directory holding it (`<dir>/types/snapshot.json`, which is where every pack's build writes it).
  */
 function namedManifest(schemaFrom: string): PackManifest {
-  const candidates = schemaFrom.endsWith('.json')
-    ? [schemaFrom]
-    : [path.join(schemaFrom, PACK_LAYOUT.snapshot)];
-  const file = candidates.find((candidate) => fs.existsSync(candidate));
-  if (!file) {
-    throw new Error(candidates.length === 1
-      ? `No pack snapshot at ${schemaFrom}`
-      : `No pack snapshot under ${schemaFrom}: looked for ${candidates.join(' and ')}`);
-  }
-  return packEARS(readJSON<PackSnapshot>(file, "a pack's snapshot").manifest, file);
+  const file = schemaFrom.endsWith('.json') ? schemaFrom : path.join(schemaFrom, PACK_LAYOUT.snapshot);
+  if (!fs.existsSync(file)) throw new Error(`No pack snapshot at ${file}`);
+  const parsed = parseSnapshot(readJSON(file, "a pack's snapshot"));
+  if (!parsed.snapshot) throw new Error(`${file}: ${parsed.diagnostics.map(issue => issue.message).join('; ')}`);
+  return parsed.snapshot.manifest;
 }
 
 /**

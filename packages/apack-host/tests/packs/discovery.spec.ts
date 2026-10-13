@@ -1,8 +1,10 @@
+import { writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
+import type { PackManifest } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/discovery.ts';
+import { readInstalledPackArtifacts, discoverPacks, installedPacks } from '../../src/packs/discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -18,33 +20,24 @@ afterEach(() => {
 
 function writeManifest(name: string, manifest: Record<string, unknown>): string {
   const dir = path.join(packagesDir, name);
-  fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest));
+  writeInstalledPackFixture(dir, manifest as PackManifest);
   return dir;
 }
 
-describe('enabledExternalPacks', () => {
-  const external = (id: string) => writeManifest(id, { id, name: id, version: '1.0.0' });
-
-  // The directory is the list: an `apack pack install` outside the app, or an `apack pack dev` into a running
-  // one, leaves a pack the record has never heard of, and it is installed and enabled all the same
-  it('takes every pack in the directory, including ones the record has never heard of', () => {
-    external('memo-pack');
-    external('scribble-pack');
-
-    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set()).map(p => p.manifest.id).sort())
-      .toEqual(['memo-pack', 'scribble-pack']);
+describe('installed artifact admission', () => {
+  it('keeps unreadable directories in the inventory and excludes hidden publication candidates', () => {
+    fs.mkdirSync(path.join(packagesDir, 'broken'));
+    fs.mkdirSync(path.join(packagesDir, '.candidate'));
+    const entries = readInstalledPackArtifacts(packagesDir);
+    expect(entries).toEqual([{ id: 'broken', dir: path.join(packagesDir, 'broken'), problem: expect.any(String) }]);
   });
 
-  it('leaves out the ones named disabled, and nothing else', () => {
-    external('memo-pack');
-    external('scribble-pack');
-
-    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set(['memo-pack'])).map(p => p.manifest.id))
-      .toEqual(['scribble-pack']);
-    // An id for a pack that isn't there takes nothing away
-    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set(['gone-pack'])).map(p => p.manifest.id).sort())
-      .toEqual(['memo-pack', 'scribble-pack']);
+  it('refuses a complete artifact installed under another owner and never runs its modules', () => {
+    writeManifest('local-pack', { id: 'other-pack', name: 'Other', version: '1.0.0' });
+    const entries = readInstalledPackArtifacts(packagesDir);
+    expect(entries).toEqual([{ id: 'local-pack', dir: path.join(packagesDir, 'local-pack'),
+      problem: 'Installed directory "local-pack" contains pack "other-pack"' }]);
+    expect(discoverPacks(packagesDir)).toEqual([]);
   });
 });
 
@@ -67,8 +60,7 @@ describe('installedPacks', () => {
 
   function onDisk(id: string, version: string) {
     const dir = path.join(_appDirOf(userDataDir), 'packs', id);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version }));
+    writeInstalledPackFixture(dir, { id, name: id, version });
   }
 
   it('reports a pack nothing has recorded anything about, enabled', () => {
@@ -76,6 +68,15 @@ describe('installedPacks', () => {
 
     expect(installedPacks()).toMatchObject([
       { manifest: { id: 'memo-pack', version: '1.0.0' }, record: { id: 'memo-pack', enabled: true } },
+    ]);
+  });
+
+  it('reports the recorded disabled choice alongside unrecorded enabled installations', () => {
+    onDisk('memo-pack', '1.0.0');
+    onDisk('scribble-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'memo-pack', enabled: false }]);
+    expect(installedPacks().map(pack => [pack.record.id, pack.record.enabled])).toEqual([
+      ['memo-pack', false], ['scribble-pack', true],
     ]);
   });
 

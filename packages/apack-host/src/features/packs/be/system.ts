@@ -11,7 +11,7 @@ import { reportError } from '@apackdev/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
 import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
 import { PACK_LAYOUT } from '../../../packs/layout.ts';
-import { installedPacks } from '../../../packs/discovery.ts';
+import { discoverPackDirectories, installedPacks } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
@@ -118,6 +118,8 @@ export function createPacksSystem(registry: PackRegistry) {
    */
   const canUninstall = (packId: string) => packId !== HOST_PACK_ID && registry.packOrigin(packId)?.shipped !== true;
 
+  const isInstalled = (id: string) => PACK_ID_PATTERN.test(id)
+    && discoverPackDirectories(resolveAppEnvironment().packsDir).some(dir => path.basename(dir) === id);
   const _inFlightOps = new Set<string>();
   return setup({
     types: packsSpec.types,
@@ -367,7 +369,7 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
         // The id names the directory the uninstall deletes, so only an installed pack's own is taken
-        if (!PACK_ID_PATTERN.test(packId) || !installedPacks().some(p => p.record.id === packId && path.basename(p.dir) === packId)) {
+        if (!isInstalled(packId)) {
           broadcastToPlugin('packs', { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is not an installed pack` });
           return;
         }
@@ -502,12 +504,11 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
-        const installed = installedPacks().find(p => p.record.id === packId);
-        if (!installed) {
+        if (!isInstalled(packId)) {
           console.warn(`[packs] Pack not found: ${packId}`);
           return;
         }
-        const entry = installed.record;
+        const entry = packRecord(packId);
 
         // Refused for the packs `canUninstall` refuses, and for its reason: the app needs what it ships to
         // run. Every pack is an installed record now, so the lookup above no longer turns one of them away

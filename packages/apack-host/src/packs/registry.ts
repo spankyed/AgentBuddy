@@ -1,4 +1,3 @@
-import * as path from 'node:path';
 import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
@@ -24,13 +23,12 @@ import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/event
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { discoverPackDirectories, packContentOrder } from './discovery.ts';
+import { readInstalledPackArtifacts, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
 import { createOwnedStore, createDesignationStore } from './extensions.ts';
 import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
-import { readPackArtifact } from './layout.ts';
 import { disabledPackIds } from './installed.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { createPackSettingsBinding } from '../services/settings.ts';
@@ -416,14 +414,14 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
     const sources: PackCatalogSource[] = [];
     const problems: PackCatalogProblem[] = [];
     const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
-    for (const dir of discoverPackDirectories(packsDir)) {
-      try {
-        const { snapshot, integrity } = readPackArtifact(dir);
-        sources.push({ snapshot, integrity, dir, enabled: !disabled.has(snapshot.manifest.id) });
-      } catch (error) {
+    for (const entry of readInstalledPackArtifacts(packsDir)) {
+      const { id, dir } = entry;
+      if (entry.artifact) {
+        const { snapshot, integrity } = entry.artifact;
+        sources.push({ snapshot, integrity, dir, enabled: !disabled.has(id) });
+      } else {
         const previous = previousByDir.get(dir);
-        const id = previous?.snapshot.manifest.id ?? path.basename(dir);
-        problems.push({ id, dir, enabled: !disabled.has(id), message: `its declarations were refused: ${error instanceof Error ? error.message : String(error)}` });
+        problems.push({ id, dir, enabled: !disabled.has(id), message: `its declarations were refused: ${entry.problem}` });
         if (previous) sources.push({ snapshot: previous.snapshot, integrity: previous.integrity, dir, enabled: !disabled.has(id) });
       }
     }
