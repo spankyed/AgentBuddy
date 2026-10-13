@@ -1,4 +1,3 @@
-import { compileHelp } from './help.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
@@ -946,7 +945,6 @@ ${items.join('\n')}
     const steps = stepDefinitionsFor('backend');
     const migrations = migrationEntries();
     // Validated Markdown articles embedded into the runtime registration
-    const help = manifest.extensions?.help ? compileHelp(root, manifest) : undefined;
 
     // The machine each system was built from is typed by the contract the manifest names for its feature, and
     // nothing in either file says so: this asserts it where both are in scope.
@@ -994,7 +992,6 @@ ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity],
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
 ${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensions.settings)},` : ''}
   name: ${JSON.stringify(manifest.name)},
-${help ? `  help: ${JSON.stringify(help)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

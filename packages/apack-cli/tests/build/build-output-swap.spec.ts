@@ -76,6 +76,29 @@ describe('a build that fails', () => {
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
 
+  it('publishes help as snapshot data and retains accepted articles after an invalid edit', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      features: {}, extensions: { help: { path: 'docs/help' } },
+    }, files: { 'docs/help/start.md': '# Start\nFirst article' } });
+    const file = path.join(root, 'docs/help/start.md');
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await build([]);
+      expect(readPackArtifact(dir).snapshot.help).toEqual([{ id: 'start', title: 'Start', body: 'First article' }]);
+      fs.writeFileSync(file, '# Updated\nChanged article');
+      await build([]);
+      expect(readPackArtifact(dir).snapshot.help![0]).toMatchObject({ title: 'Updated', body: expect.stringContaining('Changed article') });
+      const accepted = fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8');
+      fs.writeFileSync(file, 'Missing title');
+      await expect(build([])).rejects.toThrow('first H1');
+      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8')).toBe(accepted);
+      expect(readPackArtifact(dir).snapshot.help![0].title).toBe('Updated');
+    } finally { process.chdir(cwd); }
+  });
+
   it('leaves the whole of the previous build in place, and no staging tree', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);

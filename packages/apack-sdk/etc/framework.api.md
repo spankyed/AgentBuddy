@@ -148,8 +148,8 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
     spec: infer Spec;
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
-// @public (undocumented)
-export function onSettingsCatalogChanged(listener: () => void): () => void;
+// @public
+export function onPackCatalogChanged(listener: () => void): () => void;
 
 // @public
 export interface PackBootHooks {
@@ -229,7 +229,6 @@ export interface PackRegistration {
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
-    help?: HelpDocument[];
     // (undocumented)
     id: string;
     migrations?: PackMigrations;

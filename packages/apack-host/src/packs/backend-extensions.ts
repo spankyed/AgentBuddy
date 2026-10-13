@@ -1,7 +1,7 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
 import type { ContentWriter } from '@apackdev/sdk/content';
 import type { ContentApplier } from '@apackdev/sdk/utils';
-import { type PackCommand, type HelpDocument, type HelpCatalog, type HelpProblem } from '@apackdev/sdk/framework';
+import { type PackCommand } from '@apackdev/sdk/framework';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {
@@ -103,38 +103,5 @@ export function createShutdownHooks() {
     removeShutdownHooksForKey(key: string): void {
       byKey.delete(key);
     },
-  };
-}
-
-/** Each pack's bundled articles, qualified by pack and isolated from malformed contributions. */
-export function createHelpStore() {
-  const byPack = new Map<string, HelpCatalog>();
-  return {
-    register(packId: string, help?: HelpDocument[], packName = packId): void {
-      byPack.delete(packId);
-      if (help === undefined) return;
-      const ids = new Set<string>();
-      const problems: HelpProblem[] = [];
-      const invalid = !Array.isArray(help) || help.some(article => {
-        if (!article || typeof article.id !== 'string' || !article.id
-          || typeof article.title !== 'string' || !article.title.trim() || typeof article.body !== 'string'
-          || (article.order !== undefined && !Number.isFinite(article.order))
-          || (article.features !== undefined && (!Array.isArray(article.features) || article.features.some(f => typeof f !== 'string')))
-          || ids.has(article.id)) return true;
-        ids.add(article.id);
-        return false;
-      });
-      if (invalid) {
-        problems.push({ packId, message: 'This pack supplied invalid or duplicate help articles. Rebuild or update the pack.' });
-      }
-      byPack.set(packId, { articles: problems.length ? [] : help.map(article => ({ ...article, packId, packName })), problems });
-    },
-    unregister(packId: string): void { byPack.delete(packId); },
-    all: (): HelpCatalog => ({
-      articles: [...byPack.values()].flatMap(c => c.articles).sort((a, b) =>
-        a.packName.localeCompare(b.packName) || a.packId.localeCompare(b.packId)
-        || (a.order ?? Infinity) - (b.order ?? Infinity) || a.title.localeCompare(b.title)),
-      problems: [...byPack.values()].flatMap(c => c.problems),
-    }),
   };
 }

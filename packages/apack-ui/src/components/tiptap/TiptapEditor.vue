@@ -154,7 +154,7 @@ const imageHandlers = cfg.editorInteractions
 const clickHandler = cfg.editorInteractions
   ? { handleClick: createEditorClickHandler({ noteLinkClick: (id) => emit('noteLinkClick', id), imageClick: (src) => emit('imageClick', src) }) }
   : cfg.viewerImageClick
-    ? { handleClick: createViewerClickHandler({ imageClick: (src) => emit('imageClick', src), openLink: props.openViewerLink }) }
+    ? { handleDOMEvents: { click: createViewerClickHandler({ imageClick: (src) => emit('imageClick', src), openLink: props.openViewerLink }) } }
     : {}
 
 const handleKeyDown = createKeyboardHandler({

@@ -33,6 +33,7 @@ describe('a link the user follows', () => {
   });
 
   it.each([
+    ['an internal help article', 'https://help.apack.invalid/e2e-fixture/next'],
     ['another scheme, which reaches another program', 'mailto:someone@example.com'],
     ['a file, which the browser is not for', 'file:///etc/passwd'],
     ['a custom scheme a handler would take', 'apack://install?pack=x'],

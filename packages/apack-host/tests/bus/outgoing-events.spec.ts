@@ -291,6 +291,8 @@ describe('a plugin whose pack is being replaced', () => {
   it('has its sends dropped without reporting anything', async () => {
     registry.markPackReplacing('memo-pack');
     registry.unregisterPack('memo-pack');
+    // Catalog subscribers publish the declaration change before the send measured here.
+    outgoing.length = 0;
 
     await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
 

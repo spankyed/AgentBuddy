@@ -25,9 +25,9 @@ describe('Markdown help compilation', () => {
     expect(articles.find(a => a.id === 'welcome')).toMatchObject({ title: 'Welcome', features: ['code'], order: 1 });
     expect(articles.find(a => a.id === 'welcome')!.body).toContain('https://help.apack.invalid/test-pack/nested%2Fnext');
     const files = await generatePackFiles(manifest, { packRoot: root });
-    expect(files['src/__generated__/pack-entry.ts']).toContain('"title":"Welcome"');
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('Welcome');
     fs.rmSync(path.join(root, 'src/extensions/help'), { recursive: true });
-    expect(files['src/__generated__/pack-entry.ts']).toContain('Details');
+    expect(articles.find(article => article.id === 'nested/next')!.body).toContain('Details');
   });
   it.each([
     ['empty H1', { 'a.md': '#  \nBody text' }, /H1/],

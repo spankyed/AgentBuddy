@@ -11,7 +11,7 @@ import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
-import { getPackCommands, getSettingsCatalog, onSettingsCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
@@ -359,7 +359,7 @@ describe('feature settings defaults', () => {
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
-    const unsubscribe = onSettingsCatalogChanged(changed);
+    const unsubscribe = onPackCatalogChanged(changed);
     const before = getSettingsCatalog().revision;
 
     add({ id: 'memo-pack', features: { memos } });

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { bundlePackRuntime } from './be-bundler.ts';
 import { holdPackBuildLock } from './build-lock.ts';
 import { readValidManifest } from '../utils.ts';
-import { generateEntries } from '../commands/generate-entries.ts';
+import { build } from '../commands/build.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
 
 /** How long to wait for the edits to stop before rebuilding */
@@ -16,8 +16,8 @@ const DEBOUNCE_MS = 300;
  * bundle: **40ms** against the 23.7s a full build costs — the content, the facade types, the step build and
  * the DSL defs are the other 23.6s, and none of them moves when a system's source does.
  *
- * Help Markdown is bundled into that runtime: its edits regenerate entries before bundling.
- * An invalid help edit leaves the last working bundle in place.
+ * Help Markdown is snapshot data. Its edits use the complete staged build, so articles and receipts
+ * are published together. An invalid edit leaves the last accepted artifact in place.
  *
  * So an edit to a content source or to `apack.json` is **not** covered here, and the loop does not pretend
  * otherwise: it names what it watches on startup, and `apack pack build` is what follows those.
@@ -42,7 +42,8 @@ export interface WatchOptions {
  */
 async function rebuild(root: string, packId: string, helpChanged = false): Promise<boolean> {
   if (helpChanged) {
-    try { await generateEntries([], root); } catch (error) { console.error(`[watch] Help generation failed: ${String(error)}`); return false; }
+    try { await build([]); return true; }
+    catch (error) { console.error(`[watch] Help build failed: ${String(error)}`); return false; }
   }
   const lock = await holdPackBuildLock(root, { packId, what: 'apack pack build --watch (a rebuild)' });
   try {

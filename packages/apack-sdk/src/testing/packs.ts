@@ -106,7 +106,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     contentWriters: (entity) => testPacks.contentWriters.get(entity) ?? registered?.contentWriters(entity),
     appliers: (packId) => testPacks.appliers.get(packId) ?? registered?.appliers(packId) ?? [],
     settingsCatalog: () => registered?.settingsCatalog() ?? noSettings,
-    onSettingsCatalogChanged: (listener) => registered?.onSettingsCatalogChanged(listener) ?? (() => {}),
+    onCatalogChanged: (listener) => registered?.onCatalogChanged(listener) ?? (() => {}),
     pluginDefaults: () => registered?.pluginDefaults() ?? {},
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),

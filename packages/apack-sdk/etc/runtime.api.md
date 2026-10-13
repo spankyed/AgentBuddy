@@ -120,7 +120,7 @@ export interface PackRegistryView extends PackExtensionsView {
     getRegisteredServices(): Record<string, unknown>;
     help(): HelpCatalog;
     // (undocumented)
-    onSettingsCatalogChanged(listener: () => void): () => void;
+    onCatalogChanged(listener: () => void): () => void;
     pluginDefaults(): Record<string, boolean>;
     pluginIds(): readonly FeatureRef[];
     // (undocumented)

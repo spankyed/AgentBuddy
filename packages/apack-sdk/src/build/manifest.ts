@@ -71,6 +71,8 @@ export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
+  /** Materialized articles; required when the manifest declares help. */
+  help?: import('../framework/pack-help.ts').HelpDocument[];
   /** The `PACK_SNAPSHOT_FORMAT` of the CLI that wrote it; a snapshot without one predates the format */
   format: number;
   sdkVersion?: string;

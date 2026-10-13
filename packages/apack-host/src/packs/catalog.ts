@@ -3,8 +3,8 @@ import { readPackArtifact } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
-import { parseSnapshot, ManifestSchema, _declarationRevision, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog } from '@apackdev/sdk/framework';
+import { parseSnapshot, ManifestSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -28,6 +28,7 @@ export interface SourcePackDeclaration {
   readonly manifest: CatalogData<PackManifest>;
   readonly dir: string;
   readonly declarationRevision: string;
+  readonly help?: CatalogData<HelpDocument[]>;
 }
 
 export interface PackCatalogSnapshot {
@@ -70,6 +71,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   const listeners = new Set<() => void>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
+  let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
 
   function publish(packs: readonly PackCatalogEntry[], native: readonly NativePackDeclaration[], sourcePacks = current.sourcePacks): void {
     if (isDeepStrictEqual(current.packs, packs) && isDeepStrictEqual(current.native, native) && isDeepStrictEqual(current.sourcePacks, sourcePacks)) return;
@@ -102,9 +104,28 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     }
     const next = immutable({ revision: current.revision + 1, appSettings: app, packs, native, sourcePacks });
     const projection = immutable({ revision: next.revision, app, packs: groups, features, dependencies });
+    const helpOwners = [
+      ...packs.map(({ snapshot }) => ({ manifest: snapshot.manifest, help: snapshot.help })),
+      ...sourcePacks.map(source => ({ manifest: source.manifest, help: source.help })),
+    ];
+    const articles: HelpCatalog['articles'] = [];
+    const problems: HelpCatalog['problems'] = [];
+    for (const owner of helpOwners) {
+      if (owner.help === undefined) {
+        if (owner.manifest.extensions?.help) problems.push({ packId: owner.manifest.id, message: 'Help data is unavailable; build the complete pack.' });
+        continue;
+      }
+      const problem = _helpDataProblem(owner.help, Object.keys(owner.manifest.features ?? {}));
+      if (problem || !owner.manifest.extensions?.help) throw new Error(`Pack "${owner.manifest.id}" help: ${problem ?? 'undeclared help data'}`);
+      articles.push(...(structuredClone(owner.help) as HelpDocument[]).map(article => ({ ...article, packId: owner.manifest.id, packName: owner.manifest.name })));
+    }
+    articles.sort((a, b) => a.packName.localeCompare(b.packName) || a.packId.localeCompare(b.packId)
+      || (a.order ?? Infinity) - (b.order ?? Infinity) || a.title.localeCompare(b.title));
+    const helpProjection = immutable({ articles, problems });
     byId = new Map(next.packs.map(entry => [entry.snapshot.manifest.id, entry]));
     current = next;
     settings = projection;
+    help = helpProjection;
     for (const listener of listeners) {
       try { listener(); }
       catch (error) { logger.error('Contribution catalog listener failed', error instanceof Error ? error : new Error(String(error))); }
@@ -115,6 +136,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     getSnapshot: (): PackCatalogSnapshot => current,
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
+    help: (): HelpCatalog => structuredClone(help) as HelpCatalog,
     /** Source declarations persist across registration changes, like installed declarations. */
     setSources(sources: readonly SourcePackDeclaration[]): void {
       const next = sources.map(source => {

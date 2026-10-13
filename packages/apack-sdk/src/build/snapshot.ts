@@ -3,6 +3,7 @@ import { ManifestSchema } from './manifest-schema.ts';
 import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type ProvenanceKind } from './manifest.ts';
 import { packValidation, type PackValidation } from './diagnostics.ts';
 import { _declarationRevision } from './declaration-revision.ts';
+import { _HelpDocumentsSchema, _helpDataProblem } from './help-data.ts';
 
 /** The complete data artifact; executable pack modules are never needed to validate it. */
 const SnapshotShape = {
@@ -10,6 +11,7 @@ const SnapshotShape = {
   format: z.number().int().nonnegative(),
   sdkVersion: z.string().optional(),
   manifest: ManifestSchema,
+  help: _HelpDocumentsSchema.optional(),
   types: z.object({ entities: z.record(z.string()), relKinds: z.record(z.string()) }).strict(),
   defs: z.record(z.string()),
   provenance: z.record(z.enum(Object.keys(PROVENANCE_KINDS) as [ProvenanceKind, ...ProvenanceKind[]]), z.record(z.string())).optional(),
@@ -33,6 +35,15 @@ export function parseSnapshot(raw: unknown): PackSnapshotValidation {
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
   const snapshot = raw as PackSnapshot;
+  if (snapshot.manifest.extensions?.help && snapshot.help === undefined) return packValidation([{
+    code: 'snapshot.help.incomplete', severity: 'error', path: ['help'], source: 'snapshot.json',
+    message: 'snapshot.json is missing declared help data; rebuild the complete pack',
+  }]);
+  const helpProblem = snapshot.help === undefined ? undefined : _helpDataProblem(snapshot.help, Object.keys(snapshot.manifest.features ?? {}));
+  if (helpProblem || (snapshot.help !== undefined && !snapshot.manifest.extensions?.help)) return packValidation([{
+    code: 'snapshot.help', severity: 'error', path: ['help'], source: 'snapshot.json',
+    message: helpProblem ?? 'snapshot.json contains undeclared help data',
+  }]);
   if (snapshot.declarationRevision !== _declarationRevision(snapshot.manifest)) return packValidation([{
     code: 'snapshot.declarations', severity: 'error', path: ['declarationRevision'], source: 'snapshot.json',
     message: 'snapshot.json declarations do not match their revision; rebuild the complete pack',

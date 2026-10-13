@@ -66,6 +66,6 @@ describe('testPacksView', () => {
     expect(view.steps()).toEqual([]);
     expect(view.designation('brain')).toBeUndefined();
     expect(view.settingsCatalog()).toEqual({ revision: 0, app: { schema: { type: 'object' }, defaults: {} }, packs: {}, features: {}, dependencies: {} });
-    expect(view.onSettingsCatalogChanged(() => {})).toBeTypeOf('function');
+    expect(view.onCatalogChanged(() => {})).toBeTypeOf('function');
   });
 });

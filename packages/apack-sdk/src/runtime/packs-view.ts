@@ -45,7 +45,7 @@ export interface PackRegistryView extends PackExtensionsView {
   /** A registered pack's appliers */
   appliers(packId: string): readonly ContentApplier[];
   settingsCatalog(): SettingsCatalog;
-  onSettingsCatalogChanged(listener: () => void): () => void;
+  onCatalogChanged(listener: () => void): () => void;
   /** Navigation policy is separate from preference definitions. */
   pluginDefaults(): Record<string, boolean>;
   /** Every registered pack's declared commands, in the order the packs were first registered */

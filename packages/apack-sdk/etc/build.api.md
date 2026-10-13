@@ -627,6 +627,9 @@ export function generateSettingsTypes(definition: SettingsDefinition, name: stri
 // @public (undocumented)
 export function hashFlows(merged: FlowDSL): Record<string, object>;
 
+// @internal
+export function _helpDataProblem(value: unknown, features: readonly string[]): string | undefined;
+
 // @public (undocumented)
 export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig;
 
@@ -2254,6 +2257,7 @@ export interface PackSnapshot {
     defs: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
     format: number;
+    help?: HelpDocument[];
     // (undocumented)
     manifest: PackManifest;
     provenance?: PackProvenance;

@@ -17,7 +17,7 @@ import { stepRegistry } from '../../src/steps/registry.ts';
 import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
 import { _contentWriterRegistry } from '../../src/content/writers.ts';
-import { getPackCommands, getSettingsCatalog, onSettingsCatalogChanged } from '../../src/framework/index.ts';
+import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
 import { getDslTypes } from '../../src/fe/dsl-types.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
@@ -100,7 +100,7 @@ describe('with no app bound', () => {
       ['importCompiledContent', () => importCompiledContent({ compiledDir: contentDir })],
       ['registeredContentKeys', () => registeredContentKeys('memo-pack')],
       ['getSettingsCatalog', () => getSettingsCatalog()],
-      ['onSettingsCatalogChanged', () => onSettingsCatalogChanged(() => {})],
+      ['onPackCatalogChanged', () => onPackCatalogChanged(() => {})],
       ['getPackCommands', () => getPackCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');

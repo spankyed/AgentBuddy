@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { resolveName } from '@apackdev/sdk/ids';
 import type { SettingsDefinition } from '@apackdev/sdk/framework';
-import { createContributionCatalog } from '../../src/packs/catalog.ts';
+import { createContributionCatalog, readInstalledContributionCatalog } from '../../src/packs/catalog.ts';
 import { PACK_LAYOUT, readPackArtifact } from '../../src/packs/layout.ts';
 import { sealPack } from './runtime/artifact-fixture.ts';
 
@@ -18,6 +18,30 @@ function source(id: string, enabled = true) {
 }
 
 describe('contribution catalog data', () => {
+  it('reads help from a disabled sealed artifact without executing its poisoned backend', () => {
+    const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
+    const dir = path.join(packsDir, 'help-pack');
+    try {
+      const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
+        features: { notes: {} }, extensions: { help: { path: 'help' } } };
+      const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
+        manifest, types: { entities: {}, relKinds: {} }, defs: {},
+        help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
+      fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
+      fs.mkdirSync(path.join(dir, 'types'));
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify(snapshot));
+      const marker = path.join(packsDir, 'executed');
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Do not activate');`);
+      sealPack(dir);
+      const catalog = readInstalledContributionCatalog(packsDir, new Set(['help-pack']));
+      expect(catalog.help().articles).toEqual([{ ...snapshot.help[0], packId: 'help-pack', packName: 'Help' }]);
+      expect(catalog.get('help-pack')?.enabled).toBe(false);
+      expect(fs.existsSync(marker)).toBe(false);
+      catalog.help().articles[0].body = 'Mutated reader';
+      expect(catalog.help().articles[0].body).toBe('Available without activation');
+    } finally { fs.rmSync(packsDir, { recursive: true, force: true }); }
+  });
   it('keeps host settings available with no packs', () => {
     const catalog = createContributionCatalog(app);
     expect(catalog.getSnapshot().appSettings.defaults).toEqual({ compact: false });

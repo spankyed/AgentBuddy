@@ -11,6 +11,25 @@ const snapshot = (): PackSnapshot => ({
 });
 
 describe('snapshot data reader', () => {
+  it('requires materialized help only for a declared contribution', () => {
+    const data = snapshot();
+    data.manifest.extensions = { help: { path: 'help' } };
+    data.declarationRevision = _declarationRevision(data.manifest);
+    expect(parseSnapshot(data).diagnostics[0].code).toBe('snapshot.help.incomplete');
+    data.help = [{ id: 'start', title: 'Start', body: 'Details' }];
+    expect(parseSnapshot(data).status).toBe('valid');
+    data.help.push({ id: 'start', title: 'Duplicate', body: '' });
+    expect(parseSnapshot(data).diagnostics[0].message).toContain('Duplicate help article');
+  });
+
+  it('refuses foreign feature filters and undeclared help data', () => {
+    const data = snapshot();
+    data.manifest.extensions = { help: { path: 'help' } };
+    data.declarationRevision = _declarationRevision(data.manifest);
+    data.help = [{ id: 'start', title: 'Start', body: '', features: ['foreign'] }];
+    expect(parseSnapshot(data).diagnostics[0].message).toContain('undeclared feature');
+    expect(parseSnapshot({ ...snapshot(), help: [] }).diagnostics[0].message).toContain('undeclared help');
+  });
   it('rejects a manifest changed without rebuilding its bindings', () => {
     const data = snapshot();
     data.manifest.name = 'Changed';

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apackdev/sdk/build';
-import { _depTypesFile, _depTypesVersion, generatePackFiles, compileHelp } from '@apackdev/sdk/build';
+import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
@@ -25,7 +25,6 @@ function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: M
   // The parsed declarations used below are part of the identity, even if disk changes between reads.
   hash.update(JSON.stringify(manifest));
   hash.update(codegenSource());
-  if (manifest.extensions?.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
   // Generated flow helpers and types depend on every resolved dependency, wherever it came from
   for (const depId of [...depSnapshots.keys()].sort()) {
     hash.update(depId);

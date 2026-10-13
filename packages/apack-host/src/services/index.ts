@@ -32,7 +32,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
   const settings = createSettingsService(createSettingsStore({
     ears: () => engine.query,
     catalog: packs.settingsCatalog,
-    onCatalogChanged: packs.onSettingsCatalogChanged,
+    onCatalogChanged: packs.onCatalogChanged,
   }));
   return {
     transport,

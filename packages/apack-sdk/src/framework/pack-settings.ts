@@ -13,7 +13,3 @@ export interface SettingsCatalog {
 export function getSettingsCatalog(): SettingsCatalog {
   return boundHost().packs.settingsCatalog();
 }
-
-export function onSettingsCatalogChanged(listener: () => void): () => void {
-  return boundHost().packs.onSettingsCatalogChanged(listener);
-}

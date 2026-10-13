@@ -104,7 +104,7 @@ describe('a pack registering', () => {
   it('is listed before its extensions are registered, so a listener sees its plugins', () => {
     const registry = createPackRegistry();
     let seen: Set<string> | undefined = 'unset' as never;
-    const stop = registry.onSettingsCatalogChanged(() => {
+    const stop = registry.onCatalogChanged(() => {
       seen = registry.getPluginEventValidationMap().get('memo-pack/memos');
     });
     registry.registerPack({

@@ -20,7 +20,7 @@ const { systemBusRouter } = await import('@/transport/bus');
 const { settingsRouter } = await import('@/transport/settings');
 
 const packs = createPackRegistry();
-const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog, onCatalogChanged: packs.onSettingsCatalogChanged }));
+const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog, onCatalogChanged: packs.onCatalogChanged }));
 startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));
 const origins = new Map<string, PackOrigin>();

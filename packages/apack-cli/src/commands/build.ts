@@ -9,6 +9,7 @@ import {
   CONTENT_COMPILERS_FILE,
   _buildProvenance,
   parseSnapshot,
+  compileHelp,
   _declarationRevision,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
@@ -274,6 +275,7 @@ async function buildIntoStaging(args: string[]) {
   const snapshot: PackSnapshot = {
     declarationRevision: _declarationRevision(manifest),
     types, defs, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
+    ...(manifest.extensions?.help && { help: compileHelp(root, manifest) }),
     ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };

@@ -283,26 +283,23 @@ describe('the inputs stamp', () => {
   });
 });
 
-it('regenerates help for Markdown edits, additions and removals, keeping valid output after an invalid edit', async () => {
+it('keeps Markdown help out of executable generation and its cache inputs', async () => {
   writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', extensions: { help: { path: 'docs/help' } } });
   const help = path.join(tmpDir, 'docs/help');
   fs.mkdirSync(help, { recursive: true });
   const file = path.join(help, 'start.md');
-  const entry = path.join(tmpDir, 'src/__generated__/pack-entry.ts');
   fs.writeFileSync(file, '# Start\nFirst body');
   await generateEntries([], tmpDir);
-  expect(fs.readFileSync(entry, 'utf8')).toContain('First body');
-  fs.writeFileSync(file, '# Start\nUpdated body');
-  await generateEntries([], tmpDir);
-  expect(fs.readFileSync(entry, 'utf8')).toContain('Updated body');
-  fs.writeFileSync(path.join(help, 'second.md'), '# Second\nSecond body');
-  await generateEntries([], tmpDir);
-  expect(fs.readFileSync(entry, 'utf8')).toContain('Second body');
-  fs.unlinkSync(path.join(help, 'second.md'));
-  await generateEntries([], tmpDir);
-  expect(fs.readFileSync(entry, 'utf8')).not.toContain('Second body');
-  const valid = fs.readFileSync(entry, 'utf8');
-  fs.writeFileSync(file, 'Missing title');
-  await expect(generateEntries([], tmpDir)).rejects.toThrow(/H1/);
-  expect(fs.readFileSync(entry, 'utf8')).toBe(valid);
+  const entry = path.join(tmpDir, 'src/__generated__/pack-entry.ts');
+  const before = fs.readFileSync(entry, 'utf8');
+  expect(before).not.toContain('First body');
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    for (const body of ['# Start\nUpdated body', 'Missing title']) {
+      fs.writeFileSync(file, body);
+      await generateEntries([], tmpDir);
+      expect(fs.readFileSync(entry, 'utf8')).toBe(before);
+      expect(log).toHaveBeenLastCalledWith(expect.stringContaining('inputs unchanged'));
+    }
+  } finally { log.mockRestore(); }
 });

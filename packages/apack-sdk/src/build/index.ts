@@ -68,6 +68,7 @@ export { packValidation } from './diagnostics.ts';
 export type { PackDiagnostic, SkippedPackCheck, PackValidation } from './diagnostics.ts';
 export { generateSettingsTypes } from './settings-types.ts';
 export { parseSnapshot } from './snapshot.ts';
+export { _helpDataProblem } from './help-data.ts';
 export { _declarationRevision } from './declaration-revision.ts';
 export type { PackSnapshotValidation } from './snapshot.ts';
 

@@ -120,8 +120,6 @@ export interface PackRegistration {
   appliers?: import('../utils/apply.ts').ContentApplier[];
   /** The slash commands this pack adds to the chat (apack.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
-  /** Markdown articles bundled into this pack (apack.json `help`). */
-  help?: import('./pack-help.ts').HelpDocument[];
   /** Display name used for this pack's contributions. */
   name?: string;
   /** Pack-owned preference groups declared inline in extensions.settings. */

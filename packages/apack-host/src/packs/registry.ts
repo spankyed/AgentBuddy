@@ -26,7 +26,7 @@ import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPackDirectories, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
-import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
+import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 import { createContributionCatalog, type ContributionCatalog, type PackCatalogSource } from './catalog.ts';
 import { readPackArtifact } from './layout.ts';
@@ -328,7 +328,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
   const contentWriters = createContentWriterStore();
   const appliers = createApplierStore();
   const catalog = createContributionCatalog(appSettingsDefinition);
-  const help = createHelpStore();
   const commands = createCommandStore();
   const shutdownHooks = createShutdownHooks();
 
@@ -462,10 +461,6 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
     },
     (reg, undo) => { undo(() => appliers.unregister(reg.id)); appliers.register(reg.id, reg.appliers ?? []); },
     (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
-    (reg, undo) => {
-      undo(() => help.unregister(reg.id));
-      help.register(reg.id, reg.help, reg.name);
-    },
     (reg, undo) => {
       if (!reg.bindSettings) return;
       if (!settingsForPack) throw new Error(`Pack "${reg.id}" needs a host settings service binding`);
@@ -756,11 +751,11 @@ export function createPackRegistry({ installedPacksDir, settingsForPack }: PackR
     contentWriters: contentWriters.get,
     appliers: appliers.get,
     settingsCatalog: catalog.settings,
-    onSettingsCatalogChanged: catalog.onChanged,
+    onCatalogChanged: catalog.onChanged,
     pluginDefaults: derived(() => Object.fromEntries([...registrations.values()].flatMap(reg =>
       featuresOf(reg).filter(({ feature }) => feature.plugin?.defaultVisible !== undefined)
         .map(({ ref, feature }) => [ref, feature.plugin!.defaultVisible!])))),
     commands: commands.all,
-    help: help.all,
+    help: catalog.help,
   };
 }

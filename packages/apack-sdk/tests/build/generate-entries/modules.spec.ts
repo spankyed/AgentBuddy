@@ -329,7 +329,7 @@ describe('the snapshot format', () => {
   // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
     declarationRevision: true,
-    types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+    types: true, defs: true, manifest: true, help: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
@@ -360,7 +360,7 @@ describe('the snapshot format', () => {
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
     id: true, name: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settings: true, dependencies: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
@@ -401,7 +401,7 @@ describe('the snapshot format', () => {
       facadeImports: await facadeImports(),
     }).toEqual({
       format: 1,
-      fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
           '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
@@ -418,7 +418,7 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['defaultVisible', 'receives'],

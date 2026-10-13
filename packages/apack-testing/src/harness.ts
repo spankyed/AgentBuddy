@@ -25,13 +25,13 @@ import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
-import { getSettingsCatalog, onSettingsCatalogChanged, type ContentRuntime } from '@apackdev/sdk/framework';
+import { getSettingsCatalog, onPackCatalogChanged, type ContentRuntime } from '@apackdev/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { compileFlowDSL, compilePack, compileHelp, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
 import { installedEngine, untypedQx } from '@apackdev/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
@@ -273,7 +273,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     throw new Error(`Pack "${manifest.id}" generated declarations are stale. Run apack pack generate-entries before testing.`);
   }
   const dependencies = readDependencies(packDir, manifest);
-  registry.catalog.setSources([{ manifest, dir: packDir, declarationRevision: revision }]);
+  registry.catalog.setSources([{ manifest, dir: packDir, declarationRevision: revision, ...(manifest.extensions?.help && { help: compileHelp(packDir, manifest) }) }]);
   registry.catalog.replace([...dependencies.values()].map(({ snapshot, dir }) => ({ snapshot, dir, enabled: true })));
 
   startTestRuntime({
@@ -287,7 +287,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
     settings: createSettingsService(createSettingsStore({ ears: installedEngine,
       catalog: getSettingsCatalog,
-      onCatalogChanged: onSettingsCatalogChanged,
+      onCatalogChanged: onPackCatalogChanged,
     })),
   });
   if (options.registration) {

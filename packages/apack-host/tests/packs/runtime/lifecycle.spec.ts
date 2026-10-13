@@ -199,14 +199,14 @@ describe('activating and tearing down a pack at runtime', () => {
   // Subscriber failures cannot interrupt publication or pack teardown.
   it('finishes teardown when a catalog subscriber throws', async () => {
     const { teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { onSettingsCatalogChanged } = await import('@apackdev/sdk/framework');
+    const { onPackCatalogChanged } = await import('@apackdev/sdk/framework');
     const { testRootEvents } = await import('@apackdev/sdk/testing');
 
     registry.registerPack({
       id: 'stuck-pack',
       features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: { type: 'object' } } } },
     });
-    const stopListening = onSettingsCatalogChanged(() => { throw new Error('a settings listener threw'); });
+    const stopListening = onPackCatalogChanged(() => { throw new Error('a settings listener threw'); });
 
     // The cause is on the event, not in its text: the logger puts an error in `stack`/`meta`
     const logged: string[] = [];

@@ -336,6 +336,56 @@ contract. Reject unsupported formats, missing required assets and inconsistent i
 diagnostics. Do not fetch or execute missing dependencies just to list what is installed. Source-checkout
 inspection may expose unbuilt/incomplete status, rather than activate the source to fill gaps.
 
+### Static help data checkpoint
+
+Materialize help in `PackSnapshot.help` from its Markdown data source during build. It is required when
+`extensions.help` is declared; absence means no declared help contribution, not an old-format fallback.
+Validate document fields, local IDs, uniqueness and feature ownership before admitting the snapshot.
+Remove help from backend registration/codegen and retire its runtime store. The existing contribution
+catalog qualifies and sorts articles for installed packs, including disabled or activation-failed ones.
+Source declarations supply explicit help data; source tooling may parse Markdown data,
+but discovery never imports a pack module to fill it. Native all-kind descriptor ownership remains a
+required checkpoint; the host currently declares no native help articles. Source declarations with unmaterialized declared
+help report that incompleteness rather than silently pretending the pack has no articles.
+
+Use one general catalog-change subscription for data consumers. The Help system follows that resource,
+not PACK_CHANGED activation events; settings follows the same catalog through its existing projection.
+Prove readable help with poisoned executable entries, disabled packs and atomic invalid updates, then
+verify actual help navigation and source/built authoring. This checkpoint does not replace the required
+plugin/step/reference/editor/hook metadata and frontend binding work.
+
+### Help publication and browser routing evidence (2026-10-13)
+
+Help articles now materialize in the snapshot, and source declarations explicitly supply parsed data.
+Executable registration no longer contains help. Markdown is not an executable-generation input;
+the complete build compiles it and checks the authored input identity before publication. The backend
+watcher uses that staged build for help edits rather than rebuilding an executable entry containing
+articles. Real build coverage verifies changed articles, sealed artifact admission and preservation of
+the accepted snapshot after an invalid Markdown edit.
+
+The inactive-pack app check exposed a separate editor defect. ProseMirror's `handleClick` covers single
+clicks; its repeated-click classification can bypass that callback. Viewer links now use DOM click
+handling, preserving custom in-app article routing on repeated clicks. The Electron OS-opening boundary
+also refuses `help.apack.invalid`. The app check captures `shell.openExternal` and proves no external
+browser opening while articles remain navigable with the pack disabled.
+
+Focused publication checks pass (8), shell boundary checks pass (16), and the app reproduction passes
+both help and backup restoration. The grep-filtered multi-fixture command then exits nonzero because
+its second fixture has no matching tests; that is not a complete multi-fixture pass. The complete strict
+chain passes sequentially (135.0s, 25 cached), including the whole external app suite and smoke:
+`node_modules/.cache/apack-chain/runs/2026-10-13T05-09-32Z-28459`.
+
+Concurrent runs remain a concrete unresolved issue: backup export can fail to deliver its result within
+the existing deadline, and Electron worker teardown can stall although smoke assertions pass. Evidence:
+`2026-10-13T04-49-16Z-44777`, `2026-10-13T05-00-07Z-49745`, and
+`2026-10-13T05-05-08Z-87164` under the same chain runs directory. The first run's retry exposed the
+repeated-click failure; subsequent runs with that fix pass help navigation but still exhibit the backup
+and teardown stalls. No deadline or assertion was relaxed. Sequential success does not resolve those
+failures or complete the full discovery/lifecycle audit.
+
+Native all-kind declarations, other hidden contribution metadata, full source/dependency freshness,
+frontend bindings and remaining consumer migration are still required by this plan.
+
 ### A catalog separate from running implementations
 
 Introduce a host-owned catalog over the validated installed descriptors and resolved dependency graph.
