@@ -1606,3 +1606,28 @@ the settings plan and remains an inference across different versions, not a conf
 This is diagnostic progress, not completed lifecycle acceptance. Do not mark the goal complete or
 archive its plans. All remaining discovery/native declaration, freshness, navigation, boundary and
 Phase 6 requirements remain in scope.
+
+
+### Idempotent Code directory checkpoint (2026-10-13)
+
+Commit `aedc0c3ef` remembers explicit navigation separately from changing the effective directory.
+Repeated selection retains the existing repository/watcher and avoids child-system refresh. The first
+explicit selection of an already displayed default still writes the preference. Real-system coverage
+passes (3 cases); removing the identity guard fails the new regression and restored source passes.
+Evidence: `/private/tmp/apack-code-directory-{idempotence-spec,guard-mutation,restored-spec}.log`.
+
+The concurrent external app suite passes all 21 main-fixture cases and its bundled fixture, including
+backup restoration. The compared run has two smart-base requests rather than the captured failure's
+96, consistent with eliminating repeated initialization. Concurrent strict evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T05-46-47Z-3566`. It still fails smoke/packaged worker
+teardown in the independently reproduced native loop. The unchanged strict sequential chain passes
+(76.6s, 25 cached), at `2026-10-13T05-50-21Z-25389` in the same directory. No deadline or assertion changes.
+
+The diagnostics checkpoint is `061395540`. Native shutdown remains an environment/runtime issue to
+resolve before final acceptance, not a settings workaround. Further source audit also found Code's async
+watcher startup lacks actor-stop cleanup; the settings plan records the actor-owned resource/handoff
+and stop-during-start checks required next. This is separate from the native minimal reproduction.
+
+All Phases 0–7 remain active. This checkpoint does not complete native all-kind declarations, remaining
+metadata, asset/binding and source/dependency freshness, navigation, frontend boundaries or any of the
+three Phase 6 workstreams. Do not archive or declare completion from these narrower checks.
