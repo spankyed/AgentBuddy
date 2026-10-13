@@ -8,6 +8,17 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { describe, expect, it } from 'vitest';
 import { boundedSpawn } from '../../../scripts/lib/bounded-spawn.ts';
 
+/** Signal delivery precedes kernel reaping; require disappearance rather than a single immediate probe. */
+async function expectGone(pid: number): Promise<void> {
+  await expect.poll(() => {
+    try { process.kill(pid, 0); return false; }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ESRCH') return true;
+      throw error;
+    }
+  }).toBe(true);
+}
+
 /**
  * Regression coverage for process startup and cancellation, including the thing that bites a person hours later: `npm run measure --busy` starts processes
  * that burn a core each, and stopping it has to stop them.
@@ -41,7 +52,7 @@ await boundedSpawn(process.execPath, ['-e', ${JSON.stringify(childCode)}], 30000
       parent.kill(signal);
       const [, exitSignal] = await exited;
       expect(exitSignal).toBe(signal);
-      expect(() => process.kill(grandchild, 0)).toThrow();
+      await expectGone(grandchild);
     } finally {
       parent.kill('SIGKILL');
       if (grandchild) { try { process.kill(grandchild, 'SIGKILL'); } catch { /* exited */ } }
@@ -64,6 +75,6 @@ await boundedSpawn(process.execPath, ['-e', ${JSON.stringify(childCode)}], 30000
 
     stop.abort();
     await running;
-    expect(() => process.kill(grandchild, 0), 'it would be orphaned otherwise').toThrow();
+    await expectGone(grandchild);
   });
 });
