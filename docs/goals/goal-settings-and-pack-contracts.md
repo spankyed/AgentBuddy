@@ -1885,3 +1885,37 @@ one module and migration targets point to objects whose descriptions are only av
 Re-audit current native/installed declarations and codegen, move these facts into data with checked named
 bindings, and migrate owned fixtures/docs without compatibility aliases. Native all-kind declarations,
 frontend metadata/consumer migration, complete freshness and all later phases remain required.
+
+### Declarative hook and migration metadata checkpoint (2026-10-13)
+
+Committed `3ec4f0a77`. The manifest now declares each `boot.onInit`/`boot.onShutdown` function reference
+explicitly. Each migration version entry contains inline `description` and its named `up` function
+reference. Codegen reads/checks exports with TypeScript, never executing modules to discover these
+facts, and emits explicit callback bindings and declared descriptions. Module-wide hook spreading and
+migration-object metadata reads are removed. Runtime admission checks exact hook membership/callability
+and exact migration target/description agreement. Removed `DeclaredMigration`; `PackMigration` retains
+the runner's complete declared metadata and executable function. Public schema/API reports, real pack
+manifests, scaffolding, doctor, fixtures and docs use the new contract without aliases or conversion.
+
+Validation includes five codegen/schema cases (poisoned modules that would throw if executed, missing
+and noncallable exports, removed shapes), 30 backend agreement checks, the lifecycle/migration suites,
+real CLI scaffolding with generated TypeScript and doctor integration (26 before adding the independent
+step-path regression, nine final doctor cases). SDK/host types pass. Removing callable export checks
+or description agreement fails its regression; source is restored. An initial API update correctly
+refused stale package artifacts; packages were rebuilt before regenerating and reviewing the two
+reports, with generated line endings normalized.
+
+Strict runs found two missed changes: doctor's step-path read had been inadvertently changed to the
+migration object shape, and a codegen fixture still passed obsolete `boot.content`. Corrected the step
+read and added a missing/present-step doctor test. The fixture now uses `content.sources` and asserts
+an actual actions applier, rather than merely an array declaration. No validator or assertion was
+weakened. Final strict sequential chain passes in 259.6s (15 of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T11-47-39Z-39675`; log
+`/private/tmp/apack-declared-lifecycle-strict-chain-complete.log`. The two preceding terminal failures
+(`11-40-34Z-29265` and `11-43-38Z-32586`) were investigated before rerunning with frozen source.
+
+This closes hook/migration authoring and checked binding, not every discovery consumer. Native all-kind
+declarations and frontend static metadata, reference/editor/content indexes, catalog-only information
+readers, full source/dependency freshness and all later goal phases remain required. Continue those
+contracts before entity navigation, frontend fault boundaries and the three separate Phase 6 streams;
+only the full requirement audit and final --all run can close/archive this goal.

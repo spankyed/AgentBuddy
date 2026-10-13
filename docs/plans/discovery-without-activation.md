@@ -827,3 +827,9 @@ named callable exports without executing them and emits explicit fields. Runtime
 exact declared hook presence and migration descriptions, not just their types. Migrate scaffolding,
 fixtures, public schema/API reports and docs; accept no old key or migration-object fallback. Ordinary
 versioned data changes remain supported and separate from obsolete-format conversion.
+
+Hook/migration authoring and checked bindings landed in `3ec4f0a77`. Poisoned-module codegen checks,
+real CLI scaffolding/typechecking and runtime mismatch refusals verify the data/execution split. The
+final strict chain passed at `2026-10-13T11-47-39Z-39675`. Installed snapshots already carry these facts
+through their manifest; static consumer/native completeness still requires migration. This checkpoint
+is not a complete discovery implementation or a promise to roll back migration effects.
