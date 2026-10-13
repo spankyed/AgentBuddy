@@ -8,11 +8,18 @@ import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { FePackRegistry, FrontendSettingsBinding } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
-/** A window's stylesheets for a pack: added once per href, and taken out together when the pack goes */
+/** One attempt owns its prepared stylesheet; another attempt cannot dispose it. */
+export interface PackFrontendStyle {
+  ready: Promise<void>;
+  /** Applies loaded styles; the previous accepted owner remains until its own disposal. */
+  commit(): void;
+  dispose(): void;
+}
+
 export interface PackFrontendStyles {
-  /** Shares the actual load outcome for this href; a failed or cancelled load rejects. */
-  add(packId: string, href: string): Promise<void>;
-  /** Removes this pack's styles and settles any pending loads. */
+  /** Fetch without applying; readiness and cancellation belong to this lease. */
+  prepare(packId: string, href: string): PackFrontendStyle;
+  /** Explicit pack unload disposes accepted and pending styles. */
   remove(packId: string): void;
 }
 
@@ -93,9 +100,11 @@ export async function loadPackFEEntry(
  */
 export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): ShellPackFrontends {
   const attempts = new Map<string, object>();
+  const acceptedStyles = new Map<string, PackFrontendStyle>();
   return {
     async load(pack: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
       const attempt = {};
+      let style: PackFrontendStyle | undefined;
       attempts.set(pack.id, attempt);
       const checkCurrent = () => {
         if (signal?.aborted || attempts.get(pack.id) !== attempt) {
@@ -105,8 +114,8 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
       const cancel = () => {
         if (attempts.get(pack.id) === attempt) {
           attempts.delete(pack.id);
-          io.styles.remove(pack.id);
         }
+        style?.dispose();
       };
       signal?.addEventListener('abort', cancel, { once: true });
       try {
@@ -119,13 +128,24 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         }
         const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/artifacts/${pack.artifactRevision}`;
         const loadStyles = async () => {
-          if (pack.feStyles && !fromSource) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
+          if (pack.feStyles && !fromSource) {
+            style = io.styles.prepare(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
+            await style.ready;
+          }
+        };
+        const commitStyles = () => {
+          style?.commit();
+          const previous = acceptedStyles.get(pack.id);
+          if (style) acceptedStyles.set(pack.id, style);
+          else acceptedStyles.delete(pack.id);
+          previous?.dispose();
         };
         // A pack served from source has a frontend whatever its built manifest says, since the map holds only
         // packs whose codegen wrote one
         if (!pack.feEntry && !source) {
           await loadStyles();
           checkCurrent();
+          commitStyles();
           return null;
         }
 
@@ -142,7 +162,14 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         try { checkCurrent(); }
         catch (error) { settings?.dispose(); throw error; }
         // Once handed to the registry, the same undo log releases provisional and registered bindings.
-        return packs.registerPackFE(registration, settings);
+        const plugins = packs.registerPackFE(registration, settings);
+        try { checkCurrent(); commitStyles(); }
+        catch (error) {
+          // This registration was fresh: duplicate owners are refused before mutation.
+          packs.unregisterPackFE(pack.id);
+          throw error;
+        }
+        return plugins;
       } catch (error) {
         cancel();
         throw error;
@@ -154,7 +181,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
     unload(packId: string): void {
       attempts.delete(packId);
       try { packs.unregisterPackFE(packId); }
-      finally { io.styles.remove(packId); }
+      finally { acceptedStyles.delete(packId); io.styles.remove(packId); }
     },
   };
 }

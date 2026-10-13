@@ -13,7 +13,7 @@ vi.mock('@/transport/client', () => ({
   },
 }));
 vi.mock('@/adapters/toast', () => ({ globalToast: { error: vi.fn() } }));
-vi.mock('@/adapters/pack-frontends', () => ({ packFrontendIO: { importModule: vi.fn(), styles: { add: vi.fn(), remove: vi.fn() } } }));
+vi.mock('@/adapters/pack-frontends', () => ({ packFrontendIO: { importModule: vi.fn(), styles: { prepare: vi.fn(), remove: vi.fn() } } }));
 
 const { createAppShell } = await import('@/runtime/shell');
 const { fePacks } = await import('@/runtime/packs');
