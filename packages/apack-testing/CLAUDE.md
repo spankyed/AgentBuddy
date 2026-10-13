@@ -404,7 +404,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 ### Teardown
 
 - Per-test: `pageerror` and `console` listeners are removed
-- Per-worker: `electronApp.close()` shuts down Electron
+- Per-worker: `electronApp.close()` shuts down Electron. The fixture captures the API pid before close and fails if that child is still alive afterwards; Electron quit must finish API shutdown before fixture-owned data can be cleaned up.
 
 ## API reference
 

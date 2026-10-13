@@ -1,9 +1,5 @@
-// `stop()` against real child processes, because what it promises is about a real one exiting.
-//
-// **Why this is not `kill()` with an await bolted on.** `kill()` calls `cleanup()`, which removes every
-// listener on the child — so a waiter attached before it is thrown away with the handlers it replaces, and
-// one attached after it never sees an exit that already happened. The order inside `stop()` is the whole
-// of the method, and these are the cases that hold it.
+// Stop must observe child exit before reload or quit can proceed. Real children cover that boundary;
+// simulated children expose signal escalation and refusal without runner cleanup masking a defect.
 import { describe, expect, it, vi } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
@@ -81,7 +77,7 @@ describe('stopping the API process', () => {
     const { child, signals } = unresponsive();
     manager.setProcess(child);
 
-    await manager.stop('SIGTERM', 50);
+    await expect(manager.stop('SIGTERM', 50)).rejects.toThrow('did not exit');
 
     expect(signals, 'asked politely, then insisted').toEqual(['SIGTERM', 'SIGKILL']);
   });
@@ -114,6 +110,35 @@ describe('stopping the API process', () => {
   /** Nothing to stop is not an error: a reload may arrive before anything was ever launched. */
   it('resolves at once when there is no process', async () => {
     await expect(new ProcessManager({}).stop()).resolves.toBeUndefined();
+  });
+
+  it('joins concurrent stops without removing the first exit waiter', async () => {
+    const manager = new ProcessManager({});
+    const { child, signals } = unresponsive();
+    manager.setProcess(child);
+    const first = manager.stop();
+    expect(manager.stop()).toBe(first);
+    expect(manager.isRunning(), 'a delivered signal is not an exit').toBe(true);
+    expect(signals).toEqual(['SIGTERM']);
+    child.emit('exit', 0, null);
+    await first;
+    expect(manager.isRunning()).toBe(false);
+  });
+
+  it('recognizes an exit that happened after the previous wait timed out', async () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new ProcessManager({});
+      const { child, signals } = unresponsive();
+      manager.setProcess(child);
+      const refused = expect(manager.stop('SIGTERM', 50)).rejects.toThrow('did not exit');
+      await vi.advanceTimersByTimeAsync(1050);
+      await refused;
+      Object.assign(child, { exitCode: 0 });
+      await manager.stop();
+      expect(signals).toEqual(['SIGTERM', 'SIGKILL']);
+      expect(manager.isRunning()).toBe(false);
+    } finally { vi.useRealTimers(); }
   });
 
   /**

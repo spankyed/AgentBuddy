@@ -73,9 +73,10 @@ updatesWith: 'app' | 'user'
 
 **It means who owns updates, not who may overwrite files.** App-owned packs update with the app, imposed —
 necessary, because an app update that left a stale pack behind could leave its snapshot format unreadable
-and the pack would not load at all. User-owned packs get the shipped version offered as an **available
-update**, which is what a fork wants and which reuses `checkForUpdates`/`availableVersion`/`UPDATE_PACK`
-for installed packs. An absent deliberately removed pack needs explicit restoration, not an enable toggle.
+and the pack would not load at all. User-owned forks keep their selected artifact until explicit replacement or restoration. App-owned
+packs can receive an app-source update offer keyed by source revision, independently of remote release
+updates. Restoration explicitly adopts the app source and enables it. An absent deliberately removed
+pack needs restoration, not an enable toggle.
 
 **Absence means `'user'`.** The app only refreshes what it can prove it owns. CLI/app/dev installation
 records user ownership with the selected source before publication; unrecorded existing artifacts are
@@ -94,12 +95,13 @@ its declarations, preserving stored settings overrides. Record `suppressAppInsta
 pack become indistinguishable. Boot pruning retains this marker. `shippedRevision` records the published source-content identity last accepted for an app-owned install, separate from the runtime nonce and installed artifact receipt. Restoration
 explicitly installs the shipped artifact again; enabling alone does not install a missing artifact.
 
-**The toggle is hidden, not refused.** The Packs view shows no toggle for shipped packs by default; a
-developer-mode switch in Settings reveals it, and then every pack has one. Same gate covers `replace`. The
-CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the view, instead of a
-`canUninstall` predicate threaded through the system, the `InstalledPackSummary` payload and the renderer.
+**Installed packs have lifecycle controls.** Disable and remove are available for every installed pack;
+update ownership does not grant a shipping privilege. Replacement and restoration require explicit
+intent and a selected source. The native host is not an installed pack and is not removable. No
+`canUninstall` flag or developer-mode gate duplicates these rules.
 
-**`shipped` retires to provenance.** It describes origin and decides nothing.
+**Runtime identity describes the selected artifact.** App-source advertisements and update ownership
+remain separate from the loaded artifact; the obsolete runtime `shipped` flag is removed.
 
 ## The work
 
@@ -119,7 +121,8 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
    refused. Uninstall records automatic-install suppression separately from enablement.
 6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `apack pack archive`'s
    refusal, which is its only reader and actively blocks packaging a fork. **Drop `canUninstall`** in both
-   forms. Hide the toggle behind developer mode. Guard `closeDevLetter`'s `getDesignated('threads')`.
+   forms. Expose installed-pack lifecycle controls without shipping privileges. Resolve optional Threads
+   through the window-local registry during onboarding.
 7. **Fix the failed-load pack hiding its own error** — a shipped pack that fails to load has no
    `PackOrigin`, so it reads `canUninstall: true` and its load-problem message sits inside
    `v-if="pack.canUninstall"`. The pack most needing a diagnostic is the one that hides it. Falls out of 6.
@@ -763,3 +766,42 @@ the expanded gate; no assertion, timeout or measured-cost declaration was relaxe
 Unchanged selected source/update ownership and earlier failed-admission cases remain covered by their
 existing checkpoints. Full all-kind discovery, navigation, frontend boundaries, API/provenance work
 and the independently recorded shutdown race remain required; this acceptance does not close the goal.
+
+
+### API shutdown completion correction (2026-10-13)
+
+The recorded cleanup race is a product lifecycle defect, not a reason to retry recursive deletion.
+Electron's cancellable `before-quit` event provides the coordination point:
+https://www.electronjs.org/docs/latest/api/app#event-before-quit.
+Stop accepting new API starts once shutdown begins, cancel quit while the API child is exiting, and
+resume ordinary quit only after completion. Repeated quit/reload stop requests share the same wait.
+Relaunch and startup-error quit must use this boundary rather than bypassing it through `app.exit`.
+The existing last-window terminator retains platform policy; the API module needs no second listener.
+
+The process manager previously resolved after its deadline even if the child survived, and treated
+Node's `killed` signal-delivery flag as proof the process was gone. Neither can support cleanup safety.
+Timeout now rejects, pending shutdown remains live, concurrent stops retain one exit waiter, and exit
+clears both deadline and escalation timers. An unsuccessful quit remains cancelled and logs its cause;
+a subsequent request can retry. This does not claim the separate Electron hidden-window native stall
+has been fixed, and does not force-kill Electron itself.
+
+Focused checks cover real child exit, signal escalation, cancellation, failure/retry and concurrent
+requests. The app fixture captures the current API pid before closing Electron and fails the test if that
+child survives Electron close. The actual app gate must pass this check, rather than relying on a
+passing repeat of recursive removal. All 51 main unit tests and main/testing typechecks passed before final review. Initial strict validation
+passes all 30 gates in 485.3 seconds (one cached), including real external app and packaged authoring;
+its external app gate ran in 158.9 seconds with child-exit assertions. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T23-09-45Z-96278` and
+`/private/tmp/apack-coordinated-shutdown-strict.log`.
+
+Final review adds a late-exit regression: an API can exit after a failed wait discarded its listener;
+a subsequent stop recognizes the actual exit status instead of waiting for an event that already ran.
+All ten focused checks pass. Removing quit cancellation fails both coordinator tests; making timeout
+resolve instead of reject fails both refusal assertions. Exact source is restored and all focused
+checks pass again. Final strict validation on the reviewed candidate passes all 30 gates in 226.6 seconds (18 cached),
+including the freshly run external-pack app gate in 160.2 seconds. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T23-18-58Z-29821` and
+`/private/tmp/apack-coordinated-shutdown-strict-final.log`. The coordinated-quit API/fixture cleanup
+race is resolved by waiting for actual child exit, with real teardown assertions. The separate native
+Electron hidden-window shutdown stall is not claimed fixed. Remaining discovery, navigation, pane
+boundaries, API/provenance work and final goal-wide strict `--all` acceptance remain open.

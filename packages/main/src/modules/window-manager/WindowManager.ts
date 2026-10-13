@@ -82,7 +82,7 @@ class WindowManager implements AppModule {
         if (response === 0) {
           app.relaunch();
         }
-        app.exit(0);
+        app.quit();
         return;
       }
     }

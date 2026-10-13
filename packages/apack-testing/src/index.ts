@@ -522,6 +522,9 @@ export function createTest(options: CreateTestOptions = {}) {
         }
 
         await use(app);
+        const endpointFile = resolveAppEnvironment({ env: 'test', userDataDir }).apiPortFile;
+        const apiPid: number | undefined = fs.existsSync(endpointFile)
+          ? JSON.parse(fs.readFileSync(endpointFile, 'utf8')).pid : undefined;
         if (process.env.DEBUG_E2E) console.log('[e2e shutdown] calling close');
         const inspectShutdown = process.env.DEBUG_E2E ? setTimeout(() => {
           console.log('[e2e shutdown] still waiting', {
@@ -542,6 +545,17 @@ export function createTest(options: CreateTestOptions = {}) {
         }, 5000) : undefined;
         try { await app.close(); }
         finally { clearTimeout(inspectShutdown); }
+        // Electron close must include its API child; otherwise deleting storage races the final writes.
+        if (apiPid !== undefined) {
+          let alive = true;
+          try {
+            process.kill(apiPid, 0);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+            alive = false;
+          }
+          if (alive) throw new Error(`Electron closed while API process ${apiPid} was still alive`);
+        }
         if (process.env.DEBUG_E2E) console.log('[e2e shutdown] close resolved');
       } finally {
         // A dir the caller gave is the caller's to remove; this owns only the one it made
