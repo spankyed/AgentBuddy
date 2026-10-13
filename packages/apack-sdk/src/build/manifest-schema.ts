@@ -341,8 +341,11 @@ export const ContentConfigSchema = z.object({
 }).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
 
 export const BootConfigSchema = z.object({
-  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack\'s backend stops).').optional(),
-}).strict().describe('Boot sequence configuration.');
+  onInit: ExportTargetSchema.describe('Function called after hydration, before migrations and content.').optional(),
+  onShutdown: ExportTargetSchema.describe('Function called when this pack stops.').optional(),
+}).strict().describe('Explicit lifecycle function bindings, discoverable without loading their modules.');
+
+export const BOOT_HOOK_NAMES = Object.keys(BootConfigSchema.shape) as Array<keyof typeof BootConfigSchema.shape>;
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
@@ -489,12 +492,17 @@ const MIGRATION_TARGET_SCHEMA = z.string()
  * would be the next thing silently deciding for an author. The key stays the target, so one line cannot
  * declare the same version twice — JSON cannot hold a key twice.
  */
+export const MigrationDeclarationSchema = z.object({
+  description: z.string().min(1).describe('What this versioned data change does.'),
+  up: ExportTargetSchema.describe('Synchronous function applying the change.'),
+}).strict();
+
 export const MigrationsSchema = z.object({
-  app: z.record(MIGRATION_TARGET_SCHEMA, ExportTargetSchema)
+  app: z.record(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
     .describe('Migrations on apack\'s version line, keyed by the release each targets. For data whose shape follows the app rather than this pack.').optional(),
-  pack: z.record(MIGRATION_TARGET_SCHEMA, ExportTargetSchema)
+  pack: z.record(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
     .describe('Migrations on this pack\'s own version line, keyed by the version each targets, compared against `version` in this manifest.').optional(),
-}).strict().describe('Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`.');
+}).strict().describe('Migrations this pack runs, under the version line each targets. The key is the version; the declaration owns its description and names the executable up function.');
 
 /**
  * The version lines, derived from the schema so the list and the keys cannot disagree. Codegen emits a map

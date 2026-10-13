@@ -57,11 +57,11 @@ export async function addMigration(args: string[], root: string) {
   // The manifest entry first: it is the declaration, its key is the version the migration targets and the
   // map it goes in is the line that version is on, so a file no manifest names runs never. It refuses a
   // version already declared on that line rather than writing twice
-  addMigrationToManifest(manifest, line, version, `src/migrations/${version}.ts#migration`);
+  addMigrationToManifest(manifest, line, version, { description: 'Describe what this migration changes', up: `src/migrations/${version}.ts#up` });
   writeManifest(root, manifest);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, renderTemplate('pack/src/migrations/migration.ts', { VERSION: version }))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/migrations/migration.ts', {}))) {
     created.push(filePath);
   }
 

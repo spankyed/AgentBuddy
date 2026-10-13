@@ -1,3 +1,4 @@
+import { BOOT_HOOK_NAMES } from '@apackdev/sdk/build';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
@@ -103,14 +104,15 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     const entries = namedBindings(migrations[line], 'target', Object.keys(manifest.migrations?.[line] ?? {}));
     if (!entries) return problem(`migrations.${line}`);
     for (const [target, entry] of entries) {
-      if (typeof entry.up !== 'function' || typeof entry.description !== 'string') return problem(`migrations.${line}.${target}`);
+      if (typeof entry.up !== 'function' || entry.description !== manifest.migrations![line]![target].description) return problem(`migrations.${line}.${target}`);
     }
   }
-  if ((registration.boot !== undefined) !== (manifest.boot?.hooks !== undefined)) return problem('boot');
-  if (registration.boot !== undefined) {
-    if (!isPlainObject(registration.boot)) return problem('boot');
-    for (const hook of ['onInit', 'onShutdown'] as const) {
-      if (registration.boot[hook] !== undefined && typeof registration.boot[hook] !== 'function') return problem(`boot.${hook}`);
+  const hooks = Object.keys(manifest.boot ?? {});
+  const actual = registration.boot === undefined ? {} : registration.boot;
+  if (!sameKeys(actual, hooks)) return problem('boot');
+  if (isPlainObject(actual)) {
+    for (const hook of BOOT_HOOK_NAMES) {
+      if (hooks.includes(hook) && typeof actual[hook] !== 'function') return problem(`boot.${hook}`);
     }
   }
 }

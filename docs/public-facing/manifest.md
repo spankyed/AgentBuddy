@@ -22,7 +22,7 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
-| `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
+| `boot` | `PackBootConfig` | no | Explicit lifecycle functions; see [Boot configuration](#boot-configuration) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
 | `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
@@ -234,27 +234,20 @@ A step's `dsl` fields:
 
 ## Boot configuration
 
-The `boot` object configures hooks that run during app startup:
+The `boot` object declares each lifecycle function explicitly. Its availability can be read without
+executing the pack, and codegen checks that the named export is a function.
 
 ```json
 {
   "boot": {
-    "hooks": "src/hooks.ts",
-    "sources": {
-      "actions": "src/content/actions",
-      "prompts": "src/content/prompts",
-      "flows": { "path": "src/content/flows" }
-    }
+    "onInit": "src/hooks.ts#onInit",
+    "onShutdown": "src/hooks.ts#onShutdown"
   }
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features.<id>.settings` |
-
-The `hooks` module's named exports become the pack's boot hooks:
+Only declared functions enter the registration. Other exports from the module are not boot hooks.
+Content sources belong in `content.sources`, independently of lifecycle callbacks.
 
 ```typescript
 // src/hooks.ts
@@ -309,8 +302,8 @@ under the **version line** its target is on, keyed by the version it targets:
 ```json
 {
   "migrations": {
-    "pack": { "1.2.0": "src/migrations/1.2.0.ts#migration" },
-    "app":  { "0.3.16": "src/migrations/0.3.16.ts#migration" }
+    "pack": { "1.2.0": { "description": "Give every memo a colour", "up": "src/migrations/1.2.0.ts#up" } },
+    "app": { "0.4.0": { "description": "Update app-owned data", "up": "src/migrations/0.4.0.ts#up" } }
   }
 }
 ```
@@ -322,22 +315,21 @@ under the **version line** its target is on, keyed by the version it targets:
 
 Most migrations belong on `pack`: the pack's data moves when the pack does. Use `app` for data whose shape
 follows apack's rather than yours. A target is always three numbers — the app reads a prerelease as its
-release, so `0.3.16-beta.2` would match nothing.
+release, so `0.4.0-beta.2` would match nothing.
 
 `apack pack add migration 1.2.0` writes the entry and the file; `--app` puts it on the app's line.
 
-The version is the key, so the module states only what it does:
+The declaration owns the version line, target and description. The module exports behavior only:
 
 ```ts
-import type { DeclaredMigration } from '@apackdev/sdk/framework';
-
-export const migration: DeclaredMigration = {
-  description: 'Give every memo a colour',
-  // Synchronous, and safe to run again: it runs on each prerelease of its release, on every development
-  // boot, and after a data reset — so check whether the change is needed before applying it
-  up: () => { /* … */ },
-};
+// src/migrations/1.2.0.ts
+export function up(): void {
+  // Apply the change synchronously, checking first whether it is needed.
+}
 ```
+
+Keep migrations idempotent: development boots, prereleases and resets may repeat them. Descriptions are
+available in the installed snapshot even when the pack is disabled or cannot activate.
 
 A pack may declare both lines. They run at different moments, so a single change split across them gets an
 order you probably did not intend — keep one change on one line.

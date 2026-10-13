@@ -488,7 +488,8 @@ export async function generatePackFiles(
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
-      ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {})),
+      ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
+      ...Object.values(manifest.boot ?? {}),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -734,15 +735,7 @@ export async function generatePackFiles(
     return { imports, items };
   }
 
-  /**
-   * The pack's migrations, grouped by the version line each targets. Two keys are the only places either
-   * fact is written: the manifest key is the version — a module exports a `DeclaredMigration`, which has no
-   * `target` — and the map it sits in is the line, so neither can be stated twice and disagree. The runners
-   * read one map each and ask nothing about where the pack came from.
-   *
-   * Emitted in key order so the runners' sort has nothing to undo, though they sort anyway: a manifest is
-   * JSON and nothing promises its keys keep the order they were written in.
-   */
+  /** Metadata comes from declarations; exported functions supply only behavior. */
   function migrationEntries(): { imports: string[]; literal: string } {
     const imports: string[] = [];
     const lines = MIGRATION_LINES.flatMap((line) => {
@@ -752,12 +745,10 @@ export async function generatePackFiles(
       const items = entries.map(([version, target]) => {
         const label = `Migration "${line}/${version}"`;
         const local = `__migration_${line}_${version.replace(/[^A-Za-z0-9]/g, '_')}`;
-        const { source, exportName, value } = valueExport(label, target);
-        // Bind declared fields explicitly: the manifest owns the target, and methods retain their source object.
-        if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the migration object itself (export const ${exportName}: DeclaredMigration = { … })`);
-        if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it`);
+        const { source, exportName, value } = valueExport(label, target.up);
+        if (value !== 'function') throw new Error(`${label}: "${exportName}" in ${source} must export an up function`);
         imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
-        return `      { target: '${version}', description: ${local}.description, up: () => ${local}.up() },`;
+        return `      { target: '${version}', description: ${JSON.stringify(target.description)}, up: ${local} },`;
       });
       return [`    ${line}: [\n${items.join('\n')}\n    ],`];
     });
@@ -935,9 +926,13 @@ ${items.join('\n')}
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
 
-    const hooksImport = manifest.boot?.hooks
-      ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
-      : '';
+    const hookEntries = Object.entries(manifest.boot ?? {}).map(([name, target]) => {
+      const { source, exportName, value } = valueExport(`Boot hook "${name}"`, target);
+      if (value !== 'function') throw new Error(`Boot hook "${name}": "${exportName}" in ${source} must export a function`);
+      return { name, binding: `__boot_${name}`, source, exportName };
+    });
+    const hooksImport = hookEntries.map(({ source, exportName, binding }) =>
+      `import { ${exportName} as ${binding} } from '${toImportPath(root, source)}';`).join('\n');
 
     const writerEntries = contentWriterEntries();
     const blocks = blockDefinitions();
@@ -997,7 +992,7 @@ ${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensi
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
-${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
+${hookEntries.length ? `  boot: { ${hookEntries.map(({ name, binding }) => `${name}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
 ${contractCheck}`;
   }

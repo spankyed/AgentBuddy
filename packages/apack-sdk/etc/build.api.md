@@ -28,12 +28,18 @@ export interface ActionMeta {
 export const actionsCompiler: SpecialtyCompiler<DslCompiled>;
 
 // @public (undocumented)
+export const BOOT_HOOK_NAMES: Array<keyof typeof BootConfigSchema.shape>;
+
+// @public (undocumented)
 export const BootConfigSchema: z.ZodObject<{
-    hooks: z.ZodOptional<z.ZodString>;
+    onInit: z.ZodOptional<z.ZodString>;
+    onShutdown: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    hooks?: string | undefined;
+    onInit?: string | undefined;
+    onShutdown?: string | undefined;
 }, {
-    hooks?: string | undefined;
+    onInit?: string | undefined;
+    onShutdown?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -1142,11 +1148,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     }>>;
     boot: z.ZodOptional<z.ZodObject<{
-        hooks: z.ZodOptional<z.ZodString>;
+        onInit: z.ZodOptional<z.ZodString>;
+        onShutdown: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     }, {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     }>>;
     content: z.ZodOptional<z.ZodObject<{
         sources: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
@@ -1363,14 +1372,44 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     }>>;
     migrations: z.ZodOptional<z.ZodObject<{
-        app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            description: z.ZodString;
+            up: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            description: string;
+            up: string;
+        }, {
+            description: string;
+            up: string;
+        }>>>;
+        pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            description: z.ZodString;
+            up: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            description: string;
+            up: string;
+        }, {
+            description: string;
+            up: string;
+        }>>>;
     }, "strict", z.ZodTypeAny, {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     }, {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     }>>;
     build: z.ZodOptional<z.ZodObject<{
         opaqueDeps: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -1492,7 +1531,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     } | undefined;
     boot?: {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1527,8 +1567,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
 }, {
     name: string;
@@ -1626,7 +1672,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     } | undefined;
     boot?: {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1661,8 +1708,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
 }>, {
     name: string;
@@ -1774,7 +1827,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     } | undefined;
     boot?: {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1809,8 +1863,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
 }, {
     name: string;
@@ -1908,7 +1968,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     } | undefined;
     boot?: {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1943,8 +2004,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
 }>, {
     name: string;
@@ -2056,7 +2123,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }> | undefined;
     } | undefined;
     boot?: {
-        hooks?: string | undefined;
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -2091,8 +2159,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     } | undefined;
     migrations?: {
-        app?: Record<string, string> | undefined;
-        pack?: Record<string, string> | undefined;
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
 }, unknown>;
 
@@ -2137,18 +2211,60 @@ export const MIGRATION_LINES: MigrationLine[];
 export const MIGRATION_TARGET_PATTERN: RegExp;
 
 // @public
-export type MigrationLine = keyof typeof MigrationsSchema.shape;
+export const MigrationDeclarationSchema: z.ZodObject<{
+    description: z.ZodString;
+    up: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    description: string;
+    up: string;
+}, {
+    description: string;
+    up: string;
+}>;
 
 // @public
+export type MigrationLine = keyof typeof MigrationsSchema.shape;
+
+// @public (undocumented)
 export const MigrationsSchema: z.ZodObject<{
-    app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-    pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        description: z.ZodString;
+        up: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        description: string;
+        up: string;
+    }, {
+        description: string;
+        up: string;
+    }>>>;
+    pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        description: z.ZodString;
+        up: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        description: string;
+        up: string;
+    }, {
+        description: string;
+        up: string;
+    }>>>;
 }, "strict", z.ZodTypeAny, {
-    app?: Record<string, string> | undefined;
-    pack?: Record<string, string> | undefined;
+    app?: Record<string, {
+        description: string;
+        up: string;
+    }> | undefined;
+    pack?: Record<string, {
+        description: string;
+        up: string;
+    }> | undefined;
 }, {
-    app?: Record<string, string> | undefined;
-    pack?: Record<string, string> | undefined;
+    app?: Record<string, {
+        description: string;
+        up: string;
+    }> | undefined;
+    pack?: Record<string, {
+        description: string;
+        up: string;
+    }> | undefined;
 }>;
 
 // @internal
@@ -2342,6 +2458,9 @@ export interface PackFlowHelpers {
 
 // @public (undocumented)
 export type PackManifest = z.infer<typeof ManifestSchema>;
+
+// @public (undocumented)
+export type PackMigrationDeclaration = z.infer<typeof MigrationDeclarationSchema>;
 
 // @public (undocumented)
 export type PackPermission = z.infer<typeof PackPermissionSchema>;

@@ -16,8 +16,8 @@ The API boot, app-data reset and backup import run `runAppMigrations(registry)` 
 | `runPackMigrations` | Each pack's manifest version and `migrations.pack` targets | `AppState.packVersions[packId]` |
 
 A pack declares the version line; provenance does not select it. Either a shipped or external pack may
-use either line. A migration module exports `DeclaredMigration` (`description`, `up`); its target comes
-from the manifest key. Codegen assembles the runtime `PackMigration`.
+use either line. The manifest key owns its target, and the value owns `description` and an `up` function export
+reference. Modules export behavior only; codegen checks the export and assembles `PackMigration`.
 
 The host and default-setup currently declare no migrations. Add one only for a concrete supported data change, not hypothetical
 old installations. The frontend runner (`src/fe/migrations`) operates separately on window storage.
@@ -44,7 +44,7 @@ validate the real lifecycle that runs the change.
 
 ```json
 "migrations": {
-  "pack": { "1.1.0": "src/migrations/1.1.0.ts#migration" }
+  "pack": { "1.1.0": { "description": "Describe the change", "up": "src/migrations/1.1.0.ts#up" } }
 }
 ```
 

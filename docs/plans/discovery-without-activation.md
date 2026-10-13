@@ -815,3 +815,15 @@ publication. The host revokes its port and subscriptions even when a hook captur
 before returning cleanup, or returns cleanup that omits generated disposal. This is a supported API
 lifetime guarantee, not confinement of arbitrary in-process JavaScript. Reconnection/unload does not
 revive captured handles. A post-commit cleanup error remains a retirement diagnostic.
+
+### Hook and migration declaration checkpoint design (2026-10-13)
+
+Current code imports a whole `boot.hooks` module without checking its exports and reads migration
+object descriptions only after executing the module. Replace both contracts outright. `boot.onInit`
+and `boot.onShutdown` each name a checked `path#export` function; presence is known from manifest keys.
+Each migration version entry contains inline `description` and an `up` function export target. Version
+line/target and description are authored only in data; modules export behavior only. Codegen validates
+named callable exports without executing them and emits explicit fields. Runtime admission checks
+exact declared hook presence and migration descriptions, not just their types. Migrate scaffolding,
+fixtures, public schema/API reports and docs; accept no old key or migration-object fallback. Ordinary
+versioned data changes remain supported and separate from obsolete-format conversion.

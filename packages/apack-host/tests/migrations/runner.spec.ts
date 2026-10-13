@@ -60,11 +60,11 @@ describe('boot migrations', () => {
     // **With a `manifest`, which is what makes "once" checkable here.** `packMigrationTargets` reads the
     // origin's manifest, and the loader builds every origin with one — so a fixture without it is a shipped
     // pack the second runner cannot see, and this case passed while a real one ran its migrations twice.
-    const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, migrations: { app: { [TEST_APP_VERSION]: 'migration.ts#migration' } } };
+    const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, migrations: { app: { [TEST_APP_VERSION]: { description: 'built-in', up: 'migration.ts#up' } } } };
     registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...shippedManifest, dir: builtInDir, shipped: true, manifest: shippedManifest as never });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
-    const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION, migrations: { pack: { [TEST_APP_VERSION]: 'migration.ts#migration' } } };
+    const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION, migrations: { pack: { [TEST_APP_VERSION]: { description: 'external', up: 'migration.ts#up' } } } };
     const external = {
       registration: { id: manifest.id, migrations: { pack: [externalMigration] } },
       origin: { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, shipped: false, manifest: manifest },
@@ -97,7 +97,7 @@ describe('boot migrations', () => {
     // The app is at TEST_APP_VERSION and the pack at 9.0.0, so a `pack` entry at 2.0.0 is pending on its own
     // line and would be far past the cap on the app's: the version it is compared to is the one the line names
     const ran: string[] = [];
-    const manifest = { id: 'migrations-shipped-own-line', name: 'Shipped', version: '9.0.0', migrations: { pack: { '2.0.0': 'migration.ts#migration' } } };
+    const manifest = { id: 'migrations-shipped-own-line', name: 'Shipped', version: '9.0.0', migrations: { pack: { '2.0.0': { description: 'own line', up: 'migration.ts#up' } } } };
     registry.registerPack(
       { id: manifest.id, migrations: { pack: [{ target: '2.0.0', description: 'own line', up: () => { ran.push('2.0.0'); } }] } },
       { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, shipped: true, manifest: manifest as never },
@@ -170,7 +170,7 @@ describe('which migrations run', () => {
         },
       })) },
     };
-    const gateManifest = { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, migrations: { app: Object.fromEntries(targets.map(target => [target, 'migration.ts#migration'])) } };
+    const gateManifest = { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, migrations: { app: Object.fromEntries(targets.map(target => [target, { description: target, up: 'migration.ts#up' }])) } };
     registry.registerPack(registration, { declarationRevision: 'fixture-revision', ...gateManifest, dir: builtInDir, shipped: false, manifest: gateManifest as never });
   });
 

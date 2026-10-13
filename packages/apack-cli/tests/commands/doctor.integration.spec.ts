@@ -61,8 +61,19 @@ it('pack doctor fails for missing source files and accepts warnings alone', asyn
   await packDoctor([]);
   fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest, name: undefined }));
   await expect(packDoctor([])).rejects.toThrow('health check failed');
-  fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest, migrations: { pack: { '0.4.0': 'src/missing.ts' } } }));
+  fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest, migrations: { pack: { '0.4.0': { description: 'Missing', up: 'src/missing.ts#up' } } } }));
   await expect(packDoctor([])).rejects.toThrow('health check failed');
+});
+
+it('checks step function paths independently of migration declarations', async () => {
+  fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ id: 'steps', name: 'Steps', version: '1.0.0',
+    extensions: { steps: { example: { node: 'src/step.ts#node' } } },
+  }));
+  process.chdir(root);
+  await expect(packDoctor([])).rejects.toThrow('health check failed');
+  fs.mkdirSync(path.join(root, 'src'));
+  fs.writeFileSync(path.join(root, 'src/step.ts'), 'export const node = {};');
+  await packDoctor([]);
 });
 
 it('pack drive requires a pack while app driving never selects one from cwd', () => {

@@ -262,7 +262,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', entities: { Widget: 'Widget' }, boot: { hooks: 'hooks.ts' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', entities: { Widget: 'Widget' }, boot: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
@@ -349,30 +349,16 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(exported.boot?.onInit).toBeDefined();
   });
 
-  // A pack's content are files the host reads with the appliers that pack *registered*; a function the pack
-  // puts on `boot` is not a door into applying, and never was
-  it("content a pack from its compiled files, never from a function its boot hooks export", async () => {
-    const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
+  it('refuses undeclared boot hooks before registration or startup effects', () => {
     const dir = makeBundledPack('smuggle-pack', registration('smuggle-pack').replace(
       'onInit() {},',
-      'onInit() {}, apply() { module.exports.bootApplyCalls = (module.exports.bootApplyCalls ?? 0) + 1; },',
+      'onInit() {}, apply() { module.exports.bootApplyCalls = 1; },',
     ));
-    fs.writeFileSync(path.join(dir, 'runtime', 'content', 'actions.content.json'), '[]');
-
-    sealPack(dir);
-    const packs = loadExternalPacks();
-    expect(registerExternalPacks(registry, packs)).toEqual(packs);
-    try {
-      const applyFn = vi.fn(() => ({}));
-      applyPacks(registry.packContentTargets(['smuggle-pack']), applyFn);
-
-      const mod = require(path.join(dir, 'runtime', 'index.cjs'));
-      expect(mod.bootApplyCalls, 'the pack smuggled an apply function onto boot and it was called').toBeUndefined();
-      expect(applyFn).toHaveBeenCalledTimes(1);
-      expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'content') }));
-    } finally {
-      registry.unregisterPack('smuggle-pack');
-    }
+    const problems = { recordLoadProblem: vi.fn() };
+    expect(loadExternalPacks(problems)).toEqual([]);
+    expect(problems.recordLoadProblem).toHaveBeenCalledWith('smuggle-pack', expect.stringContaining('boot'));
+    expect(registry.getPackRegistration('smuggle-pack')).toBeNull();
+    expect(require(path.join(dir, 'runtime', 'index.cjs')).bootApplyCalls).toBeUndefined();
   });
 
   it('refuses a runtime built against an @apackdev/sdk module this app no longer provides, saying to rebuild it', async () => {

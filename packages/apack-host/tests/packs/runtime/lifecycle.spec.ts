@@ -119,7 +119,7 @@ describe('activating and tearing down a pack at runtime', () => {
       features: { main: { system: { entry: 'src/features/main/be/system.ts' } } },
       extensions: { commands: { 'activate-memo': { placeholder: 'Text' } } },
       content: { sources: { memos: { applier: 'memos.ts' } } },
-      migrations: { pack: { '1.0.0': 'migration.ts#migration' } },
+      migrations: { pack: { '1.0.0': { description: 'memos', up: 'migration.ts#up' } } },
     });
     // The runtime carries what generate-entries writes from the manifest, commands and appliers included
     writeBuild(
@@ -153,7 +153,7 @@ describe('activating and tearing down a pack at runtime', () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
     const source = path.join(tmpDir, PACK_ID);
-    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', boot: { hooks: 'hooks.ts' } });
+    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', boot: { onInit: 'hooks.ts#onInit', onShutdown: 'hooks.ts#onShutdown' } });
     writeBuild(source, PACK_ID, "{}, boot: { onInit() { throw new Error('init refused'); }, onShutdown() { globalThis.activatePackRuns.push('shutdown'); } }");
     await installPackFromLocal(source, packsDir());
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(false);

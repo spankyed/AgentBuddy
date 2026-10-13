@@ -621,13 +621,19 @@
     "boot": {
       "type": "object",
       "properties": {
-        "hooks": {
+        "onInit": {
           "type": "string",
-          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack's backend stops)."
+          "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+          "description": "Function called after hydration, before migrations and content."
+        },
+        "onShutdown": {
+          "type": "string",
+          "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+          "description": "Function called when this pack stops."
         }
       },
       "additionalProperties": false,
-      "description": "Boot sequence configuration."
+      "description": "Explicit lifecycle function bindings, discoverable without loading their modules."
     },
     "content": {
       "type": "object",
@@ -823,8 +829,24 @@
         "app": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What this versioned data change does."
+              },
+              "up": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "Synchronous function applying the change."
+              }
+            },
+            "required": [
+              "description",
+              "up"
+            ],
+            "additionalProperties": false
           },
           "propertyNames": {
             "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -834,8 +856,24 @@
         "pack": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What this versioned data change does."
+              },
+              "up": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "Synchronous function applying the change."
+              }
+            },
+            "required": [
+              "description",
+              "up"
+            ],
+            "additionalProperties": false
           },
           "propertyNames": {
             "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -844,7 +882,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`."
+      "description": "Migrations this pack runs, under the version line each targets. The key is the version; the declaration owns its description and names the executable up function."
     },
     "build": {
       "type": "object",

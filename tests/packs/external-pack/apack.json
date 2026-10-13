@@ -136,7 +136,8 @@
   },
   "permissions": [],
   "boot": {
-    "hooks": "src/features/hooks.ts"
+    "onInit": "src/features/hooks.ts#onInit",
+    "onShutdown": "src/features/hooks.ts#onShutdown"
   },
   "content": {
     "sources": {

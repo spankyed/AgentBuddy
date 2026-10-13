@@ -222,24 +222,24 @@ describe('apack pack add migration', () => {
     await addMigration(['0.3.16-beta.1', '--app'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
-    expect(migration).toContain("import type { DeclaredMigration } from '@apackdev/sdk/framework';");
+    expect(migration).toContain('export function up(): void');
     // The version is the manifest key and the line is the map, so the module restates neither
     expect(migration).not.toContain('target:');
     expect(readManifest().migrations).toEqual({
       pack: {
-        '0.2.0': 'src/migrations/0.2.0.ts#migration',
-        '0.10.1': 'src/migrations/0.10.1.ts#migration',
-        '0.11.0': 'src/migrations/0.11.0.ts#migration',
+        '0.2.0': { description: 'Describe what this migration changes', up: 'src/migrations/0.2.0.ts#up' },
+        '0.10.1': { description: 'Describe what this migration changes', up: 'src/migrations/0.10.1.ts#up' },
+        '0.11.0': { description: 'Describe what this migration changes', up: 'src/migrations/0.11.0.ts#up' },
       },
-      app: { '0.3.16': 'src/migrations/0.3.16.ts#migration' },
+      app: { '0.3.16': { description: 'Describe what this migration changes', up: 'src/migrations/0.3.16.ts#up' } },
     });
     expect(fs.existsSync(path.join(pack, 'src/migrations/index.ts'))).toBe(false);
 
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
     // One array per line, each in version order, each entry with the target its key names
-    expect(entry).toContain("    app: [\n      { target: '0.3.16', description: __migration_app_0_3_16.description, up: () => __migration_app_0_3_16.up() },\n    ],");
-    expect(entry).toContain("    pack: [\n      { target: '0.2.0', description: __migration_pack_0_2_0.description, up: () => __migration_pack_0_2_0.up() },\n      { target: '0.10.1', description: __migration_pack_0_10_1.description, up: () => __migration_pack_0_10_1.up() },\n      { target: '0.11.0', description: __migration_pack_0_11_0.description, up: () => __migration_pack_0_11_0.up() },\n    ],");
+    expect(entry).toContain("    app: [\n      { target: '0.3.16', description: \"Describe what this migration changes\", up: __migration_app_0_3_16 },\n    ],");
+    expect(entry).toContain("    pack: [\n      { target: '0.2.0', description: \"Describe what this migration changes\", up: __migration_pack_0_2_0 },\n      { target: '0.10.1', description: \"Describe what this migration changes\", up: __migration_pack_0_10_1 },\n      { target: '0.11.0', description: \"Describe what this migration changes\", up: __migration_pack_0_11_0 },\n    ],");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -253,12 +253,12 @@ describe('apack pack add migration', () => {
     // lands on a file that is already there, which is the one thing the two lines share. So codegen
     // imports that module twice under two locals, which is the case the typecheck below is here for
     await addMigration(['0.2.0', '--app'], pack);
-    expect(readManifest().migrations?.app?.['0.2.0']).toBe('src/migrations/0.2.0.ts#migration');
+    expect(readManifest().migrations?.app?.['0.2.0']).toEqual({ description: 'Describe what this migration changes', up: 'src/migrations/0.2.0.ts#up' });
 
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
-    expect(entry).toContain("import { migration as __migration_app_0_2_0 } from '../migrations/0.2.0.ts';");
-    expect(entry).toContain("import { migration as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
+    expect(entry).toContain("import { up as __migration_app_0_2_0 } from '../migrations/0.2.0.ts';");
+    expect(entry).toContain("import { up as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -281,7 +281,7 @@ describe('apack pack add migration', () => {
     await addMigration(['--app'], pack);
 
     const version = readManifest().version;
-    expect(readManifest().migrations?.app?.[version]).toBe(`src/migrations/${version}.ts#migration`);
+    expect(readManifest().migrations?.app?.[version]).toEqual({ description: 'Describe what this migration changes', up: `src/migrations/${version}.ts#up` });
     expect(fs.existsSync(path.join(pack, 'src/migrations/.ts')), 'no file named for the empty version').toBe(false);
   });
 });

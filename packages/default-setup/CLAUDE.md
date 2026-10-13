@@ -371,8 +371,8 @@ supported data changes may declare versioned migrations in `apack.json`; see
 ## Boot sequence extensions
 
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
-- `onInit` — from `boot.hooks` (`src/features/hooks.ts`): nothing to do at present. The Settings row is the host's and is written on the user's first change
-- `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
+- `onInit` — from `boot.onInit` (`src/features/hooks.ts`): nothing to do at present. The Settings row is the host's and is written on the user's first change
+- `onShutdown` — from `boot.onShutdown`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
 
 ## Build
 

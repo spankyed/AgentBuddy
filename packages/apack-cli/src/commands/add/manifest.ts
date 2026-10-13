@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine } from '@apackdev/sdk/build';
+import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine, PackMigrationDeclaration } from '@apackdev/sdk/build';
 
 export { readManifest } from '../../utils';
 
@@ -52,17 +52,12 @@ export function addBlock(
   ext.blocks[type] = { ...(entry.kind ? { kind: entry.kind } : {}), fe: entry.component };
 }
 
-/**
- * Adds a migration under one version line: the key is the version it targets, which is why the module it
- * names states only its description and its `up`, and the line says what that version is a version of —
- * `pack` the pack's own, `app` apack's. A root key rather than an `extensions` one: a migration moves
- * the pack's own stored data rather than contributing anything to the app.
- */
-export function addMigration(manifest: PackManifest, line: MigrationLine, version: string, target: string): void {
+/** The manifest owns the version line, target, description and executable reference. */
+export function addMigration(manifest: PackManifest, line: MigrationLine, version: string, declaration: PackMigrationDeclaration): void {
   const migrations = manifest.migrations ?? (manifest.migrations = {});
   const onLine = migrations[line] ?? (migrations[line] = {});
   if (onLine[version]) throw new Error(`Migration "${version}" already exists in manifest under "${line}"`);
-  onLine[version] = target;
+  onLine[version] = declaration;
 }
 
 /** Adds a pack-level service: `target` is "path#exportName" of the service object */

@@ -12,8 +12,8 @@ const manifest = ManifestSchema.parse({
     commands: { collect: { placeholder: 'Collect items' } },
   },
   content: { writers: { Item: 'writer.ts#writer' }, sources: { items: { applier: 'items.ts' } } },
-  migrations: { app: { '1.0.0': 'migration.ts#migration' } },
-  boot: { hooks: 'hooks.ts' },
+  migrations: { app: { '1.0.0': { description: 'Initialize', up: 'migration.ts#up' } } },
+  boot: { onInit: 'hooks.ts#onInit' },
 });
 
 function binding(): Record<string, unknown> {
@@ -76,5 +76,15 @@ it('does not admit a malformed handler when only runtime flags are declared', ()
     expect(backendBindingProblem(declaration, {
       steps: [{ type: 'wait', node: {}, runtime: { waits: true, handler } }],
     })).toContain('steps.wait.runtime.handler');
+  }
+});
+
+
+it('refuses changed migration descriptions and missing/extra hook implementations', () => {
+  const changed = binding();
+  changed.migrations = { app: [{ target: '1.0.0', description: 'Changed', up() {} }] };
+  expect(backendBindingProblem(manifest, changed)).toContain('migrations.app.1.0.0');
+  for (const boot of [{}, { onInit: undefined }, { onInit() {}, onShutdown() {} }]) {
+    expect(backendBindingProblem(manifest, { ...binding(), boot })).toContain('boot');
   }
 });

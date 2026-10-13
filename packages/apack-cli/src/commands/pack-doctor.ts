@@ -81,8 +81,8 @@ export async function doctor(args: string[]) {
     // Both lines: a file missing under either is a migration that cannot run, and reading one map would
     // report `pass` over a pack whose migrations are all declared on the other
     const missing = MIGRATION_LINES.flatMap((line) => Object.entries(parsed.migrations?.[line] ?? {})
-      .filter(([, target]) => !fs.existsSync(path.join(root, target.split('#')[0]!)))
-      .map(([version, target]) => `${line}/${version} (${target})`));
+      .filter(([, target]) => !fs.existsSync(path.join(root, target.up.split('#')[0]!)))
+      .map(([version, target]) => `${line}/${version} (${target.up})`));
     if (missing.length) return `missing: ${missing.join(', ')}`;
     return 'pass';
   });

@@ -37,14 +37,6 @@ export interface ContentRuntime {
 }
 
 // @public
-export interface DeclaredMigration {
-    // (undocumented)
-    description: string;
-    // (undocumented)
-    up: () => void;
-}
-
-// @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
     type: string;
 } = {
@@ -221,9 +213,13 @@ export interface PackFeatureSystem {
 }
 
 // @public
-export interface PackMigration extends DeclaredMigration {
+export interface PackMigration {
+    // (undocumented)
+    description: string;
     // (undocumented)
     target: string;
+    // (undocumented)
+    up: () => void;
 }
 
 // @public (undocumented)
