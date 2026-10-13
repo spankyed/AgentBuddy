@@ -207,7 +207,8 @@ const emit = defineEmits<{
 function onHotkeyUpdate(event: SettingUpdate) {
   emit('update-setting', {
     path: ['hotkeys', ...event.path],
-    value: event.value
+    value: event.value,
+    condition: event.condition
   })
 }
 

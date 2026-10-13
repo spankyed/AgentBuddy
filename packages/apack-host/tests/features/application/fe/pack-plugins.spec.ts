@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
-import { fakeShell, plugin } from './fakes.ts';
+import { fakeShell, plugin, settle } from './fakes.ts';
 
 let app: Actor<ShellMachine>;
 let builtInNotes: Plugin;
@@ -41,9 +41,9 @@ describe('pack plugins in the application actor', () => {
   it("asks for a pack's startup data once its plugin actors exist, after the connection", () => {
     connect();
     let spawnedWhenAsked = false;
-    packClientReady.mockImplementation(async () => { spawnedWhenAsked = app.system.get('pack-own') !== undefined; });
+    packClientReady.mockImplementation(async () => { spawnedWhenAsked = app.system.get('ext/own') !== undefined; });
 
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
 
     expect(packClientReady).toHaveBeenCalledTimes(1);
     expect(packClientReady).toHaveBeenCalledWith('ext');
@@ -51,8 +51,8 @@ describe('pack plugins in the application actor', () => {
   });
 
   it('asks once the connection comes for a pack whose plugins loaded before it', () => {
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
-    expect(app.system.get('pack-own')).toBeDefined();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
+    expect(app.system.get('ext/own')).toBeDefined();
     expect(packClientReady).not.toHaveBeenCalled();
 
     connect();
@@ -60,30 +60,39 @@ describe('pack plugins in the application actor', () => {
     expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
-  it('asks again on reconnecting, for each pack whose frontend loaded', () => {
+  it('waits for frontend reacceptance before requesting startup data on reconnect', async () => {
     connect();
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
+    await settle();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'failed', plugins: [] });
     packClientReady.mockClear();
 
     dropConnection();
     connect();
+    await settle();
+    expect(packClientReady).not.toHaveBeenCalled();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'failed', plugins: [] });
     expect(packClientReady.mock.calls).toEqual([['ext'], ['failed']]);
   });
 
-  it('asks once, when the subscription is established again, for a pack loaded while the connection was down', () => {
+  it('discards a frontend that finishes while disconnected and asks only after reacceptance', async () => {
     connect();
+    await settle();
     dropConnection();
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     expect(packClientReady).not.toHaveBeenCalled();
 
     connect();
+    await settle();
+    expect(packClientReady).not.toHaveBeenCalled();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(1);
   });
 
   it("doesn't ask again when another window's connection broadcasts CLIENT_CONNECTED", () => {
     connect();
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     packClientReady.mockClear();
 
     broadcastConnected();
@@ -106,15 +115,19 @@ describe('pack plugins in the application actor', () => {
     expect(app.getSnapshot().context.packsWithFrontend).toEqual(['exported-none']);
   });
 
-  it('asks on connecting during onboarding and on the error page, and not again when onboarding completes', () => {
+  it('asks on connecting during onboarding and on the error page, and not again when onboarding completes', async () => {
     connect(false);
+    await settle();
     expect(app.getSnapshot().hasTag('onboarding')).toBe(true);
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     packClientReady.mockClear();
 
     // The API restarts during onboarding
     dropConnection();
     connect(false);
+    await settle();
+    expect(packClientReady).not.toHaveBeenCalled();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(1);
 
     app.send({ type: 'ONBOARDING_COMPLETE' });
@@ -124,6 +137,9 @@ describe('pack plugins in the application actor', () => {
     expect(app.getSnapshot().matches('error')).toBe(true);
     dropConnection();
     fake.connect();
+    await settle();
+    expect(packClientReady).toHaveBeenCalledTimes(1);
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/own')] });
     expect(packClientReady).toHaveBeenCalledTimes(2);
   });
 

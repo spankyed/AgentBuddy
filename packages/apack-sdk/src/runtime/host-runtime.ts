@@ -8,7 +8,7 @@ import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
 import type { SecretsService } from '../services/secrets.ts';
 import type { FilesystemService } from '../services/filesystem.ts';
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
 /** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
@@ -27,7 +27,7 @@ export interface HostRuntimeServices {
   /** Files and folders on the user's disk */
   filesystem: FilesystemService;
   /** The app's settings: the one row, its defaults and its one writer */
-  settings: SettingsService;
+  settings: SettingsAdmin;
 }
 
 /**

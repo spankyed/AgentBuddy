@@ -19,7 +19,7 @@ const { installShippedPacks } = await import('@apackdev/host/packs');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
 const { appState } = await import('@apackdev/host/app-state');
 const { getAppVersion } = await import('@apackdev/sdk/env');
-const { services } = await import('@apackdev/sdk/services');
+const { services, _settingsAdmin } = await import('@apackdev/sdk/services');
 const { flowRepository } = await import('@apackdev/sdk/repositories');
 const { untypedQx, untypedTx } = await import('@apackdev/ears');
 const { onIncoming } = await import('@apackdev/sdk/events');
@@ -28,7 +28,7 @@ const { HOST } = await import('@apackdev/host/bus');
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
 /** What the user changed from the defaults — the whole of what a reset has to undo */
-const storedSettings = () => services.settings.getStored();
+const storedSettings = () => _settingsAdmin().getOverrides();
 
 /** The flows' ids and labels, sorted */
 const flows = () => (untypedQx('Flow').pickAll() as Array<{ id: EARS.EntityId; label?: string }>)
@@ -66,7 +66,7 @@ describe('services.appData.reset()', () => {
     // The user onboards, changes settings and deletes a flow; the data records an older version
     services.appData.completeOnboarding();
     appState.update({ version: '0.0.1' });
-    services.settings.setInSection('app', ['personal', 'name'], 'Ada');
+    _settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Ada');
     expect(storedSettings()).not.toEqual(fresh.settings);
     const [deleted] = fresh.flows;
     flowRepository.deleteFlow(deleted.id, { allowRoot: true });

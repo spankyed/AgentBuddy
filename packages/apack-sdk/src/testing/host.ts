@@ -1,7 +1,7 @@
 // The app a pack's systems, services and steps reach in unit tests, in memory: what the app binds at boot
 // (openAppStore() in api/src/setup/backend.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 import { bindHost, type HostRuntime } from '../runtime/host-runtime.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
@@ -116,11 +116,11 @@ const unmockedSettings = () => {
   );
 };
 
-const memorylessSettings: SettingsService = {
-  getAll: unmockedSettings, getStored: unmockedSettings, getSection: unmockedSettings, forFeature: unmockedSettings,
-  setForFeature: unmockedSettings, setInSection: unmockedSettings, replaceAll: unmockedSettings,
-  removeStored: unmockedSettings, reset: unmockedSettings, whileReplacingData: unmockedSettings,
-  onChange: unmockedSettings,
+const memorylessSettings: SettingsAdmin = {
+  get: unmockedSettings, set: unmockedSettings, reset: unmockedSettings,
+  getAll: unmockedSettings, getSnapshot: unmockedSettings, getOverrides: unmockedSettings, replaceAll: unmockedSettings,
+  removeOverrides: unmockedSettings, resetAll: unmockedSettings, whileReplacingData: unmockedSettings,
+  forPack: unmockedSettings, onChange: unmockedSettings,
 };
 
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
@@ -159,7 +159,7 @@ export interface TestRuntimeOptions {
   /** Backs `appData.hasOnboarded` and `completeOnboarding`; in memory by default, emptied with the database */
   onboarding?: TestOnboarding;
   /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
-  settings?: SettingsService;
+  settings?: SettingsAdmin;
 }
 
 /**

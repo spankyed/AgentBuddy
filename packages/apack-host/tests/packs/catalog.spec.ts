@@ -78,6 +78,34 @@ describe('contribution catalog data', () => {
     expect(catalog.getSnapshot().revision).toBe(2);
   });
 
+  it('preserves revision and snapshot identity when declarations have not changed', () => {
+    const catalog = createContributionCatalog(app);
+    const listener = vi.fn();
+    catalog.onChanged(listener);
+    catalog.replace([source('first')]);
+    const previous = catalog.getSnapshot();
+    catalog.replace([source('first')]);
+    catalog.setNative([]);
+    expect(catalog.getSnapshot()).toBe(previous);
+    expect(catalog.settings().revision).toBe(previous.revision);
+    expect(listener).toHaveBeenCalledTimes(1);
+    catalog.replace([source('first', false)]);
+    expect(catalog.getSnapshot().revision).toBe(previous.revision + 1);
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('projects native declarations through the same immutable lookup contract', () => {
+    const catalog = createContributionCatalog(app);
+    catalog.setNative([{ id: 'native', settings: { assistant: group }, features: { notes: { settings: group } } }]);
+    expect(catalog.packSettings('native').assistant).toEqual(group);
+    expect(catalog.featureSettings(resolveName('native/notes'))).toEqual(group);
+    expect(catalog.settings().dependencies.native).toEqual([]);
+    const previous = catalog.getSnapshot();
+    expect(() => catalog.replace([source('native')])).toThrow('Duplicate');
+    expect(catalog.getSnapshot()).toBe(previous);
+    expect(catalog.packSettings('native').assistant).toEqual(group);
+  });
+
   it('owns immutable copies rather than letting inputs or readers alter declarations', () => {
     const input = source('first');
     const catalog = createContributionCatalog(app);
@@ -126,4 +154,46 @@ describe('contribution catalog data', () => {
       expect(fs.readFileSync(runtime, 'utf8')).toContain('throw new Error');
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
+});
+
+it('keeps validated source declarations independent of executable and native registration changes', () => {
+  const catalog = createContributionCatalog(app);
+  const manifest = source('author').snapshot.manifest;
+  const declarationRevision = _declarationRevision(manifest);
+  catalog.setSources([{ manifest, dir: '/source/author', declarationRevision }]);
+  catalog.setNative([{ id: 'host' }]);
+  catalog.replace([source('dependency')]);
+  catalog.setNative([]);
+  expect(catalog.packSettings('author').assistant.defaults.name).toBe('');
+  expect(catalog.getSnapshot().sourcePacks[0].declarationRevision).toBe(declarationRevision);
+  manifest.extensions!.settings!.assistant.defaults.name = 'Mutated caller';
+  expect(catalog.packSettings('author').assistant.defaults.name).toBe('');
+  expect(Object.isFrozen(catalog.getSnapshot().sourcePacks[0].manifest)).toBe(true);
+});
+
+it('refuses stale source identities and cross-admission owner collisions atomically', () => {
+  const catalog = createContributionCatalog(app);
+  const manifest = source('author').snapshot.manifest;
+  catalog.setSources([{ manifest, dir: '/source/author', declarationRevision: _declarationRevision(manifest) }]);
+  const before = catalog.getSnapshot();
+  expect(() => catalog.setSources([{ manifest, dir: '/source/author', declarationRevision: 'stale' }])).toThrow('stale declaration');
+  expect(() => catalog.replace([source('author')])).toThrow('Duplicate');
+  expect(catalog.getSnapshot()).toBe(before);
+});
+
+it('checks source binding identity before acceptance and preserves declarations after unload', async () => {
+  const { createPackRegistry } = await import('../../src/packs/registry.ts');
+  const packs = createPackRegistry();
+  const manifest = source('author').snapshot.manifest;
+  const declarationRevision = _declarationRevision(manifest);
+  packs.catalog.setSources([{ manifest, dir: '/source/author', declarationRevision }]);
+  const origin = { id: manifest.id, name: manifest.name, version: manifest.version, dir: '/source/author', shipped: false, manifest, declarationRevision };
+  const registration = { id: manifest.id, declarationRevision, settings: manifest.extensions!.settings };
+  const before = packs.catalog.getSnapshot();
+  expect(() => packs.registerPack({ ...registration, declarationRevision: 'stale' }, origin)).toThrow('accepted source declarations');
+  expect(packs.packOrigin(manifest.id)).toBeNull();
+  expect(packs.catalog.getSnapshot()).toBe(before);
+  packs.registerPack(registration, origin);
+  packs.unregisterPack(manifest.id);
+  expect(packs.settingsCatalog().packs.author.assistant.defaults).toEqual({ name: '' });
 });

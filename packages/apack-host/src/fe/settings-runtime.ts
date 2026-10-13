@@ -1,0 +1,198 @@
+import { hasOwn } from '@apackdev/sdk/utils/pure';
+import { newCall, type Message } from '@apackdev/sdk/events';
+import { _settingsJsonProblems } from '@apackdev/sdk/framework';
+import type { SettingsPort } from '@apackdev/sdk/fe';
+import { settingsTargetPath, type SettingsSnapshot, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
+import type { IncomingSettingsEvents } from '../features/settings/be/types.ts';
+import { HOST } from '../refs.ts';
+import { createLogger } from '@apackdev/sdk/logger';
+import { createSettingsSnapshotReader } from './settings-snapshot.ts';
+
+export interface WindowSettingsIO {
+  send(message: Message): Promise<void>;
+  /** Every request terminates even when a connected backend fails to answer. */
+  timeoutMs?: number;
+}
+
+const refused = (message: string): SettingsWriteResult => ({ status: 'refused', problems: [message] });
+const valueAt = (value: unknown, path: readonly string[]): unknown => path.reduce<unknown>((node, key) =>
+  node && typeof node === 'object' && hasOwn(node, key) ? (node as Record<string, unknown>)[key] : undefined, value);
+
+/** One window owns this resource; the Settings view is an ordinary subscriber. */
+export function createWindowSettingsRuntime(io: WindowSettingsIO) {
+  const logger = createLogger('settings-window');
+  const readSnapshot = createSettingsSnapshotReader();
+  let status: ReturnType<SettingsPort['status']> = 'loading';
+  let snapshot: SettingsSnapshot | undefined;
+  let readCall: string | undefined;
+  let readTimer: ReturnType<typeof setTimeout> | undefined;
+  const listeners = new Set<() => void>();
+  const pending = new Map<string, { resolve: (result: SettingsWriteResult) => void; timer: ReturnType<typeof setTimeout>; owner?: object }>();
+  const bindings = new Set<() => void>();
+  const report = (error: unknown) => logger.error('Settings window failed', error instanceof Error ? error : new Error(String(error)));
+  const tell = () => {
+    for (const listener of listeners) {
+      try { listener(); }
+      catch (error) { report(error); }
+    }
+  };
+  const timeout = io.timeoutMs ?? 30_000;
+
+  function settle(call: string, result: SettingsWriteResult): void {
+    const request = pending.get(call);
+    if (!request) return;
+    pending.delete(call);
+    clearTimeout(request.timer);
+    request.resolve(result);
+  }
+
+  function end(next: 'disconnected' | 'disposed', reason: string): void {
+    if (status === 'disposed') return;
+    clearTimeout(readTimer);
+    readCall = undefined;
+    snapshot = undefined;
+    status = next;
+    for (const dispose of bindings) dispose();
+    for (const call of pending.keys()) settle(call, refused(reason));
+    tell();
+  }
+
+  function send(event: IncomingSettingsEvents, call: string, transport = io.send): Promise<void> {
+    // Routing labels are shared; the injected transport supplies the caller's authority separately.
+    return transport({ to: HOST.settings, sender: HOST.settings, from: 'host', event, call });
+  }
+
+  function change(event: IncomingSettingsEvents, transport = io.send, owner?: object): Promise<SettingsWriteResult> {
+    if (status !== 'ready') return Promise.resolve(refused('Settings are not ready. Wait for the backend to reconnect.'));
+    let request: IncomingSettingsEvents;
+    try {
+      if (_settingsJsonProblems(event).length) return Promise.resolve(refused('Settings changes must contain ordinary JSON data.'));
+      request = structuredClone(event);
+    }
+    catch { return Promise.resolve(refused('Settings changes must contain serializable data.')); }
+    const call = newCall();
+    return new Promise(resolve => {
+      const timer = setTimeout(() => settle(call, refused('The backend did not answer this settings change.')), timeout);
+      pending.set(call, { resolve, timer, owner });
+      Promise.resolve().then(() => pending.has(call)
+        ? send(request, call, transport) : undefined)
+        .catch(error => settle(call, refused(String(error))));
+    });
+  }
+
+  function createPort(write: (event: IncomingSettingsEvents) => Promise<SettingsWriteResult>): SettingsPort {
+    return {
+      get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) =>
+        structuredClone(valueAt(snapshot?.values, settingsTargetPath(target))) as T | undefined,
+      status: () => status,
+      subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      update(target, path, value, condition) {
+        if (!snapshot) return Promise.resolve(refused('Settings have not loaded.'));
+        const previous = valueAt(snapshot.values, [...settingsTargetPath(target), ...path]);
+        const comparison: SettingsWriteCondition = condition ?? {
+          runId: snapshot.runId,
+          expected: previous === undefined ? { exists: false } : { exists: true, value: structuredClone(previous) },
+        };
+        return write({ type: 'UPDATE_SETTINGS', target, path: [...path], value, condition: comparison });
+      },
+      reset: target => write({ type: 'RESET_SETTINGS', target }),
+    };
+  }
+  const port = createPort(change);
+
+  return {
+    port,
+    /** Shares read state, while mutations and pending requests belong to one accepted pack. */
+    bindPort(transport: WindowSettingsIO['send']): { port: SettingsPort; dispose(): void } {
+      if (status !== 'ready') throw new Error('Settings must be ready before accepting a pack frontend');
+      const owner = {};
+      let active = true;
+      const subscriptions = new Map<() => void, () => void>();
+      const bound = createPort(event => active ? change(event, transport, owner)
+        : Promise.resolve(refused('This frontend settings binding was unloaded.')));
+      const dispose = () => {
+        if (!active) return;
+        active = false;
+        bindings.delete(dispose);
+        for (const [call, request] of pending) {
+          if (request.owner === owner) settle(call, refused('This frontend settings binding was unloaded.'));
+        }
+        for (const [stop, listener] of subscriptions) {
+          try { listener(); }
+          catch (error) { report(error); }
+          stop();
+        }
+      };
+      bindings.add(dispose);
+      return {
+        port: {
+          ...bound,
+          get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) => active ? bound.get<T>(target) : undefined,
+          status: () => active ? status : 'disposed',
+          subscribe(listener) {
+            if (!active) throw new Error('This frontend settings binding was unloaded.');
+            const stop = port.subscribe(listener);
+            const unsubscribe = () => { if (subscriptions.delete(unsubscribe)) stop(); };
+            subscriptions.set(unsubscribe, listener);
+            return unsubscribe;
+          },
+        },
+        dispose,
+      };
+    },
+    getSnapshot: (): SettingsSnapshot | undefined => snapshot && structuredClone(snapshot),
+    connected(): void {
+      if (status === 'disposed') return;
+      end('disconnected', 'The connection changed before this settings change was answered.');
+      status = 'loading';
+      const call = newCall();
+      readCall = call;
+      readTimer = setTimeout(() => {
+        if (readCall === call) end('disconnected', 'The backend did not provide settings.');
+      }, timeout);
+      tell();
+      Promise.resolve().then(() => readCall === call ? send({ type: 'GET_SETTINGS' }, call) : undefined).catch(error => {
+        if (readCall === call) end('disconnected', String(error));
+      });
+    },
+    disconnected: () => end('disconnected', 'The backend disconnected before this settings change was answered.'),
+    dispose(): void {
+      end('disposed', 'The settings runtime was disposed.');
+      listeners.clear();
+    },
+    /** Returns true only for messages owned here; secrets/help continue to the view. */
+    receive(message: Message): boolean {
+      if (message.to !== HOST.settings) return false;
+      const event = message.event;
+      if (event.type === 'SETTINGS_SAVED' || event.type === 'SETTINGS_REFUSED') {
+        const result: SettingsWriteResult = event.type === 'SETTINGS_SAVED' ? { status: 'saved' }
+          : Array.isArray(event.problems) && event.problems.length > 0 && event.problems.every(problem => typeof problem === 'string')
+            ? { status: 'refused', problems: [...event.problems] } : refused('The backend returned an invalid settings refusal.');
+        if (message.answering === readCall && readCall !== undefined) end('disconnected', 'The backend refused the settings read.');
+        else if (message.answering) settle(message.answering, result);
+        return true;
+      }
+      if (!['SETTINGS_LOADED', 'SETTINGS_UPDATED', 'SETTINGS_RESET'].includes(event.type)) return false;
+      if (status === 'disposed' || status === 'disconnected') return true;
+      if (!snapshot && (!readCall || message.answering !== readCall)) return true;
+      let next: SettingsSnapshot;
+      try { next = readSnapshot(event.snapshot, snapshot); }
+      catch (error) {
+        report(error);
+        if (!snapshot) end('disconnected', 'The backend returned an invalid settings snapshot.');
+        return true;
+      }
+      if (!snapshot) {
+        clearTimeout(readTimer);
+        readCall = undefined;
+      } else if (next.runId !== snapshot.runId || next.revision < snapshot.revision
+        || next.catalog.revision < snapshot.catalog.revision) return true;
+      snapshot = next;
+      status = snapshot.status;
+      tell();
+      return true;
+    },
+    replaceAll: (data: unknown, condition: SettingsWriteCondition) => change({ type: 'REPLACE_SETTINGS', data, condition }),
+    resetAll: () => change({ type: 'RESET_ALL_SETTINGS' }),
+  };
+}

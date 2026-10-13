@@ -19,7 +19,7 @@ function pack(repository: string): string {
     'src/__generated__/content-runtime.ts': [
       "import type { ContentRuntime } from '@apackdev/sdk/testing';",
       "import { memoQueries } from '../repository';",
-      "export const contentRuntime: ContentRuntime = { id: 'load-pack', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, contentWriters: {} };",
+      "export const contentRuntime: ContentRuntime = { id: 'load-pack', declarationRevision: 'fixture', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, contentWriters: {} };",
     ].join('\n'),
   };
   for (const [file, content] of Object.entries(files)) {

@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 /**
  * Directory State Management:
  *
@@ -320,7 +320,7 @@ export const systemMachine = setup({
   initial: 'idle',
   context: () => {
     const codeSettings = featureSettings.forFeature('code').get()
-    const projects = services.settings.getSection<AppSettings>('app').projects
+    const projects = services.settings.get<AppSettings>({ kind: 'app' }).projects
 
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)

@@ -10,11 +10,18 @@ import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@apackdev/sdk/types';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { bindSettingsRequest } from '@apackdev/host/settings';
+import type { SettingsAdmin, SettingsService } from '@apackdev/sdk/services';
 
 export type { Message };
 
 /** An event a plugin receives, exactly as the system that sent it wrote it */
 export type PluginEvent = Message['event'];
+
+/** Explicit test-fixture authority; never serialized or inferred from sender/client labels. */
+export type TestSettingsAccess =
+  | { kind: 'host'; service: SettingsAdmin }
+  | { kind: 'pack'; service: SettingsService };
 
 export interface StartAppOptions {
   /**
@@ -80,7 +87,7 @@ export interface TestApp {
   send(
     systemId: string,
     event: { type: string; [key: string]: unknown },
-    options?: { sender?: string; client?: string; call?: string },
+    options?: { sender?: string; client?: string; call?: string; settingsAccess?: TestSettingsAccess },
   ): Promise<string>;
   /**
    * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
@@ -426,7 +433,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // a handler's `reply` then has a call to echo whether or not the spec cares which. Named `sentUnder`
       // rather than `call`, which is the enclosing helper this body runs inside
       const sentUnder = options?.call ?? newCall();
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, call: sentUnder, ...sender, ...client });
+      const request = { ...event };
+      const settingsAccess = options?.settingsAccess;
+      if (settingsAccess) bindSettingsRequest(request, () => settingsAccess);
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event: request, call: sentUnder, ...sender, ...client });
       await settle();
       return sentUnder;
     }),

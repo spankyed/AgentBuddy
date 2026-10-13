@@ -1,14 +1,13 @@
+import { featureSettings } from '#generated/settings.ts';
 // Flows on the brain through @apackdev/testing, run as the app runs them: the brain starts the root flow (root: true)
 // and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
 // ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
 import { describe, expect, it, vi } from 'vitest'
-import { services } from '#generated/services.ts'
 import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@apackdev/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '#generated/flow-helpers.ts'
 import { repository } from '#generated/repository.ts'
 import type { Services } from '#generated/services.ts'
 import { isBrainPaused } from '#features/brain/be/utils/brain-pause.ts'
-import { ref } from '#generated/ref.ts'
 
 const step = (label: string) => transform('return true', { label })
 const startBrain = () => startApp({ systems: ['brain'] })
@@ -210,7 +209,7 @@ describe('brain start', () => {
     await app.connect()
     // The plugin learns which root flow the brain runs from the brain, not from the settings
     expect(await app.nextEmit('brain', 'BRAIN_STARTED')).toMatchObject({ rootFlowId })
-    expect(services.settings.forFeature(ref('brain'))).not.toHaveProperty('runningRootFlowId')
+    expect(featureSettings.forFeature('brain').get()).not.toHaveProperty('runningRootFlowId')
     repository.flowsCommands.revokeRootFlowRole(rootFlowId)
     await app.send('brain', { type: 'RESTART_BRAIN' })
 

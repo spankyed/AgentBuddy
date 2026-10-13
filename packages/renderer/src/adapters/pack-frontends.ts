@@ -3,8 +3,10 @@
 // (`@apackdev/host/fe`, `fe/packs/frontends.ts`), which takes this as its I/O.
 import type { PackFrontendIO } from '@apackdev/host/fe';
 import devFrontends from 'virtual:dev-pack-frontends';
+import { settingsForPack } from '@/runtime/settings';
 
 export const packFrontendIO: PackFrontendIO = {
+  settingsForPack,
   importModule: (url) => import(/* @vite-ignore */ url),
 
   // The packs this dev server serves from source. Empty in a built app, where every pack's frontend is

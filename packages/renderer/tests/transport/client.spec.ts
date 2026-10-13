@@ -3,19 +3,64 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
 const mutate = vi.fn<(message: unknown) => Promise<void>>();
+type Subscription = {
+  onStarted(): void;
+  onData(message: import('@apackdev/sdk/events').Message): void;
+  onConnectionStateChange(event: { state: string }): void;
+};
+const subscribe = vi.fn((_input: unknown, _handlers: Subscription) => ({ unsubscribe() {} }));
+const openHost = vi.fn(async () => 'host-access');
 vi.mock('@/transport', () => ({
-  trpc: { bus: { sub: { subscribe: () => ({ unsubscribe: () => {} }) }, send: { mutate: (m: unknown) => mutate(m) } } },
+  trpc: {
+    bus: { sub: { subscribe }, send: { mutate: (m: unknown) => mutate(m) } },
+    settings: { openHost: { mutate: openHost }, close: { mutate: async () => {} } },
+  },
   reconnectApiClient: () => false,
 }));
 vi.mock('@/adapters/toast', () => ({ globalToast: { error: vi.fn() } }));
 
 const { feClient } = await import('@/transport/client');
 const { globalToast } = await import('@/adapters/toast');
+const { disconnectWindowSettings } = await import('@/runtime/settings');
 
-afterEach(() => {
+afterEach(async () => {
+  disconnectWindowSettings();
+  await Promise.resolve();
   delete (window as unknown as { electronAPI?: unknown }).electronAPI;
   vi.mocked(globalToast.error).mockClear();
   mutate.mockReset();
+  subscribe.mockClear();
+  openHost.mockClear();
+});
+
+it('announces a connected shell only after a fresh validated settings snapshot on each connection', async () => {
+  mutate.mockResolvedValue();
+  const onConnected = vi.fn();
+  const onDisconnected = vi.fn();
+  const stop = feClient.subscribe({ onConnected, onDisconnected, onMessage() {}, onFailed: vi.fn() });
+  try {
+    const handlers = subscribe.mock.calls[0][1];
+    for (const runId of ['first', 'second']) {
+      const before = mutate.mock.calls.length;
+      handlers.onStarted();
+      await vi.waitFor(() => expect(mutate.mock.calls.length).toBeGreaterThan(before));
+      expect(onConnected).toHaveBeenCalledTimes(runId === 'first' ? 0 : 1);
+      const message = mutate.mock.calls.at(-1)![0] as import('@apackdev/sdk/events').Message;
+      expect(message.event.type).toBe('GET_SETTINGS');
+      handlers.onData({ to: 'host/settings', answering: message.call, event: {
+        type: 'SETTINGS_LOADED', snapshot: {
+          runId, revision: 0, status: 'ready', values: { app: { hotkeys: {}, personal: {}, projects: [] }, packs: {}, features: {} },
+          catalog: { revision: 0, app: { schema: { type: 'object' }, defaults: {} }, packs: {}, features: {}, dependencies: {} },
+        },
+      } });
+      await vi.waitFor(() => expect(onConnected).toHaveBeenCalledTimes(runId === 'first' ? 1 : 2));
+      if (runId === 'first') {
+        handlers.onConnectionStateChange({ state: 'connecting' });
+        expect(onDisconnected).toHaveBeenCalledOnce();
+      }
+    }
+    expect(openHost).toHaveBeenCalledTimes(2);
+  } finally { stop(); }
 });
 
 /**

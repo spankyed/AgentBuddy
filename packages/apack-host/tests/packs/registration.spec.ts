@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { _createPackServices } from '@apackdev/sdk/services';
+import { createSettingsStore, createSettingsService } from '../../src/features/settings/be/index.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@apackdev/ears';
-import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
+import { getPackCommands, getSettingsCatalog, type PackFeatureSystem, type PackRegistration } from '@apackdev/sdk/framework';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
 import { SDK_ENTITIES } from '@apackdev/sdk/types';
@@ -213,14 +215,14 @@ describe('registerPack entities', () => {
 describe('registerPack feature settings', () => {
   const memos = { plugin: { receives: [], defaultVisible: false }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
 
-  it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
+  it("rejects invalid feature defaults, registering none of the pack", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };
     const invalid = { ...memos, settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
-      .toThrow('invalid feature settings for "memos"');
+      .toThrow(/defaults/);
     expect(getPackExtensions('bad-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
+    expect(getSettingsCatalog().features).toEqual({});
   });
 });
 
@@ -280,7 +282,7 @@ describe('registerPack commands', () => {
     expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
 
     expect(getPackCommands()).toEqual([]);
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
+    expect(getSettingsCatalog().features).toEqual({});
   });
 });
 
@@ -334,5 +336,113 @@ describe('packContentTargets', () => {
     registered.push('one-pack', 'two-pack');
 
     expect(registry.packContentTargets(['two-pack']).map((t) => t.manifest.id)).toEqual(['two-pack']);
+  });
+});
+
+
+describe('runtime settings admission', () => {
+  let admission: ReturnType<typeof createPackRegistry>;
+  beforeEach(() => { admission = createPackRegistry(); });
+  const manifest = { id: 'settings-pack', name: 'Settings', version: '1.0.0', features: { widget: {} } };
+  const origin = {
+    id: manifest.id, name: manifest.name, version: manifest.version, manifest,
+    declarationRevision: 'fixture-revision', dir: '/packs/settings-pack', shipped: false,
+  };
+
+  it.each([
+    { ...origin, id: 'another-pack' },
+    { ...origin, manifest: { ...manifest, id: 'another-pack' } },
+  ])('refuses identity disagreement without publishing contributions', (candidate) => {
+    const before = admission.settingsCatalog();
+    expect(() => admission.registerPack({ id: 'settings-pack', services: { unexpectedService: {} } }, candidate))
+      .toThrow('runtime identity does not match');
+    expect(admission.settingsCatalog()).toBe(before);
+    expect(admission.getRegisteredServices()).not.toHaveProperty('unexpectedService');
+  });
+
+  it.each([null, false, 0, ''])('does not treat a falsey feature definition (%s) as absent', (settings) => {
+    const before = admission.settingsCatalog();
+    const registration = { id: 'settings-pack', features: { widget: { settings } }, services: { unexpectedService: {} } };
+    expect(() => admission.registerPack(registration as unknown as PackRegistration, origin))
+      .toThrow('runtime settings do not match');
+    expect(admission.settingsCatalog()).toBe(before);
+    expect(admission.getRegisteredServices()).not.toHaveProperty('unexpectedService');
+  });
+
+  it('does not treat null pack groups as an absent declaration', () => {
+    const before = admission.settingsCatalog();
+    expect(() => admission.registerPack({ id: 'settings-pack', settings: null } as unknown as PackRegistration, origin))
+      .toThrow('runtime settings do not match');
+    expect(admission.settingsCatalog()).toBe(before);
+  });
+});
+
+
+describe('registered settings authority', () => {
+  const previousEngine = installedEngine();
+  beforeEach(() => { installEngine(createEarsEngine({ isEntityType: name => name === 'Settings' }).query); });
+  afterEach(() => { installEngine(previousEngine); });
+
+  it('binds the accepted pack and revokes retained access when it unregisters', () => {
+    const scoped = vi.fn((id: string) => admin.forPack(id));
+    const packs = createPackRegistry({ settingsForPack: scoped });
+    const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
+    const generated = _createPackServices();
+    const target = { kind: 'feature', featureRef: 'caller-pack/widget' } as const;
+    packs.registerPack({ id: 'caller-pack', bindSettings: generated.bindSettings,
+      features: { widget: { settings: { defaults: { count: 1 }, schema: { type: 'object' } } } } });
+
+    expect(scoped).toHaveBeenCalledWith('caller-pack');
+    expect(generated.services.settings.get(target)).toEqual({ count: 1 });
+    generated.services.settings.set(target, ['count'], 2);
+    expect(admin.getOverrides()).toEqual({ features: { 'caller-pack/widget': { count: 2 } } });
+    packs.unregisterPack('caller-pack');
+
+    expect(() => generated.services.settings.set(target, ['count'], 3)).toThrow('until the host accepts');
+    expect(admin.getOverrides()).toEqual({ features: { 'caller-pack/widget': { count: 2 } } });
+  });
+
+  it('enforces dependency and owner policies through the injected runtime service', () => {
+    const packs = createPackRegistry({ settingsForPack: id => admin.forPack(id) });
+    const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
+    const generated = _createPackServices();
+    const definition = { defaults: { count: 1 }, schema: { type: 'object' } };
+    packs.registerPack({ id: 'owner-pack', settings: {
+      shared: definition,
+      private: { ...definition, access: 'owner' },
+    } });
+    packs.registerPack({ id: 'consumer-pack', dependencies: { 'owner-pack': '*' }, bindSettings: generated.bindSettings });
+    const shared = { kind: 'pack', packId: 'owner-pack', groupId: 'shared' } as const;
+    const restricted = { kind: 'pack', packId: 'owner-pack', groupId: 'private' } as const;
+
+    expect(generated.services.settings.get(restricted)).toEqual({ count: 1 });
+    generated.services.settings.set(shared, ['count'], 2);
+    expect(generated.services.settings.get(shared)).toEqual({ count: 2 });
+    generated.services.settings.reset(shared);
+    expect(generated.services.settings.get(shared)).toEqual({ count: 1 });
+    expect(() => generated.services.settings.set(restricted, ['count'], 2)).toThrow('Only pack "owner-pack"');
+    expect(() => generated.services.settings.reset(restricted)).toThrow('Only pack "owner-pack"');
+    expect(admin.getOverrides().packs?.['owner-pack']).not.toHaveProperty('private');
+  });
+
+  it('does not supply authority to a refused registration', () => {
+    const scoped = vi.fn();
+    const bindSettings = vi.fn();
+    const packs = createPackRegistry({ settingsForPack: scoped });
+    expect(() => packs.registerPack({ id: 'refused-pack', services: { settings: {} }, bindSettings }))
+      .toThrow('Service collision');
+    expect(scoped).not.toHaveBeenCalled();
+    expect(bindSettings).not.toHaveBeenCalled();
+  });
+
+  it('revokes injected authority if catalog publication refuses the declaration', () => {
+    const packs = createPackRegistry({ settingsForPack: id => admin.forPack(id) });
+    const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
+    const generated = _createPackServices();
+    expect(() => packs.registerPack({ id: 'invalid-pack', bindSettings: generated.bindSettings,
+      features: { widget: { settings: { defaults: { count: 'bad' }, schema: { type: 'object', properties: { count: { type: 'number' } } } } } } }))
+      .toThrow();
+    expect(() => generated.services.settings.get({ kind: 'app' })).toThrow('until the host accepts');
+    expect(packs.settingsCatalog().features).not.toHaveProperty('invalid-pack/widget');
   });
 });

@@ -20,6 +20,8 @@ const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
 const { untypedQx, untypedTx } = await import('@apackdev/ears');
 const { services } = await import('@apackdev/sdk/services');
+const { boundHost } = await import('@apackdev/sdk/runtime/internals');
+const settingsAdmin = () => boundHost().services.settings;
 
 afterAll(() => {
   store.close();
@@ -138,16 +140,16 @@ describe('services.appData', () => {
 
     try {
       appState.update({ hasOnboarded: false });
-      services.settings.reset();
+      settingsAdmin().resetAll();
       await services.appData.importBackup(backup);
       expect(services.appData.hasOnboarded()).toBe(true);
       expect(appState.get().version).toBe('0.4.0');
-      expect(services.settings.getStored()).toEqual(settings);
-      services.settings.setInSection('app', ['personal', 'name'], 'Edited after restore');
-      expect(services.settings.getSection<{ personal: { name: string } }>('app').personal.name).toBe('Edited after restore');
-      expect(services.settings.getStored().features).toEqual(settings.features);
+      expect(settingsAdmin().getOverrides()).toEqual(settings);
+      settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Edited after restore');
+      expect(settingsAdmin().get<{ personal: { name: string } }>({ kind: 'app' }).personal.name).toBe('Edited after restore');
+      expect(settingsAdmin().getOverrides().features).toEqual(settings.features);
       await services.appData.importBackup(backup);
-      expect(services.settings.getStored()).toEqual(settings);
+      expect(settingsAdmin().getOverrides()).toEqual(settings);
       expect(services.appData.hasOnboarded()).toBe(true);
     } finally {
       version.current = undefined;
@@ -180,6 +182,30 @@ describe('services.appData', () => {
     } finally {
       packs.unregisterPack('tags');
     }
+  });
+
+  it.each([
+    { app: { projects: 'invalid' } },
+    { general: { personal: { name: 'obsolete address' } } },
+    null,
+  ])('refuses invalid backup settings before clearing live memory or entering replacement', async data => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-invalid-settings-'));
+    dirs.push(dir);
+    const settingsId = 'Settings-app';
+    untypedTx(settingsId, true).put('entityType', 'Settings').put('data', data);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'invalid', ['lmdb']);
+    // The fixture wrote an invalid row directly to create the candidate; seed valid live data independently.
+    untypedTx(settingsId).put('data', {});
+    settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Keep live');
+    const before = settingsAdmin().getSnapshot();
+    const heard: string[] = [];
+    const off = settingsAdmin().onChange(change => heard.push(change));
+    try {
+      await expect(services.appData.importBackup(backup)).rejects.toThrow();
+      expect(settingsAdmin().getSnapshot()).toEqual(before);
+      expect(heard).toEqual([]);
+    } finally { off(); }
   });
 
   it('rejects an import of a directory that is not a backup', async () => {

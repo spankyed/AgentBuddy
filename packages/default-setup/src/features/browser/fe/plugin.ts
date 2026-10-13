@@ -3,7 +3,6 @@ import { definePlugin } from '@apackdev/sdk/fe';
 import { Globe } from 'lucide-vue-next';
 import state from './state.ts';
 import canvas from './canvas.vue';
-import settings from './settings.vue';
 
 const browserPlugin = definePlugin({
   label: 'Browser',
@@ -11,7 +10,6 @@ const browserPlugin = definePlugin({
   icon: Globe,
   state,
   canvas,
-  settings,
   isPinned: false,
 
 });

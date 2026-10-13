@@ -80,6 +80,7 @@ function fakeApi() {
   let failure: string | null = null;
   const api: SessionApi = {
     send,
+    sendSettings: vi.fn(async message => send(message)),
     onMessage: (listener) => { deliver = listener; return () => { deliver = undefined; }; },
     onFinished: (listener) => { finishListeners.add(listener); return () => finishListeners.delete(listener); },
     get failure() { return failure; },
@@ -365,16 +366,17 @@ describe('reading and using the page', () => {
 });
 
 describe('settings', () => {
-  it('reads the stored document through the database, since the row is an entity', async () => {
+  it('reads effective values and catalog metadata from the host settings snapshot', async () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
     const reading = session.settings();
     await settle();
-    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_QUERY' });
-    answer({ type: 'QUERY_RESULT', result: { general: { personal: { name: 'Ada' } } } }, { answering: sentCall(send) });
+    expect(lastSend(send)).toMatchObject({ to: 'host/settings', event: { type: 'GET_SETTINGS' } });
+    const snapshot = { runId: 'run', revision: 1, values: { app: { personal: { name: 'Ada' } } }, catalog: { revision: 2 } };
+    answer({ type: 'SETTINGS_LOADED', snapshot }, { answering: sentCall(send) });
 
-    await expect(reading).resolves.toEqual({ ok: true, value: { general: { personal: { name: 'Ada' } } } });
+    await expect(reading).resolves.toEqual({ ok: true, value: snapshot });
   });
 
   /** Writes the setting, then answers it, which is the round trip a caller is told the outcome of */
@@ -393,32 +395,29 @@ describe('settings', () => {
   };
 
   it("writes one of a feature's settings, by the ref they are keyed under", async () => {
-    const { session, send, answer } = sessionWith();
+    const { session, send, answer, api } = sessionWith();
     await session.ready();
 
-    const { sent, result } = await write(session, send, answer, { feature: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
+    const { sent, result } = await write(session, send, answer, { kind: 'feature', featureRef: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
 
     expect(sent).toMatchObject({
       to: 'host/settings',
-      event: { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: ['personal', 'name'], value: 'Ada' },
+      event: { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'default-setup/code' }, path: ['personal', 'name'], value: 'Ada' },
     });
+    expect(api.sendSettings).toHaveBeenCalledOnce();
     expect(result).toEqual({ ok: true, value: undefined });
   });
 
-  /**
-   * The other half of the document. `/settings` reads the whole of it, sections included, so a write that
-   * could only reach features left `general` and `assistant` readable and unwritable — and `entityType` is
-   * the one field the settings system branches on to tell them apart.
-   */
-  it('writes a section the same way, which is what makes the document writable where it is readable', async () => {
+  it.each([
+    { kind: 'app' },
+    { kind: 'pack', packId: 'default-setup', groupId: 'assistant' },
+  ] as const)('writes settings relative to $kind ownership', async (target) => {
     const { session, send, answer } = sessionWith();
     await session.ready();
-
-    const { sent } = await write(session, send, answer, { section: 'general' }, { type: 'SETTINGS_SAVED' });
-
+    const { sent } = await write(session, send, answer, target, { type: 'SETTINGS_SAVED' });
     expect(sent).toMatchObject({
       to: 'host/settings',
-      event: { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['personal', 'name'], value: 'Ada' },
+      event: { type: 'UPDATE_SETTINGS', target, path: ['personal', 'name'], value: 'Ada' },
     });
   });
 
@@ -432,14 +431,14 @@ describe('settings', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const { result } = await write(session, send, answer, { section: 'nope' }, {
+    const { result } = await write(session, send, answer, { kind: 'pack', packId: 'default-setup', groupId: 'missing' }, {
       type: 'SETTINGS_REFUSED',
-      problems: ['"nope" isn\'t a settings section: the settings hold plugins, general, assistant'],
+      problems: ['This settings definition is unavailable'],
     });
 
     expect(result).toEqual({
       ok: false,
-      error: 'setSetting: "nope" isn\'t a settings section: the settings hold plugins, general, assistant',
+      error: 'setSetting: This settings definition is unavailable',
     });
   });
 
@@ -447,7 +446,7 @@ describe('settings', () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
 
-    const { result } = await write(session, send, answer, { section: 'general' }, {
+    const { result } = await write(session, send, answer, { kind: 'app' }, {
       type: 'SETTINGS_REFUSED',
       problems: ['first reason', 'second reason'],
     });

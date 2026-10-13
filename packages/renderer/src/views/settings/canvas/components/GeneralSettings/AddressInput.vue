@@ -107,7 +107,8 @@
 </template>
 
 <script setup lang="ts">
-import { watch, reactive } from 'vue'
+import { watch } from 'vue'
+import { useSettingsDraft } from '@apackdev/sdk/fe'
 
 import type { AppAddress } from '@apackdev/sdk/types'
 
@@ -188,7 +189,7 @@ const normalizeAddress = (value: AppAddress): AppAddress => {
 }
 
 // Local address data
-const localAddress = reactive<AppAddress>(normalizeAddress(props.modelValue))
+const localAddress = useSettingsDraft(() => normalizeAddress(props.modelValue))
 
 // Handle ZIP code input with auto-formatting
 const handleZipInput = (event: Event) => {
@@ -200,19 +201,15 @@ const handleZipInput = (event: Event) => {
     value = value.slice(0, 5) + '-' + value.slice(5, 9)
   }
   
-  localAddress.postalCode = value
+  localAddress.value.postalCode = value
   input.value = value
 }
 
 // Watch for changes and emit updates
 watch(localAddress, (newAddress) => {
-  emit('update:modelValue', newAddress)
-}, { deep: true })
-
-// Watch for external changes to modelValue
-watch(() => props.modelValue, (newValue) => {
-  const parsed = normalizeAddress(newValue)
-  Object.assign(localAddress, parsed)
+  if (JSON.stringify(normalizeAddress(newAddress)) !== JSON.stringify(normalizeAddress(props.modelValue))) {
+    emit('update:modelValue', { ...newAddress })
+  }
 }, { deep: true })
 </script>
 

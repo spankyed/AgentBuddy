@@ -1,99 +1,116 @@
-// What frontend code reads and changes of the app's settings, over the running Settings view. The port is the one
-// place a target the SDK names (a section, a feature) becomes an event the view takes, so this is where the two
-// contracts are checked against each other: `SettingsTarget` in @apackdev/sdk/fe and the one in @apackdev/host/fe are
-// different shapes, and a section addressed as a sub-key would write one level too deep, silently.
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import { effectScope } from 'vue';
+import { useAppSettings } from '@apackdev/sdk/fe';
+import { startFeTestRuntime } from '@apackdev/sdk/testing';
+import type { Message } from '@apackdev/sdk/events';
+import type { SettingsSnapshot } from '@apackdev/sdk/types';
 
-vi.mock('@/transport/secrets', () => ({ secretsClient: {} }));
-vi.mock('@/transport/client', () => ({ feClient: { send: () => {}, subscribe: () => () => {} } }));
+const { send, openHost, openPack, close } = vi.hoisted(() => ({
+  send: vi.fn(async (_message: Message & { settingsCredential?: string }) => {}),
+  openHost: vi.fn(async () => 'host-access'), openPack: vi.fn(async () => 'pack-access'), close: vi.fn(async () => {}),
+}));
+vi.mock('@/transport', () => ({ trpc: {
+  bus: { send: { mutate: send } },
+  settings: { openHost: { mutate: openHost }, openPack: { mutate: openPack }, close: { mutate: close } },
+} }));
+import { windowSettings, settingsPort, connectWindowSettings, disconnectWindowSettings, settingsForPack } from '../../src/runtime/settings';
 
-const { settingsPort } = await import('@/runtime/settings');
-const { startFeTestRuntime, stopFeTestRuntime } = await import('@apackdev/sdk/testing');
-const { HOST } = await import('@apackdev/host/fe');
-
-const SETTINGS_DOC = {
-  general: { projects: [{ name: 'one' }], application: { hotkeys: {} } },
-  assistant: { name: 'Buddy' },
-  features: { 'default-setup/code': { mdEditorDefault: true } },
+afterEach(async () => { disconnectWindowSettings(); await flush(); vi.clearAllMocks(); });
+const snapshot: SettingsSnapshot = {
+  runId: 'test-run', revision: 0, status: 'ready',
+  values: { app: { hotkeys: {}, personal: {}, projects: [] }, packs: { example: { assistant: { name: 'Ada' } } }, features: { 'example/code': { limit: 3 } } },
+  catalog: { revision: 0, app: { schema: { type: 'object' }, defaults: {} }, packs: {}, features: {}, dependencies: {} },
 };
+const flush = async () => { for (let index = 0; index < 6; index++) await Promise.resolve(); };
+async function connect() {
+  const ready = connectWindowSettings();
+  await flush();
+  windowSettings.receive({ to: 'host/settings', answering: send.mock.calls.at(-1)![0].call, event: { type: 'SETTINGS_LOADED', snapshot } });
+  expect(await ready).toBe(true);
+}
 
-const sent: unknown[] = [];
-let listener: (() => void) | undefined;
-let context: Record<string, unknown> = {};
-
-/** The Settings view's actor, as the shell holds it */
-const settingsActor = {
-  getSnapshot: () => ({ context }),
-  send: (event: unknown) => void sent.push(event),
-  subscribe: (fn: () => void) => { listener = fn; return { unsubscribe: () => { listener = undefined; } }; },
-};
-
-beforeEach(() => {
-  sent.length = 0;
-  context = { settings: SETTINGS_DOC, save: { status: 'idle', problems: [] } };
-  startFeTestRuntime({
-    application: { system: { get: (ref: string) => (ref === HOST.settings ? settingsActor : undefined) } } as never,
-    settings: settingsPort,
-  });
-});
-afterEach(() => stopFeTestRuntime());
-
-it('reads a section by the name whoever registered it gave', () => {
-  expect(settingsPort.section('general')).toEqual(SETTINGS_DOC.general);
-  expect(settingsPort.section('assistant')).toEqual({ name: 'Buddy' });
-  expect(settingsPort.section('nothing-registers-this')).toBeUndefined();
-});
-
-it("reads a feature's own settings by its ref", () => {
-  expect(settingsPort.feature('default-setup/code' as never)).toEqual({ mdEditorDefault: true });
-  expect(settingsPort.feature('default-setup/notes' as never)).toBeUndefined();
-});
-
-// The bug this covers: mapping `section` onto the view's `label` wrote `general.general.projects`, which nothing
-// reads, so every project the explorer changed was lost without an error
-it('addresses a section at the section, not one level inside it', () => {
-  settingsPort.update({ section: 'general' }, ['projects'], [{ name: 'two' }]);
-
-  expect(sent).toEqual([{
-    type: 'SETTINGS.UPDATE', entityType: 'section', label: 'general', path: ['projects'], value: [{ name: 'two' }],
-  }]);
-});
-
-it('addresses a section that is not `general` as itself', () => {
-  settingsPort.update({ section: 'assistant' }, ['name'], 'Ada');
-
-  expect(sent).toEqual([{
-    type: 'SETTINGS.UPDATE', entityType: 'section', label: 'assistant', path: ['name'], value: 'Ada',
-  }]);
-});
-
-it("addresses a feature's settings by its ref", () => {
-  settingsPort.update({ feature: 'default-setup/code' as never }, ['cliPaths', 'gh'], '/opt/bin/gh');
-
-  expect(sent).toEqual([{
-    type: 'SETTINGS.UPDATE', entityType: 'feature', label: 'default-setup/code', path: ['cliPaths', 'gh'], value: '/opt/bin/gh',
-  }]);
-});
-
-it('follows the view until the caller unsubscribes', () => {
-  const heard = vi.fn();
-  const stop = settingsPort.subscribe(heard);
-
-  listener?.();
-  expect(heard).toHaveBeenCalledTimes(1);
-
+it('binds shared settings without finding or starting the Settings view', async () => {
+  const stop = startFeTestRuntime({ settings: settingsPort });
+  const scope = effectScope();
+  const app = scope.run(() => useAppSettings())!;
+  expect(app.value).toBeUndefined();
+  await connect();
+  expect(app.value).toEqual(snapshot.values.app);
+  expect(settingsPort.get({ kind: 'pack', packId: 'example', groupId: 'assistant' })).toEqual({ name: 'Ada' });
+  expect(settingsPort.get({ kind: 'feature', featureRef: 'example/code' as import('@apackdev/sdk/ids').FeatureRef })).toEqual({ limit: 3 });
+  scope.stop();
   stop();
-  listener?.();
-  expect(heard).toHaveBeenCalledTimes(1);
 });
 
-it('reads the last change the store answered for', () => {
-  context = { settings: SETTINGS_DOC, save: { status: 'refused', problems: ['nope'] } };
-  expect(settingsPort.saveStatus()).toEqual({ status: 'refused', problems: ['nope'] });
+it('writes directly through the transport and resolves only the correlated result', async () => {
+  await connect();
+  const write = settingsPort.update({ kind: 'app' }, ['personal', 'name'], 'Grace');
+  await flush();
+  const request = send.mock.calls.at(-1)![0];
+  expect(request).toMatchObject({ to: 'host/settings', sender: 'host/settings', event: { type: 'UPDATE_SETTINGS', target: { kind: 'app' }, path: ['personal', 'name'], value: 'Grace' } });
+  expect(request.settingsCredential).toBe('host-access');
+  windowSettings.receive({ to: 'host/settings', answering: request.call, event: { type: 'SETTINGS_REFUSED', problems: ['invalid'] } });
+  expect(await write).toEqual({ status: 'refused', problems: ['invalid'] });
+  expect(settingsPort.get({ kind: 'app' })).toEqual(snapshot.values.app);
 });
 
-it('answers as idle and empty before the view has its settings', () => {
-  context = {};
-  expect(settingsPort.section('general')).toBeUndefined();
-  expect(settingsPort.saveStatus()).toEqual({ status: 'idle', problems: [] });
+const acceptedPack = { id: 'example', name: 'Example', version: '1.0.0', declarationRevision: 'declarations', artifactRevision: 'artifact' };
+
+it('issues loader-bound pack access from accepted identities and sends its credential outside the event', async () => {
+  await connect();
+  const binding = await settingsForPack(acceptedPack);
+  expect(openPack).toHaveBeenCalledWith({ id: 'example', declarationRevision: 'declarations', artifactRevision: 'artifact' });
+  const write = binding.port.reset({ kind: 'feature', featureRef: 'example/code' });
+  await flush();
+  const request = send.mock.calls.at(-1)![0];
+  expect(request.settingsCredential).toBe('pack-access');
+  expect(request.event).not.toHaveProperty('settingsCredential');
+  windowSettings.receive({ to: 'host/settings', answering: request.call, event: { type: 'SETTINGS_SAVED' } });
+  expect(await write).toEqual({ status: 'saved' });
+  binding.dispose(); binding.dispose();
+  expect(close).toHaveBeenCalledTimes(1);
+  expect(close).toHaveBeenCalledWith({ credential: 'pack-access' });
+  expect((await binding.port.reset({ kind: 'app' })).status).toBe('refused');
+  expect(settingsPort.status()).toBe('ready');
+});
+
+it('requires installed artifact identity and never falls back to host access', async () => {
+  await connect();
+  await expect(settingsForPack({ ...acceptedPack, artifactRevision: undefined })).rejects.toThrow('artifact identity');
+  expect(openPack).not.toHaveBeenCalled();
+});
+
+it('discards a provisional pack credential if its connection changes during issuance', async () => {
+  await connect();
+  let release!: (credential: string) => void;
+  openPack.mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
+  const loading = settingsForPack(acceptedPack);
+  await flush();
+  disconnectWindowSettings();
+  release('stale-access');
+  await expect(loading).rejects.toThrow('connection changed');
+  expect(close).toHaveBeenCalledWith({ credential: 'stale-access' });
+});
+
+it('keeps bootstrap pending until a validated correlated snapshot arrives', async () => {
+  const ready = connectWindowSettings();
+  let settled = false;
+  void ready.then(() => { settled = true; });
+  await flush();
+  expect(settled).toBe(false);
+  expect(openHost).toHaveBeenCalledOnce();
+  const call = send.mock.calls.at(-1)![0].call;
+  windowSettings.receive({ to: 'host/settings', answering: 'other-read', event: { type: 'SETTINGS_LOADED', snapshot } });
+  await flush();
+  expect(settled).toBe(false);
+  windowSettings.receive({ to: 'host/settings', answering: call, event: { type: 'SETTINGS_LOADED', snapshot } });
+  expect(await ready).toBe(true);
+});
+
+it('does not report a dropped bootstrap as a new connected shell', async () => {
+  const ready = connectWindowSettings();
+  disconnectWindowSettings();
+  expect(await ready).toBe(false);
+  await flush();
+  expect(send).not.toHaveBeenCalled();
 });

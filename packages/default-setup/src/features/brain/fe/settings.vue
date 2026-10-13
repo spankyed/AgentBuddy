@@ -153,12 +153,10 @@ import { usePluginState } from '#generated/fe.ts'
 
 interface Props {
   settings?: SettingsOf<'brain'>
-  allSettings?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  settings: undefined,
-  allSettings: undefined
+  settings: undefined
 })
 
 // Get brain state from brain state machine

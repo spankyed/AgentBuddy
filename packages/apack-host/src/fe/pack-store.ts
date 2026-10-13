@@ -1,6 +1,6 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
-import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
@@ -8,6 +8,12 @@ import { addContributions, createDefinitionStore, createDesignationStore, create
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
+import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
+import { createLogger } from '@apackdev/sdk/logger';
+
+type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
+
+const formKey = (target: SettingsTarget): string => settingsTargetPath(target).join('/');
 
 interface PackFEExtensions {
   /** The plugins this pack added */
@@ -16,15 +22,25 @@ interface PackFEExtensions {
   undo: () => unknown;
 }
 
+/** Host-owned settings resource for one accepted frontend, including transport cleanup. */
+export interface FrontendSettingsBinding {
+  port: SettingsPort;
+  dispose(): void;
+}
+
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
-  registerPackFE(registration: PackFERegistration): Plugin[];
+  registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
+  /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
+  settingsForm(target: SettingsTarget): SettingsForm | undefined;
+  /** The accepted forms change only after a registration or removal commits. */
+  onSettingsFormsChanged(listener: () => void): () => void;
 }
 
 /**
@@ -90,6 +106,7 @@ function createOwnedList<T>() {
 
 /** A new, empty frontend registry */
 export function createFePackRegistry(): FePackRegistry {
+  const logger = createLogger('pack-frontends');
   const allPlugins: Plugin[] = [];
   let defaultPlugin: Plugin | undefined;
   const packExtensions = new Map<string, PackFEExtensions>();
@@ -100,6 +117,16 @@ export function createFePackRegistry(): FePackRegistry {
   const tiptapPlugins = createOwnedList<TiptapPlugin>();
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
+  const settingsForms = createOwnedStore<SettingsForm>();
+  let publishedForms: ReadonlyMap<string, SettingsForm> = new Map();
+  const formListeners = new Set<() => void>();
+  function publishForms() {
+    publishedForms = new Map(settingsForms.entries());
+    for (const listener of formListeners) {
+      try { listener(); }
+      catch (error) { logger.error('Settings form listener failed', error instanceof Error ? error : new Error(String(error))); }
+    }
+  }
 
   /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
   const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
@@ -109,6 +136,19 @@ export function createFePackRegistry(): FePackRegistry {
       undo(() => designations.unregister(reg.roles));
     },
     (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
+    (reg, undo) => {
+      const register = (target: SettingsTarget, component: SettingsForm) => {
+        const key = formKey(target);
+        settingsForms.set(key, component, reg.id);
+        undo(() => settingsForms.remove(key, reg.id));
+      };
+      for (const [featureId, feature] of Object.entries(reg.features ?? {})) {
+        if (feature.settingsForm) register({ kind: 'feature', featureRef: resolveName(featureId, reg.id) }, feature.settingsForm);
+      }
+      for (const [groupId, component] of Object.entries(reg.settingsForms ?? {})) {
+        register({ kind: 'pack', packId: reg.id, groupId }, component);
+      }
+    },
     // The first pack to claim the default keeps it
     (reg, undo) => {
       const claim = reg.addressed.find((feature) => feature.default);
@@ -142,17 +182,31 @@ export function createFePackRegistry(): FePackRegistry {
     },
   ];
 
-  function registerPackFE(registration: PackFERegistration): Plugin[] {
+  function registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[] {
     const packId = registration.id;
-    if (packExtensions.has(packId)) {
-      throw new Error(`Pack "${packId}" frontend is already registered`);
+    let reg: AddressedRegistration;
+    try {
+      if (packExtensions.has(packId)) throw new Error(`Pack "${packId}" frontend is already registered`);
+      checkFeatureIds(packId, Object.keys(registration.features ?? {}));
+      checkFeatureIds(packId, Object.keys(registration.settingsForms ?? {}));
+      reg = addressed(registration);
+    } catch (error) {
+      settings?.dispose();
+      throw error;
     }
-    checkFeatureIds(packId, Object.keys(registration.features ?? {}));
     // All or nothing: a throw partway (a step's `loadComponents`, a role collision) leaves the registry as it was
-    const reg = addressed(registration);
-    const undos = addContributions(reg, contributions);
+    const undos = addContributions(reg, [
+      (_, undo) => { if (settings) undo(() => settings.dispose()); },
+      ...contributions,
+      (accepted, undo) => {
+        if (!accepted.bindSettings) return;
+        if (!settings) throw new Error(`Pack "${accepted.id}" frontend requires host-bound settings access`);
+        undo(accepted.bindSettings(settings.port));
+      },
+    ]);
     const plugins = reg.addressed.map(({ plugin }) => plugin);
     packExtensions.set(packId, { plugins, undo: undos.undoAll });
+    publishForms();
     return plugins;
   }
 
@@ -160,8 +214,11 @@ export function createFePackRegistry(): FePackRegistry {
     const contrib = packExtensions.get(packId);
     if (!contrib) return [];
 
-    contrib.undo();
-    packExtensions.delete(packId);
+    try { contrib.undo(); }
+    finally {
+      packExtensions.delete(packId);
+      publishForms();
+    }
     return contrib.plugins;
   }
 
@@ -170,6 +227,8 @@ export function createFePackRegistry(): FePackRegistry {
     unregisterPackFE,
     getRegisteredPlugins: () => allPlugins,
     getAppExtension: appExtensions.get,
+    settingsForm: target => publishedForms.get(formKey(target)),
+    onSettingsFormsChanged(listener) { formListeners.add(listener); return () => { formListeners.delete(listener); }; },
 
     // The SDK's frontend lookups (FePackRegistryView)
     designation: designations.get,

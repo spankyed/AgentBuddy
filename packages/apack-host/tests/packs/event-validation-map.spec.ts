@@ -95,7 +95,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
 });
 
 /**
- * Registering a pack's extensions is observable: settingsDefaults.register notifies its listeners,
+ * Registering a pack's extensions is observable: catalog publication notifies its listeners,
  * and default-setup's settings system reacts by sending to its plugin. A send reaches the bus while it
  * is idle, so the bus checks it synchronously — inside registerPack. With the pack listed last, that
  * send was checked against a registry that did not yet contain the pack sending it.
@@ -104,7 +104,7 @@ describe('a pack registering', () => {
   it('is listed before its extensions are registered, so a listener sees its plugins', () => {
     const registry = createPackRegistry();
     let seen: Set<string> | undefined = 'unset' as never;
-    const stop = registry.onSettingsDefaultsChanged(() => {
+    const stop = registry.onSettingsCatalogChanged(() => {
       seen = registry.getPluginEventValidationMap().get('memo-pack/memos');
     });
     registry.registerPack({

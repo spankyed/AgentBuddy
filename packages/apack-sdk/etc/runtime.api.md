@@ -85,7 +85,7 @@ export interface HostRuntimeServices {
     filesystem: FilesystemService;
     inference: InferenceService;
     secrets: SecretsService;
-    settings: SettingsService;
+    settings: SettingsAdmin;
     traceStore: TraceStore;
 }
 
@@ -117,12 +117,14 @@ export interface PackRegistryView extends PackExtensionsView {
     commands(): PackCommand[];
     contentWriters(entity: string): ContentWriter | undefined;
     earsNames(): EarsNames;
-    featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
     help(): HelpCatalog;
-    onSettingsDefaultsChanged(listener: () => void): () => void;
+    // (undocumented)
+    onSettingsCatalogChanged(listener: () => void): () => void;
+    pluginDefaults(): Record<string, boolean>;
     pluginIds(): readonly FeatureRef[];
-    settingsDefaults(): PackSettingsDefaults;
+    // (undocumented)
+    settingsCatalog(): SettingsCatalog;
     systemIds(): readonly FeatureRef[];
 }
 

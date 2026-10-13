@@ -1,21 +1,13 @@
-// The settings document's rules, which both the store and the settings editor check with, so both refuse the same
-// document. The host knows one section, `features`; every other section is named by whoever registered it, which is
-// what these cover — a document's shape is the host's, its content is not.
 import { describe, expect, it } from 'vitest';
 import {
-  changesFrom,
   isEqual,
-  FEATURES_SECTION,
   removeIn,
   SettingsRefusedError,
   settingsProblems,
   setIn,
-} from '../../../src/features/settings/be/document.ts';
+} from '../../../src/features/settings/document.ts';
 
-/** The sections a pack registered, as the store passes them */
-const SECTIONS = ['general', 'assistant'];
-const check = (next: unknown, before: unknown = {}, keyProblem?: (key: string) => string | undefined) =>
-  settingsProblems(next, { before, sections: SECTIONS, keyProblem });
+const check = settingsProblems;
 
 describe('setIn', () => {
   it('copies only the objects along the path', () => {
@@ -61,60 +53,33 @@ describe('isEqual', () => {
   });
 });
 
-describe('changesFrom', () => {
-  it('keeps only what the settings set that the defaults do not', () => {
-    expect(changesFrom({ a: 1, b: { c: 2, d: 3 } }, { a: 1, b: { c: 9, d: 3 } })).toEqual({ b: { c: 9 } });
-  });
-
-  it('is undefined when nothing differs, so a default left out keeps applying', () => {
-    expect(changesFrom({ a: 1 }, { a: 1 })).toBeUndefined();
-  });
-});
-
 describe('settingsProblems', () => {
-  it('accepts features and the sections it is given', () => {
-    expect(check({ features: { 'default-setup/threads': { x: 1 } }, general: { personal: {} } })).toEqual([]);
+  it('accepts only the three host-defined owners, with pack-local groups', () => {
+    expect(check({ app: {}, packs: { first: { assistant: { name: 'Ada' } }, second: { assistant: { name: 'Grace' } } }, features: { 'first/code': {} } })).toEqual([]);
+    expect(check({ general: {}, assistant: {} })).toHaveLength(2);
   });
 
-  // The host knows `features` and nothing else: a section nobody registered is a typo, not new content
-  it('refuses a section it was not given, naming the ones it knows', () => {
-    const [problem] = check({ generall: { typo: true } });
-
-    expect(problem).toContain('"generall" isn\'t a settings section');
-    expect(problem).toContain(FEATURES_SECTION);
-    expect(problem).toContain('general, assistant');
+  it('refuses malformed ownership addresses regardless of existing data', () => {
+    expect(check({ packs: { 'not/a/pack': {} } })).toHaveLength(1);
+    expect(check({ packs: { first: { 'not/a/group': {} } } })).toHaveLength(1);
+    expect(check({ features: { code: {} } })).toHaveLength(1);
+    expect(check({ app: [] })).toHaveLength(1);
+    expect(check('not a document')).toEqual(['The settings must be a JSON object']);
   });
 
-  it('refuses unchanged unknown sections and malformed declared sections', () => {
-    const data = { obsolete: {}, general: 'invalid' };
-    expect(check(data, data)).toHaveLength(2);
+  it.each([undefined, NaN, Infinity, 1n, new Date(), () => {}, Symbol('value')])('refuses non-JSON values %s before schema validation', value => {
+    expect(check({ packs: { first: { assistant: { value } } } }).join(' ')).toContain('JSON data');
   });
 
-  it('refuses a section that is not an object', () => {
-    expect(check({ general: 'nope' })).toEqual(['"general" must be an object']);
-  });
-
-  it('refuses a document that is not an object at all', () => {
-    expect(check('nope')).toEqual(['The settings must be a JSON object']);
-  });
-
-  it('requires every feature key to be a ref', () => {
-    expect(check({ features: { threads: { x: 1 } } })).toEqual([
-      '"threads" isn\'t a ref: a feature\'s settings are stored under "<packId>/<featureId>"',
-    ]);
-  });
-
-  // An uninstalled pack's slice is there for its reinstall, so only a slice that changes is checked
-  it('leaves an unchanged slice alone and checks a changed one against keyProblem', () => {
-    const before = { features: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 1 } } };
-    const keyProblem = (key: string) => (key === 'gone-pack/notes' ? 'not installed' : undefined);
-
-    expect(check({ features: { 'gone-pack/notes': { keep: true }, 'default-setup/threads': { x: 2 } } }, before, keyProblem)).toEqual([]);
-    expect(check({ features: { 'gone-pack/notes': { changed: true } } }, before, keyProblem)).toEqual(['not installed']);
-  });
-
-  it('reports every problem in one pass', () => {
-    expect(check({ nope: {}, general: 1, features: { bare: {} } })).toHaveLength(3);
+  it('refuses cycles, sparse arrays and getters without invoking them', () => {
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    expect(check({ app: cycle }).join(' ')).toContain('acyclic');
+    const sparse = [null, null];
+    Reflect.deleteProperty(sparse, 0);
+    expect(check({ app: { values: sparse } }).join(' ')).toContain('holes');
+    const accessor = Object.defineProperty({}, 'value', { enumerable: true, get() { throw new Error('must not execute'); } });
+    expect(check({ app: accessor }).join(' ')).toContain('ordinary JSON data properties');
   });
 });
 

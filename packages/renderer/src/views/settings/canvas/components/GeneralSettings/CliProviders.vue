@@ -23,13 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { computed, ref, watch } from 'vue'
+import { useFeatureSettings, usePlugin } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
-import { featureSettings } from '@/views/settings/feature-settings';
 import { resolveName } from '@apackdev/sdk/ids';
 import type { SettingsState } from '@apackdev/host/fe'
 
@@ -50,7 +49,8 @@ const testCliProvider = (provider: string) => {
 }
 
 // CLI path overrides live in the code plugin's settings
-const storedCliPaths = useSelector(settingsActor, (state) => featureSettings(state.context.settings, resolveName('code', 'default-setup'))?.cliPaths as Record<string, string> | undefined)
+const codeSettings = useFeatureSettings<{ cliPaths?: Record<string, string> }>(resolveName('code', 'default-setup'))
+const storedCliPaths = computed(() => codeSettings.value?.cliPaths)
 const cliPathValues = ref<Record<string, string>>({})
 
 watch(storedCliPaths, (newPaths) => {
@@ -59,8 +59,7 @@ watch(storedCliPaths, (newPaths) => {
 
 const { debounced: debouncedSaveCliPaths } = useDebounce(() => {
   updateSettings({
-    entityType: 'feature',
-    label: resolveName('code', 'default-setup'),
+    target: { kind: 'feature', featureRef: resolveName('code', 'default-setup') },
     path: ['cliPaths'],
     value: { ...cliPathValues.value }
   })

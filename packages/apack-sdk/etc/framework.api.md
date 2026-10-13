@@ -51,16 +51,13 @@ export type DiffResult<T> = null | {
 };
 
 // @public
-export function getFeaturesWithSettings(): readonly FeatureRef[];
-
-// @public
 export function getPackCommands(): PackCommand[];
 
 // @public (undocumented)
 export function getPackHelp(): HelpCatalog;
 
-// @public
-export function getPackSettingsDefaults(): PackSettingsDefaults;
+// @public (undocumented)
+export function getSettingsCatalog(): SettingsCatalog;
 
 // @public
 export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
@@ -136,8 +133,8 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
     spec: infer Spec;
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
-// @public
-export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
+// @public (undocumented)
+export function onSettingsCatalogChanged(listener: () => void): () => void;
 
 // @public
 export interface PackBootHooks {
@@ -205,6 +202,7 @@ export interface PackRegistration {
     appliers?: ContentApplier[];
     // (undocumented)
     artifacts?: ArtifactDefinition[];
+    bindSettings?: (settings: SettingsService) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
     // (undocumented)
@@ -212,6 +210,7 @@ export interface PackRegistration {
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
+    dependencies?: Record<string, string>;
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
@@ -223,30 +222,30 @@ export interface PackRegistration {
     repositories?: Record<string, unknown>;
     // (undocumented)
     services?: Record<string, unknown>;
-    settingsSections?: () => Record<string, unknown>;
+    // (undocumented)
+    settings?: Record<string, SettingsDefinition>;
     // (undocumented)
     steps?: StepDefinition[];
-}
-
-// @public
-export interface PackSettingsDefaults {
-    // (undocumented)
-    revision: number;
-    // (undocumented)
-    settings: {
-        features: Record<string, unknown>;
-        [section: string]: unknown;
-    };
-    // (undocumented)
-    validators: Record<string, SettingsValidator>;
-    // (undocumented)
-    visibility: Record<string, boolean>;
 }
 
 // @public
 export function packSystem(entry: SystemEntry, options?: {
     incoming?: readonly string[];
 }): PackFeatureSystem;
+
+// @public
+export interface SettingsCatalog {
+    // (undocumented)
+    readonly app: SettingsDefinition;
+    // (undocumented)
+    readonly dependencies: Readonly<Record<string, readonly string[]>>;
+    // (undocumented)
+    readonly features: Readonly<Record<string, SettingsDefinition>>;
+    // (undocumented)
+    readonly packs: Readonly<Record<string, Readonly<Record<string, SettingsDefinition>>>>;
+    // (undocumented)
+    readonly revision: number;
+}
 
 // @public
 export interface SettingsDefinition {
@@ -262,6 +261,9 @@ export interface SettingsDefinition {
     // (undocumented)
     title?: string;
 }
+
+// @public
+export function _settingsJsonProblems(value: unknown): SettingsProblem[];
 
 // @public (undocumented)
 export interface SettingsProblem {

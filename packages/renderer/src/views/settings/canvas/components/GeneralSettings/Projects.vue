@@ -118,6 +118,7 @@ import { onScopeDispose, ref, watch } from 'vue'
 import { Plus, X, GripVertical } from 'lucide-vue-next'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
+import { useWindowSettingsSnapshot } from '@/runtime/settings'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 import type { AppProject } from '@apackdev/sdk/types'
@@ -134,8 +135,11 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate]
 }>()
 
-const copyProjects = (values: AppProject[] = []) => values.map(project => ({ ...project, directories: [...(project.directories ?? [])] }))
+const copyProjects = (values: AppProject[] = []) => values.map(project => ({ ...project, directories: [...project.directories] }))
 const projects = ref(copyProjects(props.settings))
+const snapshot = useWindowSettingsSnapshot()
+let original = copyProjects(props.settings)
+let runId = snapshot.value?.runId
 
 // Reorder
 const reorderGroup = Symbol('settings-projects')
@@ -145,19 +149,19 @@ const arrangeableOptions = {
   hoverClass: 'shadow-lg shadow-black/40 scale-[1.02] cursor-grabbing',
   pickedItemClass: 'opacity-30',
 }
-let droppingItem = false
 
-watch(() => props.settings, (val) => {
-  if (droppingItem) {
-    droppingItem = false
-    return
+watch(() => [props.settings, snapshot.value?.runId] as const, ([value, nextRun]) => {
+  const incoming = copyProjects(value)
+  // Preserve unsaved edits; their comparison still names the original value and backend run.
+  if (JSON.stringify(projects.value) === JSON.stringify(original) || JSON.stringify(projects.value) === JSON.stringify(incoming)) {
+    projects.value = incoming
+    original = copyProjects(incoming)
+    runId = nextRun
   }
-  projects.value = copyProjects(val)
 }, { deep: true })
 
 function reorderProject(moving: MovingItem<AppProject>) {
   if (!moving.destination?.listItems) return
-  droppingItem = true
   projects.value = [...moving.destination.listItems]
   save()
 }
@@ -271,7 +275,8 @@ const confirmRemoveDirectory = (pIndex: number, dIndex: number) => {
 const save = () => {
   emit('update-setting', {
     path: [],
-    value: projects.value
+    value: copyProjects(projects.value),
+    condition: runId ? { runId, expected: { exists: true, value: copyProjects(original) } } : undefined
   })
 }
 

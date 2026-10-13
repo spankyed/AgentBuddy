@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine } from '@apackdev/ears';
+import { createEarsEngine, installEngine } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
@@ -44,6 +44,24 @@ const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fi
 });
 
 describe('createHostRuntime', () => {
+  it('keeps settings on the owning engine when another engine is installed', () => {
+    const firstEngine = newEngine();
+    const secondEngine = newEngine();
+    const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({
+      store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs: createPackRegistry(),
+    });
+    const first = runtime(firstEngine);
+    const second = runtime(secondEngine);
+    const previous = installEngine(secondEngine.query);
+    try {
+      first.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'First');
+      second.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Second');
+      expect(first.services.settings.getAll().app.personal.name).toBe('First');
+      expect(second.services.settings.getAll().app.personal.name).toBe('Second');
+    } finally { installEngine(previous); }
+  });
+
   it('holds the bus, version, engine, registered packs and host services', () => {
     // The services reach the store only when called
     const engine = newEngine();

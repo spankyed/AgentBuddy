@@ -2,8 +2,8 @@
 
 Status: current-code reference, revised 2026-10-12. The implementation target is
 [discovery without activation](../plans/discovery-without-activation.md); ordering and transferred
-manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Re-audit exact API names
-after the in-flight naming goal. This reference is not a competing implementation plan.
+manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Naming is complete;
+apply its settled contracts to new interfaces. This reference is not a competing implementation plan.
 
 ## What is already data
 
@@ -11,6 +11,11 @@ after the in-flight naming goal. This reference is not a competing implementatio
 extensions: steps, artifacts, blocks, commands, services, DSL and frontend slots. Built snapshots carry
 manifests, facade/type artifacts and partial provenance. Compiled content and integrity indexes already
 exist. Offline database tooling reads schema data without pack runtime imports.
+
+The working settings extraction declares schemas and defaults inline for pack groups and features;
+host app preferences use the same definition contract. The installed contribution catalog exposes
+these definitions without activation, including disabled packs. Custom forms remain executable
+presentation bindings. There is no pack-owned app-settings assembly or settings-section thunk.
 
 This is partial discovery, not an absence of discovery. A keyed declaration identifies a contribution;
 its executable path is a binding reference, not a reason to execute it when listing its existence.
@@ -22,12 +27,10 @@ Generated backend/frontend entries import implementation modules and assemble re
 Some static facts are embedded in those objects rather than exposed in a complete data artifact:
 
 - Plugin labels, icons, default-navigation claims and pane metadata.
-- Feature settings schemas/defaults and globally merged `settingsSections`.
 - Reference protocols/categories and anonymous editor contribution lists.
 - Help articles, some step palette metadata and generated event contracts.
 
-Current readers combine installed declarations with runtime registration: settings unions installed and
-registered feature refs, pack details lose extension information while inactive, and shell navigation
+Other readers still depend on runtime registration: pack details lose extension information while inactive, and shell navigation
 learns destinations/default claims as frontend imports finish. The discovery plan records the exact
 consumer/refactor inventory. The old claim that events are the only remaining gap is incorrect.
 

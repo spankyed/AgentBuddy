@@ -281,8 +281,8 @@ export const APP_READY_STATE = 'running.connected';
  * reloaded window; this is the same shape, used by every caller.
  *
  * `window.__disableOnboardingUI` is defined unconditionally (`renderer/src/main.ts`), so a page that
- * arrived over CDP reaches it exactly as a launched one does. It sends `ONBOARDING_COMPLETE`, which is a
- * write to the data dir — the one thing this does that outlives the call, and what a caller reports.
+ * arrived over CDP reaches it exactly as a launched one does. It dismisses this window's onboarding UI
+ * without completing the persisted onboarding lifecycle. Call again after a window reload.
  *
  * `state` is a parameter with a default because the caller this leaves room for wants onboarding **left
  * up**: driving the onboarding screens themselves, which nothing can do today. A hard-coded terminal state
@@ -497,16 +497,43 @@ export function createTest(options: CreateTestOptions = {}) {
         userDataDirs.set(app, userDataDir);
         captureOutput(app, appLogPath(workerInfo));
         if (process.env.DEBUG_E2E) {
-          app.process().stdout?.on('data', (data: Buffer) => {
-            process.stdout.write(`[electron] ${data}`);
+          app.process().once('exit', (code, signal) => console.log('[e2e shutdown] process exited', { code, signal }));
+          app.once('close', () => console.log('[e2e shutdown] Playwright application closed'));
+          if (process.env.DEBUG_E2E !== 'shutdown') await app.evaluate(({ app, BrowserWindow }) => {
+            const observe = (window: Electron.BrowserWindow) => {
+              const id = window.id;
+              window.on('close', () => console.log('[e2e shutdown] window closing', id));
+              window.on('closed', () => console.log('[e2e shutdown] window closed', id));
+            };
+            BrowserWindow.getAllWindows().forEach(observe);
+            app.on('browser-window-created', (_event, window) => observe(window));
+            app.on('before-quit', () => console.log('[e2e shutdown] before-quit'));
+            app.on('will-quit', () => console.log('[e2e shutdown] will-quit'));
+            app.on('quit', () => console.log('[e2e shutdown] quit'));
           });
-          app.process().stderr?.on('data', (data: Buffer) => {
-            process.stderr.write(`[electron] ${data}`);
-          });
+          if (process.env.DEBUG_E2E !== 'shutdown') {
+            app.process().stdout?.on('data', (data: Buffer) => {
+              process.stdout.write(`[electron] ${data}`);
+            });
+            app.process().stderr?.on('data', (data: Buffer) => {
+              process.stderr.write(`[electron] ${data}`);
+            });
+          }
         }
 
         await use(app);
-        await app.close();
+        if (process.env.DEBUG_E2E) console.log('[e2e shutdown] calling close');
+        const inspectShutdown = process.env.DEBUG_E2E ? setTimeout(() => console.log('[e2e shutdown] still waiting', {
+          pid: app.process().pid,
+          exitCode: app.process().exitCode,
+          signalCode: app.process().signalCode,
+          stdoutEnded: app.process().stdout?.readableEnded,
+          stderrEnded: app.process().stderr?.readableEnded,
+          windows: app.windows().map(page => ({ closed: page.isClosed() })),
+        }), 5000) : undefined;
+        try { await app.close(); }
+        finally { clearTimeout(inspectShutdown); }
+        if (process.env.DEBUG_E2E) console.log('[e2e shutdown] close resolved');
       } finally {
         // A dir the caller gave is the caller's to remove; this owns only the one it made
         if (givenDataDir !== undefined) {

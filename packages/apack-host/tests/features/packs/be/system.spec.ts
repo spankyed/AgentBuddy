@@ -315,7 +315,7 @@ describe('an installed pack the app could not load', () => {
     try {
       expect(listed(system)).toMatchObject({
         enabled: true,
-        loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
+        loadProblem: `its declarations were refused: its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
       fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
@@ -328,18 +328,22 @@ describe('an installed pack the app could not load', () => {
     }
   });
 
-  it('is listed with why its activation failed, and not once it is disabled', async () => {
+  it('keeps a declaration failure visible after the pack is disabled', async () => {
     await installPackFromLocal(packSource('1.0.0'));
     fs.writeFileSync(snapshotFile(), JSON.stringify({}));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(false);
 
     const system = runPacksSystem();
     try {
-      expect(listed(system)?.loadProblem).toMatch(/^its snapshot is format \(none\), written by an older apack CLI/);
+      expect(listed(system)?.loadProblem).toMatch(/^its declarations were refused: its snapshot is format \(none\), written by an older apack CLI/);
 
       system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
 
-      expect(listed(system)).toMatchObject({ enabled: false, loadProblem: undefined });
+      expect(listed(system)).toMatchObject({
+        enabled: false,
+        loadProblem: expect.stringMatching(/^its declarations were refused: its snapshot is format \(none\)/),
+      });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
     } finally {
       system.stop();
     }

@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
-import { importContent, importFlows, startApp, takeSystemErrors, type TestApp } from '@apackdev/testing/harness';
+import { getTestSettings, importContent, importFlows, startApp, takeSystemErrors, type TestApp } from '@apackdev/testing/harness';
 import { entry, keepAlive } from '#generated/flow-helpers.ts';
 import { repository } from '#generated/repository.ts';
+import { packSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
 import { getAllFlowActorIds } from '#features/brain/be/flow-system.ts';
 
@@ -36,13 +37,14 @@ it('starts on readiness without keys, once across connections and preference res
   const state = structuredClone(progress());
   await app.connect();
   await app.connect();
-  services.settings.reset();
+  const reset = await app.send('host/settings', { type: 'RESET_ALL_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: 'host/settings', client: 'c-window' });
+  await app.nextEmit('host/settings', 'SETTINGS_SAVED', { answering: reset });
   await app.settle();
   expect(initialized(app)).toHaveLength(1);
   expect(getAllFlowActorIds()).toHaveLength(rootActors + 1);
   expect(thread()).toBe(first);
   expect(progress()).toEqual(state);
-  expect(services.settings.getSection('assistant')).toEqual({ name: '' });
+  expect(packSettings.forGroup('assistant').get()).toEqual({ name: '' });
 });
 
 it('waits for a usable root when the client arrives first', async () => {

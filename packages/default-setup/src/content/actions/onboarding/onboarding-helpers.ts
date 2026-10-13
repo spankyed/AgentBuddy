@@ -125,9 +125,9 @@ export function finishOnboarding(
   // Use the mode the user chose, or auto-detect from available CLIs
   const defaultMode = state.data.chosenMode
     || ((!state.data.cliFound && state.data.codexFound) ? 'Codex' : 'Claude Code');
-  services.settings.setForFeature('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
+  services.settings.set({ kind: 'feature', featureRef: 'default-setup/threads' }, ['chat', 'defaultMode'], defaultMode);
   // Push the updated chat settings to the frontend so resolveDefaultModePhase picks up the new default
-  const chatSettings = services.settings.forFeature<ThreadsSettings>('default-setup/threads')?.chat;
+  const chatSettings = services.settings.get<ThreadsSettings>({ kind: 'feature', featureRef: 'default-setup/threads' })?.chat;
   if (chatSettings) {
     services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'AGENT_SETTINGS_UPDATED',

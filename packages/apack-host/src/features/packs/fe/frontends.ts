@@ -4,7 +4,7 @@
 import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
 import { _packDeclarationProblem } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
-import type { FePackRegistry } from '../../../fe/pack-store.ts';
+import type { FePackRegistry, FrontendSettingsBinding } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
 /** A window's stylesheets for a pack: added once per href, and taken out together when the pack goes */
@@ -32,6 +32,8 @@ export interface PackFrontendIO {
   styles: PackFrontendStyles;
   /** The packs this window serves from source, preferred over `pack://`; none in a built app */
   devFrontends?: DevPackFrontends;
+  /** Supplies authority for the accepted backend declarations/artifact, never a claimed sender label. */
+  settingsForPack?: (pack: LoadedPackEntry) => Promise<FrontendSettingsBinding>;
 }
 
 /**
@@ -39,7 +41,7 @@ export interface PackFrontendIO {
  * a build failure rather than a warning that stops firing.
  */
 const REGISTRATION_KEYS = [
-  'features', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
+  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
 /** A pack file's URL, carrying the frontend's revision: a browser caches a module or stylesheet by its URL */
@@ -109,8 +111,11 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
       if (!registration) throw new Error(`Pack "${pack.id}" has no frontend registration`);
       const problem = _packDeclarationProblem(pack, registration);
       if (problem) throw new Error(problem);
+      if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);
       await loadStyles();
-      return packs.registerPackFE(registration);
+      const settings = registration.bindSettings ? await io.settingsForPack!(pack) : undefined;
+      // Once handed to the registry, the same undo log releases provisional and registered bindings.
+      return packs.registerPackFE(registration, settings);
     },
 
     unload(packId: string): void {

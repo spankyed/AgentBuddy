@@ -1,6 +1,11 @@
-import { parseSnapshot, type PackSnapshot } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition } from '@apackdev/sdk/framework';
-import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
+import { discoverPackDirectories } from './discovery.ts';
+import { readPackArtifact } from './layout.ts';
+import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
+import { hasOwn } from '@apackdev/sdk/utils/pure';
+import { isDeepStrictEqual } from 'node:util';
+import { parseSnapshot, ManifestSchema, _declarationRevision, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog } from '@apackdev/sdk/framework';
+import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
 type CatalogData<T> = T extends object ? { readonly [K in keyof T]: CatalogData<T[K]> } : T;
@@ -18,10 +23,27 @@ export interface PackCatalogSource {
   enabled: boolean;
 }
 
+/** Source authoring declares its manifest before a bundle exists; this is not installed admission. */
+export interface SourcePackDeclaration {
+  readonly manifest: CatalogData<PackManifest>;
+  readonly dir: string;
+  readonly declarationRevision: string;
+}
+
 export interface PackCatalogSnapshot {
   readonly revision: number;
   readonly appSettings: CatalogData<SettingsDefinition>;
   readonly packs: readonly PackCatalogEntry[];
+  readonly native: readonly NativePackDeclaration[];
+  readonly sourcePacks: readonly SourcePackDeclaration[];
+}
+
+/** Host/test composition declares data directly; installed packs always require verified artifacts. */
+export interface NativePackDeclaration {
+  id: string;
+  dependencies?: Record<string, string>;
+  settings?: Record<string, SettingsDefinition>;
+  features?: Record<string, { settings?: SettingsDefinition }>;
 }
 
 /** Own immutable data; neither input mutation nor a reader can change a committed catalog. */
@@ -43,21 +65,72 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   const logger = createLogger('pack-catalog');
   const app = immutable(appSettings);
   _compileSettingsDefinition(app);
-  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [] });
+  let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], native: [], sourcePacks: [] });
   let byId = new Map<string, PackCatalogEntry>();
   const listeners = new Set<() => void>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
+  let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
+
+  function publish(packs: readonly PackCatalogEntry[], native: readonly NativePackDeclaration[], sourcePacks = current.sourcePacks): void {
+    if (isDeepStrictEqual(current.packs, packs) && isDeepStrictEqual(current.native, native) && isDeepStrictEqual(current.sourcePacks, sourcePacks)) return;
+    const manifests = [...packs.map(({ snapshot }) => snapshot.manifest), ...sourcePacks.map(source => source.manifest)];
+    const definitions = [...native, ...manifests.map(manifest => ({
+      id: manifest.id, dependencies: manifest.dependencies,
+      settings: manifest.extensions?.settings, features: manifest.features,
+    }))];
+    const ids = new Set<string>();
+    const groups: Record<string, Record<string, SettingsDefinition>> = {};
+    const features: Record<string, SettingsDefinition> = {};
+    const dependencies: Record<string, string[]> = {};
+    for (const pack of definitions) {
+      if (!PACK_ID_PATTERN.test(pack.id) || ids.has(pack.id)) throw new Error(`Duplicate or invalid declaration owner "${pack.id}"`);
+      ids.add(pack.id);
+      groups[pack.id] = {};
+      dependencies[pack.id] = Object.keys(pack.dependencies ?? {});
+      for (const [id, definition] of Object.entries(pack.settings ?? {})) {
+        if (!FEATURE_ID_PATTERN.test(id)) throw new Error(`Invalid settings group "${pack.id}/${id}"`);
+        _compileSettingsDefinition(definition);
+        groups[pack.id][id] = definition;
+      }
+      for (const [id, feature] of Object.entries(pack.features ?? {})) {
+        if (!FEATURE_ID_PATTERN.test(id)) throw new Error(`Invalid feature "${pack.id}/${id}"`);
+        if (feature.settings) {
+          _compileSettingsDefinition(feature.settings);
+          features[resolveName(id, pack.id)] = feature.settings;
+        }
+      }
+    }
+    const next = immutable({ revision: current.revision + 1, appSettings: app, packs, native, sourcePacks });
+    const projection = immutable({ revision: next.revision, app, packs: groups, features, dependencies });
+    byId = new Map(next.packs.map(entry => [entry.snapshot.manifest.id, entry]));
+    current = next;
+    settings = projection;
+    for (const listener of listeners) {
+      try { listener(); }
+      catch (error) { logger.error('Contribution catalog listener failed', error instanceof Error ? error : new Error(String(error))); }
+    }
+  }
 
   return {
     getSnapshot: (): PackCatalogSnapshot => current,
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
-    packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
-      byId.get(packId)?.snapshot.manifest.extensions?.settings ?? emptySettings,
-
-    featureSettings: (ref: FeatureRef): CatalogData<SettingsDefinition> | undefined => {
-      const address = splitRef(ref);
-      return address ? byId.get(address.packId)?.snapshot.manifest.features?.[address.featureId]?.settings : undefined;
+    settings: (): SettingsCatalog => settings,
+    /** Source declarations persist across registration changes, like installed declarations. */
+    setSources(sources: readonly SourcePackDeclaration[]): void {
+      const next = sources.map(source => {
+        const result = ManifestSchema.safeParse(source.manifest);
+        if (!result.success) throw new Error(`Source pack declarations in ${source.dir}: ${result.error.issues.map(issue => issue.message).join('; ')}`);
+        if (_declarationRevision(result.data) !== source.declarationRevision) throw new Error(`Source pack "${result.data.id}" has a stale declaration identity`);
+        return { ...source, manifest: result.data };
+      });
+      publish(current.packs, current.native, next);
     },
+    setNative: (declarations: readonly NativePackDeclaration[]): void => publish(current.packs, declarations),
+    packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
+      hasOwn(settings.packs, packId) ? settings.packs[packId] : emptySettings,
+
+    featureSettings: (ref: FeatureRef): CatalogData<SettingsDefinition> | undefined =>
+      hasOwn(settings.features, ref) ? settings.features[ref] : undefined,
 
     /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
     replace(sources: readonly PackCatalogSource[]): void {
@@ -71,13 +144,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         if (other) throw new Error(`Pack "${id}" is declared twice: ${other.dir} and ${source.dir}`);
         next.set(id, { ...candidate, snapshot: result.snapshot });
       }
-      const snapshot = immutable({ revision: current.revision + 1, appSettings: app, packs: [...next.values()] });
-      byId = new Map(snapshot.packs.map(entry => [entry.snapshot.manifest.id, entry]));
-      current = snapshot;
-      for (const listener of listeners) {
-        try { listener(); }
-        catch (error) { logger.error('Contribution catalog listener failed', error instanceof Error ? error : new Error(String(error))); }
-      }
+      publish([...next.values()], current.native);
     },
 
     onChanged(listener: () => void): () => void {
@@ -85,4 +152,16 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       return () => listeners.delete(listener);
     },
   };
+}
+
+export type ContributionCatalog = ReturnType<typeof createContributionCatalog>;
+
+/** Offline tools refuse incomplete installed definitions instead of treating invalid packs as absent. */
+export function readInstalledContributionCatalog(packsDir: string, disabled: ReadonlySet<string>): ContributionCatalog {
+  const catalog = createContributionCatalog(appSettingsDefinition);
+  catalog.replace(discoverPackDirectories(packsDir).map(dir => {
+    const { snapshot } = readPackArtifact(dir);
+    return { snapshot, dir, enabled: !disabled.has(snapshot.manifest.id) };
+  }));
+  return catalog;
 }

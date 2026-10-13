@@ -8,4 +8,5 @@ export { ROOT_FLOW_ROLE } from './sdk-entities.ts';
 export { SDK_ENTITIES, SDK_REL_KINDS, SDK_EXCLUDED_ENTITY_TYPES } from './sdk-entities.ts';
 export { _reservedEntries } from './reserved-names.ts';
 export type { AppSettings, AppAddress, AppPersonalInfo, AppProject, KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from './app-settings.ts';
-export type { FeatureSettingUpdate, SettingsPath, SettingsValue, FeatureSettingsAccess } from './settings.ts';
+export { settingsTargetPath } from './settings.ts';
+export type { SettingUpdate, SettingsPath, SettingsValue, ReadonlySettingsHandle, SettingsHandle, SettingsTarget, SettingsDocument, SettingsOverrides, SettingsWriteCondition, SettingsSnapshot, SettingsWriteResult } from './settings.ts';

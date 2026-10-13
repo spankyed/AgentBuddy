@@ -112,6 +112,7 @@ export const FACADE_DEFAULTS = {
   PackPluginEvents: '{}',
   PackSystemEvents: '{}',
   PackFeatureSettings: '{}',
+  PackGroupSettings: '{}',
   Services: '{}',
   Repositories: '{}',
 };

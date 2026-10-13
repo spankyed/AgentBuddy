@@ -2,7 +2,6 @@ import { definePlugin } from '@apackdev/sdk/fe';
 import { Bug } from 'lucide-vue-next';
 import state from './state.ts';
 import canvas from './canvas.vue';
-import settings from './settings.vue';
 
 const logsPlugin = definePlugin({
   label: 'Logs',
@@ -10,7 +9,6 @@ const logsPlugin = definePlugin({
   icon: Bug,
   state,
   canvas,
-  settings,
   isPinned: true,
 });
 

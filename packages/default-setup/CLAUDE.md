@@ -27,8 +27,6 @@ src/
     step-types.ts          # Step type augmentation
     flow-helpers.ts        # Typed flow DSL helpers (entry, on, one per step with a dsl node)
     dsl-types-fe.ts        # `dslTypes` for pack-entry-fe.ts, importing dist/defs/monaco/<name>-defs.d.ts
-  app-settings/            # What this pack contributes to the app's settings: its `general` and `assistant`
-                           # sections with their defaults, and the help entries the Help tab shows
   defs/                    # DSL type definitions (action.ts, prompt.ts, database.ts)
   features/                # 11 features (each has be/ and fe/ dirs)
   extensions/              # Cross-cutting concerns
@@ -38,7 +36,7 @@ src/
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     app/                   # Welcome screen app extension
     help/                  # Bundled Markdown help articles
-  content/                   # Content sources: actions, prompts, flows, library, notes, default settings (+ the settings applier)
+  content/                   # Content sources: actions, prompts, flows, library, notes
 ```
 
 ## Features
@@ -55,17 +53,21 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/contract.ts` — the feature's frontend leaf: its plugin's published state, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `apack.json` names it at `features.<id>.plugin.contract`
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
-- `settings.ts` — Per-feature default settings
+- `fe/settings.vue` — Custom settings form; the definition is inline in `apack.json` `features.<id>.settings`
 
 The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**.
 
-Settings is not one of them: the store, its writer and the Settings view are the app's (`host/settings` in
-`@apackdev/host`, drawn by `packages/renderer/src/views/settings`). What this pack contributes is content — each
-feature's `fe/settings.vue` and declarative defaults in `apack.json`, and the remaining `assistant` section it registers
-through `apack.json` `settingsSections` (`src/app-settings/`). A feature reads and writes its own settings with
-`settings.forFeature('<feature>')` from `#generated/settings.ts` on the backend and `useSettings('<feature>')` from
-`#generated/settings-fe.ts` on the frontend. Both derive their types from the schema; custom forms use
-`SettingsOf` and `SettingUpdate` from the frontend module. App preferences use the SDK `AppSettings` contract at `app`; the host supplies their baseline and validation. Section access remains transitional until the planned owner-bound handles land.
+Settings persistence, validation and app preferences belong to the host (`host/settings` in
+`@apackdev/host`); the renderer supplies the Settings view. This pack declares its shared assistant
+name inline in `apack.json` `extensions.settings.assistant`, stored at
+`packs['default-setup'].assistant`. Each feature declares its schema/defaults at
+`features.<id>.settings`, stored under its fully qualified feature ref. Custom forms edit those values;
+they do not supply defaults or assemble an app settings document.
+
+Backend code uses `featureSettings.forFeature('<feature>')` or `packSettings.forGroup('<group>')`
+from `#generated/settings`; frontend feature forms use `useSettings('<feature>')` from
+`#generated/settings-fe`. App preferences follow the SDK `AppSettings` contract at `app`, with
+host-owned defaults and validation. Settings are JSON data declared in the manifest, not compiled content.
 
 Default plugin is Threads.
 
@@ -231,7 +233,15 @@ Model calls go through the host's `services.inference` (AI SDK 7, `provider:mode
 
 ## EARS (Entity types + Relations)
 
-Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `apack.json` by `apack pack generate-entries`. The pack-entry registers the entity types and relation kinds `apack.json` declares. `ears.ts` also names the SDK's own: Relation and the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked). The SDK defines their shapes (import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity` from `@apackdev/sdk`) and owns their repositories (`flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository` from `@apackdev/sdk/repositories`): the flows, actions and prompts repositories here (`flowsQueries`/`flowsCommands`, `actionQueries`/`actionCommands`, `promptQueries`/`promptCommands`) and `brainCommands.updateTNodeResult` expose their methods by reference (`byId: actionRepository.byId`, never a wrapper re-declaring the signature), so this pack's code reaches all its data through `repository`, and add the plugins' views (`connectedData`, `extendedData`, paging, a flow created with its entry node). The root flow is only the flow with the root role: the flows system sends it with its data (`FLOWS_CONNECTED`'s `rootFlow`, again after an import and whenever it is asked to publish) and changes it on `SET_ROOT_FLOW`, and the brain sends the root flow it started with (`BRAIN_STARTED`'s `rootFlowId`), which the Flows and Brain settings compare to offer a restart. No setting records either. Exporting actions and prompts to write files isn't a view: `export-actions.ts` and `export-prompts.ts` beside the repositories read through them. Document, Collection and Note are default-setup's, declared in `apack.json` with their shapes (`DocumentEntity`, `CollectionEntity`, `ContentSection` in `features/library/be/types.ts`; `NoteEntity` in `features/notes/be/types.ts`). Settings isn't: the row is the app's, declared by the host beside `AppState` (`HOST_ENTITY_TYPES`), so no pack may declare it. The app's own state (onboarding, versions, content hashes) isn't settings: it's the host's `AppState`, which this pack never reads; onboarding goes through `services.appData.hasOnboarded()`/`completeOnboarding()`. `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). A feature's settings are stored under its ref (`features['default-setup/threads']`), which any installed feature that declares settings may have. The store, the one writer that checks each next document, and the system that answers for them are the host's (`@apackdev/host`, `packages/apack-host/src/features/settings/`); this pack reaches them only through `services.settings`, which takes a ref rather than a bare name, so a name resolves where it is written (`ref(name)` from `#generated/ref`; actions, which have no generated ref, write `'default-setup/code'`). A write made anywhere — a system, an action, an applier, a migration — reaches the settings system, which then tells each feature whose settings changed, once (`FEATURE_SETTINGS_UPDATED`). What is stored is only what the user changed from the defaults, so a changed default applies to every key the user never set. A refusal is the sender's to fix: whoever asked hears `SETTINGS_SAVED` or `SETTINGS_REFUSED` with the store's reasons — the Settings view for a change made there, and a drive session for one made over its connection — and a form says "Saved" only for a change the store stored. A backup import runs inside `services.settings.whileReplacingData`, which brackets its writes so nothing is told a change in between. The pack's own contribution is content: its `general` and `assistant` sections (`src/app-settings/`, `apack.json` `settingsSections`), each feature's `settings.ts` defaults and `fe/settings.vue` form. Which tabs show and the plugin last open are the host's, in `AppState`. The host keeps TNode out of persistence. API keys aren't entities: Settings → Secrets manages them through the host's `secrets` procedures and `services.secrets`, and CLI path overrides live in the code plugin's settings (`features['default-setup/code'].cliPaths`), which the code feature's CLI resolution reads (`features/code/be/utils/resolve-cli.ts`: `resolveForService`, `testCli`).
+Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `apack.json` by `apack pack generate-entries`. The pack-entry registers the entity types and relation kinds `apack.json` declares. `ears.ts` also names the SDK's own: Relation and the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked). The SDK defines their shapes (import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity` from `@apackdev/sdk`) and owns their repositories (`flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository` from `@apackdev/sdk/repositories`): the flows, actions and prompts repositories here (`flowsQueries`/`flowsCommands`, `actionQueries`/`actionCommands`, `promptQueries`/`promptCommands`) and `brainCommands.updateTNodeResult` expose their methods by reference (`byId: actionRepository.byId`, never a wrapper re-declaring the signature), so this pack's code reaches all its data through `repository`, and add the plugins' views (`connectedData`, `extendedData`, paging, a flow created with its entry node). The root flow is only the flow with the root role: the flows system sends it with its data (`FLOWS_CONNECTED`'s `rootFlow`, again after an import and whenever it is asked to publish) and changes it on `SET_ROOT_FLOW`, and the brain sends the root flow it started with (`BRAIN_STARTED`'s `rootFlowId`), which the Flows and Brain settings compare to offer a restart. No setting records either. Exporting actions and prompts to write files isn't a view: `export-actions.ts` and `export-prompts.ts` beside the repositories read through them. Document, Collection and Note are default-setup's, declared in `apack.json` with their shapes (`DocumentEntity`, `CollectionEntity`, `ContentSection` in `features/library/be/types.ts`; `NoteEntity` in `features/notes/be/types.ts`). Settings isn't: the host declares and owns its persisted row beside `AppState` (`HOST_ENTITY_TYPES`).
+The effective document has three owners: `app`, `packs[packId][groupId]`, and
+`features[featureRef]`. The common catalog supplies definitions even for disabled installed packs;
+the host writer composes defaults and explicit overrides and validates each effective value.
+Reset removes an override; an explicit value equal to a default remains a choice until reset.
+The pack uses owner-bound handles from `#generated/settings`; app-wide replacement and backup
+coordination belong to host services. Forms receive correlated save/refusal results; the host settings system
+publishes feature change notifications after accepted writes. Onboarding completion is lifecycle
+state accessed through `services.appData.hasOnboarded()`/`completeOnboarding()`, not an assistant preference. Which tabs show and the plugin last open are the host's, in `AppState`. The host keeps TNode out of persistence. API keys aren't entities: Settings → Secrets manages them through the host's `secrets` procedures and `services.secrets`, and CLI path overrides live in the code plugin's settings (`features['default-setup/code'].cliPaths`), which the code feature's CLI resolution reads (`features/code/be/utils/resolve-cli.ts`: `resolveForService`, `testCli`).
 
 Import `EARS` from `#generated/ears` by default. The SDK's `EARS` (`@apackdev/sdk`) is fine for `EntityId`, SDK-owned constants and shared EARS types (build facets use it), but its `EARS.Entity` type is open: annotate with it only when any entity name is intended, as the create step's `entityTypeTarget` does (see `packages/apack-sdk/TYPED-EARS.md`).
 
@@ -250,7 +260,6 @@ Logging and actions:
 Content sources compiled to JSON by `apack pack build`, as `apack.json` `content.formats` and `content.sources` describe them. Located in `src/content/`:
 
 - `actions/`, `prompts/`, `flows/` — compiled by the SDK's own compilers (the manifest names their paths and `onUserEdit: "offer"`, the only three entries that declare it: these are the pack's, customised, so a user who has edited one still gets its fixes offered. Every other entry is `theirs`)
-- `default-settings.ts` — the `general` and `assistant` sections' defaults, **not a content item**: `src/app-settings/index.ts` imports it (`getBaseSettings`, which refuses a base file setting a plugin's slice — a feature's own defaults are declared in `apack.json`, which the registry holds under its ref) and the pack's registration contributes it, so nothing about settings is compiled, written to disk or imported into the database
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
 - `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `apack.json` `extensions.commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `src/extensions/help/` — Markdown articles contributed through `apack.json` `extensions.help.path`, bundled into the runtime and displayed by the host Help feature
@@ -371,7 +380,7 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `npm run build:default-setup` from the repo root runs this package's `npm run build`
 - `npm run build:dev` runs `apack pack build --skip-fe`
 - **The pack names its own modules one way: `#` subpath imports.** `#generated/*`, `#features/*`,
-  `#extensions/*` and `#app-settings/*`, declared in `package.json` `imports` — a Node standard that Node,
+  `#extensions/*`, declared in `package.json` `imports` — a Node standard that Node,
   Vite and esbuild all resolve with no configuration, and private to this package by construction. It replaced
   a `@/…` TypeScript `paths` mapping that no runtime reads, which four separate bundler configs each had to
   re-implement; `check:specifiers` refuses a `@/` specifier here now.

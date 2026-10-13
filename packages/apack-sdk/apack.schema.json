@@ -618,11 +618,6 @@
       "additionalProperties": false,
       "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
     },
-    "settingsSections": {
-      "type": "string",
-      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"features\" section the app keeps itself. \"path#exportName\" of a function returning them; it is evaluated during pack registration."
-    },
     "boot": {
       "type": "object",
       "properties": {

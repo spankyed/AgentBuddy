@@ -536,8 +536,6 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
-  settingsSections: ExportTargetSchema
-    .describe('Sections of the app settings this pack owns, with their defaults, beside the "features" section the app keeps itself. "path#exportName" of a function returning them; it is evaluated during pack registration.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),

@@ -1138,7 +1138,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     }>>;
-    settingsSections: z.ZodOptional<z.ZodString>;
     boot: z.ZodOptional<z.ZodObject<{
         hooks: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
@@ -1386,22 +1385,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
-    hostVersion?: string | undefined;
-    license?: string | undefined;
-    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entityShapes?: Record<string, {
-        type: string;
-        source: string;
-    }> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1429,6 +1412,22 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
+    }> | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1489,7 +1488,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
     } | undefined;
@@ -1535,22 +1533,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
-    hostVersion?: string | undefined;
-    license?: string | undefined;
-    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entityShapes?: Record<string, {
-        type: string;
-        source: string;
-    }> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1571,6 +1553,22 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
+    }> | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1624,7 +1622,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
     } | undefined;
@@ -1670,22 +1667,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
-    hostVersion?: string | undefined;
-    license?: string | undefined;
-    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entityShapes?: Record<string, {
-        type: string;
-        source: string;
-    }> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1713,6 +1694,22 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
+    }> | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1773,7 +1770,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
     } | undefined;
@@ -1819,22 +1815,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
-    hostVersion?: string | undefined;
-    license?: string | undefined;
-    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entityShapes?: Record<string, {
-        type: string;
-        source: string;
-    }> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1855,6 +1835,22 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
+    }> | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -1908,7 +1904,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
     } | undefined;
@@ -1954,22 +1949,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
-    $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
-    builtIn?: boolean | undefined;
-    hostVersion?: string | undefined;
-    license?: string | undefined;
-    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entityShapes?: Record<string, {
-        type: string;
-        source: string;
-    }> | undefined;
     features?: Record<string, {
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
@@ -1997,6 +1976,22 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
+    }> | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
+    $schema?: string | undefined;
+    $manifestVersion?: 1 | undefined;
+    builtIn?: boolean | undefined;
+    hostVersion?: string | undefined;
+    license?: string | undefined;
+    permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entityShapes?: Record<string, {
+        type: string;
+        source: string;
     }> | undefined;
     extensions?: {
         services?: Record<string, string> | undefined;
@@ -2057,7 +2052,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     } | undefined;
-    settingsSections?: string | undefined;
     boot?: {
         hooks?: string | undefined;
     } | undefined;
@@ -2621,7 +2615,7 @@ export interface Track {
 }
 
 // @public
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id'>>): PackValidation;
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions'>>): PackValidation;
 
 // @public (undocumented)
 export function validateFlowDSL(dsl: unknown, options?: ValidateOptions): ValidationResult;

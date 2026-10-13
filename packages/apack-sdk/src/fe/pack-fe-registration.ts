@@ -12,6 +12,8 @@ import type { StepDefinition } from '../steps/types.ts';
  */
 export interface PackFEFeature {
   plugin?: PluginDefinition;
+  /** Custom presentation for this feature's declared preferences, independent of its plugin. */
+  settingsForm?: Component;
   /** The role the feature plays (apack.json `features[].designation`) */
   designation?: string;
   /** This pack's plugin to open when the app starts; only a feature with a plugin claims it */
@@ -24,8 +26,12 @@ export interface PackFERegistration {
   declarationRevision?: string;
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;
+  /** The host injects accepted caller authority; unloading revokes it. */
+  bindSettings?: (settings: import('./settings.ts').SettingsPort) => () => void;
   /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each plugin runs at `<packId>/<featureId>` */
   features?: Record<string, PackFEFeature>;
+  /** Pack settings group id → its declared custom form. */
+  settingsForms?: Record<string, Component>;
   steps?: StepDefinition[];
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;

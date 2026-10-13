@@ -3,6 +3,7 @@
 import type { ShellClient, ShellFailure } from '@apackdev/host/fe';
 import { trpc, reconnectApiClient } from '@/transport';
 import { globalToast } from '@/adapters/toast';
+import { windowSettings, connectWindowSettings, disconnectWindowSettings } from '@/runtime/settings';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /** What the Electron main process reports about the API process */
@@ -44,16 +45,21 @@ export const feClient: ShellClient = {
     const subscribeToBus = () => trpc.bus.sub.subscribe(undefined, {
       // Each time this window's subscription is established: the server has sent this connection's
       // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
-      onStarted: () => connection.onConnected(),
+      onStarted: () => {
+        void connectWindowSettings().then(ready => { if (ready) connection.onConnected(); })
+          .catch(error => { connection.onDisconnected(); connection.onFailed(String(error)); });
+      },
       // The socket dropped: the subscription is established again when it reconnects
       onConnectionStateChange: ({ state }) => {
-        if (state === 'connecting') connection.onDisconnected();
+        if (state === 'connecting') { disconnectWindowSettings(); connection.onDisconnected(); }
       },
       onError: (error: unknown) => {
         console.error('Error in subscription:', error);
+        disconnectWindowSettings();
+        connection.onDisconnected();
         connection.onFailed(String(error));
       },
-      onData: (message) => connection.onMessage(message),
+      onData: (message) => { if (!windowSettings.receive(message)) connection.onMessage(message); },
     });
     let subscription = subscribeToBus();
 
@@ -75,12 +81,15 @@ export const feClient: ShellClient = {
         return;
       }
       if (event.type === 'api:fatal' || event.type === 'api:stopped' || event.type === 'api:error') {
+        disconnectWindowSettings();
+        connection.onDisconnected();
         connection.onFailed(failureOf(event));
       }
     });
 
     return () => {
       subscription.unsubscribe();
+      disconnectWindowSettings();
       stopStatus?.();
     };
   },

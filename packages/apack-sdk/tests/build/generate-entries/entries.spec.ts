@@ -28,7 +28,7 @@ describe('generated ref', () => {
       { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
-      "export type FeatureName = 'memos' | 'jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
+      "export type FeatureName = 'memos' | 'demo-pack/memos' | 'jobs' | 'demo-pack/jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
     );
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });
@@ -446,4 +446,22 @@ describe('generated block registrations', () => {
     write('src/blocks/aside.ts', 'export const asideFacet = {};\n');
     await expect(generate({ blocks: { rating: { be: 'src/blocks/aside.ts#missing' } } })).rejects.toThrow('Block "rating": be: src/blocks/aside.ts doesn\'t export "missing"');
   });
+});
+
+
+it('wires declared feature and group forms without inventing a plugin or importing them into the backend', async () => {
+  const definition = { schema: { type: 'object' }, defaults: {} };
+  write('src/feature.vue', '<template><div>Feature</div></template>');
+  write('src/group.vue', '<template><div>Group</div></template>');
+  const files = await generate({
+    features: [{ id: 'shared', settings: { ...definition, form: 'src/feature.vue' } }],
+    extensions: { settings: { shared: { ...definition, form: 'src/group.vue' } } },
+  });
+  const frontend = files['src/__generated__/pack-entry-fe.ts'];
+  expect(frontend).toContain("import __settingsFeature_shared from '../feature.vue'");
+  expect(frontend).toContain("import __settingsGroup_shared from '../group.vue'");
+  expect(frontend).toContain("'shared': { settingsForm: __settingsFeature_shared }");
+  expect(frontend).toContain("settingsForms: { 'shared': __settingsGroup_shared }");
+  expect(frontend).not.toContain('plugin:');
+  expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/import .*feature.vue|import .*group.vue/);
 });

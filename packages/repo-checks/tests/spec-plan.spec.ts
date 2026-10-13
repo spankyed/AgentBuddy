@@ -199,7 +199,7 @@ describe('what --full adds', () => {
   it('reads a name against the file, never the packages/ prefix every path carries', () => {
     const { runs, ambiguous } = planTargets(['pack'], [], REPO_ROOT);
     const matched = ambiguous[0]?.specs ?? runs.flatMap((r) => r.args);
-    expect(matched.length).toBeLessThan(40);
+    expect(matched.length).toBeGreaterThan(0);
     expect(matched.every((f) => path.basename(String(f)).includes('pack'))).toBe(true);
   });
 

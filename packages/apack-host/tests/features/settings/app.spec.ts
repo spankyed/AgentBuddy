@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it } from 'vitest';
-import { untypedQx, untypedTx } from '@apackdev/ears';
+import { installedEngine, untypedQx, untypedTx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { resetTestData } from '@apackdev/sdk/testing';
 import { generateSettingsTypes } from '@apackdev/sdk/build';
@@ -10,7 +10,7 @@ import { createSettingsStore } from '../../../src/features/settings/be/store.ts'
 
 const id = 'Settings-app' as EARS.EntityId;
 beforeEach(() => resetTestData());
-const store = () => createSettingsStore({ defaults: () => ({ features: {} }) });
+const store = () => createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
 
 it('derives the public SDK types from the host definition', async () => {
   const generated = await generateSettingsTypes(appSettingsDefinition, 'AppSettings');
@@ -20,15 +20,15 @@ it('derives the public SDK types from the host definition', async () => {
 
 it('provides and resets app preferences without default-setup and owns returned values', () => {
   const settings = store();
-  expect(settings.getSection('app')).toEqual(appSettingsDefinition.defaults);
+  expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
   expect(untypedQx(id).pickOne(['data'])).toBeNull();
-  const first = settings.getSection<any>('app');
+  const first = settings.get<{ hotkeys: { switchPluginUp: { modifiers: string[] } } }>({ kind: 'app' });
   first.hotkeys.switchPluginUp.modifiers.push('changed');
-  expect(settings.getSection('app')).toEqual(appSettingsDefinition.defaults);
-  settings.setSectionValue('app', ['personal', 'name'], 'Ada');
-  expect(settings.getStored()).toEqual({ app: { personal: { name: 'Ada' } } });
-  settings.removeStored(['app', 'personal', 'name']);
-  expect(settings.getSection('app')).toEqual(appSettingsDefinition.defaults);
+  expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
+  settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada');
+  expect(settings.getOverrides()).toEqual({ app: { personal: { name: 'Ada' } } });
+  settings.removeOverrides(['app', 'personal', 'name']);
+  expect(settings.get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
 });
 
 it.each([
@@ -38,8 +38,8 @@ it.each([
   [['unknown'], true],
 ])('refuses invalid app writes at %j without storing them', (path, value) => {
   const settings = store();
-  expect(() => settings.setSectionValue('app', path as string[], value)).toThrow('App');
-  expect(settings.getStored()).toEqual({});
+  expect(() => settings.set({ kind: 'app' }, path as string[], value)).toThrow();
+  expect(settings.getOverrides()).toEqual({});
 });
 
 it('refuses writes retaining invalid app values, including an unchanged replacement', () => {
@@ -48,17 +48,23 @@ it('refuses writes retaining invalid app values, including an unchanged replacem
   const settings = store();
   const heard: string[] = [];
   settings.onChange(change => heard.push(change));
-  expect(() => settings.setSectionValue('app', ['personal', 'name'], 'Ada')).toThrow('App');
-  expect(() => settings.replaceAll(settings.getAll())).toThrow('App');
-  expect(settings.getStored()).toEqual(data);
+  expect(() => settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada')).toThrow();
+  expect(() => settings.replaceAll(settings.getAll())).toThrow();
+  expect(settings.getOverrides()).toEqual(data);
   expect(heard).toEqual([]);
-  settings.removeStored(['app', 'projects']);
-  settings.setSectionValue('app', ['personal', 'name'], 'Ada');
-  expect(settings.getStored()).toEqual({ app: { personal: { name: 'Ada' } } });
+  settings.removeOverrides(['app', 'projects']);
+  settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada');
+  expect(settings.getOverrides()).toEqual({ app: { personal: { name: 'Ada' } } });
 });
 
-it('does not accept pack defaults for app preferences', () => {
-  expect(() => registry.registerPack({ id: 'app-claim', settingsSections: () => ({ app: {} }) })).toThrow('App preferences belong to the host');
+it('keeps a pack group named app separate from host preferences', () => {
+  registry.registerPack({ id: 'app-claim', settings: { app: {
+    schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }, defaults: { name: 'pack value' },
+  } } });
+  try {
+    expect(store().get({ kind: 'app' })).toEqual(appSettingsDefinition.defaults);
+    expect(store().get({ kind: 'pack', packId: 'app-claim', groupId: 'app' })).toEqual({ name: 'pack value' });
+  } finally { registry.unregisterPack('app-claim'); }
 });
 
 it('refuses newly missing required fields in feature arrays too', () => {
@@ -68,9 +74,9 @@ it('refuses newly missing required fields in feature arrays too', () => {
     } } }, required: ['items'] },
   } } } });
   try {
-    const settings = createSettingsStore({ defaults: () => ({ features: { 'array-settings/entries': { items: [] } } }) });
-    expect(() => settings.setFeatureSetting('array-settings/entries' as never, ['items'], [{}])).toThrow('name');
-    expect(settings.getStored()).toEqual({});
+    const settings = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
+    expect(() => settings.set({ kind: 'feature', featureRef: 'array-settings/entries' as import('@apackdev/sdk/ids').FeatureRef }, ['items'], [{}])).toThrow('name');
+    expect(settings.getOverrides()).toEqual({});
   } finally { registry.unregisterPack('array-settings'); }
 });
 
@@ -78,8 +84,34 @@ it('refuses unknown root sections even when unchanged', () => {
   const data = { obsolete: { value: true } };
   untypedTx(id, true).put('entityType', 'Settings').put('data', data);
   const settings = store();
-  expect(() => settings.setSectionValue('app', ['personal', 'name'], 'Ada')).toThrow('settings section');
-  expect(settings.getStored()).toEqual(data);
-  settings.removeStored(['obsolete']);
-  expect(settings.getStored()).toEqual({});
+  expect(() => settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada')).toThrow('settings owner');
+  expect(settings.getOverrides()).toEqual(data);
+  settings.removeOverrides(['obsolete']);
+  expect(settings.getOverrides()).toEqual({});
+});
+
+
+it('notifies a caller-bound handle when declared defaults change and stops on unsubscribe', async () => {
+  const { createContributionCatalog } = await import('../../../src/packs/catalog.ts');
+  const { createSettingsService } = await import('../../../src/services/settings.ts');
+  const { _settingsHandle } = await import('@apackdev/sdk/services');
+  const catalog = createContributionCatalog(appSettingsDefinition);
+  const declaration = (name: string) => ({ id: 'observed', settings: { assistant: {
+    schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false },
+    defaults: { name },
+  } } });
+  catalog.setNative([declaration('Ada')]);
+  const settings = createSettingsStore({ ears: installedEngine, catalog: catalog.settings, onCatalogChanged: catalog.onChanged });
+  const service = createSettingsService(settings).forPack('observed');
+  const handle = _settingsHandle<{ name: string }>({ kind: 'pack', packId: 'observed', groupId: 'assistant' }, service);
+  const heard: string[] = [];
+  const stop = handle.onChange(value => heard.push(value.name));
+  catalog.setNative([declaration('Grace')]);
+  handle.set({ path: ['name'], value: 'User choice' });
+  catalog.setNative([declaration('Changed baseline')]);
+  expect(heard).toEqual(['Grace', 'User choice', 'User choice']);
+  expect(handle.get()).toEqual({ name: 'User choice' });
+  stop();
+  catalog.setNative([declaration('After unsubscribe')]);
+  expect(heard).toHaveLength(3);
 });

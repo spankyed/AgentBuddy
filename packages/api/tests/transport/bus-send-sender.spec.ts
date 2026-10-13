@@ -19,6 +19,7 @@ import type { Message } from '@apackdev/sdk/events';
 
 const received: Message[] = [];
 vi.mock('@apackdev/host/bus', () => ({
+  HOST: { settings: 'host/settings', drive: 'host/drive' },
   receiveClientEvent: (_registry: unknown, message: Message) => { received.push(message); },
   UnknownClientEventError: class extends Error {},
 }));

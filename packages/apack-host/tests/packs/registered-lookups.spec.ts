@@ -11,7 +11,7 @@ import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
-import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { getPackCommands, getSettingsCatalog, onSettingsCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
@@ -328,7 +328,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(importCompiledContent({ compiledDir: contentOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.features).not.toHaveProperty('refused/cards');
+    expect(getSettingsCatalog().features).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -336,7 +336,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_contentWriterRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.features).toHaveProperty('incumbent/notes');
+    expect(getSettingsCatalog().features).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
@@ -359,21 +359,21 @@ describe('feature settings defaults', () => {
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
-    const unsubscribe = onPackSettingsDefaultsChanged(changed);
-    const before = getPackSettingsDefaults().revision;
+    const unsubscribe = onSettingsCatalogChanged(changed);
+    const before = getSettingsCatalog().revision;
 
     add({ id: 'memo-pack', features: { memos } });
     add({ id: 'card-pack', features: { cards } });
-    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { sort: 'newest' } } });
-    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
-    expect(getPackSettingsDefaults().revision).toBeGreaterThan(before);
+    expect(getSettingsCatalog().features).toEqual({ 'memo-pack/memos': memos.settings });
+    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
+    expect(getSettingsCatalog().revision).toBeGreaterThan(before);
     expect(changed).toHaveBeenCalled();
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
-    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
+    expect(getSettingsCatalog().features).toEqual({});
+    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
+    expect(getSettingsCatalog().features).toEqual({});
 
     // after unsubscribing, a further change tells this listener nothing
     const afterRemoving = changed.mock.calls.length;

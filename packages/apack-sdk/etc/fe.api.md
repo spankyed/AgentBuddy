@@ -129,6 +129,12 @@ export interface ContextMenuItem {
 // @public (undocumented)
 export type ContextMenuMeta = ContextMenuItem[] | ((context: never) => ContextMenuItem[]);
 
+// @internal
+export function _createFeSettings(): {
+    bindSettings(source: SettingsPort): () => void;
+    useSettings<T>(target: SettingsTarget): FeSettingsHandle<T>;
+};
+
 // @public (undocumented)
 export function createHotkeyProcessor<const TMap extends Record<string, string>, TContext extends {
     hotkeys: HotkeysMap;
@@ -179,6 +185,14 @@ export type ExtractEvent<TEvent extends {
 }, TType extends TEvent['type']> = Extract<TEvent, {
     type: TType;
 }>;
+
+// @public (undocumented)
+export interface FeSettingsHandle<T> extends ReadonlyFeSettingsHandle<T> {
+    // (undocumented)
+    reset(): Promise<SettingsWriteResult>;
+    // (undocumented)
+    set(update: SettingUpdate<T>): Promise<SettingsWriteResult>;
+}
 
 // @public (undocumented)
 export function getDesignated(role: string): FeatureRef;
@@ -518,6 +532,7 @@ export interface PackFEFeature {
     designation?: string;
     // (undocumented)
     plugin?: PluginDefinition;
+    settingsForm?: Component;
 }
 
 // @public
@@ -526,12 +541,14 @@ export interface PackFERegistration {
     appExtensions?: Record<string, Component>;
     // (undocumented)
     artifacts?: ArtifactDefinition[];
+    bindSettings?: (settings: SettingsPort) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
     declarationRevision?: string;
     dslTypes?: Record<string, DslTypeConfig>;
     features?: Record<string, PackFEFeature>;
     id: string;
+    settingsForms?: Record<string, Component>;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
@@ -569,8 +586,6 @@ interface Plugin_2 {
     };
     // (undocumented)
     panel?: Component;
-    // (undocumented)
-    settings?: Component;
     // (undocumented)
     state: AnyStateMachine;
 }
@@ -636,10 +651,13 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
 
 // @public
-export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
+export interface ReadonlyFeSettingsHandle<T> {
+    // (undocumented)
+    value: Readonly<Ref<T | undefined>>;
+}
 
 // @public
-export function resetSettings(target?: SettingsTarget): void;
+export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -684,36 +702,46 @@ export interface SecretsSnapshot {
 
 // @public
 export interface SettingsPort {
-    feature<T = unknown>(ref: FeatureRef): T | undefined;
-    reset(target?: SettingsTarget): void;
-    saveStatus(): SettingsSaveStatus;
-    section<T = unknown>(name: string): T | undefined;
+    // (undocumented)
+    get<T = unknown>(target: SettingsTarget): T | undefined;
+    // (undocumented)
+    reset(target: SettingsTarget): Promise<SettingsWriteResult>;
+    // (undocumented)
+    status(): 'loading' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
     subscribe(listener: () => void): () => void;
-    update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+    update(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): Promise<SettingsWriteResult>;
 }
 
 // @public
 export interface SettingsSaveStatus {
     // (undocumented)
-    problems: string[];
+    problems: readonly string[];
     // (undocumented)
     status: 'idle' | 'saving' | 'saved' | 'refused';
 }
 
 // @public
 export type SettingsTarget = {
-    section: string;
+    kind: 'app';
 } | {
-    feature: FeatureRef;
+    kind: 'pack';
+    packId: string;
+    groupId: string;
+} | {
+    kind: 'feature';
+    featureRef: `${string}/${string}`;
 };
 
 // @public
-export interface SettingUpdate {
-    // (undocumented)
-    path: string[];
-    // (undocumented)
+export type SettingUpdate<T = unknown> = (unknown extends T ? {
+    path: readonly string[];
     value: unknown;
-}
+} : SettingsPath<T> extends infer P ? P extends readonly string[] ? {
+    path: P;
+    value: Exclude<SettingsValue<T, P>, undefined>;
+} : never : never) & {
+    condition?: SettingsWriteCondition;
+};
 
 // @public
 export interface Shell {
@@ -843,17 +871,13 @@ export type TrailClickEvent<TInfo = unknown> = {
 export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public
-export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
+export function useAppSettings(): Readonly<Ref<AppSettings | undefined>>;
 
-// @public
+// @public (undocumented)
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
 
-// @public
-export function _useFeatureSettings<T>(feature: FeatureRef): {
-    value: Readonly<Ref<T | undefined>>;
-    set(update: FeatureSettingUpdate<T>): void;
-    reset(): void;
-};
+// @public (undocumented)
+export function usePackSettings<T = unknown>(packId: string, groupId: string): Readonly<Ref<T | undefined>>;
 
 // @public
 export function usePlugin<T>(): T;
@@ -862,14 +886,14 @@ export function usePlugin<T>(): T;
 export function useSettingsDraft<T>(read: () => T): Ref<T>;
 
 // @public
-export function useSettingsSave(): {
+export function useSettingsSave(writer: Pick<SettingsPort, 'update' | 'reset'>): {
     save: Readonly<Ref<SettingsSaveStatus>>;
     update: SettingsPort['update'];
     reset: SettingsPort['reset'];
 };
 
 // @public
-export function useSettingsSection<T = unknown>(name: string): Readonly<Ref<T | undefined>>;
+export function useSettingsStatus(): Readonly<Ref<ReturnType<SettingsPort['status']>>>;
 
 // @public
 export function useShell(): Shell;

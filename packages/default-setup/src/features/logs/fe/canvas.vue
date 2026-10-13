@@ -350,7 +350,8 @@ import { untypedOpenPlugin } from '@apackdev/sdk/fe'
 import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { updateSettings } from '@apackdev/sdk/fe'
+import { useSettings } from '#generated/settings-fe.ts'
+const preferences = useSettings('logs')
 import { ref as featureRef } from '#generated/ref.ts'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search.ts';
 
@@ -630,14 +631,7 @@ const closeContextMenu = () => {
 const toggleShowAppEvents = () => {
   const next = !settings.value.showAppEvents;
 
-  // Optimistic local update so the toggle state flips immediately.
-  actor.send({
-    type: 'FEATURE_SETTINGS_UPDATED',
-    settings: { ...settings.value, showAppEvents: next }
-  });
-
-  // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  updateSettings({ feature: featureRef('logs') }, ['showAppEvents'], next);
+  void preferences.set({ path: ['showAppEvents'], value: next });
 };
 
 const excludeSource = (source: string) => {
@@ -648,17 +642,7 @@ const excludeSource = (source: string) => {
     // Add the new source
     const updatedSources = [...currentExcludedSources, source];
 
-    // Optimistically update the local logs state
-    actor.send({
-      type: 'FEATURE_SETTINGS_UPDATED',
-      settings: {
-        ...settings.value,
-        excludedSources: updatedSources
-      }
-    });
-
-    // Send update to settings (this will persist it and eventually send it back)
-    updateSettings({ feature: featureRef('logs') }, ['excludedSources'], updatedSources);
+    void preferences.set({ path: ['excludedSources'], value: updatedSources });
   }
 
   closeContextMenu();

@@ -300,19 +300,20 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it("registers the runtime's content writers and feature settings with the pack", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
-    const { getPackSettingsDefaults } = await import('@apackdev/sdk/framework');
+    const { getSettingsCatalog } = await import('@apackdev/sdk/framework');
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `));
+    `), { features: { widget: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } });
 
+    registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks();
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_contentWriterRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ features: { 'settings-pack/widget': { size: 3 } } });
-      expect(getPackSettingsDefaults().visibility).toEqual({ 'settings-pack/widget': false });
+      expect(getSettingsCatalog().features).toEqual({ 'settings-pack/widget': { defaults: { size: 3 }, schema: { type: 'object' } } });
+      expect(registry.pluginDefaults()).toEqual({ 'settings-pack/widget': false });
     } finally {
       registry.unregisterPack('settings-pack');
     }
@@ -1060,6 +1061,16 @@ describe('contentRevision', () => {
 });
 
 describe('loaded packs: the packs.loaded entries', () => {
+  it('publishes the declaration and artifact identities accepted by the installed backend loader', () => {
+    const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'identity', { id: 'identity', name: 'Identity', version: '1.0.0' });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
+    sealPack(dir);
+    const [accepted] = loadExternalPacks();
+    expect(accepted.origin.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
+    expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin] })[0]).toMatchObject({
+      id: 'identity', declarationRevision: accepted.origin.declarationRevision, artifactRevision: accepted.origin.artifactRevision,
+    });
+  });
   // Every pack is listed, with the files the renderer fetches its frontend from when it has them. A pack
   // the app ships keeps its built files in `dist/`, which is the only thing that differs
   it('lists every pack, with where to fetch each frontend from', () => {

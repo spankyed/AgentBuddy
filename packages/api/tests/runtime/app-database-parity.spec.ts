@@ -48,6 +48,13 @@ async function bootApi() {
   return app;
 }
 
+function closeApi(app: Awaited<ReturnType<typeof bootApi>>) {
+  app.packs.runShutdownHooks();
+  for (const pack of app.packs.loadedPacks()) app.packs.unregisterPack(pack.id);
+  app.store.close();
+  unbindHost();
+}
+
 /**
  * Installs an external pack declaring its own entity type, as `apack pack install` leaves one: the API registers its
  * runtime, the tool reads the manifest beside it
@@ -77,13 +84,12 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     startPacks(first.packs);
     untypedTx('Note-parity', true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
     untypedTx('TNode-parity', true).put('entityType', 'TNode').put('status', 'done');
-    first.store.close();
-    unbindHost();
+    closeApi(first);
 
     const api = await bootApi();
     const fromApi = snapshot(api.engine.query);
-    api.store.close();
-    unbindHost();
+    const types = api.packs.getRegisteredEntityTypes();
+    closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
     const fromTool = snapshot(db.query);
@@ -98,7 +104,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
     // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
     // tests/database/partition-policy.spec.ts is where that routing is asserted
-    expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
+    expect(db.schema.getRegisteredEntityTypes()).toEqual(types);
   });
 });
 
@@ -107,8 +113,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
 describe('what the tool writes', () => {
   it('lands where the API reads it, the excluded types in the volatile partition', async () => {
     const booted = await bootApi();
-    booted.store.close();
-    unbindHost();
+    closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
     untypedTx('Note-tool', true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
@@ -124,8 +129,7 @@ describe('what the tool writes', () => {
       expect(api.engine.query.getAttr('TNode-tool', 'status')).toBeNull();
       expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
-      api.store.close();
-      unbindHost();
+      closeApi(api);
     }
   });
 });
@@ -138,13 +142,12 @@ describe('an installed external pack', () => {
 
     const api = await bootApi();
     const types = [...api.packs.getRegisteredEntityTypes()];
-    api.store.close();
-    unbindHost();
+    closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
     try {
       expect(types).toContain('Memo');
-      expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
+      expect(db.schema.getRegisteredEntityTypes()).toEqual(new Set(types));
       expect(db.schema.entities.Memo).toBe('Memo');
     } finally {
       db.close();

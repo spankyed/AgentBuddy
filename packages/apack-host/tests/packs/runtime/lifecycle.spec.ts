@@ -194,20 +194,17 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
-  // Its contributions come out one at a time and one can fail — a settings listener that throws is enough.
-  // The pack is unregistered either way, so the rest of the teardown still has to run, its systems stopped
-  // and the systems still up told; and what failed has to be reported as that, not as a pack nobody had
-  // registered.
-  it('finishes tearing a pack down when one of its contributions will not come out', async () => {
+  // Subscriber failures cannot interrupt publication or pack teardown.
+  it('finishes teardown when a catalog subscriber throws', async () => {
     const { teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { onPackSettingsDefaultsChanged } = await import('@apackdev/sdk/framework');
+    const { onSettingsCatalogChanged } = await import('@apackdev/sdk/framework');
     const { testRootEvents } = await import('@apackdev/sdk/testing');
 
     registry.registerPack({
       id: 'stuck-pack',
       features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: { type: 'object' } } } },
     });
-    const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
+    const stopListening = onSettingsCatalogChanged(() => { throw new Error('a settings listener threw'); });
 
     // The cause is on the event, not in its text: the logger puts an error in `stack`/`meta`
     const logged: string[] = [];
@@ -222,6 +219,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     expect(registry.getPackRegistration('stuck-pack')).toBeNull();
     expect(bus.send.mock.calls.map(([event]) => event.type)).toContain('PACK_CHANGED');
+    expect(logged.join('\n')).toContain('Contribution catalog listener failed');
     expect(logged.join('\n')).toContain('a settings listener threw');
     expect(logged.join('\n')).not.toContain('was not previously registered');
   });

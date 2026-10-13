@@ -1,3 +1,4 @@
+import { carrySettingsRequest } from '../features/settings/be/access.ts';
 // The backend bus: spawns the registered systems, routes client events to them and their events to
 // clients. The app composes it with its event sources and client sink (createAppBus, app-bus.ts); the pack
 // test harness runs the same machine with a recording sink.
@@ -291,7 +292,9 @@ export function createBusMachine(options: BusOptions) {
         // before a guard runs, so the event is the only channel to one.
         if (actor) {
           reportUndeclared(to, incoming.type, event.message);
-          deliverAs({ to, sender, client, call }, () => actor.send({ ...incoming, ..._callOn(event.message) }));
+          const delivered = { ...incoming, ..._callOn(event.message) };
+          carrySettingsRequest(incoming, delivered);
+          deliverAs({ to, sender, client, call }, () => actor.send(delivered));
         }
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {

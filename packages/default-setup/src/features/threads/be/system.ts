@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';

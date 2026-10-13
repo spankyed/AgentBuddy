@@ -6,7 +6,7 @@ import { startTestRuntime } from '@apackdev/sdk/testing';
 import { services } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
-import { getPackSettingsDefaults, type PackRegistration } from '@apackdev/sdk/framework';
+import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
@@ -43,8 +43,8 @@ describe('two registries in one process', () => {
     expect(Object.keys(bound.getRegisteredServices())).toEqual(['memoService']);
     expect(Object.keys(other.getRegisteredServices())).toEqual(['cardService']);
 
-    expect(bound.settingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
-    expect(other.settingsDefaults().settings).toEqual({ features: { 'card-pack/cards': { from: 'card-pack' } } });
+    expect(bound.settingsCatalog().features).toEqual({ 'memo-pack/memos': { defaults: { from: 'memo-pack' }, schema: { type: 'object' } } });
+    expect(other.settingsCatalog().features).toEqual({ 'card-pack/cards': { defaults: { from: 'card-pack' }, schema: { type: 'object' } } });
   });
 
   it('let the SDK read only the bound one', () => {
@@ -54,7 +54,7 @@ describe('two registries in one process', () => {
     expect(stepRegistry.has('card_step')).toBe(false);
     expect(services.memoService).toEqual({ from: 'memo-pack' });
     expect(services.cardService).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
+    expect(getSettingsCatalog().features).toEqual(bound.settingsCatalog().features);
   });
 
   it("hold their own loaded packs, not one list between them", () => {

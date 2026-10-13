@@ -17,6 +17,18 @@ import { History, HardDriveDownload } from 'lucide-vue-next'
 export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
 
+/** Database replacement invalidates row results and outstanding requests, not the query editor or preferences. */
+function emptyDatabaseResults() {
+  return {
+    queryResult: null, isLoading: false, error: null, executionTime: null,
+    pendingQueryCall: null, pendingTransactionCall: null, selectedSchemaItem: null,
+    isAiQueryLoading: false, isRefreshing: false,
+    traceFlows: [], currentFlowId: null, flowEvents: [], expandedNodes: new Set<string>(),
+    nodeDetails: new Map<string, import('@apackdev/sdk').TNodeEntity>(), isLoadingTrace: false,
+    tracePagination: { offset: 0, limit: 50, hasMore: false },
+  };
+}
+
 /**
  * `OutgoingDatabaseEvents` and nothing of its own.
  *
@@ -25,14 +37,7 @@ export type DatabaseState = ActorRefFrom<typeof databaseState>
  * anywhere, so a field the backend adds reads as checked here when nothing checks it.
  */
 type SystemEvent = OutgoingDatabaseEvents |
-  { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
-  { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
-  { type: 'EXPORT_DATABASE_ERROR'; error: string } |
-  { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
-  { type: 'IMPORT_DATABASE_ERROR'; error: string; unknownDatabases?: string[] } |
-  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null } |
-  { type: 'RESET_DATABASE_SUCCESS'; message: string } |
-  { type: 'RESET_DATABASE_ERROR'; error: string }
+  { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -480,10 +485,12 @@ const databaseState = setup({
     })),
 
     importFinished: assign(({ event }) => ({
+      ...(event.type === 'IMPORT_DATABASE_SUCCESS' ? emptyDatabaseResults() : {}),
       importing: false,
       backupResult: {
         operation: 'import' as const,
         error: event.type === 'IMPORT_DATABASE_ERROR' ? event.error : undefined,
+        ...(event.type === 'IMPORT_DATABASE_SUCCESS' ? { message: event.message } : {}),
         ...(event.type === 'IMPORT_DATABASE_ERROR' && event.unknownDatabases ? { unknownDatabases: event.unknownDatabases } : {}),
       },
     })),
@@ -495,9 +502,7 @@ const databaseState = setup({
       });
     },
 
-    handleResetSuccess: () => {
-      window.location.reload();
-    },
+    handleResetSuccess: assign(emptyDatabaseResults),
 
     handleResetError: assign(({ event }) => {
       const ev = typeOf('RESET_DATABASE_ERROR', event);
@@ -509,43 +514,24 @@ const databaseState = setup({
 }).createMachine({
   id,
   initial: 'explorer',
-  context: {
+  context: () => ({
+    ...emptyDatabaseResults(),
     schema: {
       entities: [],
       attributes: [],
       relations: [],
     },
     currentQuery: exampleQuery,
-    queryResult: null,
-    isLoading: false,
-    error: null,
-    executionTime: null,
-    pendingQueryCall: null,
-    pendingTransactionCall: null,
-    selectedSchemaItem: null,
     mode: 'query',
-    isAiQueryLoading: false,
-    isRefreshing: false,
     settings: null,
     // Trace viewer fields
     viewMode: 'database',
-    traceFlows: [],
-    currentFlowId: null,
-    flowEvents: [],
-    expandedNodes: new Set(),
-    nodeDetails: new Map(),
-    isLoadingTrace: false,
-    tracePagination: {
-      offset: 0,
-      limit: 50,
-      hasMore: false,
-    },
     // Backup fields
     backupInfo: null,
     exporting: false,
     importing: false,
     backupResult: null,
-  },
+  }),
   on: {
     ...TRAIL_CLICK([
       ['.explorer', 'explorer'],

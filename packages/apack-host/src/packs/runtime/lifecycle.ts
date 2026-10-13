@@ -73,6 +73,7 @@ export function activatePack(
   busActor: import('xstate').AnyActorRef,
 ): boolean {
   const { packsDir } = resolveAppEnvironment();
+  registry.refreshCatalog(packsDir);
   const packDir = path.join(packsDir, packId);
 
   const failed = (problem: string, err?: Error): false => {

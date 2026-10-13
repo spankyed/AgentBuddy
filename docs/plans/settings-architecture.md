@@ -5,7 +5,9 @@ Re-audit names against its result; settings-specific names remain owned here.
 The [manifest maturity roadmap](manifest-maturity.md) orders this work with the common discovery
 foundation. This plan must not introduce a separate settings-only catalog.
 
-Status: planned. Revised 2026-10-12 on `AS/feature-settings-rework`.
+Status: in progress on `session/settings-pack-contracts`. The integrated extraction passes checkpoint
+validation. The supported-API inventory identifies whole-data administration and ambient service access
+as remaining Phase 6 work; targeted settings policy is not a completed API authority audit.
 
 This replaces the earlier plan to make globally named settings sections exclusive. The work is an
 ownership and service redesign, not merely removal of the `settingsSections` thunk.
@@ -14,8 +16,8 @@ The projects audit and external research are folded into the decisions below. Ke
 ordered directory configuration; use `extensions.settings` for pack-local preference groups; compose
 explicit defaults before pure validation; and reuse the existing accessors and request correlation.
 JSON Schema is the common target definition for app, pack and feature preferences. The remaining
-implementation checkpoints are the existing feature-constraint audit, generated type facade, custom-form
-loading, and assistant lifecycle state destination. They do not reopen the three-owner document design.
+implementation review covers feature constraints, generated type facades, custom forms, and actual
+onboarding and restore behavior. They do not reopen the three-owner document design.
 
 ## Product goal
 
@@ -24,19 +26,19 @@ features without editing the host. Features retain their own preferences. Every 
 same authoritative settings, whether or not the Settings page has opened. Resetting preferences does
 not reset assistant identity lifecycle or restart onboarding.
 
-## What is incomplete today
+## Original extraction defects
 
-The host owns persistence, writes and notifications, but default-setup still defines `general`,
+Before this extraction, the host owned persistence, writes and notifications, but default-setup defined `general`,
 application shortcut defaults and assistant settings. The renderer has built-in Personal, Projects
 and Application forms while treating their data as opaque pack contributions and duplicating types.
 The host reads `general.application.hotkeys`, so that supposedly opaque shape is already an app contract.
 
-`settingsSections` is a function called synchronously during registration despite documentation claiming
+`settingsSections` was a function called synchronously during registration despite documentation claiming
 lazy evaluation. Sections merge globally with silent last-wins collisions. More importantly, the renderer's
 settings port reads the Settings view actor's context and sends writes through that view. Presentation
 still acts as the source of settings for other features.
 
-Threads writes `assistant.birthdate` and uses it to gate onboarding. That combines an editable preference
+Threads wrote `assistant.birthdate` and used it to gate onboarding. That combined an editable preference
 with lifecycle state and makes the chat feature responsible for an assistant shared by the pack.
 
 ## Ownership and document shape
@@ -103,6 +105,14 @@ details and projects belong to host app definitions, stored at `app`. Onboarding
 remain existing lifecycle state; they imply no assistant feature, actor or settings assembly module.
 Custom forms are presentation bindings to those owners, not owners of their definitions or data source.
 
+Frontend writes cross a Vue-to-data boundary in the SDK frontend adapter. Existing custom forms emit
+reactive arrays and nested shortcut objects; generated handles can receive the same drafts. Unwrap
+nested reactive wrappers for both values and write conditions before the framework-independent host
+transport. Preserve invalid data for refusal: JSON stringification must not drop undefined fields,
+turn non-finite numbers into null, or accept dates as strings. The host remains the validation authority.
+Host hotkey drafts additionally preserve `global`, follow incoming snapshots, and forward their compare
+condition through the parent form. This is ordinary frontend data adaptation, not legacy support.
+
 **One integrated removal checkpoint:** establish the shared document/target/handle contract and trusted
 caller binding; publish installed declarations through the common catalog; migrate the assistant group,
 app and feature callers, writer, events, renderer consumers and custom-form targets; then remove all
@@ -111,6 +121,69 @@ fixtures and docs must agree. Do not commit a new catalog reader as a substitute
 pack-owned app assembly. Before committing, prove the app/pack/feature route described in the goal,
 including disabled definitions, restrictions, reset and restore; assert the obsolete directory, aliases,
 exports and manifest key are absent. No compatibility bridge or historical conversion accompanies removal.
+
+### Ownership review of the working implementation
+
+The source review after the user's extraction correction distinguishes deletion from completion.
+The working change deletes `default-setup/src/app-settings`, its content defaults, aliases and tests.
+The following responsibilities must also stay separated throughout the remaining review:
+
+| Responsibility | Current implementation | Review requirement |
+|---|---|---|
+| App value definition | Host `features/settings/be/app-definition.ts`; SDK types generated from it | App values must work with no default-setup. A pack may consume the contract, never supply its defaults. |
+| Shared pack preferences | Inline `extensions.settings.assistant`; a custom Vue form | Keep only the display-name preference here. The form is not an assembly layer or lifecycle owner. |
+| Feature preferences | Inline `features.<id>.settings`; generated handles | The qualified feature identity selects the values. UI labels must not become addresses. |
+| Effective values and persistence | Host settings store, installed declarations and sparse overrides | One writer validates every change; disabling a runtime removes neither its definition nor saved choices. |
+| Frontend access | Window resource established before shell/pack loading | Opening Settings must not initialize another consumer's data. Navigation chooses presentation only. |
+| Onboarding | Existing AppState completion and authored workflow progress | Resetting preferences must not reset onboarding; whole-data replacement must restart the real consumers correctly. |
+| Whole-data administration | Public `AppDataService`, currently forwarded by generated pack services | This is broader authority than targeted settings access. Its supported access contract remains unfinished. |
+
+The last row is a concrete gap, not a hypothetical renderer sandbox issue. `_createPackServices()`
+scopes `settings` but forwards other host services; `appData.reset()` and `importBackup()` can replace
+settings belonging to every owner. Default-setup's Database feature uses these operations. Therefore
+restricted-target RPC refusals do not prove that all supported pack APIs respect the intended boundary.
+
+Resolve whole-data administration together with the consumed-API inventory in
+[declared APIs](declared-capabilities.md). The contract must distinguish targeted preference edits,
+host-wide data administration and onboarding operations, even if implementation shares a module.
+Select the declaration/grant shape from that inventory and a representative Database consumer;
+do not invent a settings-specific permission field or move the Database feature merely to hide this path.
+An explicit supported administration grant must be distinguishable from ordinary settings access.
+Validate both generated types and runtime access, preserve normal backup/reset behavior, and document
+the trusted in-process execution limit. Until then, record targeted settings policy as partial evidence,
+not a completed supported-API authority audit.
+
+Before committing the integrated extraction, review the app/pack/feature consumers and presentation
+routes against this table, run real export/import and onboarding acceptance, and search active contracts
+and guides for removed section APIs. No old-format accommodation or replacement assembly is required.
+
+Real two-window import acceptance exposed a publication-order defect: hydration changed the values while
+the store still advertised its pre-settlement revision, and `onReplaced` caused snapshots to be broadcast
+before the replacement bracket closed. Both windows correctly refused those inconsistent snapshots.
+The replacement boundary must retain the previously published values and declarations for transported
+snapshots until settlement; internal migration reads may see the hydrated candidate. Settlement advances
+the revision and publishes the result before general data-replaced notifications. Reset and import share
+this boundary. Invalid import preflight still occurs before entering replacement, and failed replacement
+publishes the rolled-back result through the same settlement path. Do not relax window identity checks
+to admit intermediate database state.
+
+The subsequent navigation failure has an identified cause: the Database backup view schedules a
+renderer `location.reload()` 1.5 seconds after import, despite Electron blocking that navigation.
+Native `will-navigate` and Chromium requested-navigation diagnostics confirm the blocked reload.
+Remove this obsolete workaround; show the backend's import result, including the explicit Brain restart
+instruction, while the common replacement publication refreshes live consumers. The Database reset
+success action uses the same blocked reload and must also stop relying on it. Its local row results,
+trace caches and outstanding request identities are invalid after reset/import; clear those on success
+while retaining the editor and current settings/schema. Initialize mutable trace state per actor so two
+windows cannot share Sets or Maps. Failed import retains the prior results. Verify late replies cannot
+repopulate replaced data, and rerun the complete real-app sequence without tracing or longer deadlines.
+
+The broad composition check found another ownership leak: app-data borrowed the globally bound settings
+administrator, and the settings store borrowed the globally installed EARS engine. The composition root
+must supply the store's owning engine and inject the same settings service into app-data. A required
+engine provider lets the test harness follow engine replacement without making production stores change
+owners when another engine is installed. Do not bind an unrelated SDK host merely to make the composition
+test pass. Verify two independently constructed settings services keep their data on their own engines.
 
 ## Naming contract
 
@@ -281,12 +354,17 @@ not literal defaults. Extend the existing typed path/update model across owners;
 Make absence and reset distinct: an omitted field inherits its default, `null` is a value only where the
 schema permits it, and `undefined` is not a persisted update value. Use reset to remove an override. Setting
 a field to today's default records an explicit choice; reset opts into following future defaults. Update
-docs that currently claim every write stores only differences: targeted writes already store explicit
-values, while whole-document replacement currently computes differences. Preserve that distinction
-explicitly in migration and import rather than accidentally erasing intentional choices.
+docs that claim every write stores only differences: targeted writes and whole-document replacement
+record supplied values as explicit choices. Do not infer user intent by pruning default-equal values
+during normal writes or import.
 
 Whole-document access remains for backup, import, migrations and the advanced editor. It is not the
-normal authoring API. Owner-bound handles prevent accidental misaddressing; they are not a sandbox for
+normal authoring API. Whole-document replacement accepts a complete effective `SettingsDocument`,
+validates it without filling omitted fields, and records every supplied value as an explicit choice.
+Targeted writes and backup import use sparse `SettingsOverrides`, validated after applying defaults;
+reset removes overrides explicitly. The advanced editor shows the effective document, so its JSON Schema
+must validate that same complete shape rather than a weakened schema for sparse overrides. Import
+preflight retains its separate sparse contract. Owner-bound handles prevent accidental misaddressing; they are not a sandbox for
 trusted pack code. Explicit cross-owner access must name the owner and use the same writer.
 
 ### Pack namespacing and cross-pack access
@@ -342,6 +420,88 @@ refactor that binding before claiming owner-only restrictions work. Generated re
 an authoring guard. In-process packs remain trusted JavaScript, so this is API enforcement, not isolation
 from malicious code; the declaration grants no secrecy to readable settings.
 
+Backend implementation uses a runtime-local generated service binding, with no claimed caller ID.
+The generated registration carries `bindSettings`; the registry obtains a scoped service from its host
+composition's `settingsForPack(acceptedPackId)` callback and records the returned revocation alongside
+other contribution cleanup. Before binding and after revocation, retained generated handles refuse
+settings operations. Revocation removes their subscriptions. Admission or catalog-publication failure
+must not leave settings authority behind. Native/content-only registrations without a generated service
+binding receive no injected capability; they cannot acquire one by omitting the hook.
+
+Handle construction is permitted during module initialization. Generated settings and services import
+one independent binding module, which imports no feature services and therefore avoids their import
+cycle. A predeclared handle belongs to that pending binding; first acceptance enables operations, and
+revocation permanently ends them. Rebinding supplies a fresh lifetime for newly constructed handles,
+never authority for retained handles. Runtime owners release registrations before closing a reusable
+test/app instance; closing its database or unbinding the ambient SDK alone is not pack teardown.
+
+This backend mechanism does not establish frontend caller identity. Frontend transport and generated
+frontend access must receive their own host-bound caller port before owner-only enforcement is complete.
+
+Generated frontend modules now create a runtime-local `_createFeSettings()` binding and expose its
+`bindSettings` hook on the generated frontend entry. App, feature and group composables read and mutate the
+injected port; they do not reach the ambient window administrator. A handle captures the binding that
+created it, so reaccepting a browser-cached module cannot reactivate a handle retained from its prior
+registration. Revocation stops every subscription, remains idempotent and refuses retained mutations.
+
+After declaration acceptance, the frontend loader asks its host I/O for a `FrontendSettingsBinding`
+(port plus disposal). The registry owns that resource and records both generated revocation and transport
+cleanup in its existing contribution undo log. Refused registrations release provisional resources;
+missing providers refuse generated frontends rather than fall back to administrative access. The renderer
+now supplies this resource using API-issued pack credentials; the hook and loader protocol alone remain
+insufficient evidence for frontend authorization or app acceptance.
+Neither a transport payload nor a display `from`/`sender` label is an authority source.
+
+Frontend transport audit: `bus.send` verifies that a sender is addressable and stamps its connection,
+but accepts `from` and `sender` as routing labels. `packClientReady` is a readiness notification and does
+not establish caller identity. Do not authorize a settings mutation from any of those labels.
+
+Use a host-issued settings credential attached outside the event payload at API ingress, scoped to its
+connection and accepted runtime instance. Pack issuance verifies pack ID, declaration revision and
+artifact revision against the accepted backend origin; missing stamps, replacement, unload and connection
+closure invalidate access. Host window/tool setup receives a separate administrative credential. The
+host resolves credentials to its existing scoped settings service or administration, retaining the bus's
+`call`/`answering` mechanism. Raw `bus.send` settings mutations without valid access must be refused;
+pack credentials must not reach whole-document administration. Keep credentials out of event logs,
+snapshots and public SDK state. Host bootstrap remains trusted; this does not claim to isolate arbitrary
+JavaScript executing in the same renderer.
+
+The `createSettingsAccess` host component implements issuance/resolution/revocation, including separate
+administrative and pack service types. API ingress now resolves the credential, removes it from the bus
+envelope and binds a host-side resolver to the event. The bus preserves that resolver when attaching
+correlation; the settings actor resolves it again at delivery. A request queued before unload cannot
+retain authority from the earlier ingress check. Connection cleanup is registered once per socket's
+abort signal, including when procedures receive separate context objects.
+
+The window resource can bind a pack mutation transport while sharing its validated read snapshot.
+Each accepted binding owns its pending requests and subscriptions. Unload or disconnect disposes it;
+reconnection never revives old handles. Host writes remain independent. The injected transport, rather
+than shared routing labels, selects the credential. A test through the actual router, bus, actor and store
+proves this separation; replacing the pack transport with the administrative one makes that test fail.
+Its native test declarations and synthetic accepted origins do not prove installed-loader admission.
+
+Renderer bootstrap now waits for both host access and a validated correlated snapshot before announcing
+the connection to the shell. The loader provider obtains a separate pack credential using the backend's
+accepted declaration and artifact identities, and releases it when registration is refused or unloaded.
+Native app reset uses an explicit window administration operation rather than raw bus labels. Generic
+frontend sends do not borrow that authority.
+
+Ambient `updateSettings` and `resetSettings` exports have been removed. Shipped pack components mutate
+through generated handles; host forms explicitly inject the administrative writer into
+`useSettingsSave(writer)`. That tracker never obtains authority from the ambient window binding.
+Log controls wait for accepted host notifications instead of optimistically modifying actor settings.
+
+Completion still requires catalog-driven custom forms and real app/packaged acceptance. A controller or
+transport test alone is insufficient evidence.
+
+Reconnect includes frontend reacceptance. The shell unloads the connection's frontends and stops their
+plugin actors using its existing unload lifecycle. A load interrupted by disconnect remains the only
+running loader; its late registrations are undone and not announced, then a queued fresh run starts after
+it settles. No run starts while disconnected. The selected feature is restored after acceptance if it
+still exists. Revoked handles remain revoked. Backend origin replacement must likewise require
+acceptance of the current declaration/artifact rather than renewing a credential from stale metadata.
+Validate these contracts in the real app too; mocked transport and shell tests alone do not prove it.
+
 Confining arbitrary pack code and enforcing resource grants belongs to the separate
 [pack security isolation goal](../goals/goal-pack-security-isolation.md), not this settings extraction.
 That goal preserves this plan's shared-by-default collaboration policy while closing ambient bypasses.
@@ -383,7 +543,18 @@ of effective values: request outcomes and data updates have separate purposes.
 The snapshot needs a monotonic data revision within a backend run, distinct from the current defaults
 revision. Reconnection requests a fresh snapshot and establishes a new run before accepting updates;
 import/replacement publishes a complete snapshot. Reuse transport/events rather than introduce a second
-store or poll through the Settings view. Whole-array editors such as Projects must detect that the value
+store or poll through the Settings view. Snapshot admission validates JSON shape, nonnegative safe
+revisions, declaration ownership and all effective values through the shared settings schemas. It must
+not fill a missing effective value from defaults. A malformed initial read ends disconnected; a malformed
+broadcast retains the accepted snapshot. Changed declarations require a catalog revision; changed values
+or replacement status require a value or catalog revision. Failed subscribers cannot interrupt other
+forms or leave requests pending. Malformed refusals and unserializable writes terminate explicitly.
+
+Pure document and catalog validation live beside the settings feature's backend/frontend halves. The
+frontend entry exports those pure operations directly, never through the backend persistence barrel;
+verify the browser build and guard its runtime closure against Node-only imports.
+
+Whole-array editors such as Projects must detect that the value
 changed since their draft began and refuse an accidental overwrite while retaining the draft. Correlated
 replies alone do not solve stale writes. Implement that check at the writer for the replaced value; do not
 reject an edit merely because an unrelated preference changed.
@@ -511,6 +682,10 @@ also need the stale-value check described above. Secrets remain in the secrets s
 
 ## Schema prototype evidence (2026-10-12)
 
+The implementation accounts below describe individual historical checkpoints, not the current tree.
+Their unfinished-work lists and transitional APIs are superseded by later integration evidence and
+the no-compatibility decision. The removal/ownership contract above remains authoritative.
+
 A disposable probe at `/private/tmp/apack-settings-schema-prototype` used Ajv 8.20.0 and
 json-schema-to-typescript 15.0.4. It passed optional fields, nullable values, enums, integer ranges,
 records, arrays and document-local references, including strict TypeScript checks of generated types.
@@ -535,8 +710,8 @@ Generation keeps optionality, nullable values, enums, records, arrays and local 
 `title` remains presentation metadata; a cloned schema uses the requested generated export name, so a
 heading cannot rename the author-facing type. Numeric and other constraints remain runtime checks.
 Focused specs typecheck generated declarations and invalid-use examples; defaults and external-reference
-guard mutations are caught. Full catalog/build integration, trusted caller binding and legacy feature
-conversion remain unfinished; this kernel does not yet switch any production settings reader or writer.
+guard mutations are caught. At this checkpoint, full catalog/build integration, trusted caller binding
+and feature declaration replacement remained unfinished; the kernel did not switch production readers.
 
 Bundled CLI/testing packages also declare Ajv 8 directly: their bundles inline SDK code but externalize
 Ajv, so checkout execution must resolve the same major as the published dependency metadata, rather
@@ -904,3 +1079,34 @@ were restored. Strict validation initially caught an unused event payload reject
 type; removing it fixed the contract. The final strict chain passed in 225.5s (16 cached), including the
 external-pack app check, with unchanged smoke and packaged checks reused. Evidence:
 `node_modules/.cache/apack-chain/runs/2026-10-12T19-35-10Z-62769`.
+
+### Staged backup admission and trusted drive writes
+
+Backup preflight must operate on the bytes that will be installed. `importDatabase` now stages a private
+copy before reading the current settings contract and before entering the app's replacement scope. The
+scope wraps file replacement, hydration and consumer notifications; rejected staging/validation leaves
+live settings snapshots and lifecycle unchanged. The previous data is copied through LMDB snapshots for
+rollback, with recovery files retained if restoration itself fails. No conversion or obsolete-format read
+was introduced. Actual LMDB failure-path checks and real API repeated-restore/lifecycle checks pass; see the
+execution goal's staged-backup evidence for commands and limits.
+
+Trusted drive settings writes use an explicit credential-bearing transport. General bus sends cannot borrow
+that authority. This closes a caller migration gap without changing the trust model: token-holding tools
+already bootstrap host access, while pack-facing services remain bound to accepted pack identity.
+
+### Source authoring admission
+
+A source pack's unit harness runs generated modules before a bundle exists. It therefore admits a validated
+source manifest explicitly into the same catalog, alongside checked dependency snapshots and native host
+contributions. Source entries retain the full manifest and declaration revision and survive runtime registration
+changes; they are not reconstructed from activated features or admitted by a missing-artifact fallback.
+Generated content runtimes now carry a required declaration revision, like registrations. Source setup refuses
+stale identities before starting its runtime, and source registration acceptance checks the catalog identity.
+Data-only harness registrations carry the manifest's declared settings metadata without inventing actors.
+Installed packs continue through verified artifact admission.
+
+Declaration identity hashes canonical object keys recursively while preserving array order. Schema parsing
+must not invalidate a generated identity merely by reordering keys. Rebuild outputs from the changed producer;
+there is no alternate old hash or compatibility reader. Key-order invariance and genuine declaration changes
+have focused regression coverage. Remaining all-kind discovery/binding admission still follows the discovery
+plan; this source checkpoint does not claim that work complete.

@@ -2,6 +2,7 @@ import type { PluginDefinition } from '@apackdev/sdk/fe';
 import { createSettingsMachine } from '@apackdev/host/fe';
 import { Settings } from 'lucide-vue-next';
 import canvas from './canvas/index.vue';
+import { resetApp } from '@/runtime/settings';
 
 const report = (message: string) => window.alert(message);
 
@@ -13,6 +14,7 @@ export const settingsPlugin: PluginDefinition = {
   label: 'Settings',
   icon: Settings,
   state: createSettingsMachine({
+    reset: resetApp,
     restart: () => {
       const app = window.electronAPI?.apiStatus;
       if (app?.relaunch) void app.relaunch();

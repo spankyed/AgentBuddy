@@ -1,12 +1,9 @@
-// A pack's feature settings (apack.json features[].settings) are defaults once the pack registers: its plugin's
-// slice joins the app's default settings, which stored settings override, and whether its tab shows joins the
-// visibility defaults the host's application system reads.
-import { services } from '#generated/services.ts';
+// Catalog definitions supply defaults; persisted choices remain separate from navigation visibility.
+import { featureSettings } from '#generated/settings.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SettingsDefinition } from '@apackdev/sdk/framework';
-import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
-import { registerPack, resetTestData, unregisterPack } from '@apackdev/testing/harness';
-import { resolveName } from '@apackdev/sdk/ids';
+import { getSettingsCatalog } from '@apackdev/sdk/framework';
+import { getTestSettings, registerPack, resetTestData, unregisterPack } from '@apackdev/testing/harness';
 
 /** A feature with a plugin and the given settings */
 const feature = (id: string, settings: SettingsDefinition, defaultVisible?: boolean) => [id, { plugin: { receives: [], defaultVisible }, settings }] as const;
@@ -22,46 +19,43 @@ afterEach(() => {
 });
 
 describe("packs' feature settings as defaults", () => {
-  it("adds a registered pack's feature settings and visibility, and drops them when it unregisters", () => {
+  it("adds a registered pack's feature definitions and effective defaults, and drops them when it unregisters", () => {
     register('memo-pack', [feature('memos', { defaults: { sort: 'newest' }, schema: {"type":"object","properties":{"sort":{"type":"string"}},"required":["sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} }, false)]);
-    expect(getPackSettingsDefaults().settings.features['memo-pack/memos']).toEqual({ sort: 'newest' });
-    expect(services.settings.forFeature(resolveName('memo-pack/memos'))).toEqual({ sort: 'newest' });
-    expect(getPackSettingsDefaults().visibility).toMatchObject({ 'memo-pack/memos': false, 'default-setup/threads': true });
+    expect(getSettingsCatalog().features['memo-pack/memos']?.defaults).toEqual({ sort: 'newest' });
+    expect(getTestSettings().forPack('memo-pack').get({ kind: 'feature', featureRef: 'memo-pack/memos' })).toEqual({ sort: 'newest' });
+    expect(getTestSettings().getSnapshot().values.features['memo-pack/memos']).toEqual({ sort: 'newest' });
 
     unregisterPack('memo-pack');
     registered.splice(0);
-    expect(getPackSettingsDefaults().settings.features).not.toHaveProperty('memo-pack/memos');
-    expect(getPackSettingsDefaults().visibility).not.toHaveProperty('memo-pack/memos');
+    expect(getSettingsCatalog().features).not.toHaveProperty('memo-pack/memos');
   });
 
   it("stores only the user's changes, so a pack's defaults still leave with it after a settings update", () => {
     register('memo-pack', [feature('memos', { defaults: { sort: 'newest' }, schema: {"type":"object","properties":{"sort":{"type":"string"}},"required":["sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} })]);
-    services.settings.setForFeature(resolveName('default-setup/threads'), ['recentThreadsSortOrder'], 'created');
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
     unregisterPack('memo-pack');
     registered.splice(0);
-    expect(services.settings.getAll().features).not.toHaveProperty('memo-pack/memos');
+    expect(getTestSettings().getAll().features).not.toHaveProperty('memo-pack/memos');
   });
 
   it("keeps the user's stored settings over a pack's defaults", () => {
     register('memo-pack', [feature('memos', { defaults: { sort: 'newest' }, schema: {"type":"object","properties":{"sort":{"type":"string"}},"required":["sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} })]);
-    services.settings.setForFeature(resolveName('memo-pack/memos'), ['sort'], 'oldest');
-    expect(services.settings.forFeature(resolveName('memo-pack/memos'))).toEqual({ sort: 'oldest' });
+    getTestSettings().forPack('memo-pack').set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['sort'], 'oldest');
+    expect(getTestSettings().forPack('memo-pack').get({ kind: 'feature', featureRef: 'memo-pack/memos' })).toEqual({ sort: 'oldest' });
   });
 
   // Settings are keyed by the plugin's ref, so another pack's `code` feature has its own slice
-  it("gives a pack naming a feature after this pack's its own settings slice and visibility", () => {
-    const appCode = getPackSettingsDefaults().settings.features['default-setup/code'];
+  it("gives a pack naming a feature after this pack's its own settings identity", () => {
+    const appCode = getSettingsCatalog().features['default-setup/code'];
 
     register('shadow-pack', [feature('code', { defaults: { shadowed: true }, schema: {"type":"object","properties":{"shadowed":{"type":"boolean"}},"required":["shadowed"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} }, false)]);
 
-    expect(getPackSettingsDefaults().settings.features['default-setup/code']).toEqual(appCode);
-    expect(getPackSettingsDefaults().visibility['default-setup/code']).toBe(true);
+    expect(getSettingsCatalog().features['default-setup/code']).toEqual(appCode);
     // The other pack's `code` plugin is its own, with its own settings
-    expect(getPackSettingsDefaults().settings.features['shadow-pack/code']).toEqual({ shadowed: true });
-    expect(getPackSettingsDefaults().visibility['shadow-pack/code']).toBe(false);
+    expect(getSettingsCatalog().features['shadow-pack/code']?.defaults).toEqual({ shadowed: true });
   });
 
   it('holds no app shell state in the settings', () => {
-    expect(getPackSettingsDefaults().settings.features).not.toHaveProperty('_meta');
+    expect(getSettingsCatalog().features).not.toHaveProperty('_meta');
   });
 });

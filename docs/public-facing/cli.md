@@ -258,10 +258,10 @@ operation failed — a `4xx` means nothing ran at all.
 | `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
 | `/snapshot` | GET | — | the page as an accessibility tree |
 | `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
-| `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
+| `/settings` | GET | — | host settings snapshot: effective values, status and catalog metadata |
 | `/viewport` | GET | — | the size the app is rendering into |
 | `/set-viewport` | POST | `{ width, height }` | changes it |
-| `/set-setting` | POST | `{ feature } or { section }`, `{ path, value }` | writes one setting |
+| `/set-setting` | POST | `{ target, path, value }` | writes one setting |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
@@ -277,15 +277,16 @@ looking at the result afterwards.
 it is what says whether your write landed. The defaults come from the host for app preferences and pack declarations for contributed values.
 
 **A refused write answers `ok: false`, with the reasons.** The settings store checks the whole next
-document and refuses what it will not take — an unknown feature ref, a section nobody registered, a change
+document and refuses what it will not take — an unknown feature ref, an undeclared pack group, a change
 while a backup is being imported — and `/set-setting` waits for that answer rather than for the send to be
 accepted. It used to resolve on the send, so every refusal read as success.
 
-**`/set-setting` addresses a feature or a section.** A feature uses its qualified ref
-(`{"feature":"default-setup/code"}`). App preferences use `{"section":"app"}` with a path
-such as `["personal", "name"]`; remaining registered pack sections use their section names.
-Choose exactly one selector. The writer validates the addressed value and reports refusals.
-
+**`/set-setting` uses an explicit settings owner.** Set `target` to `{"kind":"app"}`,
+`{"kind":"feature","featureRef":"default-setup/code"}`, or
+`{"kind":"pack","packId":"default-setup","groupId":"assistant"}`. `path` is a dotted string
+relative to that owner, such as `personal.name` for app settings or `name` for the assistant group.
+The writer validates the value and reports refusals. `/settings` reads the host's current snapshot,
+including composed defaults and stored choices, rather than reading the sparse database row directly.
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
 person watching `apack pack drive` — has its *window* resized, because a viewport Playwright sets is an

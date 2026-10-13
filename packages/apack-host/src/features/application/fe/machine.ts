@@ -122,7 +122,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
         // The pack was unloaded while its frontend was loading: keep its plugins out, since nothing would ever take
         // them out again, and undo what the load registered
-        if (context.packsUnloadedWhileLoading.includes(packId)) {
+        if (context.packLoadInvalidated || context.packsUnloadedWhileLoading.includes(packId)) {
           enqueue.assign({ packsUnloadedWhileLoading: context.packsUnloadedWhileLoading.filter(id => id !== packId) });
           enqueue(() => packFrontends.unload(packId));
           return;
@@ -196,11 +196,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       /** Runs the pack frontend loader, or queues a run when one is under way */
       loadPackFrontends: enqueueActions(({ context, enqueue }) => {
+        if (!context.busSubscribed) return;
         if (context.packLoadRunning) {
           enqueue.assign({ packLoadQueued: true });
           return;
         }
-        enqueue.assign({ packLoadRunning: true, packLoadQueued: false });
+        enqueue.assign({ packLoadRunning: true, packLoadQueued: false, packLoadInvalidated: false });
         enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded } });
       }),
 
@@ -213,7 +214,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (context.packsUnloadedWhileLoading.length > 0) enqueue.assign({ packsUnloadedWhileLoading: [] });
 
         if (context.packLoadQueued) {
-          enqueue.assign({ packLoadQueued: false });
+          enqueue.assign({ packLoadQueued: false, packLoadInvalidated: false });
           // The packs this run loaded are in context already: the loader sends its results before settling
           enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { loadedPackIds: context.packFrontendsLoaded } });
         } else {
@@ -229,6 +230,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           }
         }
 
+        if (context.packLoadInvalidated) return;
         if (loadedPacksError) {
           // The next connection runs the loader again, so a read that fails while the API restarts repairs
           // itself; the user hears about it only while no pack has ever loaded
@@ -249,6 +251,20 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
             console.warn(`[shell] Failed to load the frontend of ${names}:\n${details}`);
             notify.error(`Couldn't load ${names}`, failedPacks.map(p => p.error).join('\n'));
           });
+        }
+      }),
+
+      disconnectPackFrontends: enqueueActions(({ context, enqueue }) => {
+        const activePack = splitRef(context.activePlugin.id)?.packId;
+        enqueue.assign({
+          busSubscribed: false,
+          packLoadQueued: false,
+          packLoadInvalidated: true,
+          ...(activePack && context.packFrontendsLoaded.includes(activePack)
+            ? { pendingPluginId: context.activePlugin.id } : {}),
+        });
+        for (const packId of context.packFrontendsLoaded) {
+          enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId });
         }
       }),
 
@@ -529,6 +545,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         busSubscribed: false,
         packLoadRunning: false,
         packLoadQueued: false,
+        packLoadInvalidated: false,
         packFrontendsLoaded: [],
         packsWithFrontend: [],
         packsUnloadedWhileLoading: [],
@@ -618,7 +635,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       // In every state: onboarding and the error page keep pack systems' startup data flowing too. The loader runs on
       // every establishment of the subscription, so packs a failed read left unloaded are picked up by the next one.
       BUS_SUBSCRIBED: { actions: [assign({ busSubscribed: true }), 'announceLoadedPacks', 'loadPackFrontends'] },
-      BUS_CONNECTION_LOST: { actions: assign({ busSubscribed: false }) },
+      BUS_CONNECTION_LOST: { actions: 'disconnectPackFrontends' },
       LOAD_PACK_FRONTENDS: { actions: 'loadPackFrontends' },
       PACK_FRONTENDS_SETTLED: { actions: 'finishPackFrontendLoad' },
       PACK_FRONTEND_LOADED: { actions: 'mergePackPlugins' },

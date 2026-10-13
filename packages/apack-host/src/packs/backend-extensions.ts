@@ -1,8 +1,7 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
 import type { ContentWriter } from '@apackdev/sdk/content';
 import type { ContentApplier } from '@apackdev/sdk/utils';
-import { _compileSettingsDefinition, type PackFeature, type SettingsValidator, type PackCommand, type HelpDocument, type HelpCatalog, type HelpProblem, type PackSettingsDefaults } from '@apackdev/sdk/framework';
-import { resolveName } from '@apackdev/sdk/ids';
+import { type PackCommand, type HelpDocument, type HelpCatalog, type HelpProblem } from '@apackdev/sdk/framework';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {
@@ -40,80 +39,6 @@ export function createApplierStore() {
       byPack.delete(packId);
     },
     get: (packId: string): readonly ContentApplier[] => byPack.get(packId) ?? [],
-  };
-}
-
-/**
- * Registered packs' feature settings, merged into the defaults: each feature's own slice and whether its
- * tab shows. `revision` changes, and listeners hear, whenever a pack's settings come or
- * go. A manifest names the feature; its settings land under the feature's ref, which the renderer reads by.
- */
-export function createSettingsDefaultsStore() {
-  const byPack = new Map<string, Array<{
-    id: string; defaults?: Record<string, unknown>; validator?: SettingsValidator; defaultVisible?: boolean;
-  }>>();
-  /** App preference sections contributed by registered packs. */
-  const sectionsByPack = new Map<string, () => Record<string, unknown>>();
-  const listeners = new Set<() => void>();
-  let current: PackSettingsDefaults = { revision: 0, settings: { features: {} }, validators: {}, visibility: {} };
-
-  function rebuild(): void {
-    const features: Record<string, unknown> = {};
-    const validators: PackSettingsDefaults['validators'] = {};
-    const visibility: Record<string, boolean> = {};
-    for (const [packId, declarations] of byPack) {
-      for (const { id, defaults, validator, defaultVisible } of declarations) {
-        const ref = resolveName(id, packId);
-        if (validator) {
-          features[ref] = defaults;
-          validators[ref] = validator;
-        }
-        if (defaultVisible !== undefined) visibility[ref] = defaultVisible;
-      }
-    }
-
-    const sections: Record<string, unknown> = {};
-    for (const [packId, read] of sectionsByPack) {
-      try {
-        for (const [name, value] of Object.entries(read())) {
-          if (name === 'app') throw new Error('App preferences belong to the host');
-          sections[name] = value;
-        }
-      } catch (error) {
-        throw new Error(`Pack "${packId}" could not read its settings sections: ${(error as Error).message}`);
-      }
-    }
-    current = { revision: current.revision + 1, settings: { ...sections, features }, validators, visibility };
-    for (const listener of listeners) listener();
-  }
-
-  return {
-    /** Validates each declaration before registering the pack's defaults and schemas */
-    register(packId: string, features: ReadonlyArray<PackFeature & { id: string }>, sections?: () => Record<string, unknown>): void {
-      const declarations = features.filter(f => f.settings !== undefined || f.plugin?.defaultVisible !== undefined).map(({ id, settings, plugin }) => {
-        try {
-          const validator = settings ? _compileSettingsDefinition(settings) : undefined;
-          return { id, defaultVisible: plugin?.defaultVisible,
-            ...(settings && { defaults: structuredClone(settings.defaults), validator }),
-          };
-        } catch (error) {
-          throw new Error(`Pack "${packId}" has invalid feature settings for "${id}": ${error instanceof Error ? error.message : String(error)}`);
-        }
-      });
-      if (sections) sectionsByPack.set(packId, sections);
-      if (!declarations.some(d => d.validator || d.defaultVisible !== undefined) && !sections && !byPack.has(packId)) return;
-      byPack.set(packId, declarations);
-      rebuild();
-    },
-    unregister(packId: string): void {
-      const had = byPack.delete(packId);
-      if (sectionsByPack.delete(packId) || had) rebuild();
-    },
-    get: (): PackSettingsDefaults => current,
-    onChanged(listener: () => void): () => void {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
   };
 }
 

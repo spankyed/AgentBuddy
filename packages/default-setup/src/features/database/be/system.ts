@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 // Untyped for now: a typed `reply` needs an `answers` field on the contract and a codegen reader, which
@@ -196,7 +196,7 @@ export const databaseSystem = setup({
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded. The
       // settings come in with the rest, and the import's migrations write them: run through the settings' writer, it
       // tells the settings system a replacement is running, so nothing is told a change until it ends
-      services.settings.whileReplacingData(() => services.appData.importBackup(path, { skipUnknownDatabases })).then(
+      services.appData.importBackup(path, { skipUnknownDatabases }).then(
         ({ missingDatabases, unknownEntityTypes }) => {
           // The brain stops itself: replacing the data sends DATA_REPLACED, which it answers by killing a flow
           // whose rows are gone. It is not restarted here, which is what the message below tells the user

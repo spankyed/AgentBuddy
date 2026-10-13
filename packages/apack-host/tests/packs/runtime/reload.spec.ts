@@ -64,7 +64,12 @@ beforeEach(() => {
   process.env.APACK_USER_DATA_DIR = tmpDir;
   bus.send.mockReset();
   shutdown.mockReset();
-  registerPack(running);
+  // The incumbent is an installed pack, not a host-native contribution with the same ID.
+  registry.refreshCatalog(resolveAppEnvironment().packsDir);
+  registerPack(running, {
+    id: PACK_ID, name: PACK_ID, version: '1.0.0', shipped: false,
+    dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), declarationRevision: 'fixture-revision',
+  });
   registerShutdownHook(shutdown, PACK_ID);
 });
 

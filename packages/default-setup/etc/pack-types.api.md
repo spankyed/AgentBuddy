@@ -318,7 +318,9 @@ interface AutocompleteSuggestion {
     matchType: 'title' | 'url';
 }
 
-type AvailableSettings = PackFeatureSettings;
+type AvailableSettings = PackFeatureSettings & {
+    [K in keyof PackFeatureSettings & string as `default-setup/${K}`]: PackFeatureSettings[K];
+};
 
 type BaseEntity = _apackdev_ears.BaseEntity;
 
@@ -1190,6 +1192,7 @@ interface DatabaseContext {
     backupResult: {
         operation: 'export' | 'import';
         error?: string;
+        message?: string;
         /** The backup holds these stores, which this apack doesn't have: importing it leaves them out */
         unknownDatabases?: string[];
     } | null;
@@ -4229,7 +4232,9 @@ type PackFeatureSettings = {
 };
 
 /** Local pack preference groups, inferred from schemas rather than default literals. */
-type PackGroupSettings = {};
+type PackGroupSettings = {
+    'assistant': __PackSettings_Assistant.Value;
+};
 
 /**
  * Feature id → the `public` half of the inbox this pack's plugin declares (dependents name it
@@ -5676,6 +5681,12 @@ declare namespace __FeatureSettings_Threads {
         recentThreadsSortOrder: "created" | "message" | "visited";
         recordingLimitMinutes: number;
         skipArchiveConfirm: boolean;
+    }
+}
+
+declare namespace __PackSettings_Assistant {
+    interface Value {
+        name: string;
     }
 }
 

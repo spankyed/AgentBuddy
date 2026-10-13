@@ -34,10 +34,10 @@ export async function action(
       color: '#3B82F6',
     }));
 
-    services.settings.setInSection('app', ['projects'], projectEntries);
+    services.settings.set({ kind: 'app' }, ['projects'], projectEntries);
 
     // Set first directory as default CWD
-    services.settings.setForFeature('default-setup/code', ['defaultBaseDirectory'], dirs[0]);
+    services.settings.set({ kind: 'feature', featureRef: 'default-setup/code' }, ['defaultBaseDirectory'], dirs[0]);
 
     services.chat.sendBlockMessage({
       threadId,

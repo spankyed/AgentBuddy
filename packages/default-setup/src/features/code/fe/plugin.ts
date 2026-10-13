@@ -2,7 +2,6 @@ import { defineAsyncComponent } from 'vue';
 import { definePlugin } from '@apackdev/sdk/fe';
 import { Code2 } from 'lucide-vue-next';
 import state from './state.ts';
-import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/canvas.vue'));
 const panel = defineAsyncComponent(() => import('./features/panel.vue'));
@@ -13,7 +12,6 @@ const codePlugin = definePlugin({
   state,
   canvas,
   panel,
-  settings,
   isPinned: false,
   hotkeys: [
     {

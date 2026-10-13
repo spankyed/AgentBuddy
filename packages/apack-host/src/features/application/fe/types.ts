@@ -137,6 +137,8 @@ export interface ShellContext {
   packLoadRunning: boolean;
   /** A load was asked for while one was running — the list it read may predate the request — so it runs again */
   packLoadQueued: boolean;
+  /** The current load belongs to a lost connection; its registrations must be released before reloading. */
+  packLoadInvalidated: boolean;
   /**
    * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
    * nothing — so it's never loaded twice. A pack unloaded drops out and loads again when it comes back.

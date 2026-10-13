@@ -94,11 +94,11 @@
               @send-command="handleSendCommand"
               @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
               @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
-              @set-default-mode="(mode: string) => updateThreadsSetting(['chat', 'defaultMode'], mode)"
-              @set-default-phase="(phase: string) => updateThreadsSetting(['chat', 'defaultPhase'], phase)"
+              @set-default-mode="(mode: string) => threadsSettings.set({ path: ['chat', 'defaultMode'], value: mode })"
+              @set-default-phase="(phase: string) => threadsSettings.set({ path: ['chat', 'defaultPhase'], value: phase })"
               @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
               @open-lightbox="openLightbox"
-              @update-quick-prompts="(prompts: QuickPrompt[]) => updateThreadsSetting(['chat', 'quickPrompts'], prompts)"
+              @update-quick-prompts="(prompts: QuickPrompt[]) => threadsSettings.set({ path: ['chat', 'quickPrompts'], value: prompts })"
               @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
               @revert="(messageId: string) => handleRevert(messageId, false, true)"
               @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
@@ -185,14 +185,15 @@ import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
 import ConfirmationDialog from '@apackdev/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@apackdev/ui/design/ScrollToBottomFob'
-import { usePlugin, useShell, updateSettings } from '@apackdev/sdk/fe'
+import { usePlugin, useShell } from '@apackdev/sdk/fe'
 import { openPlugin } from '#generated/fe.ts'
 import { useSelector } from '@xstate/vue'
 import { threadsFromStore, type ThreadsState } from '#features/threads/fe/state.ts';
 import type { MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '#generated/types.ts'
 import { sendToSystem } from '#generated/events.ts'
-import { ref as featureRef } from '#generated/ref.ts';
+import { useSettings } from '#generated/settings-fe.ts';
 
+const threadsSettings = useSettings('threads')
 const shell = useShell()
 const actor: ThreadsState = usePlugin();
 const isOnboarding = shell.isOnboarding;
@@ -359,10 +360,6 @@ function onScroll() {
   }
 }
 
-function updateThreadsSetting(path: string[], value: unknown) {
-  updateSettings({ feature: featureRef('threads') }, path, value)
-}
-
 function openLightbox(src: string) {
   lightboxSrc.value = src
   lightboxOpen.value = true
@@ -478,7 +475,7 @@ function confirmRevert() {
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
-    updateSettings({ feature: featureRef('threads') }, ['chat', 'skipRevertConfirm'], true)
+    void threadsSettings.set({ path: ['chat', 'skipRevertConfirm'], value: true })
   }
   pendingRevertMessageId.value = null
   dontAskAgain.value = false

@@ -7,6 +7,9 @@
 // @public
 export function installMonacoErrorFilters(): void;
 
+// @public
+export function isRecoverableMonacoError(error: unknown): boolean;
+
 // (No @packageDocumentation comment for this package)
 
 ```

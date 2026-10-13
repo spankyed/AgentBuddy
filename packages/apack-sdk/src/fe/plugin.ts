@@ -79,7 +79,6 @@ export interface Plugin {
     toggle: { type: string };
   };
   chat?: Component;
-  settings?: Component;
   hotkeys?: PluginHotkeyDefinition[];
   options?: {
     headerClass?: string;

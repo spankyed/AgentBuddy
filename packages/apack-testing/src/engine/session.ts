@@ -1,3 +1,5 @@
+import type { SettingsTarget } from '@apackdev/sdk/types';
+export type { SettingsTarget } from '@apackdev/sdk/types';
 import { _callOf, newCall } from '@apackdev/sdk/events';
 import { HOST } from '@apackdev/host/bus';
 import type { BusMessage } from './api-client.ts';
@@ -100,7 +102,9 @@ export interface SessionPage {
  * against a fake. `api-client.ts` is the real one.
  */
 export interface SessionApi {
-  send: (message: { to: string; event: Record<string, unknown>; sender?: string }) => Promise<void>;
+  send: (message: { to: string; event: Record<string, unknown>; sender?: string; call?: string }) => Promise<void>;
+  /** Explicit trusted-tool settings transport. */
+  sendSettings: SessionApi['send'];
   onMessage: (listener: (message: BusMessage) => void) => () => void;
   /** Told once, with why, when the channel finishes — which is what ends a round-trip at once rather than at its timeout */
   onFinished: (listener: (reason: string) => void) => () => void;
@@ -245,14 +249,6 @@ type Evaluated = { cloneable: true; value: unknown }
 /** What `wait` waits for: a dotted state path, or a plugin arriving. Exactly one, never both */
 export type WaitTarget = { readonly state: string } | { readonly plugin: string };
 
-/**
- * Where a setting lives: in a feature's slice, by its ref, or in a section a pack registered.
- *
- * The settings document has both and `/settings` reads all of it, so a write that could only reach features
- * left `general` and `assistant` readable and unwritable. Exactly one, as `WaitTarget` is.
- */
-export type SettingsTarget = { readonly feature: string } | { readonly section: string };
-
 export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
   send: (event: Record<string, unknown>) => Promise<EngineResult>;
@@ -275,7 +271,7 @@ export interface EngineSession {
   setViewport: (width: number, height: number) => Promise<EngineResult>;
   /** The settings as stored */
   settings: () => Promise<EngineResult>;
-  /** Writes one setting, in a feature's slice or in a registered section */
+  /** Writes one setting relative to an explicit app, pack/group or feature owner. */
   setSetting: (target: SettingsTarget, path: string, value: unknown) => Promise<EngineResult>;
   /** The app's own log lines, newest last; fails when `since` names a line the log does not hold */
   logs: (options: { since?: string; source?: string }) => Promise<EngineResult>;
@@ -347,7 +343,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * in the app declares a correlation field, because every send mints a call and `reply` names the one it
    * answers.
    */
-  const nextReply = (to: string, call: string, ok: string, bad: string): Promise<unknown> =>
+  const nextReply = (to: string, call: string, ok: string, bad: string, resultField = 'result'): Promise<unknown> =>
     new Promise((resolve, reject) => {
       // Already gone, so there is nothing to wait for and no reason to make the caller wait for the timeout
       if (api.failure !== null) {
@@ -361,7 +357,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
           clearTimeout(timer);
           waiting.delete(waiter);
           if (event.type === bad) reject(new Error(refusalText(event.event)));
-          else resolve(event.event.result);
+          else resolve(event.event[resultField]);
         },
         /** The channel finished while this was in flight: say so now rather than in fifteen seconds */
         fail: (reason: string): void => {
@@ -415,15 +411,17 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
     event: Record<string, unknown>,
     ok: string,
     bad: string,
+    resultField = 'result',
+    send: SessionApi['send'] = api.send,
   ): Promise<unknown> => {
     // Minted here, by the asker: an answer can only name an ask if the ask named itself first
     const call = newCall();
     // Armed before the send, so an answer that arrives immediately is not missed
-    const answer = nextReply(to, call, ok, bad);
+    const answer = nextReply(to, call, ok, bad, resultField);
     // A send that never left means no answer is coming, and the armed waiter is abandoned — handled here so
     // its rejection is not an unhandled one when the timer finally fires
     answer.catch(() => {});
-    await sendToSystem(to, event, call);
+    await send({ to, event, sender: DRIVE_REF, call });
     return answer;
   };
 
@@ -608,44 +606,23 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      */
     setViewport: (width, height) => attempt('setViewport', () => page.setViewport(width, height)),
 
-    /**
-     * The app's own log, which until now was a file an agent was told to go and open.
-     *
-     * `since` and `source` filter rather than page: a session's log is the run's, so what a reader wants
-     * is almost always "what happened after the thing I just did", which `since` answers by naming a line
-     * they already saw.
-     */
-    /**
-     * The settings as stored — what the user changed from the defaults, which is what a write lands in.
-     *
-     * Read through the database rather than the settings system: the row is an entity, so this is the
-     * query path that already works, where `GET_SETTINGS` answers by broadcasting to a *plugin* and would
-     * need a second kind of waiter to catch.
-     */
-    settings: () => attempt('settings', () => runCode('qx', 'EXECUTE_QUERY', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
+    /** The host snapshot includes effective values, lifecycle status and declaration metadata. */
+    settings: () => attempt('settings', () => roundTrip(SETTINGS_SYSTEM, { type: 'GET_SETTINGS' },
+      'SETTINGS_LOADED', 'SETTINGS_REFUSED', 'snapshot')),
 
-    /**
-     * One setting, in a feature's slice or in a registered section.
-     *
-     * `entityType` is which arm of the target it is — the settings system branches on it between
-     * `setForFeature` and `setInSection`, and hardcoding `'plugin'` was what made a section unwritable.
-     *
-     * **A round-trip, not a send.** It resolved as soon as the send was accepted, so a write the store
-     * refused — an unknown feature ref, a section nobody registered, a change while a backup is being
-     * imported — answered `ok: true` and wrote nothing. `/query` had made the opposite bargain since it
-     * existed, which is what left this one looking like it worked.
-     */
+    /** Waits for the host writer's saved/refused answer, rather than merely accepting the send. */
     setSetting: (target, at, value) => attempt('setSetting', () => roundTrip(
       SETTINGS_SYSTEM,
       {
         type: 'UPDATE_SETTINGS',
-        entityType: 'feature' in target ? 'feature' : 'section',
-        label: 'feature' in target ? target.feature : target.section,
+        target,
         path: at.split('.'),
         value,
       },
       'SETTINGS_SAVED',
       'SETTINGS_REFUSED',
+      'result',
+      api.sendSettings,
     )),
 
     logs: ({ since, source }) => attempt('logs', async () => {

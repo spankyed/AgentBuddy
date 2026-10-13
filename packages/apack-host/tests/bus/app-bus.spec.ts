@@ -44,12 +44,11 @@ beforeEach(() => {
   // The app's own plugins, as the API registers them: the application plugin gets the shell's state
   registerPack(hostRegistration());
   registerRecorderPack('local-pack');
-  registerRecorderPack('fe-pack');
   // fe-pack is a loaded external pack whose bundle has frontend code
   packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-bus-'));
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
-  registry.registerPack({ id: 'fe-pack-fe' }, { declarationRevision: 'fixture-revision',
+  registry.registerPack({ id: 'fe-pack', features: { feature: { system: { machine: recorder('fe-pack'), receives: ['CLIENT_CONNECTED'] } } } }, { declarationRevision: 'fixture-revision',
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, shipped: false,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' },
   });
@@ -60,7 +59,6 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   for (const id of ['local-pack', 'fe-pack']) unregisterPack(id);
-  unregisterPack('fe-pack-fe');
   unregisterPack('host');
   fs.rmSync(packDir, { recursive: true, force: true });
 });

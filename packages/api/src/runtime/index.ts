@@ -1,6 +1,6 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
-import { bindHost } from '@apackdev/sdk/runtime';
+import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
 import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
@@ -15,6 +15,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
+import { createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
 import { rootEvents } from '@/transport/emitter';
@@ -51,6 +52,7 @@ export interface AppStore {
 
 /** The app's registered packs, which openAppStore creates: the transport's procedures and dev reload work on them */
 export let appPacks: PackRegistry;
+export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
 
 /**
  * The open store, so shutdown can flush it.
@@ -92,15 +94,21 @@ function reportDroppedWrite({ op, key, error }: WriteFailure): void {
 
 export function openAppStore(): AppStore {
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
-  const packs = createPackRegistry({ installedPacksDir: () => resolveAppEnvironment().packsDir });
+  let runtime: HostRuntime;
+  const packs = createPackRegistry({
+    installedPacksDir: () => resolveAppEnvironment().packsDir,
+    settingsForPack: (packId) => runtime.services.settings.forPack(packId),
+  });
   const { store, engine } = openDatabaseStore({
     paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,
     onWriteFailure: reportDroppedWrite,
   });
-  bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
+  runtime = createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
+  bindHost(runtime);
   printLogEvents();
   appPacks = packs;
+  appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.packOrigin);
   appStore = store;
   return { store, engine, packs };
 }

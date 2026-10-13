@@ -33,7 +33,43 @@ Settings retain [shared dependency read/write/reset by default](settings-archite
 owner-only mutation. Declaring consumption of settings and satisfying the selected target’s mutation
 policy are separate checks; neither replaces the other. Host app settings follow the host SDK contract.
 
+The settings ownership review found a supported administration path that the inventory must resolve:
+`_createPackServices()` forwards `AppDataService` without caller scoping, including whole-database
+`reset()` and `importBackup()`. Default-setup's Database feature consumes both. These operations can
+replace restricted settings without using the targeted settings writer. Inventory onboarding reads and
+completion separately from backup inspection/export and destructive whole-data operations. Prototype an
+explicit administration consumption/grant contract using that real Database consumer before selecting
+syntax. Ordinary settings access must not implicitly grant whole-data administration; types and runtime
+facades must agree. This addresses supported API authority, not arbitrary Node execution confinement.
+
 ## Delivery
+
+### Current-code inventory (2026-10-12)
+
+The following findings are from the working settings candidate, rather than the earlier survey:
+
+| Supported route | Current behavior | Required contract |
+|---|---|---|
+| Generated `services.settings` and settings handles | Bound at accepted registration; revoked on unload; target mutation policy checked | Retain caller identity and lifetime. Consumption declarations must not replace target policy. |
+| Generated `services.appData` | All methods forwarded through the ambient host delegate | Separate onboarding operations from database administration in the public interface and declarations. |
+| Database feature | Calls `exportBackup`, `importBackup`, `readBackupSummary`, `reset` | Use this actual consumer to prove declared administration access, including failure and rollback. |
+| Authored onboarding actions | `check-onboarding` and `ignore-onboarding-message` read completion; `onboarding-helpers` completes it | This lifecycle API must remain usable without granting backup/import/reset. Do not manufacture an assistant feature. |
+| Other host services | Generated `Services` includes every `HostServices` member | Choose an intentional SDK baseline and require explicit consumption for the remainder; generate types and runtime members from the same selection. |
+| Dependency-provided services | Types intersect declared dependencies; the runtime proxy returns every registered pack's service | Runtime visibility must match declared providers, not merely the generated intersection. Registration already refuses host-name and cross-pack collisions; preserve that protection. |
+| Captured non-settings service objects | Ambient delegates resolve the currently bound host on each call | Bind all mediated services to the accepted runtime lifetime; a retained delegate must not silently act on a replacement registration or another bound host. |
+| SDK `services` import | Public ambient proxy remains available | Remove this supported bypass for pack source through validation and the public surface as appropriate; deleting a generated type alone is insufficient. |
+| Repository/EARS and user-authored actions | Generated repositories, engine helpers and injected action `Services` remain separate routes | Preserve the documented query model; carry the executing pack's accepted service facade into action execution. Do not claim service filtering confines database or Node access. |
+
+The registration collision guard is in `apack-host/src/packs/registry.ts`; it already reserves all host
+service names. The runtime/type mismatch is instead in SDK `resolveServices`, `_createPackServices`
+and codegen's `generateServices`: the latter knows dependencies, while the runtime still consults a
+global union. An administration-only fix would leave that larger mismatch intact.
+
+Before choosing syntax, prototype these cases together: onboarding without administration; Database
+with administration; one dependency service with another installed but undeclared provider; a retained
+method after unload/re-registration; and content actions receiving the same accepted facade. Use a
+pack-level declaration first unless the prototype demonstrates a need for genuine feature-local
+facades. These are acceptance cases, not a new settings assembly or a blanket sandbox promise.
 
 1. Audit actual consumption in default-setup, fixtures, scaffolds and supported local/URL pack installs.
    Record which APIs are explicit, which are an intentional SDK baseline, and which cannot be mediated

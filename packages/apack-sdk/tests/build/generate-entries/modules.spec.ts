@@ -336,7 +336,7 @@ describe('the snapshot format', () => {
     $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
     dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
-    permissions: true, relKinds: true, content: true, settingsSections: true, version: true,
+    permissions: true, relKinds: true, content: true, version: true,
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
@@ -359,8 +359,8 @@ describe('the snapshot format', () => {
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
-    id: true, name: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settingsSections: true,
+    id: true, name: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
@@ -406,7 +406,7 @@ describe('the snapshot format', () => {
         fields: [
           '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
           'entities', 'entityShapes', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
-          'permissions', 'relKinds', 'settingsSections', 'version',
+          'permissions', 'relKinds', 'version',
         ],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
@@ -418,13 +418,13 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['defaultVisible', 'receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
-      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });
 });

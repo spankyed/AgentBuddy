@@ -18,21 +18,22 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
 import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type ContentRuntime, fakeInference, type FakeInference } from '@apackdev/sdk/testing';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
+import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
-import { createSettingsService, createSettingsStore, type SettingsDocument } from '@apackdev/host/settings';
-import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
+import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
+import { getSettingsCatalog, onSettingsCatalogChanged } from '@apackdev/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
-import { untypedQx } from '@apackdev/ears';
+import { installedEngine, untypedQx } from '@apackdev/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
 
 export { takeSystemErrors, addTestSecret, type ContentRuntime };
@@ -65,7 +66,7 @@ const serviceMocks = new Map<string, unknown>();
 let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
-const registry = createPackRegistry();
+const registry = createPackRegistry({ settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
 // The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
 // two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
 // pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write
@@ -122,6 +123,12 @@ export function mockService<S extends object = Record<string, object>, K extends
     throw new Error(`mockService('${name}') ran outside a test: a mock lasts for the test it's made in, so make it in the test or a beforeEach`);
   }
   serviceMocks.set(name, implementation);
+}
+
+/** Host administration for fixture setup and assertions; pack code uses its generated settings service. */
+export function getTestSettings(): SettingsAdmin {
+  if (!inTest) throw new Error('getTestSettings() requires an active harness test');
+  return _settingsAdmin();
 }
 
 /**
@@ -221,6 +228,9 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
     const result = parseSnapshot(raw);
     if (!result.snapshot) throw new Error(`Dependency "${depId}" in ${snapshotFile}: ${result.diagnostics.map(issue => issue.message).join('; ')}`);
     const snapshot = result.snapshot;
+    if (snapshot.manifest.id !== depId) {
+      throw new Error(`Dependency "${depId}" in ${snapshotFile} declares "${snapshot.manifest.id}". Rebuild its dependency cache.`);
+    }
     const buildDir = path.join(dir, 'build');
     dependencies.set(depId, { snapshot, dir, manifest: snapshot.manifest, ...(fs.existsSync(buildDir) && { buildDir }) });
   }
@@ -235,9 +245,12 @@ function originOf(manifest: PackManifest, dir: string): PackOrigin {
 }
 
 /** A content runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */
-function contentRuntimeRegistration(runtime: ContentRuntime, appliers?: ContentApplier[]): PackRegistration {
+function contentRuntimeRegistration(runtime: ContentRuntime, manifest: PackManifest, appliers?: ContentApplier[]): PackRegistration {
   return {
     id: runtime.id,
+    declarationRevision: runtime.declarationRevision,
+    settings: manifest.extensions?.settings,
+    features: Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.settings).map(([id, feature]) => [id, { settings: feature.settings }])),
     ears: { entities: runtime.entities, relKinds: runtime.relKinds },
     repositories: runtime.repositories,
     contentWriters: runtime.contentWriters,
@@ -265,8 +278,17 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   }
   const packDir = options.packDir ?? findPackDir(projectRoot() ?? process.cwd());
   assertSharedEars(packDir);
-  const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')) as PackManifest;
+  const parsed = ManifestSchema.safeParse(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')));
+  if (!parsed.success) throw new Error(`Invalid source pack manifest: ${parsed.error.issues.map(issue => issue.message).join('; ')}`);
+  const manifest = parsed.data;
+  const revision = _declarationRevision(manifest);
+  if (options.contentRuntime.id !== manifest.id || options.contentRuntime.declarationRevision !== revision
+    || (options.registration && (options.registration.id !== manifest.id || options.registration.declarationRevision !== revision))) {
+    throw new Error(`Pack "${manifest.id}" generated declarations are stale. Run apack pack generate-entries before testing.`);
+  }
   const dependencies = readDependencies(packDir, manifest);
+  registry.catalog.setSources([{ manifest, dir: packDir, declarationRevision: revision }]);
+  registry.catalog.replace([...dependencies.values()].map(({ snapshot, dir }) => ({ snapshot, dir, enabled: true })));
 
   startTestRuntime({
     // The host's entity types (AppState) too: the app's state lives in the database, as in the app
@@ -277,8 +299,9 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       completeOnboarding: () => appState.update({ hasOnboarded: true }),
     },
     // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
-    settings: createSettingsService(createSettingsStore({
-      defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+    settings: createSettingsService(createSettingsStore({ ears: installedEngine,
+      catalog: getSettingsCatalog,
+      onCatalogChanged: onSettingsCatalogChanged,
     })),
   });
   if (options.registration) {
@@ -291,11 +314,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
       startTestRuntime({ entityTypes: Object.values(contentRuntime.entities) });
-      registry.registerPack(contentRuntimeRegistration(contentRuntime), originOf(dependency.manifest, dependency.dir));
+      registry.registerPack(contentRuntimeRegistration(contentRuntime, dependency.manifest), originOf(dependency.manifest, dependency.dir));
       declareFeatures(dependency.manifest);
     }
     startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities) });
-    registry.registerPack(contentRuntimeRegistration(options.contentRuntime, options.appliers), originOf(manifest, packDir));
+    registry.registerPack(contentRuntimeRegistration(options.contentRuntime, manifest, options.appliers), originOf(manifest, packDir));
     declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
   }

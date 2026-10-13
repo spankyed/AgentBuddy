@@ -1,4 +1,4 @@
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
@@ -29,6 +29,8 @@ export { answerTo } from './answers.ts';
  */
 export interface ContentRuntime {
   id: string;
+  /** Identity of the manifest that generated this source or bundled runtime. */
+  declarationRevision: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
   repositories: Record<string, unknown>;
@@ -55,7 +57,7 @@ export interface TestRuntimeStartOptions {
    * Backs `services.settings` (the harness passes the host's settings store, so a test writes settings the way the
    * app does); without one, reading or writing settings says to run on the harness. First call only
    */
-  settings?: SettingsService;
+  settings?: SettingsAdmin;
 }
 
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));

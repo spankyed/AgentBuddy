@@ -47,7 +47,7 @@ export const PACK_LAYOUT = {
 } as const;
 
 /** Sections `apack pack build` writes into dist/ and staging copies into the staged pack. */
-const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir];
+const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir] as const;
 
 export interface PackIntegrity {
   formatVersion: number;
@@ -108,6 +108,8 @@ export interface LoadedPackEntry {
   id: string;
   /** Declaration identity of the active backend; frontend bindings must match it. */
   declarationRevision: string;
+  /** Verified accepted build identity; native host registrations have no installed artifact. */
+  artifactRevision?: string;
   name: string;
   version: string;
   /** The pack's runtime/fe.js, when it has one */
@@ -139,16 +141,16 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
-  return registry.loadedPacks().map(({ id, name, version, dir, declarationRevision }) => {
+  return registry.loadedPacks().map(({ id, name, version, dir, declarationRevision, artifactRevision }) => {
     const { entry, styles } = packFrontendFiles(dir);
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
-    if (!entry && !styles) return { id, name, version, declarationRevision };
+    if (!entry && !styles) return { id, name, version, declarationRevision, artifactRevision };
     const feRevision = crypto.createHash('sha256')
       .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
       .digest('hex').slice(0, 16);
-    return { id, name, version, declarationRevision, feEntry: entry, feStyles: styles, feRevision };
+    return { id, name, version, declarationRevision, artifactRevision, feEntry: entry, feStyles: styles, feRevision };
   });
 }
 

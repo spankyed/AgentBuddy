@@ -165,6 +165,18 @@ The declaration owns only this feature's settings; it does not repeat the featur
 
 Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
+Declare a custom form at `features.<id>.settings.form`, for example
+`"form": "src/features/bookmarks/fe/settings.vue"`. The module default-exports a Vue
+component that receives `settings` and emits `update-setting` with `{ path, value, condition? }`.
+The host supplies the target address. Forms are independent of plugins: a feature can provide a
+form without a plugin or system.
+
+Pack-wide preferences use the same definition under `extensions.settings.<groupId>`, including
+`schema`, `defaults`, optional `title` and `description`, and optional `form`. Their values live at
+`packs[packId][groupId]`. Use a group for preferences shared across features; app preferences belong
+to the host. Pack and feature declarations remain visible in Settings when their executable form
+is unavailable; the JSON editor remains available. There is no pack-owned assembly of app settings.
+
 ## Steps
 
 Flow step types are declared under `extensions.steps`, keyed by type.

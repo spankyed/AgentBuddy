@@ -6,6 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
@@ -29,7 +30,7 @@ function dependentPack(spec: string): string {
   dirs.push(root);
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'dependent-pack', type: 'module' }));
-  write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' } }));
+  write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' }, features: { widgets: { settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } }));
   const dep = path.join(root, '.apack', 'deps', 'default-setup');
   fs.mkdirSync(path.join(dep, 'runtime'), { recursive: true });
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
@@ -45,9 +46,10 @@ export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
 import { setupPackTests } from '@apackdev/testing/harness';
 import { memos } from './memos-system';
 await setupPackTests({
-  contentRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} },
+  contentRuntime: { id: 'dependent-pack', declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))}, entities: {}, relKinds: {}, repositories: {}, contentWriters: {} },
   registration: {
     id: 'dependent-pack',
+    declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))},
     features: {
       // A hand-written registration declares what its plugin receives, as a generated one does: the bus
       // drops a send to a plugin nothing declares
@@ -93,12 +95,12 @@ it("connects to default-setup's notes and the app's settings", async () => {
   const connected = await app.nextEmit('default-setup/notes', 'NOTES_CONNECTED');
   expect(connected.data).toBeDefined();
   const loaded = await app.nextEmit('host/settings', 'SETTINGS_LOADED');
-  expect(loaded.data).toMatchObject({ app: expect.any(Object), features: expect.any(Object) });
+  expect(loaded.snapshot).toMatchObject({ values: { app: expect.any(Object), features: expect.any(Object) } });
   expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach the app's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @apackdev/ears and services.repository alike
-  expect((loaded.data as { features: Record<string, unknown> }).features['dependent-pack/widgets']).toEqual({ size: 3 });
+  expect(loaded.snapshot).toMatchObject({ values: { features: { 'dependent-pack/widgets': { size: 3 } } } });
   const noteQueries = Reflect.get(repository, 'noteQueries');
   expect(noteQueries).toBeDefined();
   expect(Reflect.get(services.repository, 'noteQueries')).toBe(noteQueries);

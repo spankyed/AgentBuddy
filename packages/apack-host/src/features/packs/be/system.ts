@@ -379,6 +379,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         runUninstall(packId).then(() => {
           forgetPack(packId);
+          registry.refreshCatalog();
 
           broadcastToPlugin('packs', {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -540,6 +541,7 @@ export function createPacksSystem(registry: PackRegistry) {
             error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time apack starts.`),
           });
         }
+        registry.refreshCatalog();
         broadcastToPlugin('packs', {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,

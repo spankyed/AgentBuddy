@@ -24,7 +24,7 @@ export function _compileSettingsDefinition(definition: SettingsDefinition): Sett
     }
   }
   if (definition.access !== undefined && !['shared', 'owner'].includes(definition.access)) throw new Error('Settings access must be shared or owner');
-  const schemaProblems = jsonProblems(definition.schema);
+  const schemaProblems = _settingsJsonProblems(definition.schema);
   if (schemaProblems.length) throw new Error(`Settings schema must be JSON data: ${schemaProblems[0].message}`);
   if (definition.schema?.type !== 'object') throw new Error('Settings schema must declare an object at its root');
   checkReferences(definition.schema);
@@ -35,7 +35,7 @@ export function _compileSettingsDefinition(definition: SettingsDefinition): Sett
       if (value === null || typeof value !== 'object' || Array.isArray(value)) {
         return [{ path: [], keyword: 'type', message: 'Settings must be an object' }];
       }
-      const problems = jsonProblems(value);
+      const problems = _settingsJsonProblems(value);
       if (problems.length) return problems;
       return validate(value) ? [] : (validate.errors ?? []).map(settingsProblem);
     },
@@ -48,7 +48,7 @@ export function _compileSettingsDefinition(definition: SettingsDefinition): Sett
 }
 
 /** Validate the transport/storage contract too: Ajv treats an explicit undefined as absent. */
-function jsonProblems(value: unknown): SettingsProblem[] {
+export function _settingsJsonProblems(value: unknown): SettingsProblem[] {
   const problems: SettingsProblem[] = [];
   const ancestors = new Set<object>();
   function visit(value: unknown, path: string[]): void {

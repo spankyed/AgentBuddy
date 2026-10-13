@@ -1,9 +1,9 @@
 // This window's global error handling: every uncaught error is reported to the main process as fatal,
-// except the one Monaco's diff view recovers from on its own. The filter has to be registered before the
+// except recoverable Monaco errors. The filter has to be registered before the
 // reporter — listeners on one target fire in registration order, and the capture flag doesn't change that
 // for an event dispatched at the target itself — so both are installed by one call here, rather than in an
 // order that main.ts has to keep. The filter's own module says why it can't live in the editor component.
-import { installMonacoErrorFilters } from '@apackdev/ui/components/monaco-error-filters';
+import { installMonacoErrorFilters, isRecoverableMonacoError } from '@apackdev/ui/components/monaco-error-filters';
 
 /** A thrown value as the log takes it: an Error's message and stack, a string as itself, anything else as JSON */
 export function serializeRendererError(error: unknown): { message: string; stack?: string; meta?: unknown } {
@@ -24,6 +24,7 @@ export function serializeRendererError(error: unknown): { message: string; stack
 
 /** Reports an error to the main process's renderer log. A log that can't be written is dropped, not thrown. */
 export function reportRendererError(source: string, error: unknown, meta?: unknown): void {
+  if (isRecoverableMonacoError(error)) return;
   const serialized = serializeRendererError(error);
   window.electronAPI?.rendererLog?.write({
     level: 'error',
@@ -36,6 +37,14 @@ export function reportRendererError(source: string, error: unknown, meta?: unkno
     },
     fatal: true,
   }).catch(() => {});
+}
+
+/** Vue's handler also owns the error page, so recoverable vendor errors must stop before either effect. */
+export function handleVueError(error: unknown, info: string): void {
+  if (isRecoverableMonacoError(error)) return;
+  console.error('Vue error:', error, info);
+  reportRendererError('vue', error, { info });
+  window.__showErrorPage?.('Something went wrong', error instanceof Error ? error.stack || error.message : String(error));
 }
 
 /** Installs the Monaco filter and this window's error listeners, in that order. Called once, from main.ts. */

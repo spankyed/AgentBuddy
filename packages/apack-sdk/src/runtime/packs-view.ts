@@ -7,7 +7,7 @@ import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
-import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
+import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpCatalog } from '../framework/pack-help.ts';
 
@@ -44,16 +44,10 @@ export interface PackRegistryView extends PackExtensionsView {
   contentWriters(entity: string): ContentWriter | undefined;
   /** A registered pack's appliers */
   appliers(packId: string): readonly ContentApplier[];
-  /** Every registered pack's feature settings, merged */
-  settingsDefaults(): PackSettingsDefaults;
-  /** Calls `listener` whenever the feature settings defaults change; returns the unsubscribe */
-  onSettingsDefaultsChanged(listener: () => void): () => void;
-  /**
-   * The refs of every installed feature that can have settings — it declares defaults, or has a plugin, whose settings
-   * form writes them: the registered ones, and those of installed packs that aren't running (disabled, or failed to
-   * load), whose settings stay theirs
-   */
-  featuresWithSettings(): readonly FeatureRef[];
+  settingsCatalog(): SettingsCatalog;
+  onSettingsCatalogChanged(listener: () => void): () => void;
+  /** Navigation policy is separate from preference definitions. */
+  pluginDefaults(): Record<string, boolean>;
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */

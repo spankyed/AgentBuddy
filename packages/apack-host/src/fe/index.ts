@@ -4,7 +4,7 @@
 // this is the package's export surface, which is why naming a feature's frontend from here is not the crossing
 // `check:specifiers` refuses. A feature's modules are otherwise its own, exactly as a pack's are.
 export type { Plugin } from '@apackdev/sdk/fe';
-export { createFePackRegistry, type FePackRegistry } from './pack-store.ts';
+export { createFePackRegistry, type FePackRegistry, type FrontendSettingsBinding } from './pack-store.ts';
 export { HOST } from '../refs.ts';
 export type { PackFERegistration } from '@apackdev/sdk/fe';
 export { describeFailure, type ShellClient, type ShellConnection, type ShellFailure } from './client.ts';
@@ -26,4 +26,8 @@ export { createPackFrontends, loadPackFEEntry, type DevPackFrontends, type PackF
 export { installFromProtocol, packInstallRequest, requestPackInstall, type PackInstallRequest } from '../features/packs/fe/install-url.ts';
 
 // The Settings view's machine, as the renderer pairs it with the view's components (`features/settings/fe/`)
-export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsSave, type SettingsState, type SettingsTarget } from '../features/settings/fe/machine.ts';
+export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsState } from '../features/settings/fe/machine.ts';
+
+export { createWindowSettingsRuntime, type WindowSettingsIO } from './settings-runtime.ts';
+export { settingsProblems } from '../features/settings/document.ts';
+export { compileSettingsCatalog } from '../features/settings/validation.ts';

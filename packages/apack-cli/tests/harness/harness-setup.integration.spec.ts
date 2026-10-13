@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { callCli } from '../_support/pack-builds';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -57,12 +58,25 @@ import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@apackdev/testing/harness';
-await setupPackTests({ contentRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
+await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))}, entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
   write(root, 'tests/pack.spec.ts', spec);
   return root;
 }
 
 describe("a pack's unit tests on the harness", () => {
+  it('runs without a bundled artifact and refuses stale source declarations before starting the harness', () => {
+    const root = dataPack(`import { expect, it } from 'vitest'; it('source works', () => expect(true).toBe(true));`);
+    expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+    expect(run(process.execPath, [VITEST, 'run'], root).output).toMatch(/Tests\s+1 passed/);
+    const manifestFile = path.join(root, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8'));
+    fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'Edited source' }));
+    const refused = run(process.execPath, [VITEST, 'run'], root);
+    expect(refused.code).toBe(1);
+    expect(refused.output).toContain('generated declarations are stale');
+    expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+  });
+
   it('find the pack from the vitest project root when run from another directory (--root)', () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';

@@ -1,25 +1,25 @@
-// Resetting settings resets the user's settings, not the app's own state (onboarding, pack versions, content revisions).
-// That state used to live in the Settings row's `internal` section, which resetSettings() erased; it's the host's
-// AppState row now, which this pack never reads but the test does, as the host stores it.
+// Preferences reset independently of onboarding and pack lifecycle state.
 import { describe, expect, it } from 'vitest';
 import { untypedTx, untypedQx } from '@apackdev/ears';
-import type { EARS } from '@apackdev/sdk';
+import { getTestSettings, startApp } from '@apackdev/testing/harness';
+import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
-import { ref } from '#generated/ref.ts';
 
-const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
-const appState = () => untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'failedAgainst']);
+const APP_STATE_ID = 'AppState-app';
 
 describe('resetting settings', () => {
-  it("keeps the app's own state", () => {
+  it("keeps the app's own state", async () => {
+    const app = await startApp({ systems: ['host/settings'] });
+    await app.connect();
     services.appData.completeOnboarding();
     untypedTx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('failedAgainst', { 'memo-pack': 'provider:' });
-    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created');
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
 
-    services.settings.reset();
+    const call = await app.send('host/settings', { type: 'RESET_ALL_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: 'host/settings', client: 'c-window' });
+    await app.nextEmit('host/settings', 'SETTINGS_SAVED', { answering: call });
 
-    expect(services.settings.forFeature(ref('threads'))).not.toMatchObject({ recentThreadsSortOrder: 'created' });
-    expect(appState()).toMatchObject({
+    expect(featureSettings.forFeature('threads').get()).not.toMatchObject({ recentThreadsSortOrder: 'created' });
+    expect(untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'failedAgainst'])).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },
       failedAgainst: { 'memo-pack': 'provider:' },

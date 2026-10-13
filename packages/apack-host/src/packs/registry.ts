@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 /**
  * Pack Registration
  *
@@ -6,25 +7,29 @@
  * view the SDK's lookups read once it's bound (`HostRuntime.packs`).
  */
 
-import * as fs from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
-import type { HostServices } from '@apackdev/sdk/services';
+import type { HostServices, SettingsService } from '@apackdev/sdk/services';
 import type { ContentOffer } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
-import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
+import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { registerRepository, unregisterRepository } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { discoverPacks, packContentOrder } from './discovery.ts';
+import { discoverPackDirectories, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
-import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
+import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
+import { createContributionCatalog, type ContributionCatalog, type PackCatalogSource } from './catalog.ts';
+import { readPackArtifact } from './layout.ts';
+import { disabledPackIds } from './installed.ts';
+import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -187,6 +192,8 @@ export interface PackOrigin {
 
 /** The registered packs, the host's own (`hostRegistration`) among them, and their shutdown hooks */
 export interface PackRegistry extends PackRegistryView {
+  readonly catalog: ContributionCatalog;
+  refreshCatalog(packsDir?: string, disabled?: ReadonlySet<string>): void;
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration, origin?: PackOrigin): void;
   unregisterPack(packId: string): void;
@@ -298,34 +305,11 @@ export interface PackRegistryOptions {
    * build, a test).
    */
   installedPacksDir?: () => string;
+  /** Composition supplies scoped authority; registrations cannot choose a caller identity. */
+  settingsForPack?: (packId: string) => SettingsService;
 }
 
-/**
- * The refs of an installed manifest's features that can have settings; a malformed manifest has none.
- *
- * Read as data, not trusted as a manifest: `features` is a map keyed by feature id, and `splitRef` is what
- * refuses a key that isn't one. An array is the malformed shape here — nothing writes one — and reading it
- * as none rather than throwing is the same rule `declaredFeatureRefs` follows in the 0.4.0 migration.
- */
-function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
-  if (typeof id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];
-  return Object.entries(features as Record<string, { settings?: unknown; plugin?: unknown } | null>)
-    .flatMap(([featureId, feature]) => {
-      const ref = feature && feature.settings ? `${id}/${featureId}` : undefined;
-      return ref && splitRef(ref) ? [ref as FeatureRef] : [];
-    });
-}
-
-/** When the packs dir's entries last changed: an install, update or uninstall renames an entry in or out */
-function packsDirStamp(dir: string): number {
-  try {
-    return fs.statSync(dir).mtimeMs;
-  } catch {
-    return -1;
-  }
-}
-
-export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = {}): PackRegistry {
+export function createPackRegistry({ installedPacksDir, settingsForPack }: PackRegistryOptions = {}): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   const origins = new Map<string, PackOrigin>();
@@ -339,10 +323,43 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
   const blocks = createDefinitionStore<BlockDefinition>();
   const contentWriters = createContentWriterStore();
   const appliers = createApplierStore();
-  const settingsDefaults = createSettingsDefaultsStore();
+  const catalog = createContributionCatalog(appSettingsDefinition);
   const help = createHelpStore();
   const commands = createCommandStore();
   const shutdownHooks = createShutdownHooks();
+
+  let catalogDir: string | undefined;
+  const declarationProblems = new Map<string, string>();
+
+  function refreshCatalog(packsDir = installedPacksDir?.() ?? catalogDir, disabled?: ReadonlySet<string>): void {
+    if (!packsDir) return;
+    disabled ??= disabledPackIds();
+    const sources: PackCatalogSource[] = [];
+    const problems = new Map<string, string>();
+    const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
+    for (const dir of discoverPackDirectories(packsDir)) {
+      try {
+        const { snapshot } = readPackArtifact(dir);
+        sources.push({ snapshot, dir, enabled: !disabled.has(snapshot.manifest.id) });
+      } catch (error) {
+        const previous = previousByDir.get(dir);
+        const id = previous?.snapshot.manifest.id ?? path.basename(dir);
+        problems.set(id, `its declarations were refused: ${error instanceof Error ? error.message : String(error)}`);
+        if (previous) sources.push({ snapshot: previous.snapshot, dir, enabled: !disabled.has(id) });
+      }
+    }
+    catalog.replace(sources);
+    declarationProblems.clear();
+    for (const [id, problem] of problems) declarationProblems.set(id, problem);
+    catalogDir = packsDir;
+  }
+
+  function refreshNative(): void {
+    catalog.setNative([...registrations.values()].filter(reg => !origins.has(reg.id)).map(reg => ({
+      id: reg.id, dependencies: reg.dependencies, settings: reg.settings,
+      features: Object.fromEntries(Object.entries(reg.features ?? {}).map(([id, feature]) => [id, { settings: feature.settings }])),
+    })));
+  }
 
   /** Bumped by every write, so whatever is derived from the registrations is rebuilt on its next read */
   let revision = 0;
@@ -444,8 +461,11 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     (reg, undo) => {
       undo(() => help.unregister(reg.id));
       help.register(reg.id, reg.help, reg.name);
-      undo(() => settingsDefaults.unregister(reg.id));
-      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings, plugin: feature.plugin })), reg.settingsSections);
+    },
+    (reg, undo) => {
+      if (!reg.bindSettings) return;
+      if (!settingsForPack) throw new Error(`Pack "${reg.id}" needs a host settings service binding`);
+      undo(reg.bindSettings(settingsForPack(reg.id)));
     },
   ];
 
@@ -463,7 +483,25 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
+    if (origin && (origin.id !== registration.id || (origin.manifest && origin.manifest.id !== registration.id))) {
+      throw new Error(`Pack "${registration.id}" runtime identity does not match its accepted origin "${origin.id}"`);
+    }
     checkFeatureIds(registration.id, Object.keys(registration.features ?? {}));
+
+    const source = catalog.getSnapshot().sourcePacks.find(pack => pack.manifest.id === registration.id);
+    if (source && (registration.declarationRevision !== source.declarationRevision || origin?.declarationRevision !== source.declarationRevision)) {
+      throw new Error(`Pack "${registration.id}" runtime does not match its accepted source declarations`);
+    }
+
+    if (origin?.manifest) {
+      const definitions = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
+        Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]),
+      );
+      if (!isDeepStrictEqual(definitions(registration.features), definitions(origin.manifest.features))
+        || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, origin.manifest.extensions?.settings ?? {})) {
+        throw new Error(`Pack "${registration.id}" runtime settings do not match its accepted declarations`);
+      }
+    }
 
     checkEARS(registration);
 
@@ -499,6 +537,14 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       changed();
       throw err;
     }
+    try { refreshNative(); }
+    catch (error) {
+      undos.undoAll();
+      registrations.delete(registration.id);
+      origins.delete(registration.id);
+      changed();
+      throw error;
+    }
     packUndos.set(registration.id, undos);
     loadProblems.delete(registration.id);
     changed();
@@ -515,6 +561,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     registrations.delete(packId);
     origins.delete(packId);
     changed();
+    refreshNative();
 
     if (failures.length > 0) {
       throw new Error(`Pack "${packId}" is unregistered, but ${failures.length} of its contributions could not be taken back out: ${failures.join('; ')}`);
@@ -554,22 +601,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return map;
   }
 
-  /** The refs of the registered features that can have settings: those declaring settings */
-  const registeredSettingsRefs = derived(() =>
-    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)));
-  /** The same of every pack in the packs dir, from its manifest: read again only when the dir's entries change */
-  const installedSettingsRefs = derived(
-    () => {
-      const dir = installedPacksDir?.();
-      return dir ? discoverPacks(dir).flatMap(({ manifest }) => manifestSettingsRefs(manifest)) : [];
-    },
-    () => {
-      const dir = installedPacksDir?.();
-      return dir ? packsDirStamp(dir) : -1;
-    },
-  );
-  /** Every installed feature that can have settings: a registered pack's, and one in the packs dir that isn't running */
-  const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
@@ -580,6 +611,8 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     Object.assign({}, ...[...registrations.values()].map((reg) => reg.services ?? {})));
 
   return {
+    catalog,
+    refreshCatalog,
     registerPack,
     unregisterPack,
 
@@ -600,7 +633,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     recordLoadProblem(packId, problem) {
       loadProblems.set(packId, problem);
     },
-    loadProblem: (packId) => loadProblems.get(packId),
+    loadProblem: (packId) => declarationProblems.get(packId) ?? loadProblems.get(packId),
     clearLoadProblem(packId) {
       loadProblems.delete(packId);
     },
@@ -695,9 +728,11 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     blocks: blocks.all,
     contentWriters: contentWriters.get,
     appliers: appliers.get,
-    settingsDefaults: settingsDefaults.get,
-    onSettingsDefaultsChanged: settingsDefaults.onChanged,
-    featuresWithSettings,
+    settingsCatalog: catalog.settings,
+    onSettingsCatalogChanged: catalog.onChanged,
+    pluginDefaults: derived(() => Object.fromEntries([...registrations.values()].flatMap(reg =>
+      featuresOf(reg).filter(({ feature }) => feature.plugin?.defaultVisible !== undefined)
+        .map(({ ref, feature }) => [ref, feature.plugin!.defaultVisible!])))),
     commands: commands.all,
     help: help.all,
   };

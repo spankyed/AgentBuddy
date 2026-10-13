@@ -43,6 +43,7 @@ export function answerTo<E extends {
 export interface ContentRuntime {
     // (undocumented)
     contentWriters: Record<string, ContentWriter>;
+    declarationRevision: string;
     // (undocumented)
     entities: Record<string, string>;
     // (undocumented)
@@ -118,7 +119,7 @@ export type FakeInferenceReply = string | {
 
 // @public (undocumented)
 export interface FakeSettings extends SettingsPort {
-    answer(status: SettingsSaveStatus): void;
+    answer(result: SettingsWriteResult): void;
     readonly resets: readonly FakeSettingsReset[];
     set(document: Record<string, unknown>): void;
     readonly updates: readonly FakeSettingsUpdate[];
@@ -221,7 +222,7 @@ export interface TestRuntimeStartOptions {
     entityTypes?: readonly string[];
     onboarding?: TestOnboarding;
     packs?: PackRegistryView;
-    settings?: SettingsService;
+    settings?: SettingsAdmin;
 }
 
 // (No @packageDocumentation comment for this package)

@@ -1,7 +1,6 @@
 // The shell loads external packs' frontends from the loaded-packs list whenever this window's bus
 // subscription is established: a query that fails leaves the packs unloaded until the next connection,
-// which loads them and announces them so their systems send their startup data. A pack already loaded
-// isn't loaded again.
+// which accepts fresh frontends before announcing them so their systems send startup data.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, type Actor } from 'xstate';
 import type { Plugin } from '@apackdev/sdk/fe';
@@ -50,21 +49,21 @@ describe('loading pack frontends from the loaded packs', () => {
     expect(warn).toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', 'connection closed');
 
     loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
-    loadPackFrontend.mockResolvedValue([plugin('pack-own')]);
+    loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
 
     dropConnection();
     connect();
     await settle();
 
     expect(loadPackFrontend).toHaveBeenCalledTimes(1);
-    expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('pack-own');
-    expect(app.system.get('pack-own')).toBeDefined();
+    expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('ext/own');
+    expect(app.system.get('ext/own')).toBeDefined();
     expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
   // Every pack's frontend is loaded the same way, the one the app ships included: nothing here reads which
-  // kind of pack it is, and a reconnection does not load one again
-  it("loads every pack's frontend once, whoever ships it", async () => {
+  // kind of pack it is. Each connection needs fresh accepted bindings.
+  it("reaccepts every pack frontend on reconnect, whoever ships it", async () => {
     loadedPacksQuery.mockResolvedValue([
       { id: 'default-setup', feEntry: 'runtime/fe.js' },
       { id: 'ext', feEntry: 'runtime/fe.js' },
@@ -81,7 +80,8 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+    expect(loadPackFrontend).toHaveBeenCalledTimes(4);
+    expect(unloadPackFrontend.mock.calls).toEqual([['default-setup'], ['ext']]);
     expect(app.getSnapshot().context.plugins.map(p => p.id))
       .toEqual(expect.arrayContaining(['default-setup/own', 'ext/own']));
   });
@@ -109,7 +109,7 @@ describe('loading pack frontends from the loaded packs', () => {
   it("drops the result of a load for a pack unloaded while it was running", async () => {
     loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
     let releaseLoad: (plugins: Plugin[]) => void = () => {};
-    loadPackFrontend.mockResolvedValue([plugin('pack-own')]);
+    loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
     loadPackFrontend.mockReturnValueOnce(new Promise<Plugin[]>(resolve => { releaseLoad = resolve; }));
 
     connect();
@@ -117,13 +117,13 @@ describe('loading pack frontends from the loaded packs', () => {
 
     // The pack is uninstalled while its frontend is still loading
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
-    releaseLoad([plugin('pack-own')]);
+    releaseLoad([plugin('ext/own')]);
     await settle();
 
     const { plugins, packFrontendsLoaded } = app.getSnapshot().context;
     expect(plugins.map(p => p.id)).toEqual(['notes']);
     expect(packFrontendsLoaded).toEqual([]);
-    expect(app.system.get('pack-own')).toBeUndefined();
+    expect(app.system.get('ext/own')).toBeUndefined();
     expect(packClientReady).not.toHaveBeenCalled();
     // What the dropped load registered is undone
     expect(unloadPackFrontend).toHaveBeenCalledWith('ext');
@@ -178,7 +178,7 @@ describe('loading pack frontends from the loaded packs', () => {
     expect(warn).toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', 'connection closed');
   });
 
-  it("records a pack whose frontend is styles alone, and doesn't load it again", async () => {
+  it("reaccepts styles-only packs without announcing frontend readiness", async () => {
     loadedPacksQuery.mockResolvedValue([{ id: 'styles-only', feStyles: 'runtime/fe.css' }]);
     loadPackFrontend.mockResolvedValue(null);
 
@@ -195,6 +195,66 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    expect(loadPackFrontend).toHaveBeenCalledTimes(1);
+    expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+    expect(unloadPackFrontend).toHaveBeenCalledWith('styles-only');
   });
+});
+
+
+it('discards a late result from the lost connection before accepting a fresh registration', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  let release!: (plugins: Plugin[]) => void;
+  loadPackFrontend.mockReturnValueOnce(new Promise<Plugin[]>(resolve => { release = resolve; }));
+  loadPackFrontend.mockResolvedValue([plugin('ext/new')]);
+  connect();
+  await settle();
+  dropConnection();
+  connect();
+  await settle();
+  expect(loadPackFrontend).toHaveBeenCalledTimes(1);
+  expect(packClientReady).not.toHaveBeenCalled();
+  release([plugin('ext/stale')]);
+  await settle();
+  expect(unloadPackFrontend).toHaveBeenCalledWith('ext');
+  expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+  expect(app.system.get('ext/stale')).toBeUndefined();
+  expect(app.system.get('ext/new')).toBeDefined();
+  expect(packClientReady.mock.calls).toEqual([['ext']]);
+  expect(unloadPackFrontend.mock.invocationCallOrder[0]).toBeLessThan(loadPackFrontend.mock.invocationCallOrder[1]);
+});
+
+it('removes disconnected plugin actors and restores the selected feature only after fresh acceptance', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
+  connect();
+  await settle();
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'ext/own' });
+  const previous = app.system.get('ext/own');
+  dropConnection();
+  expect(app.system.get('ext/own')).toBeUndefined();
+  expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
+  expect(app.getSnapshot().context.pendingPluginId).toBe('ext/own');
+  connect();
+  await settle();
+  expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
+  expect(app.system.get('ext/own')).toBeDefined();
+  expect(app.system.get('ext/own')).not.toBe(previous);
+});
+
+it('does not restart an interrupted loader while the connection remains down', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
+  let release!: (plugins: Plugin[]) => void;
+  loadPackFrontend.mockReturnValueOnce(new Promise<Plugin[]>(resolve => { release = resolve; }));
+  connect();
+  await settle();
+  app.send({ type: 'LOAD_PACK_FRONTENDS' });
+  dropConnection();
+  release([plugin('ext/stale')]);
+  await settle();
+  app.send({ type: 'LOAD_PACK_FRONTENDS' });
+  await settle();
+  expect(loadPackFrontend).toHaveBeenCalledTimes(1);
+  expect(app.system.get('ext/stale')).toBeUndefined();
+  expect(app.getSnapshot().context.packLoadRunning).toBe(false);
+  expect(packClientReady).not.toHaveBeenCalled();
 });

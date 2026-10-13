@@ -13,7 +13,7 @@ import { HOST, installFromProtocol, runFrontendMigrations } from '@apackdev/host
 import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
-import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
+import { handleVueError, installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
 import { untypedSendToSystem } from '@apackdev/sdk/events';
 
 declare const __APP_VERSION__: string;
@@ -103,12 +103,7 @@ window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
 const app = createApp(App);
 
 app.config.errorHandler = (err, _instance, info) => {
-  console.error('Vue error:', err, info);
-  reportRendererError('vue', err, { info });
-  window.__showErrorPage?.(
-    'Something went wrong',
-    err instanceof Error ? err.stack || err.message : String(err)
-  );
+  handleVueError(err, info);
 };
 
 app.mount('#app');

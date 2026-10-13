@@ -6,8 +6,7 @@
   "imports": {
     "#generated/*": "./src/__generated__/*",
     "#features/*": "./src/features/*",
-    "#extensions/*": "./src/extensions/*",
-    "#app-settings/*": "./src/app-settings/*"
+    "#extensions/*": "./src/extensions/*"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit",

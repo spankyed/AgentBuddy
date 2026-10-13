@@ -99,6 +99,8 @@ export interface PackRegistration {
    */
   features?: Record<string, PackFeature>;
   services?: Record<string, unknown>;
+  /** Generated runtime service binding; the host supplies accepted caller authority and records its revocation. */
+  bindSettings?: (settings: import('../services/settings.ts').SettingsService) => () => void;
   ears?: PackEARS;
   /** The pack's repositories by name (apack.json `features[].repositories`), registered with the app's engine */
   repositories?: Record<string, unknown>;
@@ -122,13 +124,7 @@ export interface PackRegistration {
   help?: import('./pack-help.ts').HelpDocument[];
   /** Display name used for this pack's contributions. */
   name?: string;
-  /**
-   * Sections of the app's settings this pack owns, with their defaults, beside the `features` section the app keeps
-   * itself (apack.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a
-   * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
-   * knowing what is in it.
-   *
-   * Evaluated synchronously while registering the pack's defaults.
-   */
-  settingsSections?: () => Record<string, unknown>;
+  /** Pack-owned preference groups declared inline in extensions.settings. */
+  dependencies?: Record<string, string>;
+  settings?: Record<string, import('./settings-definition.ts').SettingsDefinition>;
 }

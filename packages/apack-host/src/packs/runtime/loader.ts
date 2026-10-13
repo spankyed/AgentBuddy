@@ -208,6 +208,7 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
  * whole of what shipping buys a pack here, and it is an argument rather than something read off a manifest.
  */
 export function loadAppPacks(registry: PackRegistry, shippedIds: ReadonlySet<string> = new Set()): { loaded: LoadedPack[] } {
+  registry.refreshCatalog(resolveAppEnvironment().packsDir);
   const loaded = loadExternalPacks(registry, shippedIds);
   return { loaded: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
 }

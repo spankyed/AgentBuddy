@@ -15,8 +15,8 @@ import type { PackRegistry } from '../../../packs/registry.ts';
 const handlers = defineHandlers<MachineContext, ApplicationEvent>();
 
 /** Which plugins' tabs show, by ref: each feature's declared default, with the user's own choices over it */
-export function pluginVisibility(registry: Pick<PackRegistry, 'settingsDefaults'>): Record<string, boolean> {
-  return { ...registry.settingsDefaults().visibility, ...appState.get().pluginVisibility };
+export function pluginVisibility(registry: Pick<PackRegistry, 'pluginDefaults'>): Record<string, boolean> {
+  return { ...registry.pluginDefaults(), ...appState.get().pluginVisibility };
 }
 
 /** The events a client may send this system */
@@ -34,7 +34,7 @@ export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('S
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
  * application plugin the visibility again when a choice or a pack's defaults change, so every window agrees.
  */
-export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDefaults'>) {
+export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefaults'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
     actions: handlers.actions({

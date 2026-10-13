@@ -26,28 +26,18 @@ Content sources `apack pack build` compiles to JSON, as `apack.json` `content.fo
 
 Each feature declares JSON Schema and explicit defaults in `apack.json` under `features.<id>.settings`. The registry keeps values under `<packId>/<featureId>`; navigation defaults live in `features.<id>.plugin.defaultVisible`.
 
-**Settings are not written, and the app's base defaults are not a content source.** `src/content/default-settings.ts` is this pack's own source, and `src/app-settings/index.ts` imports it — `getBaseSettings`, which refuses a base file that sets a plugin's slice (`assertNoPluginSlice`). Nothing about settings reaches the database through writing: the row holds only what the user changed, and the store composes these defaults underneath it from the registration. Forgetting those changes is a targeted reset in the app's Settings view (`RESET_SETTINGS` naming a feature's ref or a section's name), which is where a destructive action belongs rather than behind an import dialog.
+**Settings are declarations, not content.** Pack groups live in `apack.json` `extensions.settings`,
+feature preferences in `features.<id>.settings`, and app preferences belong to the host. The host
+composes declared defaults beneath explicit user overrides. Content import does not write settings;
+reset removes the addressed owner's overrides so current defaults apply.
 
-**`content.sources` is for entries that import rows into the database**, and that is the test for a new one: an entry needing a policy to say "do not import this" is not one. A `.ts` source the pack reads back itself is not one either — a pack imports its own source, which is what `default-settings.ts` does.
+**`content.sources` is for entries that import rows into the database.** Settings definitions and
+help articles are manifest contributions, not content datasets. Help lives in `src/extensions/help`
+and is bundled from `extensions.help.path`.
 
-Help articles live in `src/extensions/help` and are bundled directly from the manifest’s `extensions.help.path`; they are not content datasets.
-
-The settings hold the user's settings only: the app's own state (onboarding, versions, content hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@apackdev/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
-
-Every feature settings file follows this shape:
-
-```ts
-export default {
-  visible: true | false,  // whether the plugin's sidebar tab shows by default
-  plugins: {
-    <featureId>: { ... }  // feature-specific defaults (optional)
-  }
-}
-```
-
-- `visible` controls whether the plugin's sidebar tab is shown by default; what the user shows or hides is the host's state (`AppState`), not settings
-- Feature-specific defaults (hotkeys, modes, display preferences) go under the feature id key; the registry stores them under the plugin's address
-- Features with only navigation visibility declare `plugin.defaultVisible`; they need no settings definition.
+Onboarding, versions and content hashes belong to the host's `AppState`, not preferences. Feature
+navigation visibility is declared in `features.<id>.plugin.defaultVisible`; user visibility choices
+also belong to `AppState`. A feature with only navigation visibility needs no settings definition.
 
 ## Notes
 

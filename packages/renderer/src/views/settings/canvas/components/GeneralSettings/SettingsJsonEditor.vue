@@ -8,10 +8,10 @@
       </div>
       <div class="flex items-center gap-2">
         <button
-          @click="onReset"
+          @click="discardDraft"
           class="px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
         >
-          Reset
+          Discard changes
         </button>
         <button
           @click="onSave"
@@ -32,23 +32,31 @@
         :modelValue="jsonText"
         language="json"
         @update:modelValue="onEditorChange"
+        @mount="onEditorMount"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
-import { settingsProblems } from '@apackdev/host/settings'
-import { ref, computed, onMounted, watch } from 'vue'
-import { useSelector } from '@xstate/vue'
+import { windowSettings, useWindowSettingsSnapshot } from '@/runtime/settings'
+import type { SettingsWriteCondition } from '@apackdev/sdk/types'
+import { compileSettingsCatalog } from '@apackdev/host/fe'
+import type * as Monaco from 'monaco-editor'
+import { registerSettingsEditorSchemas } from '@/views/settings/schema'
+import { ref, computed, onMounted, onScopeDispose, toRaw, watch } from 'vue'
 import SimpleMonacoEditor from '@apackdev/ui/components/SimpleMonacoEditor'
-import type { SettingsState } from '@apackdev/host/fe'
 
-const actor: SettingsState = usePlugin()
-const settings = useSelector(actor, (state) => state.context.settings)
-// The store's answer to the last change, which for this editor is the whole document it replaced
-const replacement = useSelector(actor, (state) => state.context.save)
+const snapshot = useWindowSettingsSnapshot()
+const settings = computed(() => snapshot.value?.values)
+const catalog = computed(() => snapshot.value && toRaw(snapshot.value.catalog))
+const validation = computed(() => catalog.value && compileSettingsCatalog(catalog.value))
+const saving = ref(false)
+let condition: SettingsWriteCondition | undefined
+let disposed = false
+let editor: Monaco.editor.IStandaloneCodeEditor | undefined
+let removeSchemas: (() => void) | undefined
+onScopeDispose(() => { disposed = true; removeSchemas?.(); if (savedTimeout) clearTimeout(savedTimeout) })
 
 const jsonText = ref('')
 const originalText = ref('')
@@ -57,9 +65,11 @@ const isDirty = ref(false)
 const saved = ref(false)
 let savedTimeout: ReturnType<typeof setTimeout> | null = null
 
-const canSave = computed(() => isDirty.value && problems.value.length === 0 && replacement.value.status !== 'saving')
+const canSave = computed(() => snapshot.value?.status === 'ready' && isDirty.value && problems.value.length === 0 && !saving.value)
 
 function loadSettings() {
+  if (!snapshot.value) return
+  condition = { runId: snapshot.value.runId, expected: { exists: true, value: JSON.parse(JSON.stringify(snapshot.value.values)) } }
   const text = JSON.stringify(settings.value, null, 2)
   jsonText.value = text
   originalText.value = text
@@ -73,20 +83,37 @@ watch(settings, () => {
   if (!isDirty.value) loadSettings()
 })
 
-/**
- * Why the text can't be saved: it isn't JSON, or the store's own check refuses it. Which features are installed only
- * the store knows, so it can still refuse a changed plugin's settings, and says why
- */
+function refreshSchemas() {
+  removeSchemas?.()
+  removeSchemas = undefined
+  const model = editor?.getModel()
+  const monaco = (window as Window & { monaco?: typeof Monaco }).monaco
+  if (model && monaco && catalog.value) {
+    removeSchemas = registerSettingsEditorSchemas(monaco.json.jsonDefaults, catalog.value, model.uri.toString())
+  }
+}
+
+function onEditorMount(value: Monaco.editor.IStandaloneCodeEditor) {
+  editor = value
+  refreshSchemas()
+}
+
+watch([() => snapshot.value?.runId, () => catalog.value?.revision], () => {
+  refreshSchemas()
+  if (isDirty.value) problems.value = problemsIn(jsonText.value)
+})
+
+/** The same validators as the host; the host also checks the draft's comparison before saving. */
 function problemsIn(text: string): string[] {
-  let data: unknown
   try {
-    data = JSON.parse(text)
+    const data: unknown = JSON.parse(text)
+    if (!validation.value) return ['Settings are not ready']
+    validation.value.validateEffective(data)
+    validation.value.validate(data, snapshot.value?.values)
+    return []
   } catch (e) {
     return [(e as Error).message]
   }
-    // The sections a pack registered are whatever the stored document holds beside the features' slices
-  const sections = Object.keys((settings.value ?? {}) as Record<string, unknown>).filter((name) => name !== 'features')
-  return settingsProblems(data, { before: settings.value, sections })
 }
 
 function onEditorChange(value: string) {
@@ -95,24 +122,21 @@ function onEditorChange(value: string) {
   problems.value = problemsIn(value)
 }
 
-function onReset() {
+function discardDraft() {
   loadSettings()
 }
 
-function onSave() {
-  if (!canSave.value) return
-  actor.send({ type: 'SETTINGS.REPLACE', data: JSON.parse(jsonText.value) })
-}
-
-// The store's answer to a save: stored, the text becomes the settings shown; refused, the text stays with the reasons
-watch(replacement, (answer) => {
-  if (answer.status === 'saved') {
+async function onSave() {
+  if (!canSave.value || !condition) return
+  saving.value = true
+  const outcome = await windowSettings.replaceAll(JSON.parse(jsonText.value), condition)
+  if (disposed) return
+  saving.value = false
+  if (outcome.status === 'saved') {
     loadSettings()
     saved.value = true
     if (savedTimeout) clearTimeout(savedTimeout)
     savedTimeout = setTimeout(() => { saved.value = false }, 2000)
-  } else if (answer.status === 'refused') {
-    problems.value = answer.problems
-  }
-})
+  } else problems.value = outcome.problems
+}
 </script>

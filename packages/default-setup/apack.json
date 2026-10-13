@@ -462,7 +462,9 @@
           "recentThreadsSortOrder": "visited",
           "recordingLimitMinutes": 3,
           "skipArchiveConfirm": false
-        }
+        },
+        "title": "Threads",
+        "form": "src/features/threads/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/threads/be/system.ts",
@@ -713,7 +715,9 @@
           "showCommits": true,
           "showWorktrees": false,
           "cliPaths": {}
-        }
+        },
+        "title": "Code",
+        "form": "src/features/code/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/code/be/system.ts",
@@ -759,7 +763,9 @@
         "defaults": {
           "tasklistPanelPosition": "left",
           "showCollapseIcon": true
-        }
+        },
+        "title": "Notes",
+        "form": "src/features/notes/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/notes/be/system.ts",
@@ -800,7 +806,9 @@
         "defaults": {
           "showBookmarksBar": true,
           "openLinksInApp": true
-        }
+        },
+        "title": "Browser",
+        "form": "src/features/browser/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/browser/be/system.ts",
@@ -873,7 +881,9 @@
               "color": "#EF4444"
             }
           ]
-        }
+        },
+        "title": "Library",
+        "form": "src/features/library/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/library/be/system.ts",
@@ -910,7 +920,9 @@
         },
         "defaults": {
           "enableFlowPreview": true
-        }
+        },
+        "title": "Flows",
+        "form": "src/features/flows/fe/settings.vue"
       },
       "typesEntry": "src/features/flows/be/types",
       "system": {
@@ -982,7 +994,9 @@
               "color": "#EF4444"
             }
           ]
-        }
+        },
+        "title": "Actions",
+        "form": "src/features/actions/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/actions/be/system.ts",
@@ -1055,7 +1069,9 @@
               "color": "#F59E0B"
             }
           ]
-        }
+        },
+        "title": "Prompts",
+        "form": "src/features/prompts/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/prompts/be/system.ts",
@@ -1092,7 +1108,9 @@
         },
         "defaults": {
           "inspectEnabled": false
-        }
+        },
+        "title": "Brain",
+        "form": "src/features/brain/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/brain/be/system.ts",
@@ -1165,7 +1183,9 @@
               ]
             }
           }
-        }
+        },
+        "title": "Database",
+        "form": "src/features/database/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/database/be/system.ts",
@@ -1213,7 +1233,9 @@
           "maxLogs": 1000,
           "excludedSources": [],
           "showAppEvents": false
-        }
+        },
+        "title": "Logs",
+        "form": "src/features/logs/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/logs/be/system.ts",
@@ -1585,6 +1607,27 @@
       "appExtensions": {
         "welcome": "src/extensions/app/Welcome.vue"
       }
+    },
+    "settings": {
+      "assistant": {
+        "title": "Assistant",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "name": ""
+        },
+        "form": "src/extensions/settings/assistant.vue"
+      }
     }
   },
   "boot": {
@@ -1713,6 +1756,5 @@
     "opaqueDeps": [
       "elkjs"
     ]
-  },
-  "settingsSections": "src/app-settings/index.ts#settingsSections"
+  }
 }

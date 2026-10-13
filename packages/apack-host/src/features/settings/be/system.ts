@@ -4,12 +4,13 @@ import { eventTypes } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, onPackSettingsDefaultsChanged } from '@apackdev/sdk/framework';
+import { defineSystem } from '@apackdev/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@apackdev/sdk/utils/pure';
-import { services } from '@apackdev/sdk/services';
+import { services, _settingsAdmin as preferences } from '@apackdev/sdk/services';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
-import { FEATURES_SECTION, SettingsRefusedError } from './document.ts';
+import { SettingsRefusedError } from '../document.ts';
+import { settingsRequestAccess, settingsRequestAdmin } from './access.ts';
 import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
 
@@ -35,7 +36,7 @@ function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 
 }
 
 /** Each plugin's settings as they apply: what features were last told */
-const appliedFeatureSettings = (): Record<string, unknown> => ({ ...services.settings.getAll<SettingsDocument>().features });
+const appliedFeatureSettings = (): Record<string, unknown> => ({ ...preferences().getAll().features });
 
 /** What each feature was last told of its settings, by feature ref */
 /**
@@ -50,6 +51,7 @@ const whileBusy = (reason: string) => ({
   UPDATE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   REPLACE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   RESET_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
+  RESET_ALL_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
 });
 
 export const settingsSpec = defineSystem<Contract>();
@@ -59,8 +61,9 @@ export const settingsSpec = defineSystem<Contract>();
  * in them: whatever changed the settings, both views follow.
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
-  const data = services.settings.getAll<SettingsDocument>();
-  broadcastToPlugin('settings', { type, data });
+  const snapshot = preferences().getSnapshot();
+  broadcastToPlugin('settings', { type, snapshot });
+  const data = snapshot.values;
   broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: appHotkeys(data) });
 }
 
@@ -73,17 +76,25 @@ function sendSecrets(): void {
 export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
-    packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
     settingsWriteListener: fromCallback(({ sendBack }) => {
       const tell = (change: 'written' | 'replacing' | 'replaced') => sendBack({
         type: change === 'written' ? 'SETTINGS_WRITTEN' : change === 'replacing' ? 'DATA_REPLACING' : 'DATA_REPLACED',
       });
-      return services.settings.onChange(tell);
+      return preferences().onChange(tell);
     }),
     // The host resets the whole app: stores, each pack's onInit and boot apply, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
+  guards: {
+    canResetApp: ({ event }) => {
+      try { settingsRequestAdmin(event); return true; }
+      catch { return false; }
+    },
+  },
   actions: settingsSpec.actions({
+    refuseUnauthorizedReset: () => broadcastToPlugin('settings', {
+      type: 'APP_RESET_FAILED', error: 'Resetting the app requires host-issued settings administration.',
+    }),
     sendSettingsStartupData: () => {
       broadcastSettings('SETTINGS_LOADED');
       sendSecrets();
@@ -147,7 +158,10 @@ export const settingsSystem = setup({
     refuseChange: ({ reply }, { reason }: { reason: string }) =>
       answerSettings(reply, { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
-    getSettings: () => broadcastSettings('SETTINGS_LOADED'),
+    getSettings: ({ reply }) => {
+      if (reply) reply({ type: 'SETTINGS_LOADED', snapshot: preferences().getSnapshot() });
+      else broadcastSettings('SETTINGS_LOADED');
+    },
     
     /**
      * Whoever asked hears whether the change was stored, and why not: a settings form says "Saved" only then,
@@ -163,12 +177,10 @@ export const settingsSystem = setup({
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       const outcome = ((): SettingsAnswer => {
         try {
-          if (ev.entityType === 'feature') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
-          else services.settings.setInSection(ev.label, ev.path, ev.value);
+          settingsRequestAccess(event).service.set(ev.target, ev.path, ev.value, ev.condition);
         } catch (error) {
-          return refusal(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
+          return refusal(error, "The settings weren't saved");
         }
-        broadcastSettings('SETTINGS_UPDATED');
         return { type: 'SETTINGS_SAVED' };
       })();
 
@@ -179,11 +191,10 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       const outcome = ((): SettingsAnswer => {
         try {
-          services.settings.replaceAll(ev.data);
+          settingsRequestAdmin(event).replaceAll(ev.data, ev.condition);
         } catch (error) {
           return refusal(error, "The settings weren't replaced");
         }
-        broadcastSettings('SETTINGS_UPDATED');
         return { type: 'SETTINGS_SAVED' };
       })();
 
@@ -196,25 +207,25 @@ export const settingsSystem = setup({
       const { target } = settingsSpec.typeOf('RESET_SETTINGS', event);
       const outcome = ((): SettingsAnswer => {
         try {
-          // **Resetting is removing, not writing defaults back.** The row holds only what the user changed and
-          // the store composes the registration's defaults underneath it, so dropping a slice is the whole of
-          // it — and it is why this needs no new capability: `removeStored` has always been the narrow door,
-          // reached until now only by migrations.
-          if (!target) services.settings.reset();
-          else if (target.entityType === 'feature') services.settings.removeStored([FEATURES_SECTION, target.label]);
-          else services.settings.removeStored([target.label]);
+          settingsRequestAccess(event).service.reset(target);
         } catch (error) {
-          return refusal(error, target
-            ? `Settings for ${target.entityType} "${target.label}" weren't reset`
-            : "The settings weren't reset");
+          return refusal(error, "The settings weren't reset");
         }
-        broadcastSettings('SETTINGS_RESET');
         return { type: 'SETTINGS_SAVED' };
       })();
 
       answerSettings(reply, outcome);
     },
     
+    resetAllSettings: ({ event, reply }) => {
+      let outcome: SettingsAnswer;
+      try {
+        settingsRequestAdmin(event).resetAll();
+        outcome = { type: 'SETTINGS_SAVED' };
+      } catch (error) { outcome = refusal(error, "The settings weren't reset"); }
+      answerSettings(reply, outcome);
+    },
+
     // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
     secretsChanged: () => sendSecrets(),
 
@@ -237,7 +248,7 @@ export const settingsSystem = setup({
   initial: 'idle',
   context: { applied: {} },
   entry: 'rememberAppliedSettings',
-  invoke: [{ src: 'packSettingsListener' }, { src: 'settingsWriteListener' }],
+  invoke: { src: 'settingsWriteListener' },
   on: {
     SECRETS_CHANGED: { actions: 'secretsChanged' },
   },
@@ -251,9 +262,7 @@ export const settingsSystem = setup({
           actions: 'getSettings',
         },
         // Every write reaches the features it changed through here, whoever made it
-        SETTINGS_WRITTEN: { actions: 'tellChangedFeatures' },
-        // A pack registered or left: its defaults came or went
-        PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
+        SETTINGS_WRITTEN: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         // Still a fact handler, and `sendSettingsUpdate` is why: this plugin takes `SETTINGS_LOADED` only
         // while it is loading and `SETTINGS_UPDATED` once ready, so what publishing means here depends on
         // the receiver's state. The ask covers the first; this covers the second and the features whose defaults came or went
@@ -268,9 +277,11 @@ export const settingsSystem = setup({
         RESET_SETTINGS: {
           actions: 'resetSettings',
         },
-        RESET_APP: {
-          target: 'resetting',
-        },
+        RESET_ALL_SETTINGS: { actions: 'resetAllSettings' },
+        RESET_APP: [
+          { guard: 'canResetApp', target: 'resetting' },
+          { actions: 'refuseUnauthorizedReset' },
+        ],
       },
     },
     // A backup import is replacing the stored data. Its settings arrive past this system's writer and the migrations it
@@ -278,6 +289,7 @@ export const settingsSystem = setup({
     // it: nothing is told until it ends, when every feature hears its settings with no changes. A reset would race the
     // import over the same stores, so it is refused while one runs rather than started.
     replacingData: {
+      entry: 'sendSettingsUpdate',
       on: {
         ...whileBusy('A backup is being imported. Change the settings once it has finished.'),
         DATA_REPLACED: { target: 'idle', actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
@@ -295,11 +307,11 @@ export const settingsSystem = setup({
         // however it ends, since a reset that failed partway changed some of the data and settings already
         onDone: {
           target: 'idle',
-          actions: ['tellEveryFeature', 'onResetComplete'],
+          actions: ['sendSettingsUpdate', 'tellEveryFeature', 'onResetComplete'],
         },
         onError: {
           target: 'idle',
-          actions: ['tellEveryFeature', 'onResetFailed'],
+          actions: ['sendSettingsUpdate', 'tellEveryFeature', 'onResetFailed'],
         },
       },
     },
@@ -316,10 +328,9 @@ export const settingsEvents = new Set([
   'CLIENT_CONNECTED', 'PACK_CHANGED',
   'GET_SETTINGS',
   'UPDATE_SETTINGS',
-  'RESET_SETTINGS',
+  'RESET_SETTINGS', 'RESET_ALL_SETTINGS',
   'REPLACE_SETTINGS',
   'RESET_APP',
-  'PACK_SETTINGS_CHANGED',
   'SECRETS_CHANGED',
   'SETTINGS_WRITTEN',
   'DATA_REPLACING',

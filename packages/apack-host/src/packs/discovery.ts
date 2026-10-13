@@ -11,33 +11,34 @@ export type { PackManifest };
 
 // ── Pack discovery ─────────────────────────────────────────
 
-export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
+/** Visible installed directories; hidden directories are unpublished install candidates. */
+export function discoverPackDirectories(packsDir: string): string[] {
   if (!fs.existsSync(packsDir)) return [];
+  return fs.readdirSync(packsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map(entry => path.join(packsDir, entry.name));
+}
 
+export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
   const results: { manifest: PackManifest; dir: string }[] = [];
-  const entries = fs.readdirSync(packsDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    // Hidden dirs are in-progress installs/replacements (see pack-installer placePack)
-    if (entry.name.startsWith('.')) continue;
-    const packDir = path.join(packsDir, entry.name);
+  for (const packDir of discoverPackDirectories(packsDir)) {
+    const entryName = path.basename(packDir);
     const manifestPath = path.join(packDir, 'apack.json');
 
     if (!fs.existsSync(manifestPath)) {
-      logger.warn(`Skipping ${entry.name}: no apack.json`);
+      logger.warn(`Skipping ${entryName}: no apack.json`);
       continue;
     }
 
     try {
       const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
       if (!raw.id || !raw.name || !raw.version) {
-        logger.warn(`Skipping ${entry.name}: manifest missing id, name, or version`);
+        logger.warn(`Skipping ${entryName}: manifest missing id, name, or version`);
         continue;
       }
       results.push({ manifest: raw as PackManifest, dir: packDir });
     } catch {
-      logger.warn(`Skipping ${entry.name}: failed to parse apack.json`);
+      logger.warn(`Skipping ${entryName}: failed to parse apack.json`);
     }
   }
 

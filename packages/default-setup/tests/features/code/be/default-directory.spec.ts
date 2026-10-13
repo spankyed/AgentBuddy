@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { startApp } from '@apackdev/testing/harness';
+import { getTestSettings, startApp } from '@apackdev/testing/harness';
 
 const dirs: string[] = [];
 const tempDir = (): string => {
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 const setCodeSetting = (key: string, value: unknown) =>
-  app!.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'default-setup/code', path: [key], value });
+  app!.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'default-setup/code' }, path: [key], value }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 const explorerDirectory = () => (app!.system('code').getSnapshot().context as { baseDirectory: string | null }).baseDirectory;
 
 describe("the code explorer's directory", () => {

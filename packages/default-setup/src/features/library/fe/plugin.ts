@@ -3,7 +3,6 @@ import { definePlugin } from '@apackdev/sdk/fe'
 import { librarySystem } from './state.ts'
 import LibraryCanvas from './canvas.vue'
 import LibraryPanel from './panel.vue'
-import settings from './settings.vue'
 
 const library = definePlugin({
   label: 'Library',
@@ -11,7 +10,6 @@ const library = definePlugin({
   state: librarySystem,
   canvas: LibraryCanvas,
   panel: LibraryPanel,
-  settings,
   isPinned: true,
 })
 

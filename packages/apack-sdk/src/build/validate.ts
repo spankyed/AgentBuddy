@@ -50,7 +50,7 @@ export function validateManifest(manifestPath: string): PackValidation {
 
 /**
  * Checks a manifest's features against the pack on disk: each feature's `settings.form`, `system.entry`
- * and `plugin.entry` file exists, and no two features claim the same designation.
+ * and `plugin.entry` file exists, pack settings forms exist, and no two features claim the same designation.
  *
  * A designation is a role, not a name, so it need not match the feature id: the registries map the role
  * to the id of the system (`pack-registration.ts` `designationsOf`) or plugin (`fe/pack-store.ts`) that
@@ -58,7 +58,7 @@ export function validateManifest(manifestPath: string): PackValidation {
  * object, so the last one would silently win — which is what the check below is for. Across packs
  * `registerPack` throws.
  */
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id'>>): PackValidation {
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions'>>): PackValidation {
   const diagnostics: PackDiagnostic[] = [];
   const designatedBy = new Map<string, string>();
   for (const feature of packFeatures(manifest)) {
@@ -90,6 +90,16 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
       } else {
         designatedBy.set(feature.designation, feature.id);
       }
+    }
+  }
+  for (const [groupId, definition] of Object.entries(manifest.extensions?.settings ?? {})) {
+    const file = definition.form;
+    if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
+      diagnostics.push({
+        code: 'settings.missing-form', severity: 'error', packId: manifest.id,
+        path: ['extensions', 'settings', groupId, 'form'], source: file,
+        message: `Settings group "${groupId}": form file "${file}" not found`,
+      });
     }
   }
   return packValidation(diagnostics);

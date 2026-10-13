@@ -22,7 +22,8 @@
           "additionalProperties": false,
           "properties": {
             "listTitle": {
-              "type": "string"
+              "type": "string",
+              "description": "Heading shown above the memo list."
             }
           },
           "required": [
@@ -31,7 +32,9 @@
         },
         "defaults": {
           "listTitle": "Memos"
-        }
+        },
+        "title": "Memos",
+        "form": "src/features/memos/fe/settings.vue"
       },
       "system": {
         "entry": "src/features/memos/be/system.ts",
@@ -64,7 +67,8 @@
         },
         "defaults": {
           "listTitle": "Fixture Notes"
-        }
+        },
+        "title": "Fixture Notes"
       },
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts"
@@ -73,6 +77,19 @@
     }
   },
   "extensions": {
+    "settings": {
+      "assistant": {
+        "title": "Fixture Assistant",
+        "schema": {
+          "type": "object",
+          "properties": { "name": { "type": "string" } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "defaults": { "name": "Memo helper" },
+        "form": "src/extensions/settings/assistant.vue"
+      }
+    },
     "help": {
       "path": "src/extensions/help"
     },

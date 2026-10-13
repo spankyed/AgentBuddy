@@ -180,6 +180,10 @@ A pack's unit tests run its code without the app: content, repositories and cont
 - **Exported types:** `PackTestOptions`, `ImportContentOptions`, `ContentRuntime`, `StartShellOptions`, `TestShell`, `TestPlugin`, `StartAppOptions`, `TestApp`, `FlowRun` (`eventTNodeIds`, `steps`), `FlowStepTrace`, `RunFlowOptions`, `PluginEvent`, `Message`.
 - **`importFlows(dsl)`** — compiles flow DSL (steps name the SDK's actions and prompts by label) and imports it through the SDK's `flowRepository`, as the flow applier does; `root: true` declares the root flow the brain starts with. It needs no dependency on default-setup.
 - **`registerPack(registration)`, `unregisterPack(packId)`** — another pack in the test file's registry, as the app registers an installed one (its commands, feature settings, appliers, …); default-setup's `library-commands`, `pack-settings-defaults` and `content-parity/edited-flows` specs use it.
+- **`getTestSettings()`** — the active test's host settings administration for fixture setup and assertions.
+  Use `forPack(id)` to exercise a registered fixture pack's caller policy; ordinary pack code continues to
+  use generated settings handles. Host data replacement fixtures use `whileReplacingData` so reads,
+  mutation refusal and feature notifications follow the real replacement lifecycle. Throws outside a test.
 - **`mockService(name, impl)`** — overlays a service in `services` for the current test; it throws outside a test (`beforeAll`, module scope), where the mock would lapse after the first test.
 - **`addTestSecret(provider, label)`** — stores a key's metadata (no value) in the test host's in-memory `services.secrets`, by the host's selection rules; emptied with the rest of the test data.
 - **`mockInference(reply, replies?)`** — mocks `services.inference` for the current test with `fakeInference(reply, replies)` (text, agents, and `embedding`, `image`, `speech`, `transcript` and `relevance` replies; `calls` kinds `text`, `embedding`, `image`, `speech`, `transcription`, `reranking`) (`@apackdev/sdk/testing`) and returns the fake, whose `calls` a test asserts.

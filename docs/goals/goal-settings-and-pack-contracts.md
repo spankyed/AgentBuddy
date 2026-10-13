@@ -390,3 +390,1028 @@ relocation. This turn's partial installed-catalog draft was discarded from sourc
 one loader fixture registering a settings definition absent from its manifest; future integration must
 correct that fixture rather than relax declaration agreement. No production catalog integration was
 committed and no settings phase is complete.
+
+### Settings owner-contract rewrite — in progress, 2026-10-12
+
+The working change deletes default-setup's app-settings assembly, its duplicate content defaults,
+whole-document types and aliases. Assistant preferences are inline pack-group declarations. The
+shared SDK document has fixed app/packs/features owners; arbitrary section addressing and the
+separate runtime defaults store are removed. The host writer validates every owner against the
+common catalog and retains explicit default-equal choices until reset. Document checks share the
+SDK JSON-data validation and reject malformed ownership and non-JSON data before persistence.
+
+Focused owner/discovery checks passed: 64 host checks across document, writer, app definitions,
+catalog, verified installed discovery and command registration. These include same-named independent
+groups, default changes/reset, unavailable current-format overrides, dependent/owner mutation policy,
+invalid writes, immutable publications and retaining accepted declarations on malformed replacements.
+The SDK typecheck and 40 focused frontend/handle/codegen checks passed. Evidence is recorded in
+`/private/tmp/apack-settings-owners.log` and `/private/tmp/apack-settings-sdk-focused.log`.
+
+This is **not a completed checkpoint**. Host typechecking still reports unmigrated test contracts;
+renderer settings still depend on the Settings view. Trusted execution/sender binding, window
+readiness and correlated outcomes/CAS, import preflight, generated artifacts/API reports and full
+integrated acceptance remain required before committing this working change. Later goal phases
+also remain unfinished. Focused writer policy tests do not prove caller provenance at transport or
+loader boundaries.
+
+### Window settings runtime — working integration, 2026-10-12
+
+The current working change binds renderer settings to one window resource before the shell starts,
+intercepting settings snapshots/outcomes on the existing bus subscription. The Settings view no longer
+holds shared values, loading state or save status. SDK writes return correlated results; each form's
+save composable tracks its own requests. Complete snapshots carry backend-run identity, publication
+revision, readiness and the declaration catalog. Reconnect obtains a freshly correlated snapshot;
+stale runs/revisions, timeouts, disconnect and disposal are handled independently of plugin activation.
+
+The writer compares a draft's original value and backend run before replacement. Unrelated settings
+changes do not reject a targeted edit. Projects retains dirty drafts across incoming values and emits
+its original comparison; whole-document JSON editing also supplies a comparison and preserves refused
+text. Data-replacement boundaries advance the publication revision and refuse pack mutations.
+
+Window/runtime/store/presentation checks passed 36 tests; SDK frontend/handle checks passed 10.
+Final follow-up checks passed: 32 window/writer tests, six renderer adapter/Projects tests, SDK
+typechecking and renderer typechecking. Projects tests exercise actual inputs and the runtime over a
+mocked transport, including draft retention and its original comparison. Logs:
+`/private/tmp/apack-settings-window.log`, `/private/tmp/apack-settings-sdk-window-tests.log`,
+`/private/tmp/apack-settings-renderer-current.log`, `/private/tmp/apack-settings-renderer-tests.log`.
+
+This is still **uncommitted, incomplete integrated work**. Caller-bound frontend access and trusted
+loader/sender provenance are not implemented by a host-owned window port. Import preflight, catalog-fed
+custom-form discovery/loading, remaining test/caller migration, generated/public artifacts, full app
+acceptance and later goal phases remain. These focused instances are not actual two-window Electron
+acceptance. Do not treat transport labels or caller-provided targets as authorization evidence.
+
+
+### Assembly-removal audit and writer follow-up — working changes
+
+The default-setup guide no longer describes the deleted app-settings directory, executable section
+assembly, settings content defaults or removed aliases. Its ownership and access examples now distinguish
+host app preferences, inline pack groups, feature definitions and custom forms. Source searches find no
+remaining default-setup assembly references or SDK/host section-default APIs.
+
+Migrated host lookup, registration, lifecycle and event fixtures to catalog definitions and independent
+plugin visibility. The installed-loader fixture now declares its settings in the sealed manifest and
+publishes that catalog before registration; it does not rely on executable defaults for discovery.
+Focused catalog/registration checks passed 75 tests, and loader/lifecycle/event checks passed 85 tests.
+Host and SDK typechecking passed. The caller-bound service facade had dropped the draft comparison;
+it now forwards that condition, with 10 SDK runtime/handle checks passing. The writer refuses malformed
+stored rows instead of treating them as absent defaults, and isolates subscriber failures after accepted
+writes and across replacement boundaries; 38 app/writer checks passed. Evidence:
+`/private/tmp/apack-settings-catalog-callers.log`, `/private/tmp/apack-settings-loader-callers.log`,
+`/private/tmp/apack-settings-service-forwarding.log`, `/private/tmp/apack-settings-store-current.log`,
+`/private/tmp/apack-settings-host-current.log`, `/private/tmp/apack-settings-sdk-current.log`.
+
+Live writes and backup preflight now share pure catalog validation. Real API/LMDB import checks passed
+10 tests, including refusals for invalid app values, obsolete roots and null settings before live data
+replacement. CLI typechecking passed. Import retains well-formed overrides for unavailable owners;
+editing cannot create or change those unavailable-owner values. Evidence:
+`/private/tmp/apack-settings-import.log`, `/private/tmp/apack-settings-cli-current.log`.
+
+This remains an uncommitted integrated rewrite. Trusted loader/transport caller binding, catalog-driven
+form loading, generated frontend group/dependency interfaces, migrated pack/API test callers, public
+artifacts and actual app acceptance are still required. Backup source/staging consistency also needs
+review before claiming refusal atomicity for concurrent changes. Existing working-integration evidence
+above supersedes the earlier statement that the renderer still reads the Settings view; it does not
+supersede the outstanding authorization or real-window acceptance requirements.
+
+
+Full host suite follow-up: 981 tests across 91 files passed
+(`/private/tmp/apack-settings-host-suite.log`). The first sandbox run stopped at child-process IPC;
+the authorized isolated-fixture run exposed seven failures. Corrected the reload fixture's installed
+origin and reset its catalog between cases, made the immutable layout section list readonly, and
+updated declaration-refusal assertions. A disabled pack retains its declaration diagnostic, since
+turning activation off does not make an invalid manifest discoverable. No validation guard was relaxed.
+This is host-suite evidence only; the integrated commit and full strict/app acceptance remain pending.
+
+
+### Generated settings handles and subscription unification — working changes
+
+Generated backend handles now expose scoped reads/subscriptions and typed write/reset. Both local and
+qualified own selectors resolve to the same owner. Dependency handles become readonly when the accepted
+dependency declaration specifies owner-only mutation; the frontend follows the same policy and now has
+pack-group composables. Schema-derived values retain path/value pairing. Compiler probes cover shared
+and restricted dependencies for groups and features, own owner-only definitions, empty settings maps,
+wrong selectors/value types and creating a handle during feature-service module initialization.
+
+Backend subscriptions observe catalog-default changes as well as accepted writes, retain user choices,
+and release their catalog listeners on unsubscribe. The Settings actor's separate defaults listener and
+internal defaults event are removed; it consumes the same service notification path as other consumers.
+Focused interface/compiler checks passed 45 tests; focused host runtime/writer/subscription checks passed
+51. Subsequent full suites passed 895 SDK tests (78 files) and 982 host tests (91 files).
+Evidence: `/private/tmp/apack-settings-typed-handles.log`, `/private/tmp/apack-settings-subscriptions.log`,
+`/private/tmp/apack-settings-sdk-suite.log`, `/private/tmp/apack-settings-host-suite.log`.
+
+Public feature authoring prose now describes the three owners, explicit choices, retained disabled
+contract data, local form save state and the renamed feature/group accessors. Regenerated the public
+manifest schema, SDK API reports and shipped pack facade. Normalized generated report line endings to
+retain reviewable diffs. Full local package builds succeeded. Renderer typechecking passed after its
+standard library was aligned with Electron's ES2022 support, including existing Error.cause usage.
+Harness typechecking also passed. The first report update correctly refused stale packages; it ran
+after rebuilding them. Logs: `/private/tmp/apack-settings-packages-build.log`,
+`/private/tmp/apack-settings-renderer-handles.log`, `/private/tmp/apack-settings-harness-handles.log`,
+`/private/tmp/apack-settings-api-update.log`, `/private/tmp/apack-settings-pack-facade.log`.
+
+Shipped-pack acceptance is still incomplete. Its first full suite could not collect because newly added
+host administration imported source-only SDK runtime internals from the published harness. Replaced
+that import with an internal SDK service entry sharing the bound SDK instance; ordinary pack services
+still omit administrative methods. The new entry and the final codegen fix require another API-report
+refresh. The shipped-pack typecheck also found unmigrated branded feature refs, frontend targets and test
+callers, plus an accidental backend dependency field emitted in frontend registrations. Source targets
+and that field are corrected; rebuilt typecheck/tests and remaining test migration are next. This is
+not yet proof of loader/transport caller provenance, which remains mandatory before the integrated
+checkpoint. No goal phase is marked complete by these partial checks.
+
+
+Content-build correction: adding a ref-resolution import to actions was refused by the content
+compiler's existing no-package-import rule. Removed those imports. A serialized `SettingsTarget`
+accepts a qualified string ref, with runtime grammar/declaration checks, while generated selectors stay
+schema/manifest constrained. The compiler probe also rejects a bare serialized feature name. This
+changes the settings transport input, not EARS or the SDK's branded `FeatureRef`. No content compiler
+guard or import policy was relaxed. Rebuilding packages and shipped content after this correction is
+still in progress; previous green suites do not prove these final source changes.
+
+
+Final source follow-up: SDK and host typechecking passed after the serialized-target correction, full
+local packages rebuilt, and the shipped pack build passed including compiled content and frontend.
+Final compiler/frontend/runtime probes passed 23 tests. Refreshed the three subsequently changed SDK
+API reports and normalized line endings. Evidence: `/private/tmp/apack-settings-final-handle-checks.log`,
+`/private/tmp/apack-settings-sdk-handles.log`, `/private/tmp/apack-settings-host-subscriptions.log`,
+`/private/tmp/apack-settings-default-setup-build.log`, `/private/tmp/apack-settings-api-update.log`.
+
+The rebuilt shipped suite collected successfully after the private-entry fix: 707 passed, 110 failed,
+two skipped, and 74 unhandled errors across 108 files (`/private/tmp/apack-settings-pack-suite.log`).
+Many failures trace to the harness registering installed-origin runtimes without publishing their
+accepted definitions into the common catalog. The harness now verifies the pack's built artifact,
+checks its declaration revision against the source manifest, validates dependency snapshot identities,
+and publishes those declarations before starting/registering runtimes. It reads no settings defaults
+from executable registrations. Harness typechecking and its package build passed; real actor checks
+are running in `/private/tmp/apack-settings-harness-activation.log`. The pack typecheck now reports
+primarily tests still using removed settings APIs (`/private/tmp/apack-settings-pack-typecheck.log`).
+Those tests require migration, not compatibility methods. The last unused source import was removed.
+Full pack acceptance and the larger integrated checkpoint remain unfinished.
+
+
+Harness activation follow-up: all 13 real actor/schedule/subflow checks across three shipped-pack
+files passed (`/private/tmp/apack-settings-harness-activation.log`). This verifies that the published
+harness can load, settings declarations are available before actor boot, and the real Brain/schedule
+paths run and stop correctly. It does not substitute for full shipped-pack or real Electron acceptance.
+
+### Shipped-pack owner reset and identity checks — working changes
+
+Migrated reset, secrets, onboarding and feature-identity tests to the current owner contracts. Scoped
+reset requires an explicit app, pack/group or feature target; whole-document reset is the separate host
+`RESET_ALL_SETTINGS` event. Missing-target refusal leaves overrides intact. App and pack-group resets
+preserve other owners, and resetting all preferences preserves onboarding progress and AppState lifecycle
+facts. Generated local and qualified handles reach the same feature. An unrelated registered pack does
+not grant read/write/reset access without a declared dependency. Tests inspect persisted rows through
+EARS rather than restoring an administrative API on pack services.
+
+Focused settings/onboarding checks passed (18), followed by identity, CLI routing and real Brain/Flow
+checks (27). Evidence: `/private/tmp/apack-settings-owner-reset.log` and
+`/private/tmp/apack-settings-owner-identities.log`. Removed stale content-guide instructions to export
+feature defaults and the deleted settings content entry; SDK/host guides now describe catalog definitions
+and the current store constructor. `git diff --check` passes. The shipped-pack typecheck still fails in
+`feature-settings-updated.spec.ts` and `pack-settings-defaults.spec.ts`, whose old aggregate defaults and
+administrative service calls remain to migrate. No full-suite or integrated acceptance claim follows
+from these focused checks. Caller binding/transport policy, catalog-driven custom forms and all remaining
+phases are unfinished; the integrated rewrite is still uncommitted.
+
+### Complete shipped settings caller migration — working integration
+
+The shipped pack no longer calls the removed aggregate defaults/section/settings-administration APIs.
+Notification fixtures write through their own registered pack identity; host replacement fixtures enter
+`whileReplacingData` so replacement suppresses incremental diffs and publishes final values on success
+or failure. `getTestSettings()` on the test harness provides explicit host fixture administration and
+throws outside an active test; ordinary pack services gain no administrative methods. Whole-document
+editor checks now retain explicit default-equal choices rather than pruning them.
+
+The first full shipped suite found six remaining old-event failures in directory updates, reset broadcasts
+and request outcomes. Migrated those payloads and strengthened the reset broadcast case by changing a
+hotkey before reset and asserting the default reaches the shell. Focused notification/catalog checks
+passed (33), then request/broadcast/directory checks (7). The shipped-pack typecheck passes and the full
+suite passes: 817 tests, two existing skips (107 files passed, one skipped). Evidence:
+`/private/tmp/apack-settings-notification-catalog.log`,
+`/private/tmp/apack-settings-window-notifications.log`,
+`/private/tmp/apack-settings-pack-typecheck.log`, `/private/tmp/apack-settings-pack-suite.log`.
+
+A further caller audit found the drive engine still manufacturing section payloads and reading only the
+sparse database row. It now reuses SDK `SettingsTarget` for app, pack/group and feature writes and reads
+`GET_SETTINGS` through the existing correlated request path, returning the host snapshot. The reply
+waiter extracts the declared snapshot field for this read, retaining the existing result field for query
+and transaction operations. The testing package suite passes (111), its typecheck passes, and the public
+testing/drive guides describe the new contracts. Evidence:
+`/private/tmp/apack-settings-harness-admin-suite.log`,
+`/private/tmp/apack-settings-harness-admin-typecheck.log`.
+
+These results do not prove trusted loader/transport caller binding, catalog-driven custom forms,
+multiple-window packaged behavior or full discovery. Those remain required before the integrated
+removal checkpoint is committed. All later phases remain active.
+
+### Runtime settings admission audit — working changes
+
+Registration's settings comparison used truthy filtering, silently treating null/false/zero/empty-string
+feature definitions as absent. Its pack-group comparison also treated null as absent. Both now preserve
+provided values for comparison against the accepted declarations; malformed runtime settings are refused
+before services or catalog data publish. Registration, origin and manifest identities must agree.
+Seven independent-registry cases assert refusals leave catalog identity and registered services unchanged.
+
+All three deliberate guard mutations were caught, with source restored: removing identity admission
+failed two cases; restoring truthy feature filtering failed four; restoring null-as-absent pack groups
+failed one. Evidence: `/private/tmp/apack-settings-admission-mutation-{identity,falsey-feature,null-pack}.log`.
+Focused registration/loader checks passed (108). The full host suite initially exposed a bus fixture
+registering a fake second frontend pack under the first pack's origin. Replaced it with one registration
+whose recorder, frontend files and origin share the same identity; readiness assertions are unchanged.
+The full host suite now passes (989 tests, 91 files), host typecheck passes, and `git diff --check` passes.
+Evidence: `/private/tmp/apack-settings-runtime-admission.log`,
+`/private/tmp/apack-settings-host-suite.log`,
+`/private/tmp/apack-settings-runtime-admission-typecheck.log`.
+
+This repairs admission checks; it does not implement trusted caller injection. The generated backend
+settings service still closes over a generated pack ID, and the frontend settings port remains host
+administration. Actual loader-bound/revocable caller access and untyped transport policy are unresolved;
+so are catalog-driven forms and the later goal phases. The integrated removal remains uncommitted.
+
+### Backend accepted-runtime settings binding — working integration
+
+Removed the generated factory that took a pack ID and reached ambient host administration. Generated
+services now create a runtime-local `_createPackServices()` binding; the generated registration exposes
+its `bindSettings` hook. The registry obtains a scoped service from the host composition callback using
+the accepted registration identity, and records revocation with the existing contribution undo log.
+The API composition and published test harness supply that callback. Before binding and after unload,
+retained handles refuse settings access; revocation disposes subscriptions and is idempotent. A refused
+registration receives no capability, and failed catalog publication revokes a provisional binding.
+
+The host-store integration checks cover local writes, retained override data after unload, shared
+dependency read/write/reset and owner-only mutation/reset refusal. Generated-runtime tests also cover
+pre-binding access, repeated binding refusal, subscription disposal and stale repeated cleanup after
+rebinding. Removing revocation failed its guard case; substituting another caller ID failed both caller
+and policy cases. Mutation sources were restored. Evidence:
+`/private/tmp/apack-settings-binding-mutation-{revocation,caller}.log`.
+
+Public packages and the shipped pack rebuilt successfully. SDK reports and exact generated-contract
+coverage include the binding; the owning settings plan describes the mechanism and its frontend limits.
+The full SDK suite passes (896), full host suite passes (993), rebuilt shipped suite passes (817, two
+existing skips). SDK/host typechecks pass. API typechecking first found two old app-reset settings calls;
+these now use explicit host administration. All API typechecks pass, and real LMDB reset/restore checks
+pass (13). The invalid-backup fixture now seeds valid live data independently after exporting its
+intentionally invalid candidate, instead of asking the writer to read a null fixture row. Evidence:
+`/private/tmp/apack-settings-runtime-binding-{sdk-suite,host-suite,pack-suite}.log`,
+`/private/tmp/apack-settings-runtime-binding-api-types.log`,
+`/private/tmp/apack-settings-runtime-binding-api-integration.log`.
+
+This completes this backend binding path, not the full policy requirement. The frontend port still
+carries administrative authority; generated frontend code and raw transport require accepted caller
+binding. Catalog-driven custom forms, multiwindow/packaged acceptance, remaining discovery/binding
+completeness and all later phases remain unfinished. The integrated removal is still uncommitted.
+
+### Frontend settings transport audit and authorization component — working changes
+
+The actual frontend boundary still exposes host administration. `bus.send` checks addressability but
+explicitly does not authenticate `from` or `sender`; connection identity is server-stamped. Frontend
+readiness also supplies no settings authority. The owning plan now specifies a host-issued,
+connection/runtime-bound credential outside event payloads, preserving existing request correlation.
+Generated frontend access must receive the resolved scoped port; raw transport must refuse absent or
+invalid credentials and keep pack scopes away from whole-document operations.
+
+Added `createSettingsAccess` in host settings with distinct host administration and pack service grants.
+Pack issuance checks the accepted ID and nonempty declaration/artifact stamps. Resolution rejects
+unknown credentials, another connection, replacement/unload and acceptance metadata changed in place.
+Revocation is connection-owned, and disconnect releases all of that connection's grants. Ten focused
+checks and host typechecking pass, including the added identity/metadata cases. Evidence:
+`/private/tmp/apack-settings-transport-access.log`,
+`/private/tmp/apack-settings-transport-access-types.log`.
+
+The component is not yet consumed by API ingress or renderer ports. No policy-completion claim or
+standalone checkpoint commit is made. Next: accepted frontend/tool/host issuance, existing bus delivery
+integration, per-connection disposal, injected frontend ports and raw transport refusal tests. Custom
+forms, multiwindow/packaged acceptance and all remaining goal phases stay required.
+
+
+### Window snapshot admission and shared settings boundary — working integration
+
+Window snapshots now validate their shape, revisions, declaration owners, schemas/defaults and effective
+values before publication. Validation does not complete missing values from defaults. Invalid initial
+reads end disconnected; invalid broadcasts retain accepted data. Unchanged revisions cannot silently
+replace declarations or values. Subscriber exceptions are isolated; malformed refusal payloads and
+unserializable writes settle explicitly without leaking pending requests.
+
+The browser build exposed the JSON editor importing the backend settings barrel, pulling Node-only
+persistence into the renderer. Pure `settings/document.ts` and `settings/validation.ts` now sit beside the
+feature halves, and the frontend entry exposes document checks directly. Boundary checks distinguish
+actual browser accesses from import-path text and inspect the frontend/shared-contract runtime closure
+for Node-only dependencies. No pack application-settings assembly or compatibility path was restored.
+
+The full host suite passes (1,024 tests, 92 files), both host and renderer typechecking pass, renderer
+settings/Projects checks pass (six), and the production renderer build passes. A final boundary-only
+strengthening also guards browser accesses in reached shared contracts; restored focused checks pass
+(49 across three files), and final host typechecking passes. Removing semantic snapshot validation failed four cases, and adding a Node import to the
+shared document failed the boundary check; both experiment sources were restored. Evidence:
+`/private/tmp/apack-settings-window-admission-{host-suite,types,renderer,renderer-types,renderer-build}.log`,
+`/private/tmp/apack-settings-window-{admission,boundary}-mutation.log`,
+`/private/tmp/apack-settings-window-admission-final-{focused,types}.log`.
+
+This closes snapshot admission defects, not frontend caller authorization. Accepted loader-bound ports,
+raw transport policy, catalog-driven custom forms, actual multiwindow/packaged acceptance and remaining
+goal phases are still required. The integrated settings extraction remains uncommitted until that path
+is complete and validated.
+
+
+### Generated frontend binding and registration cleanup — working integration
+
+Replaced the ambient generated `_useSettings` accessor with a runtime-local `_createFeSettings()`.
+Generated frontend entries expose `bindSettings`; handles capture their accepted port and refuse writes
+or resets after unload, including after a cached module is rebound. Subscription disposal is idempotent
+and attempts all cleanups even when one throws. Value-comparison conditions pass through unchanged.
+
+The frontend loader obtains a host-owned port/disposal resource after declaration acceptance. The
+registry records binding revocation and resource release in its existing contribution undo log. Missing
+providers, rejected contributions, failed binding and duplicate registration are covered. A real generated
+entry executes in a Node child process without any ambient host binding and proves feature/group target
+resolution, accepted writes and revocation/rebinding behavior. Removing registry revocation failed the
+unload guard; the experiment source was restored.
+
+Published packages rebuilt and the SDK frontend API report updated. Full SDK checks pass (900 tests,
+78 files), full host checks pass (1,031 tests, 93 files), and SDK/host typechecks pass. Restored
+frontend registration checks pass (19). Renderer typechecking also passes after its test project adopted
+the application's ES2022 built-in baseline for aggregate cleanup errors. Evidence:
+`/private/tmp/apack-fe-settings-binding-{sdk-suite,host-suite,sdk-types,host-types,packages,api}.log`,
+`/private/tmp/apack-fe-settings-binding-mutation.log`,
+`/private/tmp/apack-fe-settings-binding-{restored,renderer-types}.log`.
+
+The renderer does not yet supply this loader resource, and API ingress does not yet resolve settings
+credentials. Generated frontends therefore require that implementation before an app checkpoint: no
+administrative fallback or old accessor remains. Ambient public mutation APIs/callers, raw transport
+policy, custom forms, actual multiwindow/packaged acceptance and remaining goal phases stay unfinished.
+The integrated settings extraction remains uncommitted.
+
+### Transport authorization and window-bound pack writes — working integration
+
+API settings issuance now distinguishes trusted window/tool bootstrap from accepted pack access.
+Pack credentials require the backend origin's declaration and verified artifact stamps. Raw bus writes
+without credentials refuse; credentials stay outside the event and are stripped before bus dispatch.
+A host-side event resolver is preserved through correlation copying and resolved again by the settings
+actor, preventing a runtime removed after ingress from keeping authority at delivery. Whole-document
+administration requires the host service. Connection abort releases credentials; cleanup is registered
+once per shared abort signal rather than once per procedure context object.
+
+The window settings resource now shares its validated snapshot with independently bound mutation
+transports. Each binding owns its pending requests and subscriptions. Disposal settles only its writes,
+prevents queued sends, clears reactive reads and remains permanent through reconnection. Host forms
+and other pack bindings remain independent. This introduces no pack settings assembler or lifecycle
+feature, and does not restore the removed default-setup app-settings abstraction.
+
+The actual API router/bus/settings actor/writer test proves shared dependency writes, owner-only refusal,
+independent trusted administration and revocation using the window resource. Native test declarations
+and synthetic accepted origins mean this is transport/writer evidence, not installed-loader admission.
+Mutating the bound port to use the administrative transport made the owner-only assertion fail; source
+was restored and the route checks rerun. Host checks pass (1,035 tests, 93 files); focused host checks
+pass (48), route checks pass (18), and host plus API application/test/scripts typechecks pass.
+The initial sandbox host run could not run process/uptime checks; the authorized unrestricted rerun
+passed. Evidence: `/private/tmp/apack-settings-scoped-port-{host,api,restored,mutation}.log`,
+`/private/tmp/apack-settings-scoped-port-{host-types,api-types,api-test-types,api-script-types}.log`,
+`/private/tmp/apack-settings-transport-host-suite.log`.
+
+Renderer bootstrap and accepted-loader issuance remain unwired, as do catalog-driven custom forms and
+ambient mutation caller removal. Reconnect audit found the shell currently retains loaded pack frontend
+registrations when its bus connection drops (`BUS_CONNECTION_LOST` only changes `busSubscribed`);
+its next loader run skips those IDs. Binding disposal therefore requires a coherent frontend reacceptance
+path before wiring the provider. Do not revive old handles or infer administration from a sender label
+to work around this. Real multiwindow/installed/packaged acceptance and later goal phases remain required.
+The integrated settings extraction remains uncommitted pending the complete usable checkpoint.
+
+### Renderer authority bootstrap and frontend reacceptance — working integration
+
+Renderer window bootstrap now acquires explicit host access and waits for a validated correlated settings
+snapshot before calling the shell's connected callback. The pack frontend provider obtains its own
+credential from the accepted backend declaration/artifact identities, injects its bound port and releases
+provisional or unloaded access. A missing artifact identity refuses instead of borrowing host access.
+The loaded-pack metadata publishes the accepted backend artifact stamp; an actual sealed installed-pack
+loader fixture proves it reaches that response. Native app reset now uses the injected window host
+operation and reports transport rejection without leaving its reset button busy.
+
+The shell now unloads registered frontends on disconnect using the existing unload path, stops their
+plugin actors, and retains the selected feature for fresh acceptance. A loader interrupted by a dropped
+connection is invalidated, but remains the sole running loader until it settles: late registrations are
+undone, never merged or announced, and a queued fresh run starts afterward. Offline requests do not
+start a new run. Removing the stale-result check failed the delayed-import regression; source restored.
+Tests cover selected-view restoration, distinct plugin actors, delayed imports across reconnect,
+styles-only reacceptance, onboarding/error states, independent credentials, provisional credential
+cleanup and the actual renderer subscription's readiness barrier on two connections.
+
+Full host checks pass (1,040 tests, 94 files); full renderer checks pass (44 tests, 10 files), host and
+renderer typechecks pass, and the renderer build passes. API built to regenerate the router declarations
+consumed by the renderer (the first renderer typecheck correctly exposed their stale output). Evidence:
+`/private/tmp/apack-settings-reacceptance-{tests,loader-tests,mutation,types,host-suite}.log`,
+`/private/tmp/apack-settings-renderer-credentials-{tests,suite,types,build}.log`,
+`/private/tmp/apack-settings-renderer-api-build.log`, `/private/tmp/apack-settings-reset-injection-tests.log`.
+These are source/fixture checks; no real external-pack, multiwindow or packaged acceptance is claimed.
+
+The provider and reconnect lifecycle are now wired. Catalog-driven forms (including pack groups and
+features without activated plugins), ambient mutation API/caller removal, backup staging consistency,
+installed/frontend declaration admission completeness and remaining goal phases are still required.
+The complete integrated settings checkpoint remains uncommitted until it is usable and accepted.
+
+### Explicit frontend writers and migrated shipped callers — working integration
+
+Removed ambient SDK `updateSettings`/`resetSettings` exports and made save tracking require an explicitly
+supplied writer. Renderer host forms supply their window administrative port. Shipped pack controls use
+generated bound app or feature handles instead; the new generated `useAppSettings()` exposes a typed
+handle through the same accepted factory as feature/group access. All shipped frontend app readers use
+that generated handle too. No compatibility aliases remain. Log controls no longer forge optimistic
+`FEATURE_SETTINGS_UPDATED` events that could conceal a refused save.
+
+The generated entry child-process check now proves app writes use the supplied port without an ambient
+host, and that retained app handles refuse after revocation. Save tracker checks prove an injected writer
+is used even when a different port is ambient. The code section menu supplies literal typed paths after
+the pack typecheck caught its union-key update; no casts of setting updates or weakening of the public
+path/value contract was used.
+
+Published packages rebuilt, default-setup regenerated/built, SDK frontend API report regenerated and
+reviewed, and public feature docs updated. Full SDK checks pass (901 tests, 78 files), full default-setup
+checks pass (817 plus 2 existing skips, 108 files), renderer checks pass (44 tests, 10 files), and SDK,
+default-setup and renderer typechecks pass. Evidence:
+`/private/tmp/apack-settings-explicit-writes-{sdk,sdk-suite,sdk-types,packages,api,default-build,default-suite,default-types,renderer-suite,renderer-types}.log`.
+
+The form audit confirms definitions already support `settings.form`, but codegen does not consume it;
+forms remain attached to `Plugin.settings`. The next integration must declare forms beside their schemas,
+register their components under their actual settings owners and render catalog entries independently
+of active plugin discovery. Feature actor context remains available only where a custom form actually
+requires its active plugin; groups and features without plugins must not acquire invented actors.
+Disabled declarations remain discoverable and editable through the validated advanced editor while their
+executable form is unavailable. Assistant's presenter belongs with a pack settings extension, never a
+replacement app-settings assembly or new assistant feature. Real app/packaged acceptance and remaining
+goal phases stay unfinished. The integrated checkpoint remains uncommitted.
+
+## Manifest-owned settings forms — integration evidence
+
+The working change now consumes `features.<id>.settings.form` and
+`extensions.settings.<groupId>.form` during frontend codegen. Forms register by qualified settings target,
+independently of plugins. The host registry owns atomic accepted availability and unload notifications;
+Vue reactivity stays in the renderer. `Plugin.settings` is removed without an alias. Default-setup declares
+its eleven feature presenters beside their schemas and its assistant presenter beside the pack group;
+there is no replacement app-settings assembly or assistant feature.
+
+Settings lists now come from the installed settings catalog. Pack groups and features remain visible
+without an executable form, with the validated JSON editor available. The shared renderer editor supplies
+the selected target itself rather than trusting a contributed event to choose an administrative target.
+Actual mounted pack-settings tests prove distinct same-named owners, arrival/removal of a form without a
+plugin, unavailable-form fallback and refusal to retarget an emitted edit. Registry checks cover rollback,
+qualified group/feature identities and subscriber isolation. Source validation now diagnoses missing group
+forms at their manifest address, matching the existing feature-form check.
+
+Current evidence: codegen/source validation 50 tests pass; focused host form/binding/loader/boundary checks
+33 pass; full renderer 46 tests pass and renderer typecheck passes. Published packages and default-setup's
+actual Vue bundle build successfully. SDK API reports regenerated and reviewed. Logs:
+`/private/tmp/apack-settings-forms-{validation,ui,host-tests,renderer-suite,renderer-types,packages,api,default-build}.log`.
+Default-setup suite/typecheck and external authoring contract checks remain running at this entry; their
+outcomes must be recorded from terminal results. Real Electron/packaged acceptance remains unproved.
+
+The remaining authority audit confirms two gaps to fix before the integrated checkpoint: backend generated
+handles dynamically resolve a facade and can regain authority after the same factory is rebound; teardown
+also stops at the first throwing unsubscribe. Capture the accepted binding for retained handles and attempt
+all cleanup, matching permanent frontend revocation. Backup preflight validates the original path but import
+later copies from that path; stage the candidate first and validate/import the same staged bytes before live
+teardown. Neither defect warrants compatibility logic. Other goal phases remain required and this integrated
+change remains uncommitted.
+
+The form-integration processes above are terminal: default-setup's full suite passes (817, with 2 existing
+skips) and its typecheck passes. The external-pack authoring contract command passes across its fixture
+packs, including 37 harness tests; it validates/builds their manifests and frontends and typechecks their
+generated facades. Evidence: `/private/tmp/apack-settings-forms-{default-suite,default-types,external-contract}.log`.
+These results predate the following backend lifetime correction; affected packages and generated bindings
+must be rebuilt before acceptance uses them.
+
+Backend handles now capture the accepted `SettingsService` rather than repeatedly fetching the current
+service from the generated proxy. Each binding owns a permanently revocable facade and its subscription
+set. Teardown revokes before callbacks, attempts every unsubscribe, reports aggregate cleanup failures and
+suppresses late notifications. Rebinding creates new authority without reviving a retained service or
+handle. Focused SDK checks pass (50 tests including runtime revocation, handles and codegen), as does SDK
+typecheck: `/private/tmp/apack-settings-backend-revocation-{tests,types}.log`. Build/API refresh and downstream
+acceptance remain required; the backup staging defect and other remaining goal requirements are still open.
+
+Backend lifetime correction additionally passes 78 host settings/actual-loader tests. Published packages
+rebuilt successfully and the SDK services API report was regenerated/reviewed (handle receives a captured
+service). Evidence: `/private/tmp/apack-settings-backend-revocation-{host,packages,api}.log`.
+Default-setup regeneration against this correction is running; prior form acceptance is not claimed to prove
+the changed backend lifetime behavior in an actual app. Backup staging, remaining discovery/binding work,
+real multiwindow/packaged acceptance and all other unfinished goal phases still require implementation and
+verification before commit/completion.
+
+## Validated backup staging and drive settings authority
+
+Default-setup regeneration against permanent backend revocation completed successfully:
+`/private/tmp/apack-settings-backend-revocation-default-build.log`.
+
+Database import now copies the candidate into a private temporary directory, validates the staged LMDB
+settings through the installed catalog, and installs that same copy. The optional host replacement scope
+runs only after preflight passes; app settings are suspended and refreshed around actual replacement and
+memory hydration, without announcing replacement for invalid candidates. Rollback copies use LMDB's own
+snapshot operation. Failed installation restores the previous databases and prior media absence; if rollback
+also fails, recovery copies are retained and their location is reported. User-facing malformed-backup errors
+still identify the requested source path, rather than the internal temporary directory.
+
+Four actual LMDB tests pass: invalid settings never enter replacement/close live data; deleting the original
+backup after preflight cannot change imported data; reopen failure restores current data and media absence;
+double failure retains a readable rollback snapshot. Host typecheck passes. The sandboxed LMDB worker was
+terminated; its unrestricted rerun passes, consistent with prior native LMDB checks. Real API backup/reset
+checks pass (13), including unchanged snapshot/no notifications on refusal, repeat restoration and onboarding
+lifecycle behavior. CLI backup/import acceptance passes. Evidence:
+`/private/tmp/apack-settings-backup-staging-{tests,types,api,packages,cli}.log`.
+
+Drive's `setSetting` no longer sends an unbound settings mutation. The trusted tool API client explicitly
+bootstraps its own connection-bound host settings credential for `sendSettings`; ordinary sends never attach
+it. The settings writer's saved/refused correlation remains unchanged. Bootstrap refusal sends no mutation;
+concurrent explicit writes share one issuance. Session and actual WebSocket protocol tests pass (61), and
+testing package typecheck passes: `/private/tmp/apack-settings-drive-authority-{tests,types}.log`.
+This is trusted tool bootstrap, not a new sandbox or production attach capability.
+
+Broad repository validation follows these changes. Actual settings-form/multiwindow Electron acceptance,
+remaining discovery/binding contracts and all other unfinished phases remain unproved. No partial integrated
+settings checkpoint is committed.
+
+The first broad `--all` chain stopped at lint after 24 completed steps; it is not a passing chain or app
+acceptance result. Five lint failures concerned unnecessary copies while iterating subscription/binding
+collections and a deliberately sparse array fixture. Removed the copies after checking that revocation
+prevents new entries in those collections; unsubscribe can delete current/other entries during traversal.
+The sparse array fixture now explicitly deletes an element, preserving its actual holes check. Focused
+host disposal/document tests pass (49), SDK frontend/backend revocation tests pass (21) and repository
+lint passes. Evidence: `/private/tmp/apack-settings-teardown-cleanup-{host,sdk,lint}.log`.
+Chain failure evidence: `node_modules/.cache/apack-chain/runs/2026-10-12T22-53-22Z-96940`.
+The subsequent chain must verify changed inputs and run the remaining gates before broad acceptance is claimed.
+
+## Broad validation exposes authoring and acceptance consumer gaps
+
+The recheck chain is terminal and failed in integration and external-pack app checks. It passed lint,
+all selected type/schema/API/facade gates, runtime compilation, external-pack contract checks, actual
+Electron smoke and packaged external-authoring app checks. This is partial evidence, not broad completion:
+`node_modules/.cache/apack-chain/runs/2026-10-12T22-55-36Z-2467` and
+`/private/tmp/apack-settings-integrated-chain-recheck.log`.
+
+Integration failures identify an admission mistake: `setupPackTests` unconditionally reads the source pack's
+`dist` artifact even though its supported source harness runs generated registration/content runtime before
+a bundle exists. Repair source-authoring declaration admission explicitly, keeping sealed installed-artifact
+admission strict; do not add a missing-artifact fallback or derive discovery from executed registrations.
+The source manifest and generated declaration identity must agree, dependencies retain their checked
+snapshots and caller binding must still use accepted ownership. This also needs a coherent catalog lifetime
+when source runtimes register/unregister; ad hoc `setNative` followed by a refresh that discards it is insufficient.
+
+The CLI database integration fixtures installed only a manifest and seeded obsolete `general` settings.
+Updated them to copy the actual sealed default-setup artifact and write current `app.personal.name`, including
+CSV expectations. Their first updated run passed 63/64; the remaining failure was a removed layout import still
+used by another fixture, now restored. That case passes independently; a whole-file rerun is in progress:
+`/private/tmp/apack-settings-current-db-{fixtures,fixture-unknown-types}.log`.
+
+Three external app failures read `host/settings` actor `context.settings`, which has deliberately been removed
+in favor of the window settings resource. One also asserts disabled feature definitions disappear, contradicting
+installed declaration discovery. Migrate these consumers to supported read access and test catalog visibility,
+actual custom-form save/reset and unload/reacceptance rather than restoring the obsolete actor projection.
+Actual custom-form inputs rendered and accepted user interaction in the failing run, but their saved values
+have not been proved by the stale assertions. Source-harness correction, these actual app assertions, multiwindow
+acceptance, remaining discovery/contracts and every other unfinished goal phase remain required. The integrated
+settings change is still uncommitted.
+
+The corrected CLI database integration rerun is terminal and passes all 64 tests in one run:
+`/private/tmp/apack-settings-current-db-fixtures.log`. This resolves the CLI fixture failures from the broad
+run; it does not resolve source-harness admission or the stale external app settings assertions.
+
+## Source admission and actual window acceptance
+
+The source harness now admits a validated manifest explicitly into the common catalog, independent of
+installed sealed artifacts and native registrations. It requires generated content-runtime and optional
+registration identities to match before runtime setup. Source declarations survive executable unload;
+cross-admission collisions and stale registration identities refuse atomically. Installed dependencies
+still use checked artifact snapshots; there is no missing-artifact fallback.
+
+The harness checks exposed property-order-sensitive declaration hashes: schema parsing reorders object
+keys without changing their meaning. Declaration identity now sorts object keys recursively while keeping
+array order; meaningful changes still invalidate generated bindings. All changed artifacts were rebuilt.
+Source harness integration passes (7), dependency-runtime integration passes (3), host catalog/registration
+checks pass (58), and declaration identity checks pass (2). SDK types, external contract and runtime build
+pass. Evidence: `/private/tmp/apack-settings-source-{harness-integration,dependency-integration,registration-tests,sdk-types,external-contract,runtime-build}.log`
+and `/private/tmp/apack-settings-canonical-declarations-identity.log`.
+
+Actual isolated Electron memos acceptance now passes all 9 tests, including disabled declarations with
+unloaded custom forms, re-enable/startup delivery, correlated form save followed by window reload, and
+edit/reset propagation between two independent settings windows. The initial reload assertion failed
+because fixture setup dismisses onboarding only in the current window; the new page must wait for app
+readiness again. The shared helper's documentation now accurately states that dismissal does not complete
+persisted onboarding. Evidence: `/private/tmp/apack-settings-memos-windows-app.log`.
+
+This proves the external feature route and actual multiple-window notification/reset behavior. It does
+not yet prove the complete host/pack-group product route, all-owner restore/restriction acceptance, full
+discovery/binding inventory or the remaining phases. The integrated settings checkpoint remains uncommitted;
+run broad validation on the corrected candidate before deciding which requirements remain.
+
+The subsequent chain is terminal and failed at host unit checks (5 failures; 3967 passed), while
+integration, external-pack app, smoke, packaged authoring and packaged app gates pass. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-12T23-22-10Z-70121` and
+`/private/tmp/apack-settings-source-window-chain.log`. Two API database-parity failures and packaged
+role precedence share a concrete cause: their prior runtime settings binding remains registered when
+they close the store/unbind the ambient host, so loading the cached module again refuses an already
+bound capability. Audit shutdown ownership and fixture cleanup rather than allowing simultaneous bindings.
+
+The generated-service module-initialization test exposes a separate import cycle: a feature service
+imports its settings handle while the generated services module imports that feature service, before its
+proxy is initialized. Handle construction before acceptance remains required; using it before acceptance
+must refuse, and a retained handle must never regain authority after unload. Separate the binding module
+from feature-service imports and attach handles to a single binding lifetime, including construction
+before initial acceptance. Do not remove the test or replace revocation with a resolver that silently
+follows later registrations.
+
+The spec-name routing test also used a fixed ceiling of 40 matching filenames, which new correctly
+named specs exceeded. Removed that arbitrary ceiling; the test requires nonempty matches and verifies
+every result's basename contains the requested word, preserving the actual packages-prefix regression.
+Focused routing verification passes all 112 tests: `/private/tmp/apack-settings-spec-routing-check.log`.
+The initial attempt was blocked by the sandbox's tsx IPC restriction; the authorized rerun passes.
+Host Personal Information additionally needs its draft to follow
+accepted changes/import/reset without mutating incoming values; its initial ref does not do this today.
+The complete integrated settings checkpoint and later phases remain open.
+
+## Binding lifetime and host form corrections
+
+Generated settings and services now share an independent `runtime-services.ts` module with no feature
+imports. Settings handles can be constructed during feature-service module initialization; they capture
+the pending binding lifetime. Operations refuse before acceptance, work after first acceptance, and stay
+revoked after unload even if a new binding is accepted. Retained subscriptions are released and late
+notifications suppressed. A new regression exercises predeclared handles across acceptance/revocation/
+rebind, in addition to the actual generated-module initialization probe. Complete SDK checks pass
+(909 tests, 79 files); SDK types and reviewed API report regeneration pass. Evidence:
+`/private/tmp/apack-settings-module-lifetime-{sdk-full,types,api-report-final}.log`.
+
+API boot/parity fixtures now run shutdown hooks and unregister loaded packs before closing their stores
+and unbinding the host. Schema comparisons capture the registered types before teardown. Both failing
+files now pass all 5 tests: `/private/tmp/apack-settings-boot-binding-api.log`. These were fixture lifetime
+leaks, not a reason to permit duplicate bindings or weaken designation precedence.
+
+Personal Information uses a detached settings draft that follows accepted reset/import/remote updates.
+Its whole-value write carries a run/value condition, pending superseded saves are canceled, and emitted
+values are copies. AddressInput no longer emits normalized incoming snapshots as user edits; its detached
+draft emits only changed addresses. Mounted personal/project/pack form checks pass (9), renderer types
+and repository lint pass. Evidence: `/private/tmp/apack-settings-personal-draft-{tests,types}.log`
+and `/private/tmp/apack-settings-module-lifetime-lint.log`.
+
+The rebuilt actual Electron fixture passes all 11 memos checks, now including host personal edits in both
+directions between windows and same-named `assistant` groups from default-setup and an external pack.
+Their defaults, saves, overrides and resets remain independent; disabling the external pack keeps its
+declaration visible while unloading its custom form, and re-enabling restores its saved value. This
+adds actual app/pack/feature product-route evidence, but is not the two-external-pack/full restricted,
+restore/advanced-schema acceptance audit. Evidence: `/private/tmp/apack-settings-three-owner-app-recheck.log`.
+External contract and runtime builds pass. The initial expanded app run failed only on an ambiguous
+Packs button selector; the corrected complete run passes. Run the broad chain on this candidate next.
+The integrated checkpoint and all remaining goal phases remain open and uncommitted.
+
+The broad candidate chain is terminal and failed on Electron teardown, not the settings assertions:
+`node_modules/.cache/apack-chain/runs/2026-10-12T23-39-08Z-16200` and
+`/private/tmp/apack-settings-module-lifetime-chain.log`. External app assertions pass all 16 tests, but
+its first concurrent run exceeds the 60-second worker teardown deadline. The chain's isolated retry
+passes both external fixtures (16 and 1 tests), including teardown; this does not erase the original
+chain failure. Packaged authoring app assertions also pass (2), then time out during teardown. Its
+separate serial rerun is in progress. Do not increase timeouts or replace graceful shutdown with a
+silent forced exit to manufacture a green gate; establish the shutdown outcome and investigate any
+reproduced failure. Integration and the other reported type/schema/API/build gates pass. All remaining
+settings acceptance and goal requirements still apply.
+
+The separate packaged-authoring app rerun is terminal and passes, including graceful teardown, offline
+database checks and no-monorepo-symlink checks (28s):
+`/private/tmp/apack-settings-module-lifetime-packaged-app-serial.log`. No shutdown behavior or timeout
+was changed. Recheck the chain with one-core admission so the failed app gates run without competing
+Electron scenarios; this is a checkpoint rerun, not the final strict `--all` audit of the completed goal.
+
+That serial chain is terminal and failed on one generated-module inventory guard, with 3975 host unit
+tests passing: `node_modules/.cache/apack-chain/runs/2026-10-12T23-46-50Z-48378` and
+`/private/tmp/apack-settings-module-lifetime-chain-serial.log`. Added `runtime-services` to the explicit
+generated population. It is deliberately outside the actor/contract-import set: its SDK factory import
+has no feature-service or actor entry dependencies. The existing derived closure check verifies that
+classification; all three focused guards pass (`/private/tmp/apack-settings-runtime-module-boundary.log`).
+
+The remaining advanced-editor requirement is demonstrably unfinished: SettingsJsonEditor currently
+passes only `language="json"` to SimpleMonacoEditor and calls address-only `settingsProblems`; no
+catalog-composed schema is registered for completion/descriptions/value diagnostics. Implement this
+against the common catalog, keeping document-local references scoped to their owners and preserving
+unavailable current-format overrides. Editor feedback must agree with default composition and the
+authoritative host writer; raw-schema required-field validation must not contradict accepted sparse
+overrides. Do not treat successful form routes as completion of the settings plan.
+
+The next serial chain is terminal: host units, shipped-pack units and integration pass, but the first
+external fixture again passes all 16 assertions then times out during Electron teardown. This reproduces
+without peer chain steps, so contention alone is not an established explanation. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-12T23-48-37Z-54189` and
+`/private/tmp/apack-settings-module-inventory-chain-serial.log`. Earlier targeted settings, external retry
+and packaged serial runs did complete teardown; the failure is intermittent. Next inspect the graceful
+quit/inspector/process boundary with main-process lifecycle diagnostics and the full fixture sequence.
+Do not restart a live job, increase deadlines, silently force a successful outcome, or claim broad
+acceptance from passed assertions. All test jobs from these runs are terminal; no live validation handle
+remains. The integrated change is still uncommitted and the full goal is active.
+
+### Advanced settings editor contract and real-window acceptance
+
+The whole-document writer had an input ambiguity: the editor presents a complete effective document,
+but `replaceAll` also accepted sparse overrides and filled missing required values. The settings plan
+now separates the operations explicitly. Replacement validates complete effective values before the
+common writer records supplied values as choices; targeted writes and backup preflight keep their sparse
+override contract. Reset alone opts back into defaults. Focused host settings checks pass (40 tests),
+including atomic refusal of incomplete replacements and retained unavailable owners:
+`/private/tmp/apack-settings-complete-replacement.log`.
+
+The editor now registers model-specific schemas from the accepted catalog, with separate owner resources
+that preserve local references and isolate identical schema IDs. Host validators also gate Save, including
+unavailable-owner edits. Catalog revision/run changes refresh the registration and revalidate dirty drafts;
+ordinary value writes do not restart the worker. Disposal preserves unrelated editor registrations.
+The draft action is named Discard changes, distinct from resetting stored preferences. Data replacement
+holds the draft and disables Save. Public settings documentation describes these contracts.
+
+Actual Electron testing caught a Vue readonly proxy cloning error missed by the original plain-ref mock.
+The renderer now unwraps the catalog at its boundary; the host validator remains independent of Vue,
+and mounted tests use readonly snapshots. Monaco worker validation, completion, hover descriptions and
+the actual save round-trip subsequently worked, but leaving the editor exposed an uncaught vendor
+cancellation. The existing Monaco filter now recognizes only exact Canceled errors whose stack names
+Monaco; application cancellations still reach fatal reporting. Handled promise rejections stop propagation
+before the fatal reporter as handled error events already do. The final full external-app gate is in
+progress; no acceptance claim is based on the earlier failing runs.
+
+Renderer suite passes (56 tests, 14 files): `/private/tmp/apack-settings-editor-renderer-suite.log`.
+The final revision-watch/disposal checks pass (8 tests):
+`/private/tmp/apack-settings-editor-revision-watch-tests.log`. Host/renderer types and renderer lint
+passed earlier in this editor slice; final checks remain due after the last changes. UI API extraction
+passes and reports zero public-contract changes. Runtime builds and the rebuilt external contract
+fixtures pass. The full goal and integrated checkpoint remain open; no partial settings commit is made.
+
+Shutdown diagnostics from the preceding investigation completed normally in four runs, including
+worker-only tracing: `/private/tmp/apack-settings-electron-quit-diagnostic.log`,
+`/private/tmp/apack-settings-electron-quit-diagnostic-2.log`,
+`/private/tmp/apack-settings-electron-quit-minimal.log` and
+`/private/tmp/apack-settings-electron-exit-pipes.log`. These passes do not establish a fix for the
+intermittent teardown failure. Opt-in tracing observes process exit, Playwright close and pipe state;
+no timeout, force-exit or production shutdown behavior was changed.
+
+The complete external-app gate is terminal and passes, including graceful teardown of both fixtures:
+17 main-fixture tests (the advanced editor included) and one bundled-UI test. Evidence:
+`/private/tmp/apack-settings-editor-external-app-gate.log`. No page/console errors are reported in that
+run. Final renderer types and root lint pass; host boundary and settings checks pass (50 tests):
+`/private/tmp/apack-settings-editor-final-types.log`, `/private/tmp/apack-settings-editor-final-lint.log`,
+`/private/tmp/apack-settings-editor-final-host-tests.log`. The broad serial checkpoint chain is running
+at `/private/tmp/apack-settings-editor-integrated-chain.log`; preserve its live session rather than
+starting another run. This is not the final `--all` audit of all goal phases. Remaining real settings
+acceptance includes two external group owners, onboarding/replacement/restore sequences and the
+requirement-by-requirement integration audit; discovery, navigation, boundaries and all Phase 6 scope
+remain required. The integrated working change remains uncommitted.
+
+The serial chain is terminal and failed on five shipped-pack event fixtures that still sent sparse
+`REPLACE_SETTINGS` payloads: `node_modules/.cache/apack-chain/runs/2026-10-13T00-17-05Z-99229`,
+`/private/tmp/apack-settings-editor-integrated-chain.log`. All preceding reported package, host-unit,
+type, schema, export and lint gates passed. Transport callers are part of the replacement contract,
+not just direct `replaceAll` calls. All in-tree event references were audited; valid fixtures now send
+complete values, malformed fixtures assert their specific refusal among all diagnostics, and unavailable
+owners remain unchanged. The prototype-key test now proves a successful own-key round-trip rather than
+passing because an incomplete replacement was refused. All 28 affected event tests pass:
+`/private/tmp/apack-settings-editor-replacement-events.log`.
+
+The external editor check also now requires zero diagnostics for the original valid full document,
+covering host-local references as well as the invalid feature value. A separate mounted error test covers
+handled promise rejection propagation. Recheck the corrected candidate through the chain; no test
+expectation was weakened to admit sparse replacements and no compatibility branch was added.
+
+The corrected broad serial chain is terminal and passes (312.3s, 14 of 30 steps cached):
+`node_modules/.cache/apack-chain/runs/2026-10-13T00-21-58Z-8749`,
+`/private/tmp/apack-settings-editor-replacement-chain.log`. Both unit pools, integration and the changed
+type/lint/contracts pass. External-app acceptance passes quietly (17 and 1 tests), including the strengthened
+zero-diagnostics check, save/reset and graceful teardown. Smoke and both packaged-authoring steps pass,
+including packaged app teardown. This proves the current editor/removal candidate's broad checks,
+not a diagnosis of every intermittent shutdown outcome or the final all-phase `--all` gate.
+All validation sessions in this editor slice are terminal. The next integrated settings evidence must
+cover two external group owners, restricted dependency requests and real onboarding/export/restore
+sequences before the removal checkpoint is committed. The full Phase 0–7 goal remains active.
+
+### Extraction ownership review and external policy evidence
+
+The user reiterated that default-setup's app-settings abstraction must be removed, not repackaged.
+The source audit confirms its directory, content-defaults module and aliases are deleted in the working
+change. The host guide still described view-bound section access; that prose is corrected. The owning
+settings plan now records the actual responsibility map and the remaining administration gap.
+
+Two external packs with independently declared `assistant` groups pass actual app save, disable/enable,
+reset and uninstall/reinstall checks; saved overrides survive normal reinstall without affecting the
+other owner. Evidence: `/private/tmp/apack-settings-two-external-app.log` (terminal pass).
+A normally CLI-built dependent pack passes generated-type policy checks and actual authenticated API
+requests: shared dependency writes/reset work; owner-only mutations, spoofed caller IDs and bulk settings
+operations are refused without changing the document; disabled origins lose their credential and reaccepted
+origins receive working access. Evidence: `/private/tmp/apack-settings-dependency-policy-app.log`
+(terminal pass); fixture contracts pass at
+`/private/tmp/apack-settings-dependency-policy-contract-recheck.log`. These focused passes do not replace
+the full external gate, real restore/onboarding acceptance or the final all-phase audit.
+
+The service audit found that generated pack services scope settings but forward `AppDataService`,
+including whole-data reset/import. The real Database consumer uses that broader authority. The settings
+and declared-API plans now require an explicit supported administration contract, with onboarding and
+backup operations inventoried separately. No new permission field or production service change was
+introduced during this review. This gap prevents claiming all supported API policy paths are complete.
+The integrated working change remains uncommitted; all phases remain required.
+
+The full external-app gate is now terminal and passes: 19 main-fixture tests and one bundled-UI test,
+including both new ownership/policy cases alongside editor, multiwindow and reload acceptance.
+Evidence: `/private/tmp/apack-settings-ownership-full-gate.log`; both app fixtures close normally.
+The first sandbox attempt refused tsx IPC before starting tests; the authorized escalated run passed.
+`git diff --check` passes, and active package/fixture source searches find none of `settingsSections`,
+`useSettingsSection`, `#app-settings`, `getBaseSettings` or `setInSection`.
+
+Restore coverage was also inspected directly. The existing real API onboarding test restores workflow
+progress and completion state, then requires an explicit Brain restart; it is not evidence of automatic
+multiwindow recovery or completed onboarding through the UI. The remaining integrated acceptance must
+exercise actual export/import with app, both external groups and feature values, observe live consumers,
+and verify the intended user-visible onboarding/restart behavior. Neither the external gate nor deletion
+searches prove those remaining requirements or the whole-data administration boundary.
+
+### Actual multiowner backup/import and publication correction
+
+A new external-app test saves host personal values, two external pack groups and an external feature,
+keeps another settings window open, disables one pack, exports through the Database feature, changes
+the preferences, and imports through that same feature. It checks all restored values, the second
+window's live feature form and the disabled pack's custom form after re-enabling it.
+
+This exposed a real snapshot defect: `onReplaced` published hydrated values before the replacement
+bracket advanced the revision. Both live windows rejected the inconsistent state and retained their
+previous form values. The shared reset/import boundary now settles the settings bracket before general
+data-replaced notification; transported snapshots retain their published values/declarations while
+hydration is pending. Internal reads remain available for migrations. Window identity guards are unchanged.
+A direct store regression mutates the database during replacement and proves stable, detached snapshots
+until settlement. Focused store/API reset/import checks pass (43 tests):
+`/private/tmp/apack-settings-replacement-publication-tests.log`. The runtime rebuild passes:
+`/private/tmp/apack-settings-replacement-runtime-build.log`. Fixture TypeScript passes:
+`/private/tmp/apack-settings-restore-final-types.log`.
+
+The original real-window restore case passes after the correction (5.9s), with graceful app teardown:
+`/private/tmp/apack-settings-restore-publication-fixed.log`. Its filtered wrapper exits nonzero because
+the second fixture has no test matching that filter; this is not a full-gate pass. The full external gate
+is running at `/private/tmp/apack-settings-restore-full-gate.log`; preserve that live run. Earlier failed
+runs include two test mistakes (status label and missing Database backup-view transition), then a stale
+model selector; selecting the visible editor exposed the actual runtime failure. No production timeout
+or acceptance guard was relaxed. Actual onboarding UI acceptance, the administration contract and all
+later goal phases remain unfinished; the integrated change is uncommitted.
+
+The first full restore gate is terminal and failed on leaked preferences from the new case:
+`/private/tmp/apack-settings-restore-full-gate.log`. The fixture shares an app per worker; the restore
+case now restores its incoming preferences and removes its companion installation after its assertions.
+Further full runs still fail during post-restore settings navigation, with a Playwright navigation wait
+and, in one run, an empty custom-form input. Evidence:
+`/private/tmp/apack-settings-restore-full-gate-recheck.log`,
+`/private/tmp/apack-settings-restore-cleanup-gate.log`,
+`/private/tmp/apack-settings-restore-cleanup-verified-gate.log` (all terminal failures).
+The intermediate-value/revision defect is verified corrected by the real restore assertions, but those
+passes do not prove continued usability after replacement. Do not attribute the remaining failure to
+test isolation without evidence or move the test last to conceal it. A full-suite trace run is active at
+`/private/tmp/apack-settings-restore-navigation-trace.log`; preserve its live process. Inspect retained
+traces under `tests/packs/external-pack/tests/results` before selecting a further fix. No root chain is
+currently running, and the integrated checkpoint remains unaccepted.
+
+The navigation cause is now verified. Electron diagnostics captured a renderer-requested reload of
+`renderer/dist/index.html` with `blocked: true`; Chromium reported `reason: reload` before Playwright
+became stuck. The Database backup view scheduled `window.location.reload()` 1.5 seconds after import.
+Its reset-success action used the same blocked path. Evidence:
+`/private/tmp/apack-settings-restore-native-navigation.log`. The plain Playwright trace contained only
+test calls; explicit Electron-context tracing supplied actual window snapshots and native events.
+Temporary tracing, CDP listeners and main-process diagnostic hooks are removed from the source.
+
+Import/reset now rely on live replacement publication. Database success clears row results, trace caches
+and outstanding query identities; failed import retains the current results. The editor and authoritative
+settings/schema survive. Initial mutable trace state is allocated per actor. The import message reaches
+the toast, including the backend's explicit Brain restart instruction. Redundant frontend copies of the
+canonical backend backup/reset events are removed. The reviewed shipped facade changes by one optional
+`DatabaseContext.backupResult.message` field; facade update and shipped build pass:
+`/private/tmp/apack-settings-database-facade.log`, `/private/tmp/apack-settings-database-live-build.log`.
+
+Final Database actor checks pass (20 tests), including failed-import preservation, late-reply refusal,
+instructions and per-window state: `/private/tmp/apack-settings-database-live-final-tests.log`.
+The complete external-app gate passes without diagnostic hooks: 20 main-fixture tests and one bundled-UI
+test, both with graceful teardown, at `/private/tmp/apack-settings-restore-live-full-gate.log`. The original
+restore case and subsequent navigation/installation cases all pass in the same worker. This verifies the
+identified publication and blocked-reload defects; it is not proof of the still-pending onboarding UI
+acceptance, whole-data administration contract, discovery/navigation/boundary phases or Phase 6 scope.
+Run the broad strict chain against this candidate before further source changes. The integrated change
+remains uncommitted until its remaining acceptance and ownership review are complete.
+
+The strict serial checkpoint chain is active at `/private/tmp/apack-settings-live-replacement-chain.log`
+(`npm run chain -- --strict --cores 1`). Published package checks, shipped build/facade, external contracts,
+all type checks, specifiers/exports/schema, tiers and lint have passed so far. Preserve the live process
+and inspect its terminal result before modifying source or starting another chain. This is a checkpoint
+run, not the final full-goal `--all` audit.
+
+That strict chain is terminal and failed on the independent HostRuntime reset composition test:
+`node_modules/.cache/apack-chain/runs/2026-10-13T01-14-47Z-61589` (158.8s, 22 steps reached).
+The host unit pool passed 3065 tests and failed one because replacement looked up an ambient SDK host.
+The fix supplies the store's owning engine explicitly and injects the composed settings service into
+app-data, removing ambient settings/engine borrowing from those paths. Every store construction is
+migrated; the test harness explicitly resolves its current installed engine after reset. A two-runtime
+regression proves installing another engine cannot redirect either settings service's data.
+
+Focused real store/API reset/import checks pass (46 tests):
+`/private/tmp/apack-settings-owned-runtime-tests.log`. Engine ownership, app defaults, registration and
+transport access checks pass (99 tests): `/private/tmp/apack-settings-owned-engine-tests.log`.
+The unbound composition test remains independent; no extra host binding or compatibility fallback was
+added to make it pass. Recheck the corrected candidate through the strict chain before further source
+changes. These tests do not complete the supported administration contract or later phases.
+
+The corrected strict serial chain is running at
+`/private/tmp/apack-settings-owned-composition-chain.log`. Preserve its live run and inspect the terminal
+result before another source edit or chain invocation. All focused validation sessions above are terminal.
+
+That corrected run is now terminal and passed: 381.4 seconds, 29 executed steps and one cached step,
+recorded at `node_modules/.cache/apack-chain/runs/2026-10-13T01-22-52Z-69894`.
+It includes the full external app suite, smoke and packaged-authoring checks. This validates the current
+candidate, not all Phases 0–7. The next source work may proceed.
+
+The consumed-API audit in `declared-capabilities.md` now records a second concrete mismatch: generated
+dependency service types are narrower than the runtime's global service union. Non-settings delegates
+also follow the ambient host instead of the accepted pack lifetime. Address these with administration
+and action injection in the supported API checkpoint; do not close only the `appData` method gap.
+
+Real onboarding acceptance is being added in the external app suite. It uses configured temporary
+executables that fail CLI detection and a temporary project, avoiding reads of the developer's installed
+provider sessions. The real welcome/project/completion workflow already exercised host project and Code
+working-directory writes. Persisted completion and restart assertions are not yet verified.
+
+This acceptance exposed a frontend error-handling defect: `renderer/index.html` installs an early
+unhandled-rejection fallback that opens the fatal page before the app's later Monaco filter can cancel
+the event. Vue also has a separate error-page effect. The working fix shares the vendor classification
+with Vue and defers the HTML fallback until listener delivery settles, respecting `defaultPrevented`.
+Do not suppress application cancellations or extend deadlines to conceal the failure. A regression
+executes the actual HTML bootstrap script with a later filter and a genuine unhandled startup error.
+The Database Execute button also needs an accessible name when responsive styling hides its label.
+
+Terminal failed acceptance evidence: `/private/tmp/apack-settings-onboarding-full-app-gate.log`
+(20 passes, new onboarding test failed); `/private/tmp/apack-settings-onboarding-accessible-full-gate.log`
+(19 passes, onboarding and restore failed); `/private/tmp/apack-settings-onboarding-final-diagnostic.log`
+and `/private/tmp/apack-settings-onboarding-error-shape.log` capture the fatal vendor stack. None is a
+successful gate. The corrected build/test sequence is currently live with logs at
+`/private/tmp/apack-settings-html-bootstrap-tests.log`,
+`/private/tmp/apack-settings-onboarding-final-pack-build.log` and
+`/private/tmp/apack-settings-html-bootstrap-runtime.log`; inspect its terminal result before acceptance.
+
+
+The bootstrap acceptance is now terminal: `/private/tmp/apack-settings-native-listener-full-gate.log`
+passes 21 main-fixture tests and one bundled-UI test. Real onboarding persists host projects and Code
+preferences, completes existing lifecycle state, and retains completion after preference restoration
+and Brain restart. The final HTML fallback uses the next task: native event dispatch performs microtask
+checkpoints between listeners, so a microtask did not allow the later Monaco filter to run first.
+Seven error-boundary regressions pass at `/private/tmp/apack-settings-native-listener-tests.log`.
+No diagnostic hooks, relaxed assertions or longer acceptance deadlines remain.
+
+Independent host-only acceptance passes both tests at
+`/private/tmp/apack-settings-host-only-final-ui.log`: Personal and actual shortcut navigation work with
+default-setup disabled; an existing hotkey form follows a second window's edits and preserves `global`
+on its next save. This uses temporary current-format installed records and no external dependency pack.
+The shipped-pack disable refusal is recorded in the replacement plan, not removed out of phase.
+
+The custom-form audit found nested Vue proxy writes in Threads and Code as well as host Hotkeys.
+The SDK frontend adapter now detaches reactive values and compare conditions for both form saves and
+generated handles, preserving invalid data for host refusal. Focused validation passes 170 tests in
+28 files at `/private/tmp/apack-settings-reactive-boundary-spec.log`; SDK compilation passes at
+`/private/tmp/apack-settings-reactive-boundary-build.log`. This does not prove every custom form's UI
+behavior or close the supported-API administration and later-phase gaps. Re-run strict checkpoint
+validation against this corrected candidate before committing the integrated extraction.
+
+
+The extraction checkpoint chain failed at lint after 130.4s, with all reached type/schema/facade and
+external-contract checks passing: `node_modules/.cache/apack-chain/runs/2026-10-13T02-26-07Z-38341`.
+Fixes use ordinary array construction, document Playwright's required empty fixture destructuring,
+and restore onboarding preferences without a finally-block throw masking the original failure.
+The test now cleans temporary files even when initial navigation fails.
+
+A further transport audit found that structured cloning can drop symbol/hidden properties, invoke
+accessors or erase custom prototypes before host validation sees the input. The window writer now
+uses the existing JSON-data validator before cloning the complete request, including replacement and
+compare conditions. A regression proves malformed writes are never queued and accessors never run.
+Focused runs pass 170 tests in 28 files and 177 tests in 23 files (overlapping suites), recorded at
+`/private/tmp/apack-settings-json-boundary-spec.log`. Root lint passes at
+`/private/tmp/apack-settings-extraction-lint.log`. The strict checkpoint must be rerun on these corrections.
+
+
+The corrected strict checkpoint is terminal and failed at the external-app gate after 335.4s:
+`node_modules/.cache/apack-chain/runs/2026-10-13T02-30-32Z-44479`. All reached type, lint,
+host/pack unit, integration and runtime-build checks passed. The app suite passed 20 tests and failed
+one: the refused-access case observed an extra settings revision (47 to 48). The broad revision
+assertion was retained; value equality now runs first to expose the changed owner if it fails.
+A diagnostic rerun passes all 21 main tests plus the bundled test at
+`/private/tmp/apack-settings-refusal-revision-app.log`. That pass does not explain the earlier revision.
+Failure-only attachments now capture before/after values and intervening settings publications, without
+runtime hooks, longer deadlines or relaxed assertions. Continue investigating if the next checkpoint
+reproduces the discrepancy; do not classify a passing rerun as proof that a race was fixed.
+
+Root, host and SDK developer guides and the declarative-contributions reference now describe catalog
+settings ownership, removing stale section, default-export and installed/runtime-union instructions.
+The remaining supported-API, all-kind discovery, navigation, failure-boundary, provenance and replacement
+work is unchanged. No plan is archived and the integrated extraction remains uncommitted.
+
+
+Integrated extraction checkpoint validation passes: `npm run chain -- --strict --cores 1`, 170.0s,
+12 executed and 18 cached steps, evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T02-39-30Z-83266` and
+`/private/tmp/apack-settings-refusal-audit-chain.log`. This includes external app, smoke and packaged
+authoring/application checks. Final host-only UI acceptance passes both tests in 6.0s at
+`/private/tmp/apack-settings-extraction-host-only-checkpoint.log` on the same built candidate.
+
+Commit the integrated app/pack/feature extraction: obsolete pack assembly, section contracts and aliases
+are absent; declarations, generated contracts, common writer, caller-bound settings, forms, restore,
+onboarding and guides move together. The supported administration/global-service mismatch remains an
+explicit Phase 6 item; no full-goal or all-kind-discovery completion is claimed. Keep the unexplained
+historical revision discrepancy recorded with its failure-only capture. Next extend the catalog and
+checked binding inventory across remaining contribution kinds before dependent consumer refactors.

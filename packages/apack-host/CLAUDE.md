@@ -13,7 +13,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 
 `src/` holds two kinds of thing, and the top level is where you see which. `features/` is the pack `host` itself,
 laid out as any pack is; everything beside it is the runtime those features, and every other pack, run on
-(`tests/boundaries.spec.ts` holds the two rules that carry it: a feature is `{be,fe}`, and no folder is named for a layer):
+(`tests/boundaries.spec.ts` holds the two rules that carry it: feature implementations live in `{be,fe}` with pure contracts beside them, and no folder is named for a layer):
 
 | | |
 |---|---|
@@ -96,9 +96,9 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`). The context
 
 ## Packs
 
-**Registration** (`packs/registry.ts`): `createPackRegistry()` returns a new, empty registry of packs, an instance: the API's composition root creates the app's (`openAppStore()`), the pack test harness one per test file, and the CLI one per build. It owns everything packs registered (their registrations, the host's among them, the lookups the SDK reads, shutdown hooks and derived caches), with no module-level state (`tests/packs/registry-state.spec.ts` checks this module, `extensions.ts`, `backend-extensions.ts` and `fe/`), and it holds the only writes to it. It implements the SDK's `PackRegistryView` (`@apackdev/sdk/runtime`), which the composition root binds as `HostRuntime.packs`; the SDK's lookups (`getDesignated`, `stepRegistry`, `artifactRegistry`, `blockRegistry`, `_contentWriterRegistry`, `importCompiledContent`, `getPackSettingsDefaults`, `getPackCommands`, `services`) read the bound one. Two registries in one process share nothing (`tests/packs/two-registries.spec.ts`). `featuresWithSettings()` answers the installed features that can have settings (they declare defaults, or have a plugin whose settings form writes them): the registered ones, and, given `createPackRegistry({ installedPacksDir })`, those of the packs there that aren't registered (disabled, or failed to load), from their manifests. It keeps the answer until the registrations or the dir's entries (its mtime) change, since `services.settings` asks on every call; the API passes the app's packs dir, and a registry given none (a build, a test) lists only the registered.
+**Registration** (`packs/registry.ts`): `createPackRegistry()` returns a new, empty registry of packs, an instance: the API's composition root creates the app's (`openAppStore()`), the pack test harness one per test file, and the CLI one per build. It owns everything packs registered (their registrations, the host's among them, the lookups the SDK reads, shutdown hooks and derived caches), with no module-level state (`tests/packs/registry-state.spec.ts` checks this module, `extensions.ts`, `backend-extensions.ts` and `fe/`), and it holds the only writes to it. It implements the SDK's `PackRegistryView` (`@apackdev/sdk/runtime`), which the composition root binds as `HostRuntime.packs`; the SDK's lookups (`getDesignated`, `stepRegistry`, `artifactRegistry`, `blockRegistry`, `_contentWriterRegistry`, `importCompiledContent`, `getSettingsCatalog`, `getPackCommands`, `services`) read the bound one. Two registries in one process share nothing (`tests/packs/two-registries.spec.ts`). Settings declarations belong to the contribution catalog (`packs/catalog.ts`), independent of runtime registration. Its settings projection contains host app definitions, namespaced pack groups and qualified feature definitions, including disabled installed packs. Source authoring and native test/host declarations enter the same projection through explicit catalog operations; executable registration does not own their stored values. The SDK reads `settingsCatalog()` and subscribes through `onSettingsCatalogChanged()`.
 - It throws on a duplicate pack id, an entity type or relation kind the app declares (the SDK's, or the host's `HOST_ENTITY_TYPES`) or another pack registered, a designation role another pack holds, a repository name another pack registered, or a service key that clashes with another pack or with `HOST_SERVICE_NAMES`. A compile-time check fails when `HostServices` gains a key that list lacks. These checks run before anything is stored.
-- It then registers everything the pack contributes, through one `contributions` table: repositories (`PackRegistration.repositories`) with the installed engine (the app's), then steps (a type's facets merge, `extensions.ts`), artifacts, blocks, content writers (one owner pack per entity type), appliers (`PackRegistration.appliers`; two for one key throw), commands (a name another pack declares throws), feature settings (the common JSON Schema compiler, merged into the defaults with a new `revision` and listeners told; `backend-extensions.ts`) and last the designations. Each entry hands back the undo for what it just did, as it does it, and both paths that remove a pack run those undos — the rollback when a later entry throws, and `unregisterPack`. So a new kind of contribution is one entry rather than one line in each of three lists that nothing checks agree, a partial registration undoes only the part that happened, and a pack refused for a collision doesn't unregister what it collided with.
+- It then registers everything the pack contributes, through one `contributions` table: repositories (`PackRegistration.repositories`) with the installed engine (the app's), then steps (a type's facets merge, `extensions.ts`), artifacts, blocks, content writers (one owner pack per entity type), appliers (`PackRegistration.appliers`; two for one key throw), commands (a name another pack declares throws) and last the designations. Settings definitions instead publish through the contribution catalog; disabling or unloading executable contributions retains the installed definitions. Each entry hands back the undo for what it just did, as it does it, and both paths that remove a pack run those undos — the rollback when a later entry throws, and `unregisterPack`. So a new kind of contribution is one entry rather than one line in each of three lists that nothing checks agree, a partial registration undoes only the part that happened, and a pack refused for a collision doesn't unregister what it collided with.
 - Contributions keyed by something other than the pack id go through `createOwnedStore` (`extensions.ts`), which keeps each contribution with the pack that made it and re-folds the rest when one pack leaves. Steps, artifacts and blocks (`createDefinitionStore` over it), and on the frontend the app-extension slots and DSL types. Two packs can hold one key between them — a step's build and frontend facets routinely arrive from different packs — and dropping the key when one unregisters used to take the other's with it until the app restarted.
 - Designations come from `features.<id>.designation` and are registered last. `getDesignated(role)` gives the ref of the feature in this process — its system here, its plugin in the renderer. Both run under `<packId>/<featureId>`, so a feature with both resolves to one string, and one with no system resolves to the id it would run under. `unregisterPack` drops everything the pack registered, its appliers included.
 - Every pack's systems and plugins are addressed `<packId>/<featureId>`, built-in packs included, so two packs can each have a `notes` feature. The host is the pack `host`, and registers like one (`hostRegistration` in `features/registration.ts`: the `application`, `packs` and `settings` features, their plugins always and their systems where the caller runs them); its refs are `HOST` (`refs.ts`: `bus`, `application`, `packs`, `settings`), and no other pack may take its id. That makes plugin ownership structural rather than checked: a registration names its own features and whoever reads one resolves it (`resolveName`, `@apackdev/sdk/ids`), pack ids are unique and neither id may hold a `/`, so no pack can produce a ref in another's namespace and there is no shadowing left to refuse.
@@ -228,9 +228,13 @@ Behaviour:
 
 ## Settings (`features/settings/`)
 
-The app's settings, split the way `host/packs` is: `be/` holds the data and the system, `fe/machine.ts` the plugin's
-machine, and the Vue is the renderer's (`packages/renderer/src/views/settings/`). The `./settings` export is what a
-program composing the app needs: `createSettingsStore({ defaults })` and `createSettingsService(store)`.
+The app's settings: `be/` holds persistence and the system, `fe/machine.ts` the plugin's
+machine, and `document.ts`/`validation.ts` hold pure contracts used by both halves, and the Vue is the renderer's (`packages/renderer/src/views/settings/`). The `./settings` export is what a
+program composing the app needs: `createSettingsStore({ ears, catalog, onCatalogChanged })` and `createSettingsService(store)`.
+
+The composition root supplies the store's owning engine and injects its settings service into app-data.
+They do not borrow an ambient runtime's settings or engine. Test harnesses resolve their current engine
+through the supplied provider because a test reset replaces it.
 
 - **The row holds only what the user changed.** What the store reads back is the defaults with those changes over
   them, so a changed default, or a pack's feature settings coming and going, applies to every key the user never
@@ -238,11 +242,16 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
 - **App preferences belong to the host.** `app-definition.ts` declares defaults and JSON Schema for `app.hotkeys`,
   `app.personal` and ordered `app.projects`. The store always supplies them, without default-setup, and refuses a
   pack claiming `app`. Public types are generated with `npx tsx scripts/app-settings-types.ts`; the parity spec
-  checks the recorded declaration. Feature schemas come from declarations. Assistant and other pack sections
-  remain transitional until `extensions.settings` groups replace root sections.
+  checks the recorded declaration. Pack groups are declared in `extensions.settings`, features in `features.<id>.settings`; both
+  use JSON Schema and explicit defaults. The common installed catalog supplies definitions independently
+  of runtime activation. Default-setup does not assemble application settings.
+- **Window admission uses the same schemas.** Effective snapshots must carry all three owners and every declared
+  settings value; they are validated directly, without filling absent values from defaults. Invalid broadcasts
+  retain the accepted snapshot; invalid initial reads end disconnected. Declarations and values cannot change
+  under unchanged revisions. Frontend exports reach pure validation, never the backend settings barrel.
 - **One writer.** Every write, whoever makes it (the system, a feature through `services.settings`, an action, a
   applier, a migration), goes through `store.write()`, which checks the whole next document once
-  (`be/document.ts`'s `settingsProblems` and the app schema and each registered feature's schema) and throws `SettingsRefusedError` otherwise, then tells its listeners.
+  (`document.ts`'s address checks and `validation.ts`'s catalog schemas for all three owners) and throws `SettingsRefusedError` otherwise, then tells its listeners.
   The system turns that into one `FEATURE_SETTINGS_UPDATED` per feature whose settings changed, and answers the
   sender `SETTINGS_SAVED` or `SETTINGS_REFUSED` with the store's reasons — **reply or broadcast, never both**
   (`be/answer.ts`), which takes the answer as an argument: `reply` where the write named a sender, and a
@@ -254,13 +263,14 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
 - **`whileReplacingData`** brackets a wholesale replacement (a backup import): the writer tells listeners that one
   is running and, once it settles, that it ended, so those arrive in order with the writes they bracket and nothing
   is told a change in between. While one runs the system takes no pack change and refuses an app reset.
-- **The frontend reaches it through the SDK, never through this actor.** The renderer binds a `SettingsPort`
-  (`bindFeHost`) over the running view, and `@apackdev/sdk/fe`'s `useSettingsSection` / `useFeatureSettings` /
-  `useSettingsSave` / `updateSettings` read and change settings through it.
-- **One target is one place in the document.** A change names a section by the name whoever registered it gave, or a
-  feature by its ref (`SettingsTarget`), and the whole of `path` is inside it. The Settings view's own General tab
+- **The frontend reaches it through the SDK, never through the Settings view actor.** Each window establishes
+  its validated `SettingsPort` before loading pack frontends. Host forms use that window resource; pack forms
+  and consumers use generated owner-bound handles. A form emits an edit to its host-owned presenter,
+  which submits it through the common writer and follows the correlated result.
+- **One target is one place in the document.** A change names the app, a pack and its local group, or a
+  qualified feature ref (`SettingsTarget`), and the whole of `path` is inside it. The Settings view's own General tab
   addresses `app.personal`, `app.projects` and `app.hotkeys`; its navigation labels do not add document levels.
-  Reset can remove existing orphan fields without permitting new writes to undeclared sections.
+  Reset can remove existing orphan fields without permitting new writes to undeclared owners.
 
 
 ## Secrets (`secrets/`)
@@ -282,7 +292,7 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
 
 - `createHostRuntime({ store, engine, transport, appVersion, packs })` (`index.ts`) is the only place the app's `HostRuntime` (`@apackdev/sdk/runtime`) is assembled: the given bus and version, the engine's query face (`engine.query`, which `bindHost` installs), the app's registry as `packs` (the SDK's lookups read it) and the six host-implemented services (`appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings`) over the app's LMDB store (`LmdbStore` from `@apackdev/ears/lmdb`) and the engine's admin face. The API binds it in `openAppStore()` (`packages/api/src/runtime/index.ts`), once it has opened the store.
 - `inference.ts`: `createModelResolver()` parses the `provider:model` id and checks the requested kind against `providerCapabilities`. It lazily imports the `@ai-sdk/<provider>` factory and passes an explicit `apiKey` (from `secretsStore.keyFor`) and an explicit `baseURL` (from `PROVIDER_BASE_URLS`). As a result, environment variables such as `ANTHROPIC_BASE_URL` can't redirect calls. The `baseUrls` option exists only for tests.
-- `app-data.ts` (`createAppData(store, engine, registry)`) handles reset, the whole app's: it runs the packs' shutdown hooks (`registry.runShutdownHooks()`), clears the engine's memory (`engine.clear()`, the admin face), `store.reset()`, then `secretsStore.clearAll()` once the store is open again, then starts the packs as a boot does (`startPacks(registry)`, `../packs/runtime/start.ts`: each `boot.onInit`, the migrations, the built-in and external content). default-setup's reset actions only call it, then restart the brain. `hasOnboarded()` and `completeOnboarding()` read and write `AppState`. It also handles backup export and import, and backup info. After an import, or a failed import, it clears memory and hydrates the store again; a successful import then runs the migrations (an older backup's data, and the app's state from before `AppState`).
+- `app-data.ts` (`createAppData({ store, engine, registry, settings, onReplaced })`) handles whole-app reset, backup export/import and onboarding state. Its settings service and engine belong to the same runtime; replacement never borrows the ambient settings binding. Reset runs shutdown hooks, clears memory, resets the store and keys, then starts packs as boot does. Import validates the current-format candidate before replacement, hydrates restored data and runs declared migrations. Failed replacement restores and hydrates the previous data. `onReplaced` runs after the settings replacement boundary settles so consumers see the new revision. `hasOnboarded()` and `completeOnboarding()` use `AppState`; preferences reset does not change that lifecycle state.
 - `trace-store.ts` (`createTraceStore(store)`) provides read-only access to the store's volatile partition through `store.query('volatileBackup')` (`LmdbQuery`), reading the current environment on each call (the store reopens after a reset or import).
 
 ## Process liveness (`./process-liveness`)

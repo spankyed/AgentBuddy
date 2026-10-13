@@ -1,0 +1,34 @@
+import type {} from '@trpc/server/unstable-core-do-not-import';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { SettingsRefusedError } from '@apackdev/host/settings';
+import { appSettingsAccess } from '@/runtime';
+import { procedure, router } from './trpc';
+import type { RpcContext } from './context';
+
+const connected = new WeakSet<AbortSignal>();
+
+function withAccess<T>(context: RpcContext, issue: () => T): T {
+  try {
+    if (context.closed.aborted) throw new SettingsRefusedError(['The settings connection is closed.']);
+    if (!connected.has(context.closed)) {
+      const access = appSettingsAccess;
+      context.closed.addEventListener('abort', () => access.releaseClient(context.client), { once: true });
+      connected.add(context.closed);
+    }
+    return issue();
+  } catch (error) {
+    if (error instanceof SettingsRefusedError) throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
+    throw error;
+  }
+}
+
+/** API-token holders are trusted window/tool bootstrap; pack SDKs receive only their scoped port. */
+export const settingsRouter = router({
+  openHost: procedure.mutation(({ ctx }) => withAccess(ctx, () => appSettingsAccess.issueHost(ctx.client))),
+  openPack: procedure.input(z.object({
+    id: z.string().min(1), declarationRevision: z.string().min(1), artifactRevision: z.string().min(1),
+  }).strict()).mutation(({ input, ctx }) => withAccess(ctx, () => appSettingsAccess.issuePack(ctx.client, input))),
+  close: procedure.input(z.object({ credential: z.string().min(1) }).strict())
+    .mutation(({ input, ctx }) => appSettingsAccess.revoke(ctx.client, input.credential)),
+});

@@ -11,7 +11,7 @@ import { createApplicationSystem } from '../../../src/features/application/be/sy
 
 /** A registry whose features declare `defaults` as their tabs' visibility */
 const withDefaults = (visibility: Record<string, boolean>, pluginIds: string[] = []) => ({
-  settingsDefaults: () => ({ revision: 1, settings: { features: {} }, validators: {}, visibility }),
+  pluginDefaults: () => visibility,
   pluginIds: () => pluginIds,
   shippedPacks: () => [],
 });

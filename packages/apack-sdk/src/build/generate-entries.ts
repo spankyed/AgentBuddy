@@ -489,7 +489,6 @@ export async function generatePackFiles(
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {})),
-      ...(manifest.settingsSections ? [manifest.settingsSections] : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -946,10 +945,6 @@ ${items.join('\n')}
     const artifacts = artifactDefinitions();
     const steps = stepDefinitionsFor('backend');
     const migrations = migrationEntries();
-    // App preference sections returned while the host registers the pack's defaults.
-    const sections = manifest.settingsSections
-      ? valueExport('settingsSections', manifest.settingsSections)
-      : undefined;
     // Validated Markdown articles embedded into the runtime registration
     const help = manifest.extensions?.help ? compileHelp(root, manifest) : undefined;
 
@@ -972,7 +967,7 @@ ${contracted.map(f => `  '${f.id}': __ContractMatches<MachineMatchesContract<typ
 import type { PackRegistration } from '@apackdev/sdk/framework';
 ${contracted.length ? "import type { MachineMatchesContract } from '@apackdev/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@apackdev/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
 ${systemImports}
-import { featureServices } from './services.ts';
+import { featureServices, bindSettings } from './services.ts';
 ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 ${migrations.imports.join('\n')}
@@ -980,14 +975,16 @@ ${steps.imports.join('\n')}
 ${blocks.imports.join('\n')}
 import { appliers } from './appliers.ts';
 export { setCompiledDir } from './appliers.ts';
-${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
+
 
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
+  dependencies: ${JSON.stringify(manifest.dependencies ?? {})},
   declarationRevision: '${_declarationRevision(manifest)}',
   features: {${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}},
   services: featureServices,
+  bindSettings,
 ${hasRepositories() ? '  repositories,' : ''}
 ${steps.literal ? `  steps: ${steps.literal},` : ''}
 ${artifacts ? `  artifacts: ${artifacts},` : ''}
@@ -995,7 +992,7 @@ ${blocks.literal ? `  blocks: ${blocks.literal},` : ''}
 ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },` : ''}
   appliers,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
-${sections ? '  settingsSections: __settingsSections,' : ''}
+${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensions.settings)},` : ''}
   name: ${JSON.stringify(manifest.name)},
 ${help ? `  help: ${JSON.stringify(help)},` : ''}
   ears: {
@@ -1013,6 +1010,12 @@ ${contractCheck}`;
   function generateFrontendEntry(): string {
     const features = packFeatures(manifest);
     const pluginFeatures = features.filter(f => f.plugin);
+    const featureForms = features.filter(f => f.settings?.form);
+    const groupForms = Object.entries(manifest.extensions?.settings ?? {}).filter(([, definition]) => definition.form);
+    const formImports = [
+      ...featureForms.map(f => `import __settingsFeature_${f.id} from '${toImportPath(root, f.settings!.form!)}';`),
+      ...groupForms.map(([id, definition]) => `import __settingsGroup_${id} from '${toImportPath(root, definition.form!)}';`),
+    ];
 
     // The plugin module is passed through as the author wrote it, keyed by its feature as the backend entry is: the
     // host registers it at the feature's ref, with the feature's role
@@ -1024,10 +1027,11 @@ ${contractCheck}`;
     // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
     const defaultFeature = pluginFeatures.find(f => f.plugin?.default);
     // A designated feature with no plugin is listed for its role, so a frontend send to that role resolves
-    const featureEntries = features.filter((f) => f.plugin || f.designation).map((f) => {
+    const featureEntries = features.filter((f) => f.plugin || f.designation || f.settings?.form).map((f) => {
       const parts = f.plugin ? [`plugin: ${pluginBinding(f.id)}`] : [];
       if (f.designation) parts.push(`designation: '${f.designation}'`);
       if (f === defaultFeature) parts.push('default: true');
+      if (f.settings?.form) parts.push(`settingsForm: __settingsFeature_${f.id}`);
       return `    '${f.id}': { ${parts.join(', ')} },\n`;
     }).join('');
 
@@ -1056,6 +1060,7 @@ ${contractCheck}`;
     }
 
     const regProps: string[] = [];
+    if (groupForms.length) regProps.push(`  settingsForms: { ${groupForms.map(([id]) => `'${id}': __settingsGroup_${id}`).join(', ')} },`);
     if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
     if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
     if (appExt.length) {
@@ -1072,12 +1077,15 @@ ${contractCheck}`;
 
     return `${HEADER}
 import type { PackFERegistration } from '@apackdev/sdk/fe';
+import { bindSettings } from './settings-fe.ts';
 ${pluginImports}
+${formImports.join('\n')}
 ${extraImports.join('\n')}
 
 export default {
   id: '${manifest.id}',
   declarationRevision: '${_declarationRevision(manifest)}',
+  bindSettings,
   features: {${featureEntries ? `\n${featureEntries}  ` : ''}},
 ${regProps.join('\n')}
 } satisfies PackFERegistration;
@@ -1153,23 +1161,32 @@ export const {
 `;
   }
 
-  // Settings schemas remain backend-only: frontend accessors import their inferred shapes as types.
+  // Definitions are manifest data; frontend accessors import schema-derived shapes as types.
   async function generateSettings(): Promise<string> {
     const groups = Object.entries(manifest.extensions?.settings ?? {});
     // Isolate referenced schema types too: two groups may both define a type named Project.
     const groupTypes = await Promise.all(groups.map(async ([name, definition]) =>
       `declare namespace __PackSettings_${toPascalCase(name)} {\n${await generateSettingsTypes(definition, 'Value')}\n}`));
     const features = packFeatures(manifest).filter(f => f.settings);
+    const restricted = (kind: 'feature' | 'pack') => [...depSnapshots].flatMap(([packId, snapshot]) => {
+      const declarations = kind === 'feature'
+        ? packFeatures(snapshot.manifest).filter(feature => feature.settings).map(feature => [feature.id, feature.settings!] as const)
+        : Object.entries(snapshot.manifest.extensions?.settings ?? {});
+      return declarations.filter(([, definition]) => definition.access === 'owner').map(([id]) => JSON.stringify(`${packId}/${id}`));
+    }).join(' | ') || 'never';
     const featureTypes = await Promise.all(features.map(async f =>
       `declare namespace __FeatureSettings_${toPascalCase(f.id)} {\n${await generateSettingsTypes(f.settings!, 'Value')}\n}`));
     const entries = features.map(f => `  '${f.id}': __FeatureSettings_${toPascalCase(f.id)}.Value;`);
+    const groupDeps = depTypeImports('PackGroupSettings');
+    const groupQualified = depIds.map(id => `{ [K in keyof ${depAlias(id, 'PackGroupSettings')} & string as \`${id}/\${K}\`]: ${depAlias(id, 'PackGroupSettings')}[K] }`);
     const deps = depTypeImports('PackFeatureSettings');
     const qualified = depIds.map(id => `{ [K in keyof ${depAlias(id, 'PackFeatureSettings')} & string as \`${id}/\${K}\`]: ${depAlias(id, 'PackFeatureSettings')}[K] }`);
     return `${HEADER}
-import type { FeatureSettingUpdate } from '@apackdev/sdk/types';
-import { _featureSettings, services } from '@apackdev/sdk/services';
+import type { SettingUpdate as __SettingUpdate, SettingsHandle, ReadonlySettingsHandle } from '@apackdev/sdk/types';
 import { ref } from './ref.ts';
+import { runtimeServices } from './runtime-services.ts';
 ${deps.imports}
+${groupDeps.imports}
 
 ${groupTypes.join('\n')}
 ${featureTypes.join('\n')}
@@ -1181,32 +1198,71 @@ ${groups.map(([name]) => `  '${name}': __PackSettings_${toPascalCase(name)}.Valu
 export type PackFeatureSettings = {
 ${entries.join('\n')}
 };
-type AvailableSettings = PackFeatureSettings${qualified.map(t => ` & ${t}`).join('')};
+type AvailableSettings = PackFeatureSettings & { [K in keyof PackFeatureSettings & string as \`${manifest.id}/\${K}\`]: PackFeatureSettings[K] }${qualified.map(t => ` & ${t}`).join('')};
 export type SettingsName = keyof AvailableSettings & string;
 export type SettingsOf<K extends keyof AvailableSettings> = AvailableSettings[K];
-export type SettingUpdate<K extends keyof AvailableSettings> = FeatureSettingUpdate<SettingsOf<K>>;
+export type SettingUpdate<K extends keyof AvailableSettings> = __SettingUpdate<SettingsOf<K>>;
+export type ReadonlyFeatureSettingsName = ${restricted('feature')};
+export type FeatureSettingsHandle<K extends SettingsName> = K extends ReadonlyFeatureSettingsName
+  ? ReadonlySettingsHandle<SettingsOf<K>> : SettingsHandle<SettingsOf<K>>;
 
-export const settings = {
-  forFeature: <K extends keyof AvailableSettings & string>(name: K) => _featureSettings<SettingsOf<K>>(ref(name), () => services.settings),
+export const featureSettings = {
+  forFeature: <K extends SettingsName>(name: K): FeatureSettingsHandle<K> =>
+    runtimeServices.settingsHandle<SettingsOf<K>>({ kind: 'feature', featureRef: ref(name) }) as FeatureSettingsHandle<K>,
 };
+
+type AvailableGroups = PackGroupSettings & { [K in keyof PackGroupSettings & string as \`${manifest.id}/\${K}\`]: PackGroupSettings[K] }${groupQualified.map(t => ` & ${t}`).join('')};
+export type PackSettingsName = keyof AvailableGroups & string;
+export type ReadonlyPackSettingsName = ${restricted('pack')};
+export type PackSettingsHandle<K extends PackSettingsName> = K extends ReadonlyPackSettingsName
+  ? ReadonlySettingsHandle<PackSettingsOf<K>> : SettingsHandle<PackSettingsOf<K>>;
+export type PackSettingsOf<K extends keyof AvailableGroups> = AvailableGroups[K];
+export const packSettings = {
+  forGroup: <K extends PackSettingsName>(name: K): PackSettingsHandle<K> => {
+    const selector: string = name;
+    const qualified = selector.includes('/') ? selector : ${JSON.stringify(manifest.id)} + '/' + selector;
+    const [packId, groupId] = qualified.split('/');
+    return runtimeServices.settingsHandle<PackSettingsOf<K>>({ kind: 'pack', packId, groupId }) as PackSettingsHandle<K>;
+  },
+};
+
 `;
   }
 
   function generateSettingsFe(): string {
     return `${HEADER}
-import { _useFeatureSettings } from '@apackdev/sdk/fe';
+import { _createFeSettings, type FeSettingsHandle, type ReadonlyFeSettingsHandle } from '@apackdev/sdk/fe';
+import type { AppSettings } from '@apackdev/sdk/types';
 import { ref } from './ref.ts';
-import type { SettingsOf, SettingsName } from './settings.ts';
-export type { SettingsOf, SettingUpdate } from './settings.ts';
+import type { SettingsOf, SettingsName, ReadonlyFeatureSettingsName, PackSettingsOf, PackSettingsName, ReadonlyPackSettingsName } from './settings.ts';
+export type { SettingsOf, SettingUpdate, PackSettingsOf, PackSettingsName } from './settings.ts';
 
-export const useSettings = <K extends SettingsName>(name: K) =>
-  _useFeatureSettings<SettingsOf<K>>(ref(name));
+const frontendSettings = _createFeSettings();
+export const bindSettings = frontendSettings.bindSettings;
+
+export const useAppSettings = (): FeSettingsHandle<AppSettings> =>
+  frontendSettings.useSettings<AppSettings>({ kind: 'app' });
+
+export type FeatureSettingsHandle<K extends SettingsName> = K extends ReadonlyFeatureSettingsName
+  ? ReadonlyFeSettingsHandle<SettingsOf<K>> : FeSettingsHandle<SettingsOf<K>>;
+export type PackSettingsHandle<K extends PackSettingsName> = K extends ReadonlyPackSettingsName
+  ? ReadonlyFeSettingsHandle<PackSettingsOf<K>> : FeSettingsHandle<PackSettingsOf<K>>;
+
+export const useSettings = <K extends SettingsName>(name: K): FeatureSettingsHandle<K> =>
+  frontendSettings.useSettings<SettingsOf<K>>({ kind: 'feature', featureRef: ref(name) }) as FeatureSettingsHandle<K>;
+
+export const usePackSettings = <K extends PackSettingsName>(name: K): PackSettingsHandle<K> => {
+  const selector: string = name;
+    const qualified = selector.includes('/') ? selector : ${JSON.stringify(manifest.id)} + '/' + selector;
+  const [packId, groupId] = qualified.split('/');
+  return frontendSettings.useSettings<PackSettingsOf<K>>({ kind: 'pack', packId, groupId }) as PackSettingsHandle<K>;
+};
 `;
   }
 
   function generateRef(): string {
     const names = [...new Set([
-      ...packFeatures(manifest).map((f) => f.id),
+      ...packFeatures(manifest).flatMap((f) => [f.id, `${manifest.id}/${f.id}`]),
       ...[...depSnapshots].flatMap(([depId, snap]) => packFeatures(snap.manifest).map((f) => `${depId}/${f.id}`)),
       ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])),
       ...Object.keys(HOST_PLUGIN_EVENT_TYPES),
@@ -1215,7 +1271,7 @@ export const useSettings = <K extends SettingsName>(name: K) =>
     return `${HEADER}
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 
-/** A feature this pack's code can name: its own by feature id, its dependencies' and the host's as \`<packId>/<featureId>\` */
+/** Own features accept local IDs or qualified refs; dependencies and host features use qualified refs. */
 export type FeatureName = ${names.map((name) => `'${name}'`).join(' | ')};
 
 /** This pack's id, as \`apack.json\` declares it: what its sends stamp as \`Message.from\` */
@@ -1544,7 +1600,8 @@ ${nodeEntity}`;
     return `${HEADER}
 import type { z } from 'zod';
 import type { EARS } from '@apackdev/ears';
-import { services as sdkServices, type HostServices } from '@apackdev/sdk/services';
+import type { HostServices } from '@apackdev/sdk/services';
+import { runtimeServices } from './runtime-services.ts';
 import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@apackdev/sdk/events';
 import type { Repositories } from './repository.ts';
 import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
@@ -1579,7 +1636,8 @@ export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 's
 export type Services = typeof featureServices & Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter }${deps.aliases.map(a => ` & Omit<${a}, 'repository' | 'emitter'>`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
-export const services = sdkServices as unknown as Services;
+export const bindSettings = runtimeServices.bindSettings;
+export const services = runtimeServices.services as unknown as Services;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 `;
@@ -1651,6 +1709,7 @@ ${hooks.map(([, path, exportName], i) => `import { ${exportName} as __contentWri
 
 export const contentRuntime: ContentRuntime = {
   id: ${JSON.stringify(manifest.id)},
+  declarationRevision: ${JSON.stringify(_declarationRevision(manifest))},
   entities: ${JSON.stringify(manifest.entities ?? {})},
   relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
@@ -1999,6 +2058,11 @@ ${entries.join('\n')}
     ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],
+    ['src/__generated__/runtime-services.ts', `${HEADER}
+import { _createPackServices } from '@apackdev/sdk/services';
+// No feature imports: module-level settings handles must not depend on the services import graph.
+export const runtimeServices = _createPackServices();
+`],
     ['src/__generated__/repository.ts', generateRepository()],
     ['src/__generated__/repositories.ts', generateRepositories()],
     ['src/__generated__/pack-types.ts', generatePackTypes()],

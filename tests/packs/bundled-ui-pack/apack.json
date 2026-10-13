@@ -22,6 +22,32 @@
       "services": {}
     }
   },
+  "extensions": {
+    "settings": {
+      "restricted": {
+        "title": "Owner-only preference",
+        "access": "owner",
+        "schema": {
+          "type": "object",
+          "properties": { "count": { "type": "integer", "minimum": 1, "maximum": 10 } },
+          "required": ["count"],
+          "additionalProperties": false
+        },
+        "defaults": { "count": 1 }
+      },
+      "assistant": {
+        "title": "Scribbles Assistant",
+        "schema": {
+          "type": "object",
+          "properties": { "name": { "type": "string" } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "defaults": { "name": "Scribbles helper" },
+        "form": "src/extensions/settings/assistant.vue"
+      }
+    }
+  },
   "dependencies": {},
   "permissions": [],
   "build": {

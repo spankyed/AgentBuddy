@@ -10,7 +10,7 @@ import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpArticle } from '../framework/pack-help.ts';
-import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
+import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 
 /** What tests register without an app, each lookup keyed as the SDK looks it up */
@@ -69,7 +69,7 @@ function createTestPacks(): TestPacks {
 /** The in-memory stand-in for the registered packs that `startTestRuntime` binds */
 export const testPacks: TestPacks = createTestPacks();
 
-const noSettings: PackSettingsDefaults = { revision: 0, settings: { features: {} }, validators: {}, visibility: {} };
+const noSettings: SettingsCatalog = { revision: 0, app: { schema: { type: 'object' }, defaults: {} }, packs: {}, features: {}, dependencies: {} };
 
 /** Definitions of `registered` with the ones tests put in `own` in place of those of the same type, then the rest of `own` */
 function withOwn<T extends { type: string }>(registered: readonly T[] = [], own: Map<string, T>): T[] {
@@ -105,9 +105,9 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     pluginIds: () => [...new Set([...(registered?.pluginIds() ?? []), ...testPacks.plugins])] as FeatureRef[],
     contentWriters: (entity) => testPacks.contentWriters.get(entity) ?? registered?.contentWriters(entity),
     appliers: (packId) => testPacks.appliers.get(packId) ?? registered?.appliers(packId) ?? [],
-    settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,
-    onSettingsDefaultsChanged: (listener) => registered?.onSettingsDefaultsChanged(listener) ?? (() => {}),
-    featuresWithSettings: () => registered?.featuresWithSettings() ?? [],
+    settingsCatalog: () => registered?.settingsCatalog() ?? noSettings,
+    onSettingsCatalogChanged: (listener) => registered?.onSettingsCatalogChanged(listener) ?? (() => {}),
+    pluginDefaults: () => registered?.pluginDefaults() ?? {},
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
     help: () => ({ articles: [...(registered?.help().articles ?? []), ...[...testPacks.help.values()].flat()], problems: registered?.help().problems ?? [] }),
     earsNames: () => {

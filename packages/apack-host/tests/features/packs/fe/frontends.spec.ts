@@ -2,7 +2,7 @@
 // cache), what a default export has to declare to count as a registration, and what unloading takes back. The
 // window's part — the import and the stylesheet — is a fake here, so these are the rules alone.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
+import type { PackFERegistration, Plugin, SettingsPort } from '@apackdev/sdk/fe';
 import { createPackFrontends, loadPackFEEntry, type PackFrontendIO } from '../../../../src/fe/index.ts';
 import type { FePackRegistry } from '../../../../src/fe/pack-store.ts';
 
@@ -148,6 +148,34 @@ describe("a pack's frontend", () => {
     await expect(createPackFrontends(io, registry).load({
       id: 'ext', declarationRevision: 'current', name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('Pack "ext"');
+    expect(registered).toEqual([]);
+    expect(styles).toEqual([]);
+  });
+
+  it('obtains a settings binding only after frontend declaration acceptance', async () => {
+    const registration = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: vi.fn() };
+    const { io } = fakeIO({ 'pack://ext/runtime/fe.js': registration });
+    const binding = { port: {} as SettingsPort, dispose: vi.fn() };
+    const settingsForPack = vi.fn(async () => binding);
+    io.settingsForPack = settingsForPack;
+    const registerPackFE = vi.fn(() => []);
+    const packs = { registerPackFE } as unknown as FePackRegistry;
+    const pack = { id: 'ext', declarationRevision: 'current', name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js' };
+    await createPackFrontends(io, packs).load(pack);
+    expect(settingsForPack).toHaveBeenCalledWith(pack);
+    expect(registerPackFE).toHaveBeenCalledWith(registration, binding);
+    settingsForPack.mockClear();
+    registration.declarationRevision = 'stale';
+    await expect(createPackFrontends(io, packs).load(pack)).rejects.toThrow('Pack "ext"');
+    expect(settingsForPack).not.toHaveBeenCalled();
+  });
+
+  it('refuses a generated frontend without a host settings provider before adding styles', async () => {
+    const { io, styles } = fakeIO({ 'pack://ext/runtime/fe.js': { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: vi.fn() } });
+    const { registry, registered } = fakeRegistry();
+    await expect(createPackFrontends(io, registry).load({
+      id: 'ext', declarationRevision: 'current', name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
+    })).rejects.toThrow('requires host-bound settings');
     expect(registered).toEqual([]);
     expect(styles).toEqual([]);
   });

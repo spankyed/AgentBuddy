@@ -69,7 +69,7 @@ export async function action(
 
 async function importSelectedSessions(services: Services, providers: { cc: boolean; codex: boolean }) {
   try {
-    const projects = services.settings.getSection<AppSettings>('app').projects ?? [];
+    const projects = services.settings.get<AppSettings>({ kind: 'app' }).projects ?? [];
     const selectedDirs = new Set((projects as any[]).flatMap((p: any) => p.directories ?? []));
 
     // Build dedup sets from existing threads

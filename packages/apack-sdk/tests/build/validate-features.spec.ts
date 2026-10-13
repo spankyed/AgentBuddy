@@ -87,6 +87,35 @@ describe('typesEntry', () => {
   });
 });
 
+describe('pack settings forms', () => {
+  const form = 'src/extensions/settings/preferences.vue';
+  const definition = { schema: { type: 'object' }, defaults: {}, form };
+
+  it('validates a group form without a feature or plugin', () => {
+    expect(validateFeatures(pack([form]), {
+      extensions: { settings: { preferences: definition } },
+    })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
+  });
+
+  it('reports the missing form at its manifest address', () => {
+    const result = validateFeatures(pack([]), {
+      id: 'example', extensions: { settings: { preferences: definition } },
+    });
+    expect(result.status).toBe('invalid');
+    expect(result.diagnostics).toEqual([{
+      code: 'settings.missing-form', severity: 'error', packId: 'example',
+      path: ['extensions', 'settings', 'preferences', 'form'], source: form,
+      message: `Settings group "preferences": form file "${form}" not found`,
+    }]);
+  });
+
+  it('accepts a declaration with no custom form', () => {
+    expect(validateFeatures(pack([]), {
+      extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {} } } },
+    })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
+  });
+});
+
 function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
   return result.diagnostics.map(issue => issue.message);
 }

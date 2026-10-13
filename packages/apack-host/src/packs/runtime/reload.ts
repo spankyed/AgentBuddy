@@ -138,6 +138,7 @@ export async function reloadPackById(
       register: () => {
         // registerExternalPacks logs why a registration was refused
         if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
+        registry.refreshCatalog(packsDir);
       },
       newSystemIds: packSystemIds(pack.registration),
       onShutdown: pack.registration.boot?.onShutdown,

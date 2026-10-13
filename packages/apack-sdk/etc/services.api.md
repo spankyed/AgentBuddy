@@ -73,8 +73,12 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
 // @internal
 export function _createInferenceService(resolveModel: _ResolveModel): InferenceService;
 
-// @public
-export function _featureSettings<T>(feature: FeatureRef, service: () => SettingsService): FeatureSettingsAccess<T>;
+// @internal
+export function _createPackServices(): {
+    settingsHandle: <T>(target: SettingsTarget) => SettingsHandle<T>;
+    services: HostServices & Record<string, unknown>;
+    bindSettings(settings: SettingsService): () => void;
+};
 
 // @public
 export interface FileEntry {
@@ -247,24 +251,44 @@ export interface SecretsStatus {
 export const services: HostServices & Record<string, unknown>;
 
 // @public
-export type SettingsChange = 'written' | 'replacing' | 'replaced';
+export interface SettingsAdmin extends SettingsService {
+    // (undocumented)
+    forPack(packId: string): SettingsService;
+    // (undocumented)
+    getAll(): SettingsDocument;
+    // (undocumented)
+    getOverrides(): SettingsOverrides;
+    // (undocumented)
+    getSnapshot(): SettingsSnapshot;
+    // (undocumented)
+    removeOverrides(path: readonly string[]): void;
+    // (undocumented)
+    replaceAll(document: unknown, condition?: SettingsWriteCondition): void;
+    // (undocumented)
+    resetAll(): void;
+    // (undocumented)
+    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
+}
 
-// @public
-export type SettingsFeatureName = FeatureRef | `${string}/${string}`;
+// @internal
+export function _settingsAdmin(): SettingsAdmin;
 
 // @public (undocumented)
+export type SettingsChange = 'written' | 'replacing' | 'replaced';
+
+// @internal
+export function _settingsHandle<T>(target: SettingsTarget, service: SettingsService): SettingsHandle<T>;
+
+// @public
 export interface SettingsService {
-    forFeature<T = unknown>(name: SettingsFeatureName): T;
-    getAll<T = Record<string, unknown>>(): T;
-    getSection<T = unknown>(section: string): T;
-    getStored<T = Record<string, unknown>>(): T;
+    // (undocumented)
+    get<T = unknown>(target: SettingsTarget): T;
+    // (undocumented)
     onChange(listener: (change: SettingsChange) => void): () => void;
-    removeStored(path: readonly string[]): void;
-    replaceAll(settings: unknown): void;
-    reset(): void;
-    setForFeature(name: SettingsFeatureName, path: readonly string[], value: unknown): void;
-    setInSection(section: string, path: readonly string[], value: unknown): void;
-    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
+    // (undocumented)
+    reset(target: SettingsTarget): void;
+    // (undocumented)
+    set(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): void;
 }
 
 // @internal

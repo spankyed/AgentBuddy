@@ -8,6 +8,13 @@ user-data effects. Preserve owner IDs and stored settings overrides.
 Keep migration version lines independent of update provenance. The planned catalog default-navigation policy
 supersedes the old first-plugin survey below.
 
+Current settings acceptance confirms that booting with a current-format disabled `default-setup`
+record works: host Personal and shortcut preferences remain usable without it. The Packs backend
+still uses `canUninstall` to refuse disabling a shipped pack, conflating two separate operations.
+Resolve that guard with this replacement contract, not by weakening an acceptance fixture's dependency
+requirements. The external authoring fixture depends on default-setup's content providers and cannot
+serve as a host-only boot fixture; the host-only app suite instead installs no external fixture.
+
 ## Context
 
 `goal-one-kind-of-pack` made the pack the app ships an installed pack like any other — one build path, one

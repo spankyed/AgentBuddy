@@ -293,18 +293,40 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
 - `plugin.defaultVisible` controls whether the sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
 - Settings use JSON Schema draft-07 and required explicit `defaults`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Validation does not coerce, populate defaults or transform values. See [Feature settings](manifest.md#feature-settings).
-- The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
-- Codegen derives the read and write types from the schema. Backend code uses `settings.forFeature('bookmarks')` from `#generated/settings.ts`; components use `useSettings('bookmarks')` from `#generated/settings-fe.ts`. Own features use bare IDs; dependencies use `<packId>/<featureId>`. Only features declaring a settings schema are accepted. The frontend module loads no schemas or backend services.
+- The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack leaves its discovered definitions and defaults available; a new version's defaults apply to every key the user didn't change.
+- Codegen derives the read and write types from the schema. Backend code uses `featureSettings.forFeature('bookmarks')` from `#generated/settings.ts`; components use `useSettings('bookmarks')` from `#generated/settings-fe.ts`. Own features use bare IDs; dependencies use `<packId>/<featureId>`. Only features declaring a settings schema are accepted. The frontend module loads no schemas or backend services.
 
 ```typescript
-import { settings } from '#generated/settings.ts';
-const bookmarks = settings.forFeature('bookmarks');
+import { featureSettings } from '#generated/settings.ts';
+const bookmarks = featureSettings.forFeature('bookmarks');
 const interval = bookmarks.get().syncInterval; // number
 bookmarks.set({ path: ['syncInterval'], value: 600 });
 bookmarks.reset(); // removes overrides; applies the current defaults
+const stop = bookmarks.onChange(value => console.log(value.syncInterval));
+// Call stop() when this backend consumer is disposed.
 ```
 
-In a component, `useSettings('bookmarks')` returns a reactive `value` (undefined until loaded), typed `set`, and `reset`. It must run in a component or effect scope; disposal stops its subscription. `useSettingsSave()` from `@apackdev/sdk/fe` reports the shared save status. Custom forms type their props with `SettingsOf<'bookmarks'>` and their `update-setting` payload with `SettingUpdate<'bookmarks'>`, both from `#generated/settings-fe.ts`. Paths address object fields, including record keys, up to six levels; replace arrays as a whole. Each path is paired with its field's value type. Runtime validation remains authoritative.
+Pack-wide groups are declared under `extensions.settings`, using the same `schema`, `defaults`, and
+optional `form` contract. Backend code uses `packSettings.forGroup('assistant')` from
+`#generated/settings`; frontend code uses `usePackSettings('assistant')` from `#generated/settings-fe`.
+Their values live at `packs[packId][groupId]`, so two packs can declare `assistant` independently.
+Bare selectors address the importing pack; qualified selectors name a declared dependency or the
+importing pack explicitly. `access: "owner"` makes dependency handles read-only in generated types;
+shared read/write/reset is the default. App preferences remain host-owned at `app`.
+
+Setting a value equal to its current default records a choice. Reset removes that choice and follows
+future defaults. Settings consumers and subscriptions work independently of opening the Settings view.
+
+The host's advanced JSON editor shows the complete effective document (`app`, `packs`, `features`).
+Installed declarations supply completion, descriptions and validation, including disabled packs.
+Saving records the entire document as explicit choices; omitted required fields are errors rather than
+requests to inherit defaults. Use the settings reset controls to resume following defaults. Unavailable
+owners remain visible and may be retained or removed, but their values cannot be edited until their
+declarations are available again. Backup files contain sparse overrides and use the import contract.
+
+In a component, `useSettings('bookmarks')` returns a reactive `value` (undefined until loaded), typed `set`, and `reset`. It must run in a component or effect scope; disposal stops its subscription. `useAppSettings()` from `#generated/settings-fe.ts` returns the same handle for host app preferences, using the pack's accepted caller access. Generated handles refuse writes after unload. Ambient SDK reads do not grant a write connection.
+
+Custom forms type their props with `SettingsOf<'bookmarks'>` and their `update-setting` payload with `SettingUpdate<'bookmarks'>`, both from `#generated/settings-fe.ts`. Paths address object fields, including record keys, up to six levels; replace arrays as a whole. Each path is paired with its field's value type. Runtime validation remains authoritative. Forms emit updates to their host owner, which supplies validation results and reset behavior. `useSettingsSave(writer)` from `@apackdev/sdk/fe` tracks requests through an explicitly supplied writer; one form cannot mark another saved or implicitly borrow window administration.
 
 Custom forms can use `useSettingsDraft` from `@apackdev/sdk/fe` for an editable copy of a JSON settings field:
 

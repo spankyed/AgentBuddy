@@ -14,6 +14,7 @@
     
     <button
       @click="$emit('execute')"
+      :aria-label="isLoading ? 'Running' : 'Execute'"
       :disabled="isLoading || isDisabled"
       class="flex items-center gap-2 px-2 @xl:px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
     >
@@ -36,4 +37,4 @@ defineEmits<{
   execute: [];
   toggleMode: [];
 }>();
-</script> 
+</script>

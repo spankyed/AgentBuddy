@@ -9,9 +9,8 @@ import { createAppData } from './app-data.ts';
 import { HOST } from '../refs.ts';
 import { filesystem } from './filesystem.ts';
 import { createSettingsService } from './settings.ts';
-import { createSettingsStore, type SettingsDocument } from '../features/settings/be/store.ts';
+import { createSettingsStore } from '../features/settings/be/store.ts';
 
-import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
 import { createTraceStore } from './trace-store.ts';
@@ -30,6 +29,11 @@ export interface HostRuntimeOptions {
 
 /** The running app as the SDK reaches it, which the composition root binds with `bindHost` */
 export function createHostRuntime({ transport, appVersion, store, engine, packs }: HostRuntimeOptions): HostRuntime {
+  const settings = createSettingsService(createSettingsStore({
+    ears: () => engine.query,
+    catalog: packs.settingsCatalog,
+    onCatalogChanged: packs.onSettingsCatalogChanged,
+  }));
   return {
     transport,
     ears: engine.query,
@@ -38,16 +42,15 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     redaction: secretRedaction,
     services: {
       // The service replaces the data; naming what the app is told about it belongs here, with the wiring
-      appData: createAppData(store, engine.admin, packs, () =>
-        transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } })),
+      appData: createAppData({ store, engine: engine.admin, registry: packs, settings,
+        onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),
+      }),
       traceStore: createTraceStore(store),
       inference,
       secrets,
       filesystem,
-      // The store owns app defaults. Pack/feature defaults still follow registrations until catalog wiring.
-      settings: createSettingsService(createSettingsStore({
-        defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
-      })),
+      // All owners use the accepted declaration catalog.
+      settings,
     },
   };
 }

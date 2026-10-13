@@ -180,22 +180,6 @@ export namespace EARS {
     export type RoleKind = EARS_2.RoleKind;
 }
 
-// @public
-export interface FeatureSettingsAccess<T> {
-    // (undocumented)
-    get(): T;
-    // (undocumented)
-    reset(): void;
-    // (undocumented)
-    set(update: FeatureSettingUpdate<T>): void;
-}
-
-// @public
-export type FeatureSettingUpdate<T> = SettingsPath<T> extends infer P ? P extends readonly string[] ? {
-    path: P;
-    value: Exclude<SettingsValue<T, P>, undefined>;
-} : never : never;
-
 // @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
@@ -264,6 +248,13 @@ export interface PromptEntity extends BaseEntity {
     updatedAt: number;
 }
 
+// @public
+export interface ReadonlySettingsHandle<T> {
+    // (undocumented)
+    get(): T;
+    onChange(listener: (value: T) => void): () => void;
+}
+
 // @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
@@ -309,12 +300,99 @@ export type SdkEntityShapes = {
 };
 
 // @public
+export interface SettingsDocument {
+    // (undocumented)
+    app: AppSettings;
+    // (undocumented)
+    features: Record<string, unknown>;
+    // (undocumented)
+    packs: Record<string, Record<string, unknown>>;
+}
+
+// @public (undocumented)
+export interface SettingsHandle<T> extends ReadonlySettingsHandle<T> {
+    // (undocumented)
+    reset(): void;
+    // (undocumented)
+    set(update: SettingUpdate<T>): void;
+}
+
+// @public
+export interface SettingsOverrides {
+    // (undocumented)
+    app?: Record<string, unknown>;
+    // (undocumented)
+    features?: Record<string, unknown>;
+    // (undocumented)
+    packs?: Record<string, Record<string, unknown>>;
+}
+
+// @public
 export type SettingsPath<T, Depth extends unknown[] = []> = Depth['length'] extends 6 ? never : {
     [K in keyof T & string]: readonly [K] | (NonNullable<T[K]> extends readonly unknown[] ? never : NonNullable<T[K]> extends object ? readonly [K, ...SettingsPath<NonNullable<T[K]>, [...Depth, unknown]>] : never);
 }[keyof T & string];
 
+// @public
+export interface SettingsSnapshot {
+    // (undocumented)
+    catalog: SettingsCatalog;
+    // (undocumented)
+    revision: number;
+    // (undocumented)
+    runId: string;
+    // (undocumented)
+    status: 'ready' | 'replacing';
+    // (undocumented)
+    values: SettingsDocument;
+}
+
+// @public
+export type SettingsTarget = {
+    kind: 'app';
+} | {
+    kind: 'pack';
+    packId: string;
+    groupId: string;
+} | {
+    kind: 'feature';
+    featureRef: `${string}/${string}`;
+};
+
+// @public
+export function settingsTargetPath(target: SettingsTarget): readonly string[];
+
 // @public (undocumented)
 export type SettingsValue<T, P extends readonly string[]> = P extends readonly [infer K, ...infer Rest] ? K extends keyof NonNullable<T> ? Rest extends readonly string[] ? Rest extends [] ? NonNullable<T>[K] : SettingsValue<NonNullable<T>[K], Rest> : never : never : never;
+
+// @public
+export interface SettingsWriteCondition {
+    // (undocumented)
+    expected: {
+        exists: boolean;
+        value?: unknown;
+    };
+    // (undocumented)
+    runId: string;
+}
+
+// @public (undocumented)
+export type SettingsWriteResult = {
+    status: 'saved';
+} | {
+    status: 'refused';
+    problems: string[];
+};
+
+// @public
+export type SettingUpdate<T = unknown> = (unknown extends T ? {
+    path: readonly string[];
+    value: unknown;
+} : SettingsPath<T> extends infer P ? P extends readonly string[] ? {
+    path: P;
+    value: Exclude<SettingsValue<T, P>, undefined>;
+} : never : never) & {
+    condition?: SettingsWriteCondition;
+};
 
 // @public (undocumented)
 export interface TemplateInput {

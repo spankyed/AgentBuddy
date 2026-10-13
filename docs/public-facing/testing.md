@@ -59,6 +59,10 @@ await setupPackTests({ contentRuntime, registration });
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@apackdev/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@apackdev/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `apack pack build` once first**, so dependencies are fetched into `.apack/deps/`.
+- **Source tests need current generated entries, not a bundle of the pack itself.** The harness validates
+  `apack.json` and checks its declaration identity against the generated registration and content runtime.
+  Run `apack pack generate-entries` after declarations change. Dependencies still use their checked cached
+  snapshots and compiled runtimes. Declared settings remain available independently of which systems a test starts.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` does the same mid-test: a fresh engine, the secrets emptied and the media store cleared; registrations stay. `testMediaPath(entityId?)` names the media store (or one row's folder in it) for a test that asserts on written media.
 - **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@apackdev/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@apackdev/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine. Install `@apackdev/ears` at the version your `@apackdev/sdk` uses: when they differ, npm gives the SDK its own copy, and `setupPackTests` fails naming both.
@@ -171,6 +175,12 @@ Give only the members the code under test uses. A mock lasts for the test it's m
 
 `services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apackdev/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
 
+For host settings fixture setup and assertions, `getTestSettings()` from the harness returns the active
+test's settings administration. `getOverrides()` inspects explicit stored choices; `getAll()` reads
+effective values. Use `forPack(id)` when testing a fixture pack's read/write/reset policy. Pack source
+uses generated settings handles. A mocked reset or import that replaces data must run its replacement
+inside `getTestSettings().whileReplacingData(...)` to exercise the real notification lifecycle.
+
 ## Models
 
 Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@apackdev/sdk/testing`; `ai` comes with `@apackdev/sdk` as a peer dependency):
@@ -237,7 +247,7 @@ it('summarizes a note', async () => {
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
-- **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
+- **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`, `getTestSettings`.
 
 `@apackdev/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
 

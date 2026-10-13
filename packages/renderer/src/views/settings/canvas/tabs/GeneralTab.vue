@@ -69,16 +69,15 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useAppSettings, usePlugin } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@apackdev/host/fe'
-import type { AppSettings } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 const actor: SettingsState = usePlugin()
 
 const generalNavItem = useSelector(actor, (state) => state.context.generalNavItem)
-const settings = useSelector(actor, (state) => state.context.settings)
+const appSettings = useAppSettings()
 
 // Use the settings save status composable
 const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
@@ -86,7 +85,7 @@ const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {
   // App forms share the public host contract.
-  const app = settings.value?.app as AppSettings | undefined
+  const app = appSettings.value
   if (!app) return null
 
   const settingsMap = {
@@ -143,10 +142,10 @@ const handleUpdateSetting = (event: SettingUpdate) => {
 
   // Application displays the hotkeys form; personal and projects select their app fields.
   updateSettings({
-    entityType: 'section',
-    label: 'app',
+    target: { kind: 'app' },
     path: backendLabel === 'application' ? event.path : [backendLabel, ...event.path],
-    value: event.value
+    value: event.value,
+    condition: event.condition
   })
 }
 </script>

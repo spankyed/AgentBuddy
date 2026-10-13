@@ -9,13 +9,16 @@ import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
 import type { FilesystemService } from './filesystem.ts';
 import type { SettingsService } from './settings.ts';
+import type { SettingsAdmin } from './settings.ts';
+import type { SettingsTarget } from '../types/settings.ts';
+import { _settingsHandle } from './settings-handle.ts';
 
 export type { AppDataService, BackupDatabase, BackupSummary } from './app-data.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
-export type { SettingsChange, SettingsFeatureName, SettingsService } from './settings.ts';
+export type { SettingsChange, SettingsService, SettingsAdmin } from './settings.ts';
 export type { SecretMetadata, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
 export { _secretRules, _secretProviderLabel, _toSecretMetadata } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
@@ -67,7 +70,7 @@ export interface HostServices {
   secrets: SecretsService;
   /** Files and folders on the user's disk */
   filesystem: FilesystemService;
-  /** The app's settings: a feature's own, and each registered section */
+  /** Caller-bound access to app, pack/group and feature preferences */
   settings: SettingsService;
 }
 
@@ -159,17 +162,11 @@ const filesystem: FilesystemService = {
   stat: (filePath) => app('filesystem').stat(filePath),
 };
 
+// An unbound import cannot borrow host settings authority. Generated services bind pack identity.
 const settings: SettingsService = {
-  getAll: () => app('settings').getAll(),
-  getStored: () => app('settings').getStored(),
-  getSection: (section) => app('settings').getSection(section),
-  forFeature: (name) => app('settings').forFeature(name),
-  setForFeature: (name, path, value) => app('settings').setForFeature(name, path, value),
-  setInSection: (section, path, value) => app('settings').setInSection(section, path, value),
-  replaceAll: (next) => app('settings').replaceAll(next),
-  removeStored: (path) => app('settings').removeStored(path),
-  reset: () => app('settings').reset(),
-  whileReplacingData: (replace) => app('settings').whileReplacingData(replace),
+  get: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
+  set: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
+  reset: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
   onChange: (listener) => app('settings').onChange(listener),
 };
 
@@ -206,4 +203,77 @@ export const services: HostServices & Record<string, unknown> = new Proxy({} as 
   },
 });
 
-export { _featureSettings } from './feature-settings.ts';
+export { _settingsHandle } from './settings-handle.ts';
+
+/** @internal Host administration over the shared SDK instance, including the published test harness. */
+export function _settingsAdmin(): SettingsAdmin {
+  return app('settings');
+}
+
+/** @internal Generated runtimes receive scoped settings only after the host accepts their registration. */
+export function _createPackServices() {
+  const createBinding = () => {
+    let source: SettingsService | undefined;
+    let revoked = false;
+    const subscriptions = new Set<() => void>();
+    const accepted = (): SettingsService => {
+      if (revoked) throw new Error('Pack settings binding has been revoked');
+      if (!source) throw new Error('Pack settings are unavailable until the host accepts this runtime');
+      return source;
+    };
+    const service: SettingsService = {
+      get: target => accepted().get(target),
+      set: (target, path, value, condition) => accepted().set(target, path, value, condition),
+      reset: target => accepted().reset(target),
+      onChange: listener => {
+        const stop = accepted().onChange(change => { if (!revoked) listener(change); });
+        const unsubscribe = () => { if (subscriptions.delete(unsubscribe)) stop(); };
+        subscriptions.add(unsubscribe);
+        return unsubscribe;
+      },
+    };
+    return {
+      service,
+      accepted,
+      bind(settings: SettingsService) {
+        if (source) throw new Error('Pack settings are already bound');
+        source = settings;
+      },
+      revoke() {
+        revoked = true;
+        const errors: unknown[] = [];
+        for (const stop of subscriptions) {
+          try { stop(); } catch (error) { errors.push(error); }
+        }
+        if (errors.length) throw new AggregateError(errors, 'Could not release all pack settings subscriptions');
+      },
+    };
+  };
+  let binding = createBinding();
+  const current = (): SettingsService => {
+    binding.accepted();
+    return binding.service;
+  };
+  return {
+    // Construction can precede acceptance; every operation belongs to this one binding lifetime.
+    settingsHandle: <T>(target: SettingsTarget) => _settingsHandle<T>(target, binding.service),
+    services: new Proxy({} as HostServices & Record<string, unknown>, {
+      get(_, key) { return key === 'settings' ? current() : Reflect.get(services, key); },
+      ownKeys: () => Reflect.ownKeys(services),
+      getOwnPropertyDescriptor(_, key) {
+        return key === 'settings' ? { configurable: true, enumerable: true, value: current() } : Reflect.getOwnPropertyDescriptor(services, key);
+      },
+    }),
+    bindSettings(settings: SettingsService): () => void {
+      const accepted = binding;
+      accepted.bind(settings);
+      let active = true;
+      return () => {
+        if (!active) return;
+        active = false;
+        binding = createBinding();
+        accepted.revoke();
+      };
+    },
+  };
+}

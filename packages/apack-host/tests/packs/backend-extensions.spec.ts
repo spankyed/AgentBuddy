@@ -1,7 +1,6 @@
-// The backend registry's command and feature settings stores: what a registry does with a pack's declared
-// commands and feature settings when it registers and unregisters
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCommandStore, createSettingsDefaultsStore } from '../../src/packs/backend-extensions.ts';
+// Command registration, collision refusal and ownership cleanup.
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createCommandStore } from '../../src/packs/backend-extensions.ts';
 
 describe('the command store', () => {
   let packCommandsRegistry: ReturnType<typeof createCommandStore>;
@@ -67,45 +66,5 @@ describe('the command store', () => {
     getPackCommands()[0].placeholder = 'Changed by a reader';
 
     expect(getPackCommands()).toEqual([{ name: 'standup', placeholder: 'Topic' }]);
-  });
-});
-
-describe('the feature settings defaults store', () => {
-  let packSettingsRegistry: ReturnType<typeof createSettingsDefaultsStore>;
-  const getPackSettingsDefaults = () => packSettingsRegistry.get();
-  const onPackSettingsDefaultsChanged = (listener: () => void) => packSettingsRegistry.onChanged(listener);
-  beforeEach(() => { packSettingsRegistry = createSettingsDefaultsStore(); });
-
-  it("merges registered packs' feature settings and drops a pack's when it unregisters", () => {
-    const listener = vi.fn();
-    const unsubscribe = onPackSettingsDefaultsChanged(listener);
-    const before = getPackSettingsDefaults().revision;
-
-    packSettingsRegistry.register('memo-pack', [
-      { id: 'memos', plugin: { receives: [], defaultVisible: false }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } },
-      { id: 'no-settings' },
-    ]);
-    packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { defaults: { done: true }, schema: { type: 'object' } } }]);
-    expect(getPackSettingsDefaults()).toEqual({
-      revision: before + 2,
-      settings: { features: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
-      validators: { 'memo-pack/memos': { validate: expect.any(Function) }, 'todo-pack/todos': { validate: expect.any(Function) } },
-      visibility: { 'memo-pack/memos': false },
-    });
-
-    packSettingsRegistry.unregister('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'todo-pack/todos': { done: true } } });
-    expect(listener).toHaveBeenCalledTimes(3);
-
-    unsubscribe();
-    packSettingsRegistry.unregister('todo-pack');
-    expect(listener).toHaveBeenCalledTimes(3);
-  });
-
-  it("rejects a pack whose feature sets another plugin's settings, registering nothing", () => {
-    const before = getPackSettingsDefaults();
-    expect(() => packSettingsRegistry.register('bad-pack', [{ id: 'memos', settings: { defaults: { hidden: true }, schema: {"type":"object","properties":{"hidden":{"type":"string"}},"required":["hidden"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} } }]))
-      .toThrow(/invalid feature settings/);
-    expect(getPackSettingsDefaults()).toBe(before);
   });
 });
