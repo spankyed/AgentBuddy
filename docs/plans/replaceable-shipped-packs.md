@@ -706,3 +706,60 @@ in 208.7s (15 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-13
 `/private/tmp/apack-runtime-provenance-strict-chain-final.log`. The preceding full checkpoint run
 supplies unchanged real-app/packaged-authoring evidence. No version/release metadata changes and no
 archive of unfinished plans. The independent process shutdown race and final full-goal `--all` remain due.
+
+
+### Actual default-pack fork acceptance plan (2026-10-13)
+
+Copy the real default-setup sources into a temporary external pack, excluding build/cache output.
+Use the established external-authoring test toolchain setup; source and generated output remain private
+to the clone. Edit the manifest's display name and an executable frontend plugin label, keeping owner
+ids and versions unchanged. Build/archive with the public CLI and verify the emitted receipt.
+
+Install deliberately at the default id into isolated app data. In actual Electron windows prove the
+fork's label and retained preference values, live replacement and frontend acceptance, dev reload and
+restart preservation, then disable/uninstall/restoration distinctions. Compare accepted installed bytes
+and recorded update ownership around boot/reload; never treat matching bytes as app ownership.
+Use normal shutdown/startup and fix demonstrated lifecycle bugs rather than killing the app or
+weakening timeouts/assertions. Multiple-window refresh must show the accepted fork consistently.
+Published-tarball isolation is already covered separately by packaged authoring; this clone test must
+state when its build borrows the checkout toolchain rather than claim distribution hermeticity.
+
+
+### Real clone and multi-launch acceptance working implementation (2026-10-13)
+
+The new E2E case copies actual default-setup outside the checkout, excludes prior output, edits its
+manifest name and executable Notes plugin label, then builds and archives through the public CLI.
+It borrows the established test toolchain link; it does not claim published-package hermeticity.
+Two actual windows accept the changed frontend, the authenticated dev-reload endpoint retains it,
+and a preference acknowledged in a second settings window survives both operations. Initial test
+failures corrected fixture assumptions: build uses supported `APACK_HOST`, and pending form drafts
+must be acknowledged before testing stored-value preservation. Form-disposal cancellation remains
+unchanged, consistent with existing regression tests.
+
+A repository-only runner drives four normal Electron launches over its own temporary data. It uses
+`fixtureEnv` and then deliberately supplies caller-owned storage; public `pack test` continues clearing
+inherited storage overrides. The runner verifies the accepted user artifact receipt/label/ownership
+and preference survive restart, restores app ownership via offline CLI, uninstalls through CLI,
+proves host-only boot preserves removal suppression and host settings, then restores the app default
+and proves app ownership/Notes/preferences return. The dependent external fixture is uninstalled for
+host-only absence; its dependency requirement is not weakened. Raw record assertions use the current
+`{ packs: [...] }` format. All four targeted launches pass.
+
+The normal external-pack app gate runs the live test and this lifecycle runner, with the new runner
+explicitly included in its fingerprint inputs.
+The first full run refused test collection in the lifecycle runner: its direct CLI path used the
+checkout's lower-case spelling while the testing fixture resolved the canonical path, producing two
+Playwright module identities on macOS. Using the public CLI's resolver alone reproduced the refusal:
+Node's JavaScript `realpathSync` preserves supplied case aliases, while `realpathSync.native` restores
+the on-disk casing. The runner now canonicalizes its checkout with native realpath before using the
+existing `resolvePlaywrightCli(pack)` used by public `pack test`. The ordinary fixture suites had
+passed before that collection refusal; the standalone four-launch run also passed from the shell's
+final fixture working directory, confirming the failure depended on the resolved path spelling.
+Final strict validation passes all 30 gates in 193.2 seconds (22 cached); the full external-pack app
+gate ran freshly and passed in 151.8 seconds, including both ordinary fixture suites and all four
+lifecycle launches. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T23-02-15Z-81766` and
+`/private/tmp/apack-real-fork-strict-chain-canonical.log`. Its old measured 18-second cost now understates
+the expanded gate; no assertion, timeout or measured-cost declaration was relaxed to obtain this pass.
+Unchanged selected source/update ownership and earlier failed-admission cases remain covered by their
+existing checkpoints. Full all-kind discovery, navigation, frontend boundaries, API/provenance work
+and the independently recorded shutdown race remain required; this acceptance does not close the goal.

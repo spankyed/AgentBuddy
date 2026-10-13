@@ -24,3 +24,10 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
   fi
   "$APACK" pack test --host "$ROOT" --prebuilt "$@"
 done
+
+
+# Normal launches over repository-owned temporary storage verify fork preservation, removal and restoration.
+# The public CLI's test isolation policy is retained; this runner owns its explicit fixture environment.
+if [ "$#" -eq 0 ]; then
+  "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts"
+fi
