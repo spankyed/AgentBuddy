@@ -2138,3 +2138,25 @@ Next remove the now-unused teardown replacement flag and its registry/bus suppre
 replace teardown's obsolete extension projection with its lifecycle lookup. Explicit shipped update
 ownership, suppression and replace/restore operations remain required, alongside every other unfinished
 goal phase. This is not the final requirement audit or strict `--all` acceptance; no plans are archived.
+
+
+### Obsolete replacement state removal checkpoint (2026-10-13)
+
+`f048ef9f9` removes teardown's replacement flag, registry window/suppression state and its methods,
+and the bus's silent missing-plugin drop path. Actual teardown always announces removal; refused
+replacement retains delivery through the incumbent, and accepted replacement still reports invalid
+events. Removed `getPackExtensions` and its executable metadata assembly: teardown uses system ids,
+presence checks use registration and installed information uses catalog declarations. The test-app
+registry contract and affected fixtures follow the same surface, with no alias or fallback.
+
+All 226 focused tests and the host typecheck pass. Suppressing reports fails the new composed bus cases;
+restored checks pass. The initial strict host unit timeout coincided with 1,454 seconds of system sleep
+(14:19:10–14:43:24), not a reported test assertion. The unchanged-source awake recheck passes all 30
+gates in 247.3s (21 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T18-48-01Z-55317`. Evidence and limits are in
+[the replacement cleanup checkpoint](../plans/replaceable-shipped-packs.md#removal-of-teardown-first-replacement-glue-2026-10-13).
+
+Next implement explicit shipped-pack update ownership and uninstall suppression, then deliberate
+replace/restore operations with restart/reload verification. Every other unfinished discovery,
+navigation, boundary, API/provenance and final-audit requirement remains in scope. The independently
+observed API/fixture shutdown cleanup race also remains open; no plans are archived at this checkpoint.
