@@ -12,7 +12,7 @@ const pack = (overrides: Partial<InstalledPackSummary> = {}): InstalledPackSumma
 });
 
 let app: App | undefined;
-function render(props: { pack: InstalledPackSummary; appSource?: AppPackSourceSummary; confirmingUninstall?: boolean; onRestore?: (revision: string) => void; onReplace?: (source: string) => void }): HTMLElement {
+function render(props: { pack: InstalledPackSummary; appSource?: AppPackSourceSummary; confirmingUninstall?: boolean; onRestore?: (revision: string) => void; onReplace?: (source: string) => void; onAppUpdate?: (revision: string) => void }): HTMLElement {
   app?.unmount();
   const el = document.createElement('div');
   app = createApp(PackDetail, props);
@@ -128,4 +128,21 @@ describe('app-default controls', () => {
     const el = render({ pack: pack({ updatesWith: 'app' }), confirmingUninstall: true });
     expect(el.querySelector('[data-testid="pack-remove-confirmation"]')?.textContent).toContain('Pack files will be deleted');
   });
+});
+
+
+it('offers app updates separately from restoration and forwards the selected revision', () => {
+  const updates: string[] = [];
+  const source = { id: 'memo-pack', name: 'Memos', version: '1.0.0', sourceRevision: 'a'.repeat(64) };
+  const el = render({ pack: pack({ updatesWith: 'app', enabled: false, appUpdate: source }),
+    onAppUpdate: revision => updates.push(revision) });
+  expect(el.querySelector('[data-testid="pack-app-update"]')?.textContent).toContain('Update from app v1.0.0');
+  (el.querySelector('[data-testid="pack-app-update"]') as HTMLButtonElement).click();
+  expect(updates).toEqual([source.sourceRevision]);
+});
+
+it('shows an unavailable app source without hiding installed-pack controls', () => {
+  const el = render({ pack: pack({ updatesWith: 'app', appSourceProblem: 'Duplicate app source' }) });
+  expect(el.querySelector('[data-testid="pack-app-source-problem"]')?.textContent).toContain('Duplicate app source');
+  expect(el.querySelector('button[title="Disable"]')).toBeTruthy();
 });

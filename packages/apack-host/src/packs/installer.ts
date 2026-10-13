@@ -228,19 +228,41 @@ export function restoreShippedPack(
   id: string, source: string, packsDir: string,
   options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string },
 ): Promise<InstallResult> {
+  return installAppPackSource(id, source, packsDir, options, 'restore');
+}
+
+/** Update selected app-owned bytes without enabling a disabled pack or adopting a user fork. */
+export async function updateShippedPack(
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision: string },
+): Promise<InstallResult> {
+  const record = readInstalledPacks(options.installedPacksFile, { strict: true }).find(record => record.id === id);
+  if (record?.updatesWith !== 'app') throw new Error(`Pack "${id}" is user-managed; use Restore to resume app updates`);
+  if (!fs.existsSync(path.join(packsDir, id))) throw new Error(`Pack "${id}" is not installed; use Restore`);
+  if (record.shippedRevision === options.expectedSourceRevision) throw new Error(`App source "${id}" is unchanged; use Restore to reinstall`);
+  return installAppPackSource(id, source, packsDir, options, 'update');
+}
+
+function installAppPackSource(
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string }, operation: 'restore' | 'update',
+): Promise<InstallResult> {
   return installPackFromLocal(source, packsDir, {
     ...options, installedPacksFile: undefined,
     beforePlace: manifest => {
-      if (manifest.id !== id) throw new Error(`Restore expected pack "${id}", received "${manifest.id}"`);
+      if (manifest.id !== id) throw new Error(`${operation === 'restore' ? 'Restore' : 'Update'} expected pack "${id}", received "${manifest.id}"`);
       options.beforePlace?.(manifest);
     },
     accept: candidate => {
       if (options.expectedSourceRevision !== undefined
         && shippedPackRevision(candidate.integrity.files) !== options.expectedSourceRevision) {
-        throw new Error(`App source "${id}" changed before restoration acceptance; retry the complete build`);
+        throw new Error(`App source "${id}" changed before ${operation === 'restore' ? 'restoration' : 'update'} acceptance; retry the complete build`);
       }
       return withInstallationRecord(options.installedPacksFile, id,
-        previous => appInstallationRecord(previous, candidate, true), () => options.accept?.(candidate));
+        previous => {
+          if (operation === 'update' && previous.updatesWith !== 'app') throw new Error(`Pack "${id}" is no longer app-managed`);
+          return appInstallationRecord(previous, candidate, operation === 'restore');
+        }, () => options.accept?.(candidate));
     },
   });
 }

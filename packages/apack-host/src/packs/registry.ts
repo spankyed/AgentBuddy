@@ -120,6 +120,9 @@ export interface InstalledPackSummary extends PackExtensions {
   installedAt?: string;
   installedFrom?: string;
   availableVersion?: string;
+  /** A selected app-managed source update; independent of remote release checks. */
+  appUpdate?: AppPackSourceSummary;
+  appSourceProblem?: string;
   /** Why the last update check couldn't finish or confirm compatibility */
   updateCheckError?: string;
   /** Why this installed pack isn't running although it is enabled: the app skipped it or failed to load it */

@@ -27,6 +27,7 @@
       @restore="(revision) => actor.send({ type: 'UI.RESTORE', packId: selectedPack!.id, sourceRevision: revision })"
       @confirm-uninstall="(id) => confirmUninstall(id)"
       @cancel-uninstall="cancelUninstall"
+      @app-update="(revision) => actor.send({ type: 'UI.UPDATE_APP', packId: selectedPack!.id, sourceRevision: revision })"
       @update="(id) => actor.send({ type: 'UI.UPDATE', packId: id })"
       @restore-content="(key) => actor.send({ type: 'UI.RESTORE_CONTENT', packId: selectedPack!.id, key })"
       @dismiss-offer="(key) => actor.send({ type: 'UI.DISMISS_OFFER', packId: selectedPack!.id, key })"

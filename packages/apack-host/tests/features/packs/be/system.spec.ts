@@ -773,6 +773,110 @@ describe('live updates preserve availability and enablement', () => {
   });
 });
 
+describe('app-source update offers and acceptance', () => {
+  const installed = () => path.join(resolveAppEnvironment().packsDir, PACK_ID);
+  async function ownDefault(enabled = true) {
+    await restoreShippedPack(PACK_ID, packSource('1.0.0'), resolveAppEnvironment().packsDir, {
+      installedPacksFile: resolveAppEnvironment().installedPacksFile,
+    });
+    if (!enabled) setPackEnabled(PACK_ID, false);
+    else expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+  }
+  function offer() {
+    const input = readAppPackSources(tmpDir);
+    registry.catalog.setAppPackSources(input);
+    return input.sources[0];
+  }
+
+  it.each([true, false])('updates selected app-owned bytes while preserving enablement: %s', async enabled => {
+    await ownDefault(enabled);
+    const marker = path.join(tmpDir, 'activated');
+    packSource('2.0.0', { runtime: enabled ? '' : `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'activated'); throw new Error('Disabled update executed');` });
+    const source = offer();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).find(event => event.type === 'PACKS_LIST')?.packs)
+        .toContainEqual(expect.objectContaining({ id: PACK_ID, appUpdate: expect.objectContaining({ sourceRevision: source.sourceRevision }) }));
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_COMPLETE'));
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ enabled, updatesWith: 'app', shippedRevision: source.sourceRevision });
+      expect(readPackArtifact(installed()).snapshot.manifest.version).toBe('2.0.0');
+      expect(registry.catalog.get(PACK_ID)?.enabled).toBe(enabled);
+      if (!enabled) {
+        expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+        expect(fs.existsSync(marker)).toBe(false);
+        expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_ACTIVATED');
+      }
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const last = emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop();
+      expect(last?.packs.find((pack: InstalledPackSummary) => pack.id === PACK_ID)?.appUpdate).toBeUndefined();
+    } finally { system.stop(); }
+  });
+
+  it('offers a changed build with the same version, while user-owned forks get no app update', async () => {
+    await ownDefault(false);
+    const dir = packSource('1.0.0');
+    fs.appendFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), '\n// new app build');
+    sealBuild(dir);
+    const source = offer();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop()?.packs[0].appUpdate)
+        .toMatchObject({ version: '1.0.0', sourceRevision: source.sourceRevision });
+      await installPackFromLocal(dir, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop()?.packs[0].appUpdate).toBeUndefined();
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(emitted(system.sent).find(event => event.type === 'PACK_UPDATE_FAILED')?.error).toContain('user-managed');
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)?.updatesWith).toBe('user');
+    } finally { system.stop(); }
+  });
+
+  it('keeps an invalid app source visible and refuses the remote route for app-owned records', async () => {
+    await ownDefault(false);
+    const records = readInstalledPacks();
+    const { writeInstalledPacks } = await import('../../../../src/packs/installed.ts');
+    writeInstalledPacks(records.map(record => ({ ...record, installedFrom: 'acme/pack', availableVersion: '9.0.0' })));
+    const dir = packSource('2.0.0');
+    fs.rmSync(path.join(dir, 'dist'), { recursive: true });
+    offer();
+    const fetch = vi.fn(() => { throw new Error('No remote fetch permitted'); });
+    vi.stubGlobal('fetch', fetch);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const pack = emitted(system.sent).find(event => event.type === 'PACKS_LIST')?.packs[0];
+      expect(pack.appUpdate).toBeUndefined();
+      expect(pack.availableVersion).toBeUndefined();
+      expect(pack.appSourceProblem).toContain('not built');
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      expect(emitted(system.sent).find(event => event.type === 'PACK_UPDATE_FAILED')?.error).toContain('app-source');
+      expect(fetch).not.toHaveBeenCalled();
+      expect(readPackArtifact(installed()).snapshot.manifest.version).toBe('1.0.0');
+    } finally { system.stop(); vi.unstubAllGlobals(); }
+  });
+
+  it('refuses stale selections without replacing the incumbent artifact, runtime or record', async () => {
+    await ownDefault();
+    packSource('2.0.0');
+    offer();
+    const before = readPackArtifact(installed()).revision;
+    const runtime = registry.getPackRuntime(PACK_ID);
+    const records = readInstalledPacks();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: '0'.repeat(64) });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(readPackArtifact(installed()).revision).toBe(before);
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(runtime);
+      expect(readInstalledPacks()).toEqual(records);
+    } finally { system.stop(); }
+  });
+});
+
 // An update takes whatever the release holds, which its source decides and the app doesn't
 describe('updating to a release that holds another pack', () => {
   afterEach(() => {

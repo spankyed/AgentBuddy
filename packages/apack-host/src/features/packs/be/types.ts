@@ -8,6 +8,7 @@ export type IncomingPacksEvents =
   | { type: 'UNINSTALL_PACK'; packId: string }
   | { type: 'TOGGLE_PACK_ENABLED'; packId: string }
   | { type: 'UPDATE_PACK'; packId: string }
+  | { type: 'UPDATE_APP_PACK'; packId: string; sourceRevision: string }
   | { type: 'CHECK_FOR_UPDATES' }
   | { type: 'GET_INSTALLED_PACKS' }
   // Content orchestration: a pack's compiled content, read and imported. Here rather than in `settings`, which

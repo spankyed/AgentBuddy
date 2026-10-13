@@ -36,6 +36,7 @@ type PacksEvent = OutgoingPacksEvents
   | { type: 'UI.DISMISS_ERROR' }
   | { type: 'UI.REFRESH' }
   | { type: 'UI.UPDATE'; packId: string }
+  | { type: 'UI.UPDATE_APP'; packId: string; sourceRevision: string }
   | { type: 'UI.CHECK_UPDATES' }
   /**
    * The three ways the view resolves one content offer, each passed straight to the `packs` system: the view
@@ -57,7 +58,6 @@ const packsState = setup({
       packs: ({ event }) => typeOf('PACKS_LIST', event).packs,
       appPackSources: ({ event }) => typeOf('PACKS_LIST', event).appPackSources,
       appPackSourceProblems: ({ event }) => typeOf('PACKS_LIST', event).appPackSourceProblems,
-      error: () => null,
     }),
 
     setInstalling: assign({
@@ -160,12 +160,18 @@ const packsState = setup({
     }),
 
     setUpdating: assign({
-      updatingPackId: ({ event }) => typeOf('UI.UPDATE', event).packId,
+      updatingPackId: ({ event }) => event.type === 'UI.UPDATE_APP' ? event.packId : typeOf('UI.UPDATE', event).packId,
+      error: () => null,
     }),
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('UI.UPDATE', event);
       sendToSystem('packs', { type: 'UPDATE_PACK', packId: ev.packId });
+    },
+
+    sendAppUpdate: ({ event }) => {
+      const ev = typeOf('UI.UPDATE_APP', event);
+      sendToSystem('packs', { type: 'UPDATE_APP_PACK', packId: ev.packId, sourceRevision: ev.sourceRevision });
     },
 
     sendCheckUpdates: () => {
@@ -231,6 +237,7 @@ const packsState = setup({
         'UI.BACK': { actions: 'clearSelection' },
         'UI.DISMISS_ERROR': { actions: 'dismissError' },
         'UI.REFRESH': { actions: 'sendRefresh' },
+        'UI.UPDATE_APP': { actions: ['setUpdating', 'sendAppUpdate'] },
         'UI.UPDATE': { actions: ['setUpdating', 'sendUpdate'] },
         'UI.CHECK_UPDATES': { actions: 'sendCheckUpdates' },
         'UI.RESTORE_CONTENT': { actions: 'sendRestoreContent' },

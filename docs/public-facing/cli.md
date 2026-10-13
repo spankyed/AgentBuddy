@@ -46,7 +46,7 @@ For app contributors working in the apack source monorepo, see the
 
 `apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
 
-`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, enabled dependencies, and installed packs that depend on it are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
+`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, enabled dependencies, and installed packs that depend on it are checked before replacement. Local/URL installs and app-managed packs are not upgraded by this command. A user-managed fork at an app-default ID can use its recorded GitHub source.
 
 `apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
 
@@ -582,6 +582,9 @@ The running app offers the same choices in **Packs**: disable or remove an insta
 from its detail view or use **Replace by ID**, and restore an available app default. Replacing chooses
 user-managed updates; restoring re-enables the default and resumes app updates. Both keep stored
 settings. Host settings remain available when the shipped default is disabled or removed.
+App-managed installations show **Update from app** when the verified app source changes, including
+a changed build with the same version. Updating preserves disabled state; restoring enables the pack.
+User-managed forks receive no app-source update offer.
 
 #### `apack pack uninstall <id> [--profile <name>]`
 

@@ -8,7 +8,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { HOST_PACK_ID, PACK_ID_PATTERN, resolveName } from '@apackdev/sdk/ids';
 import { packRecord, packRecords, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
 import { reportError } from '@apackdev/sdk/logger';
-import { installPack as runInstall, uninstallPack as runUninstall, restoreShippedPack, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
+import { installPack as runInstall, uninstallPack as runUninstall, restoreShippedPack, updateShippedPack, installPackFromGitHub, resolveInstallSourceKind } from '../../../packs/installer.ts';
 import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry.ts';
 import { PACK_LAYOUT } from '../../../packs/layout.ts';
 import { discoverPackDirectories, installedPacks } from '../../../packs/discovery.ts';
@@ -62,10 +62,16 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
   const records = packRecords();
   const base = (id: string, dir: string, enabled: boolean) => {
     const record = packRecord(id, records);
+    const source = catalog.appPackSources.find(source => source.id === id);
+    const sourceProblem = catalog.appPackSourceProblems.filter(problem => problem.id === id).map(problem => problem.message).join('; ');
+    const appUpdate = record.updatesWith === 'app' && source && !sourceProblem && source.sourceRevision !== record.shippedRevision
+      ? { id, name: source.snapshot.manifest.name, version: source.snapshot.manifest.version, sourceRevision: source.sourceRevision } : undefined;
     return {
       id, dir, enabled, updatesWith: record.updatesWith ?? 'user',
       installedAt: record.installedAt, installedFrom: record.installedFrom,
-      availableVersion: record.availableVersion, updateCheckError: record.updateCheckError,
+      availableVersion: record.updatesWith === 'app' ? undefined : record.availableVersion,
+      updateCheckError: record.updatesWith === 'app' ? undefined : record.updateCheckError,
+      appUpdate, appSourceProblem: record.updatesWith === 'app' ? sourceProblem || (!source ? 'App source is unavailable' : undefined) : undefined,
       loadProblem: registry.loadProblem(id), ...contentOffersOf(id),
     };
   };
@@ -439,15 +445,55 @@ export function createPacksSystem(registry: PackRegistry) {
         });
       },
 
+      updateAppPack: ({ system, event }) => {
+        const { packId, sourceRevision } = packsSpec.typeOf('UPDATE_APP_PACK', event);
+        const fail = (error: unknown) => broadcastToPlugin('packs', {
+          type: 'PACK_UPDATE_FAILED' as const, packId, error: errorMessage(error),
+        });
+        if (_inFlightOps.has(packId)) {
+          fail(new Error(`Operation already in progress for ${packId}`));
+          return;
+        }
+        _inFlightOps.add(packId);
+        let startAccepted: (() => boolean) | undefined;
+        let enabled = false;
+        Promise.resolve().then(() => {
+          registry.refreshCatalog();
+          const catalog = registry.catalog.getSnapshot();
+          const source = catalog.appPackSources.find(source => source.id === packId);
+          if (!source || catalog.appPackSourceProblems.some(problem => problem.id === packId)) throw new Error(`App source "${packId}" is unavailable; refresh to see source diagnostics`);
+          if (source.sourceRevision !== sourceRevision) throw new Error(`App source "${packId}" changed; refresh before updating`);
+          const { packsDir, installedPacksFile } = resolveAppEnvironment();
+          return updateShippedPack(packId, source.dir, packsDir, {
+            installedPacksFile, expectedSourceRevision: sourceRevision,
+            hostVersion: getAppVersion(), packFormat: PACK_SNAPSHOT_FORMAT,
+            accept: candidate => {
+              enabled = packRecord(packId).enabled;
+              if (enabled) startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus));
+            },
+          });
+        }).then(result => {
+          const activated = enabled ? startAccepted!() : false;
+          if (!enabled) registry.refreshCatalog();
+          const problem = enabled ? activationProblem(registry, packId, activated) : undefined;
+          if (problem) fail(new Error(`${result.name} was updated but ${problem}`));
+          else {
+            broadcastToPlugin('packs', { type: 'PACK_UPDATE_COMPLETE' as const, packId, version: result.version });
+            if (activated) broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
+          }
+          emitPacksList(registry);
+        }).catch(error => { fail(error); emitPacksList(registry); }).finally(() => { _inFlightOps.delete(packId); });
+      },
+
       updatePack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UPDATE_PACK', event);
         const packId = ev.packId;
         const entry = packRecord(packId);
-        if (!entry.installedFrom) {
+        if (entry.updatesWith === 'app' || !entry.installedFrom) {
           broadcastToPlugin('packs', {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
-            error: 'Pack has no update source',
+            error: entry.updatesWith === 'app' ? 'Use the selected app-source update for an app-managed pack' : 'Pack has no update source',
           });
           return;
         }
@@ -593,6 +639,7 @@ export function createPacksSystem(registry: PackRegistry) {
           TOGGLE_PACK_ENABLED: {
             actions: 'togglePackEnabled',
           },
+          UPDATE_APP_PACK: { actions: 'updateAppPack' },
           UPDATE_PACK: {
             actions: 'updatePack',
           },
@@ -629,6 +676,7 @@ export const packsEvents = new Set([
   'TOGGLE_PACK_ENABLED',
   'GET_INSTALLED_PACKS',
   'UPDATE_PACK',
+  'UPDATE_APP_PACK',
   'CHECK_FOR_UPDATES',
   'PREVIEW_PACK_CONTENT',
   'IMPORT_PACK_CONTENT',

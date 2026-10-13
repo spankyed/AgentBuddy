@@ -63,3 +63,15 @@ it('keeps app default offers separate from installed rows and forwards explicit 
     type: 'REPLACE_PACK', packId: source.id, packSlug: '/fork', sourceKind: 'local',
   } }));
 });
+
+
+it('forwards selected app revisions and keeps a failed update visible through list refresh', () => {
+  packsTab().send({ type: 'UI.UPDATE_APP', packId: 'default-pack', sourceRevision: 'a'.repeat(64) });
+  expect(shell.client.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'host/packs', event: {
+    type: 'UPDATE_APP_PACK', packId: 'default-pack', sourceRevision: 'a'.repeat(64),
+  } }));
+  receive({ type: 'PACK_UPDATE_FAILED', packId: 'default-pack', error: 'Source changed; refresh before updating' });
+  receive({ type: 'PACKS_LIST', packs: [], appPackSources: [], appPackSourceProblems: [] });
+  expect(packsTab().getSnapshot().context.error).toBe('Source changed; refresh before updating');
+  expect(packsTab().getSnapshot().context.updatingPackId).toBeNull();
+});

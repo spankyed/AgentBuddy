@@ -7,12 +7,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installShippedPacks, installPackFromLocal, uninstallPack, restoreShippedPack } from '../../src/packs/installer.ts';
+import { installShippedPacks, installPackFromLocal, uninstallPack, restoreShippedPack, updateShippedPack } from '../../src/packs/installer.ts';
 import { PACK_LAYOUT, readPackIntegrity, readPackArtifact, stagePack, verifyPack } from '../../src/packs/layout.ts';
 import { readInstalledPacks, writeInstalledPacks, forgetPacksExcept } from '../../src/packs/installed.ts';
 import { registry } from './runtime/test-host.ts';
 import { loadAppPacks } from '../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../src/packs/runtime/reload.ts';
+import { readAppPackSources } from '../../src/packs/app-sources.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
@@ -360,4 +361,20 @@ it('preserves the running app-owned artifact, catalog and record when a shipped 
     if (previousEnv.shipped === undefined) delete process.env.SHIPPED_PACKS_DIR;
     else process.env.SHIPPED_PACKS_DIR = previousEnv.shipped;
   }
+});
+
+
+it('refuses an app update when ownership changes during preparation, retaining incumbent bytes', async () => {
+  const dir = shipPack('shipped-pack');
+  await installShippedPacks(shipped, packsDir, { installedPacksFile });
+  const before = readPackArtifact(path.join(packsDir, 'shipped-pack')).revision;
+  fs.appendFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), '\n// update');
+  sealBuild(dir);
+  const source = readAppPackSources(shipped).sources[0];
+  await expect(updateShippedPack('shipped-pack', dir, packsDir, {
+    installedPacksFile, expectedSourceRevision: source.sourceRevision,
+    beforePlace: () => { writeInstalledPacks([{ id: 'shipped-pack', enabled: false, updatesWith: 'user' }], installedPacksFile); },
+  })).rejects.toThrow('no longer app-managed');
+  expect(readPackArtifact(path.join(packsDir, 'shipped-pack')).revision).toBe(before);
+  expect(readInstalledPacks(installedPacksFile, { strict: true })).toEqual([{ id: 'shipped-pack', enabled: false, updatesWith: 'user' }]);
 });

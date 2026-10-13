@@ -37,6 +37,9 @@
         Update check: {{ pack.updateCheckError }}
       </p>
 
+      <p v-if="pack.appSourceProblem" class="text-xs text-amber-400" data-testid="pack-app-source-problem">
+        App source: {{ pack.appSourceProblem }}
+      </p>
       <p v-if="pack.loadProblem" class="text-xs text-red-400 break-words" data-testid="pack-load-problem">
         Failed to load: {{ pack.loadProblem }}
       </p>
@@ -139,6 +142,10 @@
               class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
               :class="pack.enabled ? 'translate-x-4' : 'translate-x-0'"
             />
+          </button>
+          <button v-if="pack.appUpdate" :disabled="updating || busy" class="text-xs text-emerald-400 disabled:opacity-50"
+            data-testid="pack-app-update" @click="$emit('appUpdate', pack.appUpdate.sourceRevision)">
+            {{ updating ? 'Updating...' : `Update from app v${pack.appUpdate.version}` }}
           </button>
           <button
             v-if="pack.availableVersion"
@@ -384,6 +391,7 @@ defineEmits<{
   toggle: [packId: string];
   uninstall: [packId: string];
   update: [packId: string];
+  appUpdate: [sourceRevision: string];
   /** One content item, by content key: write the pack's version over whatever is there */
   restoreContent: [key: string];
   /** Keep the user's version of this item, against the version they were shown */

@@ -569,3 +569,47 @@ The earlier failed strict run and targeted active-restoration failure establishe
 they were fixed before this pass. This checkpoint is not final full-goal `--all` acceptance and does not
 close app-source update offers, CLI host/advertisement selection, complete fork/restart/multiple-window
 acceptance or the independently recorded process shutdown race.
+
+
+### App-source update implementation plan (2026-10-13)
+
+- Derive app update offers from verified source revision versus the installed record's `shippedRevision`,
+  only for app-managed installed packs. Same-version changed builds can be offered; user forks instead
+  retain explicit restoration. Report missing/invalid app sources independently of GitHub checks.
+- Add an explicit selected-revision app-update request. Require current app ownership and an existing
+  installation; verify selection again at filesystem acceptance. Preserve enablement and settings.
+- Share app-source acceptance/record preparation with restoration, while keeping restore's enable/adopt
+  semantics distinct from update's ownership/preserve semantics. Disabled updates never activate code.
+- Exclude app-managed records from GitHub checks/offers and refuse the remote update route for them,
+  even if a stray remote source is recorded. Required identity checks and per-owner reservation remain.
+- Verify enabled/disabled updates, same-version changes, user-fork exclusion, invalid/stale offers,
+  ownership change during acceptance and failed candidate preservation; update UI/contracts/docs,
+  run focused checks and strict validation, then commit this checkpoint.
+
+
+### App-source update working implementation (2026-10-13)
+
+App update offers are derived from verified app sources versus recorded `shippedRevision`, only for
+app-owned installed packs. Source errors are visible; user-owned forks receive explicit restoration
+instead of app update offers. A changed build at the same version remains an update. No offer is
+persisted as a remote release or inferred from byte equality of a user-managed installation.
+
+`UPDATE_APP_PACK` carries a selected source revision separately from the remote `UPDATE_PACK` route.
+`updateShippedPack` shares source verification and record acceptance with restoration but requires
+current app ownership and an existing installation. Ownership is checked again at acceptance; update
+preserves enablement while restore deliberately enables/adopts. Disabled updates do not execute pack
+code. Remote release checks/offers and the live GitHub route reject app-managed records, including a
+record with a stray remote source. List refresh no longer clears a mutation failure before it can be read.
+
+Focused evidence: all 109 host checks and 11 renderer checks pass, plus renderer typechecking. Cases
+exercise enabled/disabled update acceptance (a poisoned disabled runtime writes no activation marker),
+same-version changes, user-fork exclusion, invalid source diagnostics, stale selection refusal,
+mid-preparation ownership change retaining incumbent bytes/records, and remote exclusion without fetch.
+Three ownership/enablement/remote-exclusion mutations fail their specific assertions; the restored
+suite passes. Strict checkpoint validation passes all 30 gates in 359.0s (one cached), including real app and
+packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T21-47-31Z-16865`;
+`/private/tmp/apack-source-updates-strict-chain.log`.
+
+Standalone CLI host/advertisement selection, selected-copy provenance cleanup and the full cloned-source
+edit/build/restart/reload/multiple-window matrix remain required, along with every other unfinished goal
+phase. This is not final full-goal acceptance or a fix for the independent process shutdown race.
