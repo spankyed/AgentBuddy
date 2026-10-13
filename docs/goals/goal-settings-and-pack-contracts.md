@@ -2306,3 +2306,27 @@ provenance cleanup and the full cloned-source edit/build/restart/reload/multiple
 remaining all-kind discovery, navigation/stale delivery, pane boundaries, API consumption, dependency
 provenance and final-audit requirements remain required. The independent process shutdown cleanup
 race remains unresolved. No plans are archived; final strict `--all` on finished committed source is due.
+
+
+### App-source update offers checkpoint (2026-10-13)
+
+`be40c21fd` derives app update offers from verified source identity versus recorded `shippedRevision`,
+only for app-owned installed packs. Same-version changed builds are offered; user forks instead retain
+explicit restoration. Source failures remain visible separately from installed status. The selected-
+revision app update route requires current ownership/existence, checks ownership again at acceptance,
+preserves enablement, and does not execute disabled packs. Source acceptance and record preparation
+share restoration's implementation without adopting its enable/adopt semantics. Remote checks/offers
+and the GitHub route exclude app-owned records. Refreshed list data no longer erases mutation failures.
+
+All 109 focused host tests, 11 renderer tests and renderer typechecking pass. Ownership/disabled-state/
+remote-exclusion mutations fail and were restored. Strict validation passes all 30 gates in 359.0s
+(one cached), including real app and packaged authoring. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T21-47-31Z-16865`;
+`/private/tmp/apack-source-updates-strict-chain.log`. See
+[the app-source update contract](../plans/replaceable-shipped-packs.md#app-source-update-working-implementation-2026-10-13).
+
+Next finish standalone CLI host/advertised-id selection, selected-copy provenance cleanup and the full
+cloned-source edit/build/restart/reload/multiple-window matrix. Every remaining all-kind discovery,
+navigation/stale-delivery, pane-boundary, consumed-API, dependency-provenance and final-audit requirement
+remains required. The independent process shutdown race remains open. No plans are archived; final
+strict `--all` on finished committed source remains due.
