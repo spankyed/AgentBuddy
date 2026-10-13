@@ -15,6 +15,9 @@ let tmp: string;
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'install-host-version-'));
   vi.stubEnv('APACK_USER_DATA_DIR', path.join(tmp, 'data'));
+  vi.stubEnv('APACK_HOST_ROOT', path.join(tmp, 'host'));
+  vi.stubEnv('APACK_HOST_EXECUTABLE', '');
+  fs.mkdirSync(path.join(tmp, 'host', 'packages'), { recursive: true });
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });

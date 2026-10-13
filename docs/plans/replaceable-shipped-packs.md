@@ -613,3 +613,53 @@ packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T2
 Standalone CLI host/advertisement selection, selected-copy provenance cleanup and the full cloned-source
 edit/build/restart/reload/multiple-window matrix remain required, along with every other unfinished goal
 phase. This is not final full-goal acceptance or a fix for the independent process shutdown race.
+
+
+### CLI advertised-id guard implementation plan (2026-10-13)
+
+Ordinary `pack install` must know the source app before it can protect advertised default ids, especially
+before first launch or after uninstall. Require `--host <path|beta>` or the existing associated host
+handoff; neither cwd nor `--profile` selects that source. Share offline host selection with restoration,
+including explicit-selector precedence and cached-only beta. Check the selected packages directory exists,
+then read the common source catalog without executing pack code or downloading an app.
+
+Refuse every advertised id, including invalid/duplicate advertisements, and app-managed incumbent ids.
+Reserve the native host id regardless of source selection. Explicit `pack replace <id>` remains independent
+of the source app because its named operation already authorizes replacement; identity validation remains.
+Update owned CLI callers/help/docs and prove absent/disabled/failed/removed default guards, unrelated
+installs, selected-host precedence, profile independence, missing selection and no network/activation.
+
+
+### CLI source selection and reservation working implementation (2026-10-13)
+
+Ordinary install now requires a selected/associated offline host. `selectedHostPackages` is shared
+with restoration, honors explicit selection over resolved handoffs and checks the packages directory.
+No cwd/profile inference, launch or beta download is introduced. Named replacement remains usable
+without selecting a source app. The native host id is refused regardless of operation.
+
+The guard reads current advertisements immediately before placement, including source diagnostics,
+and rechecks current installation ownership. A download cannot bypass an advertisement added while
+it was in progress. Refused placement leaves installed artifacts and records unchanged; unrelated
+pack IDs remain installable in custom profiles. Host-version/build-format checks still use the selected
+storage profile's recorded app compatibility, independently of which source app advertises defaults.
+
+All 34 focused CLI tests pass, including the real bin invocation, absent/disabled/failed/removed/invalid
+advertisements, explicit host precedence, custom profile independence, cached-only beta and a source
+change during download. Executable fixture entries throw if activated; these offline paths do not load
+them. Removing advertisement protection makes all six targeted regressions resolve instead of reject;
+original source is restored and the same focused suite passes.
+
+Remaining replacement acceptance includes selected-copy provenance cleanup and actual cloned-source
+edit/build/restart/reload/multiple-window checks. Every other unfinished goal phase remains required;
+this checkpoint does not establish full-goal completion or fix the independent process shutdown race.
+
+
+The first strict run passed real-app checks but exposed a missed packaged-authoring shell caller.
+That install step now passes the same known checkout used for its build, retaining offline behavior
+and authoring outside the monorepo. Final strict validation passes all 30 gates in 97.2s (21 cached),
+including fresh packaged authoring/app checks. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-13T22-12-00Z-78713`;
+`/private/tmp/apack-cli-source-guard-strict-chain-final.log`.
+The prior run's failure is recorded in `node_modules/.cache/apack-chain/runs/2026-10-13T22-05-33Z-49117`;
+no guard or test expectation was weakened to bypass the missing selector. Final full-goal `--all`
+acceptance and the independently recorded shutdown race remain outstanding.

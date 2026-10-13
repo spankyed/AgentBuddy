@@ -8,17 +8,20 @@ import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 let tmpDir: string;
-let previousEnvironment: { channel?: string; userDataDir?: string };
+let previousEnvironment: { channel?: string; userDataDir?: string; hostRoot?: string; hostExecutable?: string };
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-cli-test-'));
-  previousEnvironment = { channel: process.env.APACK_CLI_CHANNEL, userDataDir: process.env.APACK_USER_DATA_DIR };
+  previousEnvironment = { channel: process.env.APACK_CLI_CHANNEL, userDataDir: process.env.APACK_USER_DATA_DIR, hostRoot: process.env.APACK_HOST_ROOT, hostExecutable: process.env.APACK_HOST_EXECUTABLE };
   process.env.APACK_CLI_CHANNEL = 'test';
   process.env.APACK_USER_DATA_DIR = path.join(tmpDir, 'app-data');
+  process.env.APACK_HOST_ROOT = path.join(tmpDir, 'host');
+  delete process.env.APACK_HOST_EXECUTABLE;
+  fs.mkdirSync(path.join(tmpDir, 'host', 'packages'), { recursive: true });
 });
 
 afterEach(() => {
-  for (const [key, value] of [['APACK_CLI_CHANNEL', previousEnvironment.channel], ['APACK_USER_DATA_DIR', previousEnvironment.userDataDir]] as const) {
+  for (const [key, value] of [['APACK_CLI_CHANNEL', previousEnvironment.channel], ['APACK_USER_DATA_DIR', previousEnvironment.userDataDir], ['APACK_HOST_ROOT', previousEnvironment.hostRoot], ['APACK_HOST_EXECUTABLE', previousEnvironment.hostExecutable]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
@@ -258,7 +261,7 @@ it('pack installation refuses removed or misspelled target flags before changing
   const { install } = await import('../../src/commands/pack-install');
   const { uninstall } = await import('../../src/commands/pack-uninstall');
   for (const flag of ['--dev', '-b', '--channel', '--typo']) {
-    await expect(install(['demo', flag])).rejects.toThrow('Usage');
+    await expect(install(['demo', flag])).rejects.toThrow(/Usage|not a pack host selector/);
     await expect(uninstall(['demo', flag])).rejects.toThrow('Usage');
   }
 });

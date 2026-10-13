@@ -532,7 +532,7 @@ The scaffolded `.github/workflows/release.yml` publishes the GitHub release from
 
 Verify the pack in `<dir>` (default `.apack/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
-#### `apack pack install <source> [--profile <name>]`
+#### `apack pack install <source> --host <path|beta> [--profile <name>]`
 
 Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` is one of:
 
@@ -544,10 +544,16 @@ Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` 
 | GitHub release: `owner/repo`, or `owner/repo@tag` (default: latest) | `user/my-pack@v0.1.0` |
 
 ```bash
-apack pack install ./my-pack-0.1.0.tgz
-apack pack install ../my-pack
-apack pack install user/my-pack
+apack pack install ./my-pack-0.1.0.tgz --host /Applications/apack.app
+apack pack install ../my-pack --host /path/to/apack-checkout
+apack pack install user/my-pack --host /Applications/apack.app
 ```
+
+Ordinary install requires `--host` or an associated `APACK_HOST`, `APACK_HOST_ROOT` or
+`APACK_HOST_EXECUTABLE`. The source app's advertised default IDs are reserved even before first launch,
+when disabled/failed, or after removal. Use `pack replace <id> <source>` to choose your own pack in one
+of those slots. Cwd and `--profile` never choose the source app. Selection is offline and does not
+activate packs, download a beta, or launch an app. Explicit selection wins over an associated handoff.
 
 A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack pack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack pack build` first. Restart the app after installing.
 
@@ -555,7 +561,7 @@ A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside i
 
 Deliberately replace the named pack using any source supported by `pack install`. The incoming
 manifest must claim that exact ID. The installed artifact becomes user-managed, so app refreshes
-preserve it. An app-managed incumbent refuses ordinary `pack install` and points to this command.
+preserve it. An advertised app-default ID or app-managed incumbent refuses ordinary `pack install` and points to this command.
 Replacement can also fill an explicitly named missing slot; it preserves stored database overrides.
 
 ```bash
@@ -594,7 +600,7 @@ Remove an installed pack by ID, retaining database settings and recording delibe
 
 Show installed packs.
 
-`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Restore separately selects the source host artifacts with `--host`.
+`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Install and restore separately select source host artifacts with `--host` or an associated host. Explicit named replacement needs no source-host selection.
 
 Close the app using the selected profile before installing, replacing, restoring, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
 

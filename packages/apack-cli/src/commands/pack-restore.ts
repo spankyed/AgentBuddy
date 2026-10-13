@@ -1,6 +1,6 @@
 import { PACK_ID_PATTERN, HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { readHostCompatibility, readInstalledPacks, restoreShippedPack, readAppPackSources } from '@apackdev/host/packs';
-import { cliDirs, configuredHostPackagesDir, parseHostFlags } from '../app/pack-host';
+import { cliDirs, selectedHostPackages, parseHostFlags } from '../app/pack-host';
 import { withPackMutation } from '../app/pack-mutation';
 import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
 
@@ -11,15 +11,7 @@ export async function restore(args: string[]): Promise<void> {
   if (flags.args.length !== 1 || !id || !PACK_ID_PATTERN.test(id) || id === HOST_PACK_ID || flags.release || flags.prebuilt) {
     throw new Error('Usage: apack pack restore <id> --host <path|beta> [--profile <name>]');
   }
-  // An explicit selection wins over a parent process's resolved handoff. Storage never picks a source.
-  const sourceEnv = { ...process.env };
-  if (flags.host) {
-    delete sourceEnv.APACK_HOST_ROOT;
-    delete sourceEnv.APACK_HOST_EXECUTABLE;
-    sourceEnv.APACK_HOST = flags.host;
-  }
-  const host = await configuredHostPackagesDir({ dirs: cliDirs(), env: sourceEnv, readOnly: true });
-  if (!host) throw new Error('Select the source app with --host <path|beta>. Restoration does not infer a host from the current directory.');
+  const host = await selectedHostPackages(flags.host, cliDirs());
   const catalog = readAppPackSources(host.dir);
   const problems = catalog.problems.filter(problem => problem.id === id);
   if (problems.length) throw new Error(`${host.label} cannot supply "${id}": ${problems.map(problem => problem.message).join('; ')}`);

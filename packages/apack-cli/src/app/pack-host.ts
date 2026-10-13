@@ -168,6 +168,22 @@ export async function configuredHostPackagesDir(options: HostPackagesOptions = {
   return asPackages(cached ?? await betaApp(hostVersion, dirs.cache));
 }
 
+/** Source selection for offline mutations; storage/cwd never chooses an app or fetches a beta. */
+export async function selectedHostPackages(host?: string, dirs: CliDirs = cliDirs()): Promise<{ dir: string; label: string }> {
+  const env = { ...process.env };
+  if (host) {
+    delete env.APACK_HOST_ROOT;
+    delete env.APACK_HOST_EXECUTABLE;
+    env.APACK_HOST = host;
+  }
+  const selected = await configuredHostPackagesDir({ dirs, env, readOnly: true });
+  if (!selected) throw new Error('Select the source app with --host <path|beta>. Storage and the current directory do not select a host.');
+  if (!fs.existsSync(selected.dir) || !fs.statSync(selected.dir).isDirectory()) {
+    throw new Error(`${selected.label} has no packages directory: ${selected.dir}`);
+  }
+  return selected;
+}
+
 function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
   for (const { tag, executable } of cachedBetaBuilds(dirs.cache)) {
     const version = packagedAppVersion(executable) ?? tag;

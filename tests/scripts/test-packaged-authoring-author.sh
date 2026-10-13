@@ -89,7 +89,7 @@ step "Name the checkout the build resolves a shipped pack through"
 # `apack pack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
 # `configuredHostPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
-# **APACK_HOST, and only for the commands that build.** That function derives the apack checkout
+# **APACK_HOST for build commands; install selects the same host explicitly.** That function derives the apack checkout
 # *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
 # installing the packages from packed tarballs, which is the population this script exists to represent.
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
@@ -342,7 +342,7 @@ ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 
 step "7. Install the packed archive into an isolated test data dir"
 DATA="$WORK/test-data"
-APACK_USER_DATA_DIR="$DATA" "$APACK" pack install "$ARCHIVE"
+APACK_USER_DATA_DIR="$DATA" "$APACK" pack install "$ARCHIVE" --host "$ROOT"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '
