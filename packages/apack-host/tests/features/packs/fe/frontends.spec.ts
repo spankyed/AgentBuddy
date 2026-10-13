@@ -134,7 +134,7 @@ describe("a pack's frontend", () => {
     const { registry, registered } = fakeRegistry();
     const frontends = createPackFrontends(io, registry);
     const controller = new AbortController();
-    const pending = frontends.load({ manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
+    const pending = frontends.load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     }, controller.signal);
     const refused = expect(pending).rejects.toThrow('cancelled');
@@ -157,7 +157,7 @@ describe("a pack's frontend", () => {
     io.settingsForPack = () => { requested(); return new Promise(resolve => { finish = resolve; }); };
     const { registry, registered } = fakeRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pending = frontends.load({ manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
+    const pending = frontends.load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     });
     const refused = expect(pending).rejects.toThrow('cancelled');
@@ -175,7 +175,7 @@ describe("a pack's frontend", () => {
     const registration = { id: 'ext', declarationRevision: 'current', features: {} };
     const { io, imported, styles } = fakeIO({ [`${url}/runtime/fe.js`]: registration });
     const { registry, registered } = fakeRegistry();
-    const pack = { manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0', declarationRevision: 'current',
+    const pack = { runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0', declarationRevision: 'current',
       developmentBaseUrl: url, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await createPackFrontends(io, registry).load(pack);
     expect(imported).toEqual([`${url}/runtime/fe.js`]);
@@ -189,7 +189,7 @@ describe("a pack's frontend", () => {
   it('refuses installed delivery without an accepted artifact before importing or adding styles', async () => {
     const { io, imported, styles } = fakeIO();
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', feEntry: 'runtime/fe.js' })).rejects.toThrow('no accepted artifact identity');
     expect(imported).toEqual([]);
     expect(styles).toEqual([]);
@@ -202,7 +202,7 @@ describe("a pack's frontend", () => {
     io.styles.prepare = vi.fn(() => ({ ready: Promise.reject(new Error('Rejected artifact styles')), commit: vi.fn(), dispose: vi.fn() }));
     io.settingsForPack = vi.fn();
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('Rejected artifact styles');
     expect(registered).toEqual([]);
@@ -214,7 +214,7 @@ describe("a pack's frontend", () => {
     const { io } = fakeIO({ [`pack://memo-pack/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
     const { registry, registered } = fakeRegistry();
 
-    const plugins = await createPackFrontends(io, registry).load({ manifest: declaration('memo-pack'), id: 'memo-pack', declarationRevision: 'current', artifactRevision, name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
+    const plugins = await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('memo-pack'), id: 'memo-pack', declarationRevision: 'current', artifactRevision, name: 'Memos', version: '1.0.0', feEntry: 'runtime/fe.js' });
 
     expect(registered).toEqual([registration]);
     expect(plugins).toEqual([{ id: 'memo-pack/memos' }]);
@@ -224,7 +224,7 @@ describe("a pack's frontend", () => {
     const { io } = fakeIO();
     const { registry, registered } = fakeRegistry();
 
-    expect(await createPackFrontends(io, registry).load({ manifest: declaration('backend-only'), id: 'backend-only', declarationRevision: 'current', artifactRevision, name: 'B', version: '1.0.0' })).toBeNull();
+    expect(await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('backend-only'), id: 'backend-only', declarationRevision: 'current', artifactRevision, name: 'B', version: '1.0.0' })).toBeNull();
     expect(registered).toEqual([]);
   });
 
@@ -234,7 +234,7 @@ describe("a pack's frontend", () => {
     const frontends = createPackFrontends(io, registry);
     // Its revision is in the stylesheet's URL too: a browser caches a stylesheet by URL, so an updated pack's
     // styles would be served from the cache without it
-    const pack = { manifest: declaration('ext'), id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js' };
+    const pack = { runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js' };
 
     await frontends.load(pack);
     await frontends.load(pack);
@@ -255,7 +255,7 @@ describe("a pack's frontend", () => {
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose: vi.fn() });
     const registry = createFePackRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+    const pack = { runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
     await expect(frontends.load({ ...pack, artifactRevision: nextRevision })).rejects.toThrow('candidate refused');
@@ -273,7 +273,7 @@ describe("a pack's frontend", () => {
     });
     const { registry } = fakeRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+    const pack = { runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
     await expect(frontends.load({ ...pack, artifactRevision: nextRevision })).rejects.toThrow('accepted declarations');
@@ -289,7 +289,7 @@ describe("a pack's frontend", () => {
     const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose: transportDispose });
     const registry = createFePackRegistry();
-    await expect(createPackFrontends(io, registry).load({ id: 'ext', name: 'Ext', version: '1.0.0',
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
       manifest: declaration('ext'), declarationRevision: 'current', artifactRevision,
       feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     }, controller.signal)).rejects.toThrow('cancelled');
@@ -312,7 +312,7 @@ describe("a pack's frontend", () => {
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose });
     const registry = createFePackRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+    const pack = { runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
     const observations: string[] = [];
@@ -333,7 +333,7 @@ describe("a pack's frontend", () => {
     io.settingsForPack = async () => ({ port: {} as SettingsPort, dispose });
     const registry = createFePackRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
+    const pack = { runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0', manifest: declaration('ext'),
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
     expect(await frontends.load({ ...pack, feEntry: undefined, feStyles: undefined })).toBeNull();
@@ -346,7 +346,7 @@ describe("a pack's frontend", () => {
   it('loads styles-only packs without executing or registering a frontend', async () => {
     const { io, styles, imported } = fakeIO();
     const { registry, registered } = fakeRegistry();
-    expect(await createPackFrontends(io, registry).load({ manifest: declaration('theme'),
+    expect(await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('theme'),
       id: 'theme', declarationRevision: 'current', artifactRevision, name: 'Theme', version: '1.0.0', feStyles: 'runtime/fe.css',
     })).toBeNull();
     expect(styles).toEqual([{ packId: 'theme', href: `pack://theme/artifacts/${artifactRevision}/runtime/fe.css` }]);
@@ -361,7 +361,7 @@ describe("a pack's frontend", () => {
   ])('rejects mismatched frontend bindings without registration or styles: %j', async registration => {
     const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ manifest: declaration('ext'),
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'),
       id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('Pack "ext"');
     expect(registered).toEqual([]);
@@ -379,7 +379,7 @@ describe("a pack's frontend", () => {
     io.settingsForPack = vi.fn();
     io.styles.prepare = vi.fn();
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ id: 'ext', name: 'Ext', version: '1.0.0',
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
       manifest: declaration('ext'), declarationRevision: 'current', artifactRevision,
       feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('does not match its accepted declarations');
@@ -393,7 +393,7 @@ describe("a pack's frontend", () => {
   it('requires accepted declaration data before importing executable frontend code', async () => {
     const { io, imported, styles } = fakeIO();
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ id: 'ext', name: 'Ext', version: '1.0.0',
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('no matching accepted declarations');
     expect(imported).toEqual([]);
@@ -411,7 +411,7 @@ describe("a pack's frontend", () => {
     const packs = { hasPackFE: () => false, preparePackFE: (reg: PackFERegistration, resource: unknown) => ({
       commit: () => registerPackFE(reg, resource), dispose: () => {},
     }) } as unknown as FePackRegistry;
-    const pack = { manifest: declaration('ext'), id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js' };
+    const pack = { runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js' };
     await createPackFrontends(io, packs).load(pack);
     expect(settingsForPack).toHaveBeenCalledWith(pack);
     expect(registerPackFE).toHaveBeenCalledWith(registration, binding);
@@ -424,7 +424,7 @@ describe("a pack's frontend", () => {
   it('refuses a generated frontend without a host settings provider before adding styles', async () => {
     const { io, styles } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: vi.fn() } });
     const { registry, registered } = fakeRegistry();
-    await expect(createPackFrontends(io, registry).load({ manifest: declaration('ext'),
+    await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'),
       id: 'ext', declarationRevision: 'current', artifactRevision, name: 'Ext', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
     })).rejects.toThrow('requires host-bound settings');
     expect(registered).toEqual([]);

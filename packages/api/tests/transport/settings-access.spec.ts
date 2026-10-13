@@ -25,7 +25,7 @@ const admin = createSettingsService(createSettingsStore({ ears: installedEngine,
 startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));
 const origins = new Map<string, PackOrigin>();
-const stamp = { id: 'consumer', declarationRevision: 'declarations', artifactRevision: 'artifact' };
+const stamp = { runtimeRevision: 'runtime', id: 'consumer', declarationRevision: 'declarations', artifactRevision: 'artifact' };
 const origin = (): PackOrigin => ({ ...stamp, name: 'Consumer', version: '1.0.0', dir: '/fixture/consumer', shipped: false });
 const target = (groupId: string) => ({ kind: 'pack' as const, packId: 'owner', groupId });
 let bus: ReturnType<typeof createActor<ReturnType<typeof createAppBus>>>;
@@ -44,7 +44,7 @@ beforeEach(() => {
   packs.registerPack({ id: 'consumer', dependencies: { owner: '*' } });
   origins.set('consumer', origin());
   live.packs = packs;
-  live.access = createSettingsAccess(admin, id => origins.get(id) ?? null);
+  live.access = createSettingsAccess(admin, id => { const origin = origins.get(id); return origin ? { origin, runtimeRevision: 'runtime' } : null; });
   messages = [];
   stop = testRootEvents.onOutgoing(message => { messages.push(message); });
   bus = createActor(createAppBus(packs), { systemId: HOST.bus }).start();

@@ -84,7 +84,7 @@ export async function settingsForPack(pack: LoadedPackEntry): Promise<FrontendSe
   if (!accepted) throw new Error('The settings connection is unavailable.');
   await snapshotReady(accepted);
   const credential = await trpc.settings.openPack.mutate({
-    id: pack.id, declarationRevision: pack.declarationRevision, artifactRevision: pack.artifactRevision,
+    id: pack.id, runtimeRevision: pack.runtimeRevision, declarationRevision: pack.declarationRevision, artifactRevision: pack.artifactRevision,
   });
   const close = () => releaseCredential(credential);
   try {

@@ -220,11 +220,11 @@ test('accepted dependency credentials enforce shared, owner-only and reload boun
     subscription = client.subscription('bus.sub', undefined, { onStarted: () => resolve(), onError: reject,
       onData: message => messages.push(message as (typeof messages)[number]) });
   });
-  const loaded = async () => await client.query('packs.loaded') as { id: string; declarationRevision: string; artifactRevision: string }[];
+  const loaded = async () => await client.query('packs.loaded') as { id: string; runtimeRevision: string; declarationRevision: string; artifactRevision: string }[];
   const credential = async (packId: string) => {
     const origin = (await loaded()).find(pack => pack.id === packId)!;
     return await client.mutation('settings.openPack', {
-      id: origin.id, declarationRevision: origin.declarationRevision, artifactRevision: origin.artifactRevision,
+      id: origin.id, runtimeRevision: origin.runtimeRevision, declarationRevision: origin.declarationRevision, artifactRevision: origin.artifactRevision,
     }) as string;
   };
   const ask = async (settingsCredential: string, event: Record<string, unknown>) => {
@@ -315,11 +315,19 @@ shared.set({ path: ['name'], value: 2 });
     await expect(appPage.getByLabel('Scribbles assistant name', { exact: true })).toHaveValue('Dependency edit');
     expect(await ask(access, { type: 'RESET_SETTINGS', target: target('assistant') })).toMatchObject({ type: 'SETTINGS_SAVED' });
     await expect(appPage.getByLabel('Scribbles assistant name', { exact: true })).toHaveValue('Scribbles helper');
+    const previousRuntime = (await loaded()).find(pack => pack.id === id)!;
     await toggle();
     await expect.poll(async () => (await loaded()).map(pack => pack.id)).not.toContain(id);
     await expect(ask(access, { type: 'UPDATE_SETTINGS', target: target('assistant'), path: ['name'], value: 'Stale' })).rejects.toThrow('Settings access is unavailable');
     await toggle();
     await expect.poll(async () => (await loaded()).map(pack => pack.id)).toContain(id);
+    const replacementRuntime = (await loaded()).find(pack => pack.id === id)!;
+    expect(replacementRuntime.artifactRevision).toBe(previousRuntime.artifactRevision);
+    expect(replacementRuntime.runtimeRevision).not.toBe(previousRuntime.runtimeRevision);
+    await expect(client.mutation('settings.openPack', {
+      id, runtimeRevision: previousRuntime.runtimeRevision,
+      declarationRevision: previousRuntime.declarationRevision, artifactRevision: previousRuntime.artifactRevision,
+    })).rejects.toThrow('Settings access is unavailable');
     const fresh = await credential(id);
     expect(await ask(fresh, { type: 'UPDATE_SETTINGS', target: target('assistant'), path: ['name'], value: 'Fresh' })).toMatchObject({ type: 'SETTINGS_SAVED' });
     await expect(appPage.getByLabel('Scribbles assistant name', { exact: true })).toHaveValue('Fresh');

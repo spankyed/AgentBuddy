@@ -76,6 +76,8 @@ export function hasBuiltPackSections(packRoot: string): boolean {
 /** A pack whose frontend the renderer loads (the API's `packs.loaded`) */
 export interface LoadedPackEntry {
   id: string;
+  /** Host-issued accepted runtime identity, independent of artifact content identity. */
+  runtimeRevision: string;
   /** Declaration identity of the active backend; frontend bindings must match it. */
   declarationRevision: string;
   /** Accepted declarations of the active backend, used to validate frontend binding membership. */
@@ -109,17 +111,20 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  * from the bundle that pack's own `apack pack build` wrote. A pack with neither file is still listed — it has
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
-export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
+export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks' | 'getPackRuntime'>): LoadedPackEntry[] {
   return registry.loadedPacks().map(({ id, name, version, declarationRevision, artifactRevision, artifactFiles, manifest }) => {
+    const runtime = registry.getPackRuntime(id);
+    if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
+    const runtimeRevision = runtime.runtimeRevision;
     const entry = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined;
     const styles = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined;
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
-    if (!entry && !styles) return { id, name, version, declarationRevision, artifactRevision };
+    if (!entry && !styles) return { id, name, version, runtimeRevision, declarationRevision, artifactRevision };
     if (!artifactRevision) throw new Error(`Pack "${id}" frontend has no accepted artifact identity`);
     if (!manifest) throw new Error(`Pack "${id}" frontend has no accepted declarations`);
-    return { id, name, version, declarationRevision, artifactRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
+    return { id, name, version, runtimeRevision, declarationRevision, artifactRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
   });
 }
 
@@ -128,7 +133,7 @@ export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>
  * and their systems wait for that rather than for the client. The app's own pack is one of them now, its
  * frontend being fetched over `pack://` like any other.
  */
-export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'loadedPacks'>): string[] {
+export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'loadedPacks' | 'getPackRuntime'>): string[] {
   return getLoadedPackEntries(registry).filter(pack => pack.feEntry).map(pack => pack.id);
 }
 

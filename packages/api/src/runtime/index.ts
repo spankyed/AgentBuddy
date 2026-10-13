@@ -109,7 +109,7 @@ export function openAppStore(): AppStore {
   bindHost(runtime);
   printLogEvents();
   appPacks = packs;
-  appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.packOrigin);
+  appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.getPackRuntime);
   appStore = store;
   return { store, engine, packs };
 }

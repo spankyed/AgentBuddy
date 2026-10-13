@@ -7,14 +7,15 @@ const origin = (): PackOrigin => ({
   id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact',
   name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack', shipped: false,
 });
-const expected = { id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact' };
+const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact' };
 
 function setup() {
   const scoped = { get: vi.fn(), set: vi.fn(), reset: vi.fn(), onChange: vi.fn() } as SettingsService;
   const settings = { forPack: vi.fn(() => scoped) } as unknown as SettingsAdmin;
   let accepted: PackOrigin | null = origin();
-  const access = createSettingsAccess(settings, () => accepted);
-  return { access, settings, scoped, replace: (value: PackOrigin | null) => { accepted = value; } };
+  let runtimeRevision = 'runtime';
+  const access = createSettingsAccess(settings, () => accepted ? { origin: accepted, runtimeRevision } : null);
+  return { access, settings, scoped, replace: (value: PackOrigin | null) => { accepted = value; }, reload: () => { runtimeRevision = 'replacement'; } };
 }
 
 describe('settings transport authority', () => {
@@ -33,6 +34,8 @@ describe('settings transport authority', () => {
     { ...expected, artifactRevision: '' },
     { ...expected, declarationRevision: 'stale' },
     { ...expected, artifactRevision: 'stale' },
+    { ...expected, runtimeRevision: 'stale' },
+    { ...expected, runtimeRevision: '' },
   ])('refuses a stale frontend without supplying a service', candidate => {
     const { access, settings } = setup();
     expect(() => access.issuePack('window', candidate)).toThrow('Settings access is unavailable');
@@ -79,4 +82,15 @@ describe('settings transport authority', () => {
     access.revoke('window-one', credential);
     expect(() => access.resolve('window-one', credential)).toThrow('Settings access is unavailable');
   });
+});
+
+
+it('refuses a stale runtime list and existing grant when identical bytes reload using the same origin object', () => {
+  const { access, reload } = setup();
+  const credential = access.issuePack('window', expected);
+  reload();
+  expect(() => access.resolve('window', credential)).toThrow('Settings access is unavailable');
+  expect(() => access.issuePack('window', expected)).toThrow('Settings access is unavailable');
+  const replacement = access.issuePack('window', { ...expected, runtimeRevision: 'replacement' });
+  expect(access.resolve('window', replacement).kind).toBe('pack');
 });

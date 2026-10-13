@@ -8,6 +8,7 @@ import { backendBindingProblem, contentBindingProblem } from './declaration-bind
  */
 
 import { isDeepStrictEqual } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
@@ -255,6 +256,8 @@ export interface PackRegistry extends PackRegistryView {
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
+  /** Accepted installed runtime identity; replacement changes it even when artifact bytes do not. */
+  getPackRuntime(packId: string): { origin: PackOrigin; runtimeRevision: string } | null;
   /** The packs whose installed copy this app shipped, in registration order */
   shippedPacks(): PackOrigin[];
   /** The packs this app loaded, in registration order */
@@ -310,6 +313,7 @@ export interface PackRegistry extends PackRegistryView {
 function admitContributions(registration: PackRegistration) {
   return {
     id: registration.id,
+    runtimeRevision: randomUUID(),
     designations: designationsOf(registration),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
@@ -708,6 +712,11 @@ export function createPackRegistry({ installedPacksDir, settingsForPack, nativeD
 
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
+    getPackRuntime(packId) {
+      const origin = origins.get(packId);
+      const contribution = admitted.get(packId);
+      return origin && contribution ? { origin, runtimeRevision: contribution.runtimeRevision } : null;
+    },
     shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
     loadedPacks: () => [...origins.values()],
     packMigrationTargets: (line, packIds) => {

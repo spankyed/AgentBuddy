@@ -27,7 +27,7 @@ function withAccess<T>(context: RpcContext, issue: () => T): T {
 export const settingsRouter = router({
   openHost: procedure.mutation(({ ctx }) => withAccess(ctx, () => appSettingsAccess.issueHost(ctx.client))),
   openPack: procedure.input(z.object({
-    id: z.string().min(1), declarationRevision: z.string().min(1), artifactRevision: z.string().min(1),
+    id: z.string().min(1), runtimeRevision: z.string().min(1), declarationRevision: z.string().min(1), artifactRevision: z.string().min(1),
   }).strict()).mutation(({ input, ctx }) => withAccess(ctx, () => appSettingsAccess.issuePack(ctx.client, input))),
   close: procedure.input(z.object({ credential: z.string().min(1) }).strict())
     .mutation(({ input, ctx }) => appSettingsAccess.revoke(ctx.client, input.credential)),

@@ -11,7 +11,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, getLoadedPackEntries } from '../../../src/packs/layout.ts';
 
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
@@ -185,6 +185,20 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
   });
 
+  it('changes the accepted runtime identity when identical installed bytes reload', async () => {
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    const previous = registry.getPackRuntime(SHIPPED_ID)!;
+    expect(previous.runtimeRevision).toMatch(/^[a-f0-9-]{36}$/);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
+    const current = registry.getPackRuntime(SHIPPED_ID)!;
+    expect(current.runtimeRevision).not.toBe(previous.runtimeRevision);
+    expect(current.origin.artifactRevision).toBe(previous.origin.artifactRevision);
+    expect(getLoadedPackEntries(registry).find(pack => pack.id === SHIPPED_ID)?.runtimeRevision).toBe(current.runtimeRevision);
+    unregisterPack(SHIPPED_ID);
+    expect(registry.getPackRuntime(SHIPPED_ID)).toBeNull();
+  });
+
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and content
   it('tells the running systems the pack changed, after restarting its own', async () => {
     writeShipped();
@@ -320,6 +334,7 @@ describe('reloading a pack', () => {
     const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision: 'fixture-revision',
       dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), shipped: false };
     isolated.registerPack(old, origin);
+    const acceptedRuntime = isolated.getPackRuntime(PACK_ID);
     const heard = vi.fn();
     handle.onChange(heard);
     try {
@@ -327,6 +342,7 @@ describe('reloading a pack', () => {
       await expect(reloadPackById(isolated, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
       expect(isolated.getPackRegistration(PACK_ID)).toBe(old);
       expect(isolated.packOrigin(PACK_ID)).toBe(origin);
+      expect(isolated.getPackRuntime(PACK_ID)).toEqual(acceptedRuntime);
       expect(handle.get()).toEqual({ retained: true });
       for (const notify of listeners) notify();
       expect(heard).toHaveBeenCalledOnce();
@@ -353,11 +369,13 @@ describe('reloading a pack', () => {
     const origin = { declarationRevision: 'fixture-revision', id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), shipped: false };
     unregisterPack(PACK_ID);
     registerPack(running, origin);
+    const previous = registry.getPackRuntime(PACK_ID);
     registerPack({ id: 'service-owner', services: { taken: {} } });
     writeRebuild(runtime(`services: { taken: {} },`), { extensions: { services: { taken: 'taken.ts#taken' } } });
     await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
     expect(registry.packOrigin(PACK_ID)).toEqual(origin);
+    expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
   });
 
   // A pack the app is the first to load has no row in installed-packs.json, and an apply failure still has

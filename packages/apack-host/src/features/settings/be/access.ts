@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { SettingsAdmin, SettingsService } from '@apackdev/sdk/services';
-import type { PackOrigin } from '../../../packs/registry.ts';
+import type { PackRegistry } from '../../../packs/registry.ts';
 import { SettingsRefusedError } from '../document.ts';
 
 export type SettingsAccess =
@@ -37,11 +37,11 @@ export const SETTINGS_MUTATIONS = new Set(['UPDATE_SETTINGS', 'RESET_SETTINGS', 
 interface Lease {
   client: string;
   access: SettingsAccess;
-  runtime?: { origin: PackOrigin; declarationRevision: string; artifactRevision: string };
+  runtime?: NonNullable<ReturnType<PackRegistry['getPackRuntime']>> & { declarationRevision: string; artifactRevision: string };
 }
 
 /** Host-issued authority is bound to a connection and, for packs, the accepted runtime instance. */
-export function createSettingsAccess(settings: SettingsAdmin, originFor: (packId: string) => PackOrigin | null) {
+export function createSettingsAccess(settings: SettingsAdmin, runtimeFor: PackRegistry['getPackRuntime']) {
   const leases = new Map<string, Lease>();
   const refusal = () => new SettingsRefusedError(['Settings access is unavailable. Reconnect or reload the accepted frontend.']);
   function issue(lease: Lease): string {
@@ -55,18 +55,20 @@ export function createSettingsAccess(settings: SettingsAdmin, originFor: (packId
     issueHost(client: string): string {
       return issue({ client, access: { kind: 'host', service: settings } });
     },
-    issuePack(client: string, expected: { id: string; declarationRevision: string; artifactRevision: string }): string {
-      const origin = originFor(expected.id);
-      if (!origin || origin.id !== expected.id || !expected.declarationRevision || !expected.artifactRevision
+    issuePack(client: string, expected: { id: string; runtimeRevision: string; declarationRevision: string; artifactRevision: string }): string {
+      const runtime = runtimeFor(expected.id);
+      const origin = runtime?.origin;
+      if (!runtime || runtime.runtimeRevision !== expected.runtimeRevision || !origin || origin.id !== expected.id || !expected.declarationRevision || !expected.artifactRevision
         || origin.declarationRevision !== expected.declarationRevision || origin.artifactRevision !== expected.artifactRevision) throw refusal();
-      return issue({ client, runtime: { origin, declarationRevision: expected.declarationRevision, artifactRevision: expected.artifactRevision },
+      return issue({ client, runtime: { ...runtime, declarationRevision: expected.declarationRevision, artifactRevision: expected.artifactRevision },
         access: { kind: 'pack', service: settings.forPack(origin.id) } });
     },
     resolve(client: string, credential: string): SettingsAccess {
       const lease = leases.get(credential);
       if (!lease || lease.client !== client) throw refusal();
       const runtime = lease.runtime;
-      if (runtime && (originFor(runtime.origin.id) !== runtime.origin
+      const current = runtime && runtimeFor(runtime.origin.id);
+      if (runtime && (!current || current.origin !== runtime.origin || current.runtimeRevision !== runtime.runtimeRevision
         || runtime.origin.declarationRevision !== runtime.declarationRevision || runtime.origin.artifactRevision !== runtime.artifactRevision)) {
         leases.delete(credential);
         throw refusal();
