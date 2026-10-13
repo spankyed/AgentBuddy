@@ -13,7 +13,7 @@ import type { InstalledPackSummary, PackRegistry } from '../../../packs/registry
 import { PACK_LAYOUT } from '../../../packs/layout.ts';
 import { discoverPackDirectories, installedPacks } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
-import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
+import { teardownPack, activatePack, acceptInstalledPack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
@@ -267,8 +267,7 @@ export function createPacksSystem(registry: PackRegistry) {
         const ev = packsSpec.typeOf('INSTALL_PACK', event);
         const packSlug = ev.packSlug;
 
-        // Keyed on the slug, because an install learns the pack's id only from its result: two installs of
-        // the same slug at once would place two copies over each other and register the loser
+        // Reserve the source while downloading, then the resolved owner before publication.
         if (_inFlightOps.has(packSlug)) {
           console.warn(`[packs] Operation already in progress for ${packSlug}, skipping install`);
           return;
@@ -279,52 +278,35 @@ export function createPacksSystem(registry: PackRegistry) {
         broadcastToPlugin('packs', { type: 'PACK_INSTALL_STARTED' as const, packSlug });
 
         const isGitHub = resolveInstallSourceKind(packSlug, ev.sourceKind) === 'github';
-        // The id of the running pack this install tore down, which a slug or a URL doesn't carry
-        let replacedId: string | undefined;
-
+        let installingId: string | undefined;
+        let startAccepted: (() => boolean) | undefined;
         runInstall(packSlug, ev.sourceKind, undefined, {
           sha256: ev.sha256,
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
-          // Installing over a pack that is already running is a reinstall, or the same pack from another
-          // source. It is torn down before its files are replaced rather than after: a pack left running
-          // on a directory that has been swapped underneath it loads the new code on its next lazy
-          // require. Silent (`replacing`), because the activation below announces the change.
-          // **A shipped pack's id is not one an install may take**, which is what makes `canUninstall:
-          // false` a promise rather than a hidden button: the same predicate answers both, so the two doors
-          // to losing a pack the app needs are shut by one fact. Disabling, the third, is refused above for
-          // the reason this is — the app boots with no packs and the control that would put it back is the
-          // one the view does not draw.
-          //
-          // *"Installing over a pack is how an update lands"* is the general rule and does not reach this
-          // case, because a shipped pack updates with the app. An install over one buys nothing the next
-          // boot does not revert, and costs a session running a pack the user did not choose.
-          //
-          // Refused before the teardown below, so a refusal leaves the running pack untouched; `host` never
-          // reaches here, the manifest schema having refused it. **The limit:** a shipped pack that failed
-          // to load has no origin to read, so this cannot answer for it — `packOrigin` is the only thing
-          // here that knows which ids are the app's, and the next boot's hash comparison is what recovers
-          // that case (`tests/packs/shipped-packs.spec.ts`).
-          beforePlace: (manifest) => {
-            if (!registry.packOrigin(manifest.id)) return;
+          beforePlace: manifest => {
             if (!canUninstall(manifest.id)) {
               throw new Error(`"${manifest.id}" is part of apack, so an install can't take its id`);
             }
-            replacedId = manifest.id;
-            teardownPack(registry, manifest.id, system.get(HOST.bus), { replacing: true });
-            broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId: manifest.id });
+            if (manifest.id !== packSlug && _inFlightOps.has(manifest.id)) {
+              throw new Error(`Operation already in progress for ${manifest.id}`);
+            }
+            installingId = manifest.id;
+            _inFlightOps.add(manifest.id);
+          },
+          accept: candidate => {
+            startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus));
           },
         }).then(result => {
-          recordInstalled(result.id, isGitHub ? packSlug : undefined);
-
-          const activated = activatePack(registry, result.id, system.get(HOST.bus));
+          let activated: boolean;
+          try {
+            if (!recordInstalled(result.id, isGitHub ? packSlug : undefined)) {
+              throw new Error(`${result.name} was installed, but its install source and enablement could not be saved`);
+            }
+          }
+          finally { activated = startAccepted!(); }
           const problem = activationProblem(registry, result.id, activated);
           if (problem) {
-            if (replacedId && !activated) {
-              // The replacement never registered: end the window, and tell the running systems the pack is gone
-              registry.clearPackReplacing(result.id);
-              system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId: result.id });
-            }
             broadcastToPlugin('packs', {
               type: 'PACK_INSTALL_FAILED' as const,
               packSlug,
@@ -346,17 +328,13 @@ export function createPacksSystem(registry: PackRegistry) {
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Install failed for ${packSlug}:`, message);
-          // The pack was torn down for a replacement that never arrived: end the window and say it is gone
-          if (replacedId) {
-            registry.clearPackReplacing(replacedId);
-            system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId: replacedId });
-          }
           broadcastToPlugin('packs', {
             type: 'PACK_INSTALL_FAILED' as const,
             packSlug,
             error: message,
           });
         }).finally(() => {
+          if (installingId) _inFlightOps.delete(installingId);
           _inFlightOps.delete(packSlug);
         });
       },
@@ -430,23 +408,27 @@ export function createPacksSystem(registry: PackRegistry) {
         const target = entry.availableTag ? `${sourceSlug}@${entry.availableTag}` : sourceSlug;
         console.log(`[packs] Update requested: ${packId} from ${target}`);
 
-        // Silent teardown: activation announces the change, or the finally below does when nothing activates
-        teardownPack(registry, packId, system.get(HOST.bus), { replacing: true });
-        broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
-        let activated = false;
+        let startAccepted: (() => boolean) | undefined;
 
         installPackFromGitHub(target, undefined, {
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
-          // Refused before the files are replaced, so the failure below reactivates the copy still in place
-          beforePlace: (manifest) => {
+          beforePlace: manifest => {
             if (manifest.id !== packId) throw new Error(`${target} holds the pack "${manifest.id}", not "${packId}"`);
           },
+          accept: candidate => {
+            if (entry.enabled) startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus));
+          },
         }).then(result => {
-          recordUpdateInstalled(packId);
-
-          activated = activatePack(registry, packId, system.get(HOST.bus));
-          const problem = activationProblem(registry, packId, activated);
+          let activated: boolean;
+          try {
+            if (!recordUpdateInstalled(packId)) throw new Error(`Updated ${packId}, but its update record could not be saved`);
+          }
+          finally {
+            if (entry.enabled) activated = startAccepted!();
+            else { registry.refreshCatalog(); activated = false; }
+          }
+          const problem = entry.enabled ? activationProblem(registry, packId, activated) : undefined;
           if (problem) {
             broadcastToPlugin('packs', {
               type: 'PACK_UPDATE_FAILED' as const,
@@ -462,15 +444,11 @@ export function createPacksSystem(registry: PackRegistry) {
             packId,
             version: result.version,
           });
-          broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
+          if (activated) broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
           emitPacksList(registry, canUninstall);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
-          activated = activatePack(registry, packId, system.get(HOST.bus));
-          if (activated) {
-            broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
-          }
           broadcastToPlugin('packs', {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
@@ -478,11 +456,6 @@ export function createPacksSystem(registry: PackRegistry) {
           });
           emitPacksList(registry, canUninstall);
         }).finally(() => {
-          // Registering the replacement clears this; if nothing registered, the window ends here rather
-          // than leaving the pack's plugins marked as expected-to-be-missing for the rest of the run
-          registry.clearPackReplacing(packId);
-          // Activation sends PACK_CHANGED itself; without it the pack is gone, which running systems must hear
-          if (!activated) system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId });
           _inFlightOps.delete(packId);
         });
       },

@@ -46,13 +46,13 @@ afterEach(() => {
 });
 
 /** The pack source `apack pack build` would leave, at `version`; `content` gives it compiled data that won't content */
-function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
+function packSource(version: string, { failsImport = false, id = PACK_ID, runtime = '', manifest = {} } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };`) + `
+  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version, ...manifest }));
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };\n${runtime}`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   if (failsImport) {
@@ -111,7 +111,7 @@ const emitted = (sent: AnyEventObject[]) => sent.flatMap(e => {
 });
 
 describe('installing over a pack that is already running', () => {
-  it('tears the running copy down first, so the reinstall activates instead of colliding', async () => {
+  it('replaces the registered copy without a deactivation window', async () => {
     const system = runPacksSystem();
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
@@ -125,6 +125,8 @@ describe('installing over a pack that is already running', () => {
         expect(types, JSON.stringify(emitted(system.sent))).toContain('PACK_INSTALL_COMPLETE');
       });
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_INSTALL_FAILED');
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(system.sent.map(e => e.type)).toContain('RELOAD_PACK');
       // Registered once, by the copy that was just installed
       expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
@@ -514,23 +516,71 @@ describe('a pack that is gone', () => {
 });
 
 describe('installing over a pack that is already running', () => {
-  // The install replaces the pack's directory. A pack left running across that reads the new code on its
-  // next lazy require, so the teardown has to happen while the files it was loaded from are still there.
-  it('tears the running copy down before its files are replaced', async () => {
-    const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+  it.each([
+    ['runtime import', 'throw new Error("candidate import refused");'],
+    ['runtime binding', 'module.exports.registration.bindSettings = () => { throw new Error("candidate binding refused"); };'],
+  ])('preserves the incumbent and artifact after refused %s', async (_kind, runtime) => {
+    const installed = await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const previous = registry.getPackRuntime(PACK_ID);
+    const registration = registry.getPackRegistration(PACK_ID);
+    const artifact = readPackArtifact(installed.dir);
+    const records = readInstalledPacks();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0', { runtime }), sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(registry.getPackRegistration(PACK_ID)).toBe(registration);
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(readPackArtifact(installed.dir)).toEqual(artifact);
+      expect(readInstalledPacks()).toEqual(records);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
+      expect(system.sent.map(e => e.type)).not.toContain('RELOAD_PACK');
+      expect(registry.loadProblem(PACK_ID)).toBeUndefined();
+    } finally { system.stop(); }
+  });
+
+  it('reserves the resolved owner across installs from different sources', async () => {
+    const a = path.join(tmpDir, 'source-a');
+    const b = path.join(tmpDir, 'source-b');
+    fs.cpSync(packSource('2.0.0'), a, { recursive: true });
+    fs.cpSync(packSource('3.0.0'), b, { recursive: true });
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: a, sourceKind: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: b, sourceKind: 'local' });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE');
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED');
+      });
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({
+        packSlug: b, error: expect.stringContaining('Operation already in progress'),
+      });
+      expect(registry.packOrigin(PACK_ID)?.version).toBe('2.0.0');
+      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+    } finally { system.stop(); }
+  });
+
+  it('retains accepted files but stops runtime after initialization fails', async () => {
     await installPackFromLocal(packSource('1.0.0'));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
-
-    /** What the pack's manifest on disk said each time the callback ran */
-    const versionsWhenCalled: string[] = [];
-    await installPackFromLocal(packSource('2.0.0'), undefined, {
-      beforePlace: () => {
-        const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json');
-        versionsWhenCalled.push(JSON.parse(fs.readFileSync(installed, 'utf-8')).version);
-      },
+    const source = packSource('2.0.0', {
+      runtime: 'module.exports.registration.boot = { onInit() { throw new Error("initialization refused"); } };',
+      manifest: { boot: { onInit: 'init.ts#onInit' } },
     });
-
-    expect(versionsWhenCalled, 'the old copy is still in place when the caller is told').toEqual(['1.0.0']);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({
+        error: expect.stringContaining('initialization refused'),
+      });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
+      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+      expect(system.sent.map(e => e.type)).toContain('PACK_CHANGED');
+    } finally { system.stop(); }
   });
 
   it('refuses a second install of the same slug while one is in flight', async () => {
@@ -644,6 +694,51 @@ describe('uninstalling by an id that is not an installed pack', () => {
   });
 });
 
+describe('live updates preserve availability and enablement', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the incumbent throughout a refused download', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+    recordInstalled(PACK_ID, 'acme/pack');
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const previous = registry.getPackRuntime(PACK_ID);
+    const records = readInstalledPacks();
+    let respond!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { respond = resolve; })));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
+      respond(new Response('missing', { status: 404 }));
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(readInstalledPacks()).toEqual(records);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+    } finally { system.stop(); }
+  });
+
+  it('updates a disabled artifact without activating it', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+    recordInstalled(PACK_ID, 'acme/pack');
+    setPackEnabled(PACK_ID, false);
+    registry.refreshCatalog();
+    await stubRelease(packSource('2.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_COMPLETE'));
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(readInstalledPacks().find(entry => entry.id === PACK_ID)?.enabled).toBe(false);
+      expect(registry.catalog.getSnapshot().packs.find(pack => pack.snapshot.manifest.id === PACK_ID))
+        .toMatchObject({ enabled: false, snapshot: { manifest: { version: '2.0.0' } } });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    } finally { system.stop(); }
+  });
+});
+
 // An update takes whatever the release holds, which its source decides and the app doesn't
 describe('updating to a release that holds another pack', () => {
   afterEach(() => {
@@ -658,10 +753,13 @@ describe('updating to a release that holds another pack', () => {
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
     await stubRelease(packSource('2.0.0', { id: releaseId }));
 
+    const previous = registry.getPackRuntime(PACK_ID);
     const system = runPacksSystem();
     try {
       system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
       return emitted(system.sent);
     } finally {
       system.stop();
@@ -672,7 +770,7 @@ describe('updating to a release that holds another pack', () => {
 
   // Refused for the same reason as any other id, and worded the same: the release is for a different pack
   // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
-  it("is refused the same way when that pack is one the app ships, and the installed copy runs again", async () => {
+  it("is refused the same way when that pack is one the app ships, and the incumbent keeps running", async () => {
     registry.registerPack({ id: 'shipped-pack' }, { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
 
     const sent = await updateTo('shipped-pack');
@@ -680,16 +778,18 @@ describe('updating to a release that holds another pack', () => {
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "shipped-pack", not "reinstall-pack"') });
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'shipped-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
-    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_DEACTIVATED');
   });
 
-  it('is refused when that pack is any other, and the installed copy runs again', async () => {
+  it('is refused when that pack is any other, and the incumbent keeps running', async () => {
     const sent = await updateTo('other-pack');
 
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "other-pack", not "reinstall-pack"') });
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
-    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_DEACTIVATED');
   });
 });
 

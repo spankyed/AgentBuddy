@@ -288,9 +288,12 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
     const destDir = path.join(packsDir, manifest.id);
     const result: InstallResult = {
       id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir,
-      missingDependencies: checkDependencies(manifest, packsDir), integrity,
+      missingDependencies: [], integrity,
     };
-    replaceDir(incoming, destDir, () => options.accept?.(structuredClone(result)));
+    replaceDir(incoming, destDir, () => {
+      result.missingDependencies = checkDependencies(manifest, packsDir);
+      return options.accept?.(structuredClone(result));
+    });
     incoming = undefined;
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
     return result;

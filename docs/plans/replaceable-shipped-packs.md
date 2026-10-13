@@ -186,8 +186,8 @@ artifact/catalog available. Use discovery’s stale-load checks during in-flight
 
 ## Installed publication audit (2026-10-13)
 
-The app's install handler currently tears down an active pack in `beforePlace`; the update handler
-tears it down before downloading. Neither path uses the registry's transactional `replacePack`.
+At audit time, the app's install handler tore down an active pack in `beforePlace`; the update handler
+tore it down before downloading. Neither path used the registry's transactional `replacePack`.
 A download, runtime-load or registration refusal can therefore discard a working incumbent even
 though the artifact checks pass. The existing install lock also uses the source slug while update uses
 the pack id: different sources resolving to one owner need a resolved-id guard, not just a slug guard.
@@ -219,3 +219,37 @@ fixed; do not hide it with extended test deadlines or swallowed cleanup errors. 
 
 The output is a deliberate update-ownership and removal contract on top of discovery. It does not alter
 settings ownership, catalog identities, migration version lines or the consumed-API security model.
+
+
+### Coordinated app installation (2026-10-13)
+
+The app now supplies `acceptInstalledPack` to the installer acceptance hook. Final-path runtime load
+and registration use `replacePack` for an incumbent; refusal clears candidate module cache and lets
+filesystem rollback restore the old artifact without teardown, reactivation or record changes.
+Install reserves its resolved id before placement, preventing two source slugs from accepting one owner
+at once. The update lock holds its owner through download and acceptance. These are app-system guards,
+not a claim of coordination with independent CLI processes.
+
+Acceptance returns a starter, invoked after filesystem publication even if saving the install/update
+record fails. The shared activation path retires old hooks and handles initialization, migrations and
+content application. Successful replacement restarts old/new system ids before `PACK_CHANGED`.
+Initialization refusal stops affected systems and removes runtime bindings but retains accepted files
+and declarations; it cannot restore arbitrary data writes. Disabled updates refresh their artifact and
+catalog while preserving disabled state, without loading a runtime.
+
+Focused tests cover actual sealed artifacts and app handlers: download/import/binding refusal,
+incumbent registration/revision/records, generated settings handles and subscriptions, refused module
+cache cleanup, competing source identities, disabled update, and old/new system retirement after
+success or initialization failure. Four guard mutations (unregister-first, skipped cache cleanup,
+missing owner reservation, activating a disabled candidate) fail; source was restored and 163 focused
+tests pass. Explicit shipped ownership/suppression, replacement/restoration operations and final real
+app acceptance remain required. The separate fixture/API shutdown race above remains unresolved.
+
+Strict checkpoint validation passes in 393.9s (one cached gate), with all 30 gates accepted and evidence
+`node_modules/.cache/apack-chain/runs/2026-10-13T18-05-22Z-18099`. This covers the ordinary install/update
+acceptance implementation, not the remaining shipped replacement contract or final goal `--all` audit.
+After removing teardown-first installation, production callers no longer request
+`teardownPack(..., { replacing: true })`; audit and remove that flag's registry/bus suppression machinery
+rather than retaining an unused lifecycle. Teardown is also the remaining production consumer of
+`getPackExtensions`, used only for system ids; migrate it to the lifecycle accessor before deleting
+that obsolete discovery projection. Preserve actual teardown and frontend readiness behavior.

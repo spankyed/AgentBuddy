@@ -14,6 +14,11 @@ import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
+import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
+import { acceptInstalledPack } from '../../../src/packs/runtime/lifecycle.ts';
+import { loadSingleExternalPack } from '../../../src/packs/runtime/loader.ts';
+import { readPackArtifact } from '../../../src/packs/layout.ts';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -55,6 +60,106 @@ function writeManifest(dir: string, manifest: Record<string, unknown>) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest));
 }
+
+describe('installed runtime acceptance', () => {
+  it.each([false, true])('restarts or stops both old and new system ids after acceptance (init failure: %s)', async fails => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const id = 'systems-pack';
+    const source = path.join(tmpDir, 'source');
+    const feature = (name: string) => ({ [name]: { system: { entry: 'system.ts' } } });
+    const runtime = (name: string) => `{ ${name}: { system: { machine: { id: '${name}' }, receives: [] } } }`;
+    writeManifest(source, { id, name: id, version: '1.0.0', features: feature('old') });
+    writeBuild(source, id, runtime('old'));
+    const installed = await installPackFromLocal(source, packsDir());
+    const loaded = loadSingleExternalPack(installed.dir);
+    if ('problem' in loaded) throw new Error(loaded.problem);
+    const isolated = createNativePackTestRegistry();
+    isolated.registerPack(loaded.registration, loaded.origin);
+    const previousRevision = isolated.getPackRuntime(id)?.runtimeRevision;
+    const shutdown = vi.fn();
+    isolated.registerShutdownHook(shutdown, id);
+    const bus = { send: vi.fn() };
+    let start!: () => boolean;
+    try {
+      writeManifest(source, { id, name: id, version: '2.0.0', features: feature('replacement'),
+        ...(fails && { boot: { onInit: 'init.ts#onInit' } }),
+      });
+      writeBuild(source, id, runtime('replacement') + (fails ? ', boot: { onInit() { throw new Error("init failed"); } }' : ''));
+      await installPackFromLocal(source, packsDir(), { accept: candidate => {
+        start = acceptInstalledPack(isolated, candidate.id, bus as never);
+        expect(shutdown).not.toHaveBeenCalled();
+        expect(bus.send).not.toHaveBeenCalled();
+      } });
+      expect(isolated.getPackRuntime(id)?.runtimeRevision).not.toBe(previousRevision);
+      expect(start()).toBe(!fails);
+      expect(shutdown).toHaveBeenCalledOnce();
+      expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual([
+        fails ? 'TEARDOWN_PACK' : 'RELOAD_PACK', 'PACK_CHANGED',
+      ]);
+      expect(bus.send.mock.calls[0][0].systemIds).toEqual([`${id}/old`, `${id}/replacement`]);
+      expect(readPackArtifact(installed.dir).integrity.version).toBe('2.0.0');
+      if (fails) expect(isolated.getPackRegistration(id)).toBeNull();
+      else expect(isolated.getRegisteredPackSystemIds(id)).toEqual([`${id}/replacement`]);
+    } finally {
+      if (isolated.getPackRegistration(id)) isolated.unregisterPack(id);
+    }
+  });
+
+  it('restores files and preserves generated settings authority after late binding refusal', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const id = 'binding-pack';
+    const source = path.join(tmpDir, 'source');
+    writeManifest(source, { id, name: id, version: '1.0.0' });
+    writeBuild(source, id);
+    const installed = await installPackFromLocal(source, packsDir());
+    const previousArtifact = readPackArtifact(installed.dir);
+    const loaded = loadSingleExternalPack(installed.dir);
+    if ('problem' in loaded) throw new Error(loaded.problem);
+    const listeners = new Set<() => void>();
+    const settings: SettingsService = {
+      get: <T,>() => ({ retained: true }) as T,
+      set() {}, reset() {},
+      onChange(listener) {
+        const notify = () => listener('written');
+        listeners.add(notify);
+        return () => { listeners.delete(notify); };
+      },
+    };
+    const isolated = createNativePackTestRegistry({ settingsForPack: () => settings });
+    const generated = _createPackServices();
+    const handle = generated.settingsHandle({ kind: 'app' });
+    const registration = { ...loaded.registration, bindSettings: generated.bindSettings };
+    isolated.registerPack(registration, loaded.origin);
+    const previousRuntime = isolated.getPackRuntime(id);
+    const changed = vi.fn();
+    handle.onChange(changed);
+    const bus = { send: vi.fn() };
+    try {
+      writeManifest(source, { id, name: id, version: '2.0.0' });
+      writeBuild(source, id, '{}, bindSettings() { throw new Error("late binding refused"); }');
+      await expect(installPackFromLocal(source, packsDir(), { accept: candidate => {
+        acceptInstalledPack(isolated, candidate.id, bus as never);
+      } })).rejects.toThrow('late binding refused');
+      expect(readPackArtifact(installed.dir)).toEqual(previousArtifact);
+      const restored = loadSingleExternalPack(installed.dir);
+      expect(restored).not.toHaveProperty('problem');
+      if ('problem' in restored) throw new Error(restored.problem);
+      expect(restored.origin.version).toBe('1.0.0');
+      expect(isolated.getPackRegistration(id)).toBe(registration);
+      expect(isolated.getPackRuntime(id)).toEqual(previousRuntime);
+      expect(handle.get()).toEqual({ retained: true });
+      for (const listener of listeners) listener();
+      expect(changed).toHaveBeenCalledOnce();
+      expect(listeners.size).toBe(1);
+      expect(bus.send).not.toHaveBeenCalled();
+      expect(isolated.loadProblem(id)).toBeUndefined();
+    } finally {
+      if (isolated.getPackRegistration(id)) isolated.unregisterPack(id);
+    }
+    expect(listeners.size).toBe(0);
+    expect(() => handle.get()).toThrow();
+  });
+});
 
 describe('pack full lifecycle: install → discover', () => {
   it('update flow: reinstalling overwrites the previous version', async () => {
@@ -162,7 +267,8 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(registry.loadProblem(PACK_ID)).toContain('init refused');
     expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
     expect(runs).toEqual(['shutdown']);
-    expect(bus.send).not.toHaveBeenCalled();
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+    expect(bus.send.mock.calls.map(([event]) => event.type)).not.toContain('ACTIVATE_PACK');
   });
 
   it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
