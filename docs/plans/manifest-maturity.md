@@ -82,7 +82,7 @@ the settings plan, as that goal already specifies.
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
 | Module-reference syntax | M1 uses one shape-reference parser; M4 type authoring implemented in `0e65ece42` uses explicit module paths with type-only export-star semantics. Retain richer component/loading declarations and finish remaining target checks |
 | Schema descriptions, current-schema diagnostics, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
-| Default navigation and feature descriptions | Preserve landed plugin defaults/designations; require meaningful feature `description` through schema, scaffold, native/catalog and inspection in M4 |
+| Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. Preserve defaults/designations and complete remaining M4 target/layout checks |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
 | Build/check configuration and sidecars | Preserve build options; required M5 moves allowances to `checks.allow` and removes the sidecar, with unknown/non-switchable refusals. M6 centralizes current-shape writing/order |
 | `extensions.fe` and `hostVersion` questions | Settled in consolidation: public `extensions.frontend` during its declarative migration; keep `hostVersion` for one host range. No blanket fe/be rename |

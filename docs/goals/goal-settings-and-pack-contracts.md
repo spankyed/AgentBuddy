@@ -3070,3 +3070,42 @@ M4 remains in progress: required feature descriptions, declared scaffold forms a
 authoring/target checks come next. M5/M6, full discovery, navigation, boundaries and all three Phase 6
 workstreams remain required. Final strict `--all` on committed source and the complete requirement
 audit remain mandatory. Nothing is archived.
+
+
+### Feature purpose and complete scaffold declarations — M4 checkpoint (2026-10-14)
+
+Source `ae7a995bd` requires nonblank feature `description` through one shared authored/native
+schema. Real declarations describe their functionality; native catalog data, installed summaries
+and the feature UI retain purpose without activation. Executable feature bindings do not carry it.
+`add feature` requires explicit purpose and uses the shared field validator before writing files;
+it also declares the custom settings form it already creates. Public guidance, schemas/API reports,
+all real manifests and fixture producers moved together. There is no inferred purpose, alias or
+conversion in production readers; testing constructors supply authored stand-in metadata.
+
+Evidence:
+- SDK checks: 82; native/catalog/runtime focused: 111; feature UI: 12; restored purpose-guard
+  checks: 69. Required and blank-value mutations each failed named assertions; exact source restored
+  (`/private/tmp/apack-m4-description-{required,blank}-mutation.log`).
+- Broad review identified missing metadata in older fixture declarations, not a reason to weaken
+  validation. Migrated those declarations and retained their original refusal/rollback assertions:
+  six remaining runtime/build fixture files passed 196 tests; transport checks passed 23; real
+  external authoring passed, including required-input refusal before writes, scaffolded forms,
+  build/typecheck/archive and nonmatching designation roles.
+- EARS and six compiled content files remain byte-identical to
+  `/private/tmp/apack-m4-description-baseline`; the published facade report passes unchanged.
+- Strict validation passed in 411.6s (17/30 cached). Earlier full host run passed 4,436 tests and
+  shipped pack 855 plus two existing skips; final affected host subset passed 1,691, integration
+  642, actual Electron app 176.9s, smoke 5.6s, packaged authoring 63.3s and packaged app 8.7s.
+  Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T08-53-28Z-96971`,
+  `/private/tmp/apack-m4-description-strict-integrations-fixed.log`; full host/pack evidence:
+  `node_modules/.cache/apack-chain/runs/2026-10-14T08-44-25Z-68976`.
+- Strict caught an additional renderer fixture, API origin-helper type and integration fixture
+  producers. All were corrected before commit, without widening EARS or bypassing schema checks.
+  Facade setup cleanup now avoids masking an initial build failure with an undefined path.
+  Reviewed schema/API/source changes and diff checks; committed only the 70 recorded source paths.
+  The unrelated issue draft remains untracked and excluded.
+
+M4 remains open for the inspected target parsing/resolution and authoring-tool agreement work,
+with the findings in the consolidation plan. Complete it before M5/M6, then finish every remaining
+discovery/navigation/boundary requirement and all three Phase 6 workstreams. Final strict `--all`
+on committed source and the complete reconciled audit remain mandatory. Nothing is archived.
