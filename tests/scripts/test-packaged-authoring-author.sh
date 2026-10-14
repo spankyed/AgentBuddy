@@ -354,7 +354,7 @@ node -e '
 
 
 # What the app half needs, and nothing it can derive for itself. The archive's digest is in here so that
-# half's cache key moves when the artifact does: a re-authored pack is a different thing to test.
+# half's cache key moves when the build does: a re-authored pack is a different thing to test.
 step "Hand the archive to the app half"
 mkdir -p "$HANDOFF"
 node -e '

@@ -164,7 +164,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
  * The build holds the report to the bundle it has just produced — the one moment nothing can be stale about
  * it — and **warns**. It does not fail, because a report that has not caught up is not output a dependent
  * cannot use, and because failing would mean no pack author could start their app until they had rewritten a
- * reviewed artifact mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
+ * reviewed report mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
  */
 describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
   it('warns about a report that has gone stale, and still succeeds', async () => {

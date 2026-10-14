@@ -6,7 +6,7 @@
 // costs 2s a tree and 6.2s for all five (median of 5, 6.1-6.2s, 73% idle, 2026-10-08), where asking it of the
 // plan is free — and the chain runs the step anyway.
 //
-// **Both tools read the same tarball**, which is the artifact in question: npm ships a tarball, not a
+// **Both tools read the same tarball**, which is the published output in question: npm ships a tarball, not a
 // directory, so a check over the directory is a check over the thing it is derived from. It also means publint
 // stops running its own `npm pack --json --dry-run` per tree to work out the file list — five subprocesses
 // whose answer is already in the tarball beside it.

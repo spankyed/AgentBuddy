@@ -42,7 +42,7 @@ function builtPack(dir: string, id = 'default-pack', version = '1.0.0', hostVers
     fs.writeFileSync(path.join(dir, file), value);
   };
   write('apack.json', JSON.stringify(manifest));
-  // Reading, replacing and restoring artifacts must not activate executable pack code.
+  // Reading, replacing and restoring builds must not activate executable pack code.
   write('dist/runtime/index.cjs', 'throw new Error("pack execution is forbidden in this command fixture");');
   write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
     declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {},

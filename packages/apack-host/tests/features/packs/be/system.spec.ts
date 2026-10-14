@@ -360,7 +360,7 @@ describe('pack information without activation', () => {
       expect(registry.loadProblem(PACK_ID)).toContain('Do not activate');
     }
     registry.refreshCatalog(resolveAppEnvironment().packsDir);
-    // A file that was never part of the accepted artifact must not advertise available frontend code.
+    // A file that was never part of the accepted build must not advertise available frontend code.
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not import");');
     const system = runPacksSystem();
     try {
@@ -565,12 +565,12 @@ describe('installing over a pack that is already running', () => {
   it.each([
     ['runtime import', 'throw new Error("candidate import refused");'],
     ['runtime binding', 'module.exports.registration.bindSettings = () => { throw new Error("candidate binding refused"); };'],
-  ])('preserves the incumbent and artifact after refused %s', async (_kind, runtime) => {
+  ])('preserves the incumbent and build after refused %s', async (_kind, runtime) => {
     const installed = await installPackFromLocal(packSource('1.0.0'));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
     const previous = registry.getPackRuntime(PACK_ID);
     const registration = registry.getPackRegistration(PACK_ID);
-    const artifact = readPackBuild(installed.dir);
+    const build = readPackBuild(installed.dir);
     const records = readInstalledPacks();
     const system = runPacksSystem();
     try {
@@ -578,7 +578,7 @@ describe('installing over a pack that is already running', () => {
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
       expect(registry.getPackRegistration(PACK_ID)).toBe(registration);
       expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
-      expect(readPackBuild(installed.dir)).toEqual(artifact);
+      expect(readPackBuild(installed.dir)).toEqual(build);
       expect(readInstalledPacks()).toEqual(records);
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
       expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
@@ -765,7 +765,7 @@ describe('live updates preserve availability and enablement', () => {
     } finally { system.stop(); }
   });
 
-  it('updates a disabled artifact without activating it', async () => {
+  it('updates a disabled build without activating it', async () => {
     await installPackFromLocal(packSource('1.0.0'));
     const { recordInstalled } = await import('../../../../src/packs/installed.ts');
     recordInstalled(PACK_ID, 'acme/pack');
@@ -871,7 +871,7 @@ describe('app-source update offers and acceptance', () => {
     } finally { system.stop(); vi.unstubAllGlobals(); }
   });
 
-  it('refuses stale selections without replacing the incumbent artifact, runtime or record', async () => {
+  it('refuses stale selections without replacing the incumbent build, runtime or record', async () => {
     await ownDefault();
     packSource('2.0.0');
     offer();

@@ -12,7 +12,7 @@ afterEach(unbindFeHost);
 function fixture() {
   const featureRef = resolveName('notes', 'author');
   const entry: ReferenceCatalogEntry = { packId: 'author', featureRef, origin: 'installed', enabled: true,
-    declarationRevision: 'declaration-one', buildRevision: 'artifact-one', declaration: {
+    declarationRevision: 'declaration-one', buildRevision: 'build-one', declaration: {
       types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } };
@@ -51,7 +51,7 @@ it.each(['loading', 'disconnected', 'error', 'disposed'] as const)('refuses exec
 it.each([
   ['disabled', { enabled: false }], ['missing enablement', { enabled: undefined }],
   ['new declarations', { declarationRevision: 'declaration-two' }], ['missing declaration stamp', { declarationRevision: undefined }],
-  ['new artifact', { buildRevision: 'artifact-two' }], ['missing artifact receipt', { buildRevision: undefined }],
+  ['new build', { buildRevision: 'build-two' }], ['missing build receipt', { buildRevision: undefined }],
   ['foreign owner', { featureRef: resolveName('notes', 'other') }], ['source only', { origin: 'source' as const }],
 ])('refuses %s for both executable groups', (_name, change) => {
   const f = fixture(); f.state.entries = [{ ...f.entry, ...change }];

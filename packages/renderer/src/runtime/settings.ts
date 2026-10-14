@@ -77,7 +77,7 @@ export function disconnectWindowSettings(): void {
   windowSettings.disconnected();
 }
 
-/** Declaration acceptance precedes this call; issuance verifies the backend's accepted artifact too. */
+/** Declaration acceptance precedes this call; issuance verifies the backend's accepted build too. */
 export async function settingsForPack(pack: LoadedPackEntry): Promise<FrontendSettingsBinding> {
   if (!pack.buildRevision) throw new Error(`Pack "${pack.id}" has no accepted build identity`);
   const accepted = connection;

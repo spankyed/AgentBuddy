@@ -102,7 +102,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       const counts: ApplyResult = { created: 0, updated: 0, skipped: 0 };
       const flowsDSL: any = loadJSON(contentPath(ctx.compiledDir, 'flows'));
       if (!flowsDSL) {
-        ctx.log('  flows artifact not found, skipping flows');
+        ctx.log('  compiled flows not found, skipping flows');
         return counts;
       }
 

@@ -161,7 +161,7 @@ export async function setupBackend(): Promise<void> {
 
   // ── Install the packs the app ships, so every pack is an installed pack ────────────
   // Install before discovery. Ownership, shipped source revision and deliberate removal decide refresh;
-  // matching bytes never grant app ownership of an existing user artifact.
+  // matching bytes never grant app ownership of an existing user build.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
   if (!shippedDir) {
     // "This app ships no packs" and "nobody told me where they are" are different answers, and installing

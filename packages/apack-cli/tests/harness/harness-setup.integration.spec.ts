@@ -64,7 +64,7 @@ await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: $
 }
 
 describe("a pack's unit tests on the harness", () => {
-  it('runs without a bundled artifact and refuses stale source declarations before starting the harness', () => {
+  it('runs without a bundled build and refuses stale source declarations before starting the harness', () => {
     const root = dataPack(`import { expect, it } from 'vitest'; it('source works', () => expect(true).toBe(true));`);
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
     expect(run(process.execPath, [VITEST, 'run'], root).output).toMatch(/Tests\s+1 passed/);

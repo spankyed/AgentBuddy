@@ -338,7 +338,7 @@ it('preserves the running app-owned build, catalog and record when a shipped rel
     loadAppPacks(registry);
     const previousRegistration = registry.getPackRegistration(id);
     const previousRuntime = registry.getPackRuntime(id);
-    const previousArtifact = readPackBuild(path.join(packsDir, id));
+    const previousBuild = readPackBuild(path.join(packsDir, id));
     const previousCatalog = registry.catalog.getSnapshot();
     const previousRecords = readInstalledPacks(recordsFile(), { strict: true });
     registry.registerPack({ id: 'collision-owner', services: { taken: {} } });
@@ -348,7 +348,7 @@ it('preserves the running app-owned build, catalog and record when a shipped rel
     await expect(reloadPackById(registry, id, bus as never)).rejects.toThrow('Service collision');
     expect(registry.getPackRegistration(id)).toBe(previousRegistration);
     expect(registry.getPackRuntime(id)).toEqual(previousRuntime);
-    expect(readPackBuild(path.join(packsDir, id))).toEqual(previousArtifact);
+    expect(readPackBuild(path.join(packsDir, id))).toEqual(previousBuild);
     expect(registry.catalog.getSnapshot().packs).toEqual(previousCatalog.packs);
     expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(previousRecords);
     expect(bus.send).not.toHaveBeenCalled();

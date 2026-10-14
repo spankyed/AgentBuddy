@@ -64,7 +64,7 @@ jobs:
 
       # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
       # content parity, dependent-pack, SDK bridge drift and content runtime tests
-      - name: Build default-setup pack artifacts
+      - name: Build default-setup pack output
         working-directory: packages/default-setup
         run: npx apack pack build
 

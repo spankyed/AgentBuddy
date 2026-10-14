@@ -148,7 +148,7 @@ describe('pack-loader', () => {
       expect(fs.existsSync(marker)).toBe(false);
     });
 
-    it("refuses an unsealed pack directory with its artifact diagnostic", () => {
+    it("refuses an unsealed pack directory with its build diagnostic", () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
       fs.rmSync(path.join(packDir, PACK_LAYOUT.integrity));
       const warnings: string[] = [];
@@ -447,16 +447,16 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   });
 
   it.each(['runtime/index.cjs', 'runtime/fe.js', 'runtime/content/settings.json'])('refuses changed build bytes before runtime execution: %s', file => {
-    const dir = makeBundledPack('changed-bytes', 'globalThis.apackArtifactExecuted = true;');
+    const dir = makeBundledPack('changed-bytes', 'globalThis.apackBuildExecuted = true;');
     const target = path.join(dir, file);
     fs.writeFileSync(target, 'original bytes');
     // A valid descriptor for these bytes, then an edit without a new build.
     sealPack(dir);
-    fs.writeFileSync(target, 'globalThis.apackArtifactExecuted = true;');
+    fs.writeFileSync(target, 'globalThis.apackBuildExecuted = true;');
     const problems = new Map<string, string>();
     expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
     expect(problems.get('changed-bytes')).toContain(`checksum mismatch ${file}`);
-    expect(Reflect.get(globalThis, 'apackArtifactExecuted')).toBeUndefined();
+    expect(Reflect.get(globalThis, 'apackBuildExecuted')).toBeUndefined();
   });
 
   it('refuses a layout version this host does not support', () => {
@@ -857,7 +857,7 @@ describe('applyPacks', () => {
   function makePackWithContent(
     packsDir: string,
     id: string,
-    artifacts?: Record<string, any>,
+    contentFiles?: Record<string, any>,
   ) {
     const packDir = path.join(packsDir, id);
     const distDir = path.join(packDir, 'runtime', 'content');
@@ -865,8 +865,8 @@ describe('applyPacks', () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({
       id, name: id, version: '1.0.0',
     }));
-    if (artifacts) {
-      for (const [name, data] of Object.entries(artifacts)) {
+    if (contentFiles) {
+      for (const [name, data] of Object.entries(contentFiles)) {
         fs.writeFileSync(path.join(distDir, name), JSON.stringify(data));
       }
     }
@@ -1067,8 +1067,8 @@ describe('contentRevision', () => {
     expect(hash1).not.toBe(hash2);
   });
 
-  it('hashes any JSON file, not just known artifact types', () => {
-    const distDir = path.join(tmpDir, 'custom-artifacts');
+  it('hashes any JSON file, not just known content types', () => {
+    const distDir = path.join(tmpDir, 'custom-content');
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, 'compiled-widgets.json'), '[{"id":"w1"}]');
 

@@ -24,7 +24,7 @@ describe('releasesInRange', () => {
   });
 });
 
-describe('dependency artifact reading', () => {
+describe('dependency build reading', () => {
   it.each(['valid', 'malformed', 'unsafe-name'])('validates snapshot data without loading runtime code: %s', mode => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snapshot-reader-'));
     try {

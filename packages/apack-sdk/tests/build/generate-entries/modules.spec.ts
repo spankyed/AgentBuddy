@@ -225,7 +225,7 @@ describe('generated appliers', () => {
           flows: { path: 'src/content/flows' },
           memos: { path: 'src/content/memos', format: 'memos', onUserEdit: 'offer' },
         },
-        artifacts: { help: { path: 'src/content/help', format: 'help' } },
+        datasets: { help: { path: 'src/content/help', format: 'help' } },
       },
     });
     const appliers = files['src/__generated__/appliers.ts'];

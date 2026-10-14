@@ -66,12 +66,12 @@ export function appBuildOutput(workspace: AppWorkspace): string {
   return path.join(root, 'packages', workspace, 'dist');
 }
 
-function artifactHashes(root: string): Record<string, string> {
+function buildOutputHashes(root: string): Record<string, string> {
   const files = APP_WORKSPACES.flatMap(workspace => {
     const dir = path.join(root, 'packages', workspace, 'dist');
     const entries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
     const unexpected = entries.find(entry => !entry.isFile() && !entry.isDirectory());
-    if (unexpected) throw new Error(`Unexpected build artifact: ${path.join(unexpected.parentPath, unexpected.name)}`);
+    if (unexpected) throw new Error(`Unexpected build output: ${path.join(unexpected.parentPath, unexpected.name)}`);
     const output = entries.filter(entry => entry.isFile()).map(entry => path.join(entry.parentPath, entry.name));
     if (!output.length) throw new Error(`Missing build output: ${workspace}`);
     return output;
@@ -86,13 +86,13 @@ function artifactHashes(root: string): Record<string, string> {
 /** Written only after all four bundlers succeed; an interrupted run cannot be packaged. */
 export function sealBuildSession(root: string): void {
   readBuildManifest(root);
-  fs.writeFileSync(path.join(root, 'build-artifacts.json'), JSON.stringify(artifactHashes(root), null, 2) + '\n');
+  fs.writeFileSync(path.join(root, 'build-integrity.json'), JSON.stringify(buildOutputHashes(root), null, 2) + '\n');
 }
 
-export function verifyBuildArtifacts(root: string, appDir = root): void {
-  const expected = JSON.parse(fs.readFileSync(path.join(root, 'build-artifacts.json'), 'utf8'));
-  const actual = artifactHashes(appDir);
-  if (!isDeepStrictEqual(actual, expected)) throw new Error('Build artifacts differ from the completed staging build');
+export function verifyBuildOutputs(root: string, appDir = root): void {
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'build-integrity.json'), 'utf8'));
+  const actual = buildOutputHashes(appDir);
+  if (!isDeepStrictEqual(actual, expected)) throw new Error('Build outputs differ from the completed staging build');
 }
 
 /** Packaging consumes only a completed stage, then verifies the actual packaged files. */
@@ -100,5 +100,5 @@ export function verifyPackagedBuild(appDir: string, root: string): void {
   const manifest = readBuildManifest(root);
   const packaged = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
   if (packaged.version !== manifest.version) throw new Error(`Packaged version ${packaged.version} differs from ${manifest.version}`);
-  verifyBuildArtifacts(root, appDir);
+  verifyBuildOutputs(root, appDir);
 }

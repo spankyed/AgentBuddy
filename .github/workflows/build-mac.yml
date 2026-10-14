@@ -45,11 +45,11 @@ jobs:
           if [[ "$TAG_VERSION" == *-beta* ]] || [[ "${{ inputs.channel }}" == "beta" ]]; then
             echo "is_beta=true" >> "$GITHUB_OUTPUT"
             echo "product_name=apack Beta" >> "$GITHUB_OUTPUT"
-            echo "artifact_prefix=apack-Beta" >> "$GITHUB_OUTPUT"
+            echo "release_prefix=apack-Beta" >> "$GITHUB_OUTPUT"
           else
             echo "is_beta=false" >> "$GITHUB_OUTPUT"
             echo "product_name=apack" >> "$GITHUB_OUTPUT"
-            echo "artifact_prefix=apack" >> "$GITHUB_OUTPUT"
+            echo "release_prefix=apack" >> "$GITHUB_OUTPUT"
           fi
           echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -118,7 +118,7 @@ jobs:
           fi
           # `apack pack test --channel beta` verifies downloads against these
           # electron-builder.mjs artifactName: the product name without spaces
-          PREFIX="${{ steps.channel.outputs.artifact_prefix }}"
+          PREFIX="${{ steps.channel.outputs.release_prefix }}"
           for file in dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip; do
             (cd dist && shasum -a 256 "$(basename "$file")" > "$(basename "$file").sha256")
           done

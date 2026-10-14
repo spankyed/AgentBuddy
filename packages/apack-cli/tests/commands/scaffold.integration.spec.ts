@@ -109,7 +109,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const guide = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/pack-builds.md'), 'utf8');
     for (const file of [PACK_LAYOUT.manifest, PACK_LAYOUT.integrity, PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.feEntry, PACK_LAYOUT.snapshot]) {
       expect(fs.existsSync(path.join(extracted, file)), file).toBe(true);
-      expect(guide, `Missing public artifact path ${file}`).toContain('`' + file + '`');
+      expect(guide, `Missing public build path ${file}`).toContain('`' + file + '`');
     }
 
   });

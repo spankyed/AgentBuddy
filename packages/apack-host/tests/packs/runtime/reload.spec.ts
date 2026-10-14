@@ -94,7 +94,7 @@ describe('reloading a pack the app ships', () => {
 
   /**
    * A pack the app ships, installed as every pack is: its built runtime records the compiled dir it was
-   * pointed at, reads it in its onInit, and it declares an apply over one compiled artifact
+   * pointed at, reads it in its onInit, and it declares an apply over one compiled content file
    */
   function writeShipped(manifest: Record<string, unknown> = {}): string {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);

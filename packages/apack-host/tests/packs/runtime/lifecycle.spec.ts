@@ -112,7 +112,7 @@ describe('installed runtime acceptance', () => {
     writeManifest(source, { id, name: id, version: '1.0.0' });
     writeBuild(source, id);
     const installed = await installPackFromLocal(source, packsDir());
-    const previousArtifact = readPackBuild(installed.dir);
+    const previousBuild = readPackBuild(installed.dir);
     const loaded = loadSingleExternalPack(installed.dir);
     if ('problem' in loaded) throw new Error(loaded.problem);
     const listeners = new Set<() => void>();
@@ -140,7 +140,7 @@ describe('installed runtime acceptance', () => {
       await expect(installPackFromLocal(source, packsDir(), { accept: candidate => {
         acceptInstalledPack(isolated, candidate.id, bus as never);
       } })).rejects.toThrow('late binding refused');
-      expect(readPackBuild(installed.dir)).toEqual(previousArtifact);
+      expect(readPackBuild(installed.dir)).toEqual(previousBuild);
       const restored = loadSingleExternalPack(installed.dir);
       expect(restored).not.toHaveProperty('problem');
       if ('problem' in restored) throw new Error(restored.problem);

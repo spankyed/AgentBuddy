@@ -71,7 +71,7 @@ export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).
  * would execute, which used to be read from the deleted cost record.
  *
  * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` holds
- * recorded artifacts rather than specs.
+ * recorded files rather than specs.
  */
 // `templates` holds the CLI's scaffold: `templates/pack/tests/*.spec.ts` is a spec a pack author will run,
 // not one of this package's, and vitest's own `include` already leaves it out

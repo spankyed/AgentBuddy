@@ -10,8 +10,8 @@ So: **the rule lives here in its imperative form with one citation; its evidence
 A paragraph of measurement, a list of what was tried first, or the history of something that no longer
 exists is the sign it belongs there — [`reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md)
 for what a rule cost to learn, [`reference/pipeline-commands.md`](docs/reference/pipeline-commands.md) for
-what a flag was measured against, [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md)
-for the two recorded artifacts that were built and deleted, and `docs/archive/goals/` for a goal that
+what a flag was measured against, [`reference/recorded-files.md`](docs/reference/recorded-files.md)
+for the two recorded files that were built and deleted, and `docs/archive/goals/` for a goal that
 closed. This is the repo's own comment rule — *"a comment is for whoever opens the file cold, not for
 whoever reads the diff"* — applied to the guide that states it, which is the easiest place to exempt.
 
@@ -56,9 +56,13 @@ See [worktree development](docs/reference/worktree-development.md).
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
 - Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
+Reserve **artifact** for app artifact contributions and viewers. Use **build** for compiled pack/app output,
+**release file** for downloads, and **recorded file** or **report** for checked-in generated files. Preserve
+third-party API names such as electron-builder’s `artifactName` and GitHub’s `upload-artifact`.
+
 ## Release metadata
 
-Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
+Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release files. The release process owns those changes.
 
 ## Backward compatibility
 
@@ -137,7 +141,7 @@ that pack's whole suite rather than a root `related` — nothing in the root pro
 `dist/*.content.json`, which `tests/content/` reads against its goldens; its **build inputs** — `apack.json`,
 which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
 specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
-are what every spec in the pack goes through. Both are `src -> apack pack build -> artifact -> spec`, so a
+are what every spec in the pack goes through. Both are `src -> apack pack build -> output -> spec`, so a
 *regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
 names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
 The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
@@ -154,8 +158,8 @@ Three things the chain cannot work out for you, because they rewrite files you c
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `apack pack build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` fails until you do**, as
-  it does for all four recorded artifacts: `exports:check` and `schema:check` are legs, and `api:check` and
-  `facade:check` are chain steps the runner borrows (`ARTIFACT_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
+  it does for all four recorded files: `exports:check` and `schema:check` are legs, and `api:check` and
+  `facade:check` are chain steps the runner borrows (`RECORDED_FILE_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
   one command answers for every one of them. It did not until 2026-10-08, and a green typecheck over a stale
   report is what that cost.
   The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
@@ -192,7 +196,7 @@ read fails and the next run passes.
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
 contradicts it, on the machine that table was measured on), so there is nothing to build a proxy for, and
 its only other homes were the publish workflow
-and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
+and a CI file whose triggers are commented out — the recorded-file checks ran at the one moment they cannot be
 cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw --pack <dir>` packs a tarball
 inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
 alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
@@ -204,11 +208,11 @@ way: both of publint's input kinds converge on one `core()` with a different vir
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
-**Three kinds of recorded artifact, and the question to ask of a new one is which it is.** A
+**Three kinds of recorded file, and the question to ask of a new one is which it is.** A
 **derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
 `facade:check`, `content-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
 means running whatever produces it**, which is the half that is easy to skip: a check that compares against
-an artifact some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
+a file some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
 does while reading like one that cannot. A **proxy**
 records a hash of what it *believes* the inputs are; **nothing here is one any more**, because a proxy can
 go stale from an input nobody listed and its remedy *writes*. A **sample** records a measurement, so
@@ -223,7 +227,7 @@ one number**, which no amount of hysteresis fixes: one spec read 2.8s in the fas
 integration half, 4.37x apart against a band of 2.5x. The half is a decision now, declared by a filename
 (`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
-[`docs/reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) has what each of those cost,
+[`docs/reference/recorded-files.md`](docs/reference/recorded-files.md) has what each of those cost,
 measurement by measurement. **There are none left, and the chain's `seconds` table is the one that was.** It
 was recorded behind a band, a machine field, a budget check and an idle floor, and the quantity underneath
 was never one number — `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that
@@ -352,7 +356,7 @@ Rules that pay for themselves:
   marker gate is the worked example — while *measured slower* may be a fact about the machine and is only
   ever a report. Gating that direction is what cost the deleted subsystem its window, its band and its two
   idle floors. **The asymmetry holds for a thing's own time and not for a bar derived from it**, which is
-  the correction [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) records: a
+  the correction [`reference/recorded-files.md`](docs/reference/recorded-files.md) records: a
   quantile moves with the load that moves the files under it.
 
 [`docs/reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) has what each of these cost to
@@ -428,7 +432,7 @@ a causal claim is an argument and no check holds an argument.
 
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
-- `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
+- `<name>:check` / `<name>:update` — something recorded that can go stale, and the two halves
   carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
@@ -436,14 +440,14 @@ a causal claim is an argument and no check holds an argument.
   second word is a place, and nothing here writes a tracked file.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
-The point is that the name is derivable: knowing an artifact tells you both its scripts, without a grep.
-Put a new recorded artifact in the first shape and give it both halves, even when one half is trivial —
-an artifact with only an update is one nothing will notice has gone stale.
+The point is that the name is derivable: knowing a recorded file tells you both its scripts, without a grep.
+Put a new recorded file in the first shape and give it both halves, even when one half is trivial —
+a recorded file with only an update is one nothing will notice has gone stale.
 
 ```bash
 npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
                          # The pack's backend watcher rebuilds its runtime on source changes;
-                         # Vite serves frontend source. Use build:default-setup for all pack artifacts.
+                         # Vite serves frontend source. Use build:default-setup for all pack output.
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
 npm run dev:open             # Open/reuse the built app and hold it; no builds or watchers
 npm run build:api         # Build backend only
@@ -458,8 +462,8 @@ npm run typecheck        # Every check below, plus check:specifiers — its 17 l
                          # and typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed
                          # fails here rather than leaving the sentence to drift. The wall time is a
                          # measurement and can only be re-measured.
-                         # **It answers for every recorded artifact**: beside the legs it borrows the two
-                         # whose checks are chain steps (api:check, facade:check — ARTIFACT_CHECKS), taking
+                         # **It answers for every recorded file**: beside the legs it borrows the two
+                         # whose checks are chain steps (api:check, facade:check — RECORDED_FILE_CHECKS), taking
                          # each step's own timeout class, declared cost and core width rather than restating
                          # them. Borrowed, not moved: as legs they would need five hand-written fields each
                          # and would drop inputs that decide what a report says.
@@ -556,7 +560,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
-npm test                 # Build fresh artifacts and run every test suite, without test-result caches
+npm test                 # Build fresh builds and run every test suite, without test-result caches
 npm run test:e2e         # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @apackdev/source condition, and the pack suite on its own resolving the published
@@ -659,7 +663,7 @@ npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same 
                          # reachable from both it and the bundler, which is what the wrong home costs.
                          # `apack pack build` warns when the report has fallen behind the bundle it just produced
                          # — free there, and a nudge rather than the gate: failing would mean a pack author
-                         # could not start their app until they had rewritten a reviewed artifact mid-change.
+                         # could not start their app until they had rewritten a reviewed report mid-change.
                          # `build:default-setup` declares etc/ because of that read, so the warning is keyed; what fails
                          # on it is the facade:check step
 
@@ -737,7 +741,7 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
 
 npm run packages:build   # Build dist/ for @apackdev/ears, @apackdev/sdk and @apackdev/ui, bundle @apackdev/cli and @apackdev/testing
 npm run packages:check   # publint + arethetypeswrong over a tarball packed from each of the five published
-                         # trees — the artifact npm ships, rather than the directory it is derived from, and
+                         # trees — the tarball npm ships, rather than the directory it is derived from, and
                          # one tarball per tree so the two tools cannot read different bytes of it. It
                          # refuses a tree the sources have moved past rather than checking it, so
                          # `after packages:build` is enforced rather than advised — door 8 in

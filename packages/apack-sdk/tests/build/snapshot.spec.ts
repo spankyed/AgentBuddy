@@ -42,7 +42,7 @@ describe('snapshot data reader', () => {
     expect(parseSnapshot({ ...snapshot(), declarationRevision }).status).toBe('invalid');
   });
 
-  it('reads all supported fields without changing the artifact', () => {
+  it('reads all supported fields without changing the snapshot', () => {
     const data: PackSnapshot = {
       ...snapshot(), sdkVersion: '0.4.0',
       provenance: { entities: { Memo: 'ancestor' }, plugins: { 'fixture-pack/notes': 'fixture-pack' } },
@@ -53,7 +53,7 @@ describe('snapshot data reader', () => {
     expect(data).toEqual(before);
   });
 
-  it.each([null, undefined, [], 'snapshot', 7])('refuses non-object artifacts: %j', data => {
+  it.each([null, undefined, [], 'snapshot', 7])('refuses non-object snapshots: %j', data => {
     expect(parseSnapshot(data).status).toBe('invalid');
     expect(_snapshotFormatMismatch(data)?.problem).toContain('format (none)');
   });

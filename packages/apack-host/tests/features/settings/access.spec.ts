@@ -4,10 +4,10 @@ import type { PackOrigin } from '../../../src/packs/registry.ts';
 import { createSettingsAccess } from '../../../src/features/settings/be/access.ts';
 
 const origin = (): PackOrigin => ({
-  id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'artifact',
+  id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'build',
   name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack',
 });
-const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'artifact' };
+const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'build' };
 
 function setup() {
   const scoped = { get: vi.fn(), set: vi.fn(), reset: vi.fn(), onChange: vi.fn() } as SettingsService;
@@ -19,7 +19,7 @@ function setup() {
 }
 
 describe('settings transport authority', () => {
-  it('issues pack access only for matching accepted declarations and artifact', () => {
+  it('issues pack access only for matching accepted declarations and build', () => {
     const { access, settings, scoped } = setup();
     const credential = access.issuePack('window-one', expected);
     expect(access.resolve('window-one', credential)).toEqual({ kind: 'pack', service: scoped });

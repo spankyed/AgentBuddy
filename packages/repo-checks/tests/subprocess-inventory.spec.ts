@@ -76,7 +76,7 @@ const INVENTORY: Record<string, { calls: number; why: string }> = {
     why: 'node -e inside the consumer directory, so import.meta.resolve and the dynamic imports answer with the consumer\'s resolution and not this process\'s' },
   'packages/repo-checks/tests/_support/repo-files.ts': { calls: 1,
     why: 'git is the only thing that knows what is tracked, and tracked-ness is the subject: a walk of the '
-      + 'tree cannot tell a committed file from a build artifact, which is the distinction every repo-wide '
+      + 'tree cannot tell a committed file from a build output, which is the distinction every repo-wide '
       + 'guard reading this rests on. One call, shared by every spec that asks' },
   'packages/repo-checks/tests/component-contracts.integration.spec.ts': { calls: 1,
     why: 'vue-tsc again, and it emits declarations for the component reports rather than only checking them' },

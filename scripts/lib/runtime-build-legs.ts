@@ -50,7 +50,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * build's 16.0s. Whoever runs `npm run build -w @app/renderer` directly still typechecks.
  *
  * **`@apackdev/sdk` is absent, and that is four facts rather than a speed choice.** Its `build` is
- * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no artifact to
+ * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no output to
  * a step whose product is `APP_OUTPUTS`; `typecheck:sdk` runs that identical compile; the `build:runtime`
  * step's `inputs` name `renderer, api, main, preload` and never `apack-sdk`, so dropping the leg makes
  * the declaration honest rather than narrower; and the step's key would not cover it — the four

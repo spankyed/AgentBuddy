@@ -43,7 +43,7 @@ async function compileContent(work: string): Promise<string> {
   const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'apack.json'), 'utf-8')) as PackManifest;
   const sources = manifest.content!.sources!;
   const entry = (key: string, source: string) => ({ ...(sources[key] as object), path: path.relative(PACK_DIR, source) });
-  const pack = { ...manifest, steps: undefined, content: { ...manifest.content, artifacts: undefined, sources: { notes: entry('notes', path.join(work, 'notes')), library: entry('library', path.join(work, 'library')) } } } as PackManifest;
+  const pack = { ...manifest, steps: undefined, content: { ...manifest.content, datasets: undefined, sources: { notes: entry('notes', path.join(work, 'notes')), library: entry('library', path.join(work, 'library')) } } } as PackManifest;
   const outputDir = path.join(work, 'compiled');
   const { tsImport } = await import('tsx/esm/api');
   await compilePack({

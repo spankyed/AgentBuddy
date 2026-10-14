@@ -48,7 +48,7 @@ profile's installation record file and runs before installed-pack discovery.
 
 `loadExternalPacks(registry?)`:
 1. Reads visible installed directories through `readInstalledPackBuilds()`: validated snapshots, complete asset receipts and directory/manifest owner agreement, or an explicit refusal; no executable imports
-2. Prunes records only when their directories are gone (`forgetPacksExcept()`); invalid artifacts retain user choices and update provenance. Takes enabled directories, shipped IDs first
+2. Prunes records only when their directories are gone (`forgetPacksExcept()`); invalid builds retain user choices and update provenance. Takes enabled directories, shipped IDs first
 3. Loads each enabled pack with `loadSingleExternalPack(dir)`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `apack pack install` or `apack pack dev`
@@ -191,7 +191,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus)` — reads the managed `packs/<id>/` artifact through `loadSingleExternalPack(dir)`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when reading, loading, registration or initialization fails, with why recorded as its load problem. Initialization failure runs shutdown cleanup and unregisters provisional contributions; it does not undo arbitrary data effects. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads the managed `packs/<id>/` build through `loadSingleExternalPack(dir)`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `applyPacks()` (hash-checked, so enabling a pack whose content didn't change imports nothing), then sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when reading, loading, registration or initialization fails, with why recorded as its load problem. Initialization failure runs shutdown cleanup and unregisters provisional contributions; it does not undo arbitrary data effects. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
 `teardownPack(registry, packId, bus)` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its appliers included, and the cached event validation map and partition policy), clears the pack's require cache, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED`. System ids come from the lifecycle lookup, not runtime discovery metadata. The packs system emits `PACK_DEACTIVATED`.
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { previewEnvironment, previewVersion } from '../../../scripts/lib/preview-build.ts';
-import { APP_WORKSPACES, resolveBuildMetadata, createBuildSession, readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild } from '../../../build/build-metadata.ts';
+import { APP_WORKSPACES, resolveBuildMetadata, createBuildSession, readBuildManifest, verifyBuildOutputs, verifyPackagedBuild } from '../../../build/build-metadata.ts';
 
 import { completeBuildFixture } from './_support/app-build.ts';
 
@@ -31,40 +31,40 @@ describe('local preview builds', () => {
     expect(() => resolveBuildMetadata({ APACK_ENV: 'preview' })).toThrow(/Preview builds require/);
   });
 
-  it('isolates channels and rejects incomplete or changed artifacts before packaging', () => {
+  it('isolates channels and rejects incomplete or changed outputs before packaging', () => {
     const preview = createBuildSession(previewEnvironment('0.4.0-preview.1', {}));
     const production = createBuildSession({ APACK_ENV: 'production' });
     dirs.push(preview, production);
     expect(preview).not.toBe(production);
     expect(readBuildManifest(preview).version).toBe('0.4.0-preview.1');
     expect(readBuildManifest(production).channel).toBe('production');
-    expect(() => verifyBuildArtifacts(preview)).toThrow();
+    expect(() => verifyBuildOutputs(preview)).toThrow();
     const app = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-package-'));
     dirs.push(app);
     completeBuildFixture(preview);
-    const receipt = path.join(preview, 'build-artifacts.json');
+    const receipt = path.join(preview, 'build-integrity.json');
     const hashes = JSON.parse(fs.readFileSync(receipt, 'utf8'));
     fs.writeFileSync(receipt, JSON.stringify(Object.fromEntries(Object.entries(hashes).reverse())));
-    expect(() => verifyBuildArtifacts(preview)).not.toThrow();
+    expect(() => verifyBuildOutputs(preview)).not.toThrow();
     fs.cpSync(preview, app, { recursive: true });
     fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.4.0-preview.1' }));
     expect(() => verifyPackagedBuild(app, preview)).not.toThrow();
     for (const workspace of APP_WORKSPACES) {
       const file = path.join(app, 'packages', workspace, 'dist/index.js');
       fs.writeFileSync(file, 'stale');
-      expect(() => verifyPackagedBuild(app, preview)).toThrow(/artifacts differ/);
+      expect(() => verifyPackagedBuild(app, preview)).toThrow(/outputs differ/);
       fs.writeFileSync(file, workspace);
     }
     fs.writeFileSync(path.join(app, 'build-manifest.json'), '{}');
-    expect(() => verifyPackagedBuild(app, preview)).toThrow(/artifacts differ/);
+    expect(() => verifyPackagedBuild(app, preview)).toThrow(/outputs differ/);
     fs.copyFileSync(path.join(preview, 'build-manifest.json'), path.join(app, 'build-manifest.json'));
     fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.3.14' }));
     expect(() => verifyPackagedBuild(app, preview)).toThrow(/Packaged version/);
     fs.writeFileSync(path.join(preview, 'packages/api/dist/index.js'), 'changed after build');
-    expect(() => verifyBuildArtifacts(preview)).toThrow(/artifacts differ/);
+    expect(() => verifyBuildOutputs(preview)).toThrow(/outputs differ/);
   });
 
-  it('names beta artifacts with characters GitHub preserves, using the staged manifest', async () => {
+  it('names beta release files with characters GitHub preserves, using the staged manifest', async () => {
     const stage = createBuildSession({ APACK_ENV: 'beta' });
     dirs.push(stage);
     completeBuildFixture(stage);

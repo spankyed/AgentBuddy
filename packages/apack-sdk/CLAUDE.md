@@ -218,7 +218,7 @@ cannot speak about at all.
 them is the mistake [`one-pack-fixture.md`](../../docs/archive/plans/one-pack-fixture.md) was written to avoid.
 Not a build and not an install either — `buildPack(dir)` builds one and the installer places one, both already
 take a directory, so this composes with them rather than growing a `built` option. The *installed* shape (a
-manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different artifact whose layout
+manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different build whose layout
 `@apackdev/host` owns (`PACK_LAYOUT`), and host's tests build it in host.
 
 **Converting a spec that writes its own pack.** Three things come up every time, in this order:
@@ -231,8 +231,8 @@ manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different 
    grows files can quietly stop a case from firing. `host-import-guard` was checked that way: with its
    offending import removed, two of its five cases fail.
 
-**What not to convert.** The test is whether a spec needs a pack's *source tree* or a built artifact — this
-makes only the first — and these are the shapes that answer "artifact":
+**What not to convert.** The test is whether a spec needs a pack's *source tree* or a built pack — this
+makes only the first — and these are the shapes that answer "built pack":
 
 - a `'{}'` **discovery marker** — three in `import-specifiers.integration`, where a directory holding *any*
   `apack.json` is the subject and eight files of content would slow the walk it tests for nothing;

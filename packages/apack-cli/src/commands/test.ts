@@ -20,7 +20,7 @@ from hostVersion. No checkout is implicitly derived for tests.
 pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
 rather than being tested quietly.
 
---release builds the pack the way a release does, so the tests run the artifact that ships.
+--release builds the pack the way a release does, so the tests run the build that ships.
 \`apack pack release\` passes it; on its own the default build is the faster one to debug.
 
 --contract runs the pack's vitest instead, and starts no app: the checks that read compiled

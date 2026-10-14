@@ -83,7 +83,7 @@ export interface Run {
 
 /**
  * Specs that cover a target and that no walk of the module graph will reach, because a build stands between
- * them: `src` -> `apack pack build` -> an artifact -> the spec that reads it.
+ * them: `src` -> `apack pack build` -> build output -> the spec that reads it.
  *
  * **Beside a run, never instead of one.** An apply *helper* is imported by specs directly — measured,
  * `src/content/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/content/**`
@@ -327,7 +327,7 @@ const BUILD_INPUTS: readonly string[] = ['apack.json', 'package.json', 'tsconfig
 /**
  * Which of a pack's files reach their specs only through a build, and what runs them.
  *
- * Two edges, both of the shape `src` -> `apack pack build` -> an artifact -> a spec that reads it, and neither
+ * Two edges, both of the shape `src` -> `apack pack build` -> build output -> a spec that reads it, and neither
  * visible to any module graph — the spec imports the built output, so a *regenerated* tree is covered while
  * editing the source that generates it reaches nothing.
  *

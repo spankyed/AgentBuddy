@@ -55,7 +55,7 @@ describe('a build that fails', () => {
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
 
-  it('refuses stale generated declarations and retains the previous artifact', async () => {
+  it('refuses stale generated declarations and retains the previous build', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: { id: 'stale-codegen', name: 'Before', features: {} } });
@@ -72,7 +72,7 @@ describe('a build that fails', () => {
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
 
-  it.each(['missing', 'modified'])('refuses %s generated code before replacing the previous artifact', async (change) => {
+  it.each(['missing', 'modified'])('refuses %s generated code before replacing the previous build', async (change) => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: { id: 'damaged-codegen', name: 'Test', features: {},

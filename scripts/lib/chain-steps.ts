@@ -165,7 +165,7 @@ export interface ChainStep {
    * an idle floor before one reading could be compared with another, and the quantity underneath was never
    * one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that floor,
    * because this is the cost *beside whichever peers the schedule admitted*. **Keep the reading; do not
-   * decide with it** — the root guide's rule, and `docs/reference/recorded-artifacts.md` has what deciding
+   * decide with it** — the root guide's rule, and `docs/reference/recorded-files.md` has what deciding
    * with one cost the last time.
    *
    * **To change one:** run `npm run chain -- --all` and read the drift report, which prints the declared
@@ -457,7 +457,7 @@ const rootConfigFor = (suite: UnitSuite, half: Half): string[] =>
 const PACKAGES = PACKAGE_DIRS;
 
 /**
- * A package's own source, its tests, its own tooling, its recorded artifacts, and the files that say how it
+ * A package's own source, its tests, its own tooling, its recorded files, and the files that say how it
  * compiles, tests and lints. `etc` is there because a spec reads it back — `api:check` regenerates the
  * `*.api.md` reports it holds and compares, so a hand-edited report has to re-run what asserts on it. It
  * was justified by `suite-split.spec.ts` reading `etc/spec-cost.json` until 2026-10-05; that record and that
@@ -951,7 +951,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...PACKAGE_BUILD_INPUTS, 'scripts/ensure-packages-built.ts'], outputs: PACKAGE_BUILD_OUTPUTS },
   // publint and attw over the five trees npm publishes. 5.9s measured (publint 2.7s, attw 3.2s), against
   // which its only live call sites were `.github/workflows/ci.yml`, whose triggers are commented out, and the
-  // publish workflow — so the artifact checks ran at the one moment they cannot be cheap.
+  // publish workflow — so the recorded-file checks ran at the one moment they cannot be cheap.
   //
   // Not the dangling-path check, and the difference matters: publint skips any target behind a custom
   // condition (`hasCustomCondition`) and attw resolves standard conditions only, which is how 99 published
