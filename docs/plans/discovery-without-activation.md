@@ -1948,3 +1948,13 @@ presentation. The execution goal records evidence, including actual producer sou
 This improves compiled inventory and completes provenance presentation, not discovery for every kind.
 Static flow/action dependency edges, native/other contribution kinds, complete tool/dependency/output
 freshness, frontend migration and later goal phases remain required.
+
+
+### Shared output freshness outcome (2026-10-14)
+
+`a667b161a` closes the observed source-restoration output hole: cache reuse checks actual produced
+files/bytes, not input identity plus path existence alone. The goal records a real runtime stamp probe,
+exact renderer restoration, guard mutation and full/warm strict evidence. This preserves source/
+descriptor publication behavior; it does not establish implementation/import-graph coverage, dependent
+executable key scope or the drive launcher’s separate freshness nudge. Complete those required checks
+and the remaining discovery kinds/later phases before closing this plan.

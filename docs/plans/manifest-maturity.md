@@ -429,3 +429,16 @@ Commit validated output and tool/dependency checkpoints separately, with mutatio
 external authoring and strict evidence in the goal. Remaining contribution discovery, native metadata,
 static content edges, navigation/boundaries/API consumption/replacement and final strict `--all` retain
 their full existing scope.
+
+
+### Output evidence outcome (2026-10-14)
+
+`a667b161a` implements the shared successful-output evidence checkpoint above. Complete output file
+membership/bytes are checked independently of pre-run input identity, including after partial atomic
+replacement. The actual runtime build stamp rejects compiled renderer drift and accepts exact
+restoration. Focused guards, full strict and a 1.0s unchanged warm strict run are recorded in the goal.
+
+Tool implementation/import identity, dependency executable/helper keys, deliberate skips and launch
+freshness remain required. The drive preflight still uses a separate mtime nudge because manually
+invoked runtime builds do not currently write the chain’s success record; do not silently conflate its
+purpose or claim it solved from the chain probe. Preserve the full remaining roadmap.

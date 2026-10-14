@@ -3897,3 +3897,40 @@ implementation/import graph and output freshness remain, including the observed 
 renderer output surviving source restoration behind an unchanged input key. Full contribution/native
 discovery, static flow/action edges, frontend migration, navigation, boundaries and all Phase 6
 workstreams retain their scope. Final committed-source strict `--all` and full audit remain due.
+
+
+### Successful output evidence — freshness checkpoint (2026-10-14)
+
+Source `a667b161a` records complete produced file membership and byte digests after successful work,
+separately from input fingerprints captured before it. Freshness now requires both. Input/output walks
+are named distinctly; output evidence includes hidden files, shipped prose and nested modules instead
+of source exclusions. The shared sweep forgets both walks after declared writes. Atomic publication
+may retain a prior record, but changed/partial output cannot reuse it; failed output capture or stamp
+publication drops success records. Missing/malformed current records are cold, with no format-version
+adapter or special legacy reader.
+
+Focused checks pass 221 cases (`/private/tmp/apack-output-evidence-focused.log`), including changed/
+missing/extra output, source restoration after a different manual build, partial multi-output replacement,
+complete output scope, sweep forgetting and post-run capture failure. Removing output comparison fails
+seven of eight targeted cases; source restored exactly (`/private/tmp/apack-output-evidence-mutation.log`).
+Existing tests that asserted input-only reuse were replaced with the required current behavior.
+
+Strict passes in 599.2s with all 30 steps running:
+`/private/tmp/apack-output-evidence-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T20-50-13Z-11905`. It includes 4,719 host cases,
+855 pack cases with two existing skips, 684 integration cases and external/smoke/packaged app checks.
+The actual `build:runtime` graph/stamp rejects a deliberate compiled renderer byte change with unchanged
+source and becomes fresh after exact byte restoration:
+`/private/tmp/apack-output-evidence-runtime-probe.log`. No app executes the mutated output.
+After restoration, unchanged strict validation passes in 1.0s (29 of 30 cached):
+`/private/tmp/apack-output-evidence-warm-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T21-00-47Z-44782`.
+Generated EARS and all six baseline compiled content files remain byte-identical; no SDK public API,
+format stamp or release metadata changes. The unrelated issue draft remains untouched.
+
+This closes the observed source-restoration/out-of-band output gap in shared chain/package freshness.
+It does not prove full tool/import-graph coverage or repair the drive launcher’s separate mtime nudge.
+Required next work: complete workspace/published implementation identity, dependent executable/helper
+content keys, deliberate skip paths and the appropriate launch freshness contract. All remaining
+discovery/native/content-edge, frontend/navigation/boundary and Phase 6 workstreams remain required;
+final committed-source strict `--all` and the whole-goal audit remain due.
