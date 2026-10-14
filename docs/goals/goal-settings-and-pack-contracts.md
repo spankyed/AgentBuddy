@@ -2592,3 +2592,38 @@ then migrate editor readers and dispose/recreate providers on binding changes. R
 aggregate at that migration and test an actual external reference contributor in an already-open editor.
 Continue all other kinds/native locator checks/freshness, entity routing/readiness, boundaries and every
 Phase 6 workstream. Final committed-source --all, whole-goal acceptance auditing and archival remain due.
+
+
+### Window declaration transport checkpoint (2026-10-13)
+
+Source commit `aa756b243` exposes the existing common catalog through `packs.catalog`, streaming the
+current snapshot and committed updates independently of loaded runtimes. Router checks cover native
+and disabled installed declarations without activating their targets; each subscriber releases its
+catalog listener. Frames carry publisher-run identity and catalog revision.
+
+The window-owned reader captures immutable ordinary-JSON snapshots, validates frame bookkeeping,
+ignores older revisions and refuses conflicting data at one revision. Generation guards reject late
+callbacks after restart, timeout, disconnect and disposal. Synchronous setup cleanup, failed observers
+and an initial-read timeout are covered. It retains the last accepted snapshot on failure with an
+explicit unavailable status. Declaration validation remains the producer's responsibility; no Node
+build tooling is imported into the window to repeat artifact admission.
+
+The renderer connects/disconnects this resource with its bus lifetime without gating activation on
+catalog delivery. Old bus/status/settings callbacks cannot resurrect a stopped subscription. A composed
+renderer test proves catalog data reaches the real resource before settings bootstrap announces readiness.
+Twelve reader, two router and eight renderer-client checks pass. Removing connection-generation guards
+failed three named restart/timeout/disposal assertions; exact restoration passed the reader suite.
+
+Strict validation passed all 30 gates in 371.4 seconds (12 cached), including fresh Electron/default-fork
+acceptance, smoke and both packaged-authoring halves. The final renderer composition assertion and
+formatting passed a subsequent strict run in 62.1 seconds (21 cached); rebuilt app bytes were unchanged,
+so app acceptance was reused. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T02-18-57Z-31693`
+and `node_modules/.cache/apack-chain/runs/2026-10-14T02-26-46Z-59802`;
+logs `/private/tmp/apack-window-catalog-strict.log` and `/private/tmp/apack-window-catalog-strict-final.log`.
+
+Next expose the declaration read port and migrate reference/editor/provider consumers to catalog data
+plus accepted bindings, preserving owner and lifetime identity for eligibility. Test an actual external
+reference contributor in an already-open editor and dispose providers on binding/view changes. Remove
+the pack-local aggregate at that migration. All remaining kinds/native/freshness, entity routing,
+boundaries and Phase 6 streams remain required, alongside final committed-source --all and the complete
+acceptance audit. Transport is delivered; the owning goal and discovery consumers remain unfinished.
