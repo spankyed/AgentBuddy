@@ -1,32 +1,21 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import type { PackManifest, PackTypeManifest, PackDependencySnapshot } from '@apackdev/sdk/build';
 import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
-import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
+import { findPackRoot, readValidManifest } from '../utils';
 import { resolveDeps } from './generate';
 import { packInputsHash } from '../build/pack-inputs.ts';
+import { buildToolHash } from '../build/tool-identity.ts';
 
 const HASH_FILE = '.inputs-hash';
-// Hash the codegen implementation too, so SDK upgrades regenerate entries
-function codegenSource(): string {
-  const sdkDir = sdkPackageDir();
-  for (const dir of ['src', 'dist']) {
-    const source = path.join(sdkDir, dir);
-    if (fs.existsSync(source)) return `${sdkVersion()}:${packInputsHash(source)}`;
-  }
-  return sdkVersion() ?? '';
-}
-
 function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: Map<string, PackDependencySnapshot>): string {
   const hash = createHash('sha256');
   hash.update(packInputsHash(root, { modulesOnly: true }));
   // The parsed declarations used below are part of the identity, even if disk changes between reads.
   hash.update(JSON.stringify(manifest));
-  hash.update(codegenSource());
-  hash.update(fs.readFileSync(fileURLToPath(import.meta.url)));
+  hash.update(buildToolHash());
   // Generated flow helpers and types depend on every resolved dependency, wherever it came from
   for (const depId of [...depSnapshots.keys()].sort()) {
     hash.update(depId);

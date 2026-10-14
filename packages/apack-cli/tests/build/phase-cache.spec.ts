@@ -3,8 +3,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dslInputsHash, feInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash } from '../../src/build/phase-cache';
+import * as toolIdentity from '../../src/build/tool-identity.ts';
 
 const dirs: string[] = [];
 
@@ -19,7 +20,18 @@ function tmp(files: Record<string, string> = {}): string {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+it('invalidates every cached phase when the shared tool implementation changes', () => {
+  const root = tmp({ 'apack.json': '{"id":"p"}' });
+  const tool = vi.spyOn(toolIdentity, 'buildToolHash').mockReturnValue('before');
+  const phases = [() => feInputsHash(root, { release: false }, []),
+    () => typesInputsHash(root, new Map()), () => dslInputsHash(root, [])];
+  const before = phases.map(hash => hash());
+  tool.mockReturnValue('after');
+  phases.forEach((hash, index) => expect(hash()).not.toBe(before[index]));
 });
 
 describe('reuseProblem', () => {

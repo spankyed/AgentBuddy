@@ -10,8 +10,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { cliVersion } from '../utils';
 import { packInputsHash } from './pack-inputs.ts';
+import { buildToolHash } from './tool-identity.ts';
 
 /** Where the stamps live: beside `reads.json`, in the directory every pack already ignores */
 const CACHE_FILE = path.join('.apack', 'build-cache.json');
@@ -92,17 +92,6 @@ export function takeForward(distDir: string, stagedDir: string, files: readonly 
 }
 
 /**
- * The implementation of the phase, so an edit to a bundler invalidates what it produced. Workspace source
- * first, then the published bundle, then the version — the three cases and the order are `codegenSource()`'s
- * in `generate-entries.ts`, for the same reason: in a checkout the version does not move when the code does.
- */
-function bundlerSource(file: string): string {
-  const candidate = path.join(import.meta.dirname, file);
-  if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf-8');
-  return cliVersion() ?? '';
-}
-
-/**
  * The `@apackdev` packages a pack's frontend compiles against, as the pack itself resolves them — workspace
  * source in a checkout, `node_modules` in an installed pack, which is the one layout a pack author has.
  *
@@ -133,7 +122,7 @@ export function apackScope(packDir: string): { readonly dirs: readonly string[] 
  * is silent, and over-broad is the safe direction for a cache key. Before reuse existed this needed no
  * answer at all, because the bundler always ran.
  *
- * `bundlerSource` covers the CLI's own code; this covers what it calls.
+ * `buildToolHash` covers the CLI's implementation; this covers installed bundling tools.
  */
 function bundlerVersions(): string {
   const require = createRequire(import.meta.url);
@@ -183,7 +172,8 @@ function phaseInputsHash(root: string, o: {
 }): string {
   const hash = createHash('sha256');
   if (o.release !== undefined) hash.update(`release:${o.release}`);
-  hash.update(bundlerSource(o.bundler));
+  hash.update(o.bundler);
+  hash.update(buildToolHash());
   hash.update(bundlerVersions());
   hash.update(packInputsHash(root, { generated: true }));
   for (const dir of o.dirs ?? []) hashTree(hash, dir);
