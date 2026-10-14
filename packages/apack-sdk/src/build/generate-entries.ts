@@ -494,6 +494,16 @@ export async function generatePackFiles(
     return moduleExports.exportOf(file, name);
   }
 
+  // Whole-module readers take conventional exports; Vue's component export is compiled by the SFC build.
+  for (const { source, kind, label, conventionalExport } of moduleTargets) {
+    if (!conventionalExport || (kind === 'component' && source.endsWith('.vue'))) continue;
+    const file = findSourceModule(root, source, SCRIPT_MODULE_EXTENSIONS, label);
+    if (!file) throw new Error(`${label}: no module found at ${source}`);
+    if (!exportOf(file, conventionalExport)?.value) {
+      throw new Error(`${label}: ${source} doesn't export "${conventionalExport}" as a value`);
+    }
+  }
+
   function outgoingEventTypesOf(file: string, name: string): string[] {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
     return moduleExports.outgoingEventTypesOf(file, name);
@@ -1055,14 +1065,6 @@ ${contractCheck}`;
     const extraImports: string[] = [];
     if (features.some(feature => feature.references)) extraImports.push("import { FEATURE_REFERENCES } from './references.ts';");
     if (fe.tiptapPlugins) {
-      // The manifest names the module and the export name is this convention, so it is checked here: a
-      // renamed export otherwise reaches the author as a missing binding in a generated file, naming
-      // neither the manifest key nor what it expected.
-      const source = sourceFileOf(fe.tiptapPlugins);
-      if (!source) throw new Error(`fe.tiptapPlugins: no module found at ${fe.tiptapPlugins} (.ts or /index.ts)`);
-      if (!exportOf(source, 'tiptapPlugins')?.value) {
-        throw new Error(`fe.tiptapPlugins: ${fe.tiptapPlugins} doesn't export "tiptapPlugins" (export const tiptapPlugins: TiptapPlugin[] = [ … ])`);
-      }
       extraImports.push(`import { tiptapPlugins } from '${toImportPath(root, fe.tiptapPlugins)}';`);
     }
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);

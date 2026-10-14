@@ -86,7 +86,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   const program = ts.createProgram({
     rootNames: files,
     // No ambient type packages (`types`): exports don't depend on them, and loading them is most of the program's cost
-    options: { ...compilerOptions(ts, packRoot), types: [], noEmit: true },
+    options: { ...compilerOptions(ts, packRoot), allowJs: true, types: [], noEmit: true },
   });
   const checker = program.getTypeChecker();
 
@@ -95,7 +95,16 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    return moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (!moduleSymbol) return undefined;
+    const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (exported || name !== 'default') return exported;
+    // CommonJS default imports take module.exports itself; named ESM exports do not imply a default.
+    const exportEquals = sourceFile.statements.some(statement => ts.isExportAssignment(statement) && statement.isExportEquals);
+    const javascript = ['.js', '.jsx', '.cjs'].includes(path.extname(file));
+    const esm = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)
+      || (ts.isExportAssignment(statement) && !statement.isExportEquals)
+      || (ts.canHaveModifiers(statement) && ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)));
+    return exportEquals || (javascript && !esm) ? moduleSymbol : undefined;
   }
 
   /**

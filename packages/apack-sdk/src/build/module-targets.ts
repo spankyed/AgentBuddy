@@ -11,13 +11,14 @@ interface ModuleTarget {
   kind: 'script' | 'component' | 'type' | 'types';
   reference: 'named' | 'default' | 'module';
   label: string;
+  conventionalExport?: string;
 }
 
 /** Authored module targets, derived from declarations; no source discovery or executable imports. */
 export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarget[] {
   const targets: ModuleTarget[] = [];
-  const add = (path: string[], target: string | undefined, kind: ModuleTarget['kind'] = 'script', reference: ModuleTarget['reference'] = 'named', label = path.join('.')) => {
-    if (target !== undefined) targets.push({ path, target, kind, reference, label });
+  const add = (path: string[], target: string | undefined, kind: ModuleTarget['kind'] = 'script', reference: ModuleTarget['reference'] = 'named', label = path.join('.'), conventionalExport = reference === 'module' && kind !== 'types' ? 'default' : undefined) => {
+    if (target !== undefined) targets.push({ path, target, kind, reference, label, conventionalExport });
   };
   for (const feature of packFeatures(manifest)) {
     const prefix = ['features', feature.id];
@@ -58,7 +59,7 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   }
   for (const [name, entry] of Object.entries(manifest.extensions?.artifacts ?? {})) add(['extensions', 'artifacts', name, 'fe'], entry.fe, 'component', 'module');
   for (const [name, entry] of Object.entries(manifest.extensions?.dsl ?? {})) add(['extensions', 'dsl', name, 'entry'], entry.entry, 'types', 'module');
-  add(['extensions', 'fe', 'tiptapPlugins'], manifest.extensions?.fe?.tiptapPlugins, 'script', 'module');
+  add(['extensions', 'fe', 'tiptapPlugins'], manifest.extensions?.fe?.tiptapPlugins, 'script', 'module', 'extensions.fe.tiptapPlugins', 'tiptapPlugins');
   for (const [name, target] of Object.entries(manifest.extensions?.fe?.appExtensions ?? {})) add(['extensions', 'fe', 'appExtensions', name], target, 'component', 'module');
   for (const [name, target] of Object.entries(manifest.lifecycle ?? {})) add(['lifecycle', name], target);
   for (const line of MIGRATION_LINES) {
@@ -67,7 +68,7 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   for (const [name, target] of Object.entries(manifest.content?.writers ?? {})) add(['content', 'writers', name], target);
   for (const [name, entry] of Object.entries(manifest.content?.formats ?? {})) add(['content', 'formats', name, 'compiler'], entry.compiler, 'script', 'module');
   for (const [name, entry] of Object.entries(manifest.content?.sources ?? {})) {
-    if (typeof entry !== 'string') add(['content', 'sources', name, 'applier'], entry.applier, 'script', 'module');
+    if (typeof entry !== 'string') add(['content', 'sources', name, 'applier'], entry.applier, 'script', 'module', `content.sources.${name}.applier`, 'apply');
   }
   return targets;
 }

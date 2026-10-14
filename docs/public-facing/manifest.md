@@ -14,7 +14,10 @@ including symlinks. A path and a selected export have different meanings:
 | Services, repositories, step facets, lifecycle hooks, migrations, content writers, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
 | Plugin machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
 
-Schema validation, source checks and codegen use these same distinctions. Missing modules or required
+Schema validation, source checks and codegen use these same distinctions. Whole-module readers check
+their conventional runtime exports (`default`, `apply` or `tiptapPlugins`) without activation; type
+barrels remain type-only and Vue component exports are checked by the frontend build. JavaScript
+exports are inspected too, including CommonJS default-import semantics. Missing modules or required
 exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
 
 ## Field reference

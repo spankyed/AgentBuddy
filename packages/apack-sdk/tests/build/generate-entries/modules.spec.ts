@@ -100,6 +100,32 @@ describe('a diamond dependency', () => {
 });
 
 describe('generated imports', () => {
+  it.each(['js', 'mjs', 'cjs'])('inspects a %s system module without executing it', async (extension) => {
+    const entry = `src/system.${extension}`;
+    const fields = { features: { memos: { description: 'Manage memos.', system: { entry } } } };
+    write(entry, `throw new Error("Must not execute"); ${extension === 'cjs' ? 'module.exports = {};' : 'export default {};'}`);
+    await expect(generate(fields)).resolves.toBeDefined();
+    if (extension !== 'cjs') {
+      write(entry, 'export const named = {};');
+      await expect(generate(fields)).rejects.toThrow('export "default" as a value');
+    }
+  });
+
+  it.each([
+    ['system', { features: { memos: { description: 'Manage memos.', system: { entry: 'src/module' } } } }, 'default'],
+    ['form', { features: { memos: { description: 'Manage memos.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/module' } } } }, 'default'],
+    ['compiler', { content: { formats: { custom: { compiler: 'src/module' } } } }, 'default'],
+    ['applier', { content: { sources: { custom: { applier: 'src/module' } } } }, 'apply'],
+  ])('checks the %s conventional export without executing its module', async (_name, fields, expected) => {
+    await expect(generate(fields)).rejects.toThrow('no module found at src/module');
+    write('src/module/index.ts', 'throw new Error("Must not execute"); export interface TypeOnly {}');
+    await expect(generate(fields)).rejects.toThrow(`doesn't export "${expected}" as a value`);
+    write('src/module/index.ts', `export interface TypeOnly {} export type { TypeOnly as ${expected} };`);
+    await expect(generate(fields)).rejects.toThrow(`doesn't export "${expected}" as a value`);
+    write('src/module/index.ts', `throw new Error("Must not execute"); ${expected === 'default' ? 'export default function value() {}' : 'export function apply() {}'}`);
+    await expect(generate(fields)).resolves.toBeDefined();
+  });
+
   it('checks whole-module grammar even without any named exports to inspect', async () => {
     await expect(generate({ features: { memos: { description: 'Manage memos.', system: { entry: 'src/system#default' } } } }))
       .rejects.toThrow('without an export selector');
@@ -186,6 +212,7 @@ describe("the SDK's entities and relation kinds", () => {
 
 describe('generated appliers', () => {
   it('registers the generic applier with its format settings, and SDK appliers for specialty keys', async () => {
+    write('src/content/compilers/help.ts', 'export default () => [];');
     const files = await generate({
       data: { entities: { Memo: null } },
       content: {
@@ -218,12 +245,15 @@ describe('generated appliers', () => {
   });
 
   it("registers a pack applier module under a content key that isn't an identifier", async () => {
+    write('src/content/memos.ts', 'export function apply() {}');
     const appliers = (await generate({ content: { sources: { 'my-memos': { applier: 'src/content/memos.ts' } } } }))['src/__generated__/appliers.ts'];
     expect(appliers).toContain("import { apply as __applier_my_memos } from '../content/memos.ts';");
     expect(appliers).toContain('  { key: "my-memos", apply: __applier_my_memos },');
   });
 
   it("registers a pack applier module for a content source naming one, and still compiles it", async () => {
+    write('src/content/compilers/settings.ts', 'export default () => [];');
+    write('src/content/settings-applier.ts', 'export function apply() {}');
     const files = await generate({
       data: { entities: { Memo: null } },
       content: {

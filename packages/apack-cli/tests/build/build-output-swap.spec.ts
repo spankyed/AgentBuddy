@@ -41,7 +41,7 @@ describe('a build that fails', () => {
   it('refuses publication when an authored input changes during a real build', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
-    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } } }, files: {
+    packFixture({ at: root, manifest: { id: 'changing-inputs', name: 'Changing', features: {}, content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } } }, files: {
       'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default function compile() { return []; }",
       'src/data.ts': 'export default [];',
     } });
