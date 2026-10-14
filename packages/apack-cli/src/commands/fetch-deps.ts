@@ -120,7 +120,10 @@ function inRange(artifacts: DepFiles, range: string): boolean {
 }
 
 /** Whether a validated candidate satisfies the declared version range. */
-function usable(found: DepFiles | null, range: string): found is DepFiles {
+function usable(found: DepFiles | null, range: string, depId: string): found is DepFiles {
+  if (found && found.snapshot.manifest.id !== depId) {
+    throw new Error(`Dependency "${depId}" resolved to pack "${found.snapshot.manifest.id}"; correct its declared source.`);
+  }
   return found !== null && inRange(found, range);
 }
 
@@ -128,7 +131,7 @@ function usable(found: DepFiles | null, range: string): found is DepFiles {
 function resolveFromInstalledApp(depId: string, range: string): (DepFiles & { env: AppEnv }) | null {
   for (const env of APP_ENVS) {
     const found = findDepFiles(path.join(resolveAppEnvironment({ env }).packsDir, depId));
-    if (usable(found, range)) return { ...found, env };
+    if (usable(found, range, depId)) return { ...found, env };
   }
   return null;
 }
@@ -262,11 +265,14 @@ async function downloadAndExtract(
       console.warn(`  ${asset.name} contains pack "${bundle.id}", not ${depId}`);
       return null;
     }
+    if (bundle.version !== version) throw new Error(`Release ${depId}@${version} contains pack version ${bundle.version}; correct the published artifact.`);
     const artifacts = findDepFiles(extracted);
     if (!artifacts) {
       console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
       return null;
     }
+    usable(artifacts, '*', depId);
+    if (artifacts.snapshot.manifest.version !== version) throw new Error(`Release ${depId}@${version} contains snapshot version ${artifacts.snapshot.manifest.version}; correct the published artifact.`);
     // The temp dir is removed below; persist into the cache first
     cacheDep(root, depId, artifacts);
     return resolveFromLocal(root, depId);
@@ -345,7 +351,7 @@ async function resolveFromMachine(root: string, depId: string, range: string, op
     const configured = await resolveFromConfiguredHost(root, depId, true, options);
     if (configured) {
       const version = configured.snapshot.manifest.version;
-      if (!usable(configured, range)) {
+      if (!usable(configured, range, depId)) {
         throw new Error(`Selected host dependency "${depId}" version ${version} does not satisfy ${range}.`);
       }
       const { label, ...artifacts } = configured;
@@ -353,10 +359,10 @@ async function resolveFromMachine(root: string, depId: string, range: string, op
     }
   }
   const workspace = await resolveFromWorkspace(root, depId);
-  if (usable(workspace, range)) return { ...workspace, resolvedFrom: 'workspace' };
+  if (usable(workspace, range, depId)) return { ...workspace, resolvedFrom: 'workspace' };
 
   const configured = pinned ? null : await resolveFromConfiguredHost(root, depId, false, options);
-  if (configured && usable(configured, range)) {
+  if (configured && usable(configured, range, depId)) {
     const { label, ...artifacts } = configured;
     return { ...artifacts, resolvedFrom: label };
   }
@@ -388,7 +394,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
   if (filePath) {
     const where = `file:${path.resolve(root, filePath)}`;
     const found = resolveFromFile(root, filePath);
-    if (usable(found, range)) return { ...found, resolvedFrom: where };
+    if (usable(found, range, depId)) return { ...found, resolvedFrom: where };
     if (!found) console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
     return null;
   }
@@ -438,7 +444,7 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
   // nothing about where they came from. Recording provenance in .apack/deps would cover this, and
   // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   const cached = resolveFromLocal(root, depId);
-  if (usable(cached, range)) return cached;
+  if (usable(cached, range, depId)) return cached;
 
   if (options.readOnly) {
     return null;

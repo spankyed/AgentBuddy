@@ -98,6 +98,26 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.readdirSync(artifacts!.contentDir!).sort()).toEqual(['content.json', 'media', 'settings.content.json']);
   });
 
+  it('refuses a file dependency whose artifact belongs to a different pack', async () => {
+    const source = builtInPack();
+    const root = path.join(tmp, 'author-pack');
+    fs.mkdirSync(root);
+    await expect(resolveDepFiles(root, 'wrong-pack', `file:${source}`, { readOnly: true }))
+      .rejects.toThrow('Dependency "wrong-pack" resolved to pack "base-pack"');
+    expect(fs.existsSync(path.join(root, '.apack'))).toBe(false);
+  });
+
+  it('refuses a valid cached artifact renamed under another dependency id', async () => {
+    await installPackFromLocal(builtInPack(), packsDir());
+    const root = path.join(tmp, 'author-pack');
+    fs.mkdirSync(root);
+    await resolveDepFiles(root, 'base-pack', '*');
+    fs.rmSync(path.join(packsDir(), 'base-pack'), { recursive: true });
+    fs.renameSync(path.join(root, '.apack/deps/base-pack'), path.join(root, '.apack/deps/wrong-pack'));
+    await expect(resolveDepFiles(root, 'wrong-pack', '*', { readOnly: true }))
+      .rejects.toThrow('Dependency "wrong-pack" resolved to pack "base-pack"');
+  });
+
   it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {
     await installPackFromLocal(builtInPack(), packsDir());
     const packRoot = path.join(tmp, 'author-pack');
@@ -251,14 +271,15 @@ describe('dependency resolution from an installed app', () => {
   });
 
   /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack pack release` publishes them */
-  async function publishedRelease(version: string, format: number | undefined) {
+  async function publishedRelease(version: string, format: number | undefined, snapshotIdentity: { id?: string; version?: string } = {}) {
     const src = path.join(tmp, `dep-pack-${version}`);
     fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });
     fs.mkdirSync(path.join(src, 'dist', 'runtime'), { recursive: true });
     const manifest = { id: 'dep-pack', name: 'Dep', version };
     fs.writeFileSync(path.join(src, 'apack.json'), JSON.stringify(manifest));
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
-    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, facades: {}, manifest, format }));
+    const snapshotManifest = { ...manifest, ...snapshotIdentity };
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(snapshotManifest), types: { entities: {}, relKinds: {} }, facades: {}, manifest: snapshotManifest, format }));
     const stage = path.join(tmp, `stage-${version}`);
     sealPackBuild(path.join(src, 'dist'), manifest);
     stagePack(src, stage);
@@ -282,6 +303,14 @@ describe('dependency resolution from an installed app', () => {
     }));
     return downloaded;
   }
+
+  it.each([{ id: 'other-pack' }, { version: '1.5.0' }])('refuses mismatched release snapshot identity before caching: %j', async identity => {
+    serveReleases([await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1, identity)]);
+    const root = authorPack();
+    await expect(resolveDepFiles(root, 'dep-pack', 'github:acme/dep-pack ^1.0.0'))
+      .rejects.toThrow(identity.id ? 'Dependency "dep-pack" resolved to pack "other-pack"' : 'Release dep-pack@1.4.0 contains snapshot version 1.5.0');
+    expect(fs.existsSync(path.join(root, '.apack/deps/dep-pack'))).toBe(false);
+  });
 
   it('selects current type data from the newest release without granting execution', async () => {
     const releases = [await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1), await publishedRelease('1.3.0', PACK_SNAPSHOT_FORMAT)];
