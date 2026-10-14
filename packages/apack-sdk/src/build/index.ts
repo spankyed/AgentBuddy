@@ -41,7 +41,7 @@ export { buildPackConfigFromManifest } from './manifest-bridge.ts';
 
 // Pack manifest types
 export type {
-  PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
+  PackManifest, PackTypeManifest, PackSnapshot, PackDependencySnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
   PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackFeature, PackLifecycleConfig, PackMigrationDeclaration, ContentSourceConfig, ContentFormatConfig,
@@ -69,10 +69,10 @@ export { validateManifest, validatePackSources, parseManifest } from './validate
 export { packValidation } from './diagnostics.ts';
 export type { PackDiagnostic, SkippedPackCheck, PackValidation } from './diagnostics.ts';
 export { generateSettingsTypes } from './settings-types.ts';
-export { parseSnapshot } from './snapshot.ts';
+export { parseSnapshot, parseDependencySnapshot } from './snapshot.ts';
 export { _helpDataProblem } from './help-data.ts';
 export { _declarationRevision } from './declaration-revision.ts';
-export type { PackSnapshotValidation } from './snapshot.ts';
+export type { PackSnapshotValidation, PackDependencySnapshotValidation } from './snapshot.ts';
 
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {

@@ -95,6 +95,9 @@ const PACKS_AS_A_FIXTURE: Record<string, string> = {
   'packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts':
     'the same gate asked of the layout a pack author has, which is the half of that suite the packed '
     + 'consumer belongs to — it reaches the fixture through _support/facade-packs.ts, as its sibling does',
+  'packages/apack-cli/tests/build/facade-type-data.integration.spec.ts':
+    'CLI dependency type-data admission and execution refusal use the shared facade fixture; '
+    + 'the producer/consumer build is the fixture, not a check of package publication',
   'packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts':
     "the FE bundler's host-registry proxying, with a packed consumer as the thing it bundles against",
   'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts':

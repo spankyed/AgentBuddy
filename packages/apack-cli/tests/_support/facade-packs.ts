@@ -47,6 +47,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { sealPackBuild } from '@apackdev/host/packs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from './pack-builds';
@@ -327,7 +328,7 @@ async function addBaseStep(dir: string): Promise<void> {
     + '\n/** A node type that doesn\'t narrow nodeType and adds no required field */\nexport interface NoteNode extends NodeBase {\n  note?: string;\n}\n');
 }
 
-async function buildPacks(published: boolean): Promise<string> {
+async function buildPacks(published: boolean, dependencyStamp?: { format?: number; sdkVersion?: string }): Promise<string> {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
@@ -336,6 +337,16 @@ async function buildPacks(published: boolean): Promise<string> {
     // produces: the built pack whose snapshot and declarations the tests read
     const build = await callCli(dir, 'build');
     if (build.code !== 0) throw new Error(`apack pack build failed in ${name}:\n${build.output}`);
+    if (name === 'base-pack' && dependencyStamp) {
+      const file = path.join(dir, 'dist/types/snapshot.json');
+      const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+      Object.assign(snapshot, dependencyStamp);
+      fs.writeFileSync(file, JSON.stringify(snapshot));
+      fs.writeFileSync(path.join(dir, 'dist/runtime/index.cjs'), 'throw new Error("Dependency runtime must not execute for type inspection");');
+      fs.writeFileSync(path.join(dir, 'dist/build/steps.build.mjs'), 'throw new Error("Dependency build code must not execute for type inspection");');
+      sealPackBuild(path.join(dir, 'dist'), snapshot.manifest, snapshot.sdkVersion);
+    }
+
   }
   write(path.join(parent, 'app-pack'), { 'src/consumer.ts': CONSUMER });
   return parent;
@@ -450,7 +461,7 @@ function packDeclarationDiagnostics(app: string, tsconfig: string): string[] {
  * `LAYOUTS` list did by omitting the entry: a skipped case says in its name why it did not run, where a
  * list one short says nothing at all.
  */
-export function facadeSuite(name: string, published: boolean): void {
+export function facadeSuite(name: string, published: boolean, dependencyStamp?: { format?: number; sdkVersion?: string }): void {
 
 /**
  * Turn the event loop between tests.
@@ -466,7 +477,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
   describe.skipIf(published && !PACKAGES_BUILT)(`generated facades with a dependency ('${name}')`, () => {
   let parent: string;
-  beforeAll(async () => { parent = await buildPacks(published); });
+  beforeAll(async () => { parent = await buildPacks(published, dependencyStamp); });
   afterAll(() => { if (parent) fs.rmSync(parent, { recursive: true, force: true }); });
 
   it("writes the dependency's facade types into its snapshot", () => {
@@ -516,6 +527,19 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
     expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
     expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
+  });
+
+  if (dependencyStamp) it('refuses incompatible dependency build code when compiling content', async () => {
+    const app = path.join(parent, 'app-pack');
+    const file = path.join(app, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest.content = { formats: { items: { format: 'json' } }, datasets: { items: { path: 'src/content/items.json', format: 'items' } } };
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    write(app, { 'src/content/items.json': '[]' });
+    const result = await callCli(app, 'build');
+    expect(result.code, result.output).toBe(1);
+    expect(result.output).toContain('Dependency "base-pack" cannot supply build code');
+    expect(result.output).not.toContain('Dependency build code must not execute');
   });
   });
 }

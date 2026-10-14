@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apackdev/sdk/build';
+import type { PackManifest, PackTypeManifest, PackDependencySnapshot } from '@apackdev/sdk/build';
 import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
@@ -19,7 +19,7 @@ function codegenSource(): string {
   return sdkVersion() ?? '';
 }
 
-function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: Map<string, PackSnapshot>): string {
+function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: Map<string, PackDependencySnapshot>): string {
   const hash = createHash('sha256');
   hash.update(packInputsHash(root, { modulesOnly: true }));
   // The parsed declarations used below are part of the identity, even if disk changes between reads.
@@ -84,7 +84,7 @@ export async function generateEntries(
   _args: string[],
   packRoot?: string,
   depTypes?: Map<string, PackTypeManifest>,
-  depSnapshots?: Map<string, PackSnapshot>,
+  depSnapshots?: Map<string, PackDependencySnapshot>,
 ) {
   if (_args.some(arg => arg !== '--force')) throw new Error('Usage: apack pack generate-entries [--force]');
   const root = packRoot ?? findPackRoot(process.cwd());
@@ -138,7 +138,7 @@ async function writeGenerated(
   currentHash: string,
   manifest: PackManifest,
   depTypes: Map<string, PackTypeManifest> | undefined,
-  depSnapshots: Map<string, PackSnapshot>,
+  depSnapshots: Map<string, PackDependencySnapshot>,
 ) {
   const files = await generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 

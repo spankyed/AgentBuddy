@@ -211,41 +211,42 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepFiles(fixture, 'base-pack', '*'))?.snapshot.manifest.version).toBe('4.0.0');
   });
 
-  /**
-   * A snapshot in another format is misread rather than refused by whatever reads it, so the format is
-   * checked where a build is chosen, beside the version range.
-   */
-  describe('the snapshot format', () => {
-    it('refuses an explicitly selected host in another snapshot format', async () => {
+  describe('type data and execution stamps', () => {
+    it('reads an explicitly selected host without substituting another source', async () => {
       await publishInstalled('1.0.0');
       const checkout = path.join(tmp, 'apack');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
       process.env.APACK_HOST = checkout;
-
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(/its snapshot is format/);
+      const found = await resolveDepFiles(authorPack(), 'base-pack', '*');
+      expect(found?.snapshot.manifest.version).toBe('3.0.0');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
 
-    it('refuses a dependency found only in another format, naming where and which side is older', async () => {
-      await publishInstalled('1.0.0', undefined, { format: undefined, sdkVersion: '0.3.14' });
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
-        `Dependency "base-pack" has no build this CLI can use:\n  - installed app (production): its snapshot is format (none), written by an older apack CLI (SDK 0.3.14); this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
-      );
-
-      await publishInstalled('1.0.0', undefined, { format: PACK_SNAPSHOT_FORMAT + 1 });
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
-        `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
-      );
+    it.each([undefined, PACK_SNAPSHOT_FORMAT + 1])('reads installed type data without exposing executable files: %s', async format => {
+      await publishInstalled('1.0.0', undefined, { format, sdkVersion: '0.3.14' });
+      const found = await resolveDepFiles(authorPack(), 'base-pack', '*');
+      expect(found?.snapshot.format).toBe(format);
+      expect(found?.snapshot.sdkVersion).toBe('0.3.14');
+      expect(found?.executionProblem).toContain('its snapshot is format');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
 
-    it('never serves a cached snapshot in another format', async () => {
+    it('retains stamp context and execution refusal after cache reuse', async () => {
       const packRoot = authorPack();
       await publishInstalled('1.0.0');
-      expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
+      expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull();
       fs.rmSync(path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs', 'base-pack'), { recursive: true });
       fs.writeFileSync(path.join(packRoot, '.apack', 'deps', 'base-pack', 'snapshot.json'), JSON.stringify(snapshotOf('1.0.0', { format: undefined })));
-
-      await expect(resolveDepFiles(packRoot, 'base-pack', '*')).rejects.toThrow('the .apack/deps cache: its snapshot is format (none)');
+      const found = await resolveDepFiles(packRoot, 'base-pack', '*');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
   });
 
@@ -282,28 +283,31 @@ describe('dependency resolution from an installed app', () => {
     return downloaded;
   }
 
-  // A GitHub dependency picks among releases as the local sources pick among builds: a newer release this CLI can't
-  // read gives way to an older one in range that it can
-  it('falls back to an older GitHub release in range when a newer CLI wrote the newest', async () => {
+  it('selects current type data from the newest release without granting execution', async () => {
     const releases = [await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1), await publishedRelease('1.3.0', PACK_SNAPSHOT_FORMAT)];
     const downloaded = serveReleases(releases);
     try {
       const found = await resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0');
-      expect(found?.snapshot.manifest.version).toBe('1.3.0');
-      expect(found?.resolvedFrom).toBe('github:acme/dep-pack@1.3.0');
-      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz', 'dep-pack-1.3.0.tgz']);
+      expect(found?.snapshot.manifest.version).toBe('1.4.0');
+      expect(found?.resolvedFrom).toBe('github:acme/dep-pack@1.4.0');
+      expect(found?.executionProblem).toContain('its snapshot is format');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
+      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz']);
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  // Every release below one an older CLI wrote is older still: trying them would only spend downloads and rate limit
-  it('stops at the newest GitHub release in range when an older CLI wrote it', async () => {
+  it('retains unstamped release data as metadata without executing it', async () => {
     const releases = [await publishedRelease('1.4.0', undefined), await publishedRelease('1.3.0', undefined)];
     const downloaded = serveReleases(releases);
     try {
-      await expect(resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0'))
-        .rejects.toThrow(/github release 1\.4\.0: its snapshot is format \(none\), written by an older apack CLI/);
+      const found = await resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0');
+      expect(found?.snapshot.manifest.version).toBe('1.4.0');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
       expect(downloaded).toEqual(['dep-pack-1.4.0.tgz']);
     } finally {
       vi.unstubAllGlobals();

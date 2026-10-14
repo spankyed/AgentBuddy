@@ -589,7 +589,7 @@ export function formatEntities(format: ContentFormatConfig): string[];
 // @public (undocumented)
 export interface GenerateEntriesOptions {
     // (undocumented)
-    depSnapshots?: Map<string, PackSnapshot>;
+    depSnapshots?: Map<string, PackDependencySnapshot>;
     // (undocumented)
     depTypes?: Map<string, PackTypeManifest>;
     // (undocumented)
@@ -2529,6 +2529,16 @@ export interface PackDataDeclarations {
 }
 
 // @public
+export type PackDependencySnapshot = Omit<PackSnapshot, 'format'> & {
+    format?: number;
+};
+
+// @public
+export type PackDependencySnapshotValidation = PackValidation & {
+    snapshot?: PackDependencySnapshot;
+};
+
+// @public
 export interface PackDependencySource {
     filePath: string | null;
     github: string | null;
@@ -2656,6 +2666,9 @@ export interface PackValidation {
 
 // @public
 export function packValidation(diagnostics?: PackDiagnostic[], skippedChecks?: SkippedPackCheck[]): PackValidation;
+
+// @public
+export function parseDependencySnapshot(raw: unknown): PackDependencySnapshotValidation;
 
 // @public (undocumented)
 export function parseManifest(raw: unknown): PackValidation;

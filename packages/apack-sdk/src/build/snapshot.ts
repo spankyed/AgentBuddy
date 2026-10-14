@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ManifestSchema } from './manifest-schema.ts';
-import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type ProvenanceKind } from './manifest.ts';
+import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type PackDependencySnapshot, type ProvenanceKind } from './manifest.ts';
 import { packValidation, type PackValidation } from './diagnostics.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { _HelpDocumentsSchema, _helpDataProblem } from './help-data.ts';
@@ -18,6 +18,9 @@ const SnapshotShape = {
   flowHelpers: z.object({ exports: z.array(z.string()), module: z.string(), types: z.string() }).strict().optional(),
 } satisfies Record<keyof PackSnapshot, z.ZodTypeAny>;
 const SnapshotSchema: z.ZodType<PackSnapshot, z.ZodTypeDef, unknown> = z.object(SnapshotShape).strict();
+const DependencySnapshotSchema: z.ZodType<PackDependencySnapshot, z.ZodTypeDef, unknown> = z.object({
+  ...SnapshotShape, format: SnapshotShape.format.optional(),
+}).strict();
 
 export type PackSnapshotValidation = PackValidation & { snapshot?: PackSnapshot };
 
@@ -29,12 +32,30 @@ export function parseSnapshot(raw: unknown): PackSnapshotValidation {
     message: `${mismatch.problem}; this reader requires format ${PACK_SNAPSHOT_FORMAT}`,
     suggestion: mismatch.newer ? 'Update apack to use this build' : 'Rebuild with the matching apack CLI',
   }]);
-  const result = SnapshotSchema.safeParse(raw);
+  return parseSnapshotData(raw, SnapshotSchema);
+}
+
+/** Current-contract type data and diagnostic context, independent of execution eligibility. */
+export type PackDependencySnapshotValidation = PackValidation & { snapshot?: PackDependencySnapshot };
+
+/** Validate the current type-data contract without converting fields or inventing an execution stamp. */
+export function parseDependencySnapshot(raw: unknown): PackDependencySnapshotValidation {
+  const result = parseSnapshotData(raw, DependencySnapshotSchema);
+  if (!result.snapshot) return result;
+  const mismatch = _snapshotFormatMismatch(result.snapshot);
+  return mismatch ? { ...result, diagnostics: [...result.diagnostics, {
+    code: 'dependency.format', severity: 'warning', path: ['format'], source: 'snapshot.json',
+    message: `${mismatch.problem}; type-data use depends on consumed facade capabilities; execution requires format ${PACK_SNAPSHOT_FORMAT}`,
+  }] } : result;
+}
+
+function parseSnapshotData<T extends PackDependencySnapshot>(raw: unknown, schema: z.ZodType<T, z.ZodTypeDef, unknown>): PackValidation & { snapshot?: T } {
+  const result = schema.safeParse(raw);
   if (!result.success) return packValidation(result.error.issues.map(issue => ({
     code: `snapshot.${issue.code}`, severity: 'error', path: issue.path, source: 'snapshot.json',
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
-  const snapshot = raw as PackSnapshot;
+  const snapshot = raw as T;
   if (snapshot.manifest.extensions?.help && snapshot.help === undefined) return packValidation([{
     code: 'snapshot.help.incomplete', severity: 'error', path: ['help'], source: 'snapshot.json',
     message: 'snapshot.json is missing declared help data; rebuild the complete pack',

@@ -347,6 +347,13 @@ A selected host supplies its own packs before workspace lookup. An incompatible 
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.
 7. **Registry** — a stub for future `api.apack.dev` resolution. Currently a no-op.
 
-Sources 2–4 must satisfy the declared semver range. Every source, the cache included, must also carry a snapshot in the format this CLI reads (`format`, `PACK_SNAPSHOT_FORMAT`): a build in another format is passed over for the next source, and a dependency found only in other formats fails, naming each build and whether it was written by an older or a newer apack CLI. A dependency found on this machine or on GitHub is written to `.apack/deps/<id>/` (`snapshot.json`, `facades/`, `build/`, `runtime/`).
+Sources 2–4 must satisfy the declared semver range. Dependency type inspection validates the current
+snapshot data contract and checks the facade exports codegen actually consumes. Recorded snapshot/SDK
+stamps remain diagnostic context; absent or differing snapshot stamps do not invent a matching stamp
+or authorize executable code. Cache entries retain that context. Only a matching snapshot format can
+expose dependency build/runtime files. Type-only builds can proceed without those files; content
+compilation and the test runtime refuse incompatible dependency execution before importing it.
+A dependency found on this machine or on GitHub is cached under `.apack/deps/<id>/`
+(`snapshot.json`, `facades/`, and eligible `build/`/`runtime/` files).
 
-A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). The format versions everything a dependent's codegen reads from it; a snapshot and the CLI generating against it must agree on it exactly, so a pack and its dependencies are built with the same apack version.
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.

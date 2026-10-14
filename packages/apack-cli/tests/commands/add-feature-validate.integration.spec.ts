@@ -129,20 +129,21 @@ describe('apack pack validate', () => {
     expect(output).not.toContain('designation');
   });
 
-  // A dependency found only in a build this CLI can't read is a warning, like one that isn't found: the rest still runs
-  it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
-    const old = path.join(tmp, 'old-pack');
-    fs.mkdirSync(path.join(old, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(old, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
+  it('reports malformed dependency data as incomplete validation', async () => {
+    const dependency = path.join(tmp, 'malformed-pack');
+    fs.mkdirSync(path.join(dependency, 'dist', 'types'), { recursive: true });
+    fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({
+      types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'malformed-pack', version: '1.0.0' },
+    }));
     const manifest = readManifest();
-    manifest.dependencies = { 'old-pack': `file:${old}` };
+    manifest.dependencies = { 'malformed-pack': `file:${dependency}` };
     fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
 
     const { exitCode, output } = await runValidate();
 
     expect(output).toContain('Warnings:');
-    expect(output).toContain('Dependency "old-pack" has no build this CLI can use');
-    expect(output).toContain('its snapshot is format (none), written by an older apack CLI');
+    expect(output).toContain('snapshot.json declarationRevision: Required');
+    expect(output).toContain('snapshot.json manifest.name: Required');
     expect(exitCode).toBe(2);
     expect(output).toContain('Validation incomplete');
     expect(output).not.toContain('Pack is valid');

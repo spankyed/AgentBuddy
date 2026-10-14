@@ -97,6 +97,9 @@ export interface PackSnapshot {
   flowHelpers?: PackFlowHelpers;
 }
 
+/** Type-data inspection retains the recorded stamp when present; it does not authorize execution. */
+export type PackDependencySnapshot = Omit<PackSnapshot, 'format'> & { format?: number };
+
 /**
  * A build whose snapshot is in another format than `PACK_SNAPSHOT_FORMAT`: what's wrong, and which side is older, since
  * that decides which one moves. Each reader adds its own remedy.

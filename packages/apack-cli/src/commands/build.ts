@@ -12,7 +12,7 @@ import {
   parseSnapshot,
   compileHelp,
   _declarationRevision,
-  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
+  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackDependencySnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { apackScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
@@ -148,12 +148,14 @@ async function buildIntoStaging(args: string[]) {
 
   // Dependencies' step build code, so this pack's flows validate against real step definitions,
   // and their manifests and build dirs, so entries naming their content formats compile with them
+  const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
   const dependencyStepModules: string[] = [];
   const dependencies = new Map<string, ContentDependency>();
-  const depSnapshots = new Map<string, PackSnapshot>();
+  const depSnapshots = new Map<string, PackDependencySnapshot>();
   for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
     const artifacts = await resolveDepFiles(root, depId, depValue);
     if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
+    if (artifacts.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${artifacts.executionProblem}`);
     const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
     dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
@@ -161,7 +163,6 @@ async function buildIntoStaging(args: string[]) {
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
-  const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
   if (Object.keys(content).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
   } else {

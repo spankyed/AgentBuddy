@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, type PackSnapshot } from '../../src/build/manifest.ts';
-import { parseSnapshot } from '../../src/build/snapshot.ts';
+import { PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, type PackSnapshot, type PackDependencySnapshot } from '../../src/build/manifest.ts';
+import { parseSnapshot, parseDependencySnapshot } from '../../src/build/snapshot.ts';
 import { _declarationRevision } from '../../src/build/declaration-revision.ts';
 
 const snapshot = (): PackSnapshot => ({
@@ -119,5 +119,33 @@ describe('snapshot data reader', () => {
     const result = parseSnapshot({ ...snapshot(), futureContribution: {} });
     expect(result.status).toBe('invalid');
     expect(result.diagnostics[0].message).toContain('futureContribution');
+  });
+});
+
+
+describe('dependency type-data reader', () => {
+  it.each([undefined, 0, PACK_SNAPSHOT_FORMAT, PACK_SNAPSHOT_FORMAT + 1])('retains an honest recorded stamp: %s', format => {
+    const data: PackDependencySnapshot = snapshot();
+    if (format === undefined) delete data.format;
+    else data.format = format;
+    const result = parseDependencySnapshot(data);
+    expect(result.status).toBe('valid');
+    expect(result.snapshot).toBe(data);
+    expect(result.snapshot?.format).toBe(format);
+    expect(Object.hasOwn(result.snapshot!, 'format')).toBe(format !== undefined);
+    expect(result.diagnostics.length).toBe(format === PACK_SNAPSHOT_FORMAT ? 0 : 1);
+    if (format !== PACK_SNAPSHOT_FORMAT) expect(result.diagnostics[0].severity).toBe('warning');
+    expect(parseSnapshot(data).status).toBe(format === PACK_SNAPSHOT_FORMAT ? 'valid' : 'invalid');
+  });
+
+  it('uses the same current grammar, names, declaration revision and help checks', () => {
+    const { format: _format, ...data } = snapshot();
+    for (const fields of [{ facades: { '../escape': 'export {};' } }, { declarationRevision: '0'.repeat(64) },
+      { types: { entities: {}, relKinds: { bad: false } } }, { extra: true },
+      { manifest: { ...data.manifest, extensions: { help: { path: 'help' } } } }]) {
+      const result = parseDependencySnapshot({ ...data, ...fields });
+      expect(result.status).toBe('invalid');
+      expect(result.snapshot).toBeUndefined();
+    }
   });
 });

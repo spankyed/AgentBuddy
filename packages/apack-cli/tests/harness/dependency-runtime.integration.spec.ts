@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
-import { _declarationRevision } from '@apackdev/sdk/build';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
@@ -90,6 +90,21 @@ function vitest(root: string) {
 }
 
 describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime tier", () => {
+  it.each([undefined, PACK_SNAPSHOT_FORMAT + 1])('refuses dependency execution before importing a mismatched runtime: %s', format => {
+    const root = dependentPack("import { it } from 'vitest'; it('must not reach tests', () => {});");
+    const file = path.join(root, '.apack/deps/default-setup/snapshot.json');
+    const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+    snapshot.format = format;
+    fs.writeFileSync(file, JSON.stringify(snapshot));
+    const marker = path.join(root, 'runtime-executed');
+    write(root, '.apack/deps/default-setup/runtime/index.cjs',
+      `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Poisoned runtime');`);
+    const result = vitest(root);
+    expect(result.status).not.toBe(0);
+    expect(result.stdout + result.stderr).toContain('its snapshot is format');
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
   it("runs default-setup's systems and the app's settings beside them", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';

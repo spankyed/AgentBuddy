@@ -49,9 +49,13 @@ declarations; executable use requires eligible owners and matching accepted bind
 entries do not acquire installed receipts merely by appearing in the catalog.
 
 Snapshot format, layout format, SDK version, pack release version and `hostVersion` are separate
-contracts. The current reader validates its supported snapshot/layout formats; `hostVersion` is the
-pack's npm semver constraint on the app. A format mismatch requires a matching build/host, rather than
-automatic conversion. Changing declarations is not a release/version bump by itself.
+contracts. Runtime/install readers require their supported snapshot/layout formats; `hostVersion`
+is the pack's npm semver constraint on the app. Dependency type inspection accepts current-contract
+facade data with absent/different recorded stamps, reporting the context without synthesizing values.
+`parseDependencySnapshot` and `PackDependencySnapshot` express that purpose; `parseSnapshot` and
+`PackSnapshot` retain exact runtime admission. Executable dependency files are unavailable on a stamp
+mismatch. Type-only builds still work; content compilation and harness runtime use require compatible
+execution files. No reader converts obsolete fields or formats. Changing declarations is not a release/version bump by itself.
 
 Dependency codegen checks the facade types it actually imports with the TypeScript export reader.
 Malformed declaration syntax and missing, value-only or unresolved required types fail with the

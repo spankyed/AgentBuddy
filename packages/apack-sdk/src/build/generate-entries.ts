@@ -8,7 +8,7 @@ import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { dirname, extname, join, relative, resolve } from 'path';
-import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
+import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackDependencySnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
@@ -358,7 +358,7 @@ const pluginBinding = (id: string) => `__plugin_${id}`;
 export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
-  depSnapshots?: Map<string, PackSnapshot>;
+  depSnapshots?: Map<string, PackDependencySnapshot>;
 }
 
 export async function generatePackFiles(
@@ -367,7 +367,7 @@ export async function generatePackFiles(
 ): Promise<Record<string, string>> {
   const root = opts.packRoot;
   const moduleTargets = _packModuleTargets(manifest).map(entry => ({ ...entry, source: _moduleTargetSource(entry) }));
-  const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
+  const depSnapshots = opts.depSnapshots ?? new Map<string, PackDependencySnapshot>();
   const depIds = [...depSnapshots.keys()];
   const depFacades = new Map([...depSnapshots].map(([depId, snapshot]) => {
     const facade = snapshot.facades[PACK_TYPES_FACADE];
