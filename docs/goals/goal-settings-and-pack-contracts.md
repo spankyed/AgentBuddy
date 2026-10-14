@@ -2561,3 +2561,34 @@ compatibility fallback. Continue other contribution kinds, native/source/depende
 eligibility/entity destinations and stale delivery, frontend recovery boundaries and all three Phase 6
 workstreams. Final requirement-by-requirement review, committed-source strict --all and archival remain
 due. This checkpoint does not complete the whole goal or any broader discovery/navigation phase.
+
+
+### Reference frontend admission checkpoint (2026-10-13)
+
+Source commit `8371cd4f9` registers generated reference bindings under their owning feature and
+checks exact declaration membership, protocol/category/geometry/label data and function/component
+shapes before admission. Global type, protocol and category collisions name both feature owners and
+refuse before candidate resources run. Accepted reference metadata is captured and frozen; replacement
+and removal release its captured keys without altering incumbents on refusal or abandonment.
+
+Review reproduced a validation/publication defect: an authored protocol getter returned `note` during
+validation and `changed` during capture. Native preparation and the installed loader now capture
+reference data before validation; both paths have behavioral regression tests. The general frontend
+`onChanged` subscription replaces the forms-only name that already notified every registration change.
+All callers and the testing shell adapter are migrated, with no compatibility alias.
+
+Nineteen focused admission checks passed. Removing ownership refusal failed five named assertions;
+removing the callable navigation guard failed its assertion. Exact restoration returned all 19 cases
+to passing. Final strict validation passed all 30 gates in 520.5 seconds with no cached gates, including
+4,344 host tests, 839 pack tests (two existing skips), 639 integration tests, actual external/default-fork
+Electron acceptance, smoke and both packaged-authoring halves. SDK API reports agree.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T01-50-14Z-96639`;
+`/private/tmp/apack-reference-bindings-strict.log`.
+
+Admission is delivered; app-wide editor discovery/provider lifecycle is not. Transport audit confirms
+`packs.loaded` and `ShellClient.loadedPacks()` report runtimes, excluding disabled/activation-failed
+packs. Next carry common catalog declarations into the window independently of that execution path,
+then migrate editor readers and dispose/recreate providers on binding changes. Remove the pack-local
+aggregate at that migration and test an actual external reference contributor in an already-open editor.
+Continue all other kinds/native locator checks/freshness, entity routing/readiness, boundaries and every
+Phase 6 workstream. Final committed-source --all, whole-goal acceptance auditing and archival remain due.
