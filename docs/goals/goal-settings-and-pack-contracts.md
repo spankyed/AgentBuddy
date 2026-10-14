@@ -2461,3 +2461,38 @@ first catalog reader together; preserve readiness and transactional frontend ret
 test must continue proving changed executable behavior after its label moves to the manifest. This is
 a design checkpoint, not a claim that new metadata or readers exist yet. All remaining contribution
 kinds, native coverage, freshness and other goal phases remain required.
+
+
+### Declarative plugin bindings and catalog details checkpoint (2026-10-13)
+
+`b5697bb88` replaces plugin assembly modules with manifest presentation, explicit machine/component
+references, canvas routes and fallback predicate references. Codegen checks exports/files and assembles
+the bound plugin, preserving Library's named machine, Threads' routes and six lazy view bindings.
+Fourteen obsolete assemblies, the authoring template and definePlugin helper are removed. Scaffolding,
+doctor, contract-leaf rules, schema/API reports, owned fixtures and public docs follow the new contract.
+No plugin.entry alias or data conversion is added.
+
+Native host view metadata is declared before binding and consumed by renderer composition. Shared
+admission checks presentation, shortcuts, pane/route membership and fallback metadata without executing
+views/predicates; a refused native replacement retains its accepted frontend and grants no resources.
+Top-level registration getters are captured once. The common catalog projects native, disabled installed
+and authoring plugin data without activation or invented native receipts/authoring enablement. Packs
+details uses that projection; hasPlugin is replaced by declaration presence. Shell readiness/selection
+is deliberately still an unfinished consumer migration, not silently treated as delivered.
+
+The actual default pack and 25 external authoring/dependency/facade integration checks pass, alongside
+focused schema, codegen, catalog, binding and handoff suites. Removing label comparison fails the intended
+admission assertions; restored source passes. Full validation exposed and fixed fixture paths, a double
+registration-ID read and an unconventional actor-filename contract-leaf case. The real fork test now
+changes a manifest label and a rendered Vue component, retaining executable replacement verification.
+
+Final strict validation passes all 30 gates in 488.6 seconds (one cached), including complete unit/
+integration, real external app acceptance in 156.5 seconds, smoke and both packaged-authoring halves.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T00-28-13Z-89285`;
+`/private/tmp/apack-declarative-plugins-strict-3.log`. This completes this plugin checkpoint, not the goal.
+
+Next complete the other contribution descriptors (references, steps/triggers, editors/content/contracts),
+remaining native/source provenance and static readers, then shell eligibility/readiness, entity navigation
+and stale delivery. Frontend boundaries, supported consumed APIs, dependency identity, remaining replacement
+acceptance and final requirement audit remain required. Final strict --all on finished committed source
+and archival remain due. No unfinished plan is archived or requirement moved out of the active scope.
