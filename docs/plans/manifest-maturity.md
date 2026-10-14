@@ -357,3 +357,27 @@ and their accepted revisions use build terminology throughout the current contra
 Execution checkpoint 1 is implemented. Checkpoint 2's inspection/doctor presentation and checkpoint 3's
 complete dependency/tool/output freshness remain due. Do not mark provenance or the broader roadmap
 complete from storage/admission evidence alone.
+
+
+### Inspection checkpoint execution (2026-10-14)
+
+The next audit found `pack info` reporting source `.ts` counts as content items and `dist/` presence
+as build success. Correct those claims while presenting provenance; inspection must not activate packs,
+create caches or fetch network data.
+
+- Resolve dependency data once for each validation frame. Preserve each declared spec and report exact
+  version, structured origin, delivery directory, content revision and executable availability. Keep
+  missing data distinct from invalid data and from inspectable types with unavailable execution.
+- Reuse the resolved snapshots for codegen validation and the same metadata for `pack doctor` text/JSON.
+  `pack info --json` presents the same inspection data as text; source-only declarations and unavailable
+  builds remain explicit. Do not manufacture a successful build from directory presence.
+- Read compiled content IDs/descriptions/counts from the verified content index, using one current
+  index validator shared with existing preview/import/harness readers. Source filenames are not items.
+  Keep preview/import provider requirements intact; discovery reads data independently of those providers.
+- Prove offline installed/source inspection with poisoned executable modules, cache reuse retaining
+  origin, read-only filesystem/network behavior, malformed/missing builds and honest unbuilt content.
+  Update CLI help/public docs and affected SDK reports together; no old-format fallback or version bump.
+
+This closes the inspection portion of provenance and improves the current compiled-content inventory.
+It does not claim complete contribution discovery or static flow/action dependency edges; those and the
+remaining tool/dependency/output freshness checkpoint retain their existing acceptance criteria.
