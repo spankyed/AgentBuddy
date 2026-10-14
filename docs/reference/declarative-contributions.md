@@ -9,7 +9,7 @@ apply its settled contracts to new interfaces. This reference is not a competing
 
 `apack.json` names features, dependencies, host compatibility, entity/relation names and many keyed
 extensions: steps, artifacts, blocks, commands, services, DSL and frontend slots. Built snapshots carry
-manifests, facade/type artifacts and partial provenance. Compiled content and integrity indexes already
+manifests, facade/type declarations and partial provenance. Compiled content and integrity indexes already
 exist. Offline database tooling reads schema data without pack runtime imports.
 
 The working settings extraction declares schemas and defaults inline for pack groups and features;
@@ -24,7 +24,7 @@ See [extension authoring](../public-facing/extensions.md) for the current manife
 ## What still depends on executable registration
 
 Generated backend/frontend entries import implementation modules and assemble registration objects.
-Some static facts are embedded in those objects rather than exposed in a complete data artifact:
+Some static facts are embedded in those objects rather than exposed in a complete data declaration:
 
 - Plugin labels, icons, default-navigation claims and pane metadata.
 - Reference protocols/categories and anonymous editor contribution lists.
@@ -49,7 +49,7 @@ eligible and active status separately.
 ## Checks move earlier; rollback remains
 
 Descriptor ownership and compatibility checks can run before activation. Runtime binding checks still
-protect against mismatched artifacts, and executable registration can fail after acquiring resources.
+protect against mismatched builds, and executable registration can fail after acquiring resources.
 Keep owned contribution stores, undo logs, teardown and replacement rollback. Knowing an actor's address
 or event contract does not make the actor ready; catalog discovery cannot replace delivery handshakes.
 
@@ -61,8 +61,8 @@ runtime behavior. In-process contract enforcement is not a security sandbox. Fol
 
 Descriptor/codegen/runtime freshness must agree, including in source/HMR workflows. A failed rebuild
 retains the last valid committed view and reports staleness. Installed descriptor inspection must never
-activate code to fill a missing field. Unsupported/malformed artifacts receive explicit diagnostics.
+activate code to fill a missing field. Unsupported/malformed builds receive explicit diagnostics.
 
-[Recorded artifacts](recorded-artifacts.md) documents artifact derivation rules. The discovery plan owns
+[Recorded files](recorded-files.md) documents recorded-file derivation rules. The discovery plan owns
 coverage fixtures, import-time-throw proof, consumer regressions and format/API checks. Historical plans
 in the archive preserve earlier proposals; their example manifests are not current schema instructions.

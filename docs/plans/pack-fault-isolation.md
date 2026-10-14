@@ -49,7 +49,7 @@ mechanism and the shell is the owner.
 
 Use catalog owner identities and explicit activation outcomes when reporting failures. Keep settings
 snapshots and the shell runtime outside contributed form boundaries. A component failure does not remove
-its pack’s declarations or defaults, and retry must not revive an unloaded artifact revision. Test canvas,
+its pack’s declarations or defaults, and retry must not revive an unloaded build revision. Test canvas,
 panel and custom settings-form failures, with another pane and host settings still usable.
 
 This is a contained change with its own payoff, independent of any trust story: today the global handler

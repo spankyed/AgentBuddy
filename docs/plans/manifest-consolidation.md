@@ -31,8 +31,8 @@ A landed result still needs its applicable regression checks in the final requir
 | 11 | Schema assistance and public docs specify the supported contract completely. Required. | Completed through `9e9a9ac0e` and `0994ae787`: all generated properties have behavior-specific help, real offline JSON completion/hover/diagnostics are checked, and public docs describe source/build/archive/installed/shipped/native differences and explicit null shapes. Shared semantic validation remains necessary beyond editor structure checks. Maintain docs when remaining discovery kinds change. | M6 |
 | 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Tests preserve first-registered selection, replacement priority, removal promotion and re-registration order; public docs describe the policy. | M4/final |
 | 13 | Every feature explains its purpose; scaffolding collects it and validation requires it. Required. | Implemented in `ae7a995bd`: shared required/nonblank `description` validation, authored/native declarations, explicit required scaffold input, cold catalog summaries and feature UI. Real manifests and all fixture producers migrated; no runtime-binding metadata or `about` alias. | M4 |
-| 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Those installed-dependency checks prove exact-format refusal, not capability admission; the corrected discovery audit owns the required capability reader. No replacement format key or version accommodation. | M5 |
-| 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current artifact contracts; no release/version edits in this goal. | M4–M6/final |
+| 14 | Delete unused `$manifestVersion`; preserve build-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Those installed-dependency checks prove exact-format refusal, not capability admission; the corrected discovery audit owns the required capability reader. No replacement format key or version accommodation. | M5 |
+| 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current build contracts; no release/version edits in this goal. | M4–M6/final |
 | 16 | Change all owned contracts together without compatibility. Required throughout. | Root CLAUDE prohibits aliases, dual reads and obsolete-format conversion. Cover loosely typed readers and all native/source/installed shapes, authoring tools, fixtures/templates/docs; developer backup work remains separate. | Every checkpoint |
 | 17 | Build options and check allowances have one authored manifest, no sidecars. Implemented in `24bd9f116`; preserve at final audit. | `build.bundleUi`/`opaqueDeps` remain. `checks.allow` uses one SDK policy/schema shared with CLI rule metadata and enforcement. Sidecar reader and live references are removed. Unknown/non-switchable names and malformed values are refused; real CLI enforcement and pasteable guidance pass. | M5 |
 
@@ -58,7 +58,7 @@ These choices settle the old questions in context; they do not reopen the comple
 | 3 — lifecycle | M3 replaces `boot` with checked declarative `lifecycle`, preserves migrations as their own key and actual hook order. Compare compiled content bytes/identity before/after the syntax-only move and prove ordinary build/install/boot does not reapply unchanged records. |
 | 4 — features | M4 adds required descriptions, preserves designation/default claims, settles `types` and shared authoring layout. Discovery's explicit targets replace `provides`/feature-relative inference. Named missing-target, ownership/path-escape, duplicate claim and scaffold/doctor/codegen agreement checks remain. Compare generated behavior, not necessarily obsolete registration bytes whose metadata intentionally changes. |
 | 5 — references | M1/M4 use one target parser for genuine module/export references. Reject `path#` and `#export` with useful path/name diagnostics. Retain loading/component/contract metadata objects and type-barrel semantics; no `{ source, type }` shape encoding remains. |
-| 6 — schema/docs | M6 descriptions/completion/diagnostics, artifact-layout docs, current manifest documentation and canonical writing. All add/init writers preserve the supported field order, not just insertion order. Do not restore an obsolete root-key count containing `builtIn`/old keys; reject unsupported keys and maintain current schema/order checks. Leave historical examples unchanged except successor notices. |
+| 6 — schema/docs | M6 descriptions/completion/diagnostics, build-layout docs, current manifest documentation and canonical writing. All add/init writers preserve the supported field order, not just insertion order. Do not restore an obsolete root-key count containing `builtIn`/old keys; reject unsupported keys and maintain current schema/order checks. Leave historical examples unchanged except successor notices. |
 | 7 — build/checks | M5 places allowances in `checks.allow`, removes sidecar reads and preserves actionable non-switchable/unknown-rule refusal. Real bundled-UI and packaged/external authoring checks remain required. |
 
 Preserve the original end-to-end validation obligations through current commands: affected schema/API/
@@ -100,7 +100,7 @@ These are completion obligations, not optional later improvements.
    the old schema already enforced this was false: it admitted arbitrary enum aliases. The new grammar
    declares the wire vocabulary once, validates it and rejects duplicate/reserved wires. Synthetic
    fixtures must model the new declaration/binding contract, without an alias/conversion path.
-   Flat snapshot/runtime maps remain derived artifacts, including dependency collision/provenance
+   Flat snapshot/runtime maps remain derived data, including dependency collision/provenance
    validation; they are not another author-maintained inventory. Native declarations use the same list
    and checked binding rule. Installed/offline inspection still needs no executable imports.
    Preserve EARS identities/types, dependency diamonds, collisions and actual external runtime relationships.
@@ -122,7 +122,7 @@ These are completion obligations, not optional later improvements.
    capability checks. Each logical change can be its own validated commit.
 6. **M6 — canonical writing and schema/docs coverage.** One stable writer across init/add/edit paths;
    complete descriptions and editor assistance for the final supported contract. Test preservation of
-   meaningful record/array order and document native/installed/shipped artifact differences.
+   meaningful record/array order and document native/installed/shipped build differences.
 7. **Resume full discovery and remaining phases.** Include the selected frontend container, facade
    naming, content dependency graph, CLI inventory, intrinsic editor-schema ownership, every remaining
    kind/native/freshness check, entity navigation, boundaries and all three Phase 6 workstreams.
@@ -232,7 +232,7 @@ in `9374189e5`: the authored manifest has no `$manifestVersion`, and current gen
 handles unsupported keys. No alias, conversion or dedicated historical-format detection is added.
 Receipt verification and asset delivery compare the exact supported stamp; tests recompute malformed
 receipt revisions so format rejection is independent of revision mismatch. Snapshot/layout stamps
-remain 1/2; exact-format artifact checks and release metadata are unchanged. Capability-based dependency admission remains required (see the corrected discovery audit).
+remain 1/2; exact-format build checks and release metadata are unchanged. Capability-based dependency admission remains required (see the corrected discovery audit).
 
 M5 is complete. M6 canonical writing/schema/docs coverage and all remaining execution phases stay
 required, including final strict `--all` on committed source and the full reconciled audit. Nothing
@@ -251,7 +251,7 @@ M6 is unfinished. Current generated-schema inspection found 45 missing field des
 plugin presentation, reference presentation/providers, settings labels and help paths. Complete those
 with behavior-specific guidance and editor assistance checks, not a blanket description filler. npm
 range semantics remain checked by the shared validator rather than represented in generated JSON
-Schema. Native/source/installed/shipped artifact documentation and final M1–M6 acceptance audit remain
+Schema. Native/source/installed/shipped build documentation and final M1–M6 acceptance audit remain
 required before resuming all remaining discovery and goal workstreams.
 
 
@@ -263,7 +263,7 @@ component forms are included; description-removal mutations fail the coverage an
 Accepted value grammar and generated EARS/content bytes are unchanged. Strict passed all 30 steps in
 512.3s; execution-goal evidence records the tests and exact run. SDK API reports remain unchanged.
 
-M6 remains required for complete current artifact/native/shipped documentation and the M1–M6
+M6 remains required for complete current build/native/shipped documentation and the M1–M6
 acceptance audit. Public build guides still describe removed settings files/boot hooks; update these
 and explain snapshot/receipt/declaration/runtime distinctions from current code before certifying M6.
 All remaining discovery/navigation/boundary and Phase 6 workstreams retain their scope.
@@ -272,7 +272,7 @@ All remaining discovery/navigation/boundary and Phase 6 workstreams retain their
 ## Current consolidation acceptance audit (2026-10-14)
 
 This audits the original decisions against current code and the checkpoint evidence; it does not
-certify the remaining execution goal complete. Public artifact source checkpoint: `0994ae787`.
+certify the remaining execution goal complete. Public build source checkpoint: `0994ae787`.
 A current-tree run passed 171 tests in nine files (`/private/tmp/apack-m1-m6-acceptance.log`),
 covering shape generation, relations, native declaration/binding checks, source validation, editor
 assistance, canonical writing and the loosely typed entity inventory. The strict checkpoint passed
@@ -292,15 +292,15 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 8: declaration existence | Explicit keyed system/plugin/settings/reference declarations replace provides/booleans; checked bindings refuse mismatch. Better replacement implemented for migrated kinds. | Required full kind coverage and removal of runtime discovery glue in Phase 3. |
 | 9: extensions | Settings/help placement and host settings ownership are implemented; ordinary strict schema errors have no historical-key inventory. | Required remaining extension declarations/bindings and frontend container move in Phase 3. |
 | 10: content/lifecycle | `ContentConfigSchema` and explicit `LifecycleConfigSchema`; native/installed hook binding checks preserve execution order and unchanged content. Implemented. | Static content dependency graph remains required in discovery. |
-| 11: schema/docs | Complete field-help traversal plus actual editor completion/hover/range diagnostics; generated schema/API checks and public artifact guide. Implemented M6. | Regenerate and review documentation/reports for later contract changes. |
+| 11: schema/docs | Complete field-help traversal plus actual editor completion/hover/range diagnostics; generated schema/API checks and public build guide. Implemented M6. | Regenerate and review documentation/reports for later contract changes. |
 | 12: default selection | Shared authored/native uniqueness and atomic frontend admission, replacement priority/removal promotion tests. Implemented. | Preserve policy through remaining frontend migration. |
 | 13: feature purpose | Required nonblank description in authored/native declarations, required scaffold input and cold feature summary. Implemented. | Future feature scaffolds must use the same requirement. |
 | 14: format key | No authored `$manifestVersion`; current snapshot/layout stamps preserved, exact format guards mutation-checked. Implemented. | No release/version changes without authorization. |
-| 15: naming/release discipline | Completed naming baseline retained; current version/range parser and artifact documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
+| 15: naming/release discipline | Completed naming baseline retained; current version/range parser and build documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
 | 16: no compatibility | Current source search finds no entityShapes/settingsSections/typesEntry/boot-key/sidecar readers or moved-key hint inventory; strict current validation and migrated fixtures remain. Implemented rule, continuously enforced. | Every later contract move migrates all callers/readers outright. |
 | 17: checks/build | `checks.allow` shares SDK policy with CLI rules; sidecar removed; real CLI allowance/refusal coverage and existing build options preserved. Implemented. | Maintain scaffold/schema/guidance agreement. |
 | Naming: extensions.fe | Resolved to extensions.frontend; current code still uses fe. Required unfinished work, not an exclusion. | Migrate during remaining editor/frontend contribution discovery, including schema, consumers, fixtures and docs; no alias. |
-| Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and artifact stamps. Implemented. | Keep one field, with no engines wrapper. |
+| Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and build stamps. Implemented. | Keep one field, with no engines wrapper. |
 
 Original phases 1/3/4/5/6/7 now have their M1–M6 source checkpoints and validation evidence. Phase 2's
 remaining contribution kinds, the selected frontend container, facade naming/capability checks, static

@@ -125,7 +125,7 @@ This is an architectural disposition, not a claim that all 220 changed files hav
 | JSON Schema/defaults and generated settings types (`839dec923`, `b6ec616b0`, `74a48e0f3`) | One declarative value contract; shipped definitions are data and types derive from schemas | Retain as candidate foundation. Review defaults/override/reset semantics and supported schema behavior through the same live writer for all three owners. |
 | Host app ownership (`29431f57b`) | App defaults and validation work without a pack; prior changes also added old-format boot/import conversion | Retain host ownership as candidate foundation. Remove unnecessary historical-format accommodation; verify current-format lifecycle preservation and explicit-choice semantics through the integrated writer. |
 | Snapshot reader and declaration stamps (`d801b5580`, `23b4b026a`, `b085edd3d`) | Discovery requires data matching generated implementations | Review as one boundary: declaration identity is distinct from executable bytes. Binding membership/completeness remains unfinished. |
-| Publication, receipt, staging and copy checks (`44cc56fb1`, `b7d1d10fe`, `8f137ced9`, `20c8194e7`, `ccc9e605f`) | Failed or mismatched builds must not replace the accepted artifact | Review each check against a named publication/copy transition. Consolidate duplicate policy; retain verification where copying or mutable inputs can change bytes. Frozen dependency/tool inputs and frontend delivery remain incomplete. |
+| Publication, receipt, staging and copy checks (`44cc56fb1`, `b7d1d10fe`, `8f137ced9`, `20c8194e7`, `ccc9e605f`) | Failed or mismatched builds must not replace the accepted build | Review each check against a named publication/copy transition. Consolidate duplicate policy; retain verification where copying or mutable inputs can change bytes. Frozen dependency/tool inputs and frontend delivery remain incomplete. |
 | Catalog prototype (`18116c99a`) | Installed settings must be discoverable without activation | Exported/tested, but no production consumer. Do not call discovery delivered. Connect the common catalog to a complete settings path before expanding further abstractions. |
 | Uncommitted assistant draft | Preserve onboarding state outside preferences | Reject its new feature/actor/entity. The real Brain stops after restore; the mock concealed lost delivery. Reuse existing owners and prove the corrected event sequence. |
 
@@ -248,7 +248,7 @@ canvas, panel and custom-form failures to their pane, with the catalog owner nam
 path. Keep the shell and settings runtime outside those boundaries.
 
 **Done when:** throwing contribution fixtures leave another pane and host settings usable; declarations
-and defaults survive failure; retries cannot revive unloaded artifact revisions. Do not implement process
+and defaults survive failure; retries cannot revive unloaded build revisions. Do not implement process
 isolation or change the security model here.
 
 ### Phase 6 — Finish the three contract workstreams
@@ -259,7 +259,7 @@ Deliver these independently, committing each validated logical checkpoint:
 |---|---|---|
 | Consumed APIs | [API consumption](../plans/declared-capabilities.md) | Actual APIs/granularity are audited; generated and host-bound facades agree; undeclared supported APIs and unavailable required providers fail usefully; content targets respect supported SDK/dependency contracts; settings policy remains intact |
 | Dependency provenance | [Manifest maturity, section 4](../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
-| Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old artifact/catalog; activation failure does not claim rollback of arbitrary user-data effects |
+| Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old build/catalog; activation failure does not claim rollback of arbitrary user-data effects |
 
 These share catalog identities and existing caller/refresh contracts; no new inventory or sandbox is
 introduced. Re-audit old paths, CLI refusals and install records before changing them. Settle the concrete
@@ -272,7 +272,7 @@ templates and public contracts updated. No workstream is merely marked “follow
 ### Phase 7 — Final review and completion
 
 Review the entire implemented diff for correctness and completeness
-against the inventory, all reconciled original requirements in manifest consolidation, and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, artifact revisions, dependency ownership, import
+against the inventory, all reconciled original requirements in manifest consolidation, and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, build revisions, dependency ownership, import
 migration, multiple windows, disable/uninstall/reinstall, and external authoring.
 
 Run focused checks as changes are made, `npm run chain` at validated checkpoints, and the full strict
@@ -324,12 +324,12 @@ Record the completed naming baseline at kickoff, then implementation evidence as
 | Declaration/runtime agreement | `23b4b026a` | Manifest identities agree across snapshots and generated BE/FE bindings; loaders refuse mismatches before registration. Active origins retain the accepted identity. Fixed resolved-path require-cache cleanup exposed by version-changing reloads. 87 focused checks, 150 lifecycle checks, six doc checks and four guard mutations passed. Reviewed SDK API reports. Strict chain passed (259.9s, nine cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T13-39-03Z-69678`. Full descriptor/catalog, staging coherence and trusted settings caller binding remain required. |
 | Inline pack declarations / catalog prototype | `18116c99a` | 137 focused checks, six doc checks and three guard mutations passed. Reviewed manifest editor schema and SDK API report. Strict chain passed (310.2s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-08-48Z-18516`. An architecture check initially mistook schema prose for a pack entity name; clarified the prose without weakening the check. Host catalog owns immutable snapshots and reads disabled pack groups without activation. Production consumers, full descriptors, staging coherence and trusted handles remain unfinished. |
 | Staging declaration coherence | `b085edd3d` | Current-format snapshots and source/installed manifests must agree before staging or teardown, including installs with unknown target format. Foreign-format policy stays explicit. Temporary staging is cleaned on refusal. 364 host pack checks, 27 release-fixture checks, six doc checks and three guard mutations passed. Strict chain passed (180.9s, 16 cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-28-19Z-88313`. Release stand-ins now regenerate declarations and ignore build output; release implementation/metadata unchanged. Full source-input freshness, descriptor/binding completeness and runtime settings integration remain required. |
-| Authored-input scopes / publication stability | `44cc56fb1` | Shared scope covers module sources outside src, generated bundle entries and all asset extensions; codegen tracks captured declarations and SDK source. Builds refuse persistent authored-input changes before publication and retain the previous artifact. 42 focused checks and three guard mutations passed. Strict chain passed (282.0s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-44-50Z-20334`. Complete external/dependency identities, a coherent frozen build view, descriptor completeness and runtime settings integration remain required. |
-| Async codegen / schema-derived pack group types | `b6ec616b0` | `generatePackFiles` now returns a Promise across SDK/CLI callers. Facades export schema-derived `PackGroupSettings`; per-group referenced types remain independent. Generation holds its lock through settlement and preserves prior files/stamp on rejection. 156 focused checks, six doc checks, SDK/CLI typechecks and two mutations passed; removal of type isolation or generation awaiting is caught. Strict chain passed all 30 steps (333.0s); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-08-26Z-56743`. Feature conversion, typed group handles, trusted caller policies, production catalog integration and complete artifact/dependency freshness remain unfinished. |
+| Authored-input scopes / publication stability | `44cc56fb1` | Shared scope covers module sources outside src, generated bundle entries and all asset extensions; codegen tracks captured declarations and SDK source. Builds refuse persistent authored-input changes before publication and retain the previous build. 42 focused checks and three guard mutations passed. Strict chain passed (282.0s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T14-44-50Z-20334`. Complete external/dependency identities, a coherent frozen build view, descriptor completeness and runtime settings integration remain required. |
+| Async codegen / schema-derived pack group types | `b6ec616b0` | `generatePackFiles` now returns a Promise across SDK/CLI callers. Facades export schema-derived `PackGroupSettings`; per-group referenced types remain independent. Generation holds its lock through settlement and preserves prior files/stamp on rejection. 156 focused checks, six doc checks, SDK/CLI typechecks and two mutations passed; removal of type isolation or generation awaiting is caught. Strict chain passed all 30 steps (333.0s); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-08-26Z-56743`. Feature conversion, typed group handles, trusted caller policies, production catalog integration and complete build/dependency freshness remain unfinished. |
 | Inline feature declarations / schema-derived feature types | `74a48e0f3` | All 11 shipped definitions, external fixtures and scaffolds use inline JSON Schema/defaults; navigation visibility belongs to `plugin.defaultVisible`. The conversion audit compared 844 probes with the previous effective-value schemas. Focused host checks (453), shipped checks (47), schema/codegen edge checks (102) and scaffold/dependency-runtime integration checks (13) passed. Three guard mutations caught schema ownership, non-JSON writes and unsafe generated object literals. Reviewed editor schema, SDK reports and shipped facade. Strict chain passed (226.6s, 14 cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T15-55-35Z-29737`, including external and packaged app checks. Two earlier runs exposed stale fixture assertions; both were corrected and verified. Host ownership, pack handles, trusted policies, forms, stored-data migration and production catalog/freshness integration remain required. |
-| Installed artifact verification / accepted identity | `b7d1d10fe` | The shared reader validates declarations against verified file bytes before runtime execution and refuses concurrent declaration/artifact replacement. Installer identity checks run before placement; shipped refresh verifies receipts before reporting current and repairs invalid copies. Focused host pack checks (382), install/refresh checks (78), restored race/docs checks (139), CLI/layout checks (78) and four guard mutations passed. CLI install tests now use isolated storage even when run directly. Strict chain passed (291.7s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T16-30-32Z-32191`, including external and packaged app checks. An earlier unrelated process-cleanup integration failure passed unchanged in isolation and subsequent chains. Source-build sealing, complete dependency/frozen-input identities, production catalog wiring, binding membership, frontend asset delivery and settings ownership/policies/migration remain required. |
+| Installed build verification / accepted identity | `b7d1d10fe` | The shared reader validates declarations against verified file bytes before runtime execution and refuses concurrent declaration/build replacement. Installer identity checks run before placement; shipped refresh verifies receipts before reporting current and repairs invalid copies. Focused host pack checks (382), install/refresh checks (78), restored race/docs checks (139), CLI/layout checks (78) and four guard mutations passed. CLI install tests now use isolated storage even when run directly. Strict chain passed (291.7s, one cached); evidence `node_modules/.cache/apack-chain/runs/2026-10-12T16-30-32Z-32191`, including external and packaged app checks. An earlier unrelated process-cleanup integration failure passed unchanged in isolation and subsequent chains. Source-build sealing, complete dependency/frozen-input identities, production catalog wiring, binding membership, frontend asset delivery and settings ownership/policies/migration remain required. |
 | Producer-owned output receipts / verified staging | `8f137ced9` | Build publication now includes the canonical manifest and complete integrity inventory; reuse verifies the previous output, and staging/shipped comparison refuse edited output. Staging verifies copied bytes before replacing the prior stage. Focused pack/runtime/CLI/docs checks passed (480), three additional boot/lifecycle fixture checks passed (6), release fixture integration passed (27), and four guard mutations were caught and restored. Synthetic producers now seal their completed files. Final strict chain passed (208.5s, 17 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T16-52-29Z-8008`, including external-pack app, smoke and packaged authoring/app. Earlier runs identified unsealed simulated producers; those fixtures were corrected without relaxing guards. No release behavior/version metadata changed. Live DSL output writes, frozen authored/dependency/tool input views, accepted placement/frontend copies, production catalog wiring and checked bindings remain required; settings ownership and all later phases remain unfinished. |
-| Staged DSL generation / frontend definition coherence | `20c8194e7` | DSL bundling writes directly into staged output; the frontend resolves and hashes that same definition tree. A real cold/failing/recovered/reused/removed-definition build proves preservation of the accepted artifact, receipts, read record and cache, matching frontend/declarations, reuse and removal of obsolete output. Missing staged definitions refuse the older published copy. Focused unit/docs checks (34), DSL integration (7) and three restored guard mutations passed. Strict chain passed (295.0s, one cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-03-47Z-41045`, including external-pack, smoke and packaged authoring/app. The live DSL output write gap is closed; frozen authored/dependency/tool inputs, accepted placement/frontend copies, production catalog wiring and checked contribution bindings remain required, as do settings ownership and all later phases. |
+| Staged DSL generation / frontend definition coherence | `20c8194e7` | DSL bundling writes directly into staged output; the frontend resolves and hashes that same definition tree. A real cold/failing/recovered/reused/removed-definition build proves preservation of the accepted build, receipts, read record and cache, matching frontend/declarations, reuse and removal of obsolete output. Missing staged definitions refuse the older published copy. Focused unit/docs checks (34), DSL integration (7) and three restored guard mutations passed. Strict chain passed (295.0s, one cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-03-47Z-41045`, including external-pack, smoke and packaged authoring/app. The live DSL output write gap is closed; frozen authored/dependency/tool inputs, accepted placement/frontend copies, production catalog wiring and checked contribution bindings remain required, as do settings ownership and all later phases. |
 | Verified installation candidates | `ccc9e605f` | Copies and verifies the complete accepted layout before teardown, compares the exact receipt including provenance, rechecks copied compatibility/ownership, and gives hooks an independent descriptor. Copy/validation refusals retain the prior files and skip teardown; hook refusal cleans the candidate without promising rollback of arbitrary hook effects. Broad host/CLI checks passed (476 tests, 36 files); five restored guard mutations failed their targeted assertions. An initial parallel chain hit the process-cleanup grandchild assertion; all four process tests passed unchanged in isolation. Strict serial chain passed (118.4s, 26 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-30-08Z-25422`; external-pack, smoke and packaged checks passed in the earlier run `2026-10-12T17-26-16Z-81782` and were reused. Frontend delivery/catalog publication, frozen inputs, checked binding completeness and settings ownership/migration remain unfinished. |
 
 | Host app ownership / stored app migration | `29431f57b` | Host JSON Schema/defaults and schema-derived SDK types now own hotkeys, personal info and ordered projects at `app`; default-setup no longer supplies them, and all active app consumers/forms use the new location. The host 0.4.0 raw migration preserves destination choices, orphan data and project/directory order, prunes copied historical defaults and handles the legacy projects wrapper. Real boot, reset and backup import checks passed. Fixed the shared writer admitting newly missing required fields and allowed removal of existing orphan section fields without new undeclared writes. Host/CLI lifecycle checks passed (546), rebuilt migration/settings checks passed (74), real import/docs checks passed (25), shipped migration/event checks passed (51), and the full shipped suite passed (834, two already skipped). Project form interaction checks passed (3); eight restored guard mutations were caught, with disposal strengthened after Vue's unmounted emit suppression hid the first probe. Reviewed public SDK API report and generated type parity. Strict chain passed (188.4s, 16 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T17-57-59Z-93144`, including external-pack app, smoke and packaged authoring/app. The final strengthened-test chain passed (64.7s, 21 cached), evidence `node_modules/.cache/apack-chain/runs/2026-10-12T18-02-21Z-20394`, reusing unchanged accepted app outputs. The earlier strict run identified an external fixture still asserting general; it was migrated and independently verified. Pack groups/handles, trusted policies, assistant lifecycle, window settings runtime/CAS, full catalog/binding/freshness and later phases remain unfinished. |
@@ -429,7 +429,7 @@ The SDK typecheck and 40 focused frontend/handle/codegen checks passed. Evidence
 
 This is **not a completed checkpoint**. Host typechecking still reports unmigrated test contracts;
 renderer settings still depend on the Settings view. Trusted execution/sender binding, window
-readiness and correlated outcomes/CAS, import preflight, generated artifacts/API reports and full
+readiness and correlated outcomes/CAS, import preflight, generated files/API reports and full
 integrated acceptance remain required before committing this working change. Later goal phases
 also remain unfinished. Focused writer policy tests do not prove caller provenance at transport or
 loader boundaries.
@@ -457,7 +457,7 @@ mocked transport, including draft retention and its original comparison. Logs:
 
 This is still **uncommitted, incomplete integrated work**. Caller-bound frontend access and trusted
 loader/sender provenance are not implemented by a host-owned window port. Import preflight, catalog-fed
-custom-form discovery/loading, remaining test/caller migration, generated/public artifacts, full app
+custom-form discovery/loading, remaining test/caller migration, generated/public files, full app
 acceptance and later goal phases remain. These focused instances are not actual two-window Electron
 acceptance. Do not treat transport labels or caller-provided targets as authorization evidence.
 
@@ -489,7 +489,7 @@ editing cannot create or change those unavailable-owner values. Evidence:
 
 This remains an uncommitted integrated rewrite. Trusted loader/transport caller binding, catalog-driven
 form loading, generated frontend group/dependency interfaces, migrated pack/API test callers, public
-artifacts and actual app acceptance are still required. Backup source/staging consistency also needs
+builds and actual app acceptance are still required. Backup source/staging consistency also needs
 review before claiming refusal atomicity for concurrent changes. Existing working-integration evidence
 above supersedes the earlier statement that the renderer still reads the Settings view; it does not
 supersede the outstanding authorization or real-window acceptance requirements.
@@ -561,7 +561,7 @@ API reports and normalized line endings. Evidence: `/private/tmp/apack-settings-
 The rebuilt shipped suite collected successfully after the private-entry fix: 707 passed, 110 failed,
 two skipped, and 74 unhandled errors across 108 files (`/private/tmp/apack-settings-pack-suite.log`).
 Many failures trace to the harness registering installed-origin runtimes without publishing their
-accepted definitions into the common catalog. The harness now verifies the pack's built artifact,
+accepted definitions into the common catalog. The harness now verifies the pack's built build,
 checks its declaration revision against the source manifest, validates dependency snapshot identities,
 and publishes those declarations before starting/registering runtimes. It reads no settings defaults
 from executable registrations. Harness typechecking and its package build passed; real actor checks
@@ -694,7 +694,7 @@ Generated frontend access must receive the resolved scoped port; raw transport m
 invalid credentials and keep pack scopes away from whole-document operations.
 
 Added `createSettingsAccess` in host settings with distinct host administration and pack service grants.
-Pack issuance checks the accepted ID and nonempty declaration/artifact stamps. Resolution rejects
+Pack issuance checks the accepted ID and nonempty declaration/build stamps. Resolution rejects
 unknown credentials, another connection, replacement/unload and acceptance metadata changed in place.
 Revocation is connection-owned, and disconnect releases all of that connection's grants. Ten focused
 checks and host typechecking pass, including the added identity/metadata cases. Evidence:
@@ -767,7 +767,7 @@ The integrated settings extraction remains uncommitted.
 ### Transport authorization and window-bound pack writes — working integration
 
 API settings issuance now distinguishes trusted window/tool bootstrap from accepted pack access.
-Pack credentials require the backend origin's declaration and verified artifact stamps. Raw bus writes
+Pack credentials require the backend origin's declaration and verified build stamps. Raw bus writes
 without credentials refuse; credentials stay outside the event and are stripped before bus dispatch.
 A host-side event resolver is preserved through correlation copying and resolved again by the settings
 actor, preventing a runtime removed after ingress from keeping authority at delivery. Whole-document
@@ -803,9 +803,9 @@ The integrated settings extraction remains uncommitted pending the complete usab
 
 Renderer window bootstrap now acquires explicit host access and waits for a validated correlated settings
 snapshot before calling the shell's connected callback. The pack frontend provider obtains its own
-credential from the accepted backend declaration/artifact identities, injects its bound port and releases
-provisional or unloaded access. A missing artifact identity refuses instead of borrowing host access.
-The loaded-pack metadata publishes the accepted backend artifact stamp; an actual sealed installed-pack
+credential from the accepted backend declaration/build identities, injects its bound port and releases
+provisional or unloaded access. A missing build identity refuses instead of borrowing host access.
+The loaded-pack metadata publishes the accepted backend build stamp; an actual sealed installed-pack
 loader fixture proves it reaches that response. Native app reset now uses the injected window host
 operation and reports transport rejection without leaving its reset button busy.
 
@@ -968,15 +968,15 @@ Electron smoke and packaged external-authoring app checks. This is partial evide
 `/private/tmp/apack-settings-integrated-chain-recheck.log`.
 
 Integration failures identify an admission mistake: `setupPackTests` unconditionally reads the source pack's
-`dist` artifact even though its supported source harness runs generated registration/content runtime before
-a bundle exists. Repair source-authoring declaration admission explicitly, keeping sealed installed-artifact
-admission strict; do not add a missing-artifact fallback or derive discovery from executed registrations.
+`dist` build even though its supported source harness runs generated registration/content runtime before
+a bundle exists. Repair source-authoring declaration admission explicitly, keeping sealed installed-build
+admission strict; do not add a missing-build fallback or derive discovery from executed registrations.
 The source manifest and generated declaration identity must agree, dependencies retain their checked
 snapshots and caller binding must still use accepted ownership. This also needs a coherent catalog lifetime
 when source runtimes register/unregister; ad hoc `setNative` followed by a refresh that discards it is insufficient.
 
 The CLI database integration fixtures installed only a manifest and seeded obsolete `general` settings.
-Updated them to copy the actual sealed default-setup artifact and write current `app.personal.name`, including
+Updated them to copy the actual sealed default-setup build and write current `app.personal.name`, including
 CSV expectations. Their first updated run passed 63/64; the remaining failure was a removed layout import still
 used by another fixture, now restored. That case passes independently; a whole-file rerun is in progress:
 `/private/tmp/apack-settings-current-db-{fixtures,fixture-unknown-types}.log`.
@@ -997,14 +997,14 @@ run; it does not resolve source-harness admission or the stale external app sett
 ## Source admission and actual window acceptance
 
 The source harness now admits a validated manifest explicitly into the common catalog, independent of
-installed sealed artifacts and native registrations. It requires generated content-runtime and optional
+installed sealed builds and native registrations. It requires generated content-runtime and optional
 registration identities to match before runtime setup. Source declarations survive executable unload;
 cross-admission collisions and stale registration identities refuse atomically. Installed dependencies
-still use checked artifact snapshots; there is no missing-artifact fallback.
+still use checked build snapshots; there is no missing-build fallback.
 
 The harness checks exposed property-order-sensitive declaration hashes: schema parsing reorders object
 keys without changing their meaning. Declaration identity now sorts object keys recursively while keeping
-array order; meaningful changes still invalidate generated bindings. All changed artifacts were rebuilt.
+array order; meaningful changes still invalidate generated bindings. All changed builds were rebuilt.
 Source harness integration passes (7), dependency-runtime integration passes (3), host catalog/registration
 checks pass (58), and declaration identity checks pass (2). SDK types, external contract and runtime build
 pass. Evidence: `/private/tmp/apack-settings-source-{harness-integration,dependency-integration,registration-tests,sdk-types,external-contract,runtime-build}.log`
@@ -1567,12 +1567,12 @@ and consumer migration remain open, along with all later phases and the three Ph
 Commit `2169d29f8` moves help into snapshot data and the common declaration catalog, removes executable
 help registration and its store, and supplies explicit source help through the authoring harness. The
 public subscription is `onPackCatalogChanged`; the bound registry exposes `onCatalogChanged`. All
-callers and API reports move together, with no alias. Disabled poisoned-entry artifact coverage proves
+callers and API reports move together, with no alias. Disabled poisoned-entry build coverage proves
 help can be read without activating a pack and returned articles cannot mutate accepted data.
 
 Help Markdown no longer invalidates executable generation. Complete builds compile and validate articles
 before staged publication; the backend watcher uses that complete path for help changes. Real build
-coverage proves edits update the snapshot and invalid Markdown retains the accepted sealed artifact.
+coverage proves edits update the snapshot and invalid Markdown retains the accepted sealed build.
 Focused publication tests pass (8) and shell URL refusal tests pass (16).
 
 The actual app test revealed repeated clicks could bypass ProseMirror's single-click callback and open
@@ -1719,7 +1719,7 @@ boundaries and all three Phase 6 workstreams remain required. The goal stays act
 
 Commit `e9fe3e9b0` retains installed file receipts in the catalog and active origins. Loaded frontend
 metadata/readiness use the accepted membership instead of finding or rehashing current files. Installed
-URLs carry the artifact identity in their base, preserving it through relative chunks, styles and assets.
+URLs carry the build identity in their base, preserving it through relative chunks, styles and assets.
 Main checks the receipt identity and the exact bytes returned; missing/unlisted/changed files, replacement
 receipts and symlinks fail. Shipped/source fallback and the independent `feRevision` digest are removed.
 Development advertises an explicit local Vite base only in the development environment. Source imports
@@ -1727,7 +1727,7 @@ do not fall back to installed bytes.
 
 Stylesheet errors now reject before registration/settings binding. Concurrent requests share their actual
 pending outcome; unloading settles pending loads. Focused checks pass (102 host, 14 API, 13 protocol,
-seven stylesheet cases, nine readiness fixtures). Removing either byte checksum or artifact comparison
+seven stylesheet cases, nine readiness fixtures). Removing either byte checksum or build comparison
 fails its regression; removing pending-outcome sharing or cancellation also fails. Restored source passes.
 Evidence: `/private/tmp/apack-assets-{checksum,revision}-mutation.log`,
 `/private/tmp/apack-styles-{pending,cancel}-mutation.log` and the corresponding restored-spec logs.
@@ -1751,7 +1751,7 @@ packaged authoring. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T0
 `/private/tmp/apack-accepted-assets-strict-chain.log`. This does not prove the previously reproduced
 intermittent native shutdown issue is fixed. No deadline or assertion was relaxed.
 
-The goal remains active across Phases 0–7. Source/dependency projections do not yet have complete artifact
+The goal remains active across Phases 0–7. Source/dependency projections do not yet have complete build
 admission; static native/plugin/step/reference/editor/hook metadata and the window activation/retry/stale
 binding coordinator remain unfinished. Full freshness, navigation, fault boundaries and all three Phase 6
 workstreams still require their own implementation and evidence. Nothing is archived.
@@ -1797,7 +1797,7 @@ what still prevents closure; the linked plans retain their complete acceptance c
 |---|---|---|
 | Settings ownership | Host app, pack groups and feature definitions share schema/default validation; old default-setup app-settings assembly is removed. Integrated and real app acceptance is recorded above. | Finish the supported global administration/API audit before claiming owner policy holds through every supported route. `services/app-data.ts` and SDK `services/index.ts` still expose reset/import and ambient service access. |
 | Settings lifecycle | Current-format import preflight, sparse overrides, effective snapshots, comparison writes, window binding disposal and custom forms have checks. | Preserve these assertions when migrating declaration consumers and replacement. A passing restore fixture does not imply rollback of later migration or arbitrary pack effects. |
-| Descriptor/build admission | `parseSnapshot`, declaration stamps, staged publication and full installed receipts reject invalid/stale artifacts. Reports/schema checks pass. | Dependency/tool input provenance and complete source/watch publication remain incomplete; accepted installed receipts must not be invented for source/cache projections. |
+| Descriptor/build admission | `parseSnapshot`, declaration stamps, staged publication and full installed receipts reject invalid/stale builds. Reports/schema checks pass. | Dependency/tool input provenance and complete source/watch publication remain incomplete; accepted installed receipts must not be invented for source/cache projections. |
 | Native discovery | Native identity/settings declarations precede runtime binding and survive unload. | `NativePackDeclaration` still lacks all-kind contribution metadata; runtime/native registration is not a complete discovery source. |
 | Backend binding | Contribution identity/membership, settings and content bindings are checked before registration. | Hidden hook exports, migration descriptions and other runtime-only metadata still need descriptor materialization. Keep actual queries/appliers executable. |
 | Frontend acceptance | Accepted bytes/revisioned chunks/styles and declaration stamps are checked; cancellation, stale settings disposal and retry are now covered. | Full declared frontend membership/static plugin metadata and one catalog-driven navigation/readiness coordinator remain unfinished. A matching declaration stamp alone is not complete membership validation. |
@@ -1819,7 +1819,7 @@ All mutated source is restored.
 
 The replacement plan still prescribed old-file conversion and one-time historical ownership adoption,
 contradicting the user's no-compatibility decision. Removed both: new shipped installs explicitly record
-app ownership, unrecorded artifacts remain user-owned even with identical bytes, and restoration is
+app ownership, unrecorded builds remain user-owned even with identical bytes, and restoration is
 explicit. The roadmap and goal now say current-format stored data. Future deliberate versioned data
 migrations remain separate; developer backup conversion does not belong in boot/import behavior.
 
@@ -1858,7 +1858,7 @@ release, cannot leave a usable port/subscription after refusal or unload. Retire
 commit and reports cleanup failures without restoring a disposed runtime. Repository publication
 restores attempted entries on failure and retires the provisional binding. Reentrant registry writes
 are refused during the transaction. Runtime initialization, migrations/content effects and installed
-artifact/catalog publication remain separate transitions, not arbitrary-side-effect rollback claims.
+build/catalog publication remain separate transitions, not arbitrary-side-effect rollback claims.
 
 Checks: ten new transaction cases, an actual reload using a captured generated handle, and related
 checks pass (95 in the final focused run); host typecheck passes. A broader existing admission/lifecycle
@@ -1922,7 +1922,7 @@ and noncallable exports, removed shapes), 30 backend agreement checks, the lifec
 real CLI scaffolding with generated TypeScript and doctor integration (26 before adding the independent
 step-path regression, nine final doctor cases). SDK/host types pass. Removing callable export checks
 or description agreement fails its regression; source is restored. An initial API update correctly
-refused stale package artifacts; packages were rebuilt before regenerating and reviewing the two
+refused stale package builds; packages were rebuilt before regenerating and reviewing the two
 reports, with generated line endings normalized.
 
 Strict runs found two missed changes: doctor's step-path read had been inadvertently changed to the
@@ -1945,7 +1945,7 @@ only the full requirement audit and final --all run can close/archive this goal.
 
 `6c876c9ba` moves the Packs view to accepted catalog declarations instead of raw manifests and
 runtime contribution inventory. Disabled packs retain metadata; refused replacements retain the last
-accepted metadata. Unreadable new artifacts remain visible with a diagnostic and absent version.
+accepted metadata. Unreadable new builds remain visible with a diagnostic and absent version.
 Frontend availability uses the accepted receipt, not file existence. Refusal diagnostics now belong to
 the immutable catalog publication, so listeners cannot observe an updated catalog with stale diagnostics.
 Diagnostic-only updates preserve the settings projection's identity and revision.
@@ -1966,20 +1966,20 @@ isolated boot regression while migrating installed inventory to the common admis
 No plans are archived, and final `--all` acceptance remains outstanding.
 
 
-### Shared installed artifact admission checkpoint (2026-10-13)
+### Shared installed build admission checkpoint (2026-10-13)
 
 `e50838e14` fixes the confirmed boot-pruning bug: an unreadable installed manifest no longer erases its
 disabled choice or update provenance. Directory removal still prunes the record. Installed discovery,
-catalog refresh, boot, activation/reload and offline schema inspection share full artifact admission,
+catalog refresh, boot, activation/reload and offline schema inspection share full build admission,
 including directory-owner agreement and the receipt-owned backend entry. The loader no longer accepts
-an unchecked manifest argument. Offline schemas refuse invalid enabled artifacts; named snapshots use
-the common snapshot validator. Refused artifacts under valid pack IDs remain removable. No historical conversion or
+an unchecked manifest argument. Offline schemas refuse invalid enabled builds; named snapshots use
+the common snapshot validator. Refused builds under valid pack IDs remain removable. No historical conversion or
 compatibility path is added.
 
 Evidence: the record-preservation regression failed before the change; 255 restored focused checks pass.
-Pruning invalid artifacts, bypassing owner checks and silently omitting invalid schema sources each fail
+Pruning invalid builds, bypassing owner checks and silently omitting invalid schema sources each fail
 an intended guard regression. Broader integration found one manifest-only database-import fixture;
-it now creates a complete sealed artifact and still proves orphaned rows survive import. Content tests
+it now creates a complete sealed build and still proves orphaned rows survive import. Content tests
 now declare their own prompt entity/writer instead of overriding an SDK-owned writer through native setup.
 The final strict chain passed in 220.3s (17 of 30 gates cached), including integration, real external-pack
 app, smoke and packaged authoring. Evidence:
@@ -2083,7 +2083,7 @@ and every Phase 6 stream. No completed-phase claim or archival follows this loca
 
 ### Accepted runtime revision checkpoint (2026-10-13)
 
-`244dd5380` separates accepted runtime lifetime from artifact content identity and checks it during
+`244dd5380` separates accepted runtime lifetime from build content identity and checks it during
 frontend settings grant issuance/resolution. Identical-byte reload, refused binding, same-origin reuse
 and real-app reactivation are covered; three guard mutations fail and were restored. Final strict chain
 passes in 182.9s (18 of 30 cached), evidence
@@ -2142,7 +2142,7 @@ All unfinished phases and final strict `--all` acceptance remain required.
 ### Coordinated live installation checkpoint (2026-10-13)
 
 `814938b6a` wires installer acceptance to transactional registry replacement. Download, runtime-load
-and registration refusal preserve the incumbent artifact, registration/revision, records and generated
+and registration refusal preserve the incumbent build, registration/revision, records and generated
 settings authority. Resolved-id reservation prevents competing source installs from publishing one owner.
 Initialization runs after filesystem acceptance, restarts old/new systems on success, and cleans runtime
 resources after failure while retaining accepted files; arbitrary user-data effects are not rolled back.
@@ -2186,9 +2186,9 @@ observed API/fixture shutdown cleanup race also remains open; no plans are archi
 
 `03745e1dc` implements `updatesWith`, a distinct shipped-source revision and deliberate-removal
 suppression in installation records. Boot and id-specific refresh require the target profile's record
-file; they preserve unrecorded/user-owned artifacts and retain suppression across pruning. App-owned
+file; they preserve unrecorded/user-owned builds and retain suppression across pruning. App-owned
 source changes refresh without discarding enablement; unchanged source identity does not certify
-installed health or repair edited bytes. Artifact admission still diagnoses invalid installations.
+installed health or repair edited bytes. Build admission still diagnoses invalid installations.
 
 App/CLI/dev installs choose user ownership before publication, and source recording participates in
 acceptance. Record write/refusal/deletion failures restore the prior installation decision. Actual
@@ -2212,9 +2212,9 @@ is not final strict `--all` acceptance or completion of the shipped replacement 
 
 `85a7e955b` adds `pack replace <id> <source>` and `pack restore <id> --host <path|beta>`, independent
 of `--profile` storage. Replacement validates the explicit id and chooses user-managed updates; plain
-install refuses an app-managed incumbent. Restoration selects a declared shipped artifact without
+install refuses an app-managed incumbent. Restoration selects a declared shipped build without
 activation, cwd inference, launch or download, re-enables it and records app ownership. Its accepted
-record preparation shares boot's helper. Refusal retains the prior artifact/record or removal marker.
+record preparation shares boot's helper. Refusal retains the prior build/record or removal marker.
 
 A composed CLI cycle covers restore, user replacement, boot preservation, uninstall suppression and
 restoration. App/pack preferences are written to real LMDB, closed before mutation and read back after
@@ -2237,7 +2237,7 @@ and this checkpoint does not satisfy final strict `--all` or complete the replac
 
 `748781815` removes `builtIn` from the manifest/schema, default-setup, codegen fixtures, controlled SDK
 build report and public docs. No alias, conversion or special legacy parser remains. Archive eligibility
-now follows build freshness/integrity, enabling the actual default-setup artifact to be archived as a
+now follows build freshness/integrity, enabling the actual default-setup build to be archived as a
 standalone verified pack. CLI list exposes update ownership; GitHub updates use recorded ownership,
 allowing a user-managed default-id fork's remote source while excluding app-managed updates.
 
@@ -2380,15 +2380,15 @@ The independent process shutdown race is still open. No plans are archived; fina
 ### Selected runtime identity and priority cleanup checkpoint (2026-10-13)
 
 `b40412df3` removes `PackOrigin.shipped`, `shippedPacks()` and boot/loader/reload/harness argument
-propagation. Runtime origins describe the selected verified artifact; records describe update ownership;
+propagation. Runtime origins describe the selected verified build; records describe update ownership;
 the source catalog describes advertisements. Removed advertised-id registration priority in favor of
 deterministic pack-id order. Designation conflicts still refuse the later registration and name both
 owners; content dependency ordering remains separate. Catalog eligibility/navigation and required
 provider readiness still require their own remaining work, not a claim of completion from this sort.
 
 All 148 focused loader/reload/registration/migration/event tests and the host typecheck pass. A real
-verified app advertisement and a distinct selected user artifact share an id; the loaded origin retains
-the user artifact's name/version/path/receipt/files while the advertisement remains unchanged. Strict
+verified app advertisement and a distinct selected user build share an id; the loaded origin retains
+the user build's name/version/path/receipt/files while the advertisement remains unchanged. Strict
 validation passes all 30 gates in 390.7s (one cached), including real app and packaged authoring. After
 two stale comment corrections, final strict recheck passes in 208.7s (15 cached). Evidence:
 `node_modules/.cache/apack-chain/runs/2026-10-13T22-20-12Z-93616` and
@@ -2626,7 +2626,7 @@ ignores older revisions and refuses conflicting data at one revision. Generation
 callbacks after restart, timeout, disconnect and disposal. Synchronous setup cleanup, failed observers
 and an initial-read timeout are covered. It retains the last accepted snapshot on failure with an
 explicit unavailable status. Declaration validation remains the producer's responsibility; no Node
-build tooling is imported into the window to repeat artifact admission.
+build tooling is imported into the window to repeat build admission.
 
 The renderer connects/disconnects this resource with its bus lifetime without gating activation on
 catalog delivery. Old bus/status/settings callbacks cannot resurrect a stopped subscription. A composed
@@ -2652,7 +2652,7 @@ acceptance audit. Transport is delivered; the owning goal and discovery consumer
 ### Owned reference identity prerequisite checkpoint (2026-10-13)
 
 Source commit `53bcabf62` preserves qualified feature ownership and accepted identities in reference
-read entries. Module declaration stamps remain separate from the runtime/artifact revisions supplied
+read entries. Module declaration stamps remain separate from the runtime/build revisions supplied
 by the host loader. Capturing only host identity fields prevents unrelated caller fields from overwriting
 the owner or declaration stamp. Native bindings omit installed/runtime identities instead of inventing
 receipts. Immutable entries remain stable across unrelated pack changes and change on replacement.
@@ -2680,7 +2680,7 @@ the whole goal is active and no broader discovery phase is complete.
 ### Frontend declaration read-port checkpoint (2026-10-13)
 
 Source commit `5576298c5` exposes a frontend SDK read port over the existing common catalog.
-Reference projections retain qualified ownership, provenance and available declaration/artifact
+Reference projections retain qualified ownership, provenance and available declaration/build
 identities. Native and source entries omit identities or eligibility facts they do not possess.
 Projection reads execute no provider, component or navigation target and introduce no authored inventory.
 
@@ -2730,13 +2730,13 @@ Source commit `7de659194` supplies the SDK join between common reference declara
 frontend bindings. Static type/category reads never consult executable registrations. Categories retain
 qualified owners and duplicate names. Ambiguous installed/native names refuse executable lookup;
 source advertisements do not become runtime claims. Installed execution requires ready catalog status,
-explicit enablement, matching feature/declaration/artifact identity and an accepted runtime identity.
+explicit enablement, matching feature/declaration/build identity and an accepted runtime identity.
 Native bindings use their unstamped native contract. Lookup returns the stable accepted binding and
 never invokes navigation, providers or components. Consumers can observe both publication lifetimes
 through separate declaration/binding subscriptions and release each explicitly.
 
 Twenty-one focused checks and the full SDK suite (971 tests, 85 files) pass. Independently removing
-owner and artifact checks fails the corresponding named refusal assertion; byte restoration returns
+owner and build checks fails the corresponding named refusal assertion; byte restoration returns
 the focused suite to passing. SDK typecheck and the regenerated public API report agree. The first
 API-report command hit the sandbox's local IPC restriction; the authorized escalated rerun passed.
 
@@ -2783,7 +2783,7 @@ The initial strict run stopped at notification-loop lint; explicit publication q
 validation then passed all 30 gates in 450.7 seconds (13 cached), including fresh external acceptance.
 Final lifecycle validation passed in 203.5 seconds (17 cached), including 850 pack tests (two existing
 skips), but revealed that app checks incorrectly cached over changed shipped-pack bytes: they declared
-app bundles and omitted the separately loaded pack artifact. Correct all app-check inputs, including
+app bundles and omitted the separately loaded pack build. Correct all app-check inputs, including
 opt-in E2E, and remove the stale comment claiming the app compiles pack sources.
 
 The corrected final strict run passed all 30 gates in 209.3 seconds (20 cached), with fresh real
@@ -2950,7 +2950,7 @@ makes it explicit. Native declarations use the same vocabulary and checked runti
 `data-declaration.ts` and `PackDataDeclarations` provide one shared input for entity ownership/shapes
 and relation vocabulary, avoiding separate intersected data interfaces. `_packRelationTypes` feeds
 codegen, provenance, schema/Packs inspection and runtime admission. Runtime/snapshot EARS maps remain
-flat derived artifacts. No compatibility handling, aliases or conversion paths were introduced.
+flat derived builds. No compatibility handling, aliases or conversion paths were introduced.
 
 Schemas, templates, authored/native fixtures, all readers, CLI authoring, API reports and public docs
 moved together. A source-free installed fixture with a poisoned executable proves relation discovery
@@ -3300,7 +3300,7 @@ Source `24bd9f116` moves source-check allowances to `apack.json` `checks.allow`.
 policy lists the five allowable conventions; manifest schema completion, CLI switchability and
 enforcement derive from it. Rule implementations/precedence remain in the CLI. Deleted the sidecar
 reader outright; no aliases, dual reads, filename-specific refusal or conversion. Updated guidance,
-public docs, root CLAUDE and schema/API artifacts; no live source/script/public-doc references remain.
+public docs, root CLAUDE and schema/API files; no live source/script/public-doc references remain.
 Standalone source auditing still works without a manifest, with all checks enabled. Owned packs
 validate the current checks object with the same schema; null/malformed/unknown/non-switchable
 values are errors. Rule tooling reads only that manifest field and imports no desktop-launch helpers.
@@ -3391,7 +3391,7 @@ to `/private/tmp/apack-m4-description-baseline`; schema/API/facade checks pass u
 thirteen committed paths and diff checks; unrelated issue draft remains untracked/excluded.
 
 M6 remains required for complete meaningful schema descriptions, editor completion/diagnostics,
-version/range validation and final public/native/installed/shipped artifact documentation. Then
+version/range validation and final public/native/installed/shipped build documentation. Then
 finish all remaining discovery/navigation/boundary/Phase 6 requirements. Final strict `--all` on
 committed source and the full reconciled audit remain mandatory. Nothing is archived; the full
 goal remains active.
@@ -3419,7 +3419,7 @@ byte-identical to the preservation baseline. Unrelated issue draft remains untou
 M6 remains open: the current generated-schema audit found 45 fields without descriptions, concentrated
 in plugin presentation, references, settings titles/descriptions and help paths. Complete meaningful
 field assistance and nonvacuous editor completion/diagnostics coverage, plus native/installed/shipped
-artifact documentation, before certifying M6. JSON Schema does not encode the semantic npm range
+build documentation, before certifying M6. JSON Schema does not encode the semantic npm range
 refinements; authoring tools still perform the shared semantic validation. The full discovery,
 navigation, boundaries and all three Phase 6 workstreams remain required. Final committed-source
 strict `--all` and the complete reconciled requirement audit remain due; nothing is archived.
@@ -3448,23 +3448,23 @@ and packaged app. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T13-
 accepted value grammar is unchanged. Generated EARS and all six compiled content files are byte-identical
 to the preservation baseline. Unrelated issue draft remains untouched.
 
-M6 still needs native/source/installed/shipped artifact documentation and a complete reconciled
+M6 still needs native/source/installed/shipped build documentation and a complete reconciled
 acceptance audit. The current public build guides still mention removed settings files and boot hooks;
 correct them against current readers/build stages, and document receipts, snapshots, declaration versus
-artifact/runtime identities and native differences without claiming unfinished discovery kinds complete.
+build/runtime identities and native differences without claiming unfinished discovery kinds complete.
 Then resume full discovery and every remaining phase, including all three Phase 6 workstreams. Final
 strict `--all` on committed source and complete requirement audit remain due; nothing is archived.
 
 
-### Public artifacts and consolidation acceptance checkpoint (2026-10-14)
+### Public pack builds and consolidation acceptance checkpoint (2026-10-14)
 
-Source `0994ae787` adds the public pack artifact contract: source/build/archive/installed/shipped/native
-differences, snapshot versus integrity, declaration/artifact/runtime identities, shape/null semantics,
+Source `0994ae787` adds the public pack build contract: source/build/archive/installed/shipped/native
+differences, snapshot versus integrity, declaration/build/runtime identities, shape/null semantics,
 source-free declaration reading and build-only editor definitions. CLI/getting-started guidance now
 describes staged publication rather than destroying the prior build, inline settings rather than removed
 settings files, and current lifecycle names. Architecture guidance preserves explicit app/user update
 ownership and producer hashes through staging. The real external scaffold/archive test checks documented
-core artifact paths against actual files. Replacing the documented snapshot path failed that named
+core build paths against actual files. Replacing the documented snapshot path failed that named
 assertion; exact documentation was restored.
 
 Focused checks: six doc link/command checks, 11 real external scaffold/build/typecheck/archive cases,
@@ -3475,7 +3475,7 @@ were reused by their declared input identities. Evidence:
 `/private/tmp/apack-m6-artifact-strict.log`; `/private/tmp/apack-m1-m6-acceptance.log`.
 Generated EARS and all six compiled content files remain byte-identical. Unrelated issue draft preserved.
 
-M6 is complete across writer, metadata validation, editor assistance and public artifact checkpoints.
+M6 is complete across writer, metadata validation, editor assistance and public build checkpoints.
 The consolidation plan records a current decision-by-decision acceptance audit for all 17 original
 decisions and both naming questions. It explicitly retains unfinished full contribution discovery,
 `extensions.frontend`, facade naming/capabilities, static content dependency graph and useful CLI
@@ -3494,7 +3494,7 @@ rejects unsafe facade names before cache writes. A read-only probe had demonstra
 was accepted and would escape the facade directory; the shared schema and actual dependency reader
 now refuse those names.
 
-Focused validation passed 90 SDK tests, 116 resolver/artifact/version checks, ten real facade typing
+Focused validation passed 90 SDK tests, 116 resolver/build/version checks, ten real facade typing
 and completion cases, three dependent flow-helper typing/runtime cases, 15 generation cases, and
 the final 62 SDK guard plus six actual dependency-reader checks. Removing missing-content validation
 failed three named assertions; removing cache-name validation failed eight. Exact source was restored.
@@ -3573,7 +3573,7 @@ stamps are diagnostic context, with no conversion, synthesized stamp, aliases or
 CLI resolution retains the selected source rather than substituting a release solely for its stamp.
 Only matching stamps expose dependency build/runtime/content files. Type-only builds can proceed;
 content compilation and the harness refuse incompatible execution before importing dependency code.
-The execution gate is artifact-format validation, not special handling of historical manifest keys.
+The execution gate is build-format validation, not special handling of historical manifest keys.
 
 Focused checks passed 37 SDK snapshot cases, 27 resolver/reader cases, 22 real producer/consumer build,
 typing/completion and content refusal cases, five actual harness runtime cases, 13 CLI authoring
@@ -3581,7 +3581,7 @@ validation cases and 17 repository placement cases. The real type-data suites po
 and runtime modules; admission does not execute them. Removing executable-file gating caused four
 resolver failures; routing type inspection through exact executable parsing caused three admission
 failures. Both mutations were restored before validation. Reviewed the new SDK API report and public
-artifact documentation. Initial strict failures exposed an unused test binding, a missing placement
+build documentation. Initial strict failures exposed an unused test binding, a missing placement
 rationale for the shared facade fixture, and a stale validation test expecting the removed resolver
 format refusal. All are corrected without relaxing production validation or restoring legacy handling.
 
@@ -3592,7 +3592,7 @@ passed the complete 4,546-case host pool. Evidence:
 `/private/tmp/apack-dependency-data-strict-accepted.log`.
 Mutation evidence: `/private/tmp/apack-dependency-data-execution-mutation.log` and
 `/private/tmp/apack-dependency-data-admission-mutation.log`.
-Generated EARS and all six compiled content artifacts are byte-identical to the preserved baseline.
+Generated EARS and all six compiled content files are byte-identical to the preserved baseline.
 Release metadata, format constants and the unrelated issue draft are preserved.
 
 Dependency/tool freshness remains required next. Current `build --skip-generate` bypasses generation
@@ -3628,15 +3628,15 @@ Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T16-12-39Z-66248`;
 `/private/tmp/apack-generation-freshness-strict-accepted.log`.
 Mutation evidence: `/private/tmp/apack-generation-freshness-early-mutation.log` and
 `/private/tmp/apack-generation-freshness-output-mutation.log`.
-Generated EARS and six compiled content artifacts remain byte-identical. Public CLI documentation
+Generated EARS and six compiled content files remain byte-identical. Public CLI documentation
 matches the skip contract. No SDK public signature, release metadata or format constant changes;
 the unrelated issue draft remains uncommitted.
 
 This closes the inspected skip-generation gaps, not all source/build freshness. Next address the
 runtime watcher: `build/watch.ts` currently writes `dist/runtime/index.cjs` directly under a lock
-without regenerating declarations, updating the snapshot/facades, or resealing the artifact receipt.
+without regenerating declarations, updating the snapshot/facades, or resealing the build receipt.
 Source edits can therefore disagree with discovery metadata and receipt identity. Make watched
-publication follow a coherent accepted artifact contract, and prove source contract changes, invalid
+publication follow a coherent accepted build contract, and prove source contract changes, invalid
 edits, concurrent requests and host reload against verified current receipts. Audit dependency build-code
 identity and remaining cache/tool inputs alongside that work. All contribution/native discovery,
 frontend naming, static edges/inventory, navigation, boundaries and all three Phase 6 streams remain
@@ -3649,7 +3649,7 @@ Source `1fa16bd7b` replaces runtime-only writes and the two duplicate external-d
 watcher publishing through the complete staged build. Authored paths inside the pack tree use the same
 exclusions as build inputs, including manifests, JSON/assets/help and modules outside src/. Mid-build
 edits coalesce into another run. Successful external-dev publications install before reload; invalid
-edits retain the verified artifact and running incumbent. Startup no longer requires a pre-existing
+edits retain the verified build and running incumbent. Startup no longer requires a pre-existing
 src/ folder or chooses a frontend entry before generation. Watch mode refuses other build flags rather
 than silently ignoring them. Session cleanup closes future requests immediately, awaits an in-flight
 watcher operation, and only then removes its temporary profile.
@@ -3674,7 +3674,7 @@ Two complete default-setup builds on unchanged inputs took 7.09s and 7.24s here,
 logs `/private/tmp/apack-watch-default-build-1.log` and `-2.log`. These are two observations, not an edit
 latency guarantee. The incorrect runtime-only optimization is removed; finer safe phase invalidation
 can improve cost without introducing unverified publication. Generated EARS and six compiled content
-artifacts remain byte-identical. No SDK public API, format constant or release metadata changes.
+builds remain byte-identical. No SDK public API, format constant or release metadata changes.
 The unrelated issue draft remains untouched.
 
 Full source/dependency/tool freshness remains required. Root filesystem watching does not yet establish
@@ -3711,7 +3711,7 @@ Strict passed in 272.3s (25 of 30 cached), evidence
 the repository's 60s budget. An unchanged staged-build case timed out under load and passed in isolation
 with its original timeout/assertions before the successful pool rerun. A later external-app run failed
 waiting for Monaco, then passed on unchanged-source retry. That does not establish offline readiness.
-Generated EARS and six compiled content artifacts remain byte-identical. No public SDK API, format
+Generated EARS and six compiled content files remain byte-identical. No public SDK API, format
 constant or release metadata changes; the unrelated issue draft is preserved.
 
 The audit confirms remaining required work, not optional follow-ups:
@@ -3758,7 +3758,7 @@ Strict passed in 173.7s (28 of 30 cached), evidence
 The accepted predecessor `2026-10-14T18-01-57Z-96454` ran 3,148 host cases, 855 pack cases with two
 existing skips, all 683 integration cases, external app, smoke and packaged authoring/app checks in
 652.4s. The final external-app run includes startup network blocking; unchanged smoke/packaged evidence
-was reused. Generated EARS and six compiled content artifacts remain byte-identical. No public SDK
+was reused. Generated EARS and six compiled content files remain byte-identical. No public SDK
 signature, format constant or release metadata changes. The unrelated issue draft remains untouched.
 
 The negative runtime-build probe also exposed a remaining output-freshness issue: after source was
@@ -3774,7 +3774,7 @@ committed-source strict `--all` and the whole-goal completion audit remain due.
 ### Resolved dependency identity — checkpoint (2026-10-14)
 
 Source `439883713` checks every selected machine/file/cache snapshot against the requested pack ID.
-Downloaded releases must also match the selected release version in both artifact and snapshot before
+Downloaded releases must also match the selected release version in both build and snapshot before
 cache publication. These are current identity checks, not historical-format recognition or conversion.
 
 Focused dependency checks pass (31 cases):
@@ -3934,3 +3934,28 @@ Required next work: complete workspace/published implementation identity, depend
 content keys, deliberate skip paths and the appropriate launch freshness contract. All remaining
 discovery/native/content-edge, frontend/navigation/boundary and Phase 6 workstreams remain required;
 final committed-source strict `--all` and the whole-goal audit remain due.
+
+### Artifact terminology audit checkpoint (2026-10-14)
+
+Source `9b171b104` completes the follow-up terminology audit across packaging, dependency/build
+readers, CLI help, settings/reference revision fixtures and repository checks. App artifact
+contributions/viewers keep their domain names. Compiled pack/app output uses build terminology;
+checked-in generated files use recorded-file/report terminology. Packaging writes
+`build-integrity.json` and verifies it with `verifyBuildOutputs`; every in-tree caller moves together.
+Repository typechecking borrows `RECORDED_FILE_CHECKS`. Release filename prefixes change their internal
+identifier only; third-party `artifactName` and `upload-artifact` APIs and release filenames are preserved.
+Two overlooked content fixtures now declare/clear `content.datasets` instead of `content.artifacts`.
+
+Current public documentation, subsystem plans and repository guides adopt the same vocabulary.
+`docs/reference/recorded-files.md` replaces the misleading recorded-artifacts filename with its incoming
+links updated. Archived history, existing validation log paths and the unrelated issue draft remain
+untouched. No aliases, format conversion, release/version metadata changes or app artifact renames.
+
+Validation: 66 focused repository checks passed; required strict chain passed all 30 steps in 599.3s,
+including API/schema checks, real external authoring, integration, smoke and packaged app acceptance.
+Evidence: `/private/tmp/apack-artifact-naming-focused.log`,
+`/private/tmp/apack-artifact-naming-final-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T21-12-37Z-49088`. The preliminary chain was deliberately
+interrupted to finish the audit; only the final run is acceptance evidence. Generated EARS and six
+compiled content files remain byte-identical to the preserved baseline. This closes the naming
+follow-up only; all unfinished goal deliverables, including tool/dependency freshness, remain required.

@@ -54,4 +54,4 @@ The prod build needs devDependencies (`typescript`, `@types/*`, `tsup`, `tsc-ali
 3. `vite build` — bundles main/preload/renderer (needs devDeps)
 4. `electron-builder` — packages only the compiled output + production `node_modules`
 
-DevDependencies are needed during steps 1-3 but are **not shipped** in the final app. `electron-builder`'s `files` config controls what gets packaged, and it already excludes `@types`, `.bin`, and other dev artifacts. So devDeps exist on disk during the build but never end up in the DMG.
+DevDependencies are needed during steps 1-3 but are **not shipped** in the final app. `electron-builder`'s `files` config controls what gets packaged, and it already excludes `@types`, `.bin`, and other dev files. So devDeps exist on disk during the build but never end up in the DMG.

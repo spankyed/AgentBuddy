@@ -12,7 +12,7 @@ ranges. Settings value schemas use JSON Schema draft-07.
 Run `apack pack validate` for complete semantic checks: npm version ranges, cross-declaration ownership,
 settings defaults, declared modules and exports need more than JSON Schema validation. The CLI reports
 invalid and incomplete checks separately; `--json` supplies field paths for tooling. Editor acceptance
-does not prove that source exports or dependency artifacts are available.
+does not prove that source exports or dependency builds are available.
 
 ## Module references
 
@@ -32,7 +32,7 @@ barrels remain type-only and Vue component exports are checked by the frontend b
 exports are inspected too, including CommonJS default-import semantics. Missing modules or required
 exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
 
-Built and installed declarations use the [pack artifact contract](pack-builds.md); native host
+Built and installed declarations use the [pack build contract](pack-builds.md); native host
 composition supplies declarations directly, without an installed receipt.
 
 The CLI writes root, feature-definition and extension-kind fields in schema order. Feature IDs,
@@ -277,7 +277,7 @@ returns absence. `getReferenceCategoryDeclarations()` lists categories with thei
 including disabled and source declarations, without silently overwriting duplicate names.
 `getReferenceTypeBinding(name)` and `getReferenceCategoryBinding(name)` return stable accepted entries
 only with a ready catalog and matching enabled owner. Installed entries require matching declaration
-and artifact identities plus a runtime identity; native entries carry no invented installed receipts.
+and build identities plus a runtime identity; native entries carry no invented installed receipts.
 Source advertisements are metadata, not executable claims. Ambiguous runtime names cannot execute.
 Reactive consumers observe both `onReferenceDeclarationsChanged` and `onReferenceBindingsChanged`,
 and release both subscriptions. Looking up a binding does not call navigation or start an item provider.

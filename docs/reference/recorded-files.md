@@ -1,8 +1,8 @@
-# Recorded artifacts: derivations, proxies and samples
+# Recorded recorded files: derivations, proxies and samples
 
 Why this is a reference and not a rule: the rule is three sentences and lives in the root `CLAUDE.md`. What
 is here is the evidence for it — two subsystems that were built, measured and deleted, and what each cost
-while it lived. Read it before adding a recorded artifact, or when you are about to argue that a proxy or a
+while it lived. Read it before adding a recorded file, or when you are about to argue that a proxy or a
 sample is worth it after all.
 
 The archived goals hold the same ground from the other direction:
@@ -10,7 +10,7 @@ The archived goals hold the same ground from the other direction:
 ended the sample, and [`goal-measured-placement.md`](../archive/goals/goal-measured-placement.md) is the one
 that built it.
 
-**Three kinds of recorded artifact, and the question to ask of a new one is which it is.**
+**Three kinds of recorded file, and the question to ask of a new one is which it is.**
 
 A **derivation** re-takes its answer on every run and compares — `schema:check`, `exports:check`,
 `facade:check`, `content-parity:check`. A missing input is not a thing that can happen to one, so a case

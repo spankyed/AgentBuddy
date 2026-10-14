@@ -3,8 +3,8 @@
 Status: in progress, using [settings architecture](settings-architecture.md) and the
 [discovery catalog](discovery-without-activation.md). Checkpoints below record implemented behavior;
 the original survey is historical evidence, not the current policy.
-Validate replacements before publishing one committed artifact/catalog revision. Pre-publication failure
-retains the prior artifact/view; activation failure is a separate outcome, not a promise to undo
+Validate replacements before publishing one committed build/catalog revision. Pre-publication failure
+retains the prior build/view; activation failure is a separate outcome, not a promise to undo
 user-data effects. Preserve owner IDs and stored settings overrides.
 Keep migration version lines independent of update provenance. The planned catalog default-navigation policy
 supersedes the old first-plugin survey below.
@@ -73,15 +73,15 @@ updatesWith: 'app' | 'user'
 
 **It means who owns updates, not who may overwrite files.** App-owned packs update with the app, imposed —
 necessary, because an app update that left a stale pack behind could leave its snapshot format unreadable
-and the pack would not load at all. User-owned forks keep their selected artifact until explicit replacement or restoration. App-owned
+and the pack would not load at all. User-owned forks keep their selected build until explicit replacement or restoration. App-owned
 packs can receive an app-source update offer keyed by source revision, independently of remote release
 updates. Restoration explicitly adopts the app source and enables it. An absent deliberately removed
 pack needs restoration, not an enable toggle.
 
 **Absence means `'user'`.** The app only refreshes what it can prove it owns. CLI/app/dev installation
-records user ownership with the selected source before publication; unrecorded existing artifacts are
+records user ownership with the selected source before publication; unrecorded existing builds are
 also user-owned. No migration or byte-based adoption supplies app ownership. Every new shipped installation records app ownership;
-unrecorded artifacts remain user-owned. There are no users requiring automatic adoption of historical
+unrecorded builds remain user-owned. There are no users requiring automatic adoption of historical
 installs. Developer backup conversion, if needed, is a separate explicit operation on a copy.
 
 **Replacement is an explicit act, not an inference.** Proposed `apack pack replace <id> <source>` and the UI's
@@ -89,19 +89,19 @@ installs. Developer backup conversion, if needed, is a separate explicit operati
 from an id collision would let a pack whose manifest happens to claim `default-setup` silently become the
 user's choice.
 
-**Disable and uninstall remain different operations.** Disable keeps the artifact and discoverable
-settings/help/metadata, changing eligibility and runtime availability. Uninstall removes the artifact and
+**Disable and uninstall remain different operations.** Disable keeps the build and discoverable
+settings/help/metadata, changing eligibility and runtime availability. Uninstall removes the build and
 its declarations, preserving stored settings overrides. Record `suppressAppInstall: true` separately from `enabled`; otherwise a disabled installed pack and an intentionally absent
-pack become indistinguishable. Boot pruning retains this marker. `shippedRevision` records the published source-content identity last accepted for an app-owned install, separate from the runtime nonce and installed artifact receipt. Restoration
-explicitly installs the shipped artifact again; enabling alone does not install a missing artifact.
+pack become indistinguishable. Boot pruning retains this marker. `shippedRevision` records the published source-content identity last accepted for an app-owned install, separate from the runtime nonce and installed build receipt. Restoration
+explicitly installs the shipped build again; enabling alone does not install a missing build.
 
 **Installed packs have lifecycle controls.** Disable and remove are available for every installed pack;
 update ownership does not grant a shipping privilege. Replacement and restoration require explicit
 intent and a selected source. The native host is not an installed pack and is not removable. No
 `canUninstall` flag or developer-mode gate duplicates these rules.
 
-**Runtime identity describes the selected artifact.** App-source advertisements and update ownership
-remain separate from the loaded artifact; the obsolete runtime `shipped` flag is removed.
+**Runtime identity describes the selected build.** App-source advertisements and update ownership
+remain separate from the loaded build; the obsolete runtime `shipped` flag is removed.
 
 ## The work
 
@@ -112,9 +112,9 @@ remain separate from the loaded artifact; the obsolete runtime `shipped` flag is
    Use the completed naming conventions. Change owned callers, fixtures and documentation together;
    do not add old-file reads, conversion or ownership inference for historical developer data.
 3. **Boot:** install when the id is absent *unless* the record suppresses automatic installation;
-   record new shipped installations as `updatesWith: 'app'`. Refresh a changed shipped artifact only
+   record new shipped installations as `updatesWith: 'app'`. Refresh a changed shipped build only
    where that field is `'app'`. Stop hash-comparing on every boot. Matching bytes alone never grant the
-   app ownership of an existing unrecorded artifact. An explicit restoration can choose app ownership.
+   app ownership of an existing unrecorded build. An explicit restoration can choose app ownership.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
    author lives in. Verify that `apack pack dev` in the fork's own directory is the path that serves them.
 5. **Proposed `apack pack replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
@@ -133,7 +133,7 @@ contracts so no intermediate checkpoint silently overwrites a fork.
 
 ## Footguns, named because each was nearly missed
 
-- **Unrecorded artifacts are user-owned by design.** Do not silently adopt them from byte equality;
+- **Unrecorded builds are user-owned by design.** Do not silently adopt them from byte equality;
   a developer who wants an app-managed copy restores it explicitly.
 - **The update offer has no version line to compare.** A shipped pack has no GitHub release, so the offer
   comes from the shipped dir's manifest; and a fork at `0.9.0` against a shipped `0.4.0` makes
@@ -156,7 +156,7 @@ contracts so no intermediate checkpoint silently overwrites a fork.
 
 Fixing `default-setup`'s decorative version. Anything about when migrations run. Changing content
 semantics merely because update ownership changed. Audit actual replacement
-migration/content execution before promising rollback; pre-publication artifact rollback cannot undo
+migration/content execution before promising rollback; pre-publication build rollback cannot undo
 arbitrary applier or migration side effects. Whether the app should ship more than one pack — the
 directory scan already supports it and
 nothing here assumes one.
@@ -175,23 +175,23 @@ Required cases, after checking which current specs already cover them:
 - a fork installed at a shipped id **survives a restart**, and survives a `/dev/reload`
 - an **app-owned** pack is still re-installed when the shipped build changes with the app version
 - an app-owned pack uninstalled through the CLI **stays gone** across a restart, and comes back through explicit restoration
-- an unrecorded artifact remains user-owned even when its bytes match the shipped copy; explicit
+- an unrecorded build remains user-owned even when its bytes match the shipped copy; explicit
   restoration records app ownership, with no historical-format read or automatic conversion
 - `apack pack archive` archives a clone of `default-setup`
 
 Replace the historical hash-repair invariant with the selected update contract: unchanged app-owned
-artifacts are not hash-compared and rewritten on every boot; shipped revision changes refresh app-owned
-copies; user-owned artifacts survive restart/reload. Invalid artifacts produce diagnostics rather than
+builds are not hash-compared and rewritten on every boot; shipped revision changes refresh app-owned
+copies; user-owned builds survive restart/reload. Invalid builds produce diagnostics rather than
 silently reclassifying a fork. Also verify disabled installed packs retain their catalog definitions,
 uninstalled packs do not, restoration reuses preserved overrides, and failed staging leaves the prior
-artifact/catalog available. Use discovery’s stale-load checks during in-flight replacement.
+build/catalog available. Use discovery’s stale-load checks during in-flight replacement.
 
 ## Installed publication audit (2026-10-13)
 
 At audit time, the app's install handler tore down an active pack in `beforePlace`; the update handler
 tore it down before downloading. Neither path used the registry's transactional `replacePack`.
 A download, runtime-load or registration refusal can therefore discard a working incumbent even
-though the artifact checks pass. The existing install lock also uses the source slug while update uses
+though the build checks pass. The existing install lock also uses the source slug while update uses
 the pack id: different sources resolving to one owner need a resolved-id guard, not just a slug guard.
 
 The filesystem acceptance checkpoint adds synchronous `InstallOptions.accept`. The callback reads the
@@ -227,7 +227,7 @@ settings ownership, catalog identities, migration version lines or the consumed-
 
 The app now supplies `acceptInstalledPack` to the installer acceptance hook. Final-path runtime load
 and registration use `replacePack` for an incumbent; refusal clears candidate module cache and lets
-filesystem rollback restore the old artifact without teardown, reactivation or record changes.
+filesystem rollback restore the old build without teardown, reactivation or record changes.
 Install reserves its resolved id before placement, preventing two source slugs from accepting one owner
 at once. The update lock holds its owner through download and acceptance. These are app-system guards,
 not a claim of coordination with independent CLI processes.
@@ -236,10 +236,10 @@ Acceptance returns a starter, invoked after filesystem publication even if savin
 record fails. The shared activation path retires old hooks and handles initialization, migrations and
 content application. Successful replacement restarts old/new system ids before `PACK_CHANGED`.
 Initialization refusal stops affected systems and removes runtime bindings but retains accepted files
-and declarations; it cannot restore arbitrary data writes. Disabled updates refresh their artifact and
+and declarations; it cannot restore arbitrary data writes. Disabled updates refresh their build and
 catalog while preserving disabled state, without loading a runtime.
 
-Focused tests cover actual sealed artifacts and app handlers: download/import/binding refusal,
+Focused tests cover actual sealed builds and app handlers: download/import/binding refusal,
 incumbent registration/revision/records, generated settings handles and subscriptions, refused module
 cache cleanup, competing source identities, disabled update, and old/new system retirement after
 success or initialization failure. Four guard mutations (unregister-first, skipped cache cleanup,
@@ -296,10 +296,10 @@ Selected record contract: `updatesWith: 'app' | 'user'` (absence means user owne
 ownership or revision values. There is no historical-file adoption or conversion.
 
 Boot and id-specific refresh require the target profile's record file. Existing unrecorded/user-owned
-artifacts stay untouched; matching bytes confer no ownership. App-managed copies update only when the
+builds stay untouched; matching bytes confer no ownership. App-managed copies update only when the
 shipped source revision changes, preserving enablement. Dirty/invalid installed bytes are diagnosed by
-artifact admission, not automatically repaired on each boot. Outcomes distinguish `unchanged` source
-identity, `preserved` user artifacts and `suppressed` installation; they are not health reports.
+build admission, not automatically repaired on each boot. Outcomes distinguish `unchanged` source
+identity, `preserved` user builds and `suppressed` installation; they are not health reports.
 
 Installation decisions participate in synchronous acceptance: save them before registration, restore
 them and files on refusal, and initialize after publication. Actual shipped reload also uses transactional
@@ -308,7 +308,7 @@ choose user ownership, clearing app revision/suppression; CLI source recording a
 Uninstall records removal before deleting files and restores prior records on deletion failure. Boot
 pruning retains deliberate removal. Settings/database effects remain outside filesystem/record rollback.
 
-Focused coverage includes repeated boot and removal, byte-identical unrecorded artifacts, real user
+Focused coverage includes repeated boot and removal, byte-identical unrecorded builds, real user
 installation across a shipped rebuild, disabled refresh, candidate/refusal/record-write/deletion failure,
 and actual app-owned reload collision with the incumbent catalog/runtime retained. Five ownership,
 suppression, pruning, record-write and rollback mutations fail and were restored. Explicit replace/restore,
@@ -329,7 +329,7 @@ verified candidate id to match the explicit target. The operation kind supplies 
 the identity check does not double as an authorization flag. It can also fill an explicitly named
 missing slot. Ordinary install must refuse an app-managed incumbent and point to replace.
 
-`apack pack restore <id> --host <path|beta> [--profile <name>]` selects an app-shipped artifact,
+`apack pack restore <id> --host <path|beta> [--profile <name>]` selects an app-shipped build,
 re-enables it, clears removal suppression and records app-managed updates. It preserves database
 settings/content overrides. Source selection uses the existing read-only host-packages resolver:
 explicit host flag or associated host handoff/environment, no working-directory inference, app launch
@@ -338,7 +338,7 @@ state independently of the source host; no profile name chooses an executable or
 
 Both commands hold the existing profile mutation lock and refuse a running app. Candidate validation,
 compatibility, identity, ownership-record update and filesystem acceptance precede publication. Failed
-restoration must retain the old artifact/record or the existing removal marker. Helpers share the same
+restoration must retain the old build/record or the existing removal marker. Helpers share the same
 record acceptance boundary as boot; there is no reset/import or historical-format conversion.
 
 The full advertised shipped-id guard, app UI replace/restore controls, app-source update offers,
@@ -354,10 +354,10 @@ while the incoming id must match replace's explicit target. Plain install refuse
 incumbent. Restore resolves the selected host packages read-only without cwd inference/download/launch,
 requires exactly one matching declared id and shares boot's app-record preparation. It re-enables the
 pack, clears removal suppression/remote offers and records app ownership; source or acceptance failure
-retains the previous artifact/record or removal marker.
+retains the previous build/record or removal marker.
 
 A composed CLI fixture runs restore → replace → boot preservation → uninstall → boot suppression →
-restore, using real sealed artifacts whose runtime throws if activated. Preferences are written to
+restore, using real sealed builds whose runtime throws if activated. Preferences are written to
 actual LMDB, closed before mutation and reopened after restoration; app and pack override values
 persist. Further cases cover identity/compatibility refusal, running-app locks, independent custom
 profiles, explicit host precedence, missing/duplicate ids and uncached beta with fetch mocked to refuse.
@@ -392,7 +392,7 @@ line endings were normalized before review. No release/version metadata changes.
 
 `canUninstall` and the live toggle/install restrictions remain pending the app source catalog and live
 replace/restore controls. In that integration audit, distinguish the currently id-based `PackOrigin.shipped`
-flag from selected artifact provenance and recorded update ownership; it must not regain authority over
+flag from selected build provenance and recorded update ownership; it must not regain authority over
 updates. Complete the clone/edit/build/install/restart acceptance matrix, source update offers and the
 other replacement requirements before closing this plan. All broader goal work remains required.
 
@@ -439,7 +439,7 @@ installed receipt for a source projection.
 
 Boot and explicit restore should share the same source reader instead of separate manifest scans.
 Identity follows the manifest, not folder names; duplicate advertised ids name both sources and refuse
-selection. Source failures leave installed artifacts/ownership untouched and remain visible diagnostics.
+selection. Source failures leave installed builds/ownership untouched and remain visible diagnostics.
 The host catalog publishes app-source changes independently of active settings definitions, supplying
 full advertised-id guards, missing-default restore controls and app-source update offers in the next
 consumer integration. This does not remove any other discovery or replacement requirements.
@@ -485,12 +485,12 @@ shutdown cleanup race recorded above.
    selected restoration revision. Reserve resolved owner ids across every concurrent mutation.
 3. Ordinary live install refuses host, advertised app defaults (including invalid advertisements) and
    app-owned incumbent ids. Deliberate replacement assigns user ownership; restoration enables the
-   accepted app-owned artifact. Refusal retains incumbent resources and records.
+   accepted app-owned build. Refusal retains incumbent resources and records.
 4. Remove `canUninstall` and shipping-based disable/uninstall restrictions. The host remains non-removable;
    it is not an installed pack. Present all installed packs with the same controls and explain update
    ownership. Show explicit replacement input, restoration confirmation and missing-default restore
    actions. Keep load/source failures visible independently of ownership.
-5. Prove actual sealed-artifact replace/restore/disable/uninstall behavior, invalid/stale offer refusal,
+5. Prove actual sealed-build replace/restore/disable/uninstall behavior, invalid/stale offer refusal,
    named-id collisions and control event routing; update public contracts/docs and run strict validation.
 
 App-source update offers and standalone CLI host-selection/advertised-id enforcement are subsequent
@@ -517,11 +517,11 @@ The lifecycle audit also corrected save/teardown ordering. A failed enablement w
 unchanged. Removal stops runtime only after deletion succeeds; a refused record write/deletion does
 not itself deactivate the incumbent. The canonical cache path is captured before deletion and cleared
 on success. This is not atomic recursive deletion: a filesystem failure partway through deletion may
-leave incomplete bytes, which ordinary artifact admission must diagnose. Cleanup callbacks after
+leave incomplete bytes, which ordinary build admission must diagnose. Cleanup callbacks after
 accepted deletion likewise cannot restore arbitrary data effects.
 
 Focused checks currently pass 67 host lifecycle/system/routing checks and nine renderer checks, plus
-host and renderer typechecks. Sealed-artifact cases exercise the complete live restore → replace →
+host and renderer typechecks. Sealed-build cases exercise the complete live restore → replace →
 restore cycle, missing/disabled/activation-failed/invalid advertised ids, stale restoration, replacement
 id mismatch, disabled declaration preservation and removal suppression. Renderer checks verify
 selected-revision confirmation, explicit replacement, and detail removal confirmation. The real Electron
@@ -642,7 +642,7 @@ without selecting a source app. The native host id is refused regardless of oper
 
 The guard reads current advertisements immediately before placement, including source diagnostics,
 and rechecks current installation ownership. A download cannot bypass an advertisement added while
-it was in progress. Refused placement leaves installed artifacts and records unchanged; unrelated
+it was in progress. Refused placement leaves installed builds and records unchanged; unrelated
 pack IDs remain installable in custom profiles. Host-version/build-format checks still use the selected
 storage profile's recorded app compatibility, independently of which source app advertises defaults.
 
@@ -673,19 +673,19 @@ acceptance and the independently recorded shutdown race remain outstanding.
 `PackOrigin.shipped` is an id classification, not evidence that the installed copy came from the app.
 It still drives loader priority and is carried through replacement; `shippedPacks()` has only fixture
 readers. Remove the flag, query and loader argument plumbing rather than inventing another ownership
-cache. Verified installed origin remains path/declaration/artifact identity; installation records own
+cache. Verified installed origin remains path/declaration/build identity; installation records own
 update policy; the app-source catalog owns advertisements. No replacement flag or compatibility alias.
 
 Remove advertised-id load priority. Use deterministic pack-id order and retain named registration
 conflicts; shipping does not grant a designation privilege. This does not substitute for the remaining
 catalog navigation/eligibility policy or dependency-readiness work. Migrate owned runtime/harness/tests,
-prove conflict diagnostics and artifact identity, then run strict validation and commit.
+prove conflict diagnostics and build identity, then run strict validation and commit.
 
 
 ### Selected runtime identity cleanup working implementation (2026-10-13)
 
 Removed `PackOrigin.shipped`, `shippedPacks()` and all loader/boot/reload/harness argument propagation.
-Runtime origins now describe verified selected artifacts without falsely claiming app-source provenance
+Runtime origins now describe verified selected builds without falsely claiming app-source provenance
 from an advertised id. Updates still follow installation records; available app defaults remain a
 separate source projection. No alias or replacement ownership cache is introduced.
 
@@ -695,8 +695,8 @@ resolver. Content application retains its separate dependency ordering. Owned fi
 composition use the common loader without shipping arguments.
 
 All 148 focused host loader/reload/registration/migration/event checks and the host typecheck pass.
-A verified app advertisement shares an id with a different selected user artifact; the actual loaded
-origin retains that artifact's path, version, receipt/file identity while the advertisement remains
+A verified app advertisement shares an id with a different selected user build; the actual loaded
+origin retains that build's path, version, receipt/file identity while the advertisement remains
 unchanged. Conflicting designation checks verify deterministic order and both owner diagnostics.
 Strict validation passes all 30 gates in 390.7s (one cached), including actual app and packaged authoring.
 Evidence: `node_modules/.cache/apack-chain/runs/2026-10-13T22-20-12Z-93616`;
@@ -741,7 +741,7 @@ unchanged, consistent with existing regression tests.
 
 A repository-only runner drives four normal Electron launches over its own temporary data. It uses
 `fixtureEnv` and then deliberately supplies caller-owned storage; public `pack test` continues clearing
-inherited storage overrides. The runner verifies the accepted user artifact receipt/label/ownership
+inherited storage overrides. The runner verifies the accepted user build receipt/label/ownership
 and preference survive restart, restores app ownership via offline CLI, uninstalls through CLI,
 proves host-only boot preserves removal suppression and host settings, then restores the app default
 and proves app ownership/Notes/preferences return. The dependent external fixture is uninstalled for

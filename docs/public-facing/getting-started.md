@@ -83,7 +83,7 @@ It works out which app to use rather than asking: the apack checkout your pack i
 and bundles the runtime and dependent-facing types. Settings definitions are inline in `apack.json`;
 forms remain custom components. The build checks its output before publishing `dist/`, preserving the
 previous build on failure. See [the build command](cli.md#building) for its gates and
-[pack artifacts](pack-builds.md) for the files it produces and installs.
+[pack builds](pack-builds.md) for the files it produces and installs.
 
 ## Build and distribute
 

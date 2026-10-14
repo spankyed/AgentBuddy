@@ -113,14 +113,14 @@ Read `apack.json` and generate all files in `src/__generated__/`. Uses input has
 Resolve every dependency into `.apack/deps/<id>/`: a resolution record retains the declared spec, exact version, origin and content revision; immutable builds retain the complete verified pack layout. Resolution order:
 
 1. Explicit `file:` dependencies: read directly, with no fallback
-2. A selected host's own dependency artifacts, when `APACK_HOST` or the CLI's resolved host handoff is present
+2. A selected host's own dependency builds, when `APACK_HOST` or the CLI's resolved host handoff is present
 3. The workspace: nearest ancestor first, `packages/<id>` then `<id>`
 4. The linked checkout when no host was explicitly selected
-5. Installed app packs, then cached artifacts or GitHub releases as applicable
+5. Installed app packs, then cached builds or GitHub releases as applicable
 
 Every source must satisfy the declared range and pack identity. Current type data can be inspected independently of its executable-format stamp. Executable files require a matching stamp and a verified complete build; type-only data exposes no executable paths. A selected host's unbuilt or
 incompatible dependency fails rather than being replaced by another workspace or app. Explicit
-`file:` dependencies remain authoritative and are copied into a verified cache artifact for builds and tests. A cache hit preserves its original provenance; changed GitHub origins cannot reuse another repository’s cached resolution. Publication keeps previously resolved artifact paths intact. `apack pack build` uses the same resolution rules;
+`file:` dependencies remain authoritative and are copied into a verified cache build for builds and tests. A cache hit preserves its original provenance; changed GitHub origins cannot reuse another repository’s cached resolution. Publication keeps previously resolved build paths intact. `apack pack build` uses the same resolution rules;
 see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 ### Building
@@ -129,7 +129,7 @@ see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 A build writes a verified pack layout into a staging directory, then replaces `dist/` only after
 all phases succeed. A failed build preserves the previous complete `dist/`. See
-[pack artifacts](pack-builds.md) for the build, archive, installed and native layouts.
+[pack builds](pack-builds.md) for the build, archive, installed and native layouts.
 
 The build:
 
@@ -583,7 +583,7 @@ apack pack restore default-setup --host /path/to/apack-checkout --profile my-wor
 `--host` selects the source app; `--profile` independently selects stored state. An associated
 `APACK_HOST_ROOT`, `APACK_HOST_EXECUTABLE` or `APACK_HOST` can supply the source when no flag is given.
 The current directory does not select a host. An explicit flag wins over an associated handoff.
-A checkout needs the pack's built artifacts, not a running app. `--host beta` uses a compatible cached
+A checkout needs the pack's build output, not a running app. `--host beta` uses a compatible cached
 beta and refuses if none is cached. Restore never downloads or launches an app.
 
 The running app offers the same choices in **Packs**: disable or remove an installed pack, replace it
@@ -602,7 +602,7 @@ Remove an installed pack by ID, retaining database settings and recording delibe
 
 Show installed packs.
 
-`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Install and restore separately select source host artifacts with `--host` or an associated host. Explicit named replacement needs no source-host selection.
+`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Install and restore separately select source host builds with `--host` or an associated host. Explicit named replacement needs no source-host selection.
 
 Close the app using the selected profile before installing, replacing, restoring, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
 
@@ -651,7 +651,7 @@ apack db reset --profile production        # lists what it would delete
 
 **Which data.** `--profile production|development|beta|preview|test` selects an app data namespace, `--data-dir <path>` any data dir, such as a copy of the user's, or `--profile <name>` a profile `apack pack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
 
-Installed schema sources must be complete verified pack artifacts, with matching manifest, snapshot,
+Installed schema sources must be complete verified pack builds, with matching manifest, snapshot,
 receipt and directory owner. `--schema-from` accepts a complete snapshot in the current format with a
 matching declaration revision; a bare manifest or partial fragment is refused. These reads never load
 pack runtimes.

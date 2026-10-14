@@ -20,7 +20,7 @@ Complete discovery means discovering the supported declaration contract. Arbitra
 successful execution and current results from dynamic providers cannot be inferred from declarations.
 Make those runtime responsibilities explicit rather than hiding a discovery-time import behind them.
 
-Discovery reads validated data artifacts, static assets and host-owned state such as installed versions.
+Discovery reads validated data files, static assets and host-owned state such as installed versions.
 It does not import/require pack or dependency modules, instantiate components or actors, run hooks,
 execute migrations/content appliers, query a pack's live provider, or write user data. Build-time compilers
 may execute code; their discoverable results must be materialized before installation.
@@ -45,17 +45,17 @@ in the current format is a refusal, not permission to fetch a replacement or exe
 
 `readPackBuild` now combines installed snapshot/manifest validation with full `integrity.json`
 verification. The runtime loader uses it before requiring any pack code; previously it checked only the
-layout version and never checked file checksums. The returned SHA-256 artifact revision covers the sorted
+layout version and never checked file checksums. The returned SHA-256 build revision covers the sorted
 file inventory and layout version, so installation paths and checksum-map enumeration order do not change
 identity, while different bytes with identical declarations do. Active origins retain the accepted revision.
 Captured snapshot/manifest bytes must match the verified inventory, refusing an old declaration read
-paired with a replacement artifact's checksums. Manifest identity is checked from the bytes hashed by the
+paired with a replacement build's checksums. Manifest identity is checked from the bytes hashed by the
 verifier, rather than a later reread. A concurrent-replacement regression proves this agreement guard.
 Malformed checksum paths/values, missing/extra files and symbolic links are refused; own `__proto__` file
 names are preserved. The installed catalog fixture reads this same boundary with poisoned executable code.
 The shared verifier also checks integrity id/version against the manifest before installer teardown or
 placement. Shipped-copy comparison verifies the installed receipt and bytes before reporting `current`;
-missing, malformed or mismatched integrity and extra links trigger replacement from the shipped artifact.
+missing, malformed or mismatched integrity and extra links trigger replacement from the shipped build.
 
 This verifies the installed tree at the read boundary, not a signature, an immutable filesystem view or
 complete source/dependency freshness. Build output now carries a producer-owned file inventory before staging; production catalog publication, binding membership and accepted frontend asset delivery
@@ -84,10 +84,10 @@ DSL declaration bundling now takes the build output directory and writes directl
 Reused definitions are copied into the same staged tree. The library frontend bundle redirects the
 existing generated `dist/defs/... ?raw` imports to this build's definitions, and its cache key hashes
 that exact directory. Standalone frontend bundling and the development server continue to read the
-published output. Missing staged files fail rather than falling back to the accepted artifact.
+published output. Missing staged files fail rather than falling back to the accepted build.
 
 A real cold build, changed-definition build with a later runtime failure, recovery and unchanged
-rebuild verify that the accepted artifact/receipt, read record and cache survive failure; recovered
+rebuild verify that the accepted build/receipt, read record and cache survive failure; recovered
 frontend and declarations agree; and both definition and frontend phases reuse unchanged output.
 A separate missing-staged-definition check proves the older published copy cannot mask absence.
 Frozen authored/dependency/tool inputs, frontend delivery identities, production catalog publication
@@ -103,18 +103,18 @@ teardown hook run, with its own descriptor copy, followed by directory replaceme
 
 Checks cover changed/unsealed bytes, a different valid receipt, changed provenance, source edits during
 teardown, raced ownership/compatibility, hook metadata edits and refusal cleanup. Failures in copy or
-validation leave the installed artifact and skip teardown. Hook refusals retain files and clean the
+validation leave the installed build and skip teardown. Hook refusals retain files and clean the
 candidate; directory replacement's existing rollback remains. None of these guards rolls back arbitrary
 hook/activation effects or proves transactional catalog publication.
 
 ### Accepted frontend asset delivery checkpoint
 
-The installed loader retains the verified artifact revision and immutable file membership/checksums.
+The installed loader retains the verified build revision and immutable file membership/checksums.
 `getLoadedPackEntries` and client-readiness classification project those accepted files without rehashing
 current disk bytes. Verified installed catalog entries retain the same receipt and derived revision,
 including disabled entries and the previous accepted entry when a replacement is refused.
 
-Installed frontends use `pack://<id>/artifacts/<revision>/<file>`. The identity belongs to the URL base,
+Installed frontends use `pack://<id>/builds/<revision>/<file>`. The identity belongs to the URL base,
 so relative chunks, styles and font/image requests retain it. Main reads the receipt, compares its identity
 and verifies the exact returned bytes against the listed checksum. Unlisted, missing or changed files,
 replacement receipts and symlinks fail. No installed request falls back to shipped output or development.
@@ -125,7 +125,7 @@ in the document is not proof that its bytes have loaded.
 Source/HMR is an explicit separate route: a development API advertises its live local Vite base URL,
 and the renderer loads that graph directly. Monorepo source modules still use the renderer's Vite graph.
 A failed source import has no disk fallback. The external fixture uses an async canvas to exercise actual
-relative chunk delivery with the same artifact base as its styles.
+relative chunk delivery with the same build base as its styles.
 
 Keep the asset reader below descriptor/compiler imports. Importing the broad host packs barrel into
 Electron main pulled SDK schema code into that bundle, whose external AJV import resolved the root's
@@ -168,7 +168,7 @@ These guards exposed an existing reload defect: require-cache cleanup used the r
 while Node caches the resolved path. Cleanup now covers both paths and a symlink regression verifies
 that sibling packs remain cached.
 
-This identity currently covers manifest data only. It is not yet a complete artifact revision: compiled
+This identity currently covers manifest data only. It is not yet a complete build revision: compiled
 settings definitions, static contribution metadata, asset hashes, resolved dependency identities and
 binding membership still need to join the descriptor contract. Generated-entry inspection checks the
 generated modules, not arbitrary custom frontend entry implementations. Runtime checks refuse such
@@ -211,7 +211,7 @@ Source symlinks are tracked; directory cycles refuse rather than recurse indefin
 
 The build captures authored inputs before reading its manifest and checks them before publication.
 A real settings module that adds an authored file during compilation causes refusal, preserving the
-previous artifact and removing staging. This is a stability guard, not an immutable source snapshot:
+previous build and removing staging. This is a stability guard, not an immutable source snapshot:
 complete external-input/dependency identities and a frozen/coherent build view remain required before
 claiming full build-input freshness. The existing diagnostic reads record remains distinct from cache keys.
 
@@ -231,10 +231,10 @@ directories; group IDs are local to their owner. Immutable copies/readonly views
 catalog from input and reader mutation. Failed candidates preserve its revision and lookup map.
 
 The installed poison-runtime fixture proves this projection performs data reads without executing pack
-code or changing artifacts. Semantic-definition, atomic-publication and owned-copy guard mutations are
+code or changing builds. Semantic-definition, atomic-publication and owned-copy guard mutations are
 caught. This prototype is not wired into production boot or existing discovery/settings readers yet.
 Feature schemas, static metadata/assets for the remaining kinds, complete build-input freshness, checked form/runtime
-bindings, full artifact revisions and trusted caller binding remain on the completion inventory.
+bindings, full build revisions and trusted caller binding remain on the completion inventory.
 
 ### Remaining descriptor work
 
@@ -262,7 +262,7 @@ current readers. Nested contribution lists matter as much as top-level keys.
 | References | A feature names an executable reference module | Declare type/category identities, labels, icons and provider/navigation bindings currently exported from that module |
 | Editor contributions | DSL declarations, app-extension slot paths and a Tiptap module path | Individually identify editor extensions; expose static DSL assets and slot metadata without module evaluation |
 | Help/content/datasets | Help source path, formats, sources/datasets and writer paths | Publish readable help and compiled-content indexes/assets; separate declared content from rows an applier creates |
-| Services/repositories/events | Provided names, contract source paths and generated type declarations | Publish callable API/event contracts and required dependencies as data/type artifacts; no service construction for inspection |
+| Services/repositories/events | Provided names, contract source paths and generated type declarations | Publish callable API/event contracts and required dependencies as data/type declarations; no service construction for inspection |
 | Hooks/migrations | Explicit hook exports and keyed migration descriptions/up references | Data and binding checks landed in `3ec4f0a77`; installed details consume them in `6c876c9ba`. Complete native coverage with the remaining kinds |
 
 This table is the starting audit, not a second author-maintained manifest. Before implementation, expand
@@ -272,7 +272,7 @@ Every supported field must either have a discovery representation or be explicit
 ### Registration coverage audit (2026-10-12, master d7e77829a)
 
 Read the current SDK registration interfaces, manifest schema, codegen and host stores before extending
-artifacts. The following is implementation audit evidence, not another author-maintained declaration.
+builds. The following is implementation audit evidence, not another author-maintained declaration.
 Each grouped row accounts for its named fields; new fields must extend the eventual coverage guard.
 
 | Current fields | Data / executable boundary and ownership |
@@ -333,7 +333,7 @@ Author declarations + source/content
                  |
                Build
                  |
-Complete descriptor + static data/assets + executable artifacts
+Complete descriptor + static data/assets + executable builds
                  |
        Host contribution catalog
                  |
@@ -343,7 +343,7 @@ Complete descriptor + static data/assets + executable artifacts
 ### One generated descriptor, extending the snapshot
 
 Extend the existing snapshot to carry normalized discovery metadata. Resolve local metadata/data files
-at build time, qualify owner identities and embed or index the required static artifacts. Use symbolic
+at build time, qualify owner identities and embed or index the required static files. Use symbolic
 icon names or asset references rather than Vue component objects. Publish generated contracts without
 requiring readers to execute their source modules.
 
@@ -353,7 +353,7 @@ executable exports, move its authoring location to data rather than try to evalu
 at discovery time. A typed source definition can remain build input only if its descriptor is generated
 before installation and there is no independent runtime account of the same metadata.
 
-Read descriptor/data references within the installed artifact and verify them under the existing integrity
+Read descriptor/data references within the installed build and verify them under the existing integrity
 contract. Reject unsupported formats, missing required assets and inconsistent identity with actionable
 diagnostics. Do not fetch or execute missing dependencies just to list what is installed. Source-checkout
 inspection may expose unbuilt/incomplete status, rather than activate the source to fill gaps.
@@ -382,7 +382,7 @@ Help articles now materialize in the snapshot, and source declarations explicitl
 Executable registration no longer contains help. Markdown is not an executable-generation input;
 the complete build compiles it and checks the authored input identity before publication. The backend
 watcher uses that staged build for help edits rather than rebuilding an executable entry containing
-articles. Real build coverage verifies changed articles, sealed artifact admission and preservation of
+articles. Real build coverage verifies changed articles, sealed build admission and preservation of
 the accepted snapshot after an invalid Markdown edit.
 
 The inactive-pack app check exposed a separate editor defect. ProseMirror's `handleClick` covers single
@@ -431,7 +431,7 @@ The validated backend/content checkpoint checks backend feature identities, desi
 presence, plugin default visibility, per-feature service names, and the aggregate provided-service and
 repository names against the accepted manifest. Both installed loading and direct origin-bearing
 registration perform this check before registry mutation, catalog publication or settings authority
-binding. A matching declaration stamp alone did not enforce this membership. Installed test artifacts
+binding. A matching declaration stamp alone did not enforce this membership. Installed test builds
 must declare the contributions they actually bind; do not infer manifest facts by executing their runtime.
 
 The integration gate confirmed a facet mismatch in the testing harness: content-only runtimes were
@@ -566,7 +566,7 @@ not maintain another contribution inventory in its context.
 `packages/api/src/transport/packs.ts`, `fe/client.ts` and `packs/layout.ts` currently expose
 `packs.loaded` / `LoadedPackEntry` as both an inventory and instructions for loading frontend files.
 Expose catalog descriptors separately from activation state. Obtain entry/style references and revision
-identity from validated artifact metadata, eliminating repeated file probing/hashing in list queries.
+identity from validated build metadata, eliminating repeated file probing/hashing in list queries.
 Preserve revisioned URLs, stylesheet cleanup, `pack://` delivery and the source/HMR loader override.
 
 ### Help, commands and editor metadata: retire runtime data stores
@@ -600,7 +600,7 @@ optimization, not necessary to complete this refactor.
 
 ### Shared readers and refresh: remove duplication without erasing policy
 
-Use one validated artifact reader in discovery, activation and offline tooling.
+Use one validated build reader in discovery, activation and offline tooling.
 `runtime/lifecycle.ts::activatePack()` reparses `apack.json`; `database/schema.ts` independently reads
 installed manifests/snapshots and enablement records. Reuse descriptor/identity/ownership validation
 there, while preserving the offline database tool's strict refusal policy and its selected schema.
@@ -618,7 +618,7 @@ until the replacement decision completes, with outcomes handled under the instal
 Discovery is not delivery or execution. Keep contribution undo logs/owned binding stores, collision
 checks at binding, system teardown/shutdown hooks, module-cache cleanup, runtime facet composition,
 and migration/content execution order. Move static ownership checks earlier without trusting that
-runtime bindings necessarily match the artifact.
+runtime bindings necessarily match the build.
 
 Keep `packClientReady` and the bus's client readiness handshake until an actual replacement guarantees
 that startup messages arrive after actors exist. Knowing a plugin's contract does not make its actor
@@ -627,7 +627,7 @@ bindings to all catalog entries. Catalog initialization itself also needs an exp
 an unread catalog is not an empty inventory.
 
 Give host-owned contributions a data representation too. The host's registration is currently included
-in runtime lookups; a catalog containing only installed pack artifacts would quietly lose host navigation
+in runtime lookups; a catalog containing only installed pack builds would quietly lose host navigation
 and settings. Compose trusted host descriptors with installed descriptors through the same ownership
 and projection rules, without pretending the host is installed in the packs directory.
 
@@ -646,7 +646,7 @@ not become a second coordination layer alongside the old shell actions.
    asset or runtime behavior. Record exact remaining gaps and dependency ownership rules here.
 2. **Establish the shared foundation with settings.** Build descriptor validation and the catalog with
    the linked settings plan as the first consumer. Establish checked binding, ownership checks and
-   coherent artifact publication for that projection before switching readers. Complete settings’
+   coherent build publication for that projection before switching readers. Complete settings’
    ownership/migration and schema/default/form contract on this foundation, as the roadmap specifies.
    Do not build separate settings and contribution catalogs.
 3. **Extend the snapshot descriptor.** Resolve facade terminology and required-facade diagnostics from
@@ -656,7 +656,7 @@ not become a second coordination layer alongside the old shell actions.
    Materialize help/step metadata and API/lifecycle contracts until the inventory has no executable reads.
 4. **Extend checked binding and freshness before switching readers.** Audit watch/codegen/snapshot
    invalidation with [dev-loop freshness](../goals/goal-dev-loop-freshness.md). For each added kind,
-   generate metadata and bindings from the same declaration and artifact revision; reject added, missing
+   generate metadata and bindings from the same declaration and build revision; reject added, missing
    or inconsistent bindings. Preserve the last valid catalog on a failed rebuild and report it as stale.
    Do not publish new runtime code against stale metadata. Keep owned binding cleanup and reload checks.
 5. **Build catalog readers and move consumers.** Validate installed descriptors; expose data to frontend
@@ -678,7 +678,7 @@ Entity navigation consumes catalog identities and readiness, then adds its build
 contract. Discovery separates reference metadata from executable navigation bindings; it does not delete
 `navigate` callbacks before [entity opening](open-entity.md) migrates their callers. Frontend boundaries
 contain runtime component failures; API consumption extends the existing caller-bound facade; replacement
-uses committed artifact/catalog revisions. None introduces a second contribution inventory. Lazy
+uses committed build/catalog revisions. None introduces a second contribution inventory. Lazy
 activation is deferred outside the active roadmap; discovery alone does not change when migrations or systems run.
 
 ## Acceptance: no discovery gaps
@@ -697,7 +697,7 @@ activation is deferred outside the active roadmap; discovery alone does not chan
 - Activation cannot introduce extra contributions or replace static metadata. A binding mismatch fails
   cleanly without removing another pack's contribution or partially mutating the catalog.
 - Update/remove/reinstall refresh catalog entries and preserve user data; failed replacement retains the
-  previous valid artifact/catalog for failures before publication. Activation failures report a separate
+  previous valid build/catalog for failures before publication. Activation failures report a separate
   outcome; do not promise rollback of arbitrary migration/content side effects. Verify and document the
   installer’s actual commit boundary before extending replacement.
 - Add a contract-coverage check requiring each new registration/extension field to identify its discovery
@@ -718,7 +718,7 @@ activation is deferred outside the active roadmap; discovery alone does not chan
 
 Run focused specs per boundary, external-pack contract/app checks, affected schema/API generation and
 `npm run chain`. Add targeted UI checks for navigation/help/settings/palette discovery before activation.
-Inspect the built artifact itself; source-level manifest tests cannot prove installed completeness.
+Inspect the built build itself; source-level manifest tests cannot prove installed completeness.
 
 ## Research and scope
 
@@ -782,7 +782,7 @@ binding can still throw after it. Audit owned stores and global repository regis
 old resource cannot remove its replacement. Readers must observe accepted state, not an intermediate
 unregistered pack. Reuse existing admission/ownership mechanisms and distinguish their resource
 transaction from arbitrary pack initialization, migration or applier effects, which cannot be promised
-rolled back. Installed artifact/catalog publication and runtime activation remain distinct transitions.
+rolled back. Installed build/catalog publication and runtime activation remain distinct transitions.
 
 Required regressions use actual generated settings handles: a refused replacement retains the same
 incumbent handle and settings subscription; a late binding/contribution failure leaves prior definitions
@@ -839,16 +839,16 @@ is not a complete discovery implementation or a promise to roll back migration e
 ### Shared installed admission checkpoint (2026-10-13)
 
 `e50838e14` makes installed discovery, catalog refresh, boot, activation/reload and offline database
-schemas use one data-only artifact admission path. It validates the snapshot and receipt, checks the
+schemas use one data-only build admission path. It validates the snapshot and receipt, checks the
 directory's owner and requires a receipt-owned backend entry. Producer/staging readers remain distinct:
 a `dist/` build directory is not a managed `packs/<id>/` installation.
 
 Directory presence remains installation evidence when admission fails. Boot now prunes user records
 only for removed directories, preserving disabled choices and update provenance through malformed
-manifests and later repair. Refused artifacts under valid pack IDs remain removable without trusting their metadata.
+manifests and later repair. Refused builds under valid pack IDs remain removable without trusting their metadata.
 Offline enabled schema sources fail explicitly; `--schema-from` validates complete current snapshots
 and declaration identities without loading executable modules. The permissive EARS fragment reader
-and unused enabled-pack projection are removed. Data fixtures now use complete sealed artifacts.
+and unused enabled-pack projection are removed. Data fixtures now use complete sealed builds.
 
 Focused checks and guard mutations cover record preservation, directory-owner refusal before execution,
 invalid offline schemas, incomplete/stale named snapshots and invalid-installation removal. Native
@@ -935,7 +935,7 @@ that removes its frontend also removes its old actors. This supersedes the earli
 reconnection behavior and its tests; explicit disable/uninstall still remove their frontends.
 
 Review found a real gap behind the passing shell mocks: the SDK's generated settings binder refused
-replacement when an unchanged artifact reused its cached module. The real SDK/registry probe reproduced
+replacement when an unchanged build reused its cached module. The real SDK/registry probe reproduced
 `Frontend settings are already bound`. The frontend hook now returns explicit `activate`/`dispose`
 operations. Preparation leaves the module's accepted accessor unchanged; host commit activates the
 candidate before other host resource publication. Failed publication restores a still-active incumbent.
@@ -957,7 +957,7 @@ external-pack app, smoke and packaged authoring. Evidence:
 This closes reconnect handoff, not the entire replacement workstream. Backend `RELOAD_PACK` currently
 restarts systems and publishes `PACK_CHANGED`, but does not request a frontend refresh while the
 connection stays live. Normal activation reads still skip accepted IDs. Add accepted-revision-aware
-refresh notification together with coherent artifact/runtime publication; do not route replacement
+refresh notification together with coherent build/runtime publication; do not route replacement
 through `PACK_DEACTIVATED`. Installed update/install still have pre-teardown paths. Arbitrary actor/module
 side effects and pane failures remain the separate boundary work, not rollback guarantees here.
 Native/all-kind declarations, remaining static readers, complete freshness, navigation and all three
@@ -967,19 +967,19 @@ Phase 6 streams remain required before final `--all` acceptance and archival.
 ### Accepted runtime identity and grant freshness (2026-10-13)
 
 `244dd5380` gives captured backend registrations a host-issued runtime revision. `getPackRuntime`
-projects that revision with installed provenance; `packs.loaded` carries it with declaration and artifact
+projects that revision with installed provenance; `packs.loaded` carries it with declaration and build
 identities. It changes on acceptance, including identical-byte reloads, remains unchanged after refused
 binding, and disappears on removal. Native registrations without installed provenance return no installed
-runtime. No manifest, snapshot, artifact hash or author-supplied revision owns this lifecycle identity.
+runtime. No manifest, snapshot, build hash or author-supplied revision owns this lifecycle identity.
 
-Settings grant issuance now checks the caller's expected runtime revision as well as declaration/artifact
+Settings grant issuance now checks the caller's expected runtime revision as well as declaration/build
 identity. Resolution checks the current revision, so reusing an origin object cannot preserve an obsolete
 grant. Renderer issuance and all owned transport/fixture callers use the required current contract.
 This is request freshness over trusted host-issued access; it does not confine arbitrary JavaScript.
 
 Evidence: 103 focused host checks and eight API transport checks pass. Mutations that reuse a revision,
 ignore an expected revision, or omit retirement checks each fail its intended regression and were restored.
-The real external-pack app proves reactivation of unchanged artifact bytes rejects the old loaded-record
+The real external-pack app proves reactivation of unchanged build bytes rejects the old loaded-record
 grant request and old credential, while a freshly read runtime succeeds. Final strict chain passes in
 182.9s (18 of 30 cached), including integration, real app, smoke and packaged authoring:
 `node_modules/.cache/apack-chain/runs/2026-10-13T15-43-13Z-31425`;
@@ -1137,7 +1137,7 @@ pane/route presence and fallback-panel metadata as external frontends.
 
 Do not assume native implementations physically live in the metadata owner's package: host Settings
 and Packs views live in renderer, while their machines/ownership live in host. Resolve native binding
-references through trusted composition/build checks, independently of installed artifact paths.
+references through trusted composition/build checks, independently of installed build paths.
 The host/application backend plugin inbox targets the shell actor; it is not a contributed canvas.
 Host/help supplies a system, while its articles appear in Settings. Neither needs a fabricated visible
 plugin, feature or actor to satisfy a frontend inventory. Classify protocol receivers separately from
@@ -1195,7 +1195,7 @@ Native Packs and Settings presentation now comes from pure host declaration data
 views and per-window machine composition preserved. Frontend registry preparation accepts explicit
 native declarations and applies the shared metadata/pane guard before granting resources. It captures
 top-level authored values once, preserving the existing getter-lifetime contract. Native settings groups
-are projected into the validator's settings contribution shape; no native artifact receipt is invented.
+are projected into the validator's settings contribution shape; no native build receipt is invented.
 Full native contribution coverage and source/provenance verification beyond this view slice remain open.
 
 The existing common catalog projects immutable plugins from native, installed and authoring owners.
@@ -1209,7 +1209,7 @@ Admission compares labels, pinning, shortcuts, header options, pane/route member
 metadata, rejects unknown plugin fields, and checks executable binding shapes without calling renderers
 or predicates. This does not prove arbitrary JavaScript is safe or establish component-source identity
 by comparing function objects. Generated imports, checked exports, accepted declaration identity and
-existing artifact integrity remain the implementation-binding path.
+existing build integrity remain the implementation-binding path.
 
 Focused evidence includes 182 SDK build/codegen checks, 21 initial schema/file checks, 47 reviewed
 schema/generator checks, 68 catalog/native/binding checks, 46 retirement/handoff regressions, 77 combined
@@ -1229,7 +1229,7 @@ Validation follow-through: the first strict candidate passed 4,301 of 4,303 host
 refused two incomplete fixture paths. The shared SDK fixture now writes its declared state module,
 and its completeness assertion enumerates plugin targets rather than reading the retired entry key.
 All nine fixture checks and eight build-output-swap checks pass, including the original authored-input
-race and artifact rollback assertions. The next strict run passes the full host/pack unit gates and
+race and build rollback assertions. The next strict run passes the full host/pack unit gates and
 638 of 639 integration checks; its remaining contract-leaf fixture still imported a filename the
 shared manifest no longer designated as the actor module. The fixture now explicitly declares that
 unconventional state filename. All 17 targeted leaf-rule cases pass, with their original refusal
@@ -1457,7 +1457,7 @@ Transport is delivered; discovery consumers and the owning goal remain unfinishe
 Before migrating readers, the active reference maps exposed only configurations. Global names could
 not identify the owning feature or distinguish an accepted binding from a declaration at that name.
 Extend each read entry with the qualified feature ref, declaration revision and host-supplied runtime/
-artifact revisions. Module registration owns its declaration stamp; the host loader supplies executable
+build revisions. Module registration owns its declaration stamp; the host loader supplies executable
 identity separately. Capture only those identity fields, so unrelated caller fields cannot overwrite
 ownership. Native bindings must not manufacture installed/runtime receipt identities.
 
@@ -1475,7 +1475,7 @@ name match as sufficient. Entity delivery/readiness still needs its separate pla
 ### Owned reference identity checkpoint (2026-10-13)
 
 Implemented the identity prerequisite above. Reference read entries retain qualified feature ownership,
-module declaration stamps and the runtime/artifact identity supplied by the host loader. The host
+module declaration stamps and the runtime/build identity supplied by the host loader. The host
 captures only its identity fields; extra caller fields cannot overwrite ownership or the declaration
 stamp. Native entries omit installed/runtime identities rather than inventing receipts. Entries are
 immutable and stable across unrelated registry changes, while accepted replacement creates new entries.
@@ -1501,7 +1501,7 @@ Expose typed projections from the existing common catalog through `FeHostRuntime
 create another authored inventory or derive declarations from active registrations. References are
 its first frontend projection. Share `ReferenceCatalogEntry` across host/window/SDK and one pure
 projection function across backend and window snapshots. Carry truthful origin, qualified ownership,
-enablement and declaration/artifact identity; native/source entries never manufacture installed receipts.
+enablement and declaration/build identity; native/source entries never manufacture installed receipts.
 
 SDK frontend helpers read declarations and status through that port and subscribe explicitly to
 frontend declaration changes. Keep the backend framework's catalog subscription on the backend:
@@ -1582,7 +1582,7 @@ Concrete audit findings and required fixes:
 Use one SDK reference reader to join declarations and accepted bindings; editor components must not
 repeat ownership/identity comparisons. Metadata reads remain executable-free. Execution requires a
 ready catalog, a matching qualified owner, and a current enabled contribution. Installed bindings must
-match declaration and accepted artifact identities; absence of an artifact receipt is not permission
+match declaration and accepted build identities; absence of an build receipt is not permission
 to execute an installed entry. Source declarations advertise authoring metadata without installed
 eligibility. Native declarations/bindings use their explicit native ownership contract, without
 inventing installed stamps. Catalog disconnect stops providers and navigation, while retained metadata
@@ -1611,14 +1611,14 @@ refuse ambiguous runtime claims. Authoring source advertisements do not supersed
 installed/native runtime claim; source-only entries remain descriptive and cannot execute.
 
 Executable lookup requires ready catalog status, explicit enablement and matching feature ownership.
-Installed entries also require a matching nonempty declaration/artifact identity and an accepted runtime
+Installed entries also require a matching nonempty declaration/build identity and an accepted runtime
 identity. Native bindings have no installed stamps. Readers return the stable accepted object without
 calling its provider/navigation/component. Frontend binding notifications are separate from declaration
 notifications, so consumers can follow either publication order and dispose both subscriptions.
 
 Focused tests cover both executable groups, status changes, disabled/missing enablement, declaration/
-artifact changes or missing receipts, foreign ownership, source metadata, native bindings, ambiguity,
-removal/replacement and listener cleanup. Removing owner or artifact matching independently fails the
+build changes or missing receipts, foreign ownership, source metadata, native bindings, ambiguity,
+removal/replacement and listener cleanup. Removing owner or build matching independently fails the
 corresponding named refusal assertion. Editor consumers and provider scopes are still unmigrated;
 continue the preceding migration sequence, including actual external contribution acceptance.
 
@@ -1662,7 +1662,7 @@ Phase 6 workstream remains active, alongside final committed-source --all and th
 The final editor cleanup changed the shipped pack's frontend while leaving app workspace bundles
 unchanged. Strict app checks incorrectly reported cached because their declared inputs omitted
 `PACK_OUTPUTS`: the app loads that pack separately at runtime. Correct external-pack app, smoke, full
-E2E and packaged-authoring app inputs to include the separately loaded artifact. A fingerprint regression
+E2E and packaged-authoring app inputs to include the separately loaded build. A fingerprint regression
 changes only shipped frontend bytes and requires each app check's key to change. Runtime build
 success or unchanged app bundle bytes alone never proves an unchanged running app. This is part of
 required discovery/source-build freshness, not a speculative cache optimization.
@@ -1764,8 +1764,8 @@ Implement in coherent checkpoints:
    migrate producers, schema, every reader, native/test fixtures, reports and public docs outright.
 2. Inspect declared facade type exports against the actual generated consumer's requirements. A
    missing/incapable facade must name dependency, required exports and rebuild remedy. Dependency
-   discovery accepts usable current-data capabilities with absent/different artifact stamps as
-   diagnostic context; installation/runtime artifact readers retain their explicit exact format policy.
+   discovery accepts usable current-data capabilities with absent/different build stamps as
+   diagnostic context; installation/runtime build readers retain their explicit exact format policy.
    Use one current-data reader with honest optional stamp types for dependencies, not a dual reader,
    old-format converter, synthesized stamp or fake export. Actual dependent TypeScript/build checks
    must prove acceptance and refusal, including cached and installed candidates.
@@ -1787,7 +1787,7 @@ reports/public docs. DSL definitions and physical facade filenames are preserved
 facade typing/completion and flow-helper execution pass; guard mutations fail. Strict passed all
 30 steps in 504.7s, recorded in the execution goal.
 
-Checkpoint 2 is still required. Current format-refusal tests remain valid artifact-policy tests; they
+Checkpoint 2 is still required. Current format-refusal tests remain valid build-policy tests; they
 do not demonstrate capable type admission. Implement the separate current-data dependency reader,
 actual required type-export checking and honest stamp diagnostics, including installed/cache/real
 authoring checks. Keep runtime execution admission distinct. Remaining kinds and all later phases
@@ -1816,8 +1816,8 @@ synthesized stamp or legacy-key read is authorized. All remaining goal phases re
 validation, actual consumed facade type checks, installed/cache/source resolution and executable-file
 withholding on stamp mismatch. Real producer/consumer builds and editor queries accept capable data;
 poisoned build/runtime files are never imported by that inspection. Content compilation and harness
-execution independently enforce artifact-format eligibility. No aliases, conversions, synthesized
-stamps or obsolete-key readers exist. Exact execution validation remains a current artifact contract.
+execution independently enforce build-format eligibility. No aliases, conversions, synthesized
+stamps or obsolete-key readers exist. Exact execution validation remains a current build contract.
 Focused tests, restored guard mutations and strict validation pass; the owning goal records evidence.
 
 Checkpoint 3 remains open. Inspected `build --skip-generate` bypasses generation checks, then only
@@ -1841,9 +1841,9 @@ checks and restored guard mutations pass; the goal records strict evidence and p
 
 Checkpoint 3 remains open for watched publication and the remaining dependency/tool/cache audit.
 Inspected `build/watch.ts` directly replaces the runtime bundle without refreshing snapshot/facade
-metadata or the receipt. A runtime lock prevents writer overlap but cannot make that artifact coherent.
+metadata or the receipt. A runtime lock prevents writer overlap but cannot make that build coherent.
 Replace this path with verified publication that preserves matching declarations, checked bindings,
-facades and receipt identity. Prove invalid edits retain the accepted artifact, source-contract edits
+facades and receipt identity. Prove invalid edits retain the accepted build, source-contract edits
 reach discovery and runtime together, and concurrent watcher requests are not lost. Avoid a second
 inventoried discovery projection or unverified reload exception. Assess the cost of the complete build
 versus a correctly validated incremental publication before retaining the runtime-only optimization.
@@ -1857,7 +1857,7 @@ Checkout and external-pack development share staged, verified publication before
 filter is shared with builds, and session teardown waits for in-flight work before profile removal.
 Real filesystem, installed receipt, catalog and host-runtime checks pass, as do meaningful restored
 mutations and strict validation. The owning goal records evidence and the observed build cost. This
-is complete artifact publication, not a promise of the former runtime-only latency.
+is complete build publication, not a promise of the former runtime-only latency.
 
 Checkpoint 3 remains open for the explicit external-input graph: symlinked authored sources outside
 the watched root, dependency snapshots and executable build files, and SDK/tool implementation inputs.
@@ -1881,7 +1881,7 @@ and reads omit resolved source identity. Replace this with coherent verified cac
 recorded exact origin/version/content identity, retaining independent type-data inspection. Inspect
 source and bundled tool implementation inputs, imported helpers and dependency build code; prove their
 changes invalidate stale outputs without relying on release-version changes. Do not preserve the cache
-comment that treats provenance as optional. Source and cached/installed artifact identities must agree.
+comment that treats provenance as optional. Source and cached/installed build identities must agree.
 
 The editor offline audit is also required: the Monaco loader defaults to jsDelivr, and no renderer
 configuration overrides it. The external settings-editor test failed once awaiting the editor and then
@@ -1910,11 +1910,11 @@ editor checkpoint does not complete broader editor contribution declarations or 
 ### Dependency identity checkpoint (2026-10-14)
 
 `439883713` validates requested versus embedded pack IDs across local/file/cache resolution and selected
-release versus artifact/snapshot versions before caching. Focused checks and three caught identity
+release versus build/snapshot versions before caching. Focused checks and three caught identity
 mutations plus strict validation are recorded in the execution goal. This closes identity substitution
 only; cache receipts, coherent publication and persistent provenance/content identity remain required.
 Current schema validation rejects invalid declarations normally; no obsolete-key inventory or special
-historical-format refusal is introduced. Exact executable artifact-format checks remain distinct from
+historical-format refusal is introduced. Exact executable build-format checks remain distinct from
 capability-based inspection of current type data.
 
 

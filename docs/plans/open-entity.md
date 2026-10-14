@@ -176,7 +176,7 @@ the rule "a feature declares the entities it is the home of, not the entities it
 
 ## Risks
 
-**The snapshot format is the artifact contract.** Coordinate this change with the discovery descriptor
+**The snapshot format is the build contract.** Coordinate this change with the discovery descriptor
 under the current format rules. The archived manifest-redesign goal is not an independent workstream;
 do not force a release/version bump merely because its old plan prescribed one.
 

@@ -89,7 +89,7 @@ Do not rename or relocate this directory into another settings assembly layer.
 
 The current source audit found these responsibilities:
 
-| Current artifact | Final disposition |
+| Current component | Final disposition |
 |---|---|
 | `default-setup/src/app-settings/index.ts` | Delete `getBaseSettings`, `assertNoFeatureSlice` and the `settingsSections` thunk. Manifest ownership and schema validation make the assembly and its guard unnecessary. |
 | `default-setup/src/app-settings/types.ts` | Delete the pack's whole-document `SettingsData` and hand-written assistant value type. The host/SDK owns the document; assistant values derive from the declared group schema. |
@@ -116,7 +116,7 @@ condition through the parent form. This is ordinary frontend data adaptation, no
 **One integrated removal checkpoint:** establish the shared document/target/handle contract and trusted
 caller binding; publish installed declarations through the common catalog; migrate the assistant group,
 app and feature callers, writer, events, renderer consumers and custom-form targets; then remove all
-artifacts above in that same working change. Generated entries/types, manifest/schema, public API reports,
+components above in that same working change. Generated entries/types, manifest/schema, public API reports,
 fixtures and docs must agree. Do not commit a new catalog reader as a substitute while retaining this
 pack-owned app assembly. Before committing, prove the app/pack/feature route described in the goal,
 including disabled definitions, restrictions, reset and restore; assert the obsolete directory, aliases,
@@ -458,7 +458,7 @@ not establish caller identity. Do not authorize a settings mutation from any of 
 
 Use a host-issued settings credential attached outside the event payload at API ingress, scoped to its
 connection and accepted runtime instance. Pack issuance verifies pack ID, declaration revision and
-artifact revision against the accepted backend origin; missing stamps, replacement, unload and connection
+build revision against the accepted backend origin; missing stamps, replacement, unload and connection
 closure invalidate access. Host window/tool setup receives a separate administrative credential. The
 host resolves credentials to its existing scoped settings service or administration, retaining the bus's
 `call`/`answering` mechanism. Raw `bus.send` settings mutations without valid access must be refused;
@@ -482,7 +482,7 @@ Its native test declarations and synthetic accepted origins do not prove install
 
 Renderer bootstrap now waits for both host access and a validated correlated snapshot before announcing
 the connection to the shell. The loader provider obtains a separate pack credential using the backend's
-accepted declaration and artifact identities, and releases it when registration is refused or unloaded.
+accepted declaration and build identities, and releases it when registration is refused or unloaded.
 Native app reset uses an explicit window administration operation rather than raw bus labels. Generic
 frontend sends do not borrow that authority.
 
@@ -499,7 +499,7 @@ plugin actors using its existing unload lifecycle. A load interrupted by disconn
 running loader; its late registrations are undone and not announced, then a queued fresh run starts after
 it settles. No run starts while disconnected. The selected feature is restored after acceptance if it
 still exists. Revoked handles remain revoked. Backend origin replacement must likewise require
-acceptance of the current declaration/artifact rather than renewing a credential from stale metadata.
+acceptance of the current declaration/build rather than renewing a credential from stale metadata.
 Validate these contracts in the real app too; mocked transport and shell tests alone do not prove it.
 
 Confining arbitrary pack code and enforcing resource grants belongs to the separate
@@ -1099,11 +1099,11 @@ already bootstrap host access, while pack-facing services remain bound to accept
 A source pack's unit harness runs generated modules before a bundle exists. It therefore admits a validated
 source manifest explicitly into the same catalog, alongside checked dependency snapshots and native host
 contributions. Source entries retain the full manifest and declaration revision and survive runtime registration
-changes; they are not reconstructed from activated features or admitted by a missing-artifact fallback.
+changes; they are not reconstructed from activated features or admitted by a missing-build fallback.
 Generated content runtimes now carry a required declaration revision, like registrations. Source setup refuses
 stale identities before starting its runtime, and source registration acceptance checks the catalog identity.
 Data-only harness registrations carry the manifest's declared settings metadata without inventing actors.
-Installed packs continue through verified artifact admission.
+Installed packs continue through verified build admission.
 
 Declaration identity hashes canonical object keys recursively while preserving array order. Schema parsing
 must not invalidate a generated identity merely by reordering keys. Rebuild outputs from the changed producer;

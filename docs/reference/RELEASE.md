@@ -173,7 +173,7 @@ The app also performs this orphan cleanup automatically before spawning a new pa
 
 ## Versioning & Changelog
 
-Uses [semver](https://semver.org/). The version lives in root `package.json` and is used by electron-builder for artifact naming.
+Uses [semver](https://semver.org/). The version lives in root `package.json` and is used by electron-builder for release file naming.
 
 - **patch** (0.0.1 → 0.0.2) — bug fixes
 - **minor** (0.0.1 → 0.1.0) — new features
@@ -204,7 +204,7 @@ For local signed builds, create `.env.signing` (gitignored) from `.env.signing.e
 - **Validates**: tag version matches `package.json`
 - **Builds**: full 7-step production pipeline
 - **Signs + notarizes**: when secrets are configured
-- **Publishes**: GitHub Release with artifacts and auto-generated notes
+- **Publishes**: GitHub Release with release files and auto-generated notes
 
 ### GitHub Secrets
 

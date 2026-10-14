@@ -335,7 +335,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 ## Build-time dependency resolution
 
-`apack pack generate-entries`, `apack pack validate`, `apack pack build` and `apack pack fetch-deps` resolve each dependency in `apack.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
+`apack pack generate-entries`, `apack pack validate`, `apack pack build` and `apack pack fetch-deps` resolve each dependency in `apack.json` to its build output: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
 
 A selected host supplies its own packs before workspace lookup. An incompatible or unbuilt dependency belonging to that host fails; it never falls through to another app. Explicit `file:` dependencies override this selection. Without a host dependency, lookup continues in this order:
 

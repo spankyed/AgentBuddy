@@ -112,7 +112,7 @@ design, not grounds to weaken the guarantee.
 ### 3. Implement isolation and permission mediation
 
 Migrate runtime loaders, generated SDK access, transport, data access and frontend integration as one
-coherent boundary. Preserve declaration discovery and installed-artifact validation. Authenticate
+coherent boundary. Preserve declaration discovery and installed-build validation. Authenticate
 callers at the broker, check current grants and resource ownership, and remove ambient authority from
 isolated code. Handle disable/uninstall, crashes, pending calls, subscriptions and grant revocation.
 
