@@ -173,10 +173,6 @@
     "default-setup": "*"
   },
   "permissions": [],
-  "boot": {
-    "onInit": "src/features/hooks.ts#onInit",
-    "onShutdown": "src/features/hooks.ts#onShutdown"
-  },
   "content": {
     "sources": {
       "actions": "src/content/actions",
@@ -223,5 +219,9 @@
   },
   "data": {
     "relations": []
+  },
+  "lifecycle": {
+    "onInit": "src/features/hooks.ts#onInit",
+    "onShutdown": "src/features/hooks.ts#onShutdown"
   }
 }

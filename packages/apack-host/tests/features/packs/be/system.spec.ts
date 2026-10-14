@@ -342,7 +342,7 @@ describe('pack information without activation', () => {
         plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
-      boot: { onInit: 'src/hooks.ts#onInit' } };
+      lifecycle: { onInit: 'src/hooks.ts#onInit' } };
     fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'types'));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
@@ -367,7 +367,7 @@ describe('pack information without activation', () => {
       expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
         entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
-        migrationCount: 1, bootHooks: ['onInit'],
+        migrationCount: 1, lifecycleHooks: ['onInit'],
         features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(fs.existsSync(marker)).toBe(kind === 'activation-failed');
@@ -612,8 +612,8 @@ describe('installing over a pack that is already running', () => {
     await installPackFromLocal(packSource('1.0.0'));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
     const source = packSource('2.0.0', {
-      runtime: 'module.exports.registration.boot = { onInit() { throw new Error("initialization refused"); } };',
-      manifest: { boot: { onInit: 'init.ts#onInit' } },
+      runtime: 'module.exports.registration.lifecycle = { onInit() { throw new Error("initialization refused"); } };',
+      manifest: { lifecycle: { onInit: 'init.ts#onInit' } },
     });
     const system = runPacksSystem();
     try {

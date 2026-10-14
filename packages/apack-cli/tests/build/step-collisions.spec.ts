@@ -25,11 +25,10 @@ describe('buildPackConfigFromManifest step definitions', () => {
     stepsModule(tmp, path.join('src', '__generated__', 'steps-build.ts'), 'collide_step');
     // Declared in the manifest, which is what makes the generated module the pack's own steps: a module
     // for a step no manifest declares is not read at all
-    const manifest = {
+    const manifest: PackManifest = {
       id: 'demo', name: 'Demo', version: '1.0.0',
       extensions: { steps: { collide_step: { node: 'src/steps/collide/build.ts#collideNode', build: 'src/steps/collide/build.ts#collideBuild' } } },
-      boot: { content: { flows: 'src/content/flows' } },
-    } as unknown as PackManifest;
+    };
 
     const config = await buildPackConfigFromManifest(manifest, tmp, { dependencyStepModules: [dependency] });
     await expect(config.loadDefinitions!()).rejects.toThrow(/Step type "collide_step" is defined by this pack and by a dependency/);

@@ -5,6 +5,8 @@ import type { PackRegistration } from '../framework/pack-registration.ts';
 export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration {
   return {
     id: fixture.id,
+    ...(fixture.lifecycle && { lifecycle: Object.fromEntries(Object.keys(fixture.lifecycle).map(name =>
+      [name, `fixtures/lifecycle.ts#${name}`])) }),
     ...(fixture.ears && { data: {
       entities: Object.fromEntries(Object.keys(fixture.ears.entities ?? {}).map(name => [name, null])),
       relations: Object.values(fixture.ears.relKinds ?? {}),

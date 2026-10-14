@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
+The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and lifecycle hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
 ## Field reference
 
@@ -21,7 +21,7 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
-| `boot` | `PackBootConfig` | no | Explicit lifecycle functions; see [Boot configuration](#boot-configuration) |
+| `lifecycle` | `PackLifecycleConfig` | no | Explicit lifecycle functions; see [Lifecycle configuration](#lifecycle-configuration) |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
 | `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the declared entity's wire name -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
 
@@ -301,21 +301,21 @@ A step's `dsl` fields:
 | `custom: true` | No generated helper: re-exports the step's own `helpers` module |
 | `{}` | `name(label?)` |
 
-## Boot configuration
+## Lifecycle configuration
 
-The `boot` object declares each lifecycle function explicitly. Its availability can be read without
+The `lifecycle` object declares each lifecycle function explicitly. Its availability can be read without
 executing the pack, and codegen checks that the named export is a function.
 
 ```json
 {
-  "boot": {
+  "lifecycle": {
     "onInit": "src/hooks.ts#onInit",
     "onShutdown": "src/hooks.ts#onShutdown"
   }
 }
 ```
 
-Only declared functions enter the registration. Other exports from the module are not boot hooks.
+Only declared functions enter the registration. Other exports from the module are not lifecycle hooks.
 Content sources belong in `content.sources`, independently of lifecycle callbacks.
 
 ```typescript
@@ -326,7 +326,7 @@ export const onShutdown = () => stopProcesses(); // when the pack's backend stop
 
 | Export | Runs |
 |---|---|
-| `onInit` | Once per boot, after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
+| `onInit` | Whenever the pack starts (app boot/reset, installation, enablement or reload), after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
 | `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
 
 Every system starts when the bus does, after hydration. There is no way for a feature to ask to start before it.
@@ -583,7 +583,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
     }
   },
 
-  "boot": {
+  "lifecycle": {
     "sources": {
       "actions": "src/content/actions",
       "flows": "src/content/flows"

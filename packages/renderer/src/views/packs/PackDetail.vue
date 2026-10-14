@@ -283,11 +283,11 @@
       </section>
 
       <!-- Boot Hooks -->
-      <section v-if="pack.bootHooks.length > 0">
-        <SectionHeader label="Boot Hooks" :count="pack.bootHooks.length" />
+      <section v-if="pack.lifecycleHooks.length > 0">
+        <SectionHeader label="Boot Hooks" :count="pack.lifecycleHooks.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="hook in pack.bootHooks"
+            v-for="hook in pack.lifecycleHooks"
             :key="hook"
             class="chip"
           >{{ hook }}</span>

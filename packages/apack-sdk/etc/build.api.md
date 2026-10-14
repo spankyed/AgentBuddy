@@ -28,21 +28,6 @@ export interface ActionMeta {
 export const actionsCompiler: SpecialtyCompiler<DslCompiled>;
 
 // @public (undocumented)
-export const BOOT_HOOK_NAMES: Array<keyof typeof BootConfigSchema.shape>;
-
-// @public (undocumented)
-export const BootConfigSchema: z.ZodObject<{
-    onInit: z.ZodOptional<z.ZodString>;
-    onShutdown: z.ZodOptional<z.ZodString>;
-}, "strict", z.ZodTypeAny, {
-    onInit?: string | undefined;
-    onShutdown?: string | undefined;
-}, {
-    onInit?: string | undefined;
-    onShutdown?: string | undefined;
-}>;
-
-// @public (undocumented)
 export function buildPackConfigFromManifest(manifest: PackManifest, packDir: string, options?: PackConfigOptions): Promise<PackConfig>;
 
 // @internal
@@ -620,6 +605,21 @@ export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig;
 // @public
 export function itemLabel(record: ContentItem, identity?: readonly string[]): string;
 
+// @public
+export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];
+
+// @public (undocumented)
+export const LifecycleConfigSchema: z.ZodObject<{
+    onInit: z.ZodOptional<z.ZodString>;
+    onShutdown: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    onInit?: string | undefined;
+    onShutdown?: string | undefined;
+}, {
+    onInit?: string | undefined;
+    onShutdown?: string | undefined;
+}>;
+
 // @public (undocumented)
 export function loadFlowsFromDir(flowsDir: string): Promise<{
     merged: FlowDSL;
@@ -1100,7 +1100,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             placeholder: string;
         }> | undefined;
     }>>;
-    boot: z.ZodOptional<z.ZodObject<{
+    lifecycle: z.ZodOptional<z.ZodObject<{
         onInit: z.ZodOptional<z.ZodString>;
         onShutdown: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
@@ -1408,6 +1408,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1475,10 +1479,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    boot?: {
-        onInit?: string | undefined;
-        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1549,6 +1549,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1609,10 +1613,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    boot?: {
-        onInit?: string | undefined;
-        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1690,6 +1690,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1757,10 +1761,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    boot?: {
-        onInit?: string | undefined;
-        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1831,6 +1831,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1891,10 +1895,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    boot?: {
-        onInit?: string | undefined;
-        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -1972,6 +1972,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -2039,10 +2043,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
-    } | undefined;
-    boot?: {
-        onInit?: string | undefined;
-        onShutdown?: string | undefined;
     } | undefined;
     content?: {
         sources?: Record<string, string | {
@@ -2228,6 +2228,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
     }>>;
+    lifecycle: z.ZodOptional<z.ZodLazy<z.ZodObject<{
+        onInit: z.ZodOptional<z.ZodString>;
+        onShutdown: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    }, {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    }>>>;
     features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
         settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
@@ -2307,6 +2317,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
 }, {
     id: string;
     data?: {
@@ -2321,6 +2335,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         references?: ReferenceDeclarations | undefined;
     }> | undefined;
     settings?: Record<string, unknown> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
 }>, {
     id: string;
     data?: {
@@ -2349,6 +2367,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
 }, {
     id: string;
     data?: {
@@ -2363,6 +2385,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         references?: ReferenceDeclarations | undefined;
     }> | undefined;
     settings?: Record<string, unknown> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
 }>, {
     id: string;
     data?: {
@@ -2391,6 +2417,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    lifecycle?: {
+        onInit?: string | undefined;
+        onShutdown?: string | undefined;
+    } | undefined;
 }, unknown>;
 
 // @public (undocumented)
@@ -2401,9 +2431,6 @@ export const PACK_SNAPSHOT_FORMAT = 1;
 
 // @public
 export const PACK_TYPES_DEF = "pack-types";
-
-// @public (undocumented)
-export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 
 // @public
 export interface PackBuildDefinitions {
@@ -2503,6 +2530,9 @@ export interface PackFlowHelpers {
     module: string;
     types: string;
 }
+
+// @public (undocumented)
+export type PackLifecycleConfig = z.infer<typeof LifecycleConfigSchema>;
 
 // @public (undocumented)
 export type PackManifest = z.infer<typeof ManifestSchema>;

@@ -999,7 +999,7 @@
       "additionalProperties": false,
       "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
     },
-    "boot": {
+    "lifecycle": {
       "type": "object",
       "properties": {
         "onInit": {
@@ -1014,7 +1014,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "Explicit lifecycle function bindings, discoverable without loading their modules."
+      "description": "Explicit lifecycle function targets, discoverable without loading their modules."
     },
     "content": {
       "type": "object",

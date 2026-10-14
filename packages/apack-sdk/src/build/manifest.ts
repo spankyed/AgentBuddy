@@ -3,7 +3,7 @@ import * as path from 'path';
 import type { z } from 'zod';
 import { resolveName } from '../ids/refs.ts';
 import type {
-  ManifestSchema, FeatureEntrySchema, BootConfigSchema, MigrationDeclarationSchema, ContentSourceSchema, ContentFormatSchema,
+  ManifestSchema, FeatureEntrySchema, LifecycleConfigSchema, MigrationDeclarationSchema, ContentSourceSchema, ContentFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema.ts';
 
@@ -13,7 +13,7 @@ import type {
 
 export type PackManifest = z.infer<typeof ManifestSchema>;
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;
-export type PackBootConfig = z.infer<typeof BootConfigSchema>;
+export type PackLifecycleConfig = z.infer<typeof LifecycleConfigSchema>;
 export type PackMigrationDeclaration = z.infer<typeof MigrationDeclarationSchema>;
 export type ContentSourceConfig = z.infer<typeof ContentSourceSchema>;
 export type ContentFormatConfig = z.infer<typeof ContentFormatSchema>;

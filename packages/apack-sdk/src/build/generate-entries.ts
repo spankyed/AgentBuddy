@@ -491,7 +491,7 @@ export async function generatePackFiles(
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
-      ...Object.values(manifest.boot ?? {}),
+      ...Object.values(manifest.lifecycle ?? {}),
       ...features.flatMap(feature => feature.references ? _referenceTargets(feature.references).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
       ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
     ].map((target) => target.split('#')[0]);
@@ -926,10 +926,10 @@ ${items.join('\n')}
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
 
-    const hookEntries = Object.entries(manifest.boot ?? {}).map(([name, target]) => {
+    const hookEntries = Object.entries(manifest.lifecycle ?? {}).map(([name, target]) => {
       const { source, exportName, value } = valueExport(`Boot hook "${name}"`, target);
       if (value !== 'function') throw new Error(`Boot hook "${name}": "${exportName}" in ${source} must export a function`);
-      return { name, binding: `__boot_${name}`, source, exportName };
+      return { name, binding: `__lifecycle_${name}`, source, exportName };
     });
     const hooksImport = hookEntries.map(({ source, exportName, binding }) =>
       `import { ${exportName} as ${binding} } from '${toImportPath(root, source)}';`).join('\n');
@@ -992,7 +992,7 @@ ${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensi
     entities: ${JSON.stringify(_packEntityTypes(manifest))},
     relKinds: ${JSON.stringify(_packRelationTypes(manifest))},
   },
-${hookEntries.length ? `  boot: { ${hookEntries.map(({ name, binding }) => `${name}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
+${hookEntries.length ? `  lifecycle: { ${hookEntries.map(({ name, binding }) => `${name}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
 ${contractCheck}`;
   }

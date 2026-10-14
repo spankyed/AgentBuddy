@@ -443,7 +443,7 @@ Point your manifest at the content directories:
 
 ```json
 {
-  "boot": {
+  "lifecycle": {
     "sources": {
       "actions": "src/content/actions",
       "prompts": "src/content/prompts",
@@ -489,7 +489,7 @@ Content rows of an entity type from markdown or JSON in two parts of `apack.json
       "media": "media"
     }
   },
-  "boot": {
+  "lifecycle": {
     "sources": {
       "memos": { "path": "src/content/memos", "format": "memos" }
     }
@@ -583,7 +583,7 @@ An entry can name a format of a pack it depends on as `"<pack id>:<name>"`. It c
 ```json
 {
   "dependencies": { "default-setup": "*" },
-  "boot": {
+  "lifecycle": {
     "sources": {
       "team-notes": { "path": "src/content/notes", "format": "default-setup:notes" },
       "team-docs": { "path": "src/content/docs", "format": "default-setup:library" }

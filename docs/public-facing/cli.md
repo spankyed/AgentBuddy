@@ -131,7 +131,7 @@ External packs build into `dist/` in the pack layout:
 
 ```
 dist/
-  runtime/index.cjs          backend: systems, services, steps, boot hooks, migrations
+  runtime/index.cjs          backend: systems, services, steps, lifecycle hooks, migrations
   runtime/fe.js, fe.css      frontend
   runtime/content/             compiled content
   build/steps.build.mjs      step build facets, for dependents' flow validation (with steps.build)

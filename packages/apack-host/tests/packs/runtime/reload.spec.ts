@@ -100,7 +100,7 @@ describe('reloading a pack the app ships', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', boot: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, ...manifest }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
@@ -117,7 +117,7 @@ describe('reloading a pack the app ships', () => {
         registration: {
           id: '${SHIPPED_ID}',
           features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
-          boot: {
+          lifecycle: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
           },
         },

@@ -1,5 +1,5 @@
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { BOOT_HOOK_NAMES } from '@apackdev/sdk/build';
+import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
@@ -109,12 +109,6 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if (typeof entry.up !== 'function' || entry.description !== manifest.migrations![line]![target].description) return problem(`migrations.${line}.${target}`);
     }
   }
-  const hooks = Object.keys(manifest.boot ?? {});
-  const actual = registration.boot === undefined ? {} : registration.boot;
-  if (!sameKeys(actual, hooks)) return problem('boot');
-  if (isPlainObject(actual)) {
-    for (const hook of BOOT_HOOK_NAMES) {
-      if (hooks.includes(hook) && typeof actual[hook] !== 'function') return problem(`boot.${hook}`);
-    }
-  }
+  const lifecycleProblem = lifecycleBindingProblem(manifest.lifecycle, registration.lifecycle);
+  if (lifecycleProblem) return problem(lifecycleProblem);
 }

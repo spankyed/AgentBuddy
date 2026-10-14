@@ -7,7 +7,7 @@ import PackDetail from '@/views/packs/PackDetail.vue';
 const pack = (overrides: Partial<InstalledPackSummary> = {}): InstalledPackSummary => ({
   id: 'memo-pack', name: 'Memos', version: '1.0.0', updatesWith: 'user', enabled: true,
   entities: {}, relKinds: {}, features: [], services: [], steps: [], artifacts: [], blocks: [], systems: [],
-  entityCount: 0, hasFrontend: false, permissions: [], bootHooks: [], migrationCount: 0, contentOffers: [], contentKept: [],
+  entityCount: 0, hasFrontend: false, permissions: [], lifecycleHooks: [], migrationCount: 0, contentOffers: [], contentKept: [],
   ...overrides,
 });
 

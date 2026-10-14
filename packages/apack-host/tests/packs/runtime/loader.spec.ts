@@ -296,7 +296,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, boot: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
@@ -318,7 +318,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
           entities: { Widget: 'Widget' },
           relKinds: {},
         },
-        boot: {
+        lifecycle: {
           onInit() {},
         },
         ${extra}
@@ -336,7 +336,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(systemFeatures(pack)).toEqual(['widget']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
-    expect(pack.registration.boot?.onInit).toBeTypeOf('function');
+    expect(pack.registration.lifecycle?.onInit).toBeTypeOf('function');
 
     // content live under runtime/content for bundled packs
     const mod = require(path.join(dir, 'runtime', 'index.cjs'));
@@ -377,10 +377,10 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
     const [pack] = loadExternalPacks();
-    expect(pack.registration.boot?.onInit).toBeDefined();
+    expect(pack.registration.lifecycle?.onInit).toBeDefined();
 
     const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
-    expect(exported.boot?.onInit).toBeDefined();
+    expect(exported.lifecycle?.onInit).toBeDefined();
   });
 
   it('refuses undeclared boot hooks before registration or startup effects', () => {
@@ -390,7 +390,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     ));
     const problems = { recordLoadProblem: vi.fn() };
     expect(loadExternalPacks(problems)).toEqual([]);
-    expect(problems.recordLoadProblem).toHaveBeenCalledWith('smuggle-pack', expect.stringContaining('boot'));
+    expect(problems.recordLoadProblem).toHaveBeenCalledWith('smuggle-pack', expect.stringContaining('lifecycle'));
     expect(registry.getPackRegistration('smuggle-pack')).toBeNull();
     expect(require(path.join(dir, 'runtime', 'index.cjs')).bootApplyCalls).toBeUndefined();
   });
@@ -543,7 +543,7 @@ describe('applyPacks: failures', () => {
     expect(registryEntry('rollback')).not.toHaveProperty('lastError');
   });
 
-  // What makes the retry possible without re-importing on every boot: the hash says the pack's own data is
+  // What makes the retry possible without re-importing on every lifecycle: the hash says the pack's own data is
   // unchanged, and this says what its dependencies were when it failed. A pack that written cleanly has
   // nothing to compare against, so it keeps no entry.
   it('records what a failed apply faced, and keeps nothing once the pack content cleanly', () => {

@@ -5,7 +5,7 @@ import { applyPacks } from './apply.ts';
 
 /** Each registered pack's onInit, then the app's and the installed packs' migrations, then every pack's content, unless the app's migrations failed */
 export function startPacks(registry: PackRegistry): void {
-  for (const hooks of registry.getBootHooks()) hooks.onInit?.();
+  for (const hooks of registry.getLifecycleHooks()) hooks.onInit?.();
 
   // The versions and content revisions the packs' migrations and content read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries

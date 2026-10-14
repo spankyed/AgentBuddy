@@ -36,11 +36,11 @@ export const up = () => migration.up();
 it('discovers hook names and migration descriptions without executing their modules', async () => {
   write('hooks.ts', "throw new Error('must not activate hooks'); export const onInit = () => {}; export const extra = () => {};");
   write('up.ts', "throw new Error('must not activate migration'); export function up() {};");
-  const files = await generate({ boot: { onInit: 'hooks.ts#onInit' }, migrations: { pack: {
+  const files = await generate({ lifecycle: { onInit: 'hooks.ts#onInit' }, migrations: { pack: {
     '1.0.0': { description: 'Declared description', up: 'up.ts#up' },
   } } });
   const entry = files['src/__generated__/pack-entry.ts'];
-  expect(entry).toContain('boot: { onInit: __boot_onInit }');
+  expect(entry).toContain('lifecycle: { onInit: __lifecycle_onInit }');
   expect(entry).not.toContain('..._hooks');
   expect(entry).not.toContain('extra:');
   expect(entry).toContain('description: "Declared description", up: __migration_pack_1_0_0');
@@ -48,14 +48,14 @@ it('discovers hook names and migration descriptions without executing their modu
 
 it.each(['missing', 'noncallable'] as const)('refuses %s hook and migration exports before activation', async kind => {
   write('entry.ts', kind === 'missing' ? 'export const other = () => {};' : 'export const handler = {};');
-  await expect(generate({ boot: { onShutdown: 'entry.ts#handler' } })).rejects.toThrow(/export|function/);
+  await expect(generate({ lifecycle: { onShutdown: 'entry.ts#handler' } })).rejects.toThrow(/export|function/);
   await expect(generate({ migrations: { app: { '1.0.0': { description: 'Change', up: 'entry.ts#handler' } } } })).rejects.toThrow(/export|function/);
 });
 
 
 it('refuses removed module hooks and migration objects missing declaration metadata', () => {
   const base = { id: 'declared', name: 'Declared', version: '1.0.0' };
-  expect(parseManifest({ ...base, boot: { hooks: 'hooks.ts' } }).status).toBe('invalid');
+  expect(parseManifest({ ...base, lifecycle: { hooks: 'hooks.ts' } }).status).toBe('invalid');
   expect(parseManifest({ ...base, migrations: { pack: { '1.0.0': 'up.ts#up' } } }).status).toBe('invalid');
   expect(parseManifest({ ...base, migrations: { pack: { '1.0.0': { up: 'up.ts#up' } } } }).status).toBe('invalid');
 });

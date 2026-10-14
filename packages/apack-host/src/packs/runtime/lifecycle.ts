@@ -143,12 +143,12 @@ function startAcceptedPack(
   const packId = pack.registration.id;
   const systemIds = packSystemIds(pack.registration);
   const affectedSystemIds = [...new Set([...(previousSystemIds ?? []), ...systemIds])];
-  const { boot } = pack.registration;
+  const { lifecycle } = pack.registration;
   if (previousSystemIds) registry.runShutdownHooksForKey(packId);
-  if (boot?.onShutdown) registry.registerShutdownHook(boot.onShutdown, packId);
+  if (lifecycle?.onShutdown) registry.registerShutdownHook(lifecycle.onShutdown, packId);
   try {
     registry.refreshCatalog(resolveAppEnvironment().packsDir);
-    boot?.onInit?.();
+    lifecycle?.onInit?.();
     runPackMigrations(registry.packMigrationTargets('pack', [packId]));
     applyPacks(registry.packContentTargets([packId]));
   } catch (error) {

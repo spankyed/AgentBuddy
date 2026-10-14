@@ -144,10 +144,10 @@ export async function reloadPackById(
         }
       },
       newSystemIds: packSystemIds(pack.registration),
-      onShutdown: pack.registration.boot?.onShutdown,
+      onShutdown: pack.registration.lifecycle?.onShutdown,
       initialize: () => {
         registry.refreshCatalog(packsDir);
-        pack.registration.boot?.onInit?.();
+        pack.registration.lifecycle?.onInit?.();
         runPackMigrations(registry.packMigrationTargets('pack', [packId]));
         applyPacks(registry.packContentTargets([packId]));
       },

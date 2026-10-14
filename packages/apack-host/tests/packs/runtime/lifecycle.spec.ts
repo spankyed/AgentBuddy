@@ -82,9 +82,9 @@ describe('installed runtime acceptance', () => {
     let start!: () => boolean;
     try {
       writeManifest(source, { id, name: id, version: '2.0.0', features: feature('replacement'),
-        ...(fails && { boot: { onInit: 'init.ts#onInit' } }),
+        ...(fails && { lifecycle: { onInit: 'init.ts#onInit' } }),
       });
-      writeBuild(source, id, runtime('replacement') + (fails ? ', boot: { onInit() { throw new Error("init failed"); } }' : ''));
+      writeBuild(source, id, runtime('replacement') + (fails ? ', lifecycle: { onInit() { throw new Error("init failed"); } }' : ''));
       await installPackFromLocal(source, packsDir(), { accept: candidate => {
         start = acceptInstalledPack(isolated, candidate.id, bus as never);
         expect(shutdown).not.toHaveBeenCalled();
@@ -260,8 +260,8 @@ describe('activating and tearing down a pack at runtime', () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
     const source = path.join(tmpDir, PACK_ID);
-    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', boot: { onInit: 'hooks.ts#onInit', onShutdown: 'hooks.ts#onShutdown' } });
-    writeBuild(source, PACK_ID, "{}, boot: { onInit() { throw new Error('init refused'); }, onShutdown() { globalThis.activatePackRuns.push('shutdown'); } }");
+    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', lifecycle: { onInit: 'hooks.ts#onInit', onShutdown: 'hooks.ts#onShutdown' } });
+    writeBuild(source, PACK_ID, "{}, lifecycle: { onInit() { throw new Error('init refused'); }, onShutdown() { globalThis.activatePackRuns.push('shutdown'); } }");
     await installPackFromLocal(source, packsDir());
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(false);
     expect(registry.getPackRegistration(PACK_ID)).toBeNull();

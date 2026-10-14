@@ -1,3 +1,4 @@
+import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
@@ -11,7 +12,7 @@ import { backendBindingProblem, contentBindingProblem } from './declaration-bind
 import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
+import type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
 import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
 import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
@@ -36,7 +37,7 @@ import { disabledPackIds } from './installed.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { createPackSettingsBinding } from '../services/settings.ts';
 
-export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
+export type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
 const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostServices)[];
@@ -90,7 +91,7 @@ export interface PackExtensions {
   blocks: string[];
   relKinds: Record<string, string>;
   migrationCount: number;
-  bootHooks: string[];
+  lifecycleHooks: string[];
   features: PackFeatureSummary[];
 }
 
@@ -235,7 +236,7 @@ export interface PackRegistry extends PackRegistryView {
    * is opened with, and each call reads the policy of the packs registered then (cached until a pack
    * registers or unregisters).
    */
-  getBootHooks(): PackBootHooks[];
+  getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
@@ -522,6 +523,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
+      const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
+      if (lifecycleProblem) throw new Error(`Native pack "${registration.id}" runtime ${lifecycleProblem} does not match its admitted declarations`);
       const runtimeFeatures = registration.features === undefined ? {} : registration.features;
       const settingsOf = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
         Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]));
@@ -721,7 +724,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getRegisteredEntityTypes: entityTypes,
     getRegisteredServices: services,
 
-    getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
+    getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
     packContentTargets(packIds) {

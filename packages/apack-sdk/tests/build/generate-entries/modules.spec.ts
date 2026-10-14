@@ -333,7 +333,7 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, boot: true, build: true,
+    $manifestVersion: true, $schema: true, lifecycle: true, build: true,
     dependencies: true, description: true, data: true,  extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
     permissions: true, content: true, version: true,
@@ -359,7 +359,7 @@ describe('the snapshot format', () => {
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
-    id: true, name: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
+    id: true, name: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
     artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
@@ -403,10 +403,7 @@ describe('the snapshot format', () => {
       format: 1,
       fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
-        fields: [
-          '$manifestVersion', '$schema', 'boot', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
-          'permissions', 'version',
-        ],
+        fields: ['$manifestVersion', '$schema', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
         feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
@@ -417,7 +414,7 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'boot', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['defaultVisible', 'receives'],

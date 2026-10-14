@@ -150,6 +150,9 @@ export interface HelpTarget {
 }
 
 // @public
+export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];
+
+// @public
 export type MachineMatchesContract<Entry, C extends SystemContract> = Entry extends {
     spec: infer Spec;
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
@@ -168,19 +171,13 @@ export interface NativePackDeclaration extends PackDataDeclarations {
     // (undocumented)
     id: string;
     // (undocumented)
+    lifecycle?: PackLifecycleDeclaration;
+    // (undocumented)
     settings?: Record<string, SettingsDefinition>;
 }
 
 // @public
 export function onPackCatalogChanged(listener: () => void): () => void;
-
-// @public
-export interface PackBootHooks {
-    // (undocumented)
-    onInit?: () => void;
-    // (undocumented)
-    onShutdown?: () => void;
-}
 
 // @public
 export interface PackCatalogView {
@@ -269,6 +266,17 @@ export interface PackFeatureSystem {
 }
 
 // @public
+export type PackLifecycleDeclaration = Partial<Record<typeof LIFECYCLE_HOOK_NAMES[number], string>>;
+
+// @public
+export interface PackLifecycleHooks {
+    // (undocumented)
+    onInit?: () => void;
+    // (undocumented)
+    onShutdown?: () => void;
+}
+
+// @public
 export interface PackMigration {
     // (undocumented)
     description: string;
@@ -286,8 +294,6 @@ export interface PackRegistration {
     bindSettings?: (settings: SettingsService) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
-    // (undocumented)
-    boot?: PackBootHooks;
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
@@ -297,6 +303,8 @@ export interface PackRegistration {
     features?: Record<string, PackFeature>;
     // (undocumented)
     id: string;
+    // (undocumented)
+    lifecycle?: PackLifecycleHooks;
     migrations?: PackMigrations;
     name?: string;
     repositories?: Record<string, unknown>;

@@ -2,7 +2,7 @@
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine, HOST } from '@apackdev/host/bus';
 import { resolveRegistered } from '@apackdev/sdk/ids';
-import type { PackBootHooks } from '@apackdev/sdk/framework';
+import type { PackLifecycleHooks } from '@apackdev/sdk/framework';
 import { newCall, type Message } from '@apackdev/sdk/events';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { untypedQx } from '@apackdev/ears';
@@ -126,7 +126,7 @@ export interface TestApp {
   /**
    * Stops the systems and ends pending `nextEmit`/`runFlow` waits with an "app stopped" error; later calls (`connect`,
    * `send`, `nextEmit`, `settle`, `runFlow`, `system`) fail with it too. Once no app runs, it runs each registered
-   * pack's `boot.onShutdown`, as the app does when it stops a pack, so state its modules keep outside the stopped
+   * pack's `lifecycle.onShutdown`, as the app does when it stops a pack, so state its modules keep outside the stopped
    * actors (schedules, listeners) doesn't reach the next test. The harness stops apps after each test.
    */
   stop(): void;
@@ -134,7 +134,7 @@ export interface TestApp {
 
 /** What test apps read of the test file's registered packs (host's PackRegistry, which the published declarations can't name) */
 interface AppPacks {
-  getBootHooks(): PackBootHooks[];
+  getLifecycleHooks(): PackLifecycleHooks[];
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
   /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
@@ -175,14 +175,14 @@ export function stopRunningApps(): void {
 const describeError = (error: unknown) => errorMessage(error);
 
 /**
- * Runs each registered pack's `boot.onInit` in registration order (dependencies first), as the API does at boot
+ * Runs each registered pack's `lifecycle.onInit` in registration order (dependencies first), as the API does at boot
  * before it starts the systems. The first app of a test starts the packs and the last one to stop shuts them down,
  * so each test's apps run between one onInit and one onShutdown.
  */
 function startPacks(): void {
-  for (const boot of packs().getBootHooks()) {
+  for (const lifecycle of packs().getLifecycleHooks()) {
     try {
-      boot.onInit?.();
+      lifecycle.onInit?.();
     } catch (error) {
       // As a failed boot: no app runs, so shut the packs down again for the next start
       let shutdown = '';
@@ -191,22 +191,22 @@ function startPacks(): void {
       } catch (shutdownError) {
         shutdown = ` Shutting the packs down after it failed too: ${describeError(shutdownError)}`;
       }
-      throw new Error(`A pack's boot.onInit failed when the test app started: ${describeError(error)}.${shutdown}`, { cause: error });
+      throw new Error(`A pack's lifecycle.onInit failed when the test app started: ${describeError(error)}.${shutdown}`, { cause: error });
     }
   }
 }
 
-/** Runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack's systems */
+/** Runs each registered pack's `lifecycle.onShutdown`, as the app does when it stops a pack's systems */
 function shutDownPacks(): void {
   const failures: string[] = [];
-  for (const boot of packs().getBootHooks()) {
+  for (const lifecycle of packs().getLifecycleHooks()) {
     try {
-      boot.onShutdown?.();
+      lifecycle.onShutdown?.();
     } catch (error) {
       failures.push(describeError(error));
     }
   }
-  if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
+  if (failures.length > 0) throw new Error(`A pack's lifecycle.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
 }
 
 /** The registered system a name stands for, as the pack under test's `sendToSystem` resolves it */

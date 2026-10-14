@@ -183,8 +183,8 @@ export async function setupBackend(): Promise<void> {
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const pack of loadedPacks) {
-    if (pack.registration.boot?.onShutdown) {
-      packs.registerShutdownHook(pack.registration.boot.onShutdown, pack.origin.id);
+    if (pack.registration.lifecycle?.onShutdown) {
+      packs.registerShutdownHook(pack.registration.lifecycle.onShutdown, pack.origin.id);
     }
   }
 

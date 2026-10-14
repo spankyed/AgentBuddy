@@ -86,3 +86,36 @@ it('admits native feature-owned entities statically and checks their runtime wir
     ears: { entities: { NativeNote: 'NativeNote', NativeIndex: 'NativeIndex' }, relKinds: {} } });
   expect(registry.earsNames().entities.NativeNote).toBe('NativeNote');
 });
+
+it('discovers native lifecycle targets without executing hooks and retains them after unload', () => {
+  const onInit = vi.fn();
+  const onShutdown = vi.fn();
+  const lifecycle = { onInit: 'src/hooks.ts#onInit', onShutdown: 'src/hooks.ts#onShutdown' };
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'hooks', lifecycle }] });
+  const before = registry.catalog.getSnapshot();
+  registry.registerPack({ id: 'hooks', lifecycle: { onInit, onShutdown } });
+  expect(onInit).not.toHaveBeenCalled();
+  expect(onShutdown).not.toHaveBeenCalled();
+  expect(registry.getLifecycleHooks()).toEqual([{ onInit, onShutdown }]);
+  registry.unregisterPack('hooks');
+  expect(registry.catalog.getSnapshot()).toBe(before);
+  expect(before.native[0].lifecycle).toEqual(lifecycle);
+  expect(registry.getLifecycleHooks()).toEqual([]);
+});
+
+it.each([
+  [undefined, 'lifecycle'],
+  [{ onInit: 1 }, 'lifecycle.onInit'],
+  [{ onInit: () => {}, onShutdown: () => {} }, 'lifecycle'],
+])('refuses native lifecycle bindings atomically: %j', (lifecycle, path) => {
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'hooks', lifecycle: { onInit: 'src/hooks.ts#onInit' } }] });
+  const before = registry.catalog.getSnapshot();
+  const changed = vi.fn();
+  registry.onCatalogChanged(changed);
+  expect(() => registry.registerPack({ id: 'hooks', lifecycle } as unknown as PackRegistration))
+    .toThrow(`Native pack "hooks" runtime ${path} does not match its admitted declarations`);
+  expect(registry.getPackRegistration('hooks')).toBeNull();
+  expect(registry.getLifecycleHooks()).toEqual([]);
+  expect(registry.catalog.getSnapshot()).toBe(before);
+  expect(changed).not.toHaveBeenCalled();
+});

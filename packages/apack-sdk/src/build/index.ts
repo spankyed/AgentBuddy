@@ -42,7 +42,7 @@ export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
   PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackFeature, PackBootConfig, PackMigrationDeclaration, ContentSourceConfig, ContentFormatConfig,
+  PackFeatureEntry, PackFeature, PackLifecycleConfig, PackMigrationDeclaration, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
 export { packFeatures, contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
@@ -75,8 +75,8 @@ export type { PackSnapshotValidation } from './snapshot.ts';
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN, _NativePackDeclarationSchema,
-  BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
-  DslEntrySchema, PackPermissionSchema, MigrationDeclarationSchema, MigrationsSchema, MIGRATION_LINES, BOOT_HOOK_NAMES, MIGRATION_TARGET_PATTERN,
+  LifecycleConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
+  DslEntrySchema, PackPermissionSchema, MigrationDeclarationSchema, MigrationsSchema, MIGRATION_LINES, LIFECYCLE_HOOK_NAMES, MIGRATION_TARGET_PATTERN,
 } from './manifest-schema.ts';
 export type { MigrationLine } from './manifest-schema.ts';
 

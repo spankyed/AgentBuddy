@@ -3,7 +3,7 @@
 // both are answered by a pid, which is why each carries a record of the boot it was written in.
 //
 // The unit tests for these live in @apackdev/host. This one boots the real composition, because what both
-// regressions broke was the boot: one refused to start at all, the other deleted a pack on the way up.
+// regressions broke was the lifecycle: one refused to start at all, the other deleted a pack on the way up.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';

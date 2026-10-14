@@ -117,7 +117,7 @@ export const registration: PackRegistration = {
   features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds
-  boot?: PackBootHooks;            // onInit/onShutdown (boot.onInit / boot.onShutdown)
+  lifecycle?: PackLifecycleHooks;            // onInit/onShutdown (lifecycle.onInit / lifecycle.onShutdown)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features.<id>.repositories, registered with the app's engine
   steps?: StepDefinition[];

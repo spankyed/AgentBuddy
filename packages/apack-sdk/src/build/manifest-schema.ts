@@ -1,3 +1,5 @@
+import type { PackLifecycleDeclaration } from '../framework/lifecycle-declaration.ts';
+export { LIFECYCLE_HOOK_NAMES } from '../framework/lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN } from '../framework/module-reference.ts';
 import { z } from 'zod';
@@ -85,6 +87,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   dependencies: z.record(z.string().regex(PACK_ID_PATTERN), z.string()).optional(),
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   data: DataSchema.optional(),
+  lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
     entities: EntitiesSchema.optional(),
     settings: SettingsDefinitionSchema.optional(),
@@ -408,12 +411,11 @@ export const ContentConfigSchema = z.object({
     .describe('How one entity type this pack declares is found, created, updated and removed when content is written as it ("path#exportName" of a ContentWriter object). Any pack writing that entity type goes through them.').optional(),
 }).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
 
-export const BootConfigSchema = z.object({
+export const LifecycleConfigSchema = z.object({
   onInit: ExportTargetSchema.describe('Function called after hydration, before migrations and content.').optional(),
   onShutdown: ExportTargetSchema.describe('Function called when this pack stops.').optional(),
-}).strict().describe('Explicit lifecycle function bindings, discoverable without loading their modules.');
+} satisfies Record<keyof PackLifecycleDeclaration, z.ZodTypeAny>).strict().describe('Explicit lifecycle function targets, discoverable without loading their modules.');
 
-export const BOOT_HOOK_NAMES = Object.keys(BootConfigSchema.shape) as Array<keyof typeof BootConfigSchema.shape>;
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
@@ -612,7 +614,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
-  boot: BootConfigSchema.optional(),
+  lifecycle: LifecycleConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),
   build: BuildConfigSchema.optional(),

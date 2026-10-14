@@ -1964,10 +1964,6 @@
       }
     }
   },
-  "boot": {
-    "onInit": "src/features/hooks.ts#onInit",
-    "onShutdown": "src/features/hooks.ts#onShutdown"
-  },
   "content": {
     "sources": {
       "actions": {
@@ -2060,5 +2056,9 @@
       "has",
       "relates_to"
     ]
+  },
+  "lifecycle": {
+    "onInit": "src/features/hooks.ts#onInit",
+    "onShutdown": "src/features/hooks.ts#onShutdown"
   }
 }

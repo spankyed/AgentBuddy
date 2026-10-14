@@ -100,7 +100,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
       steps: Object.keys(extensions?.steps ?? {}), artifacts: Object.keys(extensions?.artifacts ?? {}),
       blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ..._packRelationTypes(manifest) },
       migrationCount: Object.values(manifest.migrations ?? {}).reduce((count, line) => count + Object.keys(line).length, 0),
-      bootHooks: Object.keys(manifest.boot ?? {}),
+      lifecycleHooks: Object.keys(manifest.lifecycle ?? {}),
     };
   });
   const accepted = new Set(packs.map(pack => pack.id));
@@ -110,7 +110,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
       ...base(problem.id, problem.dir, problem.enabled), name: problem.id,
       entities: {}, entityCount: 0, hasFrontend: false, permissions: [],
       systems: [], services: [], steps: [], artifacts: [], blocks: [], relKinds: {},
-      migrationCount: 0, bootHooks: [], features: [],
+      migrationCount: 0, lifecycleHooks: [], features: [],
     });
   }
   return packs;

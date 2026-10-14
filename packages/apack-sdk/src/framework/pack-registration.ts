@@ -30,14 +30,14 @@ export interface PackMigrations {
 }
 
 /**
- * The pack's boot hooks: code the app runs for it, and nothing else.
+ * The pack's lifecycle hooks: code the app runs for it, and nothing else.
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
  * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
  * from where the pack is installed, and what an apply leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
-export interface PackBootHooks {
+export interface PackLifecycleHooks {
   onInit?: () => void;
   onShutdown?: () => void;
 }
@@ -93,7 +93,7 @@ export interface PackRegistration {
   ears?: PackEARS;
   /** The pack's repositories by name (apack.json `features[].repositories`), registered with the app's engine */
   repositories?: Record<string, unknown>;
-  boot?: PackBootHooks;
+  lifecycle?: PackLifecycleHooks;
   /**
    * The pack's migrations by version line, mirroring `apack.json`'s two maps: `app` runs against
    * apack's version, `pack` against this pack's own. Nested rather than two sibling fields so one

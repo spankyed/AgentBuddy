@@ -13,7 +13,7 @@ const manifest = ManifestSchema.parse({
   },
   content: { writers: { Item: 'writer.ts#writer' }, sources: { items: { applier: 'items.ts' } } },
   migrations: { app: { '1.0.0': { description: 'Initialize', up: 'migration.ts#up' } } },
-  boot: { onInit: 'hooks.ts#onInit' },
+  lifecycle: { onInit: 'hooks.ts#onInit' },
 });
 
 function binding(): Record<string, unknown> {
@@ -24,7 +24,7 @@ function binding(): Record<string, unknown> {
     commands: [{ name: 'collect', placeholder: 'Collect items' }],
     contentWriters: { Item: {} }, appliers: [{ key: 'items', apply() {} }],
     migrations: { app: [{ target: '1.0.0', description: 'Initialize', up() {} }] },
-    boot: { onInit() {} },
+    lifecycle: { onInit() {} },
   };
 }
 
@@ -62,8 +62,8 @@ it.each([
   ['migrations.app', { migrations: { app: [] } }],
   ['migrations.app.1.0.0', { migrations: { app: [{ target: '1.0.0', description: 'Initialize' }] } }],
   ['migrations', { migrations: { unknown: [] } }],
-  ['boot', { boot: undefined }],
-  ['boot.onInit', { boot: { onInit: true } }],
+  ['lifecycle', { lifecycle: undefined }],
+  ['lifecycle.onInit', { lifecycle: { onInit: true } }],
 ] as const)('refuses mismatched %s', (path, change) => {
   expect(backendBindingProblem(manifest, { ...binding(), ...change }))
     .toBe(`Pack "contributions" runtime ${path} does not match its accepted declarations`);
@@ -84,7 +84,7 @@ it('refuses changed migration descriptions and missing/extra hook implementation
   const changed = binding();
   changed.migrations = { app: [{ target: '1.0.0', description: 'Changed', up() {} }] };
   expect(backendBindingProblem(manifest, changed)).toContain('migrations.app.1.0.0');
-  for (const boot of [{}, { onInit: undefined }, { onInit() {}, onShutdown() {} }]) {
-    expect(backendBindingProblem(manifest, { ...binding(), boot })).toContain('boot');
+  for (const lifecycle of [{}, { onInit: undefined }, { onInit() {}, onShutdown() {} }]) {
+    expect(backendBindingProblem(manifest, { ...binding(), lifecycle })).toContain('lifecycle');
   }
 });
