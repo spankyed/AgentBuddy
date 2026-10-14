@@ -2899,3 +2899,43 @@ completion. The new scope-loss issue and recovery prompt remain unrelated untrac
 by pinning generated EARS/content/completion evidence, then implement the required consolidation.
 
 - M1 baseline: facade typing/completions passed all 10 tests under bundler/node16 resolution (`/private/tmp/apack-manifest-consolidation-completion-baseline.log`). Generated EARS and six compiled content files are pinned in `/private/tmp/apack-manifest-consolidation-baseline`; type references remain build-time only and installed discovery must require neither source files nor executable imports.
+
+
+### Entity ownership and shape consolidation — M1 (2026-10-14)
+
+Source checkpoint `2fff8bb76` merges entity identity/ownership/optional shapes under
+`features.<id>.entities` or `data.entities`. `_packEntities` is the shared projection;
+`_packEntityTypes` derives the flat identities used by generators, provenance, offline schema/Packs
+inspection and runtime admission. Duplicate homes name both owners. Native declarations share the
+value grammar and check runtime entity identities before registration. All authored manifests,
+scaffolds, fixtures, readers, reports and public docs moved together; no old-format reads or aliases.
+
+Shape references use the common `path#export` parser/grammar and the existing TypeScript declared-type
+checker. Missing/value-only exports and escaped or missing modules fail naming the entity/path.
+A poisoned shape module proves generation never executes it; a sealed offline fixture with no source
+files and a poisoned runtime proves discovery reads metadata only. Typed EARS implementation/signatures
+were not widened. SearchIndex/IndexedDoc remain untyped. Baseline comparison preserved all EARS
+constant values, shape mappings and imports; all six compiled content files remained byte-identical.
+Feature grouping changes inert generated ordering, reflected in the reviewed facade report, without a
+second authored inventory to reproduce historical ordering.
+
+Validation:
+- SDK focused: 230 tests; final schema/shape subset: 66 tests. Host focused: 161 tests.
+- CLI authoring/runtime: 16 tests; dependent/published facade typing, completions, diamond provenance
+  and facade-report integrations: 34 tests. Four repaired fixture/refusal suites: 66 tests.
+- Empty-reader mutations failed the named offline discovery and disabled/failed Packs inspection
+  assertions; exact source restored, then 58 host tests passed. Logs:
+  `/private/tmp/apack-m1-database-mutation.log`, `/private/tmp/apack-m1-inspection-mutation.log`.
+- Final strict checkpoint passed in 422.7s (14/30 cached): host 4,409, pack 855 plus two existing skips,
+  integration 639; external-pack contract, actual Electron app (161.4s), smoke (5.0s), packaged author
+  (57.3s) and packaged app (8.0s). Evidence:
+  `node_modules/.cache/apack-chain/runs/2026-10-14T05-40-21Z-13908`,
+  `/private/tmp/apack-m1-strict-repaired.log`.
+- Strict validation first caught the required facade ordering update, then four stale fixture/test
+  readers/refusal expectations. All were repaired before the source commit; no guards were bypassed.
+  Generated schema, SDK build/framework API reports and default-setup facade report reviewed;
+  `git diff --check` passed. Unrelated issue/prompt drafts remain untracked and untouched.
+
+M1 is complete. Continue M2 relations, then M3–M6 before expanding discovery. The entire remaining
+goal, including all three Phase 6 workstreams, stays active; final committed-source strict `--all`
+and the complete reconciled requirement audit remain mandatory at closure. Nothing is archived.

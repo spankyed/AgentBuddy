@@ -284,7 +284,7 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | BE feature `plugin.receives` | Generated outgoing/inbox event contract data, not a component import |
 | BE feature `services`; BE `services`, `repositories` | Declared API names/contracts plus checked executable object bindings; service and repository names retain their actual collision rules |
 | BE feature `settings`; BE `settingsSections` | Replace executable Zod/thunk declarations with the settings plan's schema/default/form data; remove registration-derived defaults |
-| BE `ears.entities`, `ears.relKinds`; manifest `entityShapes` | Declared names/wire values and generated type artifacts; preserve SDK/host reserved names and typed EARS behavior |
+| BE `ears.entities`, `ears.relKinds`; manifest feature/data `entities` | M1 (`2fff8bb76`) derives identity/ownership/shape through `_packEntities`, with flat compiled EARS names and type-only build references. Remaining entity descriptors must reuse this projection; relations move in M2. Preserve SDK/host reserved names and typed EARS behavior. |
 | BE `boot.onInit`, `boot.onShutdown` | Hook presence in data; invocation and side effects remain runtime |
 | BE `migrations.app`, `migrations.pack` | Version line, target and description data; `up` remains executable; never infer line from shipping provenance |
 | BE/FE `steps` | Identity and available facets from keyed declarations; intentional multi-owner facet composition, not last-wins flattening |
