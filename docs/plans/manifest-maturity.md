@@ -217,6 +217,61 @@ Evidence: a cache hit retains origin; two resolutions expose why their artifacts
 can intentionally use a linked build; frozen resolution cannot silently substitute that build for the
 recorded artifact.
 
+### Cache implementation contract (audit, 2026-10-14)
+
+The identity checkpoint `439883713` closes requested-ID and release-version substitution. It does
+not close receipt verification or provenance. Current `cacheDep` writes the snapshot directly into
+the final directory, copies only selected executable files, drops the producer receipt, and discards
+origin on reuse. `withBuildAndRuntime` admits executable paths by stamp and existence alone; the
+testing harness independently reads that incomplete cache. Migrate both readers together.
+
+Use the existing verified pack layout and content identity; do not invent another executable checksum
+inventory. Each dependency cache contains immutable artifacts under
+`.apack/deps/<id>/artifacts/<content-revision>/` and one `resolution.json` selecting an artifact.
+The record stores the declared dependency spec, exact pack/version, content revision, artifact kind
+and structured origin. Origins name the actual local root and selection route (workspace, explicit
+file, selected host or installed app), or GitHub repository, release tag and selected archive/checksum
+assets. A cached hit preserves this record; the cache is a delivery location, not the origin.
+
+A complete executable artifact retains the producer manifest, snapshot, receipt and all recorded
+files, including frontend/assets. Verify it before copying, verify copied bytes against the captured
+receipt, and verify again on cache admission. Receipt/version/ID and snapshot declarations must agree.
+Never seal copied bytes to manufacture trust in changed output. Current type data lacking a supported
+executable artifact remains inspectable: store only its validated snapshot at `types/snapshot.json`,
+record a snapshot-byte identity, and expose no executable paths. This is one current data contract,
+not old-format conversion or a second grammar. A present malformed receipt is an error, not a reason
+to downgrade a broken executable artifact into type-only data.
+
+Stage on the cache filesystem and publish a complete immutable artifact before atomically replacing
+the resolution record. Coordinate competing publication through the existing exclusive-lock mechanism;
+readers capture one record and its immutable directory. Existing resolved paths survive a later
+resolution because publication does not overwrite or delete their artifact. Failed copying, verification
+or record publication leaves the prior record/artifact usable. Do not claim a two-directory rename
+protects long-lived returned paths. Automatic eviction/garbage collection is outside this checkpoint.
+
+One shared host cache reader owns record validation, safe paths, pack/version/revision agreement and
+receipt admission. CLI/codegen/build, offline inspection and the testing harness consume it rather
+than independently merging snapshots and executable paths. Replace the former cache layout outright:
+no dual reads, converters, aliases or special obsolete-layout detection. Missing current cache data
+gets ordinary fetch/build guidance. Linked source development remains authoritative and explicit;
+resolve a coherent build into an immutable cached artifact before executing it.
+
+Execution checkpoints:
+
+1. Implement the shared cache contract, producer-copy verification and coherent publication; migrate
+   CLI, harness, fixtures and public documentation in the same source checkpoint.
+2. Expose retained structured provenance through current inspection/doctor output. Exercise cache reuse,
+   identical version with different bytes/origins, linked source edits and read-only discovery.
+3. Complete dependency/build-tool import-graph identity and deliberate generation-skip checks. Audit
+   build-output identity too: source restoration after an out-of-band build must not leave altered
+   renderer output hidden behind a previously successful source-input key.
+
+Acceptance includes poisoned executable entries never imported during discovery, tampered/missing/extra
+files refused before execution, failed/raced publication preserving the incumbent, concurrent readers
+seeing one coherent resolution, and a real external authoring/build/harness path. Guard mutations must
+prove receipt, identity and publication assertions; focused and strict checkpoint evidence belongs in
+the active goal. All remaining discovery kinds and Phase 6 workstreams remain required.
+
 ## 5. Make lifecycle and failure behavior explicit
 
 Registration, replacement, disable, reload and uninstall checks belong to each discovery migration,
