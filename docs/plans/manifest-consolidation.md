@@ -202,8 +202,9 @@ Real CLI checks prove missing step/migration files are errors even with unresolv
 other unverified checks remain explicitly incomplete. The module inventory distinguishes script,
 component, type-export and type-module purposes. `9b674ece3` makes whole-module paths, required named
 exports and optional default-export bindings explicit in schemas and source/codegen readers. Codegen
-checks grammar before emission even without named bindings. M4 remains open for scaffold/layout
-agreement, conventional expected-export checks and cross-pack default selection. Statically knowable
-exports must be checked without activation, including the conventions of whole-module readers. Prove
-these boundaries through external authoring; file presence and correct grammar alone do not finish
-the contract.
+checks grammar before emission even without named bindings. `fb9d212fc` checks the runtime exports
+of whole-module readers from the same target metadata (`default`, `apply`, `tiptapPlugins`), includes
+JavaScript in static inspection and recognizes CommonJS default imports. Type-only barrels remain
+independent; Vue component exports belong to the frontend build. Real CLI cases prove system default
+checks do not activate modules. M4 remains open for scaffold/layout agreement and cross-pack default
+selection; exercise the full external authoring/runtime contract before completion.

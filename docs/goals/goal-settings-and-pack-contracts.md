@@ -3224,3 +3224,37 @@ M4 still requires conventional expected-export checks, scaffold/layout agreement
 default-selection evidence. Then complete M5/M6 and all remaining discovery/navigation/boundary and
 Phase 6 workstreams. Final strict `--all` on committed source and the full reconciled audit remain
 mandatory. Nothing is archived; the entire goal remains active.
+
+### Conventional runtime exports — M4 checkpoint (2026-10-14)
+
+Source `fb9d212fc` records whole-module readers' conventional export names in the shared target
+metadata and checks their runtime-value exports without activation. Systems, non-Vue forms/views
+and compilers require `default`; appliers require `apply`; tiptap modules require `tiptapPlugins`.
+Removed the duplicate tiptap guard. Type-only barrels retain their own purpose and Vue component
+exports remain checked by the SFC frontend build. Export inspection explicitly includes JavaScript;
+CommonJS default imports inspect the module value rather than demanding an ESM default declaration.
+Schemas/API signatures do not change; public manifest documentation explains the boundary.
+
+Evidence: 158 focused generation tests and nine real CLI cases passed. Four cases cover missing
+modules, absent/type-only conventional exports and valid poisoned module exports for systems, forms,
+compilers and appliers. Three format cases prove `.js`/`.mjs` ESM and `.cjs` CommonJS inspection without
+execution; named ESM exports do not imply a default. Disabling the value-export guard failed four
+named cases; omitting JavaScript from inspection failed three. Both mutations were exactly restored
+(`/private/tmp/apack-m4-conventional-{export,javascript}-mutation.log`). Three older applier/compiler
+fixtures now write the modules they declare. Strict also identified an unrelated placeholder system
+in the build-race fixture; that content-only fixture explicitly declares no features. All eight
+build-race/publication checks passed with their original input-change/retention/cleanup assertions.
+
+Reviewed strict passed in 396.3s (16/30 cached): host 4,456 tests, pack 855 plus two existing skips,
+integration 651, external contract/app, smoke and both packaged authoring halves. Actual app 155.8s,
+smoke 4.8s, authoring 53.3s and packaged app 7.6s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T11-07-37Z-81123`,
+`/private/tmp/apack-m4-conventional-strict-reviewed.log`; initial fixture finding:
+`node_modules/.cache/apack-chain/runs/2026-10-14T11-02-40Z-73198`. Generated EARS and six content files
+remain byte-identical to `/private/tmp/apack-m4-description-baseline`; facade/API/schema checks pass.
+Reviewed all seven committed paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M4 remains open for scaffold/layout agreement and cross-pack default-selection evidence. Then
+complete M5/M6 and every remaining discovery/navigation/boundary/Phase 6 requirement. Final strict
+`--all` on committed source and the full reconciled audit remain mandatory. Nothing is archived;
+the full goal remains active.
