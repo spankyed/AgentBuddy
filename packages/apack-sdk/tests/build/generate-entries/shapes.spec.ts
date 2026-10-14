@@ -17,7 +17,7 @@
 // figure here and a per-case millisecond is not.
 import { describe, expect, it } from 'vitest';
 import { entitiesWithoutShapes } from '../../../src/build/generate-entries.ts';
-import { setupPackFixture, dependency, facade, generate, system, write } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, FACADE_DEFAULTS, generate, system, write } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -26,6 +26,53 @@ describe('generated entity shapes', () => {
   it.each(missingFacades)('refuses missing dependency facades before emitting generated typing: %s', async facades => {
     await expect(generate({}, { 'base-pack': dependency({}, facades) }))
       .rejects.toThrow('Dependency "base-pack" is missing its pack-types facade; rebuild that dependency');
+  });
+
+
+  it.each(Object.keys(FACADE_DEFAULTS))('names a dependency missing required type %s', async name => {
+    const content = Object.entries(FACADE_DEFAULTS).filter(([key]) => key !== name)
+      .map(([key, type]) => `export type ${key} = ${type};`).join('\n');
+    await expect(generate({}, { 'base-pack': dependency({}, { 'pack-types': content }) }))
+      .rejects.toThrow(`does not export required type "${name}"`);
+  });
+
+  it.each(['export const PackEntityShapes = {};', 'export type PackEntityShapes = Missing;', 'export type PackEntityShapes = unknown;'])
+  ('refuses a non-type or unresolved capability without emitting fake typing: %s', async badExport => {
+    const content = Object.entries(FACADE_DEFAULTS).filter(([key]) => key !== 'PackEntityShapes')
+      .map(([key, type]) => `export type ${key} = ${type};`).join('\n') + '\n' + badExport;
+    await expect(generate({}, { 'base-pack': dependency({}, { 'pack-types': content }) }))
+      .rejects.toThrow('Dependency "base-pack" has an unusable pack-types facade');
+  });
+
+
+
+  it('refuses malformed facade text even when its required exports can be recovered', async () => {
+    const content = facade()['pack-types'] + '\nexport const broken = ;';
+    await expect(generate({}, { 'base-pack': dependency({}, { 'pack-types': content }) }))
+      .rejects.toThrow('Dependency "base-pack" has an unusable pack-types facade: base-pack.d.ts: invalid TypeScript syntax');
+  });
+
+  it('requires plugin state when a frontend consumer actually imports it', async () => {
+    const plugin = { features: { inbox: { plugin: { label: 'Inbox', state: 'src/plugin.ts' } } } };
+    await expect(generate({}, { 'base-pack': dependency(plugin) })).resolves.toBeDefined();
+    write('src/plugin.ts', 'export default {};');
+    await expect(generate(plugin, { 'base-pack': dependency(plugin) }))
+      .rejects.toThrow('does not export required type "PackPluginState"');
+    const withState = { 'pack-types': facade()['pack-types'] + '\nexport type PackPluginState = {};' };
+    await expect(generate(plugin, { 'base-pack': dependency(plugin, withState) })).resolves.toBeDefined();
+  });
+
+  it('resolves facade type aliases without reading executable modules', async () => {
+    const content = facade()['pack-types'].replace('export type PackEntityShapes = {};',
+      'type Shapes = {}; export type { Shapes as PackEntityShapes };');
+    await expect(generate({}, { 'base-pack': dependency({}, { 'pack-types': content }) })).resolves.toBeDefined();
+  });
+
+  it('checks snapshot facade text rather than accepting stale generated typing on disk', async () => {
+    write('src/__generated__/deps/base-pack.ts', facade()['pack-types']);
+    const content = facade()['pack-types'].replace('export type PackEntityShapes = {};', '');
+    await expect(generate({}, { 'base-pack': dependency({}, { 'pack-types': content }) }))
+      .rejects.toThrow('Dependency "base-pack" has an unusable pack-types facade: does not export required type "PackEntityShapes"');
   });
 
   it('imports own shapes under aliases and dependency shapes from their facade types', async () => {

@@ -23,7 +23,7 @@ import { PROVENANCE_KINDS, _buildProvenance } from '../../../src/build/manifest.
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../../src/types/sdk-entities.ts';
 import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
 import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
-import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -407,7 +407,7 @@ describe('the snapshot format', () => {
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   async function facadeImports(): Promise<string[]> {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, withPluginState(facade(), ['memos'])) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.ts'/g)].map((m) => m[1]));
     return [...new Set(names)].sort();

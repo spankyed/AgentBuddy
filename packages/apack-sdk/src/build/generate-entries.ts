@@ -376,8 +376,17 @@ export async function generatePackFiles(
     }
     return [depId, facade] as const;
   }));
+  const facadeSources = new Map([...depFacades].map(([id, content]) => [resolve(root, _depTypesFile(id)), content]));
   /** `import type { name as alias }` from each dependency's facade, and the aliases */
   function depTypeImports(name: string, from: readonly string[] = depIds): { imports: string[]; aliases: string[] } {
+    for (const depId of from) {
+      const file = resolve(root, _depTypesFile(depId));
+      try {
+        if (!moduleReader().hasTypeExport(file, name)) throw new Error(`does not export required type "${name}"`);
+      } catch (error) {
+        throw new Error(`Dependency "${depId}" has an unusable ${PACK_TYPES_FACADE} facade: ${error instanceof Error ? error.message : String(error)}; rebuild that dependency with "apack pack build"`, { cause: error });
+      }
+    }
     return {
       imports: from.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.ts';`),
       aliases: from.map((depId) => depAlias(depId, name)),
@@ -496,9 +505,11 @@ export async function generatePackFiles(
   }
 
   let moduleExports: ModuleExports | undefined;
+  function moduleReader(): ModuleExports {
+    return moduleExports ??= createModuleExports(root, [...exportedFromFiles(), ...facadeSources.keys()], facadeSources);
+  }
   function exportOf(file: string, name: string): ModuleExport | undefined {
-    moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.exportOf(file, name);
+    return moduleReader().exportOf(file, name);
   }
 
   // Whole-module readers take conventional exports; Vue's component export is compiled by the SFC build.
@@ -512,13 +523,11 @@ export async function generatePackFiles(
   }
 
   function outgoingEventTypesOf(file: string, name: string): string[] {
-    moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.outgoingEventTypesOf(file, name);
+    return moduleReader().outgoingEventTypesOf(file, name);
   }
 
   function inboxEventTypesOf(file: string, name: string): string[] {
-    moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.inboxEventTypesOf(file, name);
+    return moduleReader().inboxEventTypesOf(file, name);
   }
 
   /** Where a contract lives: the module as the manifest spells it, the resolved file, and the type's name */
@@ -1924,9 +1933,8 @@ export type { ImportMode } from '@apackdev/sdk/utils';
       if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove its entity declaration`);
       }
-      moduleExports ??= createModuleExports(root, exportedFromFiles());
       try {
-        if (!moduleExports.hasTypeExport(file, typeName)) {
+        if (!moduleReader().hasTypeExport(file, typeName)) {
           throw new Error(`${source} doesn't export a type named "${typeName}"`);
         }
       } catch (error) {

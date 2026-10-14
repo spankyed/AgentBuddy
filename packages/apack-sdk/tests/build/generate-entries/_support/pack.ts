@@ -128,9 +128,10 @@ export function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, s
   return { [PACK_TYPES_FACADE]: body };
 }
 
-/** A dependency facade that also publishes `PackPluginState`, as one built from a pack with plugins does */
-export function withPluginState(facades: Record<string, string>): Record<string, string> {
-  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackPluginState = {};` };
+/** A dependency facade whose plugins declare no state contract, so each publishes never. */
+export function withPluginState(facades: Record<string, string>, plugins: readonly string[]): Record<string, string> {
+  const state = plugins.map(id => `${JSON.stringify(id)}: never`).join('; ');
+  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackPluginState = { ${state} };` };
 }
 
 export function dependency(fields: Record<string, unknown>, facades: Record<string, string> = facade()): PackSnapshot {

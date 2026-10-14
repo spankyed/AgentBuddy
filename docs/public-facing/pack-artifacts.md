@@ -53,6 +53,13 @@ contracts. The current reader validates its supported snapshot/layout formats; `
 pack's npm semver constraint on the app. A format mismatch requires a matching build/host, rather than
 automatic conversion. Changing declarations is not a release/version bump by itself.
 
+Dependency codegen checks the facade types it actually imports with the TypeScript export reader.
+Malformed declaration syntax and missing, value-only or unresolved required types fail with the
+dependency name and a rebuild remedy.
+Plugin state is required when a generated frontend imports it; a backend-only consumer does not gain
+that requirement merely because the dependency declares a plugin. Bundled declaration text takes
+precedence over stale generated files during these checks, without executing dependency modules.
+
 Build and source checks validate exported shape types and executable targets before publication.
 Installed discovery validates built data and integrity; activation separately checks binding membership
 and invokes lifecycle behavior. See [building](cli.md#building) and [pack development](getting-started.md).

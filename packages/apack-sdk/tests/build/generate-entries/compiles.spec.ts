@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import type { PackSnapshot } from '../../../src/build/manifest.ts';
-import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -126,7 +126,7 @@ describe('generated sends compile', () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
       { features: [withPlugin(system('calendar')), withPlugin(system('code'))] },
-      facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
+      withPluginState(facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }), ['calendar', 'code']),
     );
     const files = await generatePackFiles(
       manifest({ features: [withPlugin(system('memos'))] }),

@@ -125,7 +125,7 @@ describe('generated events', () => {
   });
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, withPluginState(facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" }), ['memos'])) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
     // The pack entry carries its own features only: nothing there declares what another's plugin receives
@@ -178,14 +178,14 @@ describe('generated events', () => {
   });
 
   it("keys a dependency's plugin that declares nothing to never, so no send to it compiles", async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, facade({ PackPluginEvents: '{ memos: never }' })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, withPluginState(facade({ PackPluginEvents: '{ memos: never }' }), ['memos'])) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('{ memos: never }');
     expect(files['src/__generated__/events.ts']).toContain("Qualified<'base-pack', __dep_base_pack_PackPluginEvents>");
   });
 
   it("takes every dependency's plugins, with the inbox that dependency declares", async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, withPluginState(facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" }), ['memos'])) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackPluginEvents as __dep_base_pack_PackPluginEvents } from './deps/base-pack.ts';");
@@ -259,7 +259,7 @@ describe("a dependency that registers no plugin", () => {
     const deps = {
       // A pack with plugins publishes PackPluginState; `facade()`'s defaults can't, since pack-types.ts
       // re-exports it only for such a pack
-      'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: 'y' } }] }, withPluginState(facade())),
+      'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: 'y' } }] }, withPluginState(facade(), ['memos'])),
     };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
 

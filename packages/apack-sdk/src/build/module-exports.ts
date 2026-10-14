@@ -81,19 +81,41 @@ function compilerOptions(ts: typeof TS, packRoot: string): TS.CompilerOptions {
  *
  * @internal Host-only: apack CLI build tooling.
  */
-export function createModuleExports(packRoot: string, files: string[]): ModuleExports {
+export function createModuleExports(packRoot: string, files: string[], sources: ReadonlyMap<string, string> = new Map()): ModuleExports {
   const ts = loadTypeScript();
-  const program = ts.createProgram({
-    rootNames: files,
-    // No ambient type packages (`types`): exports don't depend on them, and loading them is most of the program's cost
-    options: { ...compilerOptions(ts, packRoot), allowJs: true, types: [], noEmit: true },
-  });
+  // Virtual bundled declarations take precedence over stale generated files on disk.
+  const options = { ...compilerOptions(ts, packRoot), allowJs: true, types: [], noEmit: true };
+  const host = ts.createCompilerHost(options);
+  if (sources.size) {
+    const canonical = (file: string) => ts.sys.useCaseSensitiveFileNames ? path.resolve(file) : path.resolve(file).toLowerCase();
+    const virtualSources = new Map([...sources].map(([file, source]) => [canonical(file), source]));
+    const directories = new Set<string>();
+    for (const file of virtualSources.keys()) {
+      for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
+        directories.add(dir);
+        if (path.dirname(dir) === dir) break;
+      }
+    }
+    const { getSourceFile, readFile, fileExists, directoryExists } = host;
+    host.readFile = file => virtualSources.get(canonical(file)) ?? readFile(file);
+    host.fileExists = file => virtualSources.has(canonical(file)) || fileExists(file);
+    host.directoryExists = dir => directories.has(canonical(dir)) || directoryExists?.(dir) === true;
+    host.getSourceFile = (file, version, onError, fresh) => {
+      const source = virtualSources.get(canonical(file));
+      return source === undefined ? getSourceFile(file, version, onError, fresh)
+        : ts.createSourceFile(file, source, version, true);
+    };
+  }
+  const program = ts.createProgram({ rootNames: files, options, host });
   const checker = program.getTypeChecker();
 
   /** The symbol `file` exports as `name`, before any alias is followed */
   function exportedSymbol(file: string, name: string): TS.Symbol | undefined {
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
+    const syntax = program.getSyntacticDiagnostics(sourceFile);
+    if (syntax.length) throw new Error(`${path.basename(file)}: invalid TypeScript syntax: ${ts.flattenDiagnosticMessageText(syntax[0]!.messageText, '\n')}`);
+
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
     if (!moduleSymbol) return undefined;
     const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
@@ -168,7 +190,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     // `typeToString` prints the alias as written (`PluginInbox<{ pack: NotesInbox }>`), which reads as though it
     // resolved, so name what it collapsed to first and show the written form as corroboration
     const collapsed = type.flags & ts.TypeFlags.Any ? 'any' : 'unknown';
-    throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Read as it stands, it would contribute no events at all`);
+    throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Required type inspection cannot use an unresolved type`);
   }
 
   /**

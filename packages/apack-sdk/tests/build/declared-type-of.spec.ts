@@ -177,3 +177,16 @@ describe('declaredTypeOf, through inboxEventTypesOf', () => {
     expect(() => read.inboxEventTypesOf(at('bad-audience.ts'), 'Contract')).toThrow(/"publik".*is not an audience/s);
   });
 });
+
+
+it('resolves virtual declaration re-exports without creating their directories', () => {
+  const dir = path.join(root, 'virtual', 'declarations');
+  const entry = path.join(dir, 'facade.ts');
+  const shapes = path.join(dir, 'shapes.ts');
+  const reader = createModuleExports(root, [entry, shapes], new Map([
+    [entry, "export type { Shape as PackEntityShapes } from './shapes.ts';"],
+    [shapes, 'export interface Shape { label: string }'],
+  ]));
+  expect(reader.hasTypeExport(entry, 'PackEntityShapes')).toBe(true);
+  expect(fs.existsSync(dir)).toBe(false);
+});

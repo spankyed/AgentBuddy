@@ -16,7 +16,7 @@
 // two-project run and the high end in an eleven-project one. Which is why the count is the durable
 // figure here and a per-case millisecond is not.
 import { describe, expect, it } from 'vitest';
-import { setupPackFixture, dependency, generate, system, write, writePluginState  } from './_support/pack.ts';
+import { setupPackFixture, dependency, generate, system, facade, withPluginState, write, writePluginState  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -25,7 +25,7 @@ describe('generated ref', () => {
   it("takes this pack's features, its dependencies' and the host's, and nothing else", async () => {
     const files = await generate(
       { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('x') } }, { id: 'worker', system: { entry: 'y' } }] }, withPluginState(facade(), ['calendar'])) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
       "export type FeatureName = 'memos' | 'demo-pack/memos' | 'jobs' | 'demo-pack/jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
@@ -39,7 +39,7 @@ describe('generated frontend names', () => {
   it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", async () => {
     const files = await generate(
       { features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }, withPluginState(facade(), ['calendar'])) },
     );
 
     expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'memos' | 'base-pack/calendar';");
