@@ -108,8 +108,12 @@ These are completion obligations, not optional later improvements.
    keep no opaque aggregate thunk/module discovery. Preserve hydration/migration/apply/shutdown order,
    resource cleanup and content apply identity. Native declarations currently lack lifecycle metadata;
    add the same explicit targets and check native binding membership/callability before publication.
-   A manifest root rename need not rename every useful
-   internal registration/runtime type; document the boundary explicitly.
+   Use `lifecycle` consistently for declaration targets and runtime hook bindings; their types make
+   the distinction explicit (`PackLifecycleDeclaration` vs `PackLifecycleHooks`). Startup/boot itself
+   remains a process phase. One checked-membership function serves installed and native admission,
+   without invoking callbacks. Fixture declarations use explicit stand-in targets, confined to testing.
+   Prove cold metadata survives unload, invalid bindings refuse atomically, and hook execution order
+   and unchanged-content apply identity remain intact.
 4. **M4 — feature purpose and authoring contract.** Require descriptions, settle the feature `types`
    module syntax from its actual export-star reader, shared scaffold/layout/target resolution and early
    validation boundaries. Preserve roles/defaults and explicit existence. No generated inference.
