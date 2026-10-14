@@ -1547,3 +1547,56 @@ aggregate consumers with catalog metadata and owned accepted bindings, prove ext
 and protocol/category updates in a live editor, and dispose providers across binding/view lifetimes.
 Then finish other contribution/native/freshness, entity readiness, boundaries and every Phase 6 stream.
 Final committed --all, complete acceptance auditing and archival remain due. The goal stays active.
+
+
+### Editor/provider consumer audit and migration sequence (2026-10-13)
+
+The read port is ready, but current editor consumers still import the generated pack-local
+`REFERENCE_TYPES`, `CATEGORIES`, `ITEMS_PROVIDERS` and `ALL_PROTOCOLS`. The generator derives these
+from `FEATURE_REFERENCES`; only the latter is needed for frontend registration. Replace the readers
+and remove those aggregates together, including the now-unused `CategoryConfig` and
+`CategoryItemsProvider` exports and their reports. Keep the note-type mapping with the notes feature: it
+is that feature's entity-to-reference mapping, not an editor inventory.
+
+Concrete audit findings and required fixes:
+
+- `reference-node.ts` builds one parse rule per protocol when Tiptap constructs its schema. Reading a
+  current catalog elsewhere cannot update those already-created rules. Use a generic anchor rule whose
+  `getAttrs` resolves the current declared protocol at parse time, returning false for unknown protocols,
+  empty ids or malformed encoding. Continue encoding canonical entity ids once; labels/codes remain
+  presentation. HTML/Markdown serialization reads current declarations, never executable bindings.
+- Node views refresh geometry on node changes only. Subscribe to declaration changes for geometry
+  updates, unsubscribe in node-view destruction, and resolve eligible navigation at click time. Missing
+  bindings leave declared references renderable without activating their owner. Delete the Markdown
+  `updateDOM` loop: it visits anchors and does nothing.
+- The suggestion plugin filters with the static category list; the popup uses the same static list and
+  indexes item icons without an absence check. Read category labels from declarations and render active
+  icons only when eligible. A stale or invalid provider item must not cause an undefined-icon crash or
+  insert a reference type outside that category's declarations.
+- `useReferenceItems.ts` starts every provider during setup and keeps them until the containing component
+  dies. Start only the selected eligible category while the suggestion is active. Own a child effect scope,
+  stop it before replacement/category change/closure, and dispose all listeners at parent-scope teardown.
+  Stable accepted binding identity avoids restarts for unrelated publications. Existing SDK plugin-state
+  readers already use `onScopeDispose`, so child effect scopes release their actor/shell subscriptions.
+
+Use one SDK reference reader to join declarations and accepted bindings; editor components must not
+repeat ownership/identity comparisons. Metadata reads remain executable-free. Execution requires a
+ready catalog, a matching qualified owner, and a current enabled contribution. Installed bindings must
+match declaration and accepted artifact identities; absence of an artifact receipt is not permission
+to execute an installed entry. Source declarations advertise authoring metadata without installed
+eligibility. Native declarations/bindings use their explicit native ownership contract, without
+inventing installed stamps. Catalog disconnect stops providers and navigation, while retained metadata
+can still describe references. Subscribe to both declaration and accepted-binding changes because their
+publications have independent timing. Neither event alone proves an executable binding is eligible.
+
+Implement the shared reader and lifecycle checks first, then migrate all editor consumers and generated
+output in one consumer checkpoint. Verification must include actual editor HTML/Markdown parsing after
+a protocol is added to an already-created editor, live category/geometry changes, owner/stamp mismatch,
+disconnect, disabled/failed contributions, and provider disposal on replacement/removal/closure/teardown.
+An unrelated pack update must not restart the selected provider. Exercise an actual external reference
+contributor in the app acceptance fixture, not just a mocked default-pack aggregate. Keep Node's typed
+array realm intact in editor tests by using the existing explicit JSDOM-global setup.
+
+This sequence changes consumers and subscription ownership, not stored document format. Entity
+destination readiness and frontend failure recovery remain requirements of their dedicated plans;
+the reference reader must not invent a parallel routing or fault-boundary implementation.
