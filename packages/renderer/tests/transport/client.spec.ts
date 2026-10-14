@@ -6,14 +6,17 @@ const ready = vi.fn(async () => {});
 const mutate = vi.fn<(message: unknown) => Promise<void>>();
 type Subscription = {
   onStarted(): void;
+  onError(error: unknown): void;
   onData(message: import('@apackdev/sdk/events').Message): void;
   onConnectionStateChange(event: { state: string }): void;
 };
 const subscribe = vi.fn((_input: unknown, _handlers: Subscription) => ({ unsubscribe() {} }));
+const catalogSubscribe = vi.fn((_input: unknown, _handlers: { onData(frame: import('@apackdev/host/fe').PackCatalogFrame): void; onError(error: unknown): void }) => ({ unsubscribe: vi.fn() }));
 const openHost = vi.fn(async () => 'host-access');
 vi.mock('@/transport', () => ({
   trpc: {
     bus: { packClientReady: { mutate: ready }, sub: { subscribe }, send: { mutate: (m: unknown) => mutate(m) } },
+    packs: { catalog: { subscribe: catalogSubscribe } },
     settings: { openHost: { mutate: openHost }, close: { mutate: async () => {} } },
   },
   reconnectApiClient: () => false,
@@ -32,6 +35,7 @@ afterEach(async () => {
   mutate.mockReset();
   subscribe.mockClear();
   openHost.mockClear();
+  catalogSubscribe.mockClear();
 });
 
 it('announces a connected shell only after a fresh validated settings snapshot on each connection', async () => {
@@ -138,4 +142,38 @@ it('reports an API process that stopped, message and stack apart', async () => {
 it('acknowledges the accepted frontend lifetime rather than its pack name alone', async () => {
   await feClient.packClientReady('example', 'accepted-runtime');
   expect(ready).toHaveBeenCalledWith({ packId: 'example', runtimeRevision: 'accepted-runtime' });
+});
+
+it('ignores callbacks from a stopped bus lifetime and closes its catalog subscription', async () => {
+  mutate.mockResolvedValue();
+  const onDisconnected = vi.fn(); const onFailed = vi.fn(); const onMessage = vi.fn();
+  const stop = feClient.subscribe({ onConnected: vi.fn(), onDisconnected, onMessage, onFailed });
+  const handlers = subscribe.mock.calls[0][1]; handlers.onStarted();
+  expect(catalogSubscribe).toHaveBeenCalledOnce();
+  const catalogSubscription = catalogSubscribe.mock.results[0].value;
+  stop();
+  handlers.onStarted(); handlers.onError(new Error('old')); handlers.onConnectionStateChange({ state: 'connecting' });
+  handlers.onData({ to: 'host/settings', event: { type: 'OLD' } });
+  expect(catalogSubscribe).toHaveBeenCalledOnce();
+  expect(catalogSubscription.unsubscribe).toHaveBeenCalledOnce();
+  expect(onDisconnected).not.toHaveBeenCalled(); expect(onFailed).not.toHaveBeenCalled(); expect(onMessage).not.toHaveBeenCalled();
+});
+
+it('feeds declaration data to the real window resource independently of settings bootstrap', async () => {
+  mutate.mockResolvedValue();
+  const { windowCatalog } = await import('@/runtime/catalog');
+  const onConnected = vi.fn();
+  const stop = feClient.subscribe({ onConnected, onDisconnected: vi.fn(), onMessage() {}, onFailed: vi.fn() });
+  try {
+    subscribe.mock.calls[0][1].onStarted();
+    catalogSubscribe.mock.calls[0][1].onData({ runId: 'catalog-run', snapshot: {
+      revision: 1, appSettings: { schema: { type: 'object' }, defaults: {} },
+      packs: [], problems: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [],
+      native: [{ id: 'cold-pack', features: { view: { plugin: { label: 'Cold metadata', state: 'never-load.ts' } } } }],
+    } });
+    expect(windowCatalog.status()).toBe('ready');
+    expect(windowCatalog.getSnapshot()?.native[0].features?.view.plugin?.label).toBe('Cold metadata');
+    expect(onConnected).not.toHaveBeenCalled();
+  } finally { stop(); }
+  expect(windowCatalog.status()).toBe('disconnected');
 });

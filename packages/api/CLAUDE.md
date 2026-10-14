@@ -39,7 +39,10 @@ transport, boot or composition belongs in `@apackdev/host`, which the same guard
   which is what makes it a return address a sender cannot forge. `closed` is the adapter's per-connection abort
   signal (it fires from `client.once('close')`), and is how anything holding per-connection state gives it back.
 - `index.ts` — `appRouter = router({ bus, packs, secrets })`; `AppRouter` is its type.
-- `packs.ts` (`packs.*`) — `registry` (query): `LoadedPackEntry[]` (typed from `@apackdev/host/packs`, so `AppRouter`'s declarations don't pull the pack runtime into the renderer's typecheck) from `getLoadedPackEntries()` (`@apackdev/host/packs/runtime`), the packs the renderer loads frontends from.
+- `packs.ts` (`packs.*`) — `loaded` reports accepted executable runtimes for frontend reconciliation.
+  `catalog` streams the existing common declaration catalog, including disabled/activation-failed packs,
+  without loading their modules. Each frame carries a backend-run ID and committed catalog revision;
+  subscription teardown releases its catalog listener. Discovery and execution/readiness are separate.
 - `bus.ts` (`bus.*`):
   - `send` (mutation) — `receiveClientEvent(appPacks, { ...input, client: ctx.client })` (`@apackdev/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
   - `packClientReady({ packId })` — logs it and calls `rootEvents.emitPackClientConnected`, which the bus turns into `PACK_CLIENT_CONNECTED`.

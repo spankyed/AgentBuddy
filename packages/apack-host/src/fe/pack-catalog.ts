@@ -1,0 +1,97 @@
+import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
+import { _settingsJsonProblems } from '@apackdev/sdk/framework';
+import { isPlainObject } from '@apackdev/sdk/utils/pure';
+import { createLogger } from '@apackdev/sdk/logger';
+import { isEqual } from '../features/settings/document.ts';
+
+export interface WindowPackCatalogIO {
+  timeoutMs?: number;
+  subscribe(receive: (frame: PackCatalogFrame) => void, failed: (error: unknown) => void): () => void;
+}
+
+const SNAPSHOT_FIELDS = { revision: true, appSettings: true, packs: true, problems: true, native: true,
+  sourcePacks: true, appPackSources: true, appPackSourceProblems: true } satisfies Record<keyof PackCatalogSnapshot, true>;
+
+/** Immutable declaration data; the active frontend registry has a separate lifetime. */
+export function createWindowPackCatalog(io: WindowPackCatalogIO) {
+  let generation = 0;
+  let stop: (() => void) | undefined;
+  let frame: PackCatalogFrame | undefined;
+  let status: 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed' = 'disconnected';
+  let problem: string | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const logger = createLogger('declaration-catalog-window');
+  const listeners = new Set<() => void>();
+  const tell = () => { for (const listener of listeners) { try { listener(); } catch (error) { logger.error('Catalog listener failed', error); } } };
+  const close = () => {
+    generation++;
+    clearTimeout(timer); timer = undefined;
+    const previous = stop; stop = undefined;
+    try { previous?.(); } catch (error) { logger.error('Catalog subscription cleanup failed', error); }
+  };
+
+  function receive(value: unknown): void {
+    if (_settingsJsonProblems(value).length || !isPlainObject(value) || typeof value.runId !== 'string' || !value.runId
+      || Object.keys(value).some(key => key !== 'runId' && key !== 'snapshot')) throw new Error('Invalid declaration catalog frame');
+    const snapshot = value.snapshot;
+    if (!isPlainObject(snapshot) || Object.keys(snapshot).length !== Object.keys(SNAPSHOT_FIELDS).length
+      || Object.keys(snapshot).some(key => !Object.hasOwn(SNAPSHOT_FIELDS, key)) || !Number.isSafeInteger(snapshot.revision) || (snapshot.revision as number) < 0
+      || !isPlainObject(snapshot.appSettings)
+      || ['packs', 'problems', 'native', 'sourcePacks', 'appPackSources', 'appPackSourceProblems'].some(key => !Array.isArray(snapshot[key]))) {
+      throw new Error('Invalid declaration catalog frame');
+    }
+    const next = structuredClone(value) as unknown as PackCatalogFrame;
+    if (frame && frame.runId !== next.runId) throw new Error('Declaration catalog backend changed within one connection');
+    if (frame && next.snapshot.revision < frame.snapshot.revision) return;
+    if (frame && next.snapshot.revision === frame.snapshot.revision) {
+      if (!isEqual(frame.snapshot, next.snapshot)) throw new Error('Declarations changed without a catalog revision');
+      return;
+    }
+    function freeze(data: unknown): void {
+      if (!data || typeof data !== 'object') return;
+      Object.values(data).forEach(freeze);
+      Object.freeze(data);
+    }
+    freeze(next);
+    clearTimeout(timer); timer = undefined;
+    frame = next;
+    status = 'ready';
+    problem = undefined;
+    tell();
+  }
+
+  return {
+    getSnapshot: (): PackCatalogSnapshot | undefined => frame?.snapshot,
+    status: () => status,
+    problem: () => problem,
+    subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    connect() {
+      if (status === 'disposed') throw new Error('Declaration catalog is disposed');
+      close();
+      frame = undefined;
+      status = 'loading';
+      problem = undefined;
+      const accepted = generation;
+      const fail = (error: unknown) => {
+        if (accepted !== generation) return;
+        close();
+        status = 'error';
+        problem = error instanceof Error ? error.message : String(error);
+        tell();
+      };
+      try {
+        const unsubscribe = io.subscribe(value => {
+          if (accepted !== generation) return;
+          try { receive(value); } catch (error) { fail(error); }
+        }, fail);
+        if (accepted === generation) stop = unsubscribe; else unsubscribe();
+      } catch (error) { fail(error); }
+      if (accepted === generation && status === 'loading') {
+        timer = setTimeout(() => fail(new Error('The backend did not provide declaration catalog data')), io.timeoutMs ?? 30_000);
+        tell();
+      }
+    },
+    disconnect() { if (status === 'disposed' || status === 'disconnected') return; close(); status = 'disconnected'; tell(); },
+    dispose() { if (status === 'disposed') return; close(); status = 'disposed'; frame = undefined; tell(); listeners.clear(); },
+  };
+}

@@ -1400,3 +1400,54 @@ Next implement the window declaration transport and catalog/editor/provider migr
 including an actual external reference contributor in a live editor. Complete native locator checks,
 other contribution kinds, freshness, entity routing, boundaries, all Phase 6 streams and final committed
 --all acceptance. This checkpoint closes admission only; the discovery plan and owning goal stay active.
+
+### Window catalog transport implementation plan (2026-10-13)
+
+Expose the existing common catalog through `packs.catalog`, a subscription that sends the current
+snapshot immediately and later committed changes. A publisher-run identity distinguishes backend
+restarts from revision changes; stopping the subscription removes its catalog listener. This endpoint
+is independent of `packs.loaded` and does not read executable registrations or load modules.
+
+One window-owned reader captures immutable wire snapshots, checks envelope/revision consistency,
+ignores older revisions, refuses conflicting data at one revision and isolates connection generations.
+The publisher validates declarations before publication; the window validates the ordinary-JSON
+frame and snapshot bookkeeping rather than importing Node build tooling to repeat publication checks.
+An initial-read timeout exposes a failure, while cancellation closes subscriptions and ignores late
+callbacks. Keep the last accepted snapshot on a transport failure with an explicit unavailable status.
+
+The shell client starts/stops this resource with its bus connection without changing activation order
+or gating frontend loads on catalog delivery. Guard superseded bus callbacks too: an old subscription
+must not reconnect/disconnect resources or announce readiness for a newer window lifetime. Reference
+readers, provider scopes and the SDK's declaration read port are the next integration checkpoint;
+transport delivery alone does not complete discovery consumers.
+
+### Window catalog transport checkpoint (2026-10-13)
+
+Implemented `packs.catalog` over the existing common catalog, publishing its current snapshot and
+committed changes without runtime enumeration or module activation. Native and disabled installed
+declarations are covered through the real router. The window reader captures immutable JSON frames,
+checks snapshot bookkeeping and revision consistency, distinguishes publisher runs, ignores older
+revisions and closes timed-out/failed/disconnected subscriptions. Late callbacks from old generations
+cannot overwrite or resurrect the reader; cleanup during synchronous setup is handled too.
+
+The renderer starts/stops this independent resource with its bus lifetime. Superseded bus callbacks
+are ignored, including pending status/settings completions. The composed renderer test demonstrates
+catalog data becoming ready before settings bootstrap announces connection readiness. This changes
+no activation ordering and does not load cold declaration targets.
+
+Twelve reader tests, two router tests and eight renderer-client tests pass. Removing connection-epoch
+guards failed three named restart/timeout/disposal assertions; exact restoration returned the reader
+suite to passing. Strict validation passed all 30 gates in 371.4 seconds (12 cached), including fresh
+Electron/default-fork acceptance, smoke and both packaged-authoring halves. The final composition
+assertion and formatting passed a subsequent strict run in 62.1 seconds (21 cached); rebuilt app bytes
+were unchanged, so app acceptance was reused. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T02-18-57Z-31693` and
+`node_modules/.cache/apack-chain/runs/2026-10-14T02-26-46Z-59802`;
+logs `/private/tmp/apack-window-catalog-strict.log` and `/private/tmp/apack-window-catalog-strict-final.log`.
+
+Next expose the declaration read port and migrate references/editor/providers to catalog data plus
+accepted executable bindings, retaining owner and lifetime identity for eligibility. Test actual
+external contributions in an already-open editor, provider disposal and disabled/failed metadata.
+Remove the pack-local aggregate when that migration lands. Complete all remaining contribution kinds,
+native/freshness checks, entity routing, boundaries, Phase 6 workstreams and final committed --all.
+Transport is delivered; discovery consumers and the owning goal remain unfinished.

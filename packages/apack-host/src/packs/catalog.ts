@@ -75,6 +75,12 @@ export interface PackCatalogSnapshot {
   readonly appPackSourceProblems: readonly CatalogData<AppPackSourceProblem>[];
 }
 
+/** One backend run's committed declaration snapshot, independent of executable availability. */
+export interface PackCatalogFrame {
+  readonly runId: string;
+  readonly snapshot: PackCatalogSnapshot;
+}
+
 /** Own immutable data; neither input mutation nor a reader can change a committed catalog. */
 function immutable<T>(data: T): CatalogData<T> {
   const copy = structuredClone(data);

@@ -32,3 +32,6 @@ export { createSettingsMachine, type SettingsContext, type SettingsEvents, type 
 export { createWindowSettingsRuntime, type WindowSettingsIO } from './settings-runtime.ts';
 export { settingsProblems } from '../features/settings/document.ts';
 export { compileSettingsCatalog } from '../features/settings/validation.ts';
+
+export { createWindowPackCatalog, type WindowPackCatalogIO } from './pack-catalog.ts';
+export type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';

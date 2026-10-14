@@ -4,6 +4,7 @@ import type { ShellClient, ShellFailure } from '@apackdev/host/fe';
 import { trpc, reconnectApiClient } from '@/transport';
 import { globalToast } from '@/adapters/toast';
 import { windowSettings, connectWindowSettings, disconnectWindowSettings } from '@/runtime/settings';
+import { windowCatalog } from '@/runtime/catalog';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /** What the Electron main process reports about the API process */
@@ -36,35 +37,48 @@ export const feClient: ShellClient = {
   },
 
   subscribe: (connection) => {
+    let stopped = false;
+    let subscriptionEpoch = 0;
     // The backend may have failed for good before this window started listening
     window.electronAPI?.apiStatus?.getStatus().then((status) => {
+      if (stopped) return;
       // The error as main recorded it, its stack included, for the error page to lay out
       if (status.error && !status.running && status.restartAttempts >= 3) connection.onFailed(status.error);
     });
 
-    const subscribeToBus = () => trpc.bus.sub.subscribe(undefined, {
-      // Each time this window's subscription is established: the server has sent this connection's
-      // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
-      onStarted: () => {
-        void connectWindowSettings().then(ready => { if (ready) connection.onConnected(); })
-          .catch(error => { connection.onDisconnected(); connection.onFailed(String(error)); });
-      },
-      // The socket dropped: the subscription is established again when it reconnects
-      onConnectionStateChange: ({ state }) => {
-        if (state === 'connecting') { disconnectWindowSettings(); connection.onDisconnected(); }
-      },
-      onError: (error: unknown) => {
-        console.error('Error in subscription:', error);
-        disconnectWindowSettings();
-        connection.onDisconnected();
-        connection.onFailed(String(error));
-      },
-      onData: (message) => { if (!windowSettings.receive(message)) connection.onMessage(message); },
-    });
+    const subscribeToBus = () => {
+      const epoch = ++subscriptionEpoch;
+      const current = () => !stopped && epoch === subscriptionEpoch;
+      return trpc.bus.sub.subscribe(undefined, {
+        // Each time this window's subscription is established: the server has sent this connection's
+        // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
+        onStarted: () => {
+          if (!current()) return;
+          windowCatalog.connect();
+          void connectWindowSettings().then(ready => { if (current() && ready) connection.onConnected(); })
+            .catch(error => { if (current()) { connection.onDisconnected(); connection.onFailed(String(error)); } });
+        },
+        // The socket dropped: the subscription is established again when it reconnects
+        onConnectionStateChange: ({ state }) => {
+          if (!current()) return;
+          if (state === 'connecting') { disconnectWindowSettings(); windowCatalog.disconnect(); connection.onDisconnected(); }
+        },
+        onError: (error: unknown) => {
+          if (!current()) return;
+          console.error('Error in subscription:', error);
+          disconnectWindowSettings();
+          windowCatalog.disconnect();
+          connection.onDisconnected();
+          connection.onFailed(String(error));
+        },
+        onData: (message) => { if (current() && !windowSettings.receive(message)) connection.onMessage(message); },
+      });
+    };
     let subscription = subscribeToBus();
 
     // The main process tells this window at once when the API stops, fails or moves
     const stopStatus = window.electronAPI?.apiStatus?.onEvent((event: ApiStatusEvent) => {
+      if (stopped) return;
       if (event.type === 'api:stopped' && event.restarting) return;
       if (event.type === 'api:started') {
         // A restart can land on a different port; the old subscription died with the old socket.
@@ -75,6 +89,7 @@ export const feClient: ShellClient = {
         // times the half-second the restart took. Main sets it only for a reload it performed, so the old
         // socket is known to be gone and tearing it down here is safe.
         if ((event.port && reconnectApiClient(event.port)) || event.reloaded) {
+          subscriptionEpoch++;
           subscription.unsubscribe();
           subscription = subscribeToBus();
         }
@@ -82,14 +97,18 @@ export const feClient: ShellClient = {
       }
       if (event.type === 'api:fatal' || event.type === 'api:stopped' || event.type === 'api:error') {
         disconnectWindowSettings();
+        windowCatalog.disconnect();
         connection.onDisconnected();
         connection.onFailed(failureOf(event));
       }
     });
 
     return () => {
+      stopped = true;
+      subscriptionEpoch++;
       subscription.unsubscribe();
       disconnectWindowSettings();
+      windowCatalog.disconnect();
       stopStatus?.();
     };
   },
