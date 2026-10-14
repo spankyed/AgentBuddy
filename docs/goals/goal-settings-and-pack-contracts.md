@@ -3258,3 +3258,38 @@ M4 remains open for scaffold/layout agreement and cross-pack default-selection e
 complete M5/M6 and every remaining discovery/navigation/boundary/Phase 6 requirement. Final strict
 `--all` on committed source and the full reconciled audit remain mandatory. Nothing is archived;
 the full goal remains active.
+
+### Scaffold and default-selection acceptance — M4 complete (2026-10-14)
+
+Source `11bdc7faa` shares one feature-layout object between module writing and authored references,
+so their paths cannot drift independently. The real external scaffold now uses a role different
+from its feature ID and passes both CLI validate and doctor before build/typecheck/archive. Public
+layout docs include the frontend contract; corrected the feature table's stale settings/role wording
+and broken table structure. Runtime declarations and generated output retain their existing paths.
+
+Audit found default-claim uniqueness missing from native admission and direct frontend registration.
+Authored/native schemas now share the existing one-default rule; frontend capture refuses duplicate
+defaults and claims without a plugin before publication. Tests preserve first-registered cross-pack
+selection, replacement priority, promotion after winner removal and re-registration order. Invalid
+replacement retains the incumbent's plugins/default. The actual native catalog refuses malformed
+duplicate claims atomically; role collision/nonmatching-ID behavior remains covered.
+
+Evidence: 83 focused schema/native/frontend checks and 11 real external scaffold cases passed.
+Removing native validation failed two named assertions, removing frontend uniqueness failed one;
+all source restored exactly (`/private/tmp/apack-m4-layout-{native,frontend}-mutation.log`). Strict
+initially required a regenerated API report. Reviewed all hunks: only plugin/settings ordering in
+inferred schema types changed (16 identical added/removed lines), no fields/types/signatures changed.
+Report preparation first refused after CLI whitespace cleanup; refreshed that package before
+regeneration, then reviewed/normalized the report. Final strict passed in 514.2s (all 30 steps fresh):
+host 4,460 tests, pack 855 plus two existing skips, integration 651, external contract/app, smoke
+and both packaged authoring halves. Actual app 155.4s, smoke 5.0s, authoring 53.5s, packaged app 7.5s.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T11-28-05Z-13985`,
+`/private/tmp/apack-m4-layout-strict-reviewed.log`; initial report refusal:
+`node_modules/.cache/apack-chain/runs/2026-10-14T11-24-07Z-12592`. EARS and six compiled content files
+remain byte-identical to `/private/tmp/apack-m4-description-baseline`; facade/schema checks pass.
+Reviewed all ten source paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M4 is complete across its description/type/parser/inventory/grammar/export/layout/default checkpoints.
+Proceed to M5 checks/format cleanup, then M6 canonical writing and full schema/docs coverage. Every
+remaining discovery/navigation/boundary/Phase 6 requirement remains active. Final strict `--all` on
+committed source and the complete reconciled audit remain mandatory. Nothing is archived.

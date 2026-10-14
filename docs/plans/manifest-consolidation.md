@@ -1,6 +1,6 @@
 # Complete the manifest consolidation
 
-Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4–M6 remain required.
+Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4 completed in `11bdc7faa`; M5–M6 remain required.
 
 This restores unfinished outcomes from the [manifest redesign](../archive/goals/goal-manifest-redesign.md),
 [convention-first plan](../archive/plans/manifest-convention-first.md),
@@ -19,7 +19,7 @@ A landed result still needs its applicable regression checks in the final requir
 | Decision | Intended outcome and disposition | Current evidence and remaining acceptance | Checkpoint |
 |---|---|---|---|
 | 1 | Group by concern and write a stable, readable manifest. Required; replace the obsolete exact root-key count/order with ordering for the current schema. | M1 removed root `entities`/`entityShapes`. M2 moved relations to `data.relations`; M3 replaced root `boot` with checked `lifecycle`. CLI `add/manifest.ts:writeManifest` only stringifies insertion order. Centralize root/feature/extension field order; every authoring writer uses it. Preserve contribution-member and array order where it affects behavior. | M1–M6 |
-| 2 | One module/export reference syntax. Required for shape references; retain objects that carry actual metadata. | M1 uses `path#export` shape declarations, the shared module-reference parser/grammar and purpose-specific TypeScript export checking. Component entry/load objects remain intact. Audit other genuine module/export duplication in M4; preserve named/default export semantics. Module-only type barrels must retain their explicit export-star semantics rather than pretend to be default value exports. | M1, M4 |
+| 2 | One module/export reference syntax. Required for shape references; retain objects that carry actual metadata. | M1 uses `path#export` shape declarations, the shared module-reference parser/grammar and purpose-specific TypeScript export checking. Component entry/load objects remain intact. M4 shares named/default parsing, whole-module grammar, source resolution and declaration-derived target/export checks (`4285d748c`, `cd48b636e`, `9b674ece3`, `fb9d212fc`). Module-only type barrels must retain their explicit export-star semantics rather than pretend to be default value exports. | M1, M4 |
 | 3 | Declare an entity and its shape once, under its owning feature or `data.entities`. Required. | Implemented in `2fff8bb76`: `_packEntities` is the normalized ownership/shape projection; `_packEntityTypes` derives flat wire identities for generation, schema/Packs inspection, bindings and provenance. Native declarations use the same grammar and checked runtime identities. `SearchIndex`/`IndexedDoc` remain null/untyped; source-free poisoned-runtime discovery and two empty-reader mutations passed. Flat compiled types and EARS behavior are preserved. | M1 |
 | 4 | Replace root relation identity maps with pack-level `data.relations` wire values. Required. | Implemented in `3ff590240`: snake_case wire lists, uppercase derived constants, one shared data declaration/projection module, duplicate/SDK reservation checks, native exact binding admission, schema assistance and all current readers. EARS and compiled content stayed byte-identical; collisions, dependency provenance, offline and actual runtime paths passed. | M2 |
 | 5 | Remove partition-policy machinery; proposed `volatile` addition needed a separate real storage requirement. Excluded under the settled storage scope. | The predecessor itself records removal and says not to add volatility without an actual need. Do not recreate it, widen entity values for it, or require its obsolete external-pack test. Retain existing storage behavior; general storage work remains separate. | Preservation |
@@ -29,7 +29,7 @@ A landed result still needs its applicable regression checks in the final requir
 | 9 | Contributions live under `extensions`; settle settings/help placement. Landed in part and deliberately redesigned. | SDK `ExtensionsSchema` has contribution fields, `extensions.settings`, `extensions.help`; host settings are independent. Preserve these and ordinary strict schema validation. Historical moved-key diagnostics were removed in `dd960261a`; unsupported fields use current-schema errors. Full metadata/binding migration for remaining kinds stays required. | Discovery/final |
 | 10 | Content is grouped and lifecycle has a coherent declaration. Content grouping landed; lifecycle root move required. | `ContentConfigSchema` groups sources/datasets/formats/writers. M3 (`e063ec1a5`) uses `LifecycleConfigSchema` and one native/installed checked binding guard for explicit targets. Use `lifecycle: { onInit: "path#export", onShutdown: "path#export" }`, replacing the historical opaque single-module proposal. Migrate discovery/codegen/native bindings; preserve actual execution/order and unchanged-content apply identity. | M3 |
 | 11 | Schema assistance and public docs specify the supported contract completely. Required. | Many fields have descriptions, but nested reference/component fields still lack them. Require meaningful descriptions for every supported authored field, generated-schema coverage, useful completion/diagnostics and complete public docs. Describe explicit null/untyped behavior and published artifact layout. | M6 |
-| 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. Recheck duplicate local claims and documented cross-pack selection policy, not just schema presence. | M4/final |
+| 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Tests preserve first-registered selection, replacement priority, removal promotion and re-registration order; public docs describe the policy. | M4/final |
 | 13 | Every feature explains its purpose; scaffolding collects it and validation requires it. Required. | Implemented in `ae7a995bd`: shared required/nonblank `description` validation, authored/native declarations, explicit required scaffold input, cold catalog summaries and feature UI. Real manifests and all fixture producers migrated; no runtime-binding metadata or `about` alias. | M4 |
 | 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Schema still accepts it. Remove it outright. Existing snapshot/layout constants are 1/2 and must remain unchanged. Audit exact supported layout validation: `layout.ts` and `assets.ts` still use `Math.floor`. Reject malformed/fractional stamps without altering facade capability acceptance or introducing another manifest version. | M5 |
 | 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current artifact contracts; no release/version edits in this goal. | M4–M6/final |
@@ -207,4 +207,20 @@ of whole-module readers from the same target metadata (`default`, `apply`, `tipt
 JavaScript in static inspection and recognizes CommonJS default imports. Type-only barrels remain
 independent; Vue component exports belong to the frontend build. Real CLI cases prove system default
 checks do not activate modules. M4 remains open for scaffold/layout agreement and cross-pack default
-selection; exercise the full external authoring/runtime contract before completion.
+selection; exercise the full external authoring/runtime contract before completion. This acceptance is completed in `11bdc7faa`, with real scaffold/doctor/validate/build/typecheck/archive and strict external-app evidence in the owning goal.
+
+### M4 acceptance complete (2026-10-14)
+
+`11bdc7faa` uses one feature scaffold path definition for written modules and manifest references.
+The real external scaffold validates and passes doctor with a designation different from its feature
+ID, then builds, typechecks and archives. Public layout documentation includes both contracts and
+describes declarative settings and role semantics accurately. Authored/native schemas share the
+one-default-per-pack rule. Frontend admission refuses duplicate defaults or a default without a
+plugin; failed replacement preserves the accepted view. Cross-pack first-registered selection is
+preserved, including replacement, winner removal and re-registration. Guard mutations fail their
+named assertions; all are restored. Strict validation and exact evidence are recorded in the goal.
+
+Together with the preceding description/type/parser/inventory/grammar/export checkpoints, this
+completes M4. M5 (checks and format cleanup), M6 (canonical writing and complete schema/docs coverage),
+full discovery and every later execution phase remain required. Final requirement audit and strict
+`--all` on committed source remain mandatory; no plan or goal is archived here.
