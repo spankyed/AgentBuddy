@@ -88,37 +88,28 @@
             }
           },
           "description": "Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities."
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+            "not": {
+              "enum": [
+                "contains",
+                "transitions_to",
+                "instance_of",
+                "spawned",
+                "tracked"
+              ]
+            }
+          },
+          "description": "Pack-level relation wire names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned wires.",
+          "uniqueItems": true
         }
       },
       "additionalProperties": false,
       "description": "Pack-level data declarations without a feature owner."
-    },
-    "relKinds": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "not": {
-          "enum": [
-            "contains",
-            "transitions_to",
-            "instance_of",
-            "spawned",
-            "tracked"
-          ]
-        }
-      },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED.",
-      "propertyNames": {
-        "not": {
-          "enum": [
-            "CONTAINS",
-            "TRANSITIONS_TO",
-            "INSTANCE_OF",
-            "SPAWNED",
-            "TRACKED"
-          ]
-        }
-      }
     },
     "features": {
       "type": "object",

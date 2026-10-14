@@ -18,7 +18,7 @@ describe('a file readInstalledSchema cannot use', () => {
   // is wrong, what the error names is an `apack.json` under `packs/`
   it("names the pack's manifest, whichever pack it is", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'bookmarks', entities: { Bookmark: 'Bookmark' } }] });
-    write(manifestFile(dir, 'bookmarks'), { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', relKinds: 'nonsense' });
+    write(manifestFile(dir, 'bookmarks'), { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', data: { relations: 'nonsense' } });
     expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Pack "bookmarks" declarations in ${path.dirname(manifestFile(dir, 'bookmarks'))}: its manifest does not match its built declarations`);
   });
 
@@ -56,10 +56,12 @@ it('discovers feature-owned typed and untyped entities without authored source o
   const packDir = path.dirname(manifestFile(dir, 'offline'));
   writeInstalledPackFixture(packDir, {
     id: 'offline', name: 'Offline', version: '1.0.0',
+    data: { relations: ['note_link'] },
     features: { notes: { entities: { OfflineNote: 'src/types.ts#NoteShape', OfflineIndex: null } } },
   });
   expect(fs.existsSync(path.join(packDir, 'src'))).toBe(false);
   const schema = readInstalledSchema(schemaContext(dir));
   expect(schema.entities.OfflineNote).toBe('OfflineNote');
   expect(schema.entities.OfflineIndex).toBe('OfflineIndex');
+  expect(schema.relKinds.NOTE_LINK).toBe('note_link');
 });

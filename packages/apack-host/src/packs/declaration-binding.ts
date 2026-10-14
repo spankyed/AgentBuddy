@@ -1,4 +1,4 @@
-import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { BOOT_HOOK_NAMES } from '@apackdev/sdk/build';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -10,7 +10,7 @@ export function contentBindingProblem(manifest: PackManifest, runtime: unknown, 
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
   if (!isPlainObject(runtime)) return problem('registration');
   if (!isDeepStrictEqual(runtime.entities, _packEntityTypes(manifest))) return problem('entities');
-  if (!isDeepStrictEqual(runtime.relKinds, manifest.relKinds ?? {})) return problem('relKinds');
+  if (!isDeepStrictEqual(runtime.relKinds, _packRelationTypes(manifest))) return problem('relKinds');
   const repositories = Object.values(manifest.features ?? {}).flatMap(feature => Object.keys(feature.repositories ?? {}));
   if (!sameKeys(runtime.repositories, repositories)) return problem('repositories');
   if (!sameKeys(runtime.contentWriters, Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
@@ -52,7 +52,7 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   const ears = registration.ears === undefined ? {} : registration.ears;
   if (!isPlainObject(ears)) return problem('ears');
   if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, _packEntityTypes(manifest))) return problem('ears.entities');
-  if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, manifest.relKinds ?? {})) return problem('ears.relKinds');
+  if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, _packRelationTypes(manifest))) return problem('ears.relKinds');
   if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
     Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
   if (!namedBindings(registration.appliers, 'key', Object.keys(manifest.content?.sources ?? {}))) return problem('appliers');

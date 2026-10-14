@@ -49,7 +49,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
   - The cross-field rules live in `superRefine`:
     - A `content.sources` format must name a `content.formats` entry or `<dependency>:<name>`.
     - `content.writers` may name only the pack's own `entities`.
-    - `entities`/`relKinds` may not use a name the SDK owns, as a key or a value (`_reservedEntries`, `types/reserved-names.ts`, the rule the generator and the host's registry apply too), and an entity's key must equal its value.
+    - Feature/data entity keys are wire identities, with a shape reference or null as their value; they cannot redeclare SDK entities. `data.relations` lists unique snake_case wires, with uppercase EARS constants, and cannot redeclare SDK relation wires. Shared projections feed generators, provenance and host readers.
   - A feature id may not be a JavaScript reserved word (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
   - `SPECIALTY_CONTENT_KEYS` (`actions`, `prompts`, `flows`) take a path. Every other content key takes `{ path, format }` (optionally with `applier`: the pack module content the compiled records instead of the format applier) or `{ applier }` alone. No pack in this repo uses either form, so a change to them is covered by `tests/build/` and nothing else.
   - `apack.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `schema:update` after changing the schema; CI runs `schema:check`.

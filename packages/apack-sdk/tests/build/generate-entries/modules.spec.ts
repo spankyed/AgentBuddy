@@ -119,7 +119,7 @@ describe('generated imports', () => {
 describe('generated EARS facade', () => {
   it('names the declared entities and passes them to the typed helpers, with tx', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
-    const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } },  }))['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
     expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
@@ -148,8 +148,10 @@ describe("the SDK's entities and relation kinds", () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
     const withBase = (manifest: object) => generate({ ...manifest, dependencies: { 'base-pack': '*' } }, { 'base-pack': base });
     await expect(withBase({ data: { entities: { Tag: null } } })).rejects.toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
-    await expect(withBase({ relKinds: { LABELLED: 'tagged' } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
-    await expect(withBase({ relKinds: { TAGGED: 'labelled' } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+    await expect(withBase({ data: { relations: ['tagged'] } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+    const conflictingName = { ...base, types: { entities: { Tag: 'Tag' }, relKinds: { LABELLED: 'tagged' } } };
+    await expect(generate({ data: { relations: ['labelled'] } }, { 'base-pack': conflictingName }))
+      .rejects.toThrow('relKind "LABELLED" declared by both "demo-pack" and "base-pack"');
   });
 
   it('uses entity keys as unchanged wire names in EntityName', async () => {
@@ -163,7 +165,7 @@ describe("the SDK's entities and relation kinds", () => {
 
   it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
-    const entry = (await generate({ data: { entities: { Memo: null } }, relKinds: { PINNED: 'pinned' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/pack-entry.ts'];
+    const entry = (await generate({ data: { entities: { Memo: null }, relations: ['pinned'] }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain('entities: {"Memo":"Memo"},');
     expect(entry).toContain('relKinds: {"PINNED":"pinned"},');
   });
@@ -171,7 +173,7 @@ describe("the SDK's entities and relation kinds", () => {
   it("rejects a pack's own declaration of the SDK's names", async () => {
     await expect(generate({ data: { entities: { Relation: null } } })).rejects.toThrow(/entity "Relation" is defined by the SDK/);
     await expect(generate({ data: { entities: { Action: null } } })).rejects.toThrow(/entity "Action" is defined by the SDK/);
-    await expect(generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).rejects.toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
+    await expect(generate({ data: { relations: ['transitions_to'] } })).rejects.toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
   });
 });
 
@@ -334,7 +336,7 @@ describe('the snapshot format', () => {
     $manifestVersion: true, $schema: true, boot: true, build: true,
     dependencies: true, description: true, data: true,  extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
-    permissions: true, relKinds: true, content: true, version: true,
+    permissions: true, content: true, version: true,
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
@@ -403,7 +405,7 @@ describe('the snapshot format', () => {
       manifest: {
         fields: [
           '$manifestVersion', '$schema', 'boot', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
-          'permissions', 'relKinds', 'version',
+          'permissions', 'version',
         ],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
         feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],

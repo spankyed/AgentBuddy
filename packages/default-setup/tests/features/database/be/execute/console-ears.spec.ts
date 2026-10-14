@@ -5,7 +5,7 @@ import { registerPack, unregisterPack } from '@apackdev/testing/harness'
 import { executeQuery } from '#features/database/be/execute/query.ts'
 import { executeTransaction } from '#features/database/be/execute/transaction.ts'
 
-const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } } }
+const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { MENTIONS: 'mentions' } } }
 
 afterEach(() => {
   try { unregisterPack(MEMO_PACK.id) } catch { /* the test didn't register it */ }
@@ -21,7 +21,7 @@ describe("the console's EARS", () => {
     registerPack(MEMO_PACK)
 
     await expect(executeQuery('return EARS.Entity.Memo')).resolves.toBe('Memo')
-    await expect(executeQuery('return EARS.RelKind.mentions')).resolves.toBe('mentions')
+    await expect(executeQuery('return EARS.RelKind.MENTIONS')).resolves.toBe('mentions')
     await expect(executeTransaction('return EARS.Entity.Memo')).resolves.toBe('Memo')
   })
 

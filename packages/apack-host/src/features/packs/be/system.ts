@@ -1,4 +1,4 @@
-import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts';
 import * as path from 'path';
 import { setup } from 'xstate';
@@ -98,7 +98,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
       features, systems: features.filter(feature => feature.hasSystem).map(feature => resolveName(feature.id, manifest.id)),
       services: [...Object.keys(extensions?.services ?? {}), ...features.flatMap(feature => feature.services)],
       steps: Object.keys(extensions?.steps ?? {}), artifacts: Object.keys(extensions?.artifacts ?? {}),
-      blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ...manifest.relKinds },
+      blocks: Object.keys(extensions?.blocks ?? {}), relKinds: { ..._packRelationTypes(manifest) },
       migrationCount: Object.values(manifest.migrations ?? {}).reduce((count, line) => count + Object.keys(line).length, 0),
       bootHooks: Object.keys(manifest.boot ?? {}),
     };

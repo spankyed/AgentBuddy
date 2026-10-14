@@ -1,4 +1,4 @@
-import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -216,7 +216,7 @@ async function buildIntoStaging(args: string[]) {
   const depTypeManifests = [...depSnapshots.values()].map((snap) => snap.types);
   const types: PackTypeManifest = {
     entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), _packEntityTypes(manifest)),
-    relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), manifest.relKinds ?? {}),
+    relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), _packRelationTypes(manifest)),
   };
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};

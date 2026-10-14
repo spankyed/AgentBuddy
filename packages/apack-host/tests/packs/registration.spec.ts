@@ -190,8 +190,8 @@ describe('registerPack entities', () => {
   it("rejects a relation kind another pack registered, by its name or its value", () => {
     registerEntities('first-pack', {}, { PINNED: 'pinned' });
     expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "PINNED": "pinned" — pack "second-pack" vs "first-pack"');
-    expect(() => registerEntities('second-pack', {}, { STUCK: 'pinned' })).toThrow('EARS collision: relation kind "STUCK": "pinned" — pack "second-pack" vs "first-pack"');
-    expect(() => registerEntities('second-pack', {}, { PINNED: 'stuck' })).toThrow('EARS collision: relation kind "PINNED": "stuck" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { STUCK: 'pinned' })).toThrow('Native pack "second-pack" runtime ears.relKinds does not match its admitted declarations');
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'stuck' })).toThrow('Native pack "second-pack" runtime ears.relKinds does not match its admitted declarations');
   });
 
   it("rejects a pack built when its registration still listed its dependency's names", () => {
@@ -212,12 +212,20 @@ describe('registerPack entities', () => {
     expect(getPackRegistration('first-pack')).toBeNull();
   });
 
+  it.each(['CONTAINS', 'HOLDS'])('refuses SDK relation wires before native registration: %s', key => {
+    expect(() => registerEntities('first-pack', {}, { [key]: 'contains' })).toThrow('data.relations: "CONTAINS": "contains" is defined by the SDK');
+    expect(getPackRegistration('first-pack')).toBeNull();
+  });
+
+  it('refuses a noncanonical native relation binding, including a reserved enum alias', () => {
+    expect(() => registerEntities('first-pack', {}, { CONTAINS: 'holds' }))
+      .toThrow('Native pack "first-pack" runtime ears.relKinds does not match its admitted declarations');
+    expect(getPackRegistration('first-pack')).toBeNull();
+  });
+
   it.each([
     [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
     [{ AppliedContent: 'AppliedContent' }, {}, 'entity type "AppliedContent"'],
-    [{}, { CONTAINS: 'contains' }, 'relation kind "CONTAINS": "contains"'],
-    [{}, { HOLDS: 'contains' }, 'relation kind "HOLDS": "contains"'],
-    [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],
   ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
     expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
     expect(getPackRegistration('first-pack')).toBeNull();

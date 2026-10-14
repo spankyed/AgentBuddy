@@ -16,13 +16,13 @@ const settingsDefinition = extensions.settings.additionalProperties as { propert
 Object.assign(settingsDefinition.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
 const feature = properties.features.additionalProperties as { properties: { settings: typeof settingsDefinition; entities: Record<string, unknown> } };
 Object.assign(feature.properties.settings.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
-const data = properties.data.properties as { entities: Record<string, unknown> };
+const data = properties.data.properties as { entities: Record<string, unknown>; relations: Record<string, unknown> };
 for (const entities of [data.entities, feature.properties.entities]) {
   Object.assign(entities, { propertyNames: { minLength: 1, not: { enum: Object.keys(SDK_ENTITIES) } } });
 }
-Object.assign(properties.relKinds, {
-  propertyNames: { not: { enum: Object.keys(SDK_REL_KINDS) } },
-  additionalProperties: { type: 'string', not: { enum: Object.values(SDK_REL_KINDS) } },
+Object.assign(data.relations, {
+  uniqueItems: true,
+  items: { ...(data.relations.items as object), not: { enum: Object.values(SDK_REL_KINDS) } },
 });
 
 Object.assign(jsonSchema, {

@@ -1,5 +1,5 @@
+import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN } from '../framework/module-reference.ts';
-import { _packEntities, _packEntityTypes } from '../framework/entity-declaration.ts';
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
@@ -27,14 +27,6 @@ const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string,
 function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
   if (!raw || typeof raw !== 'object') return raw;
   const declaration = raw as Record<string, unknown>;
-  const relations = declaration.relKinds;
-  if (relations && typeof relations === 'object' && !Array.isArray(relations)
-    && Object.values(relations).every(value => typeof value === 'string')) {
-    notSdkOwned(SDK_REL_KINDS)(relations as Record<string, string>, {
-      path: [...ctx.path, 'relKinds'],
-      addIssue: issue => ctx.addIssue({ ...issue, path: ['relKinds', ...(issue.path ?? [])] }),
-    });
-  }
   try {
     for (const { name, owner } of _packEntities(declaration)) {
       const path = [...owner.split('.'), 'entities'];
@@ -56,7 +48,12 @@ const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be 
 
 const EntitiesSchema = z.record(z.string().min(1), ExportTargetSchema.nullable())
   .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
-const DataSchema = z.object({ entities: EntitiesSchema.optional() }).strict()
+const RelationsSchema = z.array(z.string().regex(_RELATION_WIRE_PATTERN, 'Must be a snake_case relation wire name'))
+  .superRefine((relations, ctx) => {
+    try { notSdkOwned(SDK_REL_KINDS)(_packRelationTypes({ data: { relations } }), ctx); }
+    catch (error) { ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) }); }
+  }).describe('Pack-level relation wire names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned wires.');
+const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: RelationsSchema.optional() }).strict()
   .describe('Pack-level data declarations without a feature owner.');
 
 const SettingsDefinitionShape = {
@@ -612,8 +609,6 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   data: DataSchema.optional(),
-  relKinds: z.record(z.string(), z.string())
-    .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),

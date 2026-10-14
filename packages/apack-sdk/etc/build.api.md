@@ -446,7 +446,7 @@ export interface DSLStepNode extends DSLNodeBase {
 export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistries>): string;
 
 // @public
-export function entitiesWithoutShapes(manifest: PackEntityDeclarations): string[];
+export function entitiesWithoutShapes(manifest: PackDataDeclarations): string[];
 
 // @public (undocumented)
 export function entry(...branches: DSLStepNode[][]): Track;
@@ -641,12 +641,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+        relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     }, {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     }>>;
-    relKinds: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     features: z.ZodOptional<z.ZodRecord<z.ZodEffects<z.ZodString, string, string>, z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
         designation: z.ZodOptional<z.ZodString>;
@@ -1378,6 +1380,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1405,7 +1408,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1526,6 +1528,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1546,7 +1549,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1660,6 +1662,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1687,7 +1690,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1808,6 +1810,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1828,7 +1831,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -1942,6 +1944,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     version: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     description?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1969,7 +1972,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         repositories?: Record<string, string> | undefined;
     }> | undefined;
-    relKinds?: Record<string, string> | undefined;
     build?: {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
@@ -2218,10 +2220,13 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }, unknown>>>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+        relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     }, {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     }>>;
     features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
@@ -2278,6 +2283,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     id: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
@@ -2305,6 +2311,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     id: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
@@ -2318,6 +2325,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     id: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
@@ -2345,6 +2353,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     id: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
@@ -2358,6 +2367,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     id: string;
     data?: {
         entities?: Record<string, string | null> | undefined;
+        relations?: string[] | undefined;
     } | undefined;
     dependencies?: Record<string, string> | undefined;
     features?: Record<string, {
@@ -2431,6 +2441,17 @@ export interface PackContentPreviewItem {
 }
 
 // @public
+export interface PackDataDeclarations {
+    // (undocumented)
+    data?: {
+        entities?: Readonly<Record<string, string | null>>;
+        relations?: readonly string[];
+    };
+    // (undocumented)
+    features?: Readonly<Record<string, object>>;
+}
+
+// @public
 export interface PackDiagnostic {
     // (undocumented)
     code: string;
@@ -2448,7 +2469,7 @@ export interface PackDiagnostic {
 }
 
 // @internal
-export function _packEntities(declaration: PackEntityDeclarations): _PackEntityDeclaration[];
+export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[];
 
 // @internal
 export interface _PackEntityDeclaration {
@@ -2460,18 +2481,8 @@ export interface _PackEntityDeclaration {
     shape: string | null;
 }
 
-// @public
-export interface PackEntityDeclarations {
-    // (undocumented)
-    data?: {
-        entities?: Readonly<Record<string, string | null>>;
-    };
-    // (undocumented)
-    features?: Readonly<Record<string, object>>;
-}
-
 // @internal
-export function _packEntityTypes(declaration: PackEntityDeclarations): Record<string, string>;
+export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
 export type PackFeature = PackFeatureEntry & {
@@ -2510,6 +2521,9 @@ export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
 // @public
 export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, string>>>;
+
+// @internal
+export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public (undocumented)
 export interface PackSnapshot {
@@ -2600,7 +2614,7 @@ export const PROVENANCE_KINDS: {
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
 
 // @public
-export interface ProvenanceManifest extends PackEntityDeclarations {
+export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
         commands?: Readonly<Record<string, unknown>>;
@@ -2611,8 +2625,6 @@ export interface ProvenanceManifest extends PackEntityDeclarations {
         plugin?: unknown;
         references?: ReferenceDeclarations;
     }>;
-    // (undocumented)
-    relKinds?: Record<string, string>;
 }
 
 // @internal

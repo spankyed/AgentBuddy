@@ -65,8 +65,8 @@ describe('_mergeProvenance', () => {
   // One table entry per kind, so a new kind is a line rather than a type pair and a reader
   describe('reads every kind off a manifest', () => {
     const manifest = {
-      data: { entities: { Note: null } },
-      relKinds: { tagged: 'tagged' },
+      data: { entities: { Note: null }, relations: ['tagged'] },
+
       extensions: { commands: { note: { placeholder: 'x' } } },
       features: { memos: { plugin: {}, references: {
         types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#openMemo' } },
@@ -75,7 +75,7 @@ describe('_mergeProvenance', () => {
     };
     const cases: Array<[keyof typeof PROVENANCE_KINDS, Record<string, string>]> = [
       ['entities', { Note: 'base-pack' }],
-      ['relKinds', { tagged: 'base-pack' }],
+      ['relKinds', { TAGGED: 'base-pack' }],
       ['commands', { note: 'base-pack' }],
       ['referenceTypes', { memo: 'base-pack' }],
       ['referenceCategories', { memos: 'base-pack' }],

@@ -155,7 +155,7 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
-export interface NativePackDeclaration extends PackEntityDeclarations {
+export interface NativePackDeclaration extends PackDataDeclarations {
     // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
@@ -202,6 +202,17 @@ export interface PackCommand {
     placeholder: string;
 }
 
+// @public
+export interface PackDataDeclarations {
+    // (undocumented)
+    data?: {
+        entities?: Readonly<Record<string, string | null>>;
+        relations?: readonly string[];
+    };
+    // (undocumented)
+    features?: Readonly<Record<string, object>>;
+}
+
 // @internal
 export function _packDeclarationProblem(expected: {
     id: string;
@@ -217,7 +228,7 @@ export interface PackEARS {
 }
 
 // @internal
-export function _packEntities(declaration: PackEntityDeclarations): _PackEntityDeclaration[];
+export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[];
 
 // @internal
 export interface _PackEntityDeclaration {
@@ -229,18 +240,8 @@ export interface _PackEntityDeclaration {
     shape: string | null;
 }
 
-// @public
-export interface PackEntityDeclarations {
-    // (undocumented)
-    data?: {
-        entities?: Readonly<Record<string, string | null>>;
-    };
-    // (undocumented)
-    features?: Readonly<Record<string, object>>;
-}
-
 // @internal
-export function _packEntityTypes(declaration: PackEntityDeclarations): Record<string, string>;
+export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
 export interface PackFeature {
@@ -306,6 +307,9 @@ export interface PackRegistration {
     // (undocumented)
     steps?: StepDefinition[];
 }
+
+// @internal
+export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
 export function packSystem(entry: SystemEntry, options?: {

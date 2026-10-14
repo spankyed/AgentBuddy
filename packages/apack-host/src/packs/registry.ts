@@ -1,4 +1,4 @@
-import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
@@ -519,6 +519,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (!origin) {
       const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
+      if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
+        throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
+      }
       const runtimeFeatures = registration.features === undefined ? {} : registration.features;
       const settingsOf = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
         Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]));

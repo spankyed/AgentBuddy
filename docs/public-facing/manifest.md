@@ -18,7 +18,7 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
-| `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
+| `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Explicit lifecycle functions; see [Boot configuration](#boot-configuration) |
@@ -491,9 +491,9 @@ Run `apack pack fetch-deps` to pull dependency snapshots for cross-pack type int
     }
   },
   "data": {
-    "entities": { "ImportLog": null }
-  },
-  "relKinds": { "TAGGED_WITH": "tagged_with" }
+    "entities": { "ImportLog": null },
+    "relations": ["tagged_with"]
+  }
 }
 ```
 
@@ -505,7 +505,9 @@ exports without executing them; installed discovery reads built declarations wit
 Duplicate entity declarations name both owners and fail validation.
 
 Keys become TypeScript constants in generated `ears.ts`. Entity constants equal their keys; a relation
-kind's key and wire value may differ. Shapes type attributes without changing stored identities.
+wire is declared once in `data.relations`, shared across the pack's features. Its constant name is
+uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused.
+Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 

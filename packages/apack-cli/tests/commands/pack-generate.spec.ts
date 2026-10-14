@@ -31,8 +31,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Widget: null, Gadget: null } },
-      relKinds: {},
+      data: { entities: { Widget: null, Gadget: null }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -49,8 +48,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: {} },
-      relKinds: { OWNS: 'owns', FOLLOWS: 'follows' },
+      data: { entities: {}, relations: ['owns', 'follows'] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -66,8 +64,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Alpha: null, Beta: null } },
-      relKinds: {},
+      data: { entities: { Alpha: null, Beta: null }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -81,8 +78,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { Item: null } },
-      relKinds: {},
+      data: { entities: { Item: null }, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -100,8 +96,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: {} },
-      relKinds: {},
+      data: { entities: {}, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -117,8 +112,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: {} },
-      relKinds: {},
+      data: { entities: {}, relations: [] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -133,8 +127,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { MyEntity: null } },
-      relKinds: {},
+      data: { entities: { MyEntity: null }, relations: [] },
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
@@ -167,8 +160,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      data: { entities: { A: null, B: null } },
-      relKinds: { R: 'r' },
+      data: { entities: { A: null, B: null }, relations: ['r'] },
     });
 
     await generateEntries(['--force'], tmpDir);
@@ -227,7 +219,7 @@ describe('the inputs stamp', () => {
   });
 
   it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
     await generateEntries([], tmpDir);
     expect(fs.existsSync(generated('ears.ts'))).toBe(true);
 
@@ -242,7 +234,7 @@ describe('the inputs stamp', () => {
   });
 
   it('still skips when every recorded file is there', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
     await generateEntries([], tmpDir);
 
     const said: string[] = [];
@@ -268,7 +260,7 @@ describe('the inputs stamp', () => {
   // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
     await generateEntries([], tmpDir);
     expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
 

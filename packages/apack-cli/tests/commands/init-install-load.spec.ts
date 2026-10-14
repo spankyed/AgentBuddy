@@ -1,4 +1,4 @@
-import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack `apack pack init` scaffolds installs, and the app's pack loader loads it.
 import * as fs from 'node:fs';
@@ -42,7 +42,7 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
   };
   const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'));
   const appliers = Object.keys(manifest.content?.sources ?? {}).map(key => `{ key: ${JSON.stringify(key)}, apply: () => ({ created: 0, updated: 0, skipped: 0 }) }`).join(', ');
-  write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource}, ears: ${JSON.stringify({ entities: _packEntityTypes(manifest), relKinds: manifest.relKinds ?? {} })}, appliers: [${appliers}] } };`) + `
+  write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource}, ears: ${JSON.stringify({ entities: _packEntityTypes(manifest), relKinds: _packRelationTypes(manifest) })}, appliers: [${appliers}] } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
   write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
   sealPackBuild(path.join(packDir, 'dist'), JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf8')));

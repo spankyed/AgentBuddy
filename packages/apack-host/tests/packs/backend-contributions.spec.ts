@@ -4,7 +4,7 @@ import { backendBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
   id: 'contributions', name: 'Contributions', version: '1.0.0',
-  data: { entities: { Item: null } }, relKinds: { ItemLink: 'item_link' },
+  data: { entities: { Item: null }, relations: ['item_link'] },
   extensions: {
     steps: { execute: { node: 'node.ts#node', build: 'build.ts#build', runtime: { handler: 'runtime.ts#handler', waits: true } } },
     blocks: { answer: { kind: 'input', be: 'block.ts#block' } },
@@ -18,7 +18,7 @@ const manifest = ManifestSchema.parse({
 
 function binding(): Record<string, unknown> {
   return {
-    ears: { entities: { Item: 'Item' }, relKinds: { ItemLink: 'item_link' } },
+    ears: { entities: { Item: 'Item' }, relKinds: { ITEM_LINK: 'item_link' } },
     steps: [{ type: 'execute', node: {}, build: {}, runtime: { handler() {}, waits: true } }],
     blocks: [{ type: 'answer', kind: 'input', be: {} }], artifacts: [{ type: 'item' }],
     commands: [{ name: 'collect', placeholder: 'Collect items' }],
@@ -42,7 +42,7 @@ it.each(['steps', 'blocks', 'artifacts', 'commands', 'appliers'])('refuses missi
 });
 
 it.each([
-  ['ears.entities', { ears: { entities: { Item: 'Other' }, relKinds: { ItemLink: 'item_link' } } }],
+  ['ears.entities', { ears: { entities: { Item: 'Other' }, relKinds: { ITEM_LINK: 'item_link' } } }],
   ['ears.relKinds', { ears: { entities: { Item: 'Item' }, relKinds: {} } }],
   ['contentWriters', { contentWriters: { Other: {} } }],
   ['commands.collect.placeholder', { commands: [{ name: 'collect', placeholder: 'Different' }] }],

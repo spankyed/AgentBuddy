@@ -233,17 +233,14 @@ The engine is its own package, `@apackdev/ears`, which packs may depend on and i
 
 ```json
 {
-  "entities": {
-    "Bookmark": "Bookmark",
-    "Tag": "Tag"
-  },
-  "relKinds": {
-    "TAGGED_WITH": "tagged_with"
+  "data": {
+    "entities": { "Bookmark": null, "Tag": null },
+    "relations": ["tagged_with"]
   }
 }
 ```
 
-Keys become TypeScript constants; values are runtime strings. An entity's key must be its type name (`"Bookmark": "Bookmark"`). `generate-entries` creates typed exports in `__generated__/ears.ts`:
+Entity keys are their wire identities; `null` leaves their attributes untyped. Feature-owned entities use the same grammar under `features.<id>.entities`. Relation wires are declared once at pack level; their uppercase names become constants. `generate-entries` creates typed exports in `__generated__/ears.ts`:
 
 ```typescript
 // Auto-generated — import from here

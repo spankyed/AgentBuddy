@@ -1,6 +1,8 @@
-/** Entity identity and optional TypeScript shape, declared once at its owning location. */
-export interface PackEntityDeclarations {
-  data?: { entities?: Readonly<Record<string, string | null>> };
+import { hasOwn } from '../utils/shared.ts';
+
+/** Declarative entity ownership/shapes and the pack-level relation wire vocabulary. */
+export interface PackDataDeclarations {
+  data?: { entities?: Readonly<Record<string, string | null>>; relations?: readonly string[] };
   features?: Readonly<Record<string, object>>;
 }
 
@@ -12,7 +14,7 @@ export interface _PackEntityDeclaration {
 }
 
 /** @internal Read declarations without loading shape modules; refuse ambiguous ownership. */
-export function _packEntities(declaration: PackEntityDeclarations): _PackEntityDeclaration[] {
+export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[] {
   const result = new Map<string, _PackEntityDeclaration>();
   const homes: Array<[string, Readonly<Record<string, string | null>> | undefined]> = [
     ['data', declaration.data?.entities],
@@ -29,6 +31,20 @@ export function _packEntities(declaration: PackEntityDeclarations): _PackEntityD
 }
 
 /** @internal Flat wire identities for EARS and compiled type inventories. */
-export function _packEntityTypes(declaration: PackEntityDeclarations): Record<string, string> {
+export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string> {
   return Object.fromEntries(_packEntities(declaration).map(({ name }) => [name, name]));
+}
+
+export const _RELATION_WIRE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+
+/** @internal Derive the flat EARS constants once; refuse invalid or repeated wire identities. */
+export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string> {
+  const types: Record<string, string> = {};
+  for (const wire of declaration.data?.relations ?? []) {
+    if (!_RELATION_WIRE_PATTERN.test(wire)) throw new Error(`Relation "${wire}" must be a snake_case wire name`);
+    const name = wire.toUpperCase();
+    if (hasOwn(types, name)) throw new Error(`Relation "${wire}" is declared twice in data.relations`);
+    types[name] = wire;
+  }
+  return types;
 }

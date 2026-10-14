@@ -86,8 +86,8 @@ describe('snapshot data reader', () => {
     data.manifest.data.entities = { Flow: null };
     expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes('defined by the SDK'))).toBe(true);
     delete data.manifest.data;
-    data.manifest.relKinds = JSON.parse('{"__proto__":"contains"}');
-    expect(parseSnapshot(data).diagnostics.some(issue => issue.path.join('.') === 'manifest.relKinds')).toBe(true);
+    data.manifest.data = { relations: ['contains'] };
+    expect(parseSnapshot(data).diagnostics.some(issue => issue.path.join('.') === 'manifest.data.relations')).toBe(true);
   });
 
   it.each([

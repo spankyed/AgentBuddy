@@ -4,8 +4,10 @@
   "name": "Bundled UI Fixture",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
-  "data": { "entities": {} },
-  "relKinds": {},
+  "data": {
+    "entities": {},
+    "relations": []
+  },
   "features": {
     "scribbles": {
       "settings": {

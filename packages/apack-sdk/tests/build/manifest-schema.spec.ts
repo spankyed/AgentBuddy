@@ -19,14 +19,14 @@ describe('parseManifest', () => {
     expect(errorsOf({ data: { entities: { Relation: null, Memo: null } } })).toEqual([
       'apack.json "data.entities": "Relation" is defined by the SDK and available to every pack: remove it',
     ]);
-    expect(errorsOf({ relKinds: { CONTAINS: 'contains', NEXT: 'transitions_to', HOLDS: 'holds', PINNED: 'pinned' } })).toEqual([
-      'apack.json "relKinds": "CONTAINS": "contains", "NEXT": "transitions_to" are defined by the SDK and available to every pack: remove them',
+    expect(errorsOf({ data: { relations: ['contains', 'transitions_to', 'holds', 'pinned'] } })).toEqual([
+      'apack.json "data.relations": "CONTAINS": "contains", "TRANSITIONS_TO": "transitions_to" are defined by the SDK and available to every pack: remove them',
     ]);
-    expect(errorsOf({ relKinds: { CONTAINS: 'holds' } })).toEqual([expect.stringContaining('"CONTAINS": "holds" is defined by the SDK')]);
+    expect(errorsOf({ data: { relations: ['holds'] } })).toEqual([]);
     // A name only an object's prototype has is a pack's to use
     expect(errorsOf({ data: { entities: { constructor: null, toString: null } } })).toEqual([]);
     // Settings is a pack's entity (default-setup's)
-    expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null } }, relKinds: { PINNED: 'pinned' } })).toEqual([]);
+    expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null }, relations: ['pinned'] }, })).toEqual([]);
   });
 
   it('rejects malformed shape targets and names both duplicate owners', () => {

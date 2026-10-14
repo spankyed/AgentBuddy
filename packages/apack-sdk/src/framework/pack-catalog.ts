@@ -1,11 +1,11 @@
-import type { PackEntityDeclarations } from './entity-declaration.ts';
+import type { PackDataDeclarations } from './data-declaration.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import type { PluginDeclaration } from './plugin-declaration.ts';
 
 /** Native composition data, admitted independently of its executable bindings. */
-export interface NativePackDeclaration extends PackEntityDeclarations {
+export interface NativePackDeclaration extends PackDataDeclarations {
   id: string;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;

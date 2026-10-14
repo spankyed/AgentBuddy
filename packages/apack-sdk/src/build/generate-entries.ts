@@ -1,4 +1,4 @@
-import { _packEntities, _packEntityTypes, type PackEntityDeclarations } from '../framework/entity-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
@@ -97,7 +97,7 @@ export function mergeRegistries(
 
   return {
     entities: merge(_packEntityTypes(manifest), 'entity'),
-    relKinds: merge(manifest.relKinds, 'relKind'),
+    relKinds: merge(_packRelationTypes(manifest), 'relKind'),
   };
 }
 
@@ -296,7 +296,7 @@ function toImportPath(root: string, manifestPath: string): string {
 
 
 /** This pack's explicitly untyped entities, whose fields read as unknown values. */
-export function entitiesWithoutShapes(manifest: PackEntityDeclarations): string[] {
+export function entitiesWithoutShapes(manifest: PackDataDeclarations): string[] {
   return _packEntities(manifest).filter(({ shape }) => shape === null).map(({ name }) => name);
 }
 
@@ -990,7 +990,7 @@ ${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensi
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(_packEntityTypes(manifest))},
-    relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
+    relKinds: ${JSON.stringify(_packRelationTypes(manifest))},
   },
 ${hookEntries.length ? `  boot: { ${hookEntries.map(({ name, binding }) => `${name}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
@@ -1751,7 +1751,7 @@ export const contentRuntime: ContentRuntime = {
   id: ${JSON.stringify(manifest.id)},
   declarationRevision: ${JSON.stringify(_declarationRevision(manifest))},
   entities: ${JSON.stringify(_packEntityTypes(manifest))},
-  relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
+  relKinds: ${JSON.stringify(_packRelationTypes(manifest))},
   repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
   contentWriters: { ${hooks.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },
 };

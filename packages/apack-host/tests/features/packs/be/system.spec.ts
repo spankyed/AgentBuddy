@@ -337,7 +337,7 @@ describe('pack information without activation', () => {
   it.each(['disabled', 'activation-failed'])('lists %s declarations without requiring runtime registration or undeclared frontend files', kind => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
-      relKinds: { Child: 'parent' },
+      data: { relations: ['parent'] },
       features: { notes: { entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
         plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
@@ -365,7 +365,7 @@ describe('pack information without activation', () => {
     const system = runPacksSystem();
     try {
       expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
-        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
+        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, bootHooks: ['onInit'],
         features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });

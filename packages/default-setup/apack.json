@@ -6,11 +6,6 @@
   "description": "The official apack starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
   "hostVersion": ">=0.3.0",
   "license": "MIT",
-  "relKinds": {
-    "PARENT_OF": "parent_of",
-    "HAS": "has",
-    "RELATES_TO": "relates_to"
-  },
   "features": {
     "threads": {
       "designation": "threads",
@@ -2057,6 +2052,13 @@
   "build": {
     "opaqueDeps": [
       "elkjs"
+    ]
+  },
+  "data": {
+    "relations": [
+      "parent_of",
+      "has",
+      "relates_to"
     ]
   }
 }
