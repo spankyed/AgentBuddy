@@ -173,11 +173,11 @@ Native `application` purpose describes shell visibility and the last active plug
 
 ### Remaining M4 target audit (2026-10-14)
 
-Current code confirms an authoring mismatch beyond the completed `types` resolver: codegen
-`sourceFileOf()` resolves extensionless modules and directory barrels, while `validateFeatures()`
-and doctor's step/migration checks use exact file existence after splitting `#`. Feature-file
-validation omits contract, service, repository and entity-shape targets; CLI validate catches their
-exports later through static codegen when dependencies resolve, but doctor does not check exports.
+Source resolution is shared by validation and codegen (`4285d748c`), and doctor shares static
+validation (`d80c0ff1b`). In `cd48b636e`, `_packModuleTargets` derives the module inventory used by
+source validation and codegen's TypeScript program. `validatePackSources` replaces the narrower
+public checker outright. Independent file checks cover feature/shape declarations and all declared
+non-feature module targets even when dependencies prevent codegen; no authored inventory is added.
 
 Complete shared target parsing/resolution before M5: retain purpose-specific exported-type versus
 executable/component checks, and keep type barrels as whole-module contributions. Replace the
@@ -198,8 +198,10 @@ lexical and physical containment. Codegen, feature-file checks and doctor's step
 use it; feature checks now include contracts, services, repositories and entity shapes through the
 existing normalized entity projection. Routes/loading metadata remain intact.
 
-Doctor shares static validation in `d80c0ff1b`, including missing-export errors and an explicit incomplete
-result when dependencies cannot be resolved. Real CLI tests prove no module activation or generated
-writes. M4 is not complete: finish derived target coverage and scaffold/layout agreement, and prove
-cross-pack default selection. In particular, independent file checks must cover non-feature targets
-even when dependency resolution prevents codegen; the incomplete result does not replace those checks.
+Real CLI checks prove missing step/migration files are errors even with unresolved dependencies;
+other unverified checks remain explicitly incomplete. The module inventory distinguishes script,
+component, type-export and type-module purposes. M4 remains open for scaffold/layout agreement and
+cross-pack default selection. Audit each module's reference grammar against its actual codegen reader:
+whole-module paths must not be accepted as named-export bindings when their reader only takes a
+module, and statically knowable expected exports must be checked without activation. Prove these
+boundaries together through external authoring; file presence alone does not finish the contract.

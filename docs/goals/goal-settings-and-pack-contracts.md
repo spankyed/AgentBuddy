@@ -3162,3 +3162,36 @@ checks when dependencies are unavailable, scaffold/layout agreement and cross-pa
 evidence. Then complete M5/M6 and all remaining discovery/navigation/boundary/Phase 6 requirements.
 Final strict `--all` on committed source and the complete reconciled audit remain mandatory.
 Nothing is archived and the goal remains active.
+
+### Declaration-derived source inventory — M4 checkpoint (2026-10-14)
+
+Source `cd48b636e` adds one derived module-target list shared by source validation and codegen's
+TypeScript program. It includes feature declarations, normalized entity shapes, pack services, step
+facets, blocks/artifacts, DSL modules, frontend extensions, lifecycle hooks, both migration lines and
+content writers/compilers/appliers. Types, scripts and components retain distinct file-resolution
+purposes. No contribution inventory is authored twice and no pack modules execute for file checks.
+The SDK checker is now `validatePackSources`; every owned caller/test/export/report is migrated
+outright, including the `declared-sources` skipped-check name. No compatibility alias remains.
+
+Evidence: 170 focused SDK source/generation checks and 14 focused CLI checks passed. A regression
+removes all declared files and requires diagnostics for each of 20 non-feature targets. Removing
+both migration lines from the inventory failed that named assertion; exact source restored
+(`/private/tmp/apack-m4-inventory-coverage-mutation.log`). Real CLI doctor and validate both report
+missing step/migration files as errors despite unresolved dependencies, without cache/generated writes.
+Reviewed the SDK API report: only the intentional checker rename/signature changes.
+
+Strict initially caught one unmigrated skipped-check expectation; updated its name without changing
+the assertion's required list. Focused validation tests passed (5). Reviewed strict passed in 396.0s
+(16/30 cached): host 4,445 tests, pack 855 plus two existing skips, integration 647, external-pack
+contract/app, smoke and both packaged-authoring halves. Real app 155.8s, smoke 5.2s, authoring 53.5s,
+packaged app 7.6s. Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T10-23-08Z-7446`,
+`/private/tmp/apack-m4-inventory-strict-reviewed.log`; initial inspection evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T10-19-43Z-99385`. Generated EARS and six content
+files remain byte-identical to `/private/tmp/apack-m4-description-baseline`; facade check passes.
+Reviewed explicit committed paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M4 remains open for scaffold/layout agreement, whole-module versus named-binding grammar and
+expected-export checks across actual readers, and cross-pack default-selection evidence. Complete
+these before M5/M6, then every remaining discovery/navigation/boundary and Phase 6 requirement.
+Final strict `--all` on committed source and the full reconciled audit remain mandatory. Nothing is
+archived; the full goal remains active.
