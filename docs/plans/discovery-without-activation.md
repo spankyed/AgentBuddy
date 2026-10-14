@@ -1828,3 +1828,23 @@ resolved dependency capabilities and codegen implementation inputs in that ident
 source reload and build cache paths too. Preserve explicit runtime admission and defer no later goal
 phase: remaining contribution/native discovery, frontend naming, content inventory, navigation,
 boundaries and all three Phase 6 streams retain their scope.
+
+
+### Generation freshness outcome and remaining watcher gap (2026-10-14)
+
+`82d9d7a9c` implements the shared freshness check specified above for normal generation and both build
+and facade-report skip paths. Successful generation records exact output hashes. Resolved dependency
+snapshots and source/codegen inputs identify the generation; same-version changes do not rely on a
+release-version warning. Builds use one dependency resolution for generation and compilation, refuse
+stale output before executing content compilers, and recheck before sealing. Actual authoring/build
+checks and restored guard mutations pass; the goal records strict evidence and preserved EARS/content.
+
+Checkpoint 3 remains open for watched publication and the remaining dependency/tool/cache audit.
+Inspected `build/watch.ts` directly replaces the runtime bundle without refreshing snapshot/facade
+metadata or the receipt. A runtime lock prevents writer overlap but cannot make that artifact coherent.
+Replace this path with verified publication that preserves matching declarations, checked bindings,
+facades and receipt identity. Prove invalid edits retain the accepted artifact, source-contract edits
+reach discovery and runtime together, and concurrent watcher requests are not lost. Avoid a second
+inventoried discovery projection or unverified reload exception. Assess the cost of the complete build
+versus a correctly validated incremental publication before retaining the runtime-only optimization.
+Keep all remaining kinds/native discovery and later goal phases required.

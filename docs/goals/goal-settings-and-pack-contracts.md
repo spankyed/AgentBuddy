@@ -3601,3 +3601,43 @@ files, or changed facade capabilities. Audit and enforce those inputs before exp
 Native/all-kind discovery, frontend naming, content edges/inventory, entity navigation, frontend
 boundaries and all three Phase 6 workstreams remain required. Final committed-source strict `--all`
 and the whole-goal completion audit remain due.
+
+
+### Generation freshness and skip paths — discovery checkpoint (2026-10-14)
+
+Source `82d9d7a9c` makes normal generation, `build --skip-generate` and
+`facade-report --skip-generate` share one input/output freshness check. The generation stamp records
+output SHA-256 hashes, not existence alone. Missing/edited output and same-version source or dependency
+facade changes require regeneration. The input identity includes the CLI generation implementation;
+SDK code and resolved dependency snapshots remain included. Current stamp validation has no old-shape
+reader or converter. Builds resolve dependency files once for generation and compilation, preserving
+aggregate unresolved-dependency guidance, and recheck generation freshness before sealing publication.
+
+Focused checks passed 17 generation cases, ten real build/publication cases, two registry cases and
+ten real facade-report cases. The registry fixture now declares authored step modules, runs normal
+generation and completes a real build; it no longer plants generated output or swallows all errors.
+Its negative case explicitly refuses an undeclared step. Bundler failure fixtures likewise use authored
+modules rather than bypassing generation. Removing the early skip guard caused both compiler-execution
+markers to appear despite stale outputs; removing output hashing failed the edited-output refusal case.
+Sources were restored exactly before strict validation. Initial strict failures exposed a duplicated
+test field and lost aggregate dependency guidance; both were corrected while preserving assertions.
+
+Strict passed in 475.6s (1 of 30 cached), including 3,069 affected host tests, 855 pack cases with two
+existing skips, all 681 integration cases, external app, smoke, packaged authoring and packaged app.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T16-12-39Z-66248`;
+`/private/tmp/apack-generation-freshness-strict-accepted.log`.
+Mutation evidence: `/private/tmp/apack-generation-freshness-early-mutation.log` and
+`/private/tmp/apack-generation-freshness-output-mutation.log`.
+Generated EARS and six compiled content artifacts remain byte-identical. Public CLI documentation
+matches the skip contract. No SDK public signature, release metadata or format constant changes;
+the unrelated issue draft remains uncommitted.
+
+This closes the inspected skip-generation gaps, not all source/build freshness. Next address the
+runtime watcher: `build/watch.ts` currently writes `dist/runtime/index.cjs` directly under a lock
+without regenerating declarations, updating the snapshot/facades, or resealing the artifact receipt.
+Source edits can therefore disagree with discovery metadata and receipt identity. Make watched
+publication follow a coherent accepted artifact contract, and prove source contract changes, invalid
+edits, concurrent requests and host reload against verified current receipts. Audit dependency build-code
+identity and remaining cache/tool inputs alongside that work. All contribution/native discovery,
+frontend naming, static edges/inventory, navigation, boundaries and all three Phase 6 streams remain
+required; final committed-source strict `--all` and whole-goal audit are still due.
