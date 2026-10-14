@@ -442,3 +442,34 @@ Tool implementation/import identity, dependency executable/helper keys, delibera
 freshness remain required. The drive preflight still uses a separate mtime nudge because manually
 invoked runtime builds do not currently write the chain’s success record; do not silently conflate its
 purpose or claim it solved from the chain probe. Preserve the full remaining roadmap.
+
+### Tool implementation identity checkpoint design (2026-10-14)
+
+Generation and cached FE/types/DSL phases now share one complete implementation scope. Workspace
+identity covers the CLI's source/bin/package metadata and host/SDK/EARS source/package metadata;
+published identity covers every CLI chunk/bin/package metadata plus the installed SDK declarations
+that generation still reads. Resolve SDK/EARS ownership through their exported package.json, avoiding nested published metadata
+inside workspace dist. Resolve the host through an existing source export; it does not export package.json.
+Published SDK data may live in a workspace dist directory or directly at an installed package root;
+hash the resolved compiled package scope, without requiring authored source in an installed package. Hash paths relative to their owning package and bytes, not checkout locations,
+mtimes or version-only guesses. Missing/empty implementation trees refuse. No memoization hides
+mid-build changes. Keep phase options, existing bundler versions, authored inputs, generated entries,
+staged DSL definitions and dependent snapshot keys in addition to this shared identity.
+
+Acceptance includes source/helper changes, same-version published chunk changes/additions/removals,
+installed SDK declaration changes, unchanged-path/mtime reuse, missing evidence and every cached phase
+consuming the shared key. Exercise the real published bin/project handoff and --skip-generate refusal,
+then normal regeneration. Separate tool-scope, phase-consumption and generation-consumption mutations
+must fail their corresponding regressions. Do not claim this closes external package/dependency
+executable/type-import identity, deliberate skips or manual-build launch freshness; those remain the
+next required audit/checkpoint, followed by the full existing contribution-discovery roadmap.
+
+### Tool implementation identity outcome (2026-10-14)
+
+`8fab41528` implements the shared owned-implementation key above. It also corrects nested workspace
+SDK output ownership and supports the current installed SDK package-root layout. Focused, mutation,
+actual watcher/published-bin and required strict evidence are recorded in the owning goal; committed
+unchanged strict reuse remains 1.1s. This closes one-module/version-only implementation coverage,
+not every external compiler/type/dependency input. The next checkpoint audits those actual resolution
+paths, verified executable/helper/content identity, deliberate skips and publication, then the separate
+manual-build/drive launch contract. All remaining discovery and downstream goal scope stays required.

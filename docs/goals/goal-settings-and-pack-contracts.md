@@ -3959,3 +3959,47 @@ Evidence: `/private/tmp/apack-artifact-naming-focused.log`,
 interrupted to finish the audit; only the final run is acceptance evidence. Generated EARS and six
 compiled content files remain byte-identical to the preserved baseline. This closes the naming
 follow-up only; all unfinished goal deliverables, including tool/dependency freshness, remain required.
+
+### Shared tool implementation identity checkpoint (2026-10-14)
+
+Source `8fab41528` replaces separate one-module/version-only keys with `buildToolHash`, shared by
+generation and cached frontend/types/DSL phases. Workspace keys include CLI/bin/package metadata and
+host/SDK/EARS source/package metadata. Published keys include every shipped CLI chunk and installed
+SDK declarations/package metadata. The key reads fresh bytes and relative membership; additions,
+removals, helper edits and same-version package changes invalidate reuse, while paths and mtimes do not.
+Missing/empty implementation evidence refuses; no version fallback, alias or compatibility reader.
+Existing phase options/tool versions/authored/generated/staged-definition/dependency-snapshot inputs
+remain. Generated-current checks at skip and publication boundaries consume the same tool identity.
+
+The initial strict run exposed nested SDK dist/package.json being mistaken for workspace ownership.
+SDK/EARS source owners now come from their exported package.json; the host uses an existing source
+export because it does not export package.json. Published SDK code may live in workspace dist or at
+the installed package root, and the key follows that compiled scope without requiring authored source.
+Dedicated regressions cover both layouts; the actual watcher and real published bin/project handoff
+pass. The published fixture preserves npm package-local overrides instead of selecting checkout AJV 6
+for the CLI's declared AJV 8. No runtime dependency or public API was changed to accommodate a fixture.
+
+Validation: 52 focused checks and both real watcher/published-CLI integrations pass. Final mutations
+removing host coverage fail three assertions; removing phase consumption fails one; removing generation
+consumption from the packaged helper fails the real --skip-generate assertion. Source/bundle bytes were
+restored exactly before validation. Required strict passes all 30 gates in 544.7s (one cached), including
+external authoring, 685 integration cases, runtime build, smoke and packaged app acceptance.
+`node_modules/.cache/apack-chain/runs/2026-10-14T21-43-39Z-12319` and
+`/private/tmp/apack-tool-identity-reviewed-strict.log` are the accepted run. The first strict failure is
+recorded in `/private/tmp/apack-tool-identity-strict.log`; it is not acceptance evidence.
+
+Focused evidence: `/private/tmp/apack-tool-identity-focused-final.log`,
+`/private/tmp/apack-tool-identity-layout-integration.log`,
+`/private/tmp/apack-tool-identity-{scope,phase,generation}-mutation-final.log`. Five fresh hashes average
+25.2ms in `/private/tmp/apack-tool-identity-cost.log`. Committed-source warm strict passes in 1.1s with
+29/30 cached: `/private/tmp/apack-tool-identity-committed-warm-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T21-53-16Z-44188`. Generated EARS and six compiled content
+files remain byte-identical to the preserved baseline. No schema/API/format/release metadata changes.
+
+This closes the owned implementation/helper key gap. It does not close all dependency freshness:
+audit actual compiler/type import resolution, external package inputs, verified dependency executable
+helper chunks/content compilers, deliberate skips and coherent publication before certifying that
+checkpoint. The separate mtime-based drive nudge/manual-runtime-build contract still needs a coherent
+producer/launch decision. Complete those, then resume every remaining contribution/native/static-content
+discovery requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Final
+committed-source strict --all and the full completion audit remain required; nothing is archived.
