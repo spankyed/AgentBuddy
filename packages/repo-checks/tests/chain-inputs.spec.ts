@@ -799,7 +799,8 @@ describe('app checks observe separately loaded shipped-pack bytes', () => {
       const file = 'packages/default-setup/dist/runtime/fe.js';
       let bytes = 'old frontend';
       const tree: TreeReader = {
-        list: target => covers(repoRelative(path.resolve(REPO_ROOT, target)), file) ? [file] : [],
+        listInputs: target => covers(repoRelative(path.resolve(REPO_ROOT, target)), file) ? [file] : [],
+        listOutputs: () => [],
         read: () => Buffer.from(bytes),
         digest: () => createHash('sha256').update(bytes).digest('hex'),
       };

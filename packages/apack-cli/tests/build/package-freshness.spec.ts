@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INTERRUPTS } from '@apackdev/host/exclusive-lock';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@apackdev/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, outputDigests, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@apackdev/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @apackdev/cli`'s pretest (@apackdev/host/build/packages-built):
@@ -49,7 +49,7 @@ function fixture(): Fixture {
 /** What a successful build of the fixture writes */
 function stampFor(f: Fixture): string {
   const stamp = path.join(f.root, 'stamp.json');
-  fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
+  fs.writeFileSync(stamp, JSON.stringify({ ...fingerprintWithDigests(f.unit), declared: declaredPaths(f.unit), outputFiles: outputDigests(f.unit) }));
   return stamp;
 }
 
@@ -201,21 +201,11 @@ describe('the stamp protocol', () => {
     expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
   });
 
-  /**
-   * **The contract that replaced a format version**, so the deletion is not invisible: a stamp is a measurement
-   * and the other side of the comparison is recomputed here, so what the writer's code looked like is not a
-   * question this asks. A format change moves the preimage and the fingerprint disagrees on its own; what used
-   * to also be refused for carrying the wrong integer is now read for the one thing it holds.
-   *
-   * *"A protocol change rebuilds once"* is still held, by `does not watch the code that decides freshness`
-   * below: the builds that inline this module declare `packages/apack-host/src`, so editing it makes exactly
-   * those units stale, derived rather than announced.
-   */
-  it('reads a stamp carrying an unknown field as this protocol\'s own, since the fingerprint is the whole verdict', () => {
+  it('requires current input/output evidence before accepting a successful fingerprint', () => {
     const f = fixture();
     const stamp = path.join(f.root, 'stamp.json');
-    fs.writeFileSync(stamp, JSON.stringify({ version: 7, format: 'something else', fingerprint: fingerprintUnit(f.unit) }));
-    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/no stamp/);
   });
 
   // Hashing only the contents would read a widened input set against the old stamp and call it fresh
@@ -506,13 +496,13 @@ describe('the staleness verdict', () => {
     expect(unitStaleReason(f.unit, stamp)).toMatch(/not built \(no /);
   });
 
-  it('stays fresh when something else writes into the output tree', () => {
+  it('becomes stale when something else writes into the output tree', () => {
     // A stray file, .DS_Store or another tool's output used to raise the "built at" baseline
     const f = fixture();
     const stamp = stampFor(f);
     fs.writeFileSync(path.join(f.out, '.DS_Store'), 'junk');
     fs.writeFileSync(path.join(f.out, '__probe.js'), 'probe');
-    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+    expect(unitStaleReason(f.unit, stamp)).toContain('outputs changed');
   });
 
   it('stays fresh when a source is dated in the future, so the check cannot loop', () => {
