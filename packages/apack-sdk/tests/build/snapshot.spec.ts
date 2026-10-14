@@ -76,16 +76,16 @@ describe('snapshot data reader', () => {
     expect(parseSnapshot(data).status).toBe('invalid');
   });
 
-  it('checks entity-name and SDK-ownership rules on original record keys', () => {
+  it('checks entity grammar and SDK ownership before decoding original record keys', () => {
     const data = snapshot();
-    data.manifest.entities = JSON.parse('{"__proto__":"__proto__"}');
+    data.manifest.data = { entities: JSON.parse('{"__proto__":null}') };
     data.declarationRevision = _declarationRevision(data.manifest);
     expect(parseSnapshot(data).status).toBe('valid');
-    data.manifest.entities = JSON.parse('{"__proto__":"Memo"}');
-    expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes("an entity's key must be its type name"))).toBe(true);
-    data.manifest.entities = JSON.parse('{"__proto__":"Flow"}');
+    data.manifest.data.entities = JSON.parse('{"__proto__":"src/types.ts#"}');
+    expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes('path#exportName'))).toBe(true);
+    data.manifest.data.entities = { Flow: null };
     expect(parseSnapshot(data).diagnostics.some(issue => issue.message.includes('defined by the SDK'))).toBe(true);
-    delete data.manifest.entities;
+    delete data.manifest.data;
     data.manifest.relKinds = JSON.parse('{"__proto__":"contains"}');
     expect(parseSnapshot(data).diagnostics.some(issue => issue.path.join('.') === 'manifest.relKinds')).toBe(true);
   });

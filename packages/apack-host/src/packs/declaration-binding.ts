@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import { BOOT_HOOK_NAMES } from '@apackdev/sdk/build';
 import type { PackManifest } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
@@ -8,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 export function contentBindingProblem(manifest: PackManifest, runtime: unknown, appliers?: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
   if (!isPlainObject(runtime)) return problem('registration');
-  if (!isDeepStrictEqual(runtime.entities, manifest.entities ?? {})) return problem('entities');
+  if (!isDeepStrictEqual(runtime.entities, _packEntityTypes(manifest))) return problem('entities');
   if (!isDeepStrictEqual(runtime.relKinds, manifest.relKinds ?? {})) return problem('relKinds');
   const repositories = Object.values(manifest.features ?? {}).flatMap(feature => Object.keys(feature.repositories ?? {}));
   if (!sameKeys(runtime.repositories, repositories)) return problem('repositories');
@@ -50,7 +51,7 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
 
   const ears = registration.ears === undefined ? {} : registration.ears;
   if (!isPlainObject(ears)) return problem('ears');
-  if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, manifest.entities ?? {})) return problem('ears.entities');
+  if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, _packEntityTypes(manifest))) return problem('ears.entities');
   if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, manifest.relKinds ?? {})) return problem('ears.relKinds');
   if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
     Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');

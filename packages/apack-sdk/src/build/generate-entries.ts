@@ -1,8 +1,10 @@
+import { _packEntities, _packEntityTypes, type PackEntityDeclarations } from '../framework/entity-declaration.ts';
+import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { dirname, extname, join, relative, resolve } from 'path';
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -94,7 +96,7 @@ export function mergeRegistries(
   }
 
   return {
-    entities: merge(manifest.entities, 'entity'),
+    entities: merge(_packEntityTypes(manifest), 'entity'),
     relKinds: merge(manifest.relKinds, 'relKind'),
   };
 }
@@ -293,10 +295,9 @@ function toImportPath(root: string, manifestPath: string): string {
 }
 
 
-/** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
-export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
-  return Object.keys(manifest.entities ?? {})
-    .filter((entity) => !(entity in (manifest.entityShapes ?? {})) && !(SDK_SHAPED_ENTITIES as readonly string[]).includes(entity));
+/** This pack's explicitly untyped entities, whose fields read as unknown values. */
+export function entitiesWithoutShapes(manifest: PackEntityDeclarations): string[] {
+  return _packEntities(manifest).filter(({ shape }) => shape === null).map(({ name }) => name);
 }
 
 /** The type-bundle key in a pack's snapshot defs, written by `apack pack build` */
@@ -465,6 +466,8 @@ export async function generatePackFiles(
   /** The pack source file a manifest path names: the file itself, `<path>.ts` or `<path>/index.ts` */
   function sourceFileOf(manifestPath: string): string | undefined {
     const normalized = manifestPath.split('\\').join('/');
+    const fromRoot = relative(root, resolve(root, normalized));
+    if (isAbsolute(normalized) || fromRoot === '..' || fromRoot.startsWith('../') || fromRoot.startsWith('..\\')) return undefined;
     return [normalized, `${normalized}.ts`, `${normalized}/index.ts`]
       .map((candidate) => join(root, candidate))
       .find((file) => MODULE_SOURCE_EXTENSIONS.has(extname(file)) && existsSync(file) && statSync(file).isFile());
@@ -472,10 +475,7 @@ export async function generatePackFiles(
 
   /** A `"path#exportName"` manifest value: the source path, the export and the file */
   function exportTarget(label: string, target: string): { source: string; exportName: string; file: string } {
-    const hash = target.indexOf('#');
-    if (hash === -1) throw new Error(`${label}: "${target}" must name its export, as "path#exportName"`);
-    const source = target.slice(0, hash).split('\\').join('/');
-    const exportName = target.slice(hash + 1);
+    const { source, exportName } = _parseModuleReference(target, label);
     const file = sourceFileOf(source);
     if (!file) throw new Error(`${label}: no file found at ${source} (.ts or /index.ts)`);
     return { source, exportName, file };
@@ -497,7 +497,7 @@ export async function generatePackFiles(
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
-      ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
+      ..._packEntities(manifest).flatMap(({ name, shape }) => shape === null ? [] : [_parseModuleReference(shape, `Entity shape "${name}"`).source]),
       // Named as a module rather than a `path#export`, but its export name is a convention codegen checks,
       // so it has to be in the program for `exportOf` to see it
       ...(manifest.extensions?.fe?.tiptapPlugins ? [manifest.extensions.fe.tiptapPlugins] : []),
@@ -989,7 +989,7 @@ ${manifest.extensions?.settings ? `  settings: ${JSON.stringify(manifest.extensi
   name: ${JSON.stringify(manifest.name)},
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
-    entities: ${JSON.stringify(manifest.entities ?? {})},
+    entities: ${JSON.stringify(_packEntityTypes(manifest))},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
 ${hookEntries.length ? `  boot: { ${hookEntries.map(({ name, binding }) => `${name}: ${binding}`).join(', ')} },\n` : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
@@ -1750,7 +1750,7 @@ ${hooks.map(([, path, exportName], i) => `import { ${exportName} as __contentWri
 export const contentRuntime: ContentRuntime = {
   id: ${JSON.stringify(manifest.id)},
   declarationRevision: ${JSON.stringify(_declarationRevision(manifest))},
-  entities: ${JSON.stringify(manifest.entities ?? {})},
+  entities: ${JSON.stringify(_packEntityTypes(manifest))},
   relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
   contentWriters: { ${hooks.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },
@@ -1949,17 +1949,22 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   function entityShapeEntries(): { imports: string[]; entries: string[] } {
     const imports: string[] = [];
     const entries: string[] = [];
-    for (const [entity, { source, type: typeName }] of Object.entries(manifest.entityShapes ?? {})) {
+    for (const { name: entity, shape } of _packEntities(manifest)) {
+      if (shape === null) continue;
+      const { source, exportName: typeName, file } = exportTarget(`Entity shape "${entity}"`, shape);
       if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
-        throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove it from entityShapes`);
+        throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove its entity declaration`);
       }
-      const normalized = source.split('\\').join('/');
-      const file = sourceFileOf(normalized);
-      if (!file || !exportOf(file, typeName)?.type) {
-        throw new Error(`Entity shape "${entity}": ${source} doesn't export a type named "${typeName}"`);
+      moduleExports ??= createModuleExports(root, exportedFromFiles());
+      try {
+        if (!moduleExports.hasTypeExport(file, typeName)) {
+          throw new Error(`${source} doesn't export a type named "${typeName}"`);
+        }
+      } catch (error) {
+        throw new Error(`Entity shape "${entity}": ${error instanceof Error ? error.message : String(error)}`);
       }
       const alias = `__shape_${entity.replace(/[^A-Za-z0-9_$]/g, '_')}`;
-      imports.push(`import type { ${typeName} as ${alias} } from '${toImportPath(root, normalized)}';`);
+      imports.push(`import type { ${typeName} as ${alias} } from '${toImportPath(root, source)}';`);
       entries.push(`  '${entity}': ${alias};`);
     }
     return { imports, entries };

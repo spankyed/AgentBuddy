@@ -73,3 +73,16 @@ it.each([
   expect(() => registry.catalog.setNative([invalid as unknown as NativePackDeclaration])).toThrow('Invalid native declarations');
   expect(registry.catalog.getSnapshot()).toBe(previous);
 });
+
+it('admits native feature-owned entities statically and checks their runtime wire identities', () => {
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native',
+    features: { notes: { entities: { NativeNote: 'src/types.ts#NoteShape', NativeIndex: null } } } }] });
+  expect(registry.catalog.getSnapshot().native[0].features!.notes.entities).toEqual({
+    NativeNote: 'src/types.ts#NoteShape', NativeIndex: null,
+  });
+  expect(() => registry.registerPack({ id: 'native', features: { notes: {} }, ears: { entities: {}, relKinds: {} } }))
+    .toThrow('runtime does not match its admitted declarations');
+  registry.registerPack({ id: 'native', features: { notes: {} },
+    ears: { entities: { NativeNote: 'NativeNote', NativeIndex: 'NativeIndex' }, relKinds: {} } });
+  expect(registry.earsNames().entities.NativeNote).toBe('NativeNote');
+});

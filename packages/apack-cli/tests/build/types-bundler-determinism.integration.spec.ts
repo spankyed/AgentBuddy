@@ -25,8 +25,8 @@ const PACK: Record<string, string> = {
   }),
   'apack.json': JSON.stringify({
     id: 'facade-pack', name: 'Facade', version: '1.0.0',
-    entities: { Tag: 'Tag' },
-    entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' } },
+    data: { entities: { Tag: "src/types.ts#TagEntity" } },
+
     features: {
       tags: {
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },

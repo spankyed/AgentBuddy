@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 // The EARS names and partition policy of the packs installed in a data dir, read from validated artifacts without
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
@@ -138,7 +139,7 @@ export function readInstalledSchema(context: SchemaContext, options: { schemaFro
   const entityOwners = new Map<string, string>(Object.keys(entities).map((name) => [name, 'apack']));
   const relKindOwners = new Map<string, string>(Object.entries(relKinds).flatMap(([name, value]) => [[name, 'apack'], [value, 'apack']] as Array<[string, string]>));
   for (const manifest of packs) {
-    addNames(entities, entityOwners, manifest.id, manifest.entities, 'entity type');
+    addNames(entities, entityOwners, manifest.id, _packEntityTypes(manifest), 'entity type');
     addNames(relKinds, relKindOwners, manifest.id, manifest.relKinds, 'relation kind');
   }
   const entityTypes = new Set(Object.values(entities));

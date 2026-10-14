@@ -9,20 +9,21 @@ const jsonSchema = zodToJsonSchema(ManifestSchema, {
 });
 
 // The schema's refinements aren't JSON Schema: state the SDK's reserved names here, so editors flag them too
-// (an entity's key equal to its value can't be expressed, and is checked by apack pack build)
 const properties = (jsonSchema as { properties: Record<string, Record<string, unknown>> }).properties;
 // Editors validate the inline value schema with the same draft the runtime compiler accepts.
 const extensions = properties.extensions.properties as Record<string, Record<string, unknown>>;
 const settingsDefinition = extensions.settings.additionalProperties as { properties: { schema: Record<string, unknown> } };
 Object.assign(settingsDefinition.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
-const feature = properties.features.additionalProperties as { properties: { settings: typeof settingsDefinition } };
+const feature = properties.features.additionalProperties as { properties: { settings: typeof settingsDefinition; entities: Record<string, unknown> } };
 Object.assign(feature.properties.settings.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
-for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_REL_KINDS]] as const) {
-  Object.assign(properties[field], {
-    propertyNames: { not: { enum: Object.keys(reserved) } },
-    additionalProperties: { type: 'string', not: { enum: Object.values(reserved) } },
-  });
+const data = properties.data.properties as { entities: Record<string, unknown> };
+for (const entities of [data.entities, feature.properties.entities]) {
+  Object.assign(entities, { propertyNames: { minLength: 1, not: { enum: Object.keys(SDK_ENTITIES) } } });
 }
+Object.assign(properties.relKinds, {
+  propertyNames: { not: { enum: Object.keys(SDK_REL_KINDS) } },
+  additionalProperties: { type: 'string', not: { enum: Object.values(SDK_REL_KINDS) } },
+});
 
 Object.assign(jsonSchema, {
   $schema: 'https://json-schema.org/draft/2020-12/schema',

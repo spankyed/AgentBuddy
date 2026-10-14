@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
+import { writeInstalledPackFixture } from '../packs/runtime/artifact-fixture.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -24,7 +25,7 @@ describe('a file readInstalledSchema cannot use', () => {
   // The pack the app ships is read exactly the same way, from the same place
   it("names the manifest of a pack the app ships", () => {
     const dir = dataDirWithPacks();
-    write(manifestFile(dir, 'core'), { id: 'core', name: 'Core', version: '1.0.0', entities: ['Note'] });
+    write(manifestFile(dir, 'core'), { id: 'core', name: 'Core', version: '1.0.0', data: { entities: ['Note'] } });
     expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`Pack "core" declarations in ${path.dirname(manifestFile(dir, 'core'))}: its manifest does not match its built declarations`);
   });
 
@@ -48,4 +49,17 @@ describe('packs declaring the same name', () => {
     const overApp = dataDirWithPacks({ external: [{ id: 'a', entities: { Flow: 'Flow' } }] });
     expect(() => readInstalledSchema(schemaContext(overApp))).toThrow('"Flow" is defined by the SDK and available to every pack: remove it');
   });
+});
+
+it('discovers feature-owned typed and untyped entities without authored source or executable imports', () => {
+  const dir = dataDirWithPacks();
+  const packDir = path.dirname(manifestFile(dir, 'offline'));
+  writeInstalledPackFixture(packDir, {
+    id: 'offline', name: 'Offline', version: '1.0.0',
+    features: { notes: { entities: { OfflineNote: 'src/types.ts#NoteShape', OfflineIndex: null } } },
+  });
+  expect(fs.existsSync(path.join(packDir, 'src'))).toBe(false);
+  const schema = readInstalledSchema(schemaContext(dir));
+  expect(schema.entities.OfflineNote).toBe('OfflineNote');
+  expect(schema.entities.OfflineIndex).toBe('OfflineIndex');
 });

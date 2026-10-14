@@ -4,15 +4,6 @@
   "name": "E2E Fixture",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
-  "entities": {
-    "Memo": "Memo"
-  },
-  "entityShapes": {
-    "Memo": {
-      "source": "src/features/memos/be/types.ts",
-      "type": "MemoEntity"
-    }
-  },
   "relKinds": {},
   "features": {
     "memos": {
@@ -83,6 +74,9 @@
             "useItems": "src/features/memos/fe/references.ts#useItems"
           }
         }
+      },
+      "entities": {
+        "Memo": "src/features/memos/be/types.ts#MemoEntity"
       }
     },
     "notes": {

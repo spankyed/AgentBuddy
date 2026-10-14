@@ -296,7 +296,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', entities: { Widget: 'Widget' }, boot: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, boot: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));

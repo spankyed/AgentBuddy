@@ -1,3 +1,4 @@
+import { _packEntityTypes, type PackEntityDeclarations } from '../framework/entity-declaration.ts';
 import * as path from 'path';
 import type { z } from 'zod';
 import { resolveName } from '../ids/refs.ts';
@@ -143,7 +144,7 @@ export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): 
  * an entry here: the reader, the snapshot field and every consumer are already generic over it.
  */
 export const PROVENANCE_KINDS = {
-  entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
+  entities: (m: ProvenanceManifest) => Object.keys(_packEntityTypes(m)),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
   referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
@@ -158,11 +159,10 @@ export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
 export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, string>>>;
 
 /** The parts of a manifest `PROVENANCE_KINDS` reads; a `PackManifest` satisfies it */
-export interface ProvenanceManifest {
-  entities?: Record<string, string>;
+export interface ProvenanceManifest extends PackEntityDeclarations {
   relKinds?: Record<string, string>;
   extensions?: { commands?: Readonly<Record<string, unknown>> };
-  features?: Record<string, { plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
+  features?: Record<string, { entities?: Record<string, string | null>; plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 
 /**

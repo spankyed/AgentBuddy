@@ -18,7 +18,7 @@ describe('_mergeProvenance', () => {
   // The whole reason a snapshot carries more than its own pack's names
   it("carries a dependency's inherited names through, attributed to whoever declared them", () => {
     const merged = _mergeProvenance('entities', [
-      dep('mid-pack', { manifest: { entities: { Note: 'Note' } }, provenance: { entities: { Memo: 'deep-pack' } } }),
+      dep('mid-pack', { manifest: { features: { notes: { entities: { Note: null } } } }, provenance: { entities: { Memo: 'deep-pack' } } }),
     ]);
     expect(merged).toEqual({ Memo: 'deep-pack', Note: 'mid-pack' });
   });
@@ -51,8 +51,8 @@ describe('_mergeProvenance', () => {
   it('lets the pack being built win over everything it depends on', () => {
     const merged = _mergeProvenance(
       'entities',
-      [dep('base-pack', { manifest: { entities: { Note: 'Note' } } })],
-      { id: 'app-pack', manifest: { entities: { Note: 'Note' } } },
+      [dep('base-pack', { manifest: { features: { notes: { entities: { Note: null } } } } })],
+      { id: 'app-pack', manifest: { features: { notes: { entities: { Note: null } } } } },
     );
     expect(merged).toEqual({ Note: 'app-pack' });
   });
@@ -65,7 +65,7 @@ describe('_mergeProvenance', () => {
   // One table entry per kind, so a new kind is a line rather than a type pair and a reader
   describe('reads every kind off a manifest', () => {
     const manifest = {
-      entities: { Note: 'Note' },
+      data: { entities: { Note: null } },
       relKinds: { tagged: 'tagged' },
       extensions: { commands: { note: { placeholder: 'x' } } },
       features: { memos: { plugin: {}, references: {
@@ -99,7 +99,7 @@ describe('_mergeProvenance', () => {
  */
 describe('a name that means something to an ordinary object', () => {
   it('is not found on a record that never declared it', () => {
-    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { entities: { Memo: 'Memo' } } })]);
+    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { data: { entities: { Memo: null } } } })]);
     expect(merged['constructor']).toBeUndefined();
     expect(merged['toString']).toBeUndefined();
   });
@@ -112,7 +112,7 @@ describe('a name that means something to an ordinary object', () => {
   // `record['__proto__'] = id` on an ordinary object sets the prototype and adds no entry, so the name
   // vanished from the snapshot — and a dependent then fell back to the pack it arrived through
   it("keeps an entity named __proto__, which assignment to an ordinary object would drop", () => {
-    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { entities: { ['__proto__']: '__proto__', Memo: 'Memo' } } })]);
+    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { data: { entities: { ['__proto__']: null, Memo: null } } } })]);
     expect(Object.keys(merged).sort()).toEqual(['Memo', '__proto__']);
     expect(merged['__proto__']).toBe('base-pack');
   });
@@ -122,7 +122,7 @@ describe('a name that means something to an ordinary object', () => {
    * own property where assignment would not, so the read side was never the half that lost it.
    */
   it('survives being written to a snapshot and read back', () => {
-    const written = _buildProvenance([dep('deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } })]);
+    const written = _buildProvenance([dep('deep-pack', { manifest: { data: { entities: { ['__proto__']: null } } } })]);
     const readBack = JSON.parse(JSON.stringify(written));
     const merged = _mergeProvenance('entities', [dep('mid-pack', { manifest: {}, provenance: readBack })]);
     expect(merged['__proto__']).toBe('deep-pack');
@@ -132,7 +132,7 @@ describe('a name that means something to an ordinary object', () => {
 describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(
-      [dep('base-pack', { manifest: { entities: { Note: 'Note' }, extensions: { commands: { note: { placeholder: 'x' } } } } })],
+      [dep('base-pack', { manifest: { data: { entities: { Note: null } }, extensions: { commands: { note: { placeholder: 'x' } } } } })],
       { id: 'app-pack', manifest: { features: { app: { plugin: {} } } } },
     );
     expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { 'app-pack/app': 'app-pack' } });

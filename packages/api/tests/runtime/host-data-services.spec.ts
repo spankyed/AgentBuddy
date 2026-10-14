@@ -160,7 +160,7 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-gone-pack-backup-'));
     dirs.push(dir);
     // Backed up while the pack that declares Bookmark was installed
-    packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bookmarks' }, { id: 'tags' }]);
+    packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bookmarks', data: { entities: { Bookmark: null, Tag: null } } }, { id: 'tags', data: { entities: { Tag: null } } }]);
     packs.registerPack({
       id: 'bookmarks',
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },

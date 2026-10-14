@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import { writeInstalledPackFixture, sealPack, sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -336,8 +337,8 @@ describe('pack information without activation', () => {
   it.each(['disabled', 'activation-failed'])('lists %s declarations without requiring runtime registration or undeclared frontend files', kind => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
-      entities: { Memo: 'Memo' }, relKinds: { Child: 'parent' },
-      features: { notes: { designation: 'notes', system: { entry: 'src/system.ts' },
+      relKinds: { Child: 'parent' },
+      features: { notes: { entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
         plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
@@ -364,7 +365,7 @@ describe('pack information without activation', () => {
     const system = runPacksSystem();
     try {
       expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
-        entities: manifest.entities, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
+        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, bootHooks: ['onInit'],
         features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
@@ -1028,7 +1029,7 @@ describe('a user answering for one of a pack’s content items', () => {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(content, { recursive: true });
     writeInstalledPackFixture(dir, { id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0',
-      entities: { PackPrompt: 'PackPrompt' },
+      data: { entities: { PackPrompt: null } },
       content: { sources: { actions: 'src/actions', 'pack-prompts': { path: 'src/prompts', format: 'pack-prompts', onUserEdit: 'offer' } },
         formats: { 'pack-prompts': { format: 'json', entity: 'PackPrompt', identity: ['label'] } },
         writers: { PackPrompt: 'src/writers.ts#promptWriter' } } });
@@ -1052,7 +1053,7 @@ describe('a user answering for one of a pack’s content items', () => {
     const manifest = snapshot.manifest;
     registry.registerPack({
       declarationRevision: snapshot.declarationRevision,
-      ears: { entities: { ...manifest.entities }, relKinds: {} },
+      ears: { entities: { ..._packEntityTypes(manifest) }, relKinds: {} },
       id: CONTENT_PACK,
       appliers: [
         createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),

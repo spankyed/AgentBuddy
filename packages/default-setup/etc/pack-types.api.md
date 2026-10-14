@@ -1282,22 +1282,22 @@ declare namespace EARS {
         type Message = typeof Message;
         const Artifact = "Artifact";
         type Artifact = typeof Artifact;
-        const SearchIndex = "SearchIndex";
-        type SearchIndex = typeof SearchIndex;
-        const IndexedDoc = "IndexedDoc";
-        type IndexedDoc = typeof IndexedDoc;
         const Terminal = "Terminal";
         type Terminal = typeof Terminal;
+        const Note = "Note";
+        type Note = typeof Note;
         const BrowserTab = "BrowserTab";
         type BrowserTab = typeof BrowserTab;
         const BrowserBookmark = "BrowserBookmark";
         type BrowserBookmark = typeof BrowserBookmark;
+        const SearchIndex = "SearchIndex";
+        type SearchIndex = typeof SearchIndex;
+        const IndexedDoc = "IndexedDoc";
+        type IndexedDoc = typeof IndexedDoc;
         const Document = "Document";
         type Document = typeof Document;
         const Collection = "Collection";
         type Collection = typeof Collection;
-        const Note = "Note";
-        type Note = typeof Note;
         const Relation = "Relation";
         type Relation = typeof Relation;
         const Flow = "Flow";
@@ -1311,7 +1311,7 @@ declare namespace EARS {
         const Prompt = "Prompt";
         type Prompt = typeof Prompt;
     }
-    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.Terminal | Entity.Note | Entity.BrowserTab | Entity.BrowserBookmark | Entity.SearchIndex | Entity.IndexedDoc | Entity.Document | Entity.Collection | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt;
     type EntityId<E extends string = string> = _apackdev_ears.EARS.EntityId<E>;
     namespace RelKind {
         const PARENT_OF = "parent_of";
@@ -4152,11 +4152,11 @@ type OwnEntityShapes = {
     'Message': MessageEntity;
     'Artifact': ArtifactEntity;
     'Terminal': TerminalEntity;
+    'Note': NoteEntity;
     'BrowserTab': BrowserTabEntity;
     'BrowserBookmark': BrowserBookmarkEntity;
     'Document': DocumentEntity;
     'Collection': CollectionEntity;
-    'Note': NoteEntity;
 };
 
 /**

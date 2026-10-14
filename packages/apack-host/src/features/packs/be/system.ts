@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts';
 import * as path from 'path';
 import { setup } from 'xstate';
@@ -91,8 +92,8 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
     return {
       ...base(manifest.id, dir, enabled), name: manifest.name, version: manifest.version,
       description: manifest.description, hostVersion: manifest.hostVersion,
-      permissions: [...(manifest.permissions ?? [])], entities: { ...manifest.entities },
-      entityCount: Object.keys(manifest.entities ?? {}).length,
+      permissions: [...(manifest.permissions ?? [])], entities: { ..._packEntityTypes(manifest) },
+      entityCount: Object.keys(_packEntityTypes(manifest)).length,
       hasFrontend: !!integrity && hasOwn(integrity.files, PACK_LAYOUT.feEntry),
       features, systems: features.filter(feature => feature.hasSystem).map(feature => resolveName(feature.id, manifest.id)),
       services: [...Object.keys(extensions?.services ?? {}), ...features.flatMap(feature => feature.services)],

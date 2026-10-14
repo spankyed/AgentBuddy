@@ -438,10 +438,12 @@ To get typed attributes on entities, declare shapes in the manifest:
 
 ```json
 {
-  "entityShapes": {
-    "Bookmark": {
-      "source": "src/features/bookmarks/be/types.ts",
-      "type": "BookmarkAttributes"
+  "features": {
+    "bookmarks": {
+      "entities": {
+        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
+        "ImportIndex": null
+      }
     }
   }
 }
@@ -452,7 +454,7 @@ The shapes (yours, your dependencies' and the SDK's) type the query helpers that
 `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
 `createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. Of these, `@apackdev/ears`
 exports only `tx`, unchecked. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
-`findByIdRaw`. A shape the build can't find (a wrong `source` or `type`) fails the build. It also
+`findByIdRaw`. A shape the build can't find (a missing module or exported TypeScript type) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
 declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
 `AllEntities` (the `EARS.Entity` map). Queries written with a declared entity type are checked

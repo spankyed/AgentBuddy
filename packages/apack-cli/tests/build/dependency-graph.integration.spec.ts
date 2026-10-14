@@ -24,7 +24,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
     'package.json': packageJson(id),
     'tsconfig.json': tsconfig,
     'apack.json': JSON.stringify({
-      id, name: id, version: '1.0.0', entities,
+      id, name: id, version: '1.0.0', data: { entities: Object.fromEntries(Object.keys(entities).map(name => [name, null])) },
       ...(Object.keys(dependencies).length > 0 && { dependencies }),
       ...extra,
     }),

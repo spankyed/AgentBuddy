@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
@@ -524,6 +525,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!runtimeFeatures || typeof runtimeFeatures !== 'object' || Array.isArray(runtimeFeatures)
         || Object.values(runtimeFeatures).some(feature => !feature || typeof feature !== 'object' || Array.isArray(feature))
         || !isDeepStrictEqual(Object.keys(runtimeFeatures).sort(), Object.keys(declaration.features ?? {}).sort())
+        || !isDeepStrictEqual(registration.ears?.entities ?? {}, _packEntityTypes(declaration))
         || !isDeepStrictEqual(registration.dependencies === undefined ? {} : registration.dependencies, declaration.dependencies ?? {})
         || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, declaration.settings ?? {})
         || !isDeepStrictEqual(settingsOf(runtimeFeatures), settingsOf(declaration.features))) {

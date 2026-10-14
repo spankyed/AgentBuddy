@@ -31,7 +31,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: { Widget: 'Widget', Gadget: 'Gadget' },
+      data: { entities: { Widget: null, Gadget: null } },
       relKinds: {},
     });
 
@@ -49,7 +49,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: {},
+      data: { entities: {} },
       relKinds: { OWNS: 'owns', FOLLOWS: 'follows' },
     });
 
@@ -66,7 +66,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: { Alpha: 'Alpha', Beta: 'Beta' },
+      data: { entities: { Alpha: null, Beta: null } },
       relKinds: {},
     });
 
@@ -81,7 +81,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: { Item: 'Item' },
+      data: { entities: { Item: null } },
       relKinds: {},
     });
 
@@ -100,7 +100,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: {},
+      data: { entities: {} },
       relKinds: {},
     });
 
@@ -117,7 +117,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: {},
+      data: { entities: {} },
       relKinds: {},
     });
 
@@ -133,7 +133,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: { MyEntity: 'MyEntity' },
+      data: { entities: { MyEntity: null } },
       relKinds: {},
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
@@ -167,7 +167,7 @@ describe('apack pack generate-entries', () => {
       id: 'test-pack',
       name: 'Test Pack',
       version: '0.1.0',
-      entities: { A: 'A', B: 'B' },
+      data: { entities: { A: null, B: null } },
       relKinds: { R: 'r' },
     });
 
@@ -227,7 +227,7 @@ describe('the inputs stamp', () => {
   });
 
   it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
     await generateEntries([], tmpDir);
     expect(fs.existsSync(generated('ears.ts'))).toBe(true);
 
@@ -242,7 +242,7 @@ describe('the inputs stamp', () => {
   });
 
   it('still skips when every recorded file is there', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
     await generateEntries([], tmpDir);
 
     const said: string[] = [];
@@ -268,7 +268,7 @@ describe('the inputs stamp', () => {
   // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
-    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', entities: { Widget: 'Widget' }, relKinds: {} });
+    writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null } }, relKinds: {} });
     await generateEntries([], tmpDir);
     expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
 

@@ -20,7 +20,7 @@ A landed result still needs its applicable regression checks in the final requir
 |---|---|---|---|
 | 1 | Group by concern and write a stable, readable manifest. Required; replace the obsolete exact root-key count/order with ordering for the current schema. | Root `entities`, `entityShapes`, `relKinds`, `boot` remain in SDK `manifest-schema.ts`. CLI `add/manifest.ts:writeManifest` only stringifies insertion order. Centralize root/feature/extension field order; every authoring writer uses it. Preserve contribution-member and array order where it affects behavior. | M1–M6 |
 | 2 | One module/export reference syntax. Required for shape references; retain objects that carry actual metadata. | `EntityShapeSchema` still has `{ source, type }`; `ExportTargetSchema` and component entry/load objects already exist. Replace shape pairs with `path#export`, share parsing/refusal, preserve named/default export semantics. Module-only type barrels must retain their explicit export-star semantics rather than pretend to be default value exports. | M1, M4 |
-| 3 | Declare an entity and its shape once, under its owning feature or `data.entities`. Required. | Root identity/shape maps and structural `ProvenanceManifest.entities` remain. Add one normalized entity projection and migrate every reader, including native declarations, schema/Packs inspection and provenance. `null` explicitly means untyped; `SearchIndex`/`IndexedDoc` gain no shape. Keep compiled types flat and generated EARS byte-identical. | M1 |
+| 3 | Declare an entity and its shape once, under its owning feature or `data.entities`. Required. | Root identity/shape maps and structural `ProvenanceManifest.entities` remain. Add one normalized entity projection and migrate every reader, including native declarations, schema/Packs inspection and provenance. `null` explicitly means untyped; `SearchIndex`/`IndexedDoc` gain no shape. Keep compiled types flat and generated EARS wire identities and typed/untyped behavior unchanged. | M1 |
 | 4 | Replace root relation identity maps with pack-level `data.relations` wire values. Required. | Root `relKinds` remains. Current schema checks names/values, so derive the same constants from the same wire strings. Prove generated EARS, relation types, collisions and dependency provenance unchanged. | M2 |
 | 5 | Remove partition-policy machinery; proposed `volatile` addition needed a separate real storage requirement. Excluded under the settled storage scope. | The predecessor itself records removal and says not to add volatility without an actual need. Do not recreate it, widen entity values for it, or require its obsolete external-pack test. Retain existing storage behavior; general storage work remains separate. | Preservation |
 | 6 | Designation is a role distinct from feature id, with collision checks. Landed; preserve. | `validate.ts:validateFeatures` checks role collisions without requiring equality; `FeatureEntrySchema.designation` is a string. Recheck nonmatching role/id, within-pack and cross-pack conflicts through actual registration. | M4/final |
@@ -53,7 +53,7 @@ These choices settle the old questions in context; they do not reopen the comple
 
 | Original phase | Successor outcome and required evidence |
 |---|---|
-| 1 — data | M1/M2 consolidate entities/shapes/relations; M5 deletes the manifest format key. Pin the before state and compare generated EARS bytes and typed/untyped/editor-completion behavior. Validate duplicate entity homes naming owners; missing shape exports naming entity/path; cross-pack collisions; feature-only Packs counts and dependency provenance. Mutation-check the two loosely typed readers so an empty result cannot pass. The volatile/storage additions are explicitly excluded above. |
+| 1 — data | M1/M2 consolidate entities/shapes/relations; M5 deletes the manifest format key. Pin the before state and compare generated EARS identities/types and typed/untyped/editor-completion behavior. Validate duplicate entity homes naming owners; missing shape exports naming entity/path; cross-pack collisions; feature-only Packs counts and dependency provenance. Mutation-check the two loosely typed readers so an empty result cannot pass. The volatile/storage additions are explicitly excluded above. |
 | 2 — extensions | Preserve landed grouping plus settings/help redesign. Discovery finishes remaining declarations, not historical barrels or implicit existence. Moved-key refusal and every external/native contribution kind remain in acceptance. |
 | 3 — lifecycle | M3 replaces `boot` with checked declarative `lifecycle`, preserves migrations as their own key and actual hook order. Compare compiled content bytes/identity before/after the syntax-only move and prove ordinary build/install/boot does not reapply unchanged records. |
 | 4 — features | M4 adds required descriptions, preserves designation/default claims, settles `types` and shared authoring layout. Discovery's explicit targets replace `provides`/feature-relative inference. Named missing-target, ownership/path-escape, duplicate claim and scaffold/doctor/codegen agreement checks remain. Compare generated behavior, not necessarily obsolete registration bytes whose metadata intentionally changes. |
@@ -88,9 +88,14 @@ These are completion obligations, not optional later improvements.
    as `name: "path#export" | null`. Add the single normalized reader; migrate structural/provenance and
    native/catalog/schema/CLI/scaffold/runtime consumers, including those the compiler cannot catch.
    Duplicate homes must be refused before publication; a deterministic normalization must not conceal
-   an invalid declaration. Snapshot entity/type publication stays flat. Commit validated source/evidence.
+   an invalid declaration. Paths remain pack-root-relative; ownership does not qualify wire names.
+   Shapes are exported TypeScript types checked at build time with purpose-specific validation through
+   the common reference parser, never executable bindings. Installed/offline discovery requires neither
+   authored source files nor executable imports. Snapshot entity/type publication stays flat.
+   Preserve EARS behavior; declaration grouping may change inert generated ordering. Compiled content
+   bytes and apply identities must remain unchanged. Commit validated source/evidence.
 2. **M2 — relations.** `data.relations` holds stable wire values, generated constants retain their names.
-   Preserve EARS bytes/types, dependency diamonds, collisions and actual external runtime relationships.
+   Preserve EARS identities/types, dependency diamonds, collisions and actual external runtime relationships.
 3. **M3 — lifecycle.** Reuse current explicit hook targets and checked membership under `lifecycle`;
    keep no opaque aggregate thunk/module discovery. Preserve hydration/migration/apply/shutdown order,
    resource cleanup and content apply identity. A manifest root rename need not rename every useful

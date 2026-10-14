@@ -151,7 +151,7 @@ Steps:
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack pack facade-report`)
-8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
+8. Writes `types/snapshot.json`, and notes entity types explicitly declared with a `null` shape
 9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apackdev/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apackdev/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
 11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@apackdev/*` and the entry's `inline` packages

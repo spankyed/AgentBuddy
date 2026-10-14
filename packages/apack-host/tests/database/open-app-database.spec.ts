@@ -64,7 +64,7 @@ describe('readInstalledSchema', () => {
     expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: '/nope/x.json' })).toThrow(/No pack snapshot at/);
 
     const snapshot = path.join(dir, 'spare.json');
-    writeSnapshot(snapshot, { id: 'spare', name: 'Spare', version: '1.0.0', entities: {} });
+    writeSnapshot(snapshot, { id: 'spare', name: 'Spare', version: '1.0.0', data: { entities: {} } });
     // Named a pack the dir does not have, so it is read and added
     const { notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
     expect(notes).toEqual([]);
@@ -73,11 +73,11 @@ describe('readInstalledSchema', () => {
   it('refuses incomplete and stale named snapshots through the common snapshot validator', () => {
     const dir = tempDir('host-database-');
     const snapshot = path.join(dir, 'invalid.json');
-    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', entities: {} } }));
+    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', data: { entities: {} } } }));
     expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot })).toThrow('this reader requires format');
     writeSnapshot(snapshot, { id: 'named', name: 'Named', version: '1.0.0' });
     const data = JSON.parse(fs.readFileSync(snapshot, 'utf8'));
-    data.manifest.entities = { Added: 'Added' };
+    data.manifest.data = { entities: { Added: null } };
     fs.writeFileSync(snapshot, JSON.stringify(data));
     expect(() => readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot })).toThrow('declarations do not match their revision');
   });
@@ -86,7 +86,7 @@ describe('readInstalledSchema', () => {
   it('reads the entity types from a snapshot --schema-from names', () => {
     const dir = tempDir('host-database-');
     const snapshot = path.join(dir, 'snapshot.json');
-    writeSnapshot(snapshot, { id: 'named', name: 'Named', version: '1.0.0', entities: { Bookmark: 'Bookmark' } });
+    writeSnapshot(snapshot, { id: 'named', name: 'Named', version: '1.0.0', data: { entities: { Bookmark: null } } });
     const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
     expect(schema.getRegisteredEntityTypes().has('Bookmark')).toBe(true);
   });
@@ -160,7 +160,7 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => {});
     fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
     const snapshot = path.join(dir, 'core.json');
-    writeSnapshot(snapshot, { id: 'core', name: 'Core', version: '1.0.0', entities: { Note: 'Note' } });
+    writeSnapshot(snapshot, { id: 'core', name: 'Core', version: '1.0.0', data: { entities: { Note: null } } });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, schemaFrom: snapshot, ...quiet });
     try {

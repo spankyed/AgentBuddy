@@ -155,11 +155,12 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
-export interface NativePackDeclaration {
+export interface NativePackDeclaration extends PackEntityDeclarations {
     // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
     features?: Record<string, {
+        entities?: Record<string, string | null>;
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;
         references?: ReferenceDeclarations;
@@ -214,6 +215,32 @@ export interface PackEARS {
     // (undocumented)
     relKinds: Record<string, string>;
 }
+
+// @internal
+export function _packEntities(declaration: PackEntityDeclarations): _PackEntityDeclaration[];
+
+// @internal
+export interface _PackEntityDeclaration {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    owner: string;
+    // (undocumented)
+    shape: string | null;
+}
+
+// @public
+export interface PackEntityDeclarations {
+    // (undocumented)
+    data?: {
+        entities?: Readonly<Record<string, string | null>>;
+    };
+    // (undocumented)
+    features?: Readonly<Record<string, object>>;
+}
+
+// @internal
+export function _packEntityTypes(declaration: PackEntityDeclarations): Record<string, string>;
 
 // @public
 export interface PackFeature {

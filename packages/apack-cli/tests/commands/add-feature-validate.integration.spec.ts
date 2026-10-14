@@ -177,7 +177,7 @@ describe('apack pack validate', () => {
       fs.mkdirSync(path.join(pack, 'src', 'content'), { recursive: true });
       fs.writeFileSync(path.join(pack, 'src', 'content', 'writers.ts'), 'export const otherWriter = {};\n');
       editManifest((manifest) => {
-        manifest.entities = { ...manifest.entities, Memo: 'Memo' };
+        manifest.data = { ...manifest.data, entities: { ...manifest.data?.entities, Memo: null } };
         manifest.content = { ...manifest.content, writers: { Memo: 'src/content/writers.ts#memoWriter' } };
       });
 

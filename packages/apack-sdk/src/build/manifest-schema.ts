@@ -1,3 +1,5 @@
+import { _MODULE_REFERENCE_PATTERN } from '../framework/module-reference.ts';
+import { _packEntities, _packEntityTypes } from '../framework/entity-declaration.ts';
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
@@ -21,29 +23,28 @@ const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string,
   });
 };
 
-/** An entity's key is its type name: `entities: { Memo: "Memo" }` */
-const keysAreTypeNames = (declared: Record<string, string>, ctx: z.RefinementCtx) => {
-  for (const [key, value] of Object.entries(declared)) {
-    if (key !== value) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `an entity's key must be its type name: use "${value}": "${value}"` });
-    }
-  }
-};
-
 /** Check names before Zod decodes records: its object merge discards an own __proto__ key. */
 function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
   if (!raw || typeof raw !== 'object') return raw;
-  for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_REL_KINDS]] as const) {
-    const declared = (raw as Record<string, unknown>)[field];
-    if (!declared || typeof declared !== 'object' || Array.isArray(declared)
-      || !Object.values(declared).every(value => typeof value === 'string')) continue;
-    const names = declared as Record<string, string>;
-    const atField: z.RefinementCtx = {
-      path: [...ctx.path, field],
-      addIssue: issue => ctx.addIssue({ ...issue, path: [field, ...(issue.path ?? [])] }),
-    };
-    notSdkOwned(reserved)(names, atField);
-    if (field === 'entities') keysAreTypeNames(names, atField);
+  const declaration = raw as Record<string, unknown>;
+  const relations = declaration.relKinds;
+  if (relations && typeof relations === 'object' && !Array.isArray(relations)
+    && Object.values(relations).every(value => typeof value === 'string')) {
+    notSdkOwned(SDK_REL_KINDS)(relations as Record<string, string>, {
+      path: [...ctx.path, 'relKinds'],
+      addIssue: issue => ctx.addIssue({ ...issue, path: ['relKinds', ...(issue.path ?? [])] }),
+    });
+  }
+  try {
+    for (const { name, owner } of _packEntities(declaration)) {
+      const path = [...owner.split('.'), 'entities'];
+      notSdkOwned(SDK_ENTITIES)({ [name]: name }, {
+        path: [...ctx.path, ...path],
+        addIssue: issue => ctx.addIssue({ ...issue, path: [...path, ...(issue.path ?? [])] }),
+      });
+    }
+  } catch (error) {
+    ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) });
   }
   return raw;
 }
@@ -51,7 +52,12 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
 /** A named export of a pack source file */
-const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be "path#exportName"');
+
+const EntitiesSchema = z.record(z.string().min(1), ExportTargetSchema.nullable())
+  .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
+const DataSchema = z.object({ entities: EntitiesSchema.optional() }).strict()
+  .describe('Pack-level data declarations without a feature owner.');
 
 const SettingsDefinitionShape = {
   schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
@@ -77,16 +83,18 @@ const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
 }, SettingsDefinitionValueSchema);
 
 /** @internal Host composition admits the same settings data without external-pack entry paths. */
-export const _NativePackDeclarationSchema = z.object({
+export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
   dependencies: z.record(z.string().regex(PACK_ID_PATTERN), z.string()).optional(),
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
+  data: DataSchema.optional(),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
+    entities: EntitiesSchema.optional(),
     settings: SettingsDefinitionSchema.optional(),
     plugin: z.lazy(() => PluginSchema).optional(),
     references: z.lazy(() => ReferencesSchema).optional(),
   }).strict()).optional(),
-}).strict().superRefine((declaration, ctx) => checkReferenceClaims(declaration.features, ctx));
+}).strict().superRefine((declaration, ctx) => checkReferenceClaims(declaration.features, ctx)));
 
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
@@ -435,6 +443,7 @@ const FEATURE_ID_SCHEMA = z.string()
   .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }));
 
 export const FeatureEntrySchema = z.object({
+  entities: EntitiesSchema.describe('Entities owned by this feature; placement does not change their wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -448,11 +457,6 @@ export const FeatureEntrySchema = z.object({
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
-
-const EntityShapeSchema = z.object({
-  source: z.string().describe('Source file path relative to pack root.'),
-  type: z.string().describe('Exported TypeScript type name for the entity attributes.'),
-}).strict();
 
 /**
  * How the pack is built. These are settings no part of the app reads — unlike `entities` or `features`,
@@ -607,12 +611,9 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   dependencies: z.record(z.string(), z.string())
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
-  entities: z.record(z.string(), z.string())
-    .describe(`EARS entity types this pack registers, each key equal to its value, the type name ({ "Memo": "Memo" }). The SDK defines ${Object.keys(SDK_ENTITIES).join(', ')}.`).optional(),
+  data: DataSchema.optional(),
   relKinds: z.record(z.string(), z.string())
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
-  entityShapes: z.record(z.string(), EntityShapeSchema)
-    .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
@@ -652,10 +653,12 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
       ctx.addIssue({ code: 'custom', path: ['content', 'datasets', key], message: `"${key}" is both a content source and a dataset: they compile to the same file` });
     }
   }
-  const declared = new Set(Object.values(manifest.entities ?? {}));
+  let declared: Set<string>;
+  try { declared = new Set(Object.keys(_packEntityTypes(manifest))); }
+  catch { return; } // Duplicate homes were diagnosed against the original input above.
   for (const entity of Object.keys(manifest.content?.writers ?? {})) {
     if (!declared.has(entity)) {
-      ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares in "entities" can have one` });
+      ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares under a feature or data.entities can have one` });
     }
   }
 }));

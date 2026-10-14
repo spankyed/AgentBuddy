@@ -16,7 +16,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
     version: '0.1.0',
     hostVersion: '>=0.3.0',
-    entities: { [pascalName]: pascalName },
+    data: { entities: { [pascalName]: null } },
     relKinds: {},
     features: {},
     dependencies: {},

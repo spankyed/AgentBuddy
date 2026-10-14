@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { ManifestSchema, _declarationRevision } from '@apackdev/sdk/build';
@@ -7,7 +8,7 @@ import { installedEngine } from '@apackdev/ears';
 import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
-  id: 'content-pack', name: 'Content', version: '1.0.0', entities: { ContentThing: 'ContentThing' },
+  id: 'content-pack', name: 'Content', version: '1.0.0', data: { entities: { ContentThing: null } },
   features: { notes: {
     designation: 'notes', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts' },
     services: { notes: 'notes.ts#notes' }, repositories: { contentQueries: 'queries.ts#queries' },
@@ -21,7 +22,7 @@ const origin = { id: manifest.id, name: manifest.name, version: manifest.version
 const queries = { count: () => 42 };
 const writer = { find: () => undefined };
 const runtime: ContentRuntime = { id: manifest.id, declarationRevision,
-  entities: manifest.entities!, relKinds: {}, repositories: { contentQueries: queries },
+  entities: _packEntityTypes(manifest)!, relKinds: {}, repositories: { contentQueries: queries },
   contentWriters: { ContentThing: writer } };
 
 let registry: ReturnType<typeof createNativePackTestRegistry>;

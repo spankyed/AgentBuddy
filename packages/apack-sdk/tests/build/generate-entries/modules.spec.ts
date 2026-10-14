@@ -77,7 +77,7 @@ describe('a diamond dependency', () => {
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
       defs: facade(),
         provenance: JSON.parse(JSON.stringify(_buildProvenance(
-        [['deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } }] as const],
+        [['deep-pack', { manifest: { data: { entities: { ['__proto__']: null } } } }] as const],
         { id, manifest: {} },
       ))),
       manifest: manifest({ id }),
@@ -111,7 +111,7 @@ describe('generated imports', () => {
 
   it('keeps dots in extensionless names and normalizes backslashes', async () => {
     write('src/features/memos/be/memo.types.ts', 'export interface MemoEntity { text: string }\n');
-    const ears = (await generate({ entityShapes: { Memo: { source: 'src\\features\\memos\\be\\memo.types', type: 'MemoEntity' } } }))['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: "src\\features\\memos\\be\\memo.types#MemoEntity" } } }))['src/__generated__/ears.ts'];
     expect(ears).toContain("from '../features/memos/be/memo.types.ts';");
   });
 });
@@ -119,7 +119,7 @@ describe('generated imports', () => {
 describe('generated EARS facade', () => {
   it('names the declared entities and passes them to the typed helpers, with tx', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
-    const ears = (await generate({ entities: { Memo: 'Memo', Tag: 'Tag' }, entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } } }))['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } },  }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
     expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
@@ -147,32 +147,30 @@ describe("the SDK's entities and relation kinds", () => {
   it('rejects a name or value two sources declare', async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
     const withBase = (manifest: object) => generate({ ...manifest, dependencies: { 'base-pack': '*' } }, { 'base-pack': base });
-    await expect(withBase({ entities: { Tag: 'Tag' } })).rejects.toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
+    await expect(withBase({ data: { entities: { Tag: null } } })).rejects.toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
     await expect(withBase({ relKinds: { LABELLED: 'tagged' } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
     await expect(withBase({ relKinds: { TAGGED: 'labelled' } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
   });
 
-  it('names entity types by their values in EntityName, the type names rows carry', async () => {
-    // apack.json requires an entity's key to be its type name; the generated names follow the value regardless
+  it('uses entity keys as unchanged wire names in EntityName', async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: {} } };
-    const ears = (await generate({ entities: { Memo: 'memo' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: null } }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/ears.ts'];
     const names = ears.match(/export type EntityName = ([^;]*);/)![1];
-    expect(names).toContain("'memo'");
-    expect(names).not.toContain("'Memo'");
+    expect(names).toContain("'Memo'");
     expect(names).toContain("'Tag'");
     expect(names).toContain("'Relation'");
   });
 
   it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
-    const entry = (await generate({ entities: { Memo: 'Memo' }, relKinds: { PINNED: 'pinned' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/pack-entry.ts'];
+    const entry = (await generate({ data: { entities: { Memo: null } }, relKinds: { PINNED: 'pinned' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain('entities: {"Memo":"Memo"},');
     expect(entry).toContain('relKinds: {"PINNED":"pinned"},');
   });
 
   it("rejects a pack's own declaration of the SDK's names", async () => {
-    await expect(generate({ entities: { Relation: 'Relation' } })).rejects.toThrow(/entity "Relation" is defined by the SDK/);
-    await expect(generate({ entities: { Action: 'Action' } })).rejects.toThrow(/entity "Action" is defined by the SDK/);
+    await expect(generate({ data: { entities: { Relation: null } } })).rejects.toThrow(/entity "Relation" is defined by the SDK/);
+    await expect(generate({ data: { entities: { Action: null } } })).rejects.toThrow(/entity "Action" is defined by the SDK/);
     await expect(generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).rejects.toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
   });
 });
@@ -180,7 +178,7 @@ describe("the SDK's entities and relation kinds", () => {
 describe('generated appliers', () => {
   it('registers the generic applier with its format settings, and SDK appliers for specialty keys', async () => {
     const files = await generate({
-      entities: { Memo: 'Memo' },
+      data: { entities: { Memo: null } },
       content: {
         formats: {
           memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
@@ -218,7 +216,7 @@ describe('generated appliers', () => {
 
   it("registers a pack applier module for a content source naming one, and still compiles it", async () => {
     const files = await generate({
-      entities: { Memo: 'Memo' },
+      data: { entities: { Memo: null } },
       content: {
         formats: { settings: { compiler: 'src/content/compilers/settings.ts', entity: 'Memo' } },
         sources: { settings: { path: 'src/content/settings.ts', format: 'settings', applier: 'src/content/settings-applier.ts' } },
@@ -243,16 +241,16 @@ describe('generated appliers', () => {
 
   it("registers the pack's content writers by entity type", async () => {
     write('src/memo-writers.ts', 'export const memoWriter = {};');
-    const entry = (await generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))['src/__generated__/pack-entry.ts'];
+    const entry = (await generate({ data: { entities: { Memo: null } }, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import { memoWriter as __contentWriter_0 } from '../memo-writers.ts';");
     expect(entry).toContain('contentWriters: { "Memo": __contentWriter_0 },');
-    await expect(generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#missing' } } })).rejects.toThrow(`A content writer for "Memo": src/memo-writers.ts doesn't export "missing"`);
+    await expect(generate({ data: { entities: { Memo: null } }, content: { writers: { Memo: 'src/memo-writers.ts#missing' } } })).rejects.toThrow(`A content writer for "Memo": src/memo-writers.ts doesn't export "missing"`);
   });
 
   it('names content writer imports validly whatever the entity is called', async () => {
     write('src/writers.ts', 'export const docWriter = {};\nexport const noteWriter = {};');
     const files = await generate({
-      entities: { 'team-doc': 'team-doc', 'team.note': 'team.note' },
+      data: { entities: { 'team-doc': null, 'team.note': null } },
       content: { writers: { 'team-doc': 'src/writers.ts#docWriter', 'team.note': 'src/writers.ts#noteWriter' } },
     });
     for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/content-runtime.ts']) {
@@ -334,7 +332,7 @@ describe('the snapshot format', () => {
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
     $manifestVersion: true, $schema: true, boot: true, build: true,
-    dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, features: true,
+    dependencies: true, description: true, data: true,  extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
     permissions: true, relKinds: true, content: true, version: true,
   };
@@ -344,7 +342,7 @@ describe('the snapshot format', () => {
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    designation: true, plugin: true, references: true, repositories: true, services: true,
+    entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
@@ -404,12 +402,11 @@ describe('the snapshot format', () => {
       fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'boot', 'build', 'content', 'dependencies', 'description',
-          'entities', 'entityShapes', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
+          '$manifestVersion', '$schema', 'boot', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
           'permissions', 'relKinds', 'version',
         ],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
-        feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],

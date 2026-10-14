@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -214,7 +215,7 @@ async function buildIntoStaging(args: string[]) {
   // is what an unshaped entity does anyway.
   const depTypeManifests = [...depSnapshots.values()].map((snap) => snap.types);
   const types: PackTypeManifest = {
-    entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), manifest.entities ?? {}),
+    entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), _packEntityTypes(manifest)),
     relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), manifest.relKinds ?? {}),
   };
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
@@ -313,7 +314,7 @@ async function buildIntoStaging(args: string[]) {
   // Informational: nothing is rejected, but these entities' fields read as unknown values
   const unshaped = entitiesWithoutShapes(manifest);
   if (unshaped.length > 0) {
-    console.log(`\nNote: ${unshaped.length} ${unshaped.length === 1 ? 'entity has' : 'entities have'} no shape in entityShapes, so ${unshaped.length === 1 ? 'its' : 'their'} fields read as unknown values: ${unshaped.join(', ')}`);
+    console.log(`\nNote: ${unshaped.length} ${unshaped.length === 1 ? 'entity has' : 'entities have'} a null shape declaration, so ${unshaped.length === 1 ? 'its' : 'their'} fields read as unknown values: ${unshaped.join(', ')}`);
   }
 
   // ── Step build facets (for dependents' flow validation) ─────────────

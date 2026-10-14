@@ -17,14 +17,13 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
-| `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
+| `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Explicit lifecycle functions; see [Boot configuration](#boot-configuration) |
-| `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
-| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
+| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the declared entity's wire name -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
 
 ## Extensions
 
@@ -136,6 +135,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
 {
   "features": {
     "bookmarks": {
+      "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
       "settings": {
         "schema": {
           "type": "object",
@@ -482,17 +482,30 @@ Run `apack pack fetch-deps` to pull dependency snapshots for cross-pack type int
 
 ```json
 {
-  "entities": {
-    "Bookmark": "Bookmark",
-    "Tag": "Tag"
+  "features": {
+    "bookmarks": {
+      "entities": {
+        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
+        "Tag": null
+      }
+    }
   },
-  "relKinds": {
-    "TAGGED_WITH": "tagged_with"
-  }
+  "data": {
+    "entities": { "ImportLog": null }
+  },
+  "relKinds": { "TAGGED_WITH": "tagged_with" }
 }
 ```
 
-Keys become TypeScript constants in the generated `ears.ts`, values are the runtime strings stored in the database. An entity's key must be its type name, the same as its value (`"Bookmark": "Bookmark"`); a relation kind's key and value may differ.
+Declare each entity once, under its owning feature or `data.entities` when it has no feature owner.
+The key is its unchanged EARS wire name. Placement records ownership, without a feature prefix.
+A string names an exported TypeScript shape; `null` explicitly leaves the entity untyped. Paths are
+relative to the pack root, including those declared inside a feature. The build checks modules and
+exports without executing them; installed discovery reads built declarations without source files.
+Duplicate entity declarations name both owners and fail validation.
+
+Keys become TypeScript constants in generated `ears.ts`. Entity constants equal their keys; a relation
+kind's key and wire value may differ. Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
@@ -539,12 +552,9 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
     "default-setup": "*"
   },
 
-  "entities": {
-    "Bookmark": "Bookmark"
-  },
-
   "features": {
     "bookmarks": {
+      "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
       "settings": {
         "schema": { "type": "object", "additionalProperties": false },
         "defaults": {}

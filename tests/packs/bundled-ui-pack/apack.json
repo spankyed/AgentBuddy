@@ -4,7 +4,7 @@
   "name": "Bundled UI Fixture",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
-  "entities": {},
+  "data": { "entities": {} },
   "relKinds": {},
   "features": {
     "scribbles": {

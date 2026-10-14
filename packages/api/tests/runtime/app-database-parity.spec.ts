@@ -62,7 +62,7 @@ function closeApi(app: Awaited<ReturnType<typeof bootApi>>) {
 async function installExternalPack(id: string, entityType: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
   const ears = { entities: { [entityType]: entityType }, relKinds: {} };
-  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
+  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', data: { entities: { [entityType]: null } }, relKinds: {} }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));

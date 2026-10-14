@@ -207,10 +207,14 @@ describe('registerPack entities', () => {
     expect(getPackRegistration('first-pack')?.ears?.relKinds).toEqual({ PINNED: 'pinned' });
   });
 
+  it('refuses SDK entity declarations before native runtime registration', () => {
+    expect(() => registerEntities('first-pack', { Flow: 'Flow' })).toThrow('data.entities: "Flow" is defined by the SDK');
+    expect(getPackRegistration('first-pack')).toBeNull();
+  });
+
   it.each([
     [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
     [{ AppliedContent: 'AppliedContent' }, {}, 'entity type "AppliedContent"'],
-    [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
     [{}, { CONTAINS: 'contains' }, 'relation kind "CONTAINS": "contains"'],
     [{}, { HOLDS: 'contains' }, 'relation kind "HOLDS": "contains"'],
     [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],

@@ -17,3 +17,5 @@ export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclar
 export type { PackCatalogView, ReferenceCatalogEntry, DeclarationData } from './catalog-view.ts';
 
 export { formatReferenceHref, parseReferenceHref, type ReferenceTarget } from './reference-link.ts';
+
+export { _packEntities, _packEntityTypes, type PackEntityDeclarations, type _PackEntityDeclaration } from './entity-declaration.ts';

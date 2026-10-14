@@ -64,8 +64,8 @@ const BASE_PACK = {
   'tsconfig.json': tsconfig,
   'apack.json': JSON.stringify({
     id: 'base-pack', name: 'Base', version: '1.0.0',
-    entities: { Tag: 'Tag', Item: 'Item' },
-    entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' }, Item: { source: 'src/types.ts', type: 'ItemEntity' } },
+    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" } },
+
     features: {
       calendar: {
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
@@ -127,9 +127,9 @@ const APP_PACK = {
   'apack.json': JSON.stringify({
     id: 'app-pack', name: 'App', version: '1.0.0',
     dependencies: { 'base-pack': 'file:../base-pack' },
-    entities: { Memo: 'Memo' },
+    data: { entities: { Memo: "src/types.ts#ItemEntity" } },
     // Same type name as the dependency's Item shape
-    entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
+
     features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',

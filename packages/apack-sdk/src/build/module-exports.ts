@@ -13,6 +13,8 @@ export interface ModuleExport {
 }
 
 export interface ModuleExports {
+  /** Whether this export resolves to a usable declared TypeScript type. */
+  hasTypeExport(file: string, name: string): boolean;
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ModuleExport | undefined;
   /**
@@ -179,6 +181,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   }
 
   return {
+    hasTypeExport: (file, name) => declaredTypeOf(file, name) !== undefined,
     exportOf(file, name) {
       const exported = exportedSymbol(file, name);
       const resolved = exported && followAliases(exported);
