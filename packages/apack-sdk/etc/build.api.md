@@ -639,7 +639,6 @@ export function loadFlowsFromDir(flowsDir: string): Promise<{
 // @public (undocumented)
 export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
-    $manifestVersion: z.ZodOptional<z.ZodLiteral<1>>;
     id: z.ZodEffects<z.ZodString, string, string>;
     name: z.ZodString;
     version: z.ZodString;
@@ -1437,7 +1436,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1582,7 +1580,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1727,7 +1724,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -1872,7 +1868,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
@@ -2017,7 +2012,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     $schema?: string | undefined;
-    $manifestVersion?: 1 | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;

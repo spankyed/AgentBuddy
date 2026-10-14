@@ -22,6 +22,7 @@ import {
 } from '../../src/packs/layout.ts';
 import { installPack, installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { packArtifactRevision, readPackAsset } from '../../src/packs/assets.ts';
 
 let tmp: string;
 
@@ -174,6 +175,21 @@ describe('packFrontendFiles', () => {
 });
 
 describe('verifyPack', () => {
+  it.each([PACK_LAYOUT_VERSION + 0.25, PACK_LAYOUT_VERSION - 0.25, PACK_LAYOUT_VERSION + 1, -1, String(PACK_LAYOUT_VERSION), null])
+    ('refuses an inexact format stamp in verification and asset delivery: %j', formatVersion => {
+      const stage = path.join(tmp, 'stage');
+      stagePack(builtPack(), stage);
+      const info = readPackIntegrity(stage);
+      const revision = packArtifactRevision(info);
+      expect(readPackAsset(stage, 'demo-pack', revision, 'runtime/fe.js').toString()).toBe('export default {};');
+      const changed = { ...info, formatVersion };
+      fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(changed));
+      expect(() => verifyPack(stage)).toThrow();
+      // Match the malformed receipt's revision, so the format gate must reject it independently.
+      const changedRevision = packArtifactRevision(readPackIntegrity(stage));
+      expect(() => readPackAsset(stage, 'demo-pack', changedRevision, 'runtime/fe.js')).toThrow('artifact changed');
+    });
+
   it('accepts an untouched bundle', () => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);

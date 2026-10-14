@@ -25,7 +25,6 @@ exports are errors; dependency problems that prevent complete export checking ar
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `$schema` | `string` | no | JSON Schema reference for editor validation |
-| `$manifestVersion` | `1` | no | Schema version. Enables future format evolution. |
 | `id` | `string` | yes | Unique pack identifier: a lowercase letter, then lowercase letters, digits and hyphens (`^[a-z][a-z0-9-]*$`) |
 | `name` | `string` | yes | Human-readable display name |
 | `version` | `string` | yes | Semver version, starting with `major.minor.patch` (e.g. `"0.1.0"`, `"0.2.0-beta.1"`) |

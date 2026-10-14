@@ -607,8 +607,6 @@ export type _MigrationLinesMatchRegistration = _Asserted<
 
 export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),
-  $manifestVersion: z.literal(1).optional()
-    .describe('Schema version. Enables future format evolution.'),
   id: z.string().regex(PACK_ID_PATTERN, 'Must be lowercase alphanumeric with hyphens')
     .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),

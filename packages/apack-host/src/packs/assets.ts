@@ -20,7 +20,7 @@ export function readPackAsset(dir: string, packId: string, revision: string, fil
   if (fs.lstatSync(dir).isSymbolicLink() || !fs.lstatSync(path.join(dir, PACK_LAYOUT.integrity)).isFile()) throw new Error('Pack asset receipt is not a regular installed file');
   const integrity = readPackIntegrity(dir);
   if (!integrity || integrity.id !== packId || typeof integrity.formatVersion !== 'number'
-    || !Number.isFinite(integrity.formatVersion) || Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION
+    || !Number.isFinite(integrity.formatVersion) || integrity.formatVersion !== PACK_LAYOUT_VERSION
     || !integrity.files || typeof integrity.files !== 'object' || Array.isArray(integrity.files)
     || packArtifactRevision(integrity) !== revision) throw new Error(`Pack "${packId}" artifact changed; reload its frontend`);
   const expected = Object.hasOwn(integrity.files, file) ? integrity.files[file] : undefined;

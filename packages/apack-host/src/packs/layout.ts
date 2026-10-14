@@ -317,7 +317,7 @@ export function verifyPack(dir: string): PackIntegrity {
     || !integrity.files || typeof integrity.files !== 'object' || Array.isArray(integrity.files)) {
     throw new Error('Invalid integrity.json: expected layout version, pack id/version and file checksums');
   }
-  if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
+  if (integrity.formatVersion !== PACK_LAYOUT_VERSION) {
     throw new Error(`Pack ${integrity.id} uses format ${integrity.formatVersion}; this host supports format ${PACK_LAYOUT_VERSION}. Update apack or rebuild the pack.`);
   }
   const problems: string[] = [];

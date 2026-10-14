@@ -5,11 +5,6 @@
       "type": "string",
       "description": "JSON Schema reference for editor validation."
     },
-    "$manifestVersion": {
-      "type": "number",
-      "const": 1,
-      "description": "Schema version. Enables future format evolution."
-    },
     "id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
