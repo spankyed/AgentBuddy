@@ -2686,3 +2686,19 @@ aggregates with declaration metadata and eligible owned bindings, verifying exte
 in an already-open editor and provider disposal across replacement/removal/view teardown. Every
 remaining discovery kind, native/freshness check, navigation/boundary requirement and Phase 6
 workstream remains required. Final committed-source --all, full acceptance audit and archival remain due.
+
+
+### Editor/provider audit checkpoint (2026-10-13)
+
+Plan commit `e86b89978` records the current consumer audit and migration sequence in
+[discovery without activation](../plans/discovery-without-activation.md#editorprovider-consumer-audit-and-migration-sequence-2026-10-13).
+The audit confirmed construction-time protocol capture, static category/icon readers, a no-op
+Markdown DOM hook, and providers started eagerly for the entire popup component lifetime. Existing
+SDK plugin-state composables already dispose subscriptions with effect scopes.
+
+The next implementation uses one shared eligibility reader before switching editor consumers,
+then removes generated pack-local aggregates and obsolete public category/provider types. Acceptance
+includes dynamic parsing in an already-created editor, scoped provider cleanup, stale/disabled/
+disconnected execution refusal, stable unrelated updates and an actual external contributor.
+This documentation-only checkpoint passed `git diff --check`; it claims no new runtime validation.
+The goal remains active with all previously recorded outstanding requirements unchanged.
