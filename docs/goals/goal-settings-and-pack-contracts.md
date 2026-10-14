@@ -3641,3 +3641,46 @@ edits, concurrent requests and host reload against verified current receipts. Au
 identity and remaining cache/tool inputs alongside that work. All contribution/native discovery,
 frontend naming, static edges/inventory, navigation, boundaries and all three Phase 6 streams remain
 required; final committed-source strict `--all` and whole-goal audit are still due.
+
+
+### Verified watched publication — discovery checkpoint (2026-10-14)
+
+Source `1fa16bd7b` replaces runtime-only writes and the two duplicate external-dev watchers with one
+watcher publishing through the complete staged build. Authored paths inside the pack tree use the same
+exclusions as build inputs, including manifests, JSON/assets/help and modules outside src/. Mid-build
+edits coalesce into another run. Successful external-dev publications install before reload; invalid
+edits retain the verified artifact and running incumbent. Startup no longer requires a pre-existing
+src/ folder or chooses a frontend entry before generation. Watch mode refuses other build flags rather
+than silently ignoring them. Session cleanup closes future requests immediately, awaits an in-flight
+watcher operation, and only then removes its temporary profile.
+
+Sixteen focused scheduler/input/lifetime cases pass. A real filesystem integration builds and stages
+an external pack, inspects its catalog before lifecycle-module activation, and drives the actual host
+reload over a local tokened HTTP fixture. Manifest purpose and outside-src module changes reach the
+verified receipt, catalog and runtime together; a malformed edit preserves the incumbent and a repaired
+edit reloads successfully. The fixture supplies the host's real scoped settings service binding.
+Removing pending scheduling fails three cases. Reinstating runtime-only writes fails the integration
+because the installer refuses a manifest that does not match built declarations. The first attempt at
+that mutation was stopped by package freshness and is not evidence; the successful probe refreshed
+packages under the temporary mutation, then restored source exactly before validation.
+
+Strict passed in 433.8s (13 of 30 cached): 3,072 affected host cases, 855 pack cases with two existing
+skips, all 682 integration cases, external app, smoke, packaged authoring and packaged app. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T16-50-42Z-3845`;
+`/private/tmp/apack-watch-strict-final.log`.
+Mutation logs: `/private/tmp/apack-watch-pending-mutation.log` and
+`/private/tmp/apack-watch-publication-mutation-final.log`.
+Two complete default-setup builds on unchanged inputs took 7.09s and 7.24s here, reusing eligible phases;
+logs `/private/tmp/apack-watch-default-build-1.log` and `-2.log`. These are two observations, not an edit
+latency guarantee. The incorrect runtime-only optimization is removed; finer safe phase invalidation
+can improve cost without introducing unverified publication. Generated EARS and six compiled content
+artifacts remain byte-identical. No SDK public API, format constant or release metadata changes.
+The unrelated issue draft remains untouched.
+
+Full source/dependency/tool freshness remains required. Root filesystem watching does not yet establish
+coverage for source symlink targets outside that tree, dependency snapshots/build code, or SDK/tool
+changes outside the pack. Audit these explicit external inputs, origin/content cache identity and
+linked-development policy next; prove changes cannot silently keep old declarations or build code.
+Then continue all remaining native/contribution kinds, frontend naming, static content edges/CLI
+inventory, entity navigation, frontend boundaries and all three Phase 6 workstreams. Final strict
+`--all` on committed source and the whole-goal completion audit are still due.

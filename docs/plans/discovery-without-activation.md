@@ -1848,3 +1848,21 @@ reach discovery and runtime together, and concurrent watcher requests are not lo
 inventoried discovery projection or unverified reload exception. Assess the cost of the complete build
 versus a correctly validated incremental publication before retaining the runtime-only optimization.
 Keep all remaining kinds/native discovery and later goal phases required.
+
+
+### Watched publication outcome and external-input audit (2026-10-14)
+
+`1fa16bd7b` closes the inspected runtime-only receipt defect and duplicate watcher/drop-on-busy paths.
+Checkout and external-pack development share staged, verified publication before reload. The input
+filter is shared with builds, and session teardown waits for in-flight work before profile removal.
+Real filesystem, installed receipt, catalog and host-runtime checks pass, as do meaningful restored
+mutations and strict validation. The owning goal records evidence and the observed build cost. This
+is complete artifact publication, not a promise of the former runtime-only latency.
+
+Checkpoint 3 remains open for the explicit external-input graph: symlinked authored sources outside
+the watched root, dependency snapshots and executable build files, and SDK/tool implementation inputs.
+Inspect current readers and caches, retain exact version/origin/content identity and explicit linked
+source policy, and prove their changes cannot silently reuse stale declarations or code. Reuse build
+input knowledge rather than inventing a separate authored contribution inventory. All remaining
+contribution/native discovery, frontend naming, navigation, boundaries and Phase 6 streams remain
+required; lazy activation and stronger isolation stay deferred.
