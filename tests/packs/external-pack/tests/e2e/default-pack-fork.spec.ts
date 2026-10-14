@@ -27,11 +27,12 @@ test.beforeAll(async () => {
   fs.symlinkSync(path.join(root, 'node_modules'), path.join(fork, 'node_modules'), 'dir');
   const manifest = JSON.parse(fs.readFileSync(path.join(fork, 'apack.json'), 'utf8'));
   manifest.name = 'Acceptance fork';
+  manifest.features.notes.plugin.label = 'Fork Notes';
   fs.writeFileSync(path.join(fork, 'apack.json'), JSON.stringify(manifest, null, 2));
-  const plugin = path.join(fork, 'src', 'features', 'notes', 'fe', 'plugin.ts');
-  const original = fs.readFileSync(plugin, 'utf8');
-  expect(original).toContain("label: 'Notes'");
-  fs.writeFileSync(plugin, original.replace("label: 'Notes'", "label: 'Fork Notes'"));
+  const canvas = path.join(fork, 'src', 'features', 'notes', 'fe', 'canvas.vue');
+  const original = fs.readFileSync(canvas, 'utf8');
+  expect(original).toContain('<template>');
+  fs.writeFileSync(canvas, original.replace('<template>', '<template>\n  <div data-testid="fork-component">Fork component</div>'));
   const config = path.join(fork, 'tsconfig.json');
   fs.writeFileSync(config, fs.readFileSync(config, 'utf8').replace(
     '../../node_modules/.cache/tsbuildinfo/default-setup.tsbuildinfo', '.apack/typecheck.tsbuildinfo'));
@@ -77,6 +78,8 @@ if (!restarting) test('an externally built default fork refreshes both windows a
     await appPage.getByTestId('pack-replace').click();
     await expect.poll(() => label(appPage)).toBe('Fork Notes');
     await expect.poll(() => label(second)).toBe('Fork Notes');
+    await app.navigate('default-setup/notes');
+    await expect(appPage.getByTestId('fork-component')).toBeVisible();
     await expect(second.getByText('Acceptance fork', { exact: true })).toBeVisible();
     const previous = await appPage.evaluate(() => (window as any).applicationState.getSnapshot()
       .context.acceptedPackRuntimes['default-setup']);

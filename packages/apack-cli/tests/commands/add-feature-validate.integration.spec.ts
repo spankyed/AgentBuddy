@@ -67,10 +67,11 @@ describe('apack pack add feature', () => {
   it('writes a feature whose code names it and never holds its address', async () => {
     await addFeature(['memos'], pack);
     const feature = path.join(pack, 'src', 'features', 'memos');
-    const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
+    const sources = ['fe/state.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
     expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'memos';");
-    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
+    expect(fs.existsSync(path.join(feature, 'fe', 'plugin.ts'))).toBe(false);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features.memos.plugin).toMatchObject({ label: 'Memos', state: 'src/features/memos/fe/state.ts', canvas: 'src/features/memos/fe/canvas/list.vue' });
   });
 
   // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apackdev/sdk. Without

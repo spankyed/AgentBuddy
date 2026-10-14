@@ -6,6 +6,7 @@ import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
 import { _compileSettingsDefinition, _SettingsDefaultsError } from '../framework/settings-validation.ts';
 import type { SettingsDefinition } from '../framework/settings-definition.ts';
 import type { PackMigrations } from '../framework/pack-registration.ts';
+import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
 
@@ -81,6 +82,7 @@ export const _NativePackDeclarationSchema = z.object({
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
     settings: SettingsDefinitionSchema.optional(),
+    plugin: z.lazy(() => PluginSchema).optional(),
   }).strict()).optional(),
 }).strict();
 
@@ -279,12 +281,31 @@ const SystemSchema = z.object({
   }).strict().describe('Event routing declarations.').optional(),
 }).strict();
 
-const PluginSchema = z.object({
+const ModuleTargetSchema = z.string().regex(/^[^#]+(?:#[A-Za-z_$][\w$]*)?$/, 'Must be a module path or path#exportName');
+const ComponentModuleSchema = z.object({
+  entry: ModuleTargetSchema,
+  load: z.literal('lazy').optional(),
+}).strict();
+const ComponentTargetSchema = z.union([ModuleTargetSchema, ComponentModuleSchema]);
+
+const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
+  label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label'),
+  state: ModuleTargetSchema.describe('Machine module, by default export or path#exportName.'),
+  icon: z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]).optional(),
+  canvas: z.union([ComponentTargetSchema, z.object({ routes: z.record(z.string().min(1)
+    .refine(route => !['__proto__', 'constructor', 'prototype'].includes(route), 'Reserved route name'), ComponentTargetSchema)
+    .refine(routes => Object.keys(routes).length > 0, 'Must declare at least one route') }).strict()]).optional(),
+  panel: ComponentTargetSchema.optional(),
+  chat: ComponentTargetSchema.optional(),
+  isPinned: z.boolean().optional(),
+  hotkeys: z.array(z.object({ action: z.string().min(1), global: z.boolean().optional() }).strict()).optional(),
+  options: z.object({ headerClass: z.string().optional() }).strict().optional(),
+  fallbackPanel: z.object({ label: z.string().min(1), toggle: z.object({ type: z.string().min(1) }).strict(),
+    isShown: ExportTargetSchema }).strict().optional(),
   defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
-  entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
   contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
-}).strict();
+} satisfies Record<keyof PluginDeclaration, z.ZodTypeAny>).strict();
 
 
 /** Names a feature id can't take: reserved words, since a feature id becomes an identifier in generated code */

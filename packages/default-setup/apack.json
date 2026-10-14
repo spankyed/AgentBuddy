@@ -470,10 +470,36 @@
         "contract": "src/features/threads/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/threads/fe/plugin.ts",
         "default": true,
         "contract": "src/features/threads/fe/contract.ts#Contract",
-        "defaultVisible": true
+        "defaultVisible": true,
+        "label": "Threads",
+        "icon": "BotMessageSquare",
+        "state": "src/features/threads/fe/state.ts",
+        "canvas": {
+          "routes": {
+            "list": "src/features/threads/fe/canvas/list.vue",
+            "kanban": "src/features/threads/fe/canvas/kanban.vue",
+            "create": "src/features/threads/fe/canvas/ThreadDetail.vue",
+            "view": "src/features/threads/fe/canvas/ThreadDetail.vue",
+            "dashboard": "src/features/threads/fe/canvas/agent/canvas.vue"
+          }
+        },
+        "chat": "src/features/threads/fe/chat/chat.vue",
+        "hotkeys": [
+          {
+            "action": "textToSpeech",
+            "global": false
+          },
+          {
+            "action": "quickPrompts",
+            "global": true
+          },
+          {
+            "action": "closeTab",
+            "global": false
+          }
+        ]
       },
       "references": "src/features/threads/fe/references",
       "services": {
@@ -723,9 +749,42 @@
         "contract": "src/features/code/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/code/fe/plugin.ts",
         "contract": "src/features/code/fe/contract.ts#Contract",
-        "defaultVisible": true
+        "defaultVisible": true,
+        "label": "Code",
+        "icon": "Code2",
+        "state": "src/features/code/fe/state.ts",
+        "canvas": {
+          "entry": "src/features/code/fe/canvas/canvas.vue",
+          "load": "lazy"
+        },
+        "panel": {
+          "entry": "src/features/code/fe/features/panel.vue",
+          "load": "lazy"
+        },
+        "isPinned": false,
+        "hotkeys": [
+          {
+            "action": "openTerminal",
+            "global": false
+          },
+          {
+            "action": "openTerminalTab",
+            "global": false
+          },
+          {
+            "action": "navigatePrevPanel",
+            "global": false
+          },
+          {
+            "action": "navigateNextPanel",
+            "global": false
+          },
+          {
+            "action": "focusSearch",
+            "global": false
+          }
+        ]
       },
       "services": {
         "cli": "src/features/code/be/services/cli.ts#cliService",
@@ -771,9 +830,13 @@
         "contract": "src/features/notes/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts",
         "contract": "src/features/notes/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Notes",
+        "icon": "NotebookText",
+        "state": "src/features/notes/fe/state.ts",
+        "canvas": "src/features/notes/fe/canvas.vue",
+        "panel": "src/features/notes/fe/panel.vue"
       },
       "references": "src/features/notes/fe/references",
       "services": {},
@@ -814,9 +877,13 @@
         "contract": "src/features/browser/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/browser/fe/plugin.ts",
         "contract": "src/features/browser/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Browser",
+        "icon": "Globe",
+        "state": "src/features/browser/fe/state.ts",
+        "canvas": "src/features/browser/fe/canvas.vue",
+        "isPinned": false
       },
       "repositories": {
         "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
@@ -889,9 +956,14 @@
         "contract": "src/features/library/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/library/fe/plugin.ts",
         "contract": "src/features/library/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Library",
+        "icon": "Library",
+        "state": "src/features/library/fe/state.ts#librarySystem",
+        "canvas": "src/features/library/fe/canvas.vue",
+        "panel": "src/features/library/fe/panel.vue",
+        "isPinned": true
       },
       "references": "src/features/library/fe/references",
       "services": {
@@ -929,9 +1001,17 @@
         "contract": "src/features/flows/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/flows/fe/plugin.ts",
         "contract": "src/features/flows/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Flows",
+        "icon": "Network",
+        "state": "src/features/flows/fe/state.ts",
+        "canvas": {
+          "entry": "src/features/flows/fe/canvas/flow-canvas.vue",
+          "load": "lazy"
+        },
+        "isPinned": true,
+        "options": {}
       },
       "services": {},
       "repositories": {
@@ -1002,9 +1082,14 @@
         "contract": "src/features/actions/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/actions/fe/plugin.ts",
         "contract": "src/features/actions/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Actions",
+        "icon": "Play",
+        "state": "src/features/actions/fe/state.ts",
+        "canvas": "src/features/actions/fe/canvas.vue",
+        "isPinned": true,
+        "options": {}
       },
       "services": {
         "action": "src/features/actions/be/services/action.ts#actionService"
@@ -1077,9 +1162,14 @@
         "contract": "src/features/prompts/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/prompts/fe/plugin.ts",
         "contract": "src/features/prompts/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Prompts",
+        "icon": "Sparkle",
+        "state": "src/features/prompts/fe/state.ts",
+        "canvas": "src/features/prompts/fe/canvas.vue",
+        "isPinned": true,
+        "options": {}
       },
       "services": {
         "prompt": "src/features/prompts/be/services/prompt.ts#promptService"
@@ -1116,9 +1206,27 @@
         "contract": "src/features/brain/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/brain/fe/plugin.ts",
         "contract": "src/features/brain/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Brain",
+        "icon": "Brain",
+        "state": "src/features/brain/fe/state.ts",
+        "canvas": {
+          "entry": "src/features/brain/fe/canvas.vue",
+          "load": "lazy"
+        },
+        "panel": {
+          "entry": "src/features/brain/fe/panel.vue",
+          "load": "lazy"
+        },
+        "fallbackPanel": {
+          "label": "Inspect Mode",
+          "toggle": {
+            "type": "TOGGLE_INSPECT"
+          },
+          "isShown": "src/features/brain/fe/fallback-panel.ts#isShown"
+        },
+        "isPinned": true
       },
       "services": {
         "brain": "src/features/brain/be/services/brain.ts#brainService",
@@ -1191,9 +1299,13 @@
         "contract": "src/features/database/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/database/fe/plugin.ts",
         "contract": "src/features/database/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Database",
+        "icon": "Database",
+        "state": "src/features/database/fe/state.ts",
+        "canvas": "src/features/database/fe/canvas.vue",
+        "isPinned": true
       },
       "services": {
         "database": "src/features/database/be/services/database.ts#databaseService"
@@ -1241,9 +1353,13 @@
         "contract": "src/features/logs/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/logs/fe/plugin.ts",
         "contract": "src/features/logs/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Logs",
+        "icon": "Bug",
+        "state": "src/features/logs/fe/state.ts",
+        "canvas": "src/features/logs/fe/canvas.vue",
+        "isPinned": true
       },
       "services": {}
     }

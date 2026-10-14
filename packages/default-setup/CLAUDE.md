@@ -48,7 +48,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `apack.json` `features.<id>.repositories`, carried by the generated pack entry's registration and registered by the host with the app's engine; use them through `repository` from `#generated/repository`
 - `be/services/` — Service modules, each exporting the `<key>Service` object exposed to systems and actions (see Services)
 - `be/types.ts` — Shared types
-- `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
+- `apack.json` `features.<id>.plugin` — presentation, state and component targets; codegen assembles the frontend binding
 - `fe/state.ts` — XState frontend state machine
 - `fe/contract.ts` — the feature's frontend leaf: its plugin's published state, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `apack.json` names it at `features.<id>.plugin.contract`
 - `fe/canvas/` — Main view components

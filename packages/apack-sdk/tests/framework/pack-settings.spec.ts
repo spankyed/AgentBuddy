@@ -30,7 +30,7 @@ describe('declarative feature settings', () => {
 
   it('allows navigation visibility without inventing a settings definition', () => {
     expect(parseManifest({ id: 'memos', name: 'Memos', version: '1.0.0',
-      features: { memos: { plugin: { entry: 'src/plugin.ts', defaultVisible: false } } },
+      features: { memos: { plugin: { label: 'Fixture', state: 'src/plugin.ts', defaultVisible: false } } },
     }).status).toBe('valid');
   });
 });

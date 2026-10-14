@@ -18,7 +18,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { setupPackFixture, dependency, facade, generate, pluginWithContract, receives, root, system, withPlugin, withPluginState, write, writeContract, writePluginEntry, writeSystemEntry } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, generate, pluginWithContract, receives, root, system, withPlugin, withPluginState, write, writeContract, writePluginState, writeSystemEntry } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -119,13 +119,13 @@ describe('generated events', () => {
   });
 
   it('records nothing for a plugin no system sends to, so a send there is rejected', async () => {
-    const files = await generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: writePluginEntry('src/features/viewer/fe/index.ts') } })] });
+    const files = await generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { label: 'Fixture', state: writePluginState('src/features/viewer/fe/index.ts') } })] });
     expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
     expect(receives(files, 'viewer')).toEqual([]);
   });
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: writePluginEntry('y') } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
     // The pack entry carries its own features only: nothing there declares what another's plugin receives
@@ -152,40 +152,40 @@ describe('generated events', () => {
   // The contract is read as a declared type. A name exported only as a value is the mistake worth catching: the
   // old reader's opposite check — an `accepts` exported only as a type — went with the phantom it read.
   it('refuses a contract the module exports only as a value', async () => {
-    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    const entry = writePluginState('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', 'export const Contract = { state: {} };\n');
-    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/only as a value, not a type/);
+    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { label: 'Fixture', state: entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/only as a value, not a type/);
   });
 
   it('refuses a contract the module does not declare, naming the type it looked for', async () => {
-    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    const entry = writePluginState('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', 'export type Other = { state: {} };\n');
-    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/doesn't export "Contract"/);
+    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { label: 'Fixture', state: entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/doesn't export "Contract"/);
   });
 
   it('refuses an inbox opened to an audience that does not exist', async () => {
-    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    const entry = writePluginState('src/features/sidebar/fe/index.ts');
     write('src/features/sidebar/fe/contract.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
-    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/is not an audience/);
+    await expect(generate({ features: [system('memos'), { id: 'sidebar', plugin: { label: 'Fixture', state: entry, contract: 'src/features/sidebar/fe/contract.ts#Contract' } }] })).rejects.toThrow(/is not an audience/);
   });
 
   // A plugin may publish state and take nothing: its own system's events still reach it
   it('reads a contract with no inbox as receiving only its own system events', async () => {
-    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    const entry = writePluginState('src/features/sidebar/fe/index.ts');
     const contract = writeContract('src/features/sidebar/fe/contract.ts');
-    const files = await generate({ features: [{ ...system('sidebar'), plugin: { entry, contract } }] });
+    const files = await generate({ features: [{ ...system('sidebar'), plugin: { label: 'Fixture', state: entry, contract } }] });
     expect(receives(files, 'sidebar')).toEqual(['SIDEBAR_CONNECTED', 'SIDEBAR_UPDATED']);
   });
 
   it("keys a dependency's plugin that declares nothing to never, so no send to it compiles", async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { entry: 'y' } }] }, facade({ PackPluginEvents: '{ memos: never }' })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, facade({ PackPluginEvents: '{ memos: never }' })) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('{ memos: never }');
     expect(files['src/__generated__/events.ts']).toContain("Qualified<'base-pack', __dep_base_pack_PackPluginEvents>");
   });
 
   it("takes every dependency's plugins, with the inbox that dependency declares", async () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { entry: 'y' } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: 'y' } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackPluginEvents as __dep_base_pack_PackPluginEvents } from './deps/base-pack.ts';");
@@ -223,14 +223,14 @@ describe('generated system sends', () => {
   // value, for the one thing a name can't express: pack code that has to say which pack it is — the sandbox that
   // runs an action stamps it on what the action sends. Writing the literal would be wrong on the copy.
   it('binds ref to the pack, so pack code never passes its own pack id', async () => {
-    const files = await generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] });
+    const files = await generate({ features: [{ id: 'sidebar', plugin: { label: 'Fixture', state: writePluginState('src/features/sidebar/fe/plugin.ts') } }] });
     expect(files['src/__generated__/ref.ts']).toContain("export const packId = 'demo-pack';");
     expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);');
     expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", async () => {
-    const files = await generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }, { 'base-pack': dependency({ features: [system('calendar')] }, baseTypes) });
+    const files = await generate({ features: [{ id: 'sidebar', plugin: { label: 'Fixture', state: writePluginState('src/features/sidebar/fe/plugin.ts') } }] }, { 'base-pack': dependency({ features: [system('calendar')] }, baseTypes) });
     const events = files['src/__generated__/events.ts'];
     expect(events).not.toContain('system-specs');
     expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
@@ -259,7 +259,7 @@ describe("a dependency that registers no plugin", () => {
     const deps = {
       // A pack with plugins publishes PackPluginState; `facade()`'s defaults can't, since pack-types.ts
       // re-exports it only for such a pack
-      'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, withPluginState(facade())),
+      'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: 'y' } }] }, withPluginState(facade())),
     };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
 

@@ -164,9 +164,6 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
     [key: string]: unknown;
 }>(): Handlers<TContext, TEvent, TOut>;
 
-// @public
-export function definePlugin(definition: PluginDefinition): PluginDefinition;
-
 // @public (undocumented)
 export interface DslTypeConfig {
     // (undocumented)

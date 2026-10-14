@@ -226,13 +226,222 @@
           "plugin": {
             "type": "object",
             "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "type": "string",
+                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                "description": "Machine module, by default export or path#exportName."
+              },
+              "icon": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy"
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "canvas": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "entry": {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                          },
+                          "load": {
+                            "type": "string",
+                            "const": "lazy"
+                          }
+                        },
+                        "required": [
+                          "entry"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "routes": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "entry": {
+                                  "type": "string",
+                                  "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                                },
+                                "load": {
+                                  "type": "string",
+                                  "const": "lazy"
+                                }
+                              },
+                              "required": [
+                                "entry"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "routes"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "panel": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy"
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "chat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy"
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "isPinned": {
+                "type": "boolean"
+              },
+              "hotkeys": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "global": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "headerClass": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "fallbackPanel": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "toggle": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "isShown": {
+                    "type": "string",
+                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+                  }
+                },
+                "required": [
+                  "label",
+                  "toggle",
+                  "isShown"
+                ],
+                "additionalProperties": false
+              },
               "defaultVisible": {
                 "type": "boolean",
                 "description": "Default navigation visibility, independent of settings values and the startup default claim."
-              },
-              "entry": {
-                "type": "string",
-                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
               },
               "contract": {
                 "type": "string",
@@ -244,7 +453,8 @@
               }
             },
             "required": [
-              "entry"
+              "label",
+              "state"
             ],
             "additionalProperties": false,
             "description": "Frontend plugin definition."

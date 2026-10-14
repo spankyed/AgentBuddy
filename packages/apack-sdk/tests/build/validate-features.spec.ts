@@ -23,9 +23,9 @@ function pack(files: string[]): string {
 const memos = {
   settings: { schema: { type: 'object' }, defaults: {}, form: 'src/features/memos/fe/settings.vue' },
   system: { entry: 'src/features/memos/be/system.ts' },
-  plugin: { entry: 'src/features/memos/fe/plugin.ts' },
+  plugin: { label: 'Fixture', state: 'src/features/memos/fe/plugin.ts' },
 };
-const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.entry];
+const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.state];
 
 describe('validateFeatures', () => {
   it('accepts features whose files exist and whose designation is the feature id', () => {
@@ -36,7 +36,7 @@ describe('validateFeatures', () => {
   it.each([
     ['settings.form', memos.settings.form],
     ['system.entry', memos.system.entry],
-    ['plugin.entry', memos.plugin.entry],
+    ['plugin.state', memos.plugin.state],
   ])('reports a missing %s file', (field, missing) => {
     const root = pack(memosFiles.filter(file => file !== missing));
     expect(messagesOf(validateFeatures(root, { features: { memos } }))).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);

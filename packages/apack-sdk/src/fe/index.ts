@@ -10,7 +10,6 @@ export type { _HostBridge } from './electron-api.ts';
 // manifest could describe, so nothing could derive that they compile this file
 export type { SpeechEvent } from './speech-event.ts';
 export type { Plugin, PluginDefinition, PluginInbox, PluginInboxAudiences, PluginStateOf, RouteComponents } from './plugin.ts'
-export { definePlugin } from './plugin.ts'
 export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
 export { PluginScope, usePlugin } from './actor-system.ts'

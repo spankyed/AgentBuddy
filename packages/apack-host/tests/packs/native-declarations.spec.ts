@@ -5,7 +5,8 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 const definition = { schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false }, defaults: { name: 'Native' } };
 const declaration: NativePackDeclaration = { id: 'native', dependencies: { provider: '*' },
   settings: { assistant: definition }, features: { notes: { settings: definition } } };
-const runtime = (): PackRegistration => structuredClone(declaration);
+const runtime = (): PackRegistration => ({ id: declaration.id, dependencies: declaration.dependencies,
+  settings: structuredClone(declaration.settings), features: { notes: { settings: structuredClone(definition) } } });
 
 it('discovers native data before binding and retains it after runtime unload or failure', () => {
   const input = structuredClone(declaration);

@@ -16,8 +16,11 @@
         "defaults": {}
       },
       "plugin": {
-        "entry": "src/features/scribbles/fe/plugin.ts",
-        "defaultVisible": true
+        "defaultVisible": true,
+        "label": "Scribbles",
+        "icon": "NotebookPen",
+        "state": "src/features/scribbles/fe/state.ts",
+        "canvas": "src/features/scribbles/fe/canvas/editor.vue"
       },
       "services": {}
     }
@@ -29,21 +32,39 @@
         "access": "owner",
         "schema": {
           "type": "object",
-          "properties": { "count": { "type": "integer", "minimum": 1, "maximum": 10 } },
-          "required": ["count"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            }
+          },
+          "required": [
+            "count"
+          ],
           "additionalProperties": false
         },
-        "defaults": { "count": 1 }
+        "defaults": {
+          "count": 1
+        }
       },
       "assistant": {
         "title": "Scribbles Assistant",
         "schema": {
           "type": "object",
-          "properties": { "name": { "type": "string" } },
-          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
           "additionalProperties": false
         },
-        "defaults": { "name": "Scribbles helper" },
+        "defaults": {
+          "name": "Scribbles helper"
+        },
         "form": "src/extensions/settings/assistant.vue"
       }
     }

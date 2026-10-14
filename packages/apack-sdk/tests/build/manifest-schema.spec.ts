@@ -206,7 +206,7 @@ describe('content.formats, content.sources and content.datasets', () => {
   // claiming none has no default plugin, which the shell handles.
   it('takes the default plugin from the plugin that claims it, and refuses two claims', () => {
     const plugin = (id: string, isDefault?: boolean) =>
-      ({ [id]: { plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
+      ({ [id]: { plugin: { label: 'Fixture', state: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
 
     expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }))).toEqual([]);
     expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } })))

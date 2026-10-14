@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import type { PackSnapshot } from '../../../src/build/manifest.ts';
-import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, write, writePluginEntry, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -107,7 +107,7 @@ describe('generated sends compile', () => {
   });
 
   it("for a pack without systems, sending to its dependencies'", async () => {
-    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
+    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { label: 'Fixture', state: writePluginState('src/features/sidebar/fe/plugin.ts') } }] }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ calendar: 'CALENDAR_RUN' })]]),
     });
@@ -213,7 +213,7 @@ describe('generated settings compile', () => {
     }, defaults: { enabled: true, paths: {}, chat: {}, items: [] } };
     const files = await generatePackFiles(manifest({ features: [
       { id: 'notes', settings: declaration },
-      { id: 'hidden', plugin: { entry: writePluginEntry('src/hidden.ts'), defaultVisible: false } },
+      { id: 'hidden', plugin: { label: 'Fixture', state: writePluginState('src/hidden.ts'), defaultVisible: false } },
     ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
       features: [{ id: 'calendar', settings: declaration }],
     }, facade({ PackFeatureSettings: "{ calendar: { weekStartsOn: number } }" }))]]) });

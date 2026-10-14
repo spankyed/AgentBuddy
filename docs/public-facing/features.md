@@ -128,7 +128,7 @@ The spec it returns:
 
 ### Key rules
 
-- **Default-export the entry, and keep the contract in its own module** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`) default-exports its single definition. Named exports alongside it are fine; the default is what gets loaded. How you declare the entry no longer matters: the events come from the contract, and your pack's typecheck says so if the machine was built from a different one.
+- **Keep contracts in their own modules.** A system entry uses its default export. Plugin state and component targets use default exports or explicit `path#exportName` references. Events come from the contract; your pack's typecheck reports a machine built from a different contract.
 - **Always handle `SEND_STATE`, and usually nothing else** — the app asks every system for its state whenever anything could have changed what it holds: a frontend connected, a pack was installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, its content were imported from Settings, or the data was reset or restored from a backup. Answer by broadcasting the full state your plugin starts from; the plugin doesn't need to ask for it. Because the ask is the same whatever caused it, you write it once and stay correct as new causes are added — including ones that didn't exist when your pack was written. An installed pack with frontend code (an FE entry or plugins) is asked once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack is asked, those without a plugin too. Every open window receives what you send, not only the one that asked.
 - **Handle a fact only for what publishing cannot fix** — `CLIENT_CONNECTED`, `PACK_CHANGED { packId }` and `DATA_REPLACED` are delivered before the ask that follows them, for work that re-sending data cannot do: tearing down something held over rows that are gone, or tracking whether a client is attached. If your answer to one of them would be "send my data again", delete it and handle `SEND_STATE` instead.
 - **Use `broadcastToPlugin()` to send to the frontend** — `broadcastToPlugin(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the plugin that name stands for, in **every** window showing it (a plugin runs once per window). The renderer's own `sendToPlugin(name, event)`, from the same module, goes to one window's actor instead. It's dropped while no client is connected, which is also why the app doesn't ask a system to publish until one is. It comes from `#generated/events` and accepts only the events that plugin receives. Don't import it from `@apackdev/sdk/events`, whose untyped version accepts any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. A plugin that should also take events from another feature or another pack declares them itself, in the `inbox` half of its `Contract` — the receiver says what it handles, so a pack widens only its own plugins.
@@ -184,39 +184,42 @@ Backend code that needs the connection or every incoming event subscribes with `
 
 ### Defining a plugin
 
-```typescript
-// src/features/bookmarks/fe/plugin.ts
-import type { PluginDefinition } from '@apackdev/sdk/fe';
-import { Bookmark } from 'lucide-vue-next';
-import state from './state.ts';
-import canvas from './canvas/list.vue';
+Declare the plugin under its feature in `apack.json`. Codegen combines this data with the referenced
+machine and views; the host addresses it at `<packId>/bookmarks`.
 
-// No id: the app registers the plugin at its feature's ref, `<packId>/bookmarks`
-const bookmarksPlugin: PluginDefinition = {
-  label: 'Bookmarks',
-  icon: Bookmark,        // Lucide component, not a string
-  state,                 // XState machine definition
-  canvas,                // Main view component (required)
-  // panel,              // Optional side panel component
-};
-
-export default bookmarksPlugin;
+```json
+"plugin": {
+  "label": "Bookmarks",
+  "icon": "Bookmark",
+  "state": "src/features/bookmarks/fe/state.ts",
+  "canvas": "src/features/bookmarks/fe/canvas/list.vue"
+}
 ```
 
-### Plugin interface
+A module path uses its default export. Use `path#exportName` for a named machine or component export.
+A component target can instead be `{ "entry": "path", "load": "lazy" }` to preserve lazy view loading.
+A custom icon uses `{ "entry": "src/icon.vue" }`; a string icon names a Lucide export.
+A routed canvas uses `{ "routes": { "list": "src/list.vue", "view": "src/view.vue" } }`.
+Discovery reads these declarations without loading the machine or component modules.
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `label` | `string` | yes | Sidebar tab label |
-| `state` | `AnyStateMachine` | yes | XState machine definition |
-| `icon` | `Component` | no | Lucide Vue component. The toolbar lists only plugins with an icon |
-| `canvas` | `Component \| Record<string, Component>` | no | Main content area: one component, or route name → component for a plugin with several views |
-| `panel` | `Component` | no | Side panel component |
-| `chat` | `Component` | no | Chat area component; the app renders the default plugin's |
-| `settings` | `Component` | no | Shown in Settings → Features; features without one aren't listed there |
-| `isPinned` | `boolean` | no | Lists the plugin in the toolbar's pinned group |
-| `hotkeys` | `PluginHotkeyDefinition[]` | no | `{ action, global? }` per hotkey action. The active plugin's machine gets every hotkey event; other plugins' machines get only their `global` actions |
-| `options` | `{ headerClass?: string }` | no | Class for the canvas header |
+### Plugin declaration
+
+| Field | Required | Meaning |
+|---|---|---|
+| label | yes | Sidebar label |
+| state | yes | Machine module/default or named-export target |
+| icon | no | Lucide name or custom component target |
+| canvas | no | Component target or routes map |
+| panel, chat | no | Component targets |
+| isPinned | no | Initial pinned placement |
+| hotkeys | no | `{ action, global? }` per shortcut action |
+| options | no | `{ headerClass?: string }` |
+| fallbackPanel | no | `{ label, toggle: { type }, isShown: "path#exportName" }`; the predicate executes only at runtime |
+| contract | no | Leaf module/type export for published state and inbox |
+| default | no | Startup default claim |
+| defaultVisible | no | Initial navigation visibility before the user's override |
+
+Custom settings forms are declared independently at `features.<id>.settings.form`.
 
 ### Frontend state machine
 
@@ -282,7 +285,10 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
         }
       },
       "plugin": {
-        "entry": "src/features/bookmarks/fe/plugin.ts",
+        "label": "Bookmarks",
+        "icon": "Bookmark",
+        "state": "src/features/bookmarks/fe/state.ts",
+        "canvas": "src/features/bookmarks/fe/canvas/list.vue",
         "defaultVisible": true
       }
     }
@@ -358,7 +364,10 @@ The host's raw `services.settings` and frontend settings port support migrations
     "entry": "src/features/bookmarks/be/system.ts"
   },
   "plugin": {
-    "entry": "src/features/bookmarks/fe/plugin.ts",
+    "label": "Bookmarks",
+        "icon": "Bookmark",
+        "state": "src/features/bookmarks/fe/state.ts",
+        "canvas": "src/features/bookmarks/fe/canvas/list.vue",
     "defaultVisible": true
   },
   "services": {},
@@ -369,7 +378,7 @@ The host's raw `services.settings` and frontend settings port support migrations
 }
 ```
 
-A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. The plugin's `label`, `icon` and `isPinned` live on the `PluginDefinition` the entry module default-exports; the manifest names only the module. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
+A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. Plugin presentation, pane references and shortcut descriptors live in the manifest; codegen supplies the bound `PluginDefinition`. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
 
 Other feature fields:
 
@@ -379,7 +388,7 @@ Other feature fields:
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
 | `references` | Built-in packs only; ignored for external packs |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.entry` file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.state` and component-target file that doesn't exist.
 
 ## Types dependents see
 

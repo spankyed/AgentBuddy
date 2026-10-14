@@ -1,5 +1,5 @@
 import { HOST_PACK_ID, splitRef } from '@apackdev/sdk/ids';
-import type { NativePackDeclaration } from '@apackdev/sdk/framework';
+import type { NativePackDeclaration, PluginDeclaration } from '@apackdev/sdk/framework';
 import { HOST } from '../refs.ts';
 
 export const hostFeatureIds = Object.fromEntries(
@@ -7,7 +7,18 @@ export const hostFeatureIds = Object.fromEntries(
 ) as Record<'application' | 'packs' | 'settings' | 'help', string>;
 
 /** Host declarations exist before any host system is constructed or registered. */
+export const hostPluginDeclarations = {
+  packs: { label: 'Packs', icon: 'Package', isPinned: true, state: '@apackdev/host/fe#packsMachine',
+    canvas: 'packages/renderer/src/views/packs/canvas.vue' },
+  settings: { label: 'Settings', icon: 'Settings', isPinned: true, state: '@apackdev/host/fe#createSettingsMachine',
+    canvas: 'packages/renderer/src/views/settings/canvas/index.vue' },
+} satisfies Record<string, PluginDeclaration>;
+
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
-  features: Object.fromEntries(Object.values(hostFeatureIds).map(id => [id, {}])),
+  features: {
+    [hostFeatureIds.application]: {}, [hostFeatureIds.help]: {},
+    [hostFeatureIds.packs]: { plugin: hostPluginDeclarations.packs },
+    [hostFeatureIds.settings]: { plugin: hostPluginDeclarations.settings },
+  },
 };

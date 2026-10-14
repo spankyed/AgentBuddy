@@ -9,7 +9,7 @@ import { createFePackRegistry, type FePackRegistry } from '../../../../src/fe/pa
 
 /** Expected backend declarations are authored independently of the imported frontend fixture. */
 const declaration = (id: string) => ({ id, name: id, version: '1.0.0',
-  ...(id === 'memo-pack' && { features: { memos: { plugin: { entry: 'src/plugin.ts' } } } }),
+  ...(id === 'memo-pack' && { features: { memos: { plugin: { label: 'Memos', state: 'src/plugin.ts' } } } }),
 });
 
 /** The window's half, recorded: each import by URL, and the stylesheets a pack has */

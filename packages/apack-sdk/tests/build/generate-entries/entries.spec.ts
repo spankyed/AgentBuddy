@@ -16,7 +16,7 @@
 // two-project run and the high end in an eleven-project one. Which is why the count is the durable
 // figure here and a per-case millisecond is not.
 import { describe, expect, it } from 'vitest';
-import { setupPackFixture, dependency, generate, system, write, writePluginEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, generate, system, write, writePluginState  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -24,8 +24,8 @@ describe('generated ref', () => {
   // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
   it("takes this pack's features, its dependencies' and the host's, and nothing else", async () => {
     const files = await generate(
-      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
+      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
     );
     expect(files['src/__generated__/ref.ts']).toContain(
       "export type FeatureName = 'memos' | 'demo-pack/memos' | 'jobs' | 'demo-pack/jobs' | 'base-pack/calendar' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
@@ -38,8 +38,8 @@ describe('generated frontend names', () => {
   // A name nothing declares fails to compile: a plugin named by data opens through `openPlugin` instead
   it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", async () => {
     const files = await generate(
-      { features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }, system('jobs')] },
-      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { entry: writePluginEntry('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
+      { features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'calendar', plugin: { label: 'Fixture', state: writePluginState('src/calendar/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
     );
 
     expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'memos' | 'base-pack/calendar';");
@@ -58,28 +58,29 @@ describe('generated frontend entry', () => {
   });
 
   // Keyed by feature, as the backend entry is: each plugin with its feature's role
-  it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", async () => {
+  it("keys each plugin by its feature, with the feature's role, assembling declared presentation and machine bindings", async () => {
     const files = await generate({ features: [
-      { id: 'settings', designation: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
+      { id: 'settings', designation: 'settings', plugin: { label: 'Fixture', state: writePluginState('src/settings/plugin') } },
+      { id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
     expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings' },\n    'memos': { plugin: __plugin_memos },\n  },");
-    expect(fe).toContain("import __plugin_settings from '../settings/plugin.ts';");
+    expect(fe).toContain('import __plugin_settings_0 from "../settings/plugin.ts";');
+    expect(fe).toContain('label: "Fixture", state: __plugin_settings_0');
     expect(fe).not.toContain('_module');
   });
 
   it('names the pack the frontend registration belongs to', async () => {
-    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } }] });
+    const files = await generate({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } }] });
 
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("id: 'demo-pack',");
   });
 
   it('opens the plugin that claims the default, not the pack\'s first', async () => {
     const files = await generate({ features: [
-      { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin'), default: true } },
+      { id: 'settings', plugin: { label: 'Fixture', state: writePluginState('src/settings/plugin') } },
+      { id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin'), default: true } },
     ] });
 
     const fe = files['src/__generated__/pack-entry-fe.ts'];
@@ -94,8 +95,8 @@ describe('generated frontend entry', () => {
    */
   it('name no default when no plugin claims it', async () => {
     const files = await generate({ features: [
-      { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
-      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
+      { id: 'settings', plugin: { label: 'Fixture', state: writePluginState('src/settings/plugin') } },
+      { id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } },
     ] });
 
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('default: true');
@@ -104,7 +105,7 @@ describe('generated frontend entry', () => {
   // So a frontend send to that role resolves, as it does on the backend
   it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', async () => {
     const files = await generate({ features: [
-      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
+      { id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } },
       system('scheduler', {}),
       system('worker'),
     ].map((f) => (f.id === 'scheduler' ? { ...f, designation: 'clock' } : f)) });
@@ -137,7 +138,7 @@ describe('generated frontend entry', () => {
 describe('generated backend entry', () => {
   it('records which features have a plugin, and takes the plugin\'s name and icon from its module', async () => {
     const files = await generate({ features: [
-      { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
+      { id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/memos/plugin') } },
       system('brain'),
     ] });
     const entry = files['src/__generated__/pack-entry.ts'];
@@ -215,7 +216,7 @@ describe('generated registrations', () => {
 
   it("carry the pack's appliers and DSL types, which their modules only export", async () => {
     const files = await generate({
-      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
+      features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }],
       content: { sources: { actions: 'src/content/actions' } },
       dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
     });
@@ -238,7 +239,7 @@ describe('generated registrations', () => {
   });
 
   it('carry no appliers or DSL types for a pack without them', async () => {
-    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    const files = await generate({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [];');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
     expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
@@ -318,7 +319,7 @@ describe('generated step registrations', () => {
   });
 
   it('write no build module for a pack with no steps', async () => {
-    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    const files = await generate({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }] });
     expect(files).not.toHaveProperty(['src/__generated__/steps-build.ts']);
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('steps:');
   });
@@ -384,7 +385,7 @@ describe('generated artifact registrations', () => {
   it("name each artifact's icon and viewer in the frontend entry, and nothing but its type in the backend", async () => {
     write('src/artifacts/todo.vue', '<template><div /></template>\n');
     const files = await generate({
-      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
+      features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }],
       artifacts: {
         todo: { icon: 'ListTodo', fe: 'src/artifacts/todo.vue' },
         graph: { icon: 'Network' },
@@ -410,7 +411,7 @@ describe('generated artifact registrations', () => {
   });
 
   it('carry no artifacts for a pack that declares none', async () => {
-    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    const files = await generate({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('artifacts:');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('artifacts:');
   });
@@ -427,7 +428,7 @@ describe('generated block registrations', () => {
     write('src/blocks/aside.ts', 'export const asideFacet = { generateAsideText: () => null };\n');
     write('src/blocks/Rating.vue', '<template><div /></template>\n');
     const files = await generate({
-      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
+      features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }],
       blocks: {
         rating: { fe: 'src/blocks/Rating.vue' },
         approval: { kind: 'input', fe: 'src/blocks/Rating.vue', be: 'src/blocks/aside.ts#asideFacet' },
@@ -446,7 +447,7 @@ describe('generated block registrations', () => {
   });
 
   it('carry no blocks for a pack that declares none', async () => {
-    const files = await generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    const files = await generate({ features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('blocks:');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('blocks:');
   });
@@ -477,4 +478,26 @@ it('wires declared feature and group forms without inventing a plugin or importi
   expect(frontend).toContain("settingsForms: { 'shared': __settingsGroup_shared }");
   expect(frontend).not.toContain('plugin:');
   expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/import .*feature.vue|import .*group.vue/);
+});
+
+
+it('generates routed and lazy panes, named state, custom icons and fallback predicates without evaluating them', async () => {
+  write('src/state.ts', 'throw new Error("Do not activate"); export const machine = {} as import("xstate").AnyStateMachine;');
+  write('src/predicate.ts', 'throw new Error("Do not activate"); export const visible = () => true;');
+  for (const view of ['list', 'detail', 'icon', 'panel', 'chat']) write(`src/${view}.vue`, '<template><div /></template>');
+  const files = await generate({ features: [{ id: 'notes', plugin: { label: 'Notes', state: 'src/state.ts#machine',
+    icon: { entry: 'src/icon.vue' }, canvas: { routes: { entry: 'src/list.vue', view: { entry: 'src/detail.vue', load: 'lazy' } } },
+    panel: 'src/panel.vue', chat: 'src/chat.vue',
+    fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#visible' } } }] });
+  const frontend = files['src/__generated__/pack-entry-fe.ts'];
+  expect(frontend).toContain('import { machine as __plugin_notes_0 }');
+  expect(frontend).toContain('"entry": __plugin_notes_2');
+  expect(frontend).toContain('defineAsyncComponent(() => import("../detail.vue").then(module => module.default))');
+  expect(frontend).toContain('import { visible as __plugin_notes_5 }');
+  expect(frontend).toContain('label: "Inspect", toggle: {"type":"INSPECT"}');
+  expect(files['src/__generated__/pack-entry.ts']).not.toContain('src/state');
+  write('src/predicate.ts', 'export type visible = boolean;');
+  await expect(generate({ features: [{ id: 'notes', plugin: { label: 'Notes', state: 'src/state.ts#machine',
+    fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#visible' } } }] }))
+    .rejects.toThrow('features.notes.plugin.fallbackPanel.isShown');
 });

@@ -150,8 +150,8 @@ export async function generate(fields: Record<string, unknown>, deps: Record<str
  * type: these fixtures are bare temp dirs with no `@apackdev/sdk` to resolve, and a declared type needs no import to
  * read — which is the point of reading one rather than a value's phantom property.
  */
-export function writePluginEntry(file: string, inbox?: string): string {
-  write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const plugin: { label: string };', 'export default plugin;'].join('\n') + '\n');
+export function writePluginState(file: string, inbox?: string): string {
+  write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const state: import("xstate").AnyStateMachine;', 'export default state;'].join('\n') + '\n');
   if (inbox !== undefined) writeContract(`${file.replace(/(\.ts)?$/, '')}.types.ts`, inbox);
   return file;
 }
@@ -164,7 +164,7 @@ export function writeContract(file: string, inbox?: string, state = '{ ready: bo
 
 /** The manifest `plugin` object for a feature whose contract sits beside its entry */
 export const pluginWithContract = (entry: string, inbox?: string) => ({
-  entry: writePluginEntry(entry, inbox),
+  label: 'Fixture', state: writePluginState(entry, inbox),
   ...(inbox === undefined ? {} : { contract: `${entry.replace(/(\.ts)?$/, '')}.types.ts#Contract` }),
 });
 

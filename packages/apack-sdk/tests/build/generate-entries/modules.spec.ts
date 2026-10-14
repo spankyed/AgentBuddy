@@ -23,7 +23,7 @@ import { PROVENANCE_KINDS, _buildProvenance } from '../../../src/build/manifest.
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../../src/types/sdk-entities.ts';
 import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
 import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
-import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, write, writePluginEntry, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -349,7 +349,7 @@ describe('the snapshot format', () => {
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, defaultVisible: true, entry: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -370,7 +370,7 @@ describe('the snapshot format', () => {
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   async function facadeImports(): Promise<string[]> {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: writePluginEntry('y') } }] }) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }) };
     const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.ts'/g)].map((m) => m[1]));
     return [...new Set(names)].sort();
@@ -412,7 +412,7 @@ describe('the snapshot format', () => {
         feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
-        plugin: ['contract', 'default', 'defaultVisible', 'entry'],
+        plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
         contentFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
         contentTree: ['branch', 'branchEntity', 'relKind'],
         contentField: ['default', 'from', 'type'],

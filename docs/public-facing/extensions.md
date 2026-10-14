@@ -537,7 +537,7 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 | Field | Source |
 |---|---|
-| `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
+| `features` | Each feature with a `plugin`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `plugin` sets `default`. The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
 | `tiptapPlugins` | `extensions.fe.tiptapPlugins` |
 | `appExtensions` | `extensions.fe.appExtensions` |

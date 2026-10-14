@@ -8,7 +8,7 @@ const manifest = ManifestSchema.parse({
   features: {
     notes: {
       designation: 'notes', system: { entry: 'system.ts' },
-      plugin: { entry: 'plugin.ts', defaultVisible: false },
+      plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false },
       services: { notes: 'notes.ts#notes' }, repositories: { noteQueries: 'notes.ts#queries' },
     },
     preferences: {},

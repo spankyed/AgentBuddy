@@ -97,10 +97,10 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, must equal the name. It creates:
 
 - `src/features/<name>/be/system.ts`, `be/contract.ts` (the system's contract, which `apack.json` names), `be/types.ts`, `be/repository/index.ts`
-- `src/features/<name>/fe/plugin.ts`, `fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
+- `src/features/<name>/fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
 - `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
-and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`entry`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
+and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
 
 ### Code generation
 
@@ -419,7 +419,7 @@ the same report.
 
 Checks:
 - Manifest structure validation
-- Each keyed `features` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
+- Each keyed `features` entry against the pack: its `settings`, `system.entry` and `plugin.state` and component-target files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
 - **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 
@@ -459,7 +459,7 @@ Health checks with pass/warn/fail output. Failures exit with code 1; warnings al
 - `apack.json` exists and parses
 - `id` and `hostVersion` are set
 - `src/__generated__/` exists (warn)
-- Each feature's `system.entry` and `plugin.entry` exist
+- Each feature's system, plugin state and component targets exist
 - Each facet path an `extensions.steps` entry names exists (its `node`, `build` or `trigger`, `runtime.handler` and `fe`)
 
 #### `apack pack facade-report [--update]`

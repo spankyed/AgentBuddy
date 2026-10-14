@@ -69,14 +69,14 @@ const BASE_PACK = {
     features: {
       calendar: {
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
-        plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
+        plugin: { label: 'Fixture', state: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
         services: { search: 'src/search.ts#searchService' },
         repositories: { tagQueries: 'src/repository.ts#tagQueries' },
       },
       // A second plugin of the dependency, which declares no inbox: nothing may send it
       inbox: {
         system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
-        plugin: { entry: 'src/inbox-plugin.ts' },
+        plugin: { label: 'Fixture', state: 'src/inbox-plugin.ts' },
       },
     },
   }),
@@ -95,8 +95,8 @@ const BASE_PACK = {
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
-    "import type { Plugin } from '@apackdev/sdk/fe';",
-    "export default { id: 'calendar' } as unknown as Plugin;",
+    "import type { AnyStateMachine } from 'xstate';",
+    "export default { id: 'calendar' } as unknown as AnyStateMachine;",
   ].join('\n') + '\n',
   // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
   // dependent's facade carries as this plugin's published inbox
@@ -113,7 +113,7 @@ const BASE_PACK = {
     'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/inbox-plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
+  'src/inbox-plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'inbox' } as unknown as AnyStateMachine;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
     "import { findAll, EARS } from '#generated/ears.ts';",
@@ -130,10 +130,10 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
+    features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
-  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
     "export type IncomingMemosEvents = { type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string };",

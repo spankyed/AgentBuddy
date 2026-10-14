@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMachine } from 'xstate';
 import { ManifestSchema, type PackManifest } from '@apackdev/sdk/build';
+import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 import { frontendBindingProblem } from '../../src/fe/declaration-binding.ts';
 
 function fixture() {
@@ -8,7 +9,7 @@ function fixture() {
   const loadComponents = vi.fn();
   const bindSettings = vi.fn();
   const manifest: PackManifest = { id: 'notes-pack', name: 'Notes', version: '1.0.0',
-    features: { notes: { plugin: { entry: 'src/plugin.ts', default: true }, designation: 'notes' },
+    features: { notes: { plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
       backend: { system: { entry: 'src/system.ts' } }, form: { settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
       steps: { note: { node: 'src/node.ts#node', fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: 'src/trigger.ts#node' } },
@@ -76,6 +77,54 @@ describe('frontend declaration binding', () => {
   });
 
   it('refuses editor bindings a manifest never declared', () => {
-    expect(frontendBindingProblem({ id: 'empty', name: 'Empty', version: '1.0.0' }, { tiptapPlugins: [{}] })).toContain('tiptapPlugins');
+    expect(frontendBindingProblem({ id: 'empty' }, { tiptapPlugins: [{}] })).toContain('tiptapPlugins');
   });
+});
+
+
+it('checks declared presentation and panes without resolving a component or predicate', () => {
+  const { manifest, registration, component } = fixture();
+  const declaration = manifest.features!.notes.plugin!;
+  Object.assign(declaration, { label: 'Notes', isPinned: true, icon: 'NotebookText',
+    canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } },
+    panel: 'src/panel.vue', chat: 'src/chat.vue', hotkeys: [{ action: 'open', global: false }],
+    options: { headerClass: 'notes' }, fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#isShown' } });
+  const isShown = vi.fn();
+  Object.assign(registration.features.notes.plugin, { icon: component, isPinned: true,
+    canvas: { list: component, view: component }, panel: component, chat: component,
+    hotkeys: [{ action: 'open', global: false }], options: { headerClass: 'notes' },
+    fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown } });
+  expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
+  expect(isShown).not.toHaveBeenCalled();
+  expect(component.render).not.toHaveBeenCalled();
+  const plugin = registration.features.notes.plugin as Record<string, unknown>;
+  const changes: [string, unknown][] = [
+    ['label', 'Wrong'], ['isPinned', false], ['icon', undefined], ['canvas', { list: component }],
+    ['panel', undefined], ['chat', undefined], ['hotkeys', [{ action: 'other' }]],
+    ['options', { headerClass: 'other' }], ['fallbackPanel', { label: 'Inspect', toggle: { type: 'OTHER' }, isShown }],
+    ['undeclared', true],
+  ];
+  for (const [field, value] of changes) {
+    const previous = plugin[field];
+    plugin[field] = value;
+    expect(frontendBindingProblem(manifest, registration), field).toContain(`plugin.${field}`);
+    if (previous === undefined) delete plugin[field]; else plugin[field] = previous;
+  }
+  expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
+});
+
+
+it('refuses a native replacement before granting resources and retains the accepted plugin', () => {
+  const component = { render: vi.fn() };
+  const native = { id: 'native', features: { view: { plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  const registry = createFePackRegistry({ nativeDeclarations: [native] });
+  const registration = { id: 'native', features: { view: { plugin: { label: 'Native view', state: createMachine({}), canvas: component } } } };
+  const [accepted] = registry.registerPackFE(registration);
+  native.features.view.plugin.label = 'Mutated caller';
+  const bindSettings = vi.fn();
+  expect(() => registry.replacePackFE({ ...registration, bindSettings,
+    features: { view: { plugin: { ...registration.features.view.plugin, label: 'Changed binding' } } } })).toThrow('plugin.label');
+  expect(bindSettings).not.toHaveBeenCalled();
+  expect(registry.getRegisteredPlugins()).toEqual([accepted]);
+  expect(component.render).not.toHaveBeenCalled();
 });

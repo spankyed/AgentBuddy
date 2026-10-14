@@ -6,6 +6,7 @@
 export type { Plugin } from '@apackdev/sdk/fe';
 export { createFePackRegistry, type FePackRegistry, type FrontendSettingsBinding, type PreparedFrontend } from './pack-store.ts';
 export { HOST } from '../refs.ts';
+export { hostDeclaration, hostPluginDeclarations } from '../features/declaration.ts';
 export type { PackFERegistration } from '@apackdev/sdk/fe';
 export { describeFailure, type ShellClient, type ShellConnection, type ShellFailure } from './client.ts';
 export type { LoadedPackEntry } from '../packs/layout.ts';

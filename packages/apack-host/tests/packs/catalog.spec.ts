@@ -18,12 +18,12 @@ function source(id: string, enabled = true) {
 }
 
 describe('contribution catalog data', () => {
-  it('reads help from a disabled sealed artifact without executing its poisoned backend', () => {
+  it('reads help and plugins from a disabled sealed artifact without executing its poisoned runtime', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');
     try {
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
-        features: { notes: {} }, extensions: { help: { path: 'help' } } };
+        features: { notes: { plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' } } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         manifest, types: { entities: {}, relKinds: {} }, defs: {},
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
@@ -33,6 +33,7 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify(snapshot));
       const marker = path.join(packsDir, 'executed');
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Do not activate');`);
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), `throw new Error('Do not activate frontend');`);
       sealPack(dir);
       const catalog = readInstalledContributionCatalog(packsDir, new Set(['help-pack']));
       const accepted = readPackArtifact(dir);
@@ -44,6 +45,7 @@ describe('contribution catalog data', () => {
       }).toThrow();
       expect(catalog.help().articles).toEqual([{ ...snapshot.help[0], packId: 'help-pack', packName: 'Help' }]);
       expect(catalog.get('help-pack')?.enabled).toBe(false);
+      expect(catalog.plugins()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
       expect(fs.existsSync(marker)).toBe(false);
       catalog.help().articles[0].body = 'Mutated reader';
       expect(catalog.help().articles[0].body).toBe('Available without activation');
@@ -247,4 +249,31 @@ it('checks source binding identity before acceptance and preserves declarations 
   packs.registerPack(registration, origin);
   packs.unregisterPack(manifest.id);
   expect(packs.settingsCatalog().packs.author.assistant.defaults).toEqual({ name: '' });
+});
+
+
+it('projects native, disabled installed and authoring plugins without activating implementations', () => {
+  const catalog = createContributionCatalog(app);
+  const native = { id: 'native', features: { view: { plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  catalog.setNative([native]);
+  const installed = source('installed', false);
+  installed.snapshot.manifest.features = { view: { plugin: { label: 'Installed view', state: 'src/state.ts',
+    canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } } } } };
+  installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  catalog.replace([installed]);
+  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { plugin: { label: 'Author view', state: 'src/state.ts' } } } };
+  catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
+  expect(catalog.plugins()).toMatchObject([
+    { featureRef: 'native/view', origin: 'native', enabled: true, declaration: { label: 'Native view' } },
+    { featureRef: 'installed/view', origin: 'installed', enabled: false, declaration: { label: 'Installed view' } },
+    { featureRef: 'author/view', origin: 'source', declaration: { label: 'Author view' } },
+  ]);
+  expect(catalog.plugins()[0].declarationRevision).toBeUndefined();
+  expect(catalog.plugins()[2].enabled).toBeUndefined();
+  native.features.view.plugin.label = 'Changed caller';
+  expect(catalog.plugins()[0].declaration.label).toBe('Native view');
+  expect(Reflect.set(catalog.plugins()[0].declaration, 'label', 'Changed reader')).toBe(false);
+  expect(catalog.plugins()[0].declaration.label).toBe('Native view');
+  catalog.replace([]);
+  expect(catalog.plugins().map(plugin => plugin.origin)).toEqual(['native', 'source']);
 });

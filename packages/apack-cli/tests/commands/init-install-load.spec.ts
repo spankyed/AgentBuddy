@@ -61,7 +61,7 @@ describe('pack full lifecycle: init → install → load', () => {
     manifest.features = {
       main: {
         system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
-        plugin: { entry: 'src/features/main/fe/plugin.ts' },
+        plugin: { label: 'Fixture', state: 'src/features/main/fe/plugin.ts' },
       },
     };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest, null, 2));

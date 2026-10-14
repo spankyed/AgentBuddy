@@ -922,7 +922,7 @@ Custom entity-attribute-relation graph database (`@apackdev/ears`) backed by LMD
 
 ### Frontend plugin system
 
-Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. Plugins come from `apack.json` `features.<id>.plugin`: `generate-entries` writes them into `src/__generated__/pack-entry-fe.ts`, which `apack pack build` bundles into the pack's `dist/runtime/fe.js`. **Every** pack's frontend is loaded from `pack://<id>/runtime/fe.js` by the shell, the one the app ships included; a dev server serves it from that source file instead (`virtual:dev-pack-frontends`), which is what makes a `.vue` edit patch the component.
+Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin machines and views live in `packages/default-setup/src/features/<name>/fe/`. Presentation and binding targets are declared in `apack.json` `features.<id>.plugin`: `generate-entries` assembles them into `src/__generated__/pack-entry-fe.ts`, which `apack pack build` bundles into the pack's `dist/runtime/fe.js`. **Every** pack's frontend is loaded from `pack://<id>/runtime/fe.js` by the shell, the one the app ships included; a dev server serves it from that source file instead (`virtual:dev-pack-frontends`), which is what makes a `.vue` edit patch the component.
 
 ### Key patterns
 

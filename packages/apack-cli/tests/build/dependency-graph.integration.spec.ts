@@ -33,7 +33,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
 
 /** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
-  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
+  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
 };
 const NOTIFIER_SOURCES = {
   'src/system.contract.ts': [
@@ -48,7 +48,7 @@ const NOTIFIER_SOURCES = {
     'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'notifier' } as unknown as AnyStateMachine;\n",
 };
 
 const DEEP = 'deep-pack';

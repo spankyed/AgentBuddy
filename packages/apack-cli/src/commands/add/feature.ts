@@ -75,7 +75,6 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'be', 'types.ts'), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
     [path.join(featureDir, 'be', 'contract.ts'), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],
     [path.join(featureDir, 'be', 'repository', 'index.ts'), renderTemplate('pack/src/features/feature/be/repository/index.ts', { CAMEL: camel })],
-    [path.join(featureDir, 'fe', 'plugin.ts'), renderTemplate('pack/src/features/feature/fe/plugin.ts', { CAMEL: camel, LABEL: label, ICON: icon })],
     [path.join(featureDir, 'fe', 'contract.ts'), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
     [path.join(featureDir, 'fe', 'state.ts'), renderTemplate('pack/src/features/feature/fe/state.ts', { NAME: v.NAME, CAMEL: v.CAMEL, PASCAL: v.PASCAL })],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
@@ -92,7 +91,7 @@ export async function addFeature(args: string[], root: string) {
     ...(designation !== undefined && { designation }),
     settings: { schema: { type: 'object', additionalProperties: false }, defaults: {} },
     system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },
-    plugin: { defaultVisible: true, entry: `src/features/${name}/fe/plugin.ts`, contract: `src/features/${name}/fe/contract.ts#Contract` },
+    plugin: { label, icon, state: `src/features/${name}/fe/state.ts`, canvas: `src/features/${name}/fe/canvas/list.vue`, defaultVisible: true, contract: `src/features/${name}/fe/contract.ts#Contract` },
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,

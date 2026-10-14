@@ -14,6 +14,7 @@ import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+import { _pluginTargets, type ComponentTarget } from '../framework/plugin-declaration.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
@@ -266,7 +267,7 @@ const _everyFacetIsRouted: [UnroutedFacet] extends [never] ? true : UnroutedFace
 void _everyFacetIsRouted;
 
 /** Extensions of the TypeScript sources codegen reads exports from */
-const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
+const MODULE_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
 
 /**
  * Specifier from src/__generated__ to a manifest path (relative to the pack root), naming the file that is
@@ -465,7 +466,7 @@ export async function generatePackFiles(
     const normalized = manifestPath.split('\\').join('/');
     return [normalized, `${normalized}.ts`, `${normalized}/index.ts`]
       .map((candidate) => join(root, candidate))
-      .find((file) => TS_SOURCE_EXTENSIONS.has(extname(file)) && existsSync(file) && statSync(file).isFile());
+      .find((file) => MODULE_SOURCE_EXTENSIONS.has(extname(file)) && existsSync(file) && statSync(file).isFile());
   }
 
   /** A `"path#exportName"` manifest value: the source path, the export and the file */
@@ -490,6 +491,7 @@ export async function generatePackFiles(
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
       ...Object.values(manifest.boot ?? {}),
+      ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -497,13 +499,9 @@ export async function generatePackFiles(
       // Named as a module rather than a `path#export`, but its export name is a convention codegen checks,
       // so it has to be in the program for `exportOf` to see it
       ...(manifest.extensions?.fe?.tiptapPlugins ? [manifest.extensions.fe.tiptapPlugins] : []),
-      // The contract leaves, and not the system and plugin entries beside them: a feature's events are read from
-      // its contract now, so putting the machines in the program would parse and bind every one of them — and
-      // their whole closure, XState and Vue included — for nothing. Their paths still reach the generated
-      // imports; only membership of this program is what they don't need.
-      // Measured once, from the other end: a contract written to derive its state from its machine builds fine and
-      // emits identical events, and adds the machine's whole inferred type to dist/types/pack-types.d.ts. So the
-      // cost is not only parse time — it reaches the facade. `findContractLeafImports` is what keeps it out.
+      // Events and published state types come from contract leaves, never inferred machine types.
+      // Plugin machines also enter this program through targets above for value-export checks.
+      // Keeping contracts independent still prevents their machine closure leaking into facade types.
       ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
       ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
     ];
@@ -1009,11 +1007,56 @@ ${contractCheck}`;
       ...groupForms.map(([id, definition]) => `import __settingsGroup_${id} from '${toImportPath(root, definition.form!)}';`),
     ];
 
-    // The plugin module is passed through as the author wrote it, keyed by its feature as the backend entry is: the
-    // host registers it at the feature's ref, with the feature's role
-    const pluginImports = pluginFeatures
-      .map(f => `import ${pluginBinding(f.id)} from '${toImportPath(root, f.plugin!.entry)}';`)
-      .join('\n');
+    const pluginImports: string[] = [];
+    const pluginDefinitions: string[] = [];
+    let lazyComponents = false;
+    for (const feature of pluginFeatures) {
+      const plugin = feature.plugin!;
+      let nextBinding = 0;
+      for (const [field, reference] of _pluginTargets(plugin)) {
+        const [source, exported = 'default'] = reference.split('#');
+        const label = `features.${feature.id}.plugin.${field}`;
+        if (source!.endsWith('.vue')) {
+          if (!existsSync(resolve(root, source!)) || !statSync(resolve(root, source!)).isFile()) throw new Error(`${label}: no component found at ${source}`);
+          if (exported !== 'default') throw new Error(`${label}: Vue components use their default export`);
+        } else {
+          const file = sourceFileOf(source!);
+          if (!file) throw new Error(`${label}: no module found at ${source}`);
+          if (!exportOf(file, exported)?.value) throw new Error(`${label}: ${source} doesn't export ${exported} as a value`);
+        }
+      }
+      const target = (reference: string): string => {
+        const [source, exported = 'default'] = reference.split('#');
+        const binding = `${pluginBinding(feature.id)}_${nextBinding++}`;
+        const from = JSON.stringify(toImportPath(root, source!));
+        pluginImports.push(exported === 'default' ? `import ${binding} from ${from};`
+          : `import { ${exported} as ${binding} } from ${from};`);
+        return binding;
+      };
+      const component = (reference: ComponentTarget): string => {
+        if (typeof reference === 'string' || reference.load !== 'lazy') return target(typeof reference === 'string' ? reference : reference.entry);
+        lazyComponents = true;
+        const [source, exported = 'default'] = reference.entry.split('#');
+        return `defineAsyncComponent(() => import(${JSON.stringify(toImportPath(root, source!))}).then(module => module.${exported}))`;
+      };
+      const properties = [`label: ${JSON.stringify(plugin.label)}`, `state: ${target(plugin.state)}`];
+      if (typeof plugin.icon === 'string') {
+        const binding = `${pluginBinding(feature.id)}_icon`;
+        pluginImports.push(`import { ${plugin.icon} as ${binding} } from 'lucide-vue-next';`);
+        properties.push(`icon: ${binding}`);
+      } else if (plugin.icon) properties.push(`icon: ${component(plugin.icon)}`);
+      if (plugin.canvas !== undefined) {
+        const canvas = plugin.canvas;
+        properties.push(`canvas: ${typeof canvas === 'object' && 'routes' in canvas
+          ? `{ ${Object.entries(canvas.routes).map(([route, reference]) => `${JSON.stringify(route)}: ${component(reference)}`).join(', ')} }`
+          : component(canvas)}`);
+      }
+      for (const field of ['panel', 'chat'] as const) if (plugin[field]) properties.push(`${field}: ${component(plugin[field])}`);
+      for (const field of ['isPinned', 'hotkeys', 'options'] as const) if (plugin[field] !== undefined) properties.push(`${field}: ${JSON.stringify(plugin[field])}`);
+      if (plugin.fallbackPanel) properties.push(`fallbackPanel: { label: ${JSON.stringify(plugin.fallbackPanel.label)}, toggle: ${JSON.stringify(plugin.fallbackPanel.toggle)}, isShown: ${target(plugin.fallbackPanel.isShown)} }`);
+      pluginDefinitions.push(`const ${pluginBinding(feature.id)} = { ${properties.join(', ')} } satisfies PluginDefinition;`);
+    }
+    if (lazyComponents) pluginImports.push("import { defineAsyncComponent } from 'vue';");
     // The feature whose plugin claims it, and no fallback: `features` is a map, so "the pack's first" would
     // be whatever key order JSON tooling left behind. A pack claiming none has no default plugin, which the
     // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
@@ -1068,11 +1111,12 @@ ${contractCheck}`;
     }
 
     return `${HEADER}
-import type { PackFERegistration } from '@apackdev/sdk/fe';
+import type { PackFERegistration${pluginFeatures.length ? ', PluginDefinition' : ''} } from '@apackdev/sdk/fe';
 import { bindSettings } from './settings-fe.ts';
-${pluginImports}
+${pluginImports.join('\n')}
 ${formImports.join('\n')}
 ${extraImports.join('\n')}
+${pluginDefinitions.join('\n')}
 
 export default {
   id: '${manifest.id}',

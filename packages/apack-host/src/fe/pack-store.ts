@@ -11,6 +11,8 @@ import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
+import type { NativePackDeclaration } from '@apackdev/sdk/framework';
+import { frontendBindingProblem } from './declaration-binding.ts';
 
 type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
 
@@ -139,7 +141,9 @@ function buildTables(packs: Iterable<FrontendContributions>) {
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
-export function createFePackRegistry(): FePackRegistry {
+export function createFePackRegistry(options: { nativeDeclarations?: readonly NativePackDeclaration[] } = {}): FePackRegistry {
+  const native = new Map((options.nativeDeclarations ?? []).map(declaration => [declaration.id, structuredClone(declaration)]));
+  if (native.size !== (options.nativeDeclarations ?? []).length) throw new Error('Duplicate native frontend declaration owner');
   const logger = createLogger('pack-frontends');
   let accepted = new Map<string, FrontendContributions>();
   let tables = buildTables(accepted.values());
@@ -204,6 +208,13 @@ export function createFePackRegistry(): FePackRegistry {
     });
   }
   function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
+    registration = { ...registration };
+    const declaration = native.get(registration.id);
+    if (declaration) {
+      const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
+        extensions: { settings: declaration.settings } }, registration);
+      if (problem) throw new Error(problem);
+    }
     const binding = createFrontendSettingsBinding(settings);
     try {
       return mutate(() => {

@@ -1,5 +1,6 @@
 import type { PackManifest } from '@apackdev/sdk/build';
-import type { PackFERegistration, PackFEFeature } from '@apackdev/sdk/fe';
+import type { PluginDeclaration, SettingsDefinition } from '@apackdev/sdk/framework';
+import type { PackFERegistration, PackFEFeature, PluginDefinition } from '@apackdev/sdk/fe';
 import { isPlainObject, hasOwn } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys } from '../packs/binding-shape.ts';
 
@@ -9,11 +10,49 @@ const REGISTRATION_KEYS = {
 } satisfies Record<keyof PackFERegistration, true>;
 
 const FEATURE_KEYS = { plugin: true, settingsForm: true, designation: true, default: true } satisfies Record<keyof PackFEFeature, true>;
+const PLUGIN_KEYS = { label: true, state: true, icon: true, canvas: true, panel: true, chat: true,
+  isPinned: true, hotkeys: true, options: true, fallbackPanel: true } satisfies Record<keyof PluginDefinition, true>;
 const optionalKeys = (actual: unknown, keys: string[]) => sameKeys(actual === undefined ? {} : actual, keys);
 const isComponent = (value: unknown) => typeof value === 'function' || isPlainObject(value);
 
+/** Compare a bound plugin to its data without executing its views or predicates. */
+function pluginBindingProblem(declaration: PluginDeclaration, plugin: unknown): string | undefined {
+  const problem = (field = '') => `plugin${field ? '.' + field : ''}`;
+  if (!isPlainObject(plugin) || typeof plugin.label !== 'string' || !plugin.label.trim()
+    || !isPlainObject(plugin.state) || typeof plugin.state.transition !== 'function'
+    || typeof plugin.state.getInitialSnapshot !== 'function') return problem();
+  for (const key of Object.keys(plugin)) if (!hasOwn(PLUGIN_KEYS, key)) return problem(key);
+  for (const field of ['label', 'isPinned'] as const) if (plugin[field] !== declaration[field]) return problem(field);
+  for (const field of ['icon', 'panel', 'chat'] as const) {
+    if ((plugin[field] !== undefined) !== (declaration[field] !== undefined)
+      || (declaration[field] !== undefined && !isComponent(plugin[field]))) return problem(field);
+  }
+  if ((plugin.canvas !== undefined) !== (declaration.canvas !== undefined)) return problem('canvas');
+  if (declaration.canvas !== undefined) {
+    const canvas = declaration.canvas;
+    if (typeof canvas === 'object' && 'routes' in canvas) {
+      if (!sameKeys(plugin.canvas, Object.keys(canvas.routes)) || Object.values(plugin.canvas as Record<string, unknown>).some(value => !isComponent(value))) return problem('canvas.routes');
+    } else if (!isComponent(plugin.canvas)) return problem('canvas');
+  }
+  if (declaration.hotkeys === undefined ? plugin.hotkeys !== undefined : !Array.isArray(plugin.hotkeys)
+    || plugin.hotkeys.length !== declaration.hotkeys.length || declaration.hotkeys.some((hotkey, index) => {
+      const actual = (plugin.hotkeys as unknown[])[index];
+      return !sameKeys(actual, Object.keys(hotkey)) || (actual as Record<string, unknown>).action !== hotkey.action
+        || (actual as Record<string, unknown>).global !== hotkey.global;
+    })) return problem('hotkeys');
+  if (declaration.options === undefined ? plugin.options !== undefined : !sameKeys(plugin.options, Object.keys(declaration.options))
+    || (plugin.options as Record<string, unknown>).headerClass !== declaration.options.headerClass) return problem('options');
+  const fallback = plugin.fallbackPanel;
+  if (declaration.fallbackPanel === undefined ? fallback !== undefined : !isPlainObject(fallback)
+    || !sameKeys(fallback, ['label', 'toggle', 'isShown']) || fallback.label !== declaration.fallbackPanel.label
+    || !sameKeys(fallback.toggle, ['type']) || (fallback.toggle as Record<string, unknown>).type !== declaration.fallbackPanel.toggle.type
+    || typeof fallback.isShown !== 'function') return problem('fallbackPanel');
+}
+
 /** Check declared identities before registering components, resolving factories or granting settings access. */
-export function frontendBindingProblem(manifest: PackManifest, registration: unknown): string | undefined {
+export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'extensions'> & {
+  features?: Record<string, { plugin?: PluginDeclaration; designation?: string; settings?: SettingsDefinition }>;
+}, registration: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" frontend ${path} does not match its accepted declarations`;
   if (!isPlainObject(registration)) return problem('registration');
   if (Object.keys(registration).some(key => !hasOwn(REGISTRATION_KEYS, key))) return problem('registration fields');
@@ -29,11 +68,8 @@ export function frontendBindingProblem(manifest: PackManifest, registration: unk
     if (feature.default !== (expected.plugin?.default ? true : undefined)) return problem(`features.${id}.default`);
     if ((feature.plugin !== undefined) !== !!expected.plugin) return problem(`features.${id}.plugin`);
     if (expected.plugin) {
-      const plugin = feature.plugin;
-      if (!isPlainObject(plugin) || typeof plugin.label !== 'string' || !plugin.label.trim()
-        || !isPlainObject(plugin.state) || typeof plugin.state.transition !== 'function'
-        || typeof plugin.state.getInitialSnapshot !== 'function') return problem(`features.${id}.plugin`);
-      if (plugin.id !== undefined) return problem(`features.${id}.plugin.id`);
+      const mismatch = pluginBindingProblem(expected.plugin, feature.plugin);
+      if (mismatch) return problem(`features.${id}.${mismatch}`);
     }
     if ((feature.settingsForm !== undefined) !== !!expected.settings?.form || (expected.settings?.form && !isComponent(feature.settingsForm))) return problem(`features.${id}.settingsForm`);
   }

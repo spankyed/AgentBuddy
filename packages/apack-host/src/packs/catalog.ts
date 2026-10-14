@@ -5,7 +5,7 @@ import { appSettingsDefinition } from '../features/settings/be/app-definition.ts
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
 import { parseSnapshot, ManifestSchema, _NativePackDeclarationSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -34,6 +34,16 @@ export interface SourcePackDeclaration {
   readonly dir: string;
   readonly declarationRevision: string;
   readonly help?: CatalogData<HelpDocument[]>;
+}
+
+/** Known plugin data; availability and accepted executable bindings are separate. */
+export interface PluginCatalogEntry {
+  readonly featureRef: FeatureRef;
+  readonly packId: string;
+  readonly origin: 'native' | 'installed' | 'source';
+  readonly declaration: CatalogData<PluginDeclaration>;
+  readonly declarationRevision?: string;
+  readonly enabled?: boolean;
 }
 
 /** A visible installed directory whose candidate declarations could not be accepted. */
@@ -148,6 +158,19 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
   return {
     getSnapshot: (): PackCatalogSnapshot => current,
+    plugins(): readonly PluginCatalogEntry[] {
+      const collect = (packId: string, features: Record<string, { plugin?: CatalogData<PluginDeclaration> }> | undefined,
+        origin: PluginCatalogEntry['origin'], identity: Pick<PluginCatalogEntry, 'enabled' | 'declarationRevision'> = {}) =>
+        Object.entries(features ?? {}).flatMap(([id, feature]) => feature.plugin
+          ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.plugin, ...identity })] : []);
+      return Object.freeze([
+        ...current.native.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true })),
+        ...current.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',
+          { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision })),
+        ...current.sourcePacks.flatMap(pack => collect(pack.manifest.id, pack.manifest.features, 'source',
+          { declarationRevision: pack.declarationRevision })),
+      ]);
+    },
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
     help: (): HelpCatalog => structuredClone(help) as HelpCatalog,

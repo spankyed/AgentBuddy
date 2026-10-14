@@ -92,7 +92,7 @@ describe('snapshot data reader', () => {
 
   it.each([
     ['manifest', { id: 'fixture-pack', version: '1.0.0' }, ['manifest', 'name']],
-    ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { plugin: {} } } }, ['manifest', 'features', 'notes', 'plugin', 'entry']],
+    ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { plugin: {} } } }, ['manifest', 'features', 'notes', 'plugin', 'label']],
     ['types', {}, ['types', 'entities']],
     ['types', { entities: { Memo: 1 }, relKinds: {} }, ['types', 'entities', 'Memo']],
     ['defs', { 'pack-types': false }, ['defs', 'pack-types']],

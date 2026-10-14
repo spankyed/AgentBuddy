@@ -1173,3 +1173,77 @@ This design audit is not implementation or completion of discovery. References, 
 editor contributions, remaining native contracts, complete dependency/build freshness and the other
 listed consumer migrations still require their own coherent checkpoints. Keep every goal phase and
 all three Phase 6 workstreams active.
+
+
+### Declarative plugin implementation working checkpoint (2026-10-13)
+
+Plugin declarations now hold presentation, machine/component targets, route identities and fallback
+predicate references. The shared framework type and schema agree through a checked schema annotation
+and exhaustive field maps. Module/export syntax and reserved route names are validated. Codegen builds
+bound PluginDefinition objects from declarations, checks state/predicate/module exports as values,
+checks Vue component files and preserves lazy component imports. No plugin module executes during
+these checks. JavaScript targets remain supported when the pack's TypeScript configuration permits them.
+
+All eleven default-setup assemblies and three fixture assemblies are removed, along with the authoring
+template and definePlugin helper. Library's named machine export, Threads' five routes and all six
+lazy bindings are preserved. Brain's predicate is a small executable module; its label/toggle are data.
+CLI feature scaffolding writes the declaration directly; doctor shares complete feature-target file
+validation. Contract-leaf checks identify the actual state module. The real fork acceptance edits a
+manifest label and a Vue component, then verifies the changed component is actually rendered.
+
+Native Packs and Settings presentation now comes from pure host declaration data, with renderer-owned
+views and per-window machine composition preserved. Frontend registry preparation accepts explicit
+native declarations and applies the shared metadata/pane guard before granting resources. It captures
+top-level authored values once, preserving the existing getter-lifetime contract. Native settings groups
+are projected into the validator's settings contribution shape; no native artifact receipt is invented.
+Full native contribution coverage and source/provenance verification beyond this view slice remain open.
+
+The existing common catalog projects immutable plugins from native, installed and authoring owners.
+Installed entries preserve declaration identity and enablement; authoring entries do not invent an
+installation enablement decision. App-source advertisements are excluded from selected contributions.
+Packs details consumes this projection, showing declared labels even when implementations are inactive.
+The redundant hasPlugin summary flag is removed; declaration presence answers that question.
+Shell selection/default readiness is not migrated or declared complete by this details-reader change.
+
+Admission compares labels, pinning, shortcuts, header options, pane/route membership and fallback
+metadata, rejects unknown plugin fields, and checks executable binding shapes without calling renderers
+or predicates. This does not prove arbitrary JavaScript is safe or establish component-source identity
+by comparing function objects. Generated imports, checked exports, accepted declaration identity and
+existing artifact integrity remain the implementation-binding path.
+
+Focused evidence includes 182 SDK build/codegen checks, 21 initial schema/file checks, 47 reviewed
+schema/generator checks, 68 catalog/native/binding checks, 46 retirement/handoff regressions, 77 combined
+binding/retirement checks and 25 CLI authoring/dependency/facade integration checks. The actual default
+pack builds and renderer typechecking passes. A label-comparison mutation fails the declaration and
+native-admission tests; restored source passes all 31 binding checks. Two sandboxed full-host attempts
+closed their worker IPC channel; the elevated two-worker run completed, exposing four real fixture/
+getter failures among 1,309 cases. Those four were fixed and their owning suites pass. No guard or
+assertion was relaxed. Controlled schema/API reports and public authoring docs are updated.
+
+Strict validation remains required before committing this candidate. All other supported contribution
+kinds, remaining native inventory, complete freshness, shell/static-reader migration, navigation,
+frontend boundaries, API/provenance work and final goal-wide strict --all acceptance remain required.
+
+
+Validation follow-through: the first strict candidate passed 4,301 of 4,303 host-pool tests and
+refused two incomplete fixture paths. The shared SDK fixture now writes its declared state module,
+and its completeness assertion enumerates plugin targets rather than reading the retired entry key.
+All nine fixture checks and eight build-output-swap checks pass, including the original authored-input
+race and artifact rollback assertions. The next strict run passes the full host/pack unit gates and
+638 of 639 integration checks; its remaining contract-leaf fixture still imported a filename the
+shared manifest no longer designated as the actor module. The fixture now explicitly declares that
+unconventional state filename. All 17 targeted leaf-rule cases pass, with their original refusal
+assertions retained. Codegen prose now states that plugin modules enter the compiler for value-export
+checks while facade event/state types still come from independent contract leaves. Final strict
+validation is running; these focused passes are not substitutes for the full app gates or final goal audit.
+
+
+Final strict validation on the corrected candidate passes all 30 gates in 488.6 seconds (one cached),
+including full unit/integration, real external-pack app acceptance in 156.5 seconds, smoke and both
+packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T00-28-13Z-89285`;
+`/private/tmp/apack-declarative-plugins-strict-3.log`.
+This completes this plugin declaration/binding/catalog-details checkpoint, not all-kind discovery or
+the larger goal. Source/asset provenance checks for the remaining native contributions, other static
+consumers, shell readiness/navigation, boundaries, consumed APIs, dependency identity and final strict
+--all on finished committed source remain required. No unfinished plans are archived.

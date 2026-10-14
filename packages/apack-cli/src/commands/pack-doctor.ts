@@ -1,6 +1,7 @@
+import { validateFeatures } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFeatures, parseManifest, MIGRATION_LINES } from '@apackdev/sdk/build';
+import { parseManifest, MIGRATION_LINES } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 
 type Status = 'pass' | 'warn' | 'fail';
@@ -51,19 +52,7 @@ export async function doctor(args: string[]) {
     return 'pass';
   });
 
-  check('Feature files present', () => {
-    const missing: string[] = [];
-    for (const f of packFeatures(parsed)) {
-      if (f.system?.entry && !fs.existsSync(path.join(root, f.system.entry))) {
-        missing.push(`${f.id}/system`);
-      }
-      if (f.plugin?.entry && !fs.existsSync(path.join(root, f.plugin.entry))) {
-        missing.push(`${f.id}/plugin`);
-      }
-    }
-    if (missing.length) return `missing: ${missing.join(', ')}`;
-    return 'pass';
-  });
+  check('Feature files present', () => validateFeatures(root, parsed).diagnostics.map(issue => issue.message).join('; ') || 'pass');
 
   check('Step files present', () => {
     const missing: string[] = [];

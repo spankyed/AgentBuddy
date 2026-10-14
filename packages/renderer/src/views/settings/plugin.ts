@@ -1,5 +1,5 @@
 import type { PluginDefinition } from '@apackdev/sdk/fe';
-import { createSettingsMachine } from '@apackdev/host/fe';
+import { createSettingsMachine, hostPluginDeclarations } from '@apackdev/host/fe';
 import { Settings } from 'lucide-vue-next';
 import canvas from './canvas/index.vue';
 import { resetApp } from '@/runtime/settings';
@@ -11,7 +11,7 @@ const report = (message: string) => window.alert(message);
  * the user one failed are the window's, so the machine asks for them rather than reaching a browser global.
  */
 export const settingsPlugin: PluginDefinition = {
-  label: 'Settings',
+  ...hostPluginDeclarations.settings,
   icon: Settings,
   state: createSettingsMachine({
     reset: resetApp,
@@ -27,5 +27,4 @@ export const settingsPlugin: PluginDefinition = {
     report,
   }),
   canvas,
-  isPinned: true,
 };

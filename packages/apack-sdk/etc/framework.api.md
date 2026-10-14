@@ -22,6 +22,12 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
 
 // @public
+export type ComponentTarget = string | {
+    entry: string;
+    load?: 'lazy';
+};
+
+// @public
 export interface ContentRuntime {
     // (undocumented)
     contentWriters: Record<string, ContentWriter>;
@@ -147,6 +153,7 @@ export interface NativePackDeclaration {
     // (undocumented)
     features?: Record<string, {
         settings?: SettingsDefinition;
+        plugin?: PluginDeclaration;
     }>;
     // (undocumented)
     id: string;
@@ -256,6 +263,55 @@ export interface PackRegistration {
 export function packSystem(entry: SystemEntry, options?: {
     incoming?: readonly string[];
 }): PackFeatureSystem;
+
+// @public
+export interface PluginDeclaration {
+    // (undocumented)
+    canvas?: ComponentTarget | {
+        routes: Record<string, ComponentTarget>;
+    };
+    // (undocumented)
+    chat?: ComponentTarget;
+    // (undocumented)
+    contract?: string;
+    // (undocumented)
+    default?: boolean;
+    // (undocumented)
+    defaultVisible?: boolean;
+    // (undocumented)
+    fallbackPanel?: {
+        label: string;
+        toggle: {
+            type: string;
+        };
+        isShown: string;
+    };
+    // (undocumented)
+    hotkeys?: readonly {
+        action: string;
+        global?: boolean;
+    }[];
+    // (undocumented)
+    icon?: string | {
+        entry: string;
+        load?: 'lazy';
+    };
+    // (undocumented)
+    isPinned?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    options?: {
+        headerClass?: string;
+    };
+    // (undocumented)
+    panel?: ComponentTarget;
+    // (undocumented)
+    state: string;
+}
+
+// @internal
+export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
 
 // @public
 export interface SettingsCatalog {

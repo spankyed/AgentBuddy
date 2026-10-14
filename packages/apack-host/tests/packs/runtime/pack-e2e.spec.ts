@@ -43,10 +43,10 @@ function installTestPack() {
           entry: 'src/features/hello/be/system.ts',
           events: { incoming: ['HELLO_PING'] },
         },
-        plugin: { entry: 'src/features/hello/fe/plugin.ts' },
+        plugin: { label: 'Fixture', state: 'src/features/hello/fe/plugin.ts' },
       },
       // No system — plugin only
-      dataOnly: { plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' } },
+      dataOnly: { plugin: { label: 'Fixture', state: 'src/features/dataOnly/fe/plugin.ts' } },
     },
   }, null, 2));
 

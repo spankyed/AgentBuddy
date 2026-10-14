@@ -59,6 +59,8 @@ function contentOffersOf(packId: string): Pick<InstalledPackSummary, 'contentOff
 /** Accepted declarations describe a pack independently of whether its executable bindings are running. */
 function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[] {
   const catalog = registry.catalog.getSnapshot();
+  const plugins = new Map(registry.catalog.plugins().filter(plugin => plugin.origin === 'installed')
+    .map(plugin => [plugin.featureRef, plugin.declaration]));
   const records = packRecords();
   const base = (id: string, dir: string, enabled: boolean) => {
     const record = packRecord(id, records);
@@ -78,7 +80,8 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
   const packs: InstalledPackSummary[] = catalog.packs.map(({ snapshot, integrity, dir, enabled }) => {
     const { manifest } = snapshot;
     const features = Object.entries(manifest.features ?? {}).map(([id, feature]) => ({
-      id, designation: feature.designation, hasSystem: !!feature.system, hasPlugin: !!feature.plugin,
+      id, designation: feature.designation, hasSystem: !!feature.system,
+      plugin: plugins.get(resolveName(id, manifest.id)),
       services: Object.keys(feature.services ?? {}),
     }));
     const extensions = manifest.extensions;

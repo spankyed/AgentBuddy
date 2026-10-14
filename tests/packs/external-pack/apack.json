@@ -41,9 +41,15 @@
         "contract": "src/features/memos/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/memos/fe/plugin.ts",
         "contract": "src/features/memos/fe/contract.ts#Contract",
-        "defaultVisible": false
+        "defaultVisible": false,
+        "label": "Memos",
+        "icon": "StickyNote",
+        "state": "src/features/memos/fe/state.ts",
+        "canvas": {
+          "entry": "src/features/memos/fe/canvas/list.vue",
+          "load": "lazy"
+        }
       },
       "services": {},
       "repositories": {
@@ -71,7 +77,10 @@
         "title": "Fixture Notes"
       },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts"
+        "label": "Fixture Notes",
+        "icon": "NotebookPen",
+        "state": "src/features/notes/fe/state.ts",
+        "canvas": "src/features/notes/fe/canvas/list.vue"
       },
       "services": {}
     }
@@ -82,11 +91,19 @@
         "title": "Fixture Assistant",
         "schema": {
           "type": "object",
-          "properties": { "name": { "type": "string" } },
-          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
           "additionalProperties": false
         },
-        "defaults": { "name": "Memo helper" },
+        "defaults": {
+          "name": "Memo helper"
+        },
         "form": "src/extensions/settings/assistant.vue"
       }
     },

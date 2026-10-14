@@ -78,7 +78,7 @@ export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS
 node -e '
   const fs = require("fs");
-  const file = "src/features/notes/fe/plugin.ts";
+  const file = "src/features/notes/fe/state.ts";
   fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
 "$APACK" pack init-tests

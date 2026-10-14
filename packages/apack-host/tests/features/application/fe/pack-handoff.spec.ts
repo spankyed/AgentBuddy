@@ -12,6 +12,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
   packs.registerPackFE({ id: 'host', features: { notes: { plugin: hostPlugin } } });
   const generated = _createFeSettings();
   const { id: _pluginId, ...definition } = plugin('ext/own');
+  definition.icon = { render: vi.fn() };
   const registration: PackFERegistration = { id: 'ext', declarationRevision: 'current',
     features: { own: { plugin: definition } }, bindSettings: generated.bindSettings };
   const sources = [1, 10].map(limit => fakeSettings({ features: { 'ext/own': { limit } } }));
@@ -26,7 +27,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
   const shell = fakeShell({ plugins: packs.getRegisteredPlugins() });
   const entry = { runtimeRevision: 'first', id: 'ext', feEntry: 'runtime/fe.js', artifactRevision: 'a'.repeat(64),
     declarationRevision: 'current', manifest: { id: 'ext', name: 'Example', version: '1.0.0',
-      features: { own: { plugin: { entry: 'src/plugin.ts' } } } } };
+      features: { own: { plugin: { label: 'ext/own', state: 'src/state.ts', icon: 'Zap', canvas: 'src/canvas.vue' } } } } };
   shell.client.loadedPacks.mockResolvedValue([entry]);
   const app = createActor(createShellMachine({ ...shell.options, packs, packFrontends: frontends }), {
     systemId: 'host/application', input: { ownsLastActivePlugin: false },

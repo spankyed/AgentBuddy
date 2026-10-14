@@ -16,7 +16,7 @@ const DEFAULT_MANIFEST = {
   id: 'demo-pack', name: 'Demo', version: '1.0.0',
   features: {
     memos: {
-      plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
+      plugin: { label: 'Memos', state: 'src/features/memos/fe/state.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
       system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
     },
   },
@@ -118,7 +118,7 @@ export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules
     'apack.json': JSON.stringify(written),
     'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
     'src/sibling.ts': 'export const sibling = 1;\n',
-    'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
+    'src/features/memos/fe/state.ts': 'export default {}; export type P = { id: string };\n',
     'src/features/memos/be/system.ts': 'export const system = 1;\n',
     'src/features/memos/fe/contract.ts': 'export type Contract = { state: {} };\n',
     'src/features/memos/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",

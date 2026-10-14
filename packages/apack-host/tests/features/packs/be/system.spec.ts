@@ -333,7 +333,7 @@ describe('pack information without activation', () => {
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       entities: { Memo: 'Memo' }, relKinds: { Child: 'parent' },
       features: { notes: { designation: 'notes', system: { entry: 'src/system.ts' },
-        plugin: { entry: 'src/plugin.ts' }, services: { notesApi: 'src/api.ts#notesApi' } } },
+        plugin: { label: 'Fixture', state: 'src/plugin.ts' }, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
       boot: { onInit: 'src/hooks.ts#onInit' } };
@@ -356,7 +356,7 @@ describe('pack information without activation', () => {
         entities: manifest.entities, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, bootHooks: ['onInit'],
-        features: [{ id: 'notes', designation: 'notes', hasSystem: true, hasPlugin: true, services: ['notesApi'] }] });
+        features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, services: ['notesApi'] }] });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(fs.existsSync(marker)).toBe(false);
     } finally { system.stop(); }

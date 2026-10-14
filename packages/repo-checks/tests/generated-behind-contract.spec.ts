@@ -65,7 +65,7 @@ function fixture(): PackManifest {
     features: {
       memos: {
         system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
-        plugin: { entry: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
+        plugin: { label: 'Fixture', state: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
         repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
       },
     },

@@ -1,3 +1,4 @@
+import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { _MOVED_ROOT_KEYS, ManifestSchema } from './manifest-schema.ts';
@@ -50,7 +51,7 @@ export function validateManifest(manifestPath: string): PackValidation {
 
 /**
  * Checks a manifest's features against the pack on disk: each feature's `settings.form`, `system.entry`
- * and `plugin.entry` file exists, pack settings forms exist, and no two features claim the same designation.
+ * and plugin state/component targets exist, pack settings forms exist, and no two features claim the same designation.
  *
  * A designation is a role, not a name, so it need not match the feature id: the registries map the role
  * to the id of the system (`pack-registration.ts` `designationsOf`) or plugin (`fe/pack-store.ts`) that
@@ -65,7 +66,7 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
     const files: [string, string | undefined][] = [
       ['settings.form', feature.settings?.form],
       ['system.entry', feature.system?.entry],
-      ['plugin.entry', feature.plugin?.entry],
+      ...(feature.plugin ? _pluginTargets(feature.plugin).map(([field, target]): [string, string] => [`plugin.${field}`, target.split('#')[0]!]) : []),
       // Written without its extension, as codegen reads it. A typo here costs the feature its types in
       // `#generated/types` and says nothing, which is worth a word at validate time
       ['typesEntry', feature.typesEntry?.endsWith('.ts') === false ? `${feature.typesEntry}.ts` : feature.typesEntry],

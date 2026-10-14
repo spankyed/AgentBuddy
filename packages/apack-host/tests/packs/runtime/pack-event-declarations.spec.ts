@@ -31,7 +31,7 @@ function installDeclaringPack(received: string[]) {
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
-    features: { memos: { plugin: { entry: 'fe/plugin.ts' } } },
+    features: { memos: { plugin: { label: 'Fixture', state: 'fe/plugin.ts' } } },
   }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
