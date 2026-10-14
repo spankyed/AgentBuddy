@@ -1,6 +1,6 @@
 # Complete the manifest consolidation
 
-Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4 completed in `11bdc7faa`; M5–M6 remain required.
+Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4 completed in `11bdc7faa`; M5 completed in `9374189e5`; M6 remains required.
 
 This restores unfinished outcomes from the [manifest redesign](../archive/goals/goal-manifest-redesign.md),
 [convention-first plan](../archive/plans/manifest-convention-first.md),
@@ -31,7 +31,7 @@ A landed result still needs its applicable regression checks in the final requir
 | 11 | Schema assistance and public docs specify the supported contract completely. Required. | Many fields have descriptions, but nested reference/component fields still lack them. Require meaningful descriptions for every supported authored field, generated-schema coverage, useful completion/diagnostics and complete public docs. Describe explicit null/untyped behavior and published artifact layout. | M6 |
 | 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Tests preserve first-registered selection, replacement priority, removal promotion and re-registration order; public docs describe the policy. | M4/final |
 | 13 | Every feature explains its purpose; scaffolding collects it and validation requires it. Required. | Implemented in `ae7a995bd`: shared required/nonblank `description` validation, authored/native declarations, explicit required scaffold input, cold catalog summaries and feature UI. Real manifests and all fixture producers migrated; no runtime-binding metadata or `about` alias. | M4 |
-| 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Schema still accepts it. Remove it outright. Existing snapshot/layout constants are 1/2 and must remain unchanged. Audit exact supported layout validation: `layout.ts` and `assets.ts` still use `Math.floor`. Reject malformed/fractional stamps without altering facade capability acceptance or introducing another manifest version. | M5 |
+| 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Capability-based facade acceptance remains covered by twenty installed-dependency checks. No replacement format key or version accommodation. | M5 |
 | 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current artifact contracts; no release/version edits in this goal. | M4–M6/final |
 | 16 | Change all owned contracts together without compatibility. Required throughout. | Root CLAUDE prohibits aliases, dual reads and obsolete-format conversion. Cover loosely typed readers and all native/source/installed shapes, authoring tools, fixtures/templates/docs; developer backup work remains separate. | Every checkpoint |
 | 17 | Build options and check allowances have one authored manifest, no sidecars. Implemented in `24bd9f116`; preserve at final audit. | `build.bundleUi`/`opaqueDeps` remain. `checks.allow` uses one SDK policy/schema shared with CLI rule metadata and enforcement. Sidecar reader and live references are removed. Unknown/non-switchable names and malformed values are refused; real CLI enforcement and pasteable guidance pass. | M5 |
@@ -224,3 +224,16 @@ Together with the preceding description/type/parser/inventory/grammar/export che
 completes M4. M5 (checks and format cleanup), M6 (canonical writing and complete schema/docs coverage),
 full discovery and every later execution phase remain required. Final requirement audit and strict
 `--all` on committed source remain mandatory; no plan or goal is archived here.
+
+### M5 acceptance complete (2026-10-14)
+
+Inline checks and removal of their sidecar reader completed in `24bd9f116`. Format cleanup completed
+in `9374189e5`: the authored manifest has no `$manifestVersion`, and current generic schema validation
+handles unsupported keys. No alias, conversion or dedicated historical-format detection is added.
+Receipt verification and asset delivery compare the exact supported stamp; tests recompute malformed
+receipt revisions so format rejection is independent of revision mismatch. Snapshot/layout stamps
+remain 1/2; capability-based facade acceptance and release metadata are unchanged.
+
+M5 is complete. M6 canonical writing/schema/docs coverage and all remaining execution phases stay
+required, including final strict `--all` on committed source and the full reconciled audit. Nothing
+is archived here.

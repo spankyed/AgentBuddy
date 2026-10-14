@@ -3331,3 +3331,34 @@ M5 remains required for deleting `$manifestVersion` and exact layout-format vali
 format stamps/release metadata and facade-capability semantics. M6 and all discovery/navigation/
 boundary/Phase 6 requirements remain active. Final strict `--all` on committed source and the full
 reconciled audit remain mandatory. Nothing is archived.
+
+### Format cleanup — M5 complete (2026-10-14)
+
+Source `9374189e5` deletes `$manifestVersion` from authored schemas, API reports, the current field
+audit and public docs. No in-tree manifests/templates declared it; no reader alias/conversion or
+key-specific historical refusal is added. Normal current-schema validation remains strict. Layout
+verification and revisioned asset delivery now require exact `PACK_LAYOUT_VERSION`, rather than
+accepting fractional values through `Math.floor`. Snapshot/layout constants remain 1/2 and release
+metadata is untouched. Facade acceptance stays based on the required capabilities.
+
+Evidence: 168 focused schema/generation/layout tests passed; six cases reject fractional, negative,
+unsupported, string and null stamps. Asset tests recompute the malformed receipt's revision, proving
+that exact format is checked independently. Restoring each rounding guard separately failed its
+named 2.25 assertion; exact source restored
+(`/private/tmp/apack-m5-format-{layout,assets}-mutation.log`). Twenty installed-dependency checks
+passed, retaining absent/different-format acceptance when facades suffice. Reviewed generated schema
+and API diff: only the intended authored-key deletion. No live source/script/test/public-doc key or
+rounding-format references remain.
+
+Strict passed in 523.6s (all 30 steps fresh): host 4,468 tests, pack 855 plus two existing skips,
+integration 653, external contract/app, smoke and both packaged-authoring halves. Actual app 156.7s,
+smoke 4.8s, authoring 53.1s and packaged app 7.6s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T12-17-01Z-89946`,
+`/private/tmp/apack-m5-format-strict.log`. EARS and six compiled content files remain byte-identical
+to `/private/tmp/apack-m4-description-baseline`; facade checks pass unchanged. Reviewed the eight
+committed paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M5 is complete together with inline checks `24bd9f116`. Proceed to M6 canonical writing and complete
+schema/docs coverage, then every remaining discovery/navigation/boundary/Phase 6 workstream. Final
+strict `--all` on committed source and the complete reconciled audit remain mandatory. Nothing is
+archived; the entire goal remains active.
