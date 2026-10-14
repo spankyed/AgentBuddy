@@ -76,11 +76,16 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
 
   it('adds a feature, builds, typechecks and packs a verified archive', async () => {
     // produces: the feature the build below compiles
-    expect((await callCli(pack, 'add', ['feature', 'notes', '--description', 'Manage notes.', '--label', 'Notes'])).code).toBe(0);
+    expect((await callCli(pack, 'add', ['feature', 'notes', '--description', 'Manage notes.', '--label', 'Notes', '--designation', 'notebook'])).code).toBe(0);
     const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
     expect(manifest.features.notes.types).toBe('src/features/notes/be/types.ts');
     expect(manifest.features.notes.description).toBe('Manage notes.');
     expect(manifest.features.notes.settings.form).toBe('src/features/notes/fe/settings.vue');
+    expect(manifest.features.notes.designation).toBe('notebook');
+    for (const command of ['validate', 'doctor']) {
+      const result = run(process.execPath, [CLI, 'pack', command], pack);
+      expect(result.code, result.output).toBe(0);
+    }
 
     // produces: the dist files and apply JSON asserted just below
     const build = await callCli(pack, 'build');

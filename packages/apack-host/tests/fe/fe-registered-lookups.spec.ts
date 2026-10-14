@@ -122,6 +122,31 @@ describe("a pack's frontend", () => {
     expect(remove('second-pack').map((p) => p.id)).toEqual(['second-pack/notes', 'second-pack/cards']);
     expect(defaultPlugin()?.id, "the first pack's default left with the second").toBe('first-pack/notes');
   });
+
+  it('promotes the next default on removal and preserves priority during replacement', () => {
+    add('first-pack', { features: { main: { plugin: plugin('First'), default: true } } });
+    add('second-pack', { features: { main: { plugin: plugin('Second'), default: true } } });
+    registry.replacePackFE({ id: 'first-pack', features: { main: { plugin: plugin('Updated'), default: true } } });
+    expect(defaultPlugin()?.id).toBe('first-pack/main');
+    expect(defaultPlugin()?.label).toBe('Updated');
+    remove('first-pack');
+    expect(defaultPlugin()?.id).toBe('second-pack/main');
+    add('first-pack', { features: { main: { plugin: plugin('Returned'), default: true } } });
+    expect(defaultPlugin()?.id).toBe('second-pack/main');
+    remove('second-pack');
+    expect(defaultPlugin()?.id).toBe('first-pack/main');
+  });
+
+  it('refuses duplicate defaults atomically and refuses a default without a plugin', () => {
+    add('owner', { features: { main: { plugin: plugin('Accepted'), default: true } } });
+    expect(() => registry.replacePackFE({ id: 'owner', features: {
+      first: { plugin: plugin('First'), default: true }, second: { plugin: plugin('Second'), default: true },
+    } })).toThrow('default plugins "first" and "second"');
+    expect(defaultPlugin()?.id).toBe('owner/main');
+    expect(plugins().map(plugin => plugin.id)).toEqual(['owner/main']);
+    expect(() => register('invalid', { features: { absent: { default: true } } })).toThrow('without a plugin');
+    expect(registry.hasPackFE('invalid')).toBe(false);
+  });
 });
 
 /**

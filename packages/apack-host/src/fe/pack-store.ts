@@ -67,6 +67,9 @@ type AddressedRegistration = PackFERegistration & {
 
 function addressed(registration: PackFERegistration): AddressedRegistration {
   const features = Object.entries(registration.features ?? {}).map(([id, feature]) => [id, { ...feature }] as const);
+  const defaults = features.filter(([, feature]) => feature.default);
+  if (defaults.length > 1) throw new Error(`Pack "${registration.id}" declares default plugins "${defaults[0]![0]}" and "${defaults[1]![0]}"; only one may be claimed`);
+  if (defaults[0] && !defaults[0][1].plugin) throw new Error(`Pack "${registration.id}" declares a default for feature "${defaults[0][0]}" without a plugin`);
   const roles = new Map<string, FeatureRef>();
   for (const [id, feature] of features) {
     if (!feature.designation) continue;

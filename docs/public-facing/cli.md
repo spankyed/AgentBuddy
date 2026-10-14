@@ -97,7 +97,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, names the role it plays and may differ from the feature id. It creates:
 
 - `src/features/<name>/be/system.ts`, `be/contract.ts` (the system's contract, which `apack.json` names), `be/types.ts`, `be/repository/index.ts`
-- `src/features/<name>/fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
+- `src/features/<name>/fe/state.ts`, `fe/contract.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
 - `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
 and adds a keyed `features.<name>` entry with its required `description`, explicit `types` pointing at `be/types.ts`, `settings` (including the custom `form` it writes), `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.

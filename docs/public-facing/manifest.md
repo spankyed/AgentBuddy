@@ -128,15 +128,16 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
 
 ### PackFeatureEntry fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
 The entry's **key** is the feature id: a lowercase letter, then letters and digits
 (`^[a-z][a-zA-Z0-9]*$`, e.g. `notes`, `calendarEvents`). It becomes an identifier in generated code, so
 JavaScript reserved words (`default`, `export`, …) aren't allowed. Being a key is what makes a duplicate id
 unrepresentable.
 
-| `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`apack pack validate` checks it) |
-| `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `entities` | `Record<string, string \| null>` | no | Entity wire names owned by this feature, mapped to a TypeScript shape export or `null` for untyped entities. Paths remain pack-root-relative. |
+| `designation` | `string` | no | Role played by this feature; it may differ from the feature ID. Duplicate claims are refused locally and across packs. |
+| `settings` | `object` | no | Declarative `schema`, explicit `defaults`, optional custom `form`, title, description and access policy; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
 | `plugin` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend plugin. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [plugin declarations](features.md#defining-a-plugin). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
@@ -146,6 +147,11 @@ unrepresentable.
 | `references` | `object` | no | Keyed reference types and categories, with explicit navigation and reactive item-provider exports |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
+
+A pack may claim at most one default plugin. Across accepted pack frontends, the first registered
+claim wins. Replacing that pack preserves its priority; removing it promotes the next claim. A pack
+registered again joins the end of that order. A designation is a separately owned role, not a priority
+claim, so duplicate roles across packs are errors.
 
 ### Feature settings
 

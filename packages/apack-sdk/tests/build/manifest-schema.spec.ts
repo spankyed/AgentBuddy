@@ -1,10 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { FeatureEntrySchema } from '../../src/build/manifest-schema.ts';
+import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/build/manifest-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
 
 describe('parseManifest', () => {
+  it('enforces the same default-plugin uniqueness for native declarations', () => {
+    const feature = { description: 'Show fixture items.', plugin: { label: 'Items', state: 'state.ts', default: true } };
+    expect(_NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature } }).success).toBe(true);
+    const result = _NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature, second: feature } });
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error('Duplicate defaults accepted');
+    expect(result.error.issues[0].path).toEqual(['features', 'second', 'plugin', 'default']);
+    expect(result.error.issues[0].message).toContain('"first" and "second"');
+  });
+
   it('distinguishes whole modules from named contract exports before reading any source', () => {
     const pack = { id: 'grammar', name: 'Grammar', version: '1.0.0' };
     const settings = { schema: { type: 'object' }, defaults: {} };

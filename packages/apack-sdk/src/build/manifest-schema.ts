@@ -86,6 +86,18 @@ const SettingsDefinitionSchema = z.preprocess((raw, ctx) => {
   return raw;
 }, SettingsDefinitionValueSchema);
 
+function checkDefaultPluginClaims(features: Record<string, { plugin?: { default?: boolean } }> | undefined, ctx: z.RefinementCtx): void {
+  // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
+  const claimedDefault = Object.entries(features ?? {}).filter(([, feature]) => feature.plugin?.default);
+  if (claimedDefault.length > 1) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['features', claimedDefault[1]![0], 'plugin', 'default'],
+      message: `Two features claim the default plugin: "${claimedDefault[0]![0]}" and "${claimedDefault[1]![0]}". Only one may.`,
+    });
+  }
+}
+
 /** @internal Host composition admits the same settings data without external-pack entry paths. */
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
@@ -100,7 +112,10 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
     plugin: z.lazy(() => PluginSchema).optional(),
     references: z.lazy(() => ReferencesSchema).optional(),
   }).strict()).optional(),
-}).strict().superRefine((declaration, ctx) => checkReferenceClaims(declaration.features, ctx)));
+}).strict().superRefine((declaration, ctx) => {
+  checkReferenceClaims(declaration.features, ctx);
+  checkDefaultPluginClaims(declaration.features, ctx);
+}));
 
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
@@ -615,15 +630,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   build: BuildConfigSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
   checkReferenceClaims(manifest.features, ctx);
-  // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
-  const claimedDefault = Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.plugin?.default);
-  if (claimedDefault.length > 1) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['features', claimedDefault[1]![0], 'plugin', 'default'],
-      message: `Two features claim the default plugin: "${claimedDefault[0]![0]}" and "${claimedDefault[1]![0]}". Only one may.`,
-    });
-  }
+  checkDefaultPluginClaims(manifest.features, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places
   for (const section of ['sources', 'datasets'] as const) {

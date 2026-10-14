@@ -68,6 +68,10 @@ it.each([
   { id: 'native', dependencies: { provider: 1 } }, { id: 'native', dependencies: [] },
   { id: 'native', features: { 'invalid-name': {} } }, { id: 'native', unknown: true },
   { id: 'native', dependencies: JSON.parse('{"__proto__":"*"}') },
+  { id: 'native', features: {
+    first: { description: 'First view.', plugin: { label: 'First', state: 'first.ts', default: true } },
+    second: { description: 'Second view.', plugin: { label: 'Second', state: 'second.ts', default: true } },
+  } },
 ])('refuses malformed native data atomically: %j', invalid => {
   const registry = createPackRegistry({ nativeDeclarations: [declaration] });
   const previous = registry.catalog.getSnapshot();
