@@ -641,11 +641,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
     id: z.ZodEffects<z.ZodString, string, string>;
     name: z.ZodString;
-    version: z.ZodString;
+    version: z.ZodEffects<z.ZodString, string, string>;
     description: z.ZodOptional<z.ZodString>;
-    hostVersion: z.ZodOptional<z.ZodString>;
+    hostVersion: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     license: z.ZodOptional<z.ZodString>;
-    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodString, string, string>>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
@@ -2221,7 +2221,7 @@ export const MigrationsSchema: z.ZodObject<{
 // @internal
 export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     id: z.ZodString;
-    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodString, string, string>>>;
     settings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
         schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -2529,6 +2529,13 @@ export interface PackDataDeclarations {
 }
 
 // @public
+export interface PackDependencySource {
+    filePath: string | null;
+    github: string | null;
+    range: string;
+}
+
+// @public
 export interface PackDiagnostic {
     // (undocumented)
     code: string;
@@ -2665,6 +2672,9 @@ export function _parseModuleReference(target: string, label: string, defaultExpo
     source: string;
     exportName: string;
 };
+
+// @public
+export function parsePackDependency(value: string): PackDependencySource;
 
 // @public
 export function parseSnapshot(raw: unknown): PackSnapshotValidation;

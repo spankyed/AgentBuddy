@@ -20,6 +20,24 @@ function fixture(extra: object = {}) {
 }
 
 describe('pack doctor static validation', () => {
+  it.each([
+    [{ version: '1.2.3garbage' }, 'version'],
+    [{ hostVersion: '' }, 'hostVersion'],
+    [{ dependencies: { provider: 'github:owner/repo nonsense' } }, 'dependencies.provider'],
+  ])('reports malformed release/dependency metadata at its manifest path: %s', (extra, field) => {
+    const dir = fixture(extra);
+    const result = run(process.execPath, [CLI, 'pack', 'doctor'], dir);
+    expect(result.code, result.output).toBe(1);
+    expect(result.output).toContain(field);
+    const json = run(process.execPath, [CLI, 'pack', 'validate', '--json'], dir);
+    expect(json.code, json.output).toBe(1);
+    const report = JSON.parse(json.output);
+    expect(report.status).toBe('invalid');
+    expect(report.diagnostics.some((issue: { path: string[] }) => issue.path.join('.') === field)).toBe(true);
+    expect(result.output).not.toContain('Must not execute');
+    expect(fs.existsSync(path.join(dir, '.apack'))).toBe(false);
+  });
+
   it.each(['doctor', 'validate'])('pack %s enforces inline check policy without executing source', (command) => {
     const dir = fixture();
     fs.mkdirSync(path.join(dir, 'src/extensions'));

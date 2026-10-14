@@ -3,6 +3,7 @@ export { LIFECYCLE_HOOK_NAMES } from '../framework/lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from '../framework/module-reference.ts';
 import { z } from 'zod';
+import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
@@ -43,6 +44,12 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
   }
   return raw;
 }
+
+const PackRangeSchema = z.string().refine(_validPackRange, 'Must be a nonempty semver range');
+const PackDependencySchema = z.string().superRefine((value, ctx) => {
+  try { parsePackDependency(value); }
+  catch (error) { ctx.addIssue({ code: 'custom', message: error instanceof Error ? error.message : String(error) }); }
+});
 
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
@@ -102,7 +109,7 @@ function checkDefaultPluginClaims(features: Record<string, { plugin?: { default?
 /** @internal Host composition admits the same settings data without external-pack entry paths. */
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
-  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), z.string()).optional(),
+  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
@@ -611,13 +618,13 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
     .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),
-  version: z.string().regex(/^\d+\.\d+\.\d+/, 'Must be a semver version string')
+  version: z.string().regex(_PACK_VERSION_PATTERN, 'Must be a complete SemVer version').refine(_validPackVersion, 'Must be a complete SemVer version')
     .describe('Semver version string.'),
   description: z.string().describe('Short description of the pack\'s purpose.').optional(),
-  hostVersion: z.string().describe('Semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
+  hostVersion: PackRangeSchema.describe('Semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
   license: z.string().describe('SPDX license identifier.').optional(),
-  dependencies: z.record(z.string(), z.string())
-    .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
+  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackDependencySchema)
+    .describe('Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range].').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   data: DataSchema.optional(),
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)

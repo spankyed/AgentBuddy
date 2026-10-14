@@ -31,16 +31,16 @@ order. `init`, `add` and the release version editor share this writer.
 | `$schema` | `string` | no | JSON Schema reference for editor validation |
 | `id` | `string` | yes | Unique pack identifier: a lowercase letter, then lowercase letters, digits and hyphens (`^[a-z][a-z0-9-]*$`) |
 | `name` | `string` | yes | Human-readable display name |
-| `version` | `string` | yes | Semver version, starting with `major.minor.patch` (e.g. `"0.1.0"`, `"0.2.0-beta.1"`) |
+| `version` | `string` | yes | Complete [SemVer 2.0](https://semver.org/) version (e.g. `"0.1.0"`, `"0.2.0-beta.1"`) |
 | `description` | `string` | no | Short description |
-| `hostVersion` | `string` | no | Semver range of compatible host versions (e.g. `">=0.3.0"`) |
+| `hostVersion` | `string` | no | Nonempty npm semver range of compatible host versions (e.g. `">=0.3.0"`) |
 | `license` | `string` | no | SPDX license identifier |
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
-| `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
+| `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
 | `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `lifecycle` | `PackLifecycleConfig` | no | Explicit lifecycle functions; see [Lifecycle configuration](#lifecycle-configuration) |

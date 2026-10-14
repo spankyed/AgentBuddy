@@ -88,3 +88,5 @@ export type { MigrationLine } from './manifest-schema.ts';
 export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations, type _PackEntityDeclaration } from '../framework/data-declaration.ts';
 
 export { ALLOWABLE_PACK_CHECKS, PackChecksSchema } from './pack-checks.ts';
+
+export { parsePackDependency, type PackDependencySource } from './dependency-source.ts';

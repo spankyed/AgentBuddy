@@ -4,35 +4,12 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { CONTENT_INDEX_FILE, parseSnapshot, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
+import { parsePackDependency, CONTENT_INDEX_FILE, parseSnapshot, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
 import { APP_ENVS, resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import { configuredHostPackagesDir } from '../app/pack-host';
-
-// ── Dependency value parsing ──
-
-interface DepSource {
-  github: string | null;    // "owner/repo" or null
-  filePath: string | null;  // local filesystem path or null
-  range: string;            // semver range, e.g. ">=0.1.0"
-}
-
-function parseDepValue(value: string): DepSource {
-  if (value.startsWith('file:')) {
-    return { github: null, filePath: value.slice('file:'.length).trim(), range: '*' };
-  }
-  if (value.startsWith('github:')) {
-    const rest = value.slice('github:'.length).trim();
-    const spaceIdx = rest.indexOf(' ');
-    if (spaceIdx === -1) {
-      return { github: rest, filePath: null, range: '*' };
-    }
-    return { github: rest.slice(0, spaceIdx), filePath: null, range: rest.slice(spaceIdx + 1).trim() };
-  }
-  return { github: null, filePath: null, range: value };
-}
 
 // ── Files discovery ──
 
@@ -435,7 +412,7 @@ async function resolveFromNetwork(root: string, depId: string, github: string | 
 }
 
 async function resolveFromUpstream(root: string, depId: string, depValue: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
-  const { github, filePath, range } = parseDepValue(depValue);
+  const { github, filePath, range } = parsePackDependency(depValue);
 
   if (filePath) {
     const where = `file:${path.resolve(root, filePath)}`;
@@ -474,7 +451,7 @@ const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedD
  * naming each one and why.
  */
 export async function resolveDepFiles(root: string, depId: string, depValue: string, options: DependencyResolutionOptions = {}): Promise<ResolvedDepFiles | null> {
-  const { github, filePath, range } = parseDepValue(depValue);
+  const { github, filePath, range } = parsePackDependency(depValue);
   const rejected: Rejected = [];
   if (filePath) {
     const found = await resolveFromUpstream(root, depId, depValue, rejected);
