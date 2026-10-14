@@ -2,6 +2,18 @@
 
 The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and lifecycle hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
+## Editor assistance
+
+Set `"$schema": "https://apack.dev/schemas/apack.json"` in `apack.json`, or use the schema shipped
+at `@apackdev/sdk/apack.schema.json` for offline editing. JSON editors can complete declaration keys
+and policy/loading values, show field descriptions, and diagnose structural errors at their source
+ranges. Settings value schemas use JSON Schema draft-07.
+
+Run `apack pack validate` for complete semantic checks: npm version ranges, cross-declaration ownership,
+settings defaults, declared modules and exports need more than JSON Schema validation. The CLI reports
+invalid and incomplete checks separately; `--json` supplies field paths for tooling. Editor acceptance
+does not prove that source exports or dependency artifacts are available.
+
 ## Module references
 
 Source paths are relative to the pack root, including declarations inside a feature. They may name

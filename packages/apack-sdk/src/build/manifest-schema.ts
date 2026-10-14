@@ -74,8 +74,8 @@ const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description mus
 const SettingsDefinitionShape = {
   schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
   defaults: z.record(z.unknown()).describe('Complete explicit baseline values, validated without coercion or schema default population.'),
-  title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  title: z.string().min(1).describe("Display title for this preference group; falls back to its group ID or feature label.").optional(),
+  description: z.string().describe("Explanatory text shown above this group's custom settings form.").optional(),
   form: ModulePathSchema.describe('Source path of the custom settings form; its default export is a component.').optional(),
   access: z.enum(['shared', 'owner']).describe('Shared with declared dependents by default; owner restricts writes and resets.').optional(),
 } satisfies Record<keyof SettingsDefinition, z.ZodTypeAny>;
@@ -322,8 +322,8 @@ const SystemSchema = z.object({
 
 const ModuleTargetSchema = z.string().regex(/^[^#]+(?:#[A-Za-z_$][\w$]*)?$/, 'Must be a module path or path#exportName');
 const ComponentModuleSchema = z.object({
-  entry: ModuleTargetSchema,
-  load: z.literal('lazy').optional(),
+  entry: ModuleTargetSchema.describe("Pack-root-relative component module, using its default export unless #exportName selects a binding."),
+  load: z.literal('lazy').describe("Load the component on demand; omission uses the normal eager component binding.").optional(),
 }).strict();
 const ComponentTargetSchema = z.union([ModuleTargetSchema, ComponentModuleSchema]);
 
@@ -351,36 +351,49 @@ const ReferenceNameSchema = z.string().regex(/^[a-z][a-z0-9_-]*$/, 'Must be a lo
 const ReferenceIconSchema = z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]);
 const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
   types: z.record(ReferenceNameSchema, z.object({
-    category: ReferenceNameSchema,
-    icon: ReferenceIconSchema,
+    category: ReferenceNameSchema.describe('Category ID grouping this reference type in the picker.'),
+    icon: ReferenceIconSchema.describe('Lucide icon export name or a declared component module for this reference type.'),
     svgElements: z.array(z.union([
-      z.tuple([z.literal('path'), z.object({ d: z.string() }).strict()]),
+      z.tuple([z.literal('path'), z.object({ d: z.string().describe('SVG path geometry.') }).strict()]),
       z.tuple([z.literal('rect'), z.record(z.string())]),
       z.tuple([z.literal('circle'), z.record(z.string())]),
-    ])),
-    navigate: ExportTargetSchema,
-  }).strict()),
+    ])).describe('Static SVG geometry for rendering this reference in serialized editor content.'),
+    navigate: ExportTargetSchema.describe('Named navigation callback export invoked when this reference is opened.'),
+  }).strict()).describe('Reference type IDs with static presentation and declared navigation bindings.'),
   categories: z.record(ReferenceNameSchema, z.object({
-    label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label'),
-    icon: ReferenceIconSchema,
-    useItems: ExportTargetSchema,
-  }).strict()),
+    label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')
+      .describe('Visible category label in the reference picker.'),
+    icon: ReferenceIconSchema.describe('Lucide icon export name or a declared component module for this category.'),
+    useItems: ExportTargetSchema.describe('Named reactive item-provider export; queries execute when the picker requests items.'),
+  }).strict()).describe('Reference picker category IDs and their declared item providers.'),
 }).strict();
 
 const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
-  label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label'),
+  label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')
+    .describe('Plugin display name used by shell navigation and menus.'),
   state: ModuleTargetSchema.describe('Machine module, by default export or path#exportName.'),
-  icon: z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]).optional(),
+  icon: z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema])
+    .describe('Lucide icon export name or component module displayed in shell navigation.').optional(),
   canvas: z.union([ComponentTargetSchema, z.object({ routes: z.record(z.string().min(1)
     .refine(route => !['__proto__', 'constructor', 'prototype'].includes(route), 'Reserved route name'), ComponentTargetSchema)
-    .refine(routes => Object.keys(routes).length > 0, 'Must declare at least one route') }).strict()]).optional(),
-  panel: ComponentTargetSchema.optional(),
-  chat: ComponentTargetSchema.optional(),
-  isPinned: z.boolean().optional(),
-  hotkeys: z.array(z.object({ action: z.string().min(1), global: z.boolean().optional() }).strict()).optional(),
-  options: z.object({ headerClass: z.string().optional() }).strict().optional(),
-  fallbackPanel: z.object({ label: z.string().min(1), toggle: z.object({ type: z.string().min(1) }).strict(),
-    isShown: ExportTargetSchema }).strict().optional(),
+    .refine(routes => Object.keys(routes).length > 0, 'Must declare at least one route')
+    .describe('Canvas components keyed by the route names published by this plugin.') }).strict()])
+    .describe('Main canvas component, or an explicit nonempty map of routed canvas components.').optional(),
+  panel: ComponentTargetSchema.describe('Context panel component shown alongside the canvas.').optional(),
+  chat: ComponentTargetSchema.describe('Chat component supplied by this plugin.').optional(),
+  isPinned: z.boolean().describe('Place this plugin in the pinned toolbar group.').optional(),
+  hotkeys: z.array(z.object({
+    action: z.string().min(1).describe('Action name matched against the configured keyboard shortcut.'),
+    global: z.boolean().describe('Allow this action while another plugin is active; omission limits it to the active plugin.').optional(),
+  }).strict()).describe('Keyboard actions exposed by this plugin; actual shortcuts are configured in settings.').optional(),
+  options: z.object({ headerClass: z.string().describe('CSS classes applied to the canvas and popout header.').optional() }).strict()
+    .describe('Shell presentation options for this plugin.').optional(),
+  fallbackPanel: z.object({
+    label: z.string().min(1).describe('Shell menu label for toggling this shared context panel.'),
+    toggle: z.object({ type: z.string().min(1).describe('Event type sent to this plugin machine to toggle its panel.') }).strict()
+      .describe('Toggle event delivered to the panel-owning plugin.'),
+    isShown: ExportTargetSchema.describe('Named predicate export that reads this plugin snapshot to decide whether its fallback panel is shown.'),
+  }).strict().describe('Offer this plugin panel to plugins without their own panel, with a toggle event and visibility predicate.').optional(),
   defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
   contract: ExportTargetSchema.describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
@@ -472,7 +485,7 @@ const FEATURE_ID_SCHEMA = z.string()
 
 export const FeatureEntrySchema = z.object({
   description: FeatureDescriptionSchema,
-  entities: EntitiesSchema.describe('Entities owned by this feature; placement does not change their wire names.').optional(),
+  entities: EntitiesSchema.describe('Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
   types: z.string().min(1).regex(_MODULE_PATH_PATTERN, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
@@ -529,8 +542,8 @@ function extensionPoint<T extends z.ZodTypeAny>(
 const ExtensionsSchema = z.object({
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
     .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
-  help: z.object({ path: z.string().min(1) }).strict()
-    .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
+  help: z.object({ path: z.string().min(1).describe('Pack-root-relative directory of Markdown help articles compiled during the pack build.') }).strict()
+    .describe('Markdown help articles compiled into the snapshot for inspection without loading pack code.').optional(),
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
@@ -619,9 +632,9 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),
   version: z.string().regex(_PACK_VERSION_PATTERN, 'Must be a complete SemVer version').refine(_validPackVersion, 'Must be a complete SemVer version')
-    .describe('Semver version string.'),
+    .describe('Complete SemVer 2.0 version (major.minor.patch), optionally with prerelease and build metadata.'),
   description: z.string().describe('Short description of the pack\'s purpose.').optional(),
-  hostVersion: PackRangeSchema.describe('Semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
+  hostVersion: PackRangeSchema.describe('Nonempty npm semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
   license: z.string().describe('SPDX license identifier.').optional(),
   dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackDependencySchema)
     .describe('Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range].').optional(),

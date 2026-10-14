@@ -18,7 +18,7 @@
     "version": {
       "type": "string",
       "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$(?![\\s\\S])",
-      "description": "Semver version string."
+      "description": "Complete SemVer 2.0 version (major.minor.patch), optionally with prerelease and build metadata."
     },
     "description": {
       "type": "string",
@@ -26,7 +26,7 @@
     },
     "hostVersion": {
       "type": "string",
-      "description": "Semver range for compatible host versions (e.g. \">=0.3.0\")."
+      "description": "Nonempty npm semver range for compatible host versions (e.g. \">=0.3.0\")."
     },
     "license": {
       "type": "string",
@@ -145,7 +145,7 @@
                 ]
               }
             },
-            "description": "Entities owned by this feature; placement does not change their wire names."
+            "description": "Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names."
           },
           "designation": {
             "type": "string",
@@ -167,10 +167,12 @@
               },
               "title": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Display title for this preference group; falls back to its group ID or feature label."
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "description": "Explanatory text shown above this group's custom settings form."
               },
               "form": {
                 "type": "string",
@@ -238,7 +240,8 @@
             "properties": {
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Plugin display name used by shell navigation and menus."
               },
               "state": {
                 "type": "string",
@@ -256,11 +259,13 @@
                     "properties": {
                       "entry": {
                         "type": "string",
-                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                       },
                       "load": {
                         "type": "string",
-                        "const": "lazy"
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
                       }
                     },
                     "required": [
@@ -268,7 +273,8 @@
                     ],
                     "additionalProperties": false
                   }
-                ]
+                ],
+                "description": "Lucide icon export name or component module displayed in shell navigation."
               },
               "canvas": {
                 "anyOf": [
@@ -283,11 +289,13 @@
                         "properties": {
                           "entry": {
                             "type": "string",
-                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                            "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                           },
                           "load": {
                             "type": "string",
-                            "const": "lazy"
+                            "const": "lazy",
+                            "description": "Load the component on demand; omission uses the normal eager component binding."
                           }
                         },
                         "required": [
@@ -313,11 +321,13 @@
                               "properties": {
                                 "entry": {
                                   "type": "string",
-                                  "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                                  "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                  "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                                 },
                                 "load": {
                                   "type": "string",
-                                  "const": "lazy"
+                                  "const": "lazy",
+                                  "description": "Load the component on demand; omission uses the normal eager component binding."
                                 }
                               },
                               "required": [
@@ -326,7 +336,8 @@
                               "additionalProperties": false
                             }
                           ]
-                        }
+                        },
+                        "description": "Canvas components keyed by the route names published by this plugin."
                       }
                     },
                     "required": [
@@ -334,7 +345,8 @@
                     ],
                     "additionalProperties": false
                   }
-                ]
+                ],
+                "description": "Main canvas component, or an explicit nonempty map of routed canvas components."
               },
               "panel": {
                 "anyOf": [
@@ -347,11 +359,13 @@
                     "properties": {
                       "entry": {
                         "type": "string",
-                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                       },
                       "load": {
                         "type": "string",
-                        "const": "lazy"
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
                       }
                     },
                     "required": [
@@ -359,7 +373,8 @@
                     ],
                     "additionalProperties": false
                   }
-                ]
+                ],
+                "description": "Context panel component shown alongside the canvas."
               },
               "chat": {
                 "anyOf": [
@@ -372,11 +387,13 @@
                     "properties": {
                       "entry": {
                         "type": "string",
-                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                       },
                       "load": {
                         "type": "string",
-                        "const": "lazy"
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
                       }
                     },
                     "required": [
@@ -384,10 +401,12 @@
                     ],
                     "additionalProperties": false
                   }
-                ]
+                ],
+                "description": "Chat component supplied by this plugin."
               },
               "isPinned": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "Place this plugin in the pinned toolbar group."
               },
               "hotkeys": {
                 "type": "array",
@@ -396,50 +415,59 @@
                   "properties": {
                     "action": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Action name matched against the configured keyboard shortcut."
                     },
                     "global": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "Allow this action while another plugin is active; omission limits it to the active plugin."
                     }
                   },
                   "required": [
                     "action"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "description": "Keyboard actions exposed by this plugin; actual shortcuts are configured in settings."
               },
               "options": {
                 "type": "object",
                 "properties": {
                   "headerClass": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "CSS classes applied to the canvas and popout header."
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "description": "Shell presentation options for this plugin."
               },
               "fallbackPanel": {
                 "type": "object",
                 "properties": {
                   "label": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "Shell menu label for toggling this shared context panel."
                   },
                   "toggle": {
                     "type": "object",
                     "properties": {
                       "type": {
                         "type": "string",
-                        "minLength": 1
+                        "minLength": 1,
+                        "description": "Event type sent to this plugin machine to toggle its panel."
                       }
                     },
                     "required": [
                       "type"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "description": "Toggle event delivered to the panel-owning plugin."
                   },
                   "isShown": {
                     "type": "string",
-                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Named predicate export that reads this plugin snapshot to decide whether its fallback panel is shown."
                   }
                 },
                 "required": [
@@ -447,7 +475,8 @@
                   "toggle",
                   "isShown"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "description": "Offer this plugin panel to plugins without their own panel, with a toggle event and visibility predicate."
               },
               "defaultVisible": {
                 "type": "boolean",
@@ -502,7 +531,8 @@
                   "properties": {
                     "category": {
                       "type": "string",
-                      "pattern": "^[a-z][a-z0-9_-]*$"
+                      "pattern": "^[a-z][a-z0-9_-]*$",
+                      "description": "Category ID grouping this reference type in the picker."
                     },
                     "icon": {
                       "anyOf": [
@@ -515,11 +545,13 @@
                           "properties": {
                             "entry": {
                               "type": "string",
-                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                              "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                             },
                             "load": {
                               "type": "string",
-                              "const": "lazy"
+                              "const": "lazy",
+                              "description": "Load the component on demand; omission uses the normal eager component binding."
                             }
                           },
                           "required": [
@@ -527,7 +559,8 @@
                           ],
                           "additionalProperties": false
                         }
-                      ]
+                      ],
+                      "description": "Lucide icon export name or a declared component module for this reference type."
                     },
                     "svgElements": {
                       "type": "array",
@@ -546,7 +579,8 @@
                                 "type": "object",
                                 "properties": {
                                   "d": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "SVG path geometry."
                                   }
                                 },
                                 "required": [
@@ -591,11 +625,13 @@
                             ]
                           }
                         ]
-                      }
+                      },
+                      "description": "Static SVG geometry for rendering this reference in serialized editor content."
                     },
                     "navigate": {
                       "type": "string",
-                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                      "description": "Named navigation callback export invoked when this reference is opened."
                     }
                   },
                   "required": [
@@ -608,7 +644,8 @@
                 },
                 "propertyNames": {
                   "pattern": "^[a-z][a-z0-9_-]*$"
-                }
+                },
+                "description": "Reference type IDs with static presentation and declared navigation bindings."
               },
               "categories": {
                 "type": "object",
@@ -617,7 +654,8 @@
                   "properties": {
                     "label": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Visible category label in the reference picker."
                     },
                     "icon": {
                       "anyOf": [
@@ -630,11 +668,13 @@
                           "properties": {
                             "entry": {
                               "type": "string",
-                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                              "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
                             },
                             "load": {
                               "type": "string",
-                              "const": "lazy"
+                              "const": "lazy",
+                              "description": "Load the component on demand; omission uses the normal eager component binding."
                             }
                           },
                           "required": [
@@ -642,11 +682,13 @@
                           ],
                           "additionalProperties": false
                         }
-                      ]
+                      ],
+                      "description": "Lucide icon export name or a declared component module for this category."
                     },
                     "useItems": {
                       "type": "string",
-                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                      "description": "Named reactive item-provider export; queries execute when the picker requests items."
                     }
                   },
                   "required": [
@@ -658,7 +700,8 @@
                 },
                 "propertyNames": {
                   "pattern": "^[a-z][a-z0-9_-]*$"
-                }
+                },
+                "description": "Reference picker category IDs and their declared item providers."
               }
             },
             "required": [
@@ -697,10 +740,12 @@
               },
               "title": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Display title for this preference group; falls back to its group ID or feature label."
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "description": "Explanatory text shown above this group's custom settings form."
               },
               "form": {
                 "type": "string",
@@ -732,14 +777,15 @@
           "properties": {
             "path": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Pack-root-relative directory of Markdown help articles compiled during the pack build."
             }
           },
           "required": [
             "path"
           ],
           "additionalProperties": false,
-          "description": "Directory of Markdown help articles, bundled into the pack runtime."
+          "description": "Markdown help articles compiled into the snapshot for inspection without loading pack code."
         },
         "steps": {
           "type": "object",
