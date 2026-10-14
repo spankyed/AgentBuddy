@@ -43,7 +43,7 @@ candidate and select another compatible release. A CLI staging for a different i
 app's format without pretending its own schema describes the other format's grammar. Malformed metadata
 in the current format is a refusal, not permission to fetch a replacement or execute runtime code.
 
-`readPackArtifact` now combines installed snapshot/manifest validation with full `integrity.json`
+`readPackBuild` now combines installed snapshot/manifest validation with full `integrity.json`
 verification. The runtime loader uses it before requiring any pack code; previously it checked only the
 layout version and never checked file checksums. The returned SHA-256 artifact revision covers the sorted
 file inventory and layout version, so installation paths and checksum-map enumeration order do not change
@@ -1916,3 +1916,21 @@ only; cache receipts, coherent publication and persistent provenance/content ide
 Current schema validation rejects invalid declarations normally; no obsolete-key inventory or special
 historical-format refusal is introduced. Exact executable artifact-format checks remain distinct from
 capability-based inspection of current type data.
+
+
+### Verified dependency build cache and terminology outcome (2026-10-14)
+
+`ff4358588` migrates CLI and harness admission to the shared verified-build cache. Exact version,
+origin and content identity persist in the resolution record; publication retains old immutable paths
+and failed copying/admission leaves the incumbent. Captured snapshot hashes prevent source swaps
+from pairing old metadata with new executable identity. Type-only inspection remains independent of
+executable admission, with no obsolete-layout reader or conversion.
+
+Pack build APIs, installed inventory, catalog/reference/frontend identity fields and asset URLs now
+use build terminology. “Artifact” remains the actual contribution/viewer concept. Current docs,
+fixtures and generated API reports agree; the execution goal records source, guard mutations, focused
+and complete strict evidence. Historical checkpoint prose retains its historical vocabulary.
+
+Storage/admission is implemented; provenance inspection, dependency/tool graph and out-of-band output
+freshness remain required. Neither this cache nor the naming cleanup closes the remaining contribution
+inventory, native declarations, frontend boundaries, navigation or Phase 6 workstreams.

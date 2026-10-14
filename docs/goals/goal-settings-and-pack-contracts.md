@@ -3790,3 +3790,59 @@ This checkpoint does not establish cache receipt verification, atomic publicatio
 content identity. Complete that required provenance work next, then continue output/tool freshness and
 the remaining discovery/navigation/frontend/API/replacement scope. Final strict `--all` on committed
 source and the complete requirement audit remain due.
+
+
+### Verified dependency builds and build vocabulary — checkpoint (2026-10-14)
+
+Source `ff4358588` replaces the incomplete mutable dependency cache with complete verified builds
+under `.apack/deps/<id>/builds/<revision>/` and one atomically published `resolution.json`. The record
+retains declared spec, exact version, structured origin and content identity. CLI resolution and the
+testing harness share admission; type-only data exposes no executable paths. Explicit linked/file
+builds are copied coherently, prior resolved paths survive publication, and a changed GitHub repository
+cannot reuse another origin's cache. Explicit fetching refreshes remote data; ordinary builds reuse it.
+No former-layout reader, alias, converter or special historical-format refusal is present.
+
+Review caught a source-swap race: the snapshot captured before receipt verification could otherwise
+be returned with a newer build identity. A common receipt reader now checks captured snapshot bytes
+and manifest/identity agreement. Same-ID/version format replacement tests prove inspection and
+publication both refuse while preserving the incumbent. Copying never renews a producer receipt.
+
+The user clarified that “artifact” is reserved for the app's actual artifact contributions. Applied the
+correction through shared APIs (`PackBuild`, `readPackBuild`, `packBuildRevision`), installed inventory,
+catalog/reference/frontend fields (`buildRevision`, `buildFiles`), `pack://…/builds/…` asset delivery,
+fixtures, CLI variables and current public documentation. Actual artifact definitions/viewers retain
+their domain names. Regenerated and reviewed the two affected SDK API reports; historical progress
+uses predecessor vocabulary as history, not compatibility aliases. No format stamp or release
+metadata changes.
+
+Evidence:
+
+- 47 focused cache/resolution cases pass:
+  `/private/tmp/apack-cache-captured-source-focused-final.log`. Host typechecking passes:
+  `/private/tmp/apack-cache-captured-source-types.log`.
+- Removing receipt verification fails five cases; wrong-origin cache reuse fails one; non-atomic
+  record replacement fails two; omitting captured snapshot hashes fails both source-swap cases.
+  Source was restored exactly before final validation. Logs:
+  `/private/tmp/apack-cache-receipt-final-mutation.log`,
+  `/private/tmp/apack-cache-origin-final-mutation.log`,
+  `/private/tmp/apack-cache-publication-final-mutation.log`,
+  `/private/tmp/apack-cache-captured-source-mutation.log`.
+- Real producer/consumer typing and dependent harness paths passed 27 focused integration cases
+  before final review; the final strict run reruns the complete affected integration population.
+- `npm run chain -- --strict --cores 1` passes in 588.5s (1 of 30 cached):
+  `/private/tmp/apack-verified-build-cache-reviewed-strict.log`,
+  `node_modules/.cache/apack-chain/runs/2026-10-14T19-29-14Z-34373`. It includes 3,454 host cases,
+  855 pack cases with two existing skips, 683 integration cases, external-pack contract/app, smoke
+  and packaged authoring/app checks. All 24 external-app cases pass.
+- Initial URL migration missed one escaped E2E expectation; repaired the assertion while retaining
+  stylesheet, relative resource and screenshot coverage. Pre-race-fix strict passed in 334.0s at
+  `2026-10-14T19-18-46Z-16954`; the final receipt fix is covered by the accepted run above.
+- Generated EARS and all six baseline compiled content files remain byte-identical. The unrelated
+  issue draft remains untouched and uncommitted.
+
+Required next work remains: expose retained provenance through inspection/doctor; complete dependency
+execution/tool import-graph and output identity, including the observed out-of-band renderer build
+freshness gap. Continue all contribution/native discovery kinds, frontend migration, static content
+edges/inventory, navigation, failure boundaries and every Phase 6 workstream. This checkpoint does
+not complete Phase 6 or the goal. Final committed-source strict `--all` and the complete requirement
+audit remain due; lazy activation and stronger security isolation remain deferred.

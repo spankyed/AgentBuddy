@@ -8,7 +8,7 @@ The host and authoring tools should explain what a pack provides, what it needs,
 and why it failed. Authors should discover mistakes before installation or activation, and a dependency
 resolved on one machine should be explainable on another.
 
-apack already has generated schemas and accessors, snapshots, artifact integrity checks, migrations and
+apack already has generated schemas and accessors, snapshots, build integrity checks, migrations and
 host-version checks. Build on these mechanisms. The priority is completing their contracts rather than
 adding fields because another ecosystem has them.
 
@@ -19,7 +19,7 @@ The [execution goal](../goals/goal-settings-and-pack-contracts.md) owns checkpoi
 Deliver the remaining work in this order:
 
 1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
-   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
+   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and build freshness for each migrated kind. Do not create a temporary settings-only catalog.
 2. Complete settings ownership, current-format stored data, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
 3. Preserve the completed authored [manifest consolidation](manifest-consolidation.md), checkpoints
@@ -31,7 +31,7 @@ Deliver the remaining work in this order:
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
 6. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
-   on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
+   on validated build publication and committed catalog updates; consumed APIs need not wait for replacement.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
 roadmap; the linked plans hold subsystem design. Do not implement all of them as one manifest rewrite.
@@ -84,9 +84,9 @@ the settings plan, as that goal already specifies.
 | Schema descriptions, current-schema diagnostics, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
 | Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. M4 target/layout and native/frontend default-claim checks completed in `11bdc7faa`; first-registered cross-pack policy is documented and tested. Full discovery/navigation remains required |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
-| Build/check configuration and sidecars | Preserve build options; M5 inline allowances implemented in `24bd9f116`, with one policy/schema, no sidecar reader and unknown/non-switchable refusals. M5 format cleanup completed in `9374189e5`: no authored version key, exact artifact stamps, retained facade-capability acceptance. M6 writing/order implemented in `4bd88f6c9`; schema/editor/docs coverage remains required |
+| Build/check configuration and sidecars | Preserve build options; M5 inline allowances implemented in `24bd9f116`, with one policy/schema, no sidecar reader and unknown/non-switchable refusals. M5 format cleanup completed in `9374189e5`: no authored version key, exact build stamps, retained facade-capability acceptance. M6 writing/order implemented in `4bd88f6c9`; schema/editor/docs coverage remains required |
 | `extensions.fe` and `hostVersion` questions | Settled in consolidation: public `extensions.frontend` during its declarative migration; keep `hostVersion` for one host range. No blanket fe/be rename |
-| Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, cache `facades/`, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
+| Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, complete cached build types with no separate extracted facade inventory, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
 | Format/version assumptions | Required M5 removes `$manifestVersion` and audits exact layout-stamp acceptance; preserve current snapshot/layout constants and release metadata, separately from facade capability acceptance |
 
 The [complete reconciliation](manifest-consolidation.md) accounts for every original decision, both
@@ -140,7 +140,7 @@ The declared names, generated registration and discovery result agree. Existing 
 The first implementation checkpoint introduces shared `PackDiagnostic` / `PackValidation` records.
 Manifest and feature checks carry codes, severity, owner and paths; `apack pack validate --json` renders
 one report. Exit codes are 0 valid, 1 invalid and 2 incomplete. Dependency failure names skipped checks
-instead of claiming validity. Validation resolves existing artifacts without downloads or cache writes,
+instead of claiming validity. Validation resolves existing builds without downloads or cache writes,
 including a selected beta host; malformed manifests skip checks that require their shape. Build and
 installation keep their strict refusals. Remaining semantic checkers must adopt the same records as their
 contributions migrate; semver/range tightening below is still outstanding.
@@ -167,7 +167,7 @@ Targets: `manifest-schema.ts`, `build/validate.ts`, codegen export checks, CLI v
 diagnostics. Use current-schema errors; do not retain obsolete-key inventories or migration hints.
 
 Evidence: invalid semver/ranges fail at the manifest path; missing dependencies produce an incomplete
-result; text and machine output report the same underlying issue; install refuses an invalid artifact
+result; text and machine output report the same underlying issue; install refuses an invalid build
 without partially changing the installed pack.
 
 ## 3. Declare consumed APIs
@@ -201,10 +201,10 @@ the associated contributions; do not scatter provider-presence checks through fe
 ## 4. Preserve dependency provenance and reproducibility
 
 Resolution currently considers workspace, linked checkout, installed app, cache and network sources.
-Ranges and downloaded artifact integrity are already checked. `fetch-deps.ts` explicitly notes that cache
-entries lose their source, so the same cached version cannot explain where it came from.
+Ranges and downloaded build integrity are already checked. The pre-provenance audit found that cache
+entries lost their source, so the same cached version cannot explain where it came from.
 
-Record exact version, source and content identity with the existing cached dependency artifact. Show that
+Record exact version, source and content identity with the existing cached dependency build. Show that
 information through existing inspection/doctor tooling. Distinguish declared range from resolved version,
 and source location from identity; a local directory can change without moving.
 
@@ -213,9 +213,9 @@ refuses a changed/unavailable dependency instead of selecting another machine-lo
 lock metadata around the existing resolution pipeline, after provenance is reliable. Do not add a package
 manager, registry, or redundant checksum system as part of this step.
 
-Evidence: a cache hit retains origin; two resolutions expose why their artifacts differ; development
+Evidence: a cache hit retains origin; two resolutions expose why their builds differ; development
 can intentionally use a linked build; frozen resolution cannot silently substitute that build for the
-recorded artifact.
+recorded build.
 
 ### Cache implementation contract (audit, 2026-10-14)
 
@@ -226,27 +226,27 @@ origin on reuse. `withBuildAndRuntime` admits executable paths by stamp and exis
 testing harness independently reads that incomplete cache. Migrate both readers together.
 
 Use the existing verified pack layout and content identity; do not invent another executable checksum
-inventory. Each dependency cache contains immutable artifacts under
-`.apack/deps/<id>/artifacts/<content-revision>/` and one `resolution.json` selecting an artifact.
-The record stores the declared dependency spec, exact pack/version, content revision, artifact kind
+inventory. Each dependency cache contains immutable builds under
+`.apack/deps/<id>/builds/<content-revision>/` and one `resolution.json` selecting a build.
+The record stores the declared dependency spec, exact pack/version, content revision, output kind
 and structured origin. Origins name the actual local root and selection route (workspace, explicit
 file, selected host or installed app), or GitHub repository, release tag and selected archive/checksum
 assets. A cached hit preserves this record; the cache is a delivery location, not the origin.
 
-A complete executable artifact retains the producer manifest, snapshot, receipt and all recorded
+A complete executable build retains the producer manifest, snapshot, receipt and all recorded
 files, including frontend/assets. Verify it before copying, verify copied bytes against the captured
 receipt, and verify again on cache admission. Receipt/version/ID and snapshot declarations must agree.
 Never seal copied bytes to manufacture trust in changed output. Current type data lacking a supported
-executable artifact remains inspectable: store only its validated snapshot at `types/snapshot.json`,
+executable build remains inspectable: store only its validated snapshot at `types/snapshot.json`,
 record a snapshot-byte identity, and expose no executable paths. This is one current data contract,
 not old-format conversion or a second grammar. A present malformed receipt is an error, not a reason
-to downgrade a broken executable artifact into type-only data.
+to downgrade a broken executable build into type-only data.
 
-Stage on the cache filesystem and publish a complete immutable artifact before atomically replacing
+Stage on the cache filesystem and publish a complete immutable build before atomically replacing
 the resolution record. Coordinate competing publication through the existing exclusive-lock mechanism;
-readers capture one record and its immutable directory. Existing resolved paths survive a later
-resolution because publication does not overwrite or delete their artifact. Failed copying, verification
-or record publication leaves the prior record/artifact usable. Do not claim a two-directory rename
+readers capture one record and its immutable build directory. Existing resolved paths survive a later
+resolution because publication does not overwrite or delete their build. Failed copying, verification
+or record publication leaves the prior record/build usable. Do not claim a two-directory rename
 protects long-lived returned paths. Automatic eviction/garbage collection is outside this checkpoint.
 
 One shared host cache reader owns record validation, safe paths, pack/version/revision agreement and
@@ -254,7 +254,7 @@ receipt admission. CLI/codegen/build, offline inspection and the testing harness
 than independently merging snapshots and executable paths. Replace the former cache layout outright:
 no dual reads, converters, aliases or special obsolete-layout detection. Missing current cache data
 gets ordinary fetch/build guidance. Linked source development remains authoritative and explicit;
-resolve a coherent build into an immutable cached artifact before executing it.
+resolve a coherent build into an immutable cached build before executing it.
 
 Execution checkpoints:
 
@@ -335,7 +335,7 @@ foundation and settings checkpoints; use the handoffs above to scope subsequent 
 ## Consolidation handoff (2026-10-14)
 
 Authored consolidation M1–M6 is complete through `0994ae787`, including canonical writing, shared
-semantic validation, full field help, real editor assistance and current public artifact documentation.
+semantic validation, full field help, real editor assistance and current public build documentation.
 The [consolidation audit](manifest-consolidation.md#current-consolidation-acceptance-audit-2026-10-14)
 accounts for all original decisions and both naming questions, separating implemented replacements
 from required remaining discovery work. The execution goal records source commits and strict evidence.
@@ -345,3 +345,15 @@ frontend container, facade naming/capability checks, static content edges and me
 Then navigation and frontend boundaries, followed by API consumption, dependency provenance and shipped
 replacement as separate required workstreams. Lazy activation/security isolation/storage remain deferred.
 Nothing is archived and final committed-source strict `--all` remains due.
+
+
+### Dependency cache implementation checkpoint (2026-10-14)
+
+Source `ff4358588` implements the shared verified-build cache contract above and migrates CLI, harness,
+fixtures and public documentation together. The execution goal records receipt/origin/publication/
+captured-byte mutations and strict evidence. “Artifact” is reserved for app contributions; pack bytes
+and their accepted revisions use build terminology throughout the current contract.
+
+Execution checkpoint 1 is implemented. Checkpoint 2's inspection/doctor presentation and checkpoint 3's
+complete dependency/tool/output freshness remain due. Do not mark provenance or the broader roadmap
+complete from storage/admission evidence alone.
