@@ -12,9 +12,10 @@ let installed = false;
 /** Recognizes the vendor errors Monaco recovers from, including disposal reported through Vue. */
 export function isRecoverableMonacoError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
+  const origin = error.stack?.split('\n').find(line => line.trimStart().startsWith('at ')) ?? '';
   return error.message.includes('cannot be after endLineNumberExclusive')
     || (error.name === 'Canceled' && error.message === 'Canceled'
-      && (error.stack?.includes('/monaco-editor') ?? false));
+      && (/\/monaco(?:-editor|-[A-Za-z0-9_-]+\.js)/.test(origin)));
 }
 
 /** Stops recoverable Monaco errors from reaching a global error handler. Safe to call repeatedly. */

@@ -3,7 +3,16 @@
 // Run via `npm run test:external-pack` from the repo root.
 import { test, expect, waitForAppReady, type AppDriver } from '@apackdev/testing';
 
-test('advanced settings JSON provides declared completion, descriptions and validated saves', async ({ appPage, app }) => {
+test('advanced settings JSON provides offline declared completion, descriptions and validated saves', async ({ appPage, app }) => {
+  const externalRequests: string[] = [];
+  await appPage.route(/^https?:\/\//, route => {
+    const url = new URL(route.request().url());
+    if (['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) return route.continue();
+    externalRequests.push(url.href);
+    return route.abort();
+  });
+  await appPage.reload();
+  await waitForAppReady(appPage);
   await app.waitForPlugin('memos');
   await app.navigate('host/settings');
   await appPage.evaluate(() => {
@@ -69,6 +78,7 @@ test('advanced settings JSON provides declared completion, descriptions and vali
   await appPage.getByTitle('Reset to defaults', { exact: true }).click();
   await appPage.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(appPage.getByTestId('memos-list-title')).toHaveValue('Memos');
+  expect(externalRequests).toEqual([]);
 });
 
 test('pack plugin renders with its own styles', async ({ appPage, app }) => {

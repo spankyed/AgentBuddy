@@ -129,3 +129,13 @@ in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin
   - `tests/source-layout.spec.ts` keeps each folder to its job; `tests/views/packs/pack-detail.spec.ts` covers the Packs detail component.
   - The shell's specs, the Packs machine's and the pack-frontend loader's live with them, in `packages/apack-host/tests/fe/`.
 - `npm run typecheck:renderer` (root) runs `vue-tsc --app`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint:check` runs oxlint and then eslint; `lint:fix` runs both with `--fix`. The bare-named one is the safe one, so nothing rewrites the tree unless you asked it to.
+
+
+## Local editor assets
+
+`src/boot/monaco.ts` configures the shared Vue editor loader with the bundled Monaco instance and
+Vite-built editor/JSON/CSS/HTML/TypeScript workers before any editor mounts. The renderer supplies
+`window.monaco` for the existing editor components. No editor or worker CDN request is needed.
+Vite gives Monaco its own vendor chunk so recoverable cancellation can be attributed to its origin
+frame; application errors called through Monaco still reach the fatal error reporter. The external
+settings JSON test blocks non-local HTTP and exercises real schema completion, validation and saving.
