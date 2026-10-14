@@ -1677,3 +1677,24 @@ cache-input mutations each fail their named regressions, followed by exact sourc
 Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-06-57Z-42359` and
 `/private/tmp/apack-editor-strict-cache-fixed.log`. Initial catalog-delivery behavior and the remaining
 contribution/native/freshness work are still due; this is not whole-goal completion.
+
+
+### Delayed reference metadata: identity contract correction (2026-10-14)
+
+The initial-delivery audit reproduced actual target loss, not merely a missing icon: a cold external
+reference is reduced to label text before its declaration arrives. The common UI also still hardcodes
+three pack-owned schemes. Waiting for a particular pack or reparsing a whole document would preserve
+the wrong dependency and risk edits; discovery metadata must not be required to decode saved identity.
+
+Follow the [reference wire correction](open-entity.md#reference-wire-identity-correction-2026-10-14):
+one explicit internal URI containing reference type and canonical entity id, with pure SDK parsing/
+formatting independent of declarations. Keep the existing node attributes and use declarations only
+for presentation/eligibility. Remove per-type protocol fields/claims/readers and hardcoded UI schemes
+outright, migrating all owned contracts and examples without compatibility parsing.
+
+This supersedes the earlier protocol-per-type discovery/consumer design. Type/category ownership and
+all other contribution, native/source freshness and entity-readiness requirements stay intact. The
+new parser must preserve a target while its pack is absent as well as during first catalog delivery;
+publication should refresh presentation without replacing the document or invoking navigation.
+The failing reproduction and source audit establish the next implementation; the wire correction
+has not been implemented or validated yet.

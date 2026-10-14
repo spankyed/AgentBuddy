@@ -256,3 +256,45 @@ Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T00-51-53Z-23984`;
 prerequisite and retains the full later routing/discovery scope. Descriptor navigation callbacks still
 exist; actual entity destination lookup, unavailable/missing-entity outcomes and stale delivery remain
 unfinished. No plan is archived and this is not final goal-wide strict --all acceptance.
+
+
+### Reference wire identity correction (2026-10-14)
+
+The delayed-catalog audit disproved a hidden assumption in Phase 0: a URI whose scheme is defined by
+pack metadata cannot be parsed independently of that metadata. With the catalog empty, real Tiptap
+parsing turns `[Saved memo](memo://Memo-before-catalog)` into `Saved memo`; the target is already gone
+when declarations arrive. The failing assertion is recorded in
+`/private/tmp/apack-reference-delayed-catalog-repro.log`. Separately, the common UI Link configuration
+still lists `note`, `thread` and `doc` explicitly. This is runtime-discovery coupling in stored identity.
+
+Use one internal reference format: `apack-ref://<encoded-reference-type>/<encoded-entity-id>`.
+Both segments are percent-encoded independently and decoded exactly once. Parsing requires two
+nonempty segments and refuses malformed encoding/structure. This scheme identifies document
+references, not a production/beta/preview app selector or an operating-system launch request.
+Reference type remains presentation identity; entity id remains the canonical navigation target.
+Do not infer entity identity from labels/short codes or allow declaration data to reinterpret the id.
+
+Put the pure formatter/parser and their target type in the SDK reference entry. The editor's existing
+`reference` node keeps `refType`, `refId`, `label` and `shortCode`; no new provisional node, feature, actor
+or data entity is needed. Its HTML and Markdown parse/serialization must preserve valid targets while
+metadata is loading, unavailable or absent. Unknown presentation types stay inert until eligible;
+node-view declaration subscriptions can update icons in place without reparsing content, changing
+selection/history or replaying navigation. Ordinary web/mail links retain the existing Link validator.
+
+Replace the per-type URI scheme contract outright. Remove reference `protocol` from declarations and
+accepted bindings, `referenceProtocols` provenance/collision claims, `findReferenceTypeByProtocol`,
+and the common UI's hardcoded reference schemes. Retain qualified type/category ownership and
+collision refusal. Update every manifest, fixture, schema, API report, generator and public guide in
+the same checkpoint. No old-scheme aliases, dual parsing, saved-format conversion or compatibility
+fallback. Developer backup conversion, if needed, remains a separate explicit operation.
+
+Required proof: pure Unicode/reserved-character round trips and malformed target refusals; actual
+HTML/Markdown parsing before first catalog delivery; serialization after declarations disappear;
+metadata arrival updating an existing node without document/selection/history changes; navigation
+remaining unavailable until matching acceptance; ordinary web/mail links unaffected; and updated real
+external pack reference/picker acceptance. Mutation-check target retention and parser guards. Run the
+strict checkpoint chain with its corrected shipped-pack inputs and record the committed evidence.
+
+This replaces the Phase 0 per-type-scheme parsing/writing design, not the entity-opening primitive.
+Phase 4 still supplies checked `opens`, canonical-id destination resolution, useful missing/disabled
+results and stale-window/revision refusal. The URI alone neither activates nor authorizes a destination.
