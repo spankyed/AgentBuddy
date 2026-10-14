@@ -4048,3 +4048,56 @@ manual-build/drive launch contract still remain before certifying overall freshn
 remaining contribution/native/static-content discovery, navigation, frontend boundaries and all three
 Phase 6 workstreams. Final committed-source strict --all and full requirement audit remain due; no
 work is archived from this checkpoint.
+
+### Declared installed-package/compiler scope checkpoint (2026-10-14)
+
+Source `169f8ec8a` captures npm package ownership and declared dependency/peer/optional graphs from
+the executing CLI and pack, including pack development dependencies. Resolution follows each owner's
+Node lookup paths, retaining local overrides and blocked metadata exports without importing modules.
+Relative filenames/bytes and graph edges cover transitive helpers, declarations, data, CSS, native
+binaries, missing optional packages and package metadata/conditional exports. Workspace source/export
+and published/data roots stay separate from scratch; cycles cannot include compilation roots' output.
+Root development dependencies remain included even when first reached through another owner.
+
+One captured compilation key combines owned implementation bytes, package graph bytes and runtime
+selectors. Generation and cached phases share it; generation and build publication re-read it. The
+previous version-only bundler list is removed. Stable external scopes keep generation/dependency unit
+tests focused; dedicated scope tests and actual installed-type integration perform real scans. A
+same-version provider .d.ts edit changes emitted registration event names and refuses the old stamp;
+the poisoned provider module never executes. A post-async library edit refuses before replacing
+generated files/stamp. Byte, package-local lookup and publication-check mutations fail nine, one and
+one cases respectively; source is restored exactly.
+
+The initial strict run exposed context ambiguity in a scaffold test: an in-process Vitest generation
+under development/node conditions was compared to a standalone CLI generation with different
+conditions. Temporary component diagnostics prove identical tool/package hashes and differing export
+selectors (`/private/tmp/apack-scope-components.jsonl`). Ignore loader/debug instrumentation; normalize
+custom export selectors, retaining meaningful development conditions. The reserved framework source
+mode is represented by owned implementation resolution. Compare unchanged reuse across two actual
+CLI runs under equal conditions; retain output/import assertions and add the first process exit check.
+Temporary diagnostics were removed and package outputs rebuilt before accepted validation.
+
+Evidence: 74 focused cases plus the export-condition normalization case in strict validation; actual
+installed-type and async-race integrations pass. CLI typecheck passes.
+`/private/tmp/apack-package-inputs-focused-final.log`,
+`/private/tmp/apack-package-inputs-real-types-final.log`,
+`/private/tmp/apack-package-inputs-{bytes,resolution,publication}-mutation.log`. Required strict passes
+all 30 gates in 756.5s (one cached), including scaffold/watcher/external typing, packaged authoring,
+runtime build, smoke and app acceptance: `/private/tmp/apack-package-inputs-reviewed-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T23-09-36Z-12005`. The first failed run and intermediate
+workflow diagnostics are not acceptance evidence. Committed-source warm strict passes in 1.0s with
+29/30 cached: `/private/tmp/apack-package-inputs-committed-warm.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T23-23-15Z-43934`. EARS and six compiled content files
+remain byte-identical. No SDK public schema/API/format/release metadata changes or compatibility code.
+
+Cost is material: initial byte-graph measurements were 2.3s CLI and 5.0s default-setup, and the accepted
+default pack build is 46.7s versus roughly 27s before this scope. Boundaries share one captured key but
+revalidation still walks live bytes. Do not describe this as a speed improvement or silently remove
+coverage to regain prior timings. Refine declared scopes and frozen execution coherently in the next
+audit. Declared npm graph coverage is implemented; complete compilation closure remains unproven for
+inherited compiler configurations, path-mapped/undeclared imports and code already loaded before a
+changed disk snapshot. Audit those actual readers/configuration paths and the frozen-input/publication
+contract before certifying freshness, then the separate manual-build/drive launch contract. Every
+remaining discovery/native/static-content requirement, navigation, frontend boundary and all three
+Phase 6 workstreams stays required, followed by committed-source strict --all and full completion audit.
+No work is archived; the unrelated issue draft is untouched.

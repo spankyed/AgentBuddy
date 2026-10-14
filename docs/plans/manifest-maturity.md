@@ -514,3 +514,46 @@ exports require resolution against the correct owner/entry, without importing co
 resolved byte scopes/transitive helpers/conditional exports and revalidation, then complete the
 frozen-input/publication audit and manual-build/drive launch contract. Retain the complete existing
 discovery and downstream execution goal, including every Phase 6 workstream and final strict --all.
+
+### Installed package scope checkpoint design (2026-10-14)
+
+Read npm ownership/resolution as data from each compilation owner: the executing CLI and the authored
+pack. Walk declared dependencies/peers/optional dependencies, plus the pack's development dependencies;
+resolve from each package owner so package-local overrides remain distinct. Metadata exports may block
+package.json: lookup ownership through Node's package search paths, without importing an entry.
+Record absent dependencies explicitly, retain graph edges and sharing, and hash relative filenames and
+bytes. Installed packages include shipped declarations, scripts, data, styles and native binaries.
+Workspace packages use declared source export roots and published file roots, including globbed data
+roots; scratch/dependency/git trees are separate. Pre-register compilation roots so dependency cycles
+cannot hash the consumer's own output as an input. No previous-read log or version-only fallback.
+
+Capture one compilation scope combining owned implementation bytes, npm graph bytes and Node/platform/
+loader-condition context. Share its immutable key across generation and cached phases; re-read the
+scope at generated-file and build publication boundaries. Do not cache it across commands/builds.
+Initial measurement was 2.3s for CLI scope and 5.0s for default-setup scope; this cost must be paid per
+boundary, not per cached phase. Focused generation tests may inject a stable external scope; dedicated
+package/scope tests and actual imported-type integration must exercise real byte scanning.
+
+Acceptance: blocked metadata exports, local overrides, transitive helpers, optional availability,
+conditional exports/context, cycles, root-output exclusion, workspace published/source/data roots,
+relative path/mtime independence and same-version byte edits. Real TypeScript declaration edits must
+reject old generated files and regenerate changed event metadata without activating the provider.
+Guard-removal mutations and required strict validation precede source commit. Remaining frozen-input/
+module-load coherence, consumer configuration/import paths outside declared package scopes and the
+manual-build/drive contract still require audit; do not certify all freshness or the full goal here.
+
+### Declared installed-package scope outcome (2026-10-14)
+
+`169f8ec8a` implements data-only declared package graph/byte coverage and shared captured compilation
+keys above. The goal records local-override/byte/publication mutations, real changed-type metadata and
+async refusal, launch-context corrections and required strict/app evidence. Instrumentation is not a
+compiler selector; development export conditions remain meaningful. Committed-source unchanged chain
+reuse is 1.0s, but changed builds are slower: the accepted default pack build is 46.7s.
+
+Do not certify complete compiler closure yet. Next inspect inherited configuration and path mapping,
+imports outside declared roots, and already-loaded implementation versus captured disk bytes. Set a
+coherent frozen execution/publication scope and refine repeated byte-scan cost without weakening the
+proof. Current default-setup's tsconfig has local generated/feature/extension mappings and no shared
+parent config; inspect external authoring contracts rather than assuming a nonexistent repo base
+config. Then settle manual runtime build/drive freshness. All remaining contribution discovery and
+downstream Phases 0–7, including every Phase 6 workstream and final strict --all, retain their scope.
