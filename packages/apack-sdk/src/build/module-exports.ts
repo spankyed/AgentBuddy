@@ -71,6 +71,9 @@ function compilerOptions(ts: typeof TS, packRoot: string): TS.CompilerOptions {
     },
   });
   if (!parsed) throw new Error(`${configPath} could not be read`);
+  const errors = parsed.errors.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error && diagnostic.code !== 18003);
+  if (errors.length) throw new Error(`${configPath}: ${errors.map(diagnostic =>
+    ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')).join('; ')}`);
   return parsed.options;
 }
 

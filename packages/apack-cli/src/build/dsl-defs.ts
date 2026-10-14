@@ -1,10 +1,9 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
-import ts from 'typescript';
 import type { PackManifest } from '@apackdev/sdk/build';
 import type { RecordReads } from './build-reads';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
+import { readPackCompilerConfiguration } from './compiler-configuration.ts';
 
 /**
  * The pack's own compiler options, with its path aliases resolved. Its tsconfig's `include` covers the
@@ -12,11 +11,7 @@ import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
  * these options let the bundler follow the entry's imports alone.
  */
 function packCompilerOptions(packDir: string): Record<string, unknown> {
-  const file = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(file)) return {};
-  const { config, error } = ts.readConfigFile(file, ts.sys.readFile);
-  if (error) return {};
-  const { options } = ts.parseJsonConfigFileContent(config, ts.sys, packDir, undefined, file);
+  const options = readPackCompilerConfiguration(packDir)?.options ?? {};
   // Module resolution decides whether a package import resolves at all, and the path aliases whether the
   // pack's own modules do; everything else is the compiler's business, not the bundle's.
   const { paths, baseUrl, module, moduleResolution, target, jsx } = options;
