@@ -21,6 +21,7 @@ function pack(files: string[]): string {
 }
 
 const memos = {
+  description: 'Manage memos.',
   settings: { schema: { type: 'object' }, defaults: {}, form: 'src/features/memos/fe/settings.vue' },
   system: { entry: 'src/features/memos/be/system.ts' },
   plugin: { label: 'Fixture', state: 'src/features/memos/fe/plugin.ts' },
@@ -70,14 +71,14 @@ describe('validateFeatures', () => {
 describe('types', () => {
   it('resolves a declared directory barrel and refuses an escaping module', () => {
     const root = pack(['src/public/index.ts']);
-    expect(messagesOf(validateFeatures(root, { features: { memos: { types: 'src/public' } } }))).toEqual([]);
+    expect(messagesOf(validateFeatures(root, { features: { memos: { description: 'Manage memos.', types: 'src/public' } } }))).toEqual([]);
     for (const types of ['../outside.ts', path.join(root, 'src/public/index.ts')]) {
-      expect(messagesOf(validateFeatures(root, { features: { memos: { types } } }))[0])
+      expect(messagesOf(validateFeatures(root, { features: { memos: { description: 'Manage memos.', types } } }))[0])
         .toContain('pack-root-relative and stay within the pack');
     }
     const outside = pack(['external.ts']);
     fs.symlinkSync(path.join(outside, 'external.ts'), path.join(root, 'linked.ts'));
-    expect(messagesOf(validateFeatures(root, { features: { memos: { types: 'linked.ts' } } }))[0])
+    expect(messagesOf(validateFeatures(root, { features: { memos: { description: 'Manage memos.', types: 'linked.ts' } } }))[0])
       .toContain('type module must stay within the pack');
   });
   it('accepts one whose module exists, written with or without its extension', () => {

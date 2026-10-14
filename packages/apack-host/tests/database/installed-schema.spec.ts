@@ -57,7 +57,7 @@ it('discovers feature-owned typed and untyped entities without authored source o
   writeInstalledPackFixture(packDir, {
     id: 'offline', name: 'Offline', version: '1.0.0',
     data: { relations: ['note_link'] },
-    features: { notes: { entities: { OfflineNote: 'src/types.ts#NoteShape', OfflineIndex: null } } },
+    features: { notes: { description: 'Feature declaration fixture.', entities: { OfflineNote: 'src/types.ts#NoteShape', OfflineIndex: null } } },
   });
   expect(fs.existsSync(path.join(packDir, 'src'))).toBe(false);
   const schema = readInstalledSchema(schemaContext(dir));

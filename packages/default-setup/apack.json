@@ -8,6 +8,7 @@
   "license": "MIT",
   "features": {
     "threads": {
+      "description": "Converse with assistants and manage threads, messages and artifacts.",
       "designation": "threads",
       "settings": {
         "schema": {
@@ -538,6 +539,7 @@
       "types": "src/features/threads/be/types.ts"
     },
     "code": {
+      "description": "Work with project files, terminals and coding agents.",
       "settings": {
         "schema": {
           "type": "object",
@@ -823,6 +825,7 @@
       "types": "src/features/code/be/types.ts"
     },
     "notes": {
+      "description": "Write, organize and export notes.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1004,6 +1007,7 @@
       "types": "src/features/notes/be/types.ts"
     },
     "browser": {
+      "description": "Browse web pages and manage tabs and bookmarks.",
       "designation": "browser",
       "settings": {
         "schema": {
@@ -1054,6 +1058,7 @@
       "types": "src/features/browser/be/types.ts"
     },
     "library": {
+      "description": "Organize documents, collections and indexed content.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1199,6 +1204,7 @@
       "types": "src/features/library/be/types.ts"
     },
     "flows": {
+      "description": "Build and manage flows of connected steps.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1244,6 +1250,7 @@
       "types": "src/features/flows/be/types"
     },
     "actions": {
+      "description": "Manage reusable executable actions.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1325,6 +1332,7 @@
       "types": "src/features/actions/be/types.ts"
     },
     "prompts": {
+      "description": "Manage reusable prompt templates.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1406,6 +1414,7 @@
       "types": "src/features/prompts/be/types.ts"
     },
     "brain": {
+      "description": "Execute flows and coordinate their running steps.",
       "designation": "brain",
       "settings": {
         "schema": {
@@ -1465,6 +1474,7 @@
       "types": "src/features/brain/be/types.ts"
     },
     "database": {
+      "description": "Inspect and query stored entities, attributes and relations.",
       "settings": {
         "schema": {
           "type": "object",
@@ -1540,6 +1550,7 @@
       "types": "src/features/database/be/types.ts"
     },
     "logs": {
+      "description": "Inspect app logs and diagnostic events.",
       "designation": "logs",
       "settings": {
         "schema": {

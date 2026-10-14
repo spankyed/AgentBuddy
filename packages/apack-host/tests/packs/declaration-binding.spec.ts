@@ -6,12 +6,12 @@ import { backendBindingProblem } from '../../src/packs/declaration-binding.ts';
 const manifest = ManifestSchema.parse({
   id: 'example', name: 'Example', version: '1.0.0',
   features: {
-    notes: {
+    notes: { description: 'Feature declaration fixture.',
       designation: 'notes', system: { entry: 'system.ts' },
       plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false },
       services: { notes: 'notes.ts#notes' }, repositories: { noteQueries: 'notes.ts#queries' },
     },
-    preferences: {},
+    preferences: { description: 'Feature declaration fixture.',},
   },
   extensions: { services: { shared: 'shared.ts#shared' } },
 });

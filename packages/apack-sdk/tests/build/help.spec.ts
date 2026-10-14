@@ -12,7 +12,7 @@ function fixture(files: Record<string, string>) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-')); dirs.push(root);
   fs.mkdirSync(path.join(root, 'src/extensions/help'), { recursive: true });
   for (const [name, text] of Object.entries(files)) { const file = path.join(root, 'src/extensions/help', name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
-  const manifest: PackManifest = { id: 'test-pack', name: 'Test', version: '1.0.0', features: { code: {} }, extensions: { help: { path: 'src/extensions/help' } } };
+  const manifest: PackManifest = { id: 'test-pack', name: 'Test', version: '1.0.0', features: { code: { description: 'Work with code.' } }, extensions: { help: { path: 'src/extensions/help' } } };
   return { root, manifest };
 }
 describe('Markdown help compilation', () => {

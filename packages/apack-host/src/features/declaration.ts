@@ -17,8 +17,9 @@ export const hostPluginDeclarations = {
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
   features: {
-    [hostFeatureIds.application]: {}, [hostFeatureIds.help]: {},
-    [hostFeatureIds.packs]: { plugin: hostPluginDeclarations.packs },
-    [hostFeatureIds.settings]: { plugin: hostPluginDeclarations.settings },
+    [hostFeatureIds.application]: { description: 'Manage sidebar visibility and the last active plugin.' },
+    [hostFeatureIds.help]: { description: 'Browse help articles from installed packs.' },
+    [hostFeatureIds.packs]: { description: 'Manage installed packs and their update choices.', plugin: hostPluginDeclarations.packs },
+    [hostFeatureIds.settings]: { description: 'Edit app, pack and feature preferences.', plugin: hostPluginDeclarations.settings },
   },
 };

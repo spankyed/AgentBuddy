@@ -5,13 +5,14 @@ A **feature** is the primary unit of pack functionality. It bundles a backend sy
 ## Scaffolding
 
 ```bash
-apack pack add feature bookmarks --label "Bookmarks" --icon "Bookmark"
+apack pack add feature bookmarks --description "Save and organize bookmarks." --label "Bookmarks" --icon "Bookmark"
 ```
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--label <Label>` | derived from the name | The plugin module's `label` |
-| `--icon <LucideIcon>` | `Box` | The icon the plugin module imports and sets as its `icon` |
+| `--description` | Required | Nonblank feature purpose |
+| `--label <Label>` | derived from the name | The plugin's display label in the manifest |
+| `--icon <LucideIcon>` | `Box` | The Lucide icon declared in the manifest and imported by generated bindings |
 | `--designation <role>` | none | Writes `"designation"`: the role the feature plays, which need not be its name |
 
 The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code, and part of the feature's ref, `<packId>/<featureId>`.
@@ -266,6 +267,7 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "settings": {
         "schema": {
           "type": "object",
@@ -385,10 +387,11 @@ Other feature fields:
 | Field | Effect |
 |---|---|
 | `system.events.incoming` | Event types the app accepts for the system (`sendToSystem`) besides those its machine's transitions name |
+| `description` | Required nonblank purpose, displayed from declarations without activation |
 | `types` | Types module re-exported from `#generated/types`; explicit pack-root-relative module path; no inferred default |
 | `references` | Inline type/category declarations and explicit function exports; see [reference declarations](manifest.md#reference-declarations) |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.state` and component-target file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --description "Save and organize bookmarks." --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings.form`, `system.entry` or `plugin.state` and component-target file that doesn't exist.
 
 ## Types dependents see
 

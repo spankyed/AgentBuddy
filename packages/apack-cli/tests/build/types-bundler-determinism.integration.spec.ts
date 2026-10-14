@@ -28,7 +28,7 @@ const PACK: Record<string, string> = {
     data: { entities: { Tag: "src/types.ts#TagEntity" } },
 
     features: {
-      tags: {
+      tags: { description: 'Feature declaration fixture.',
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
         services: { tags: 'src/tags.ts#tagsService' },
         repositories: { tagQueries: 'src/repository.ts#tagQueries' },

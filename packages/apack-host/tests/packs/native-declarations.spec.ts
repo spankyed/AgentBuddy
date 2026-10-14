@@ -4,7 +4,7 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const definition = { schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false }, defaults: { name: 'Native' } };
 const declaration: NativePackDeclaration = { id: 'native', dependencies: { provider: '*' },
-  settings: { assistant: definition }, features: { notes: { settings: definition } } };
+  settings: { assistant: definition }, features: { notes: { description: 'Feature declaration fixture.', settings: definition } } };
 const runtime = (): PackRegistration => ({ id: declaration.id, dependencies: declaration.dependencies,
   settings: structuredClone(declaration.settings), features: { notes: { settings: structuredClone(definition) } } });
 
@@ -15,6 +15,7 @@ it('discovers native data before binding and retains it after runtime unload or 
   const changed = vi.fn();
   registry.onCatalogChanged(changed);
   expect(registry.loadedPacks()).toEqual([]);
+  expect(published.native[0].features?.notes.description).toBe(declaration.features!.notes.description);
   expect(registry.settingsCatalog().features['native/notes']).toEqual(definition);
   input.features!.notes.settings!.defaults.name = 'Mutated input';
   expect(registry.settingsCatalog().features['native/notes'].defaults.name).toBe('Native');
@@ -76,7 +77,7 @@ it.each([
 
 it('admits native feature-owned entities statically and checks their runtime wire identities', () => {
   const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native',
-    features: { notes: { entities: { NativeNote: 'src/types.ts#NoteShape', NativeIndex: null } } } }] });
+    features: { notes: { description: 'Feature declaration fixture.', entities: { NativeNote: 'src/types.ts#NoteShape', NativeIndex: null } } } }] });
   expect(registry.catalog.getSnapshot().native[0].features!.notes.entities).toEqual({
     NativeNote: 'src/types.ts#NoteShape', NativeIndex: null,
   });
@@ -118,4 +119,18 @@ it.each([
   expect(registry.getLifecycleHooks()).toEqual([]);
   expect(registry.catalog.getSnapshot()).toBe(before);
   expect(changed).not.toHaveBeenCalled();
+});
+
+
+it('rejects a blank native feature purpose before runtime admission', () => {
+  const invalid = structuredClone(declaration);
+  invalid.features!.notes.description = ' \n\t';
+  expect(() => createPackRegistry({ nativeDeclarations: [invalid] }))
+    .toThrow('Feature description must not be blank');
+});
+
+it('requires native feature purpose before publishing its declaration', () => {
+  const invalid = structuredClone(declaration);
+  Reflect.deleteProperty(invalid.features!.notes, 'description');
+  expect(() => createPackRegistry({ nativeDeclarations: [invalid] })).toThrow(/description|Required/);
 });

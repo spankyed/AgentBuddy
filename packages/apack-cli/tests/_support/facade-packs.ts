@@ -67,14 +67,14 @@ const BASE_PACK = {
     data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" } },
 
     features: {
-      calendar: {
+      calendar: { description: 'Feature declaration fixture.',
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
         plugin: { label: 'Fixture', state: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
         services: { search: 'src/search.ts#searchService' },
         repositories: { tagQueries: 'src/repository.ts#tagQueries' },
       },
       // A second plugin of the dependency, which declares no inbox: nothing may send it
-      inbox: {
+      inbox: { description: 'Feature declaration fixture.',
         system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
         plugin: { label: 'Fixture', state: 'src/inbox-plugin.ts' },
       },
@@ -130,7 +130,7 @@ const APP_PACK = {
     data: { entities: { Memo: "src/types.ts#ItemEntity" } },
     // Same type name as the dependency's Item shape
 
-    features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
+    features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
@@ -467,7 +467,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
   describe.skipIf(published && !PACKAGES_BUILT)(`generated facades with a dependency ('${name}')`, () => {
   let parent: string;
   beforeAll(async () => { parent = await buildPacks(published); });
-  afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
+  afterAll(() => { if (parent) fs.rmSync(parent, { recursive: true, force: true }); });
 
   it("writes the dependency's facade types into its snapshot", () => {
     const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));

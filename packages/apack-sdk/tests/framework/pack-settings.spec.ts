@@ -5,7 +5,7 @@ const settings = { schema: { type: 'object', additionalProperties: false,
   properties: { count: { type: 'integer', minimum: 1 } }, required: ['count'],
 }, defaults: { count: 10 } };
 const manifest = (declaration: unknown) => ({ id: 'memos', name: 'Memos', version: '1.0.0',
-  features: { memos: { settings: declaration } },
+  features: { memos: { description: 'Feature declaration fixture.', settings: declaration } },
 });
 
 describe('declarative feature settings', () => {
@@ -30,7 +30,7 @@ describe('declarative feature settings', () => {
 
   it('allows navigation visibility without inventing a settings definition', () => {
     expect(parseManifest({ id: 'memos', name: 'Memos', version: '1.0.0',
-      features: { memos: { plugin: { label: 'Fixture', state: 'src/plugin.ts', defaultVisible: false } } },
+      features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/plugin.ts', defaultVisible: false } } },
     }).status).toBe('valid');
   });
 });

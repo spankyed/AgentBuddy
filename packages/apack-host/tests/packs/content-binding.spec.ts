@@ -9,7 +9,7 @@ import { contentBindingProblem } from '../../src/packs/declaration-binding.ts';
 
 const manifest = ManifestSchema.parse({
   id: 'content-pack', name: 'Content', version: '1.0.0', data: { entities: { ContentThing: null } },
-  features: { notes: {
+  features: { notes: { description: 'Feature declaration fixture.',
     designation: 'notes', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts' },
     services: { notes: 'notes.ts#notes' }, repositories: { contentQueries: 'queries.ts#queries' },
     settings: { schema: { type: 'object' }, defaults: { count: 0 } },

@@ -23,7 +23,7 @@ describe('contribution catalog data', () => {
     const dir = path.join(packsDir, 'help-pack');
     try {
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
-        features: { notes: { plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' } } };
+        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' } } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         manifest, types: { entities: {}, relKinds: {} }, defs: {},
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
@@ -73,7 +73,7 @@ describe('contribution catalog data', () => {
     const catalog = createContributionCatalog(app);
     const inputs = ['first', 'second'].map(id => {
       const input = source(id, false);
-      input.snapshot.manifest.features = { notes: { settings: { ...structuredClone(group), defaults: { name: id } } } };
+      input.snapshot.manifest.features = { notes: { description: 'Feature declaration fixture.', settings: { ...structuredClone(group), defaults: { name: id } } } };
       input.snapshot.declarationRevision = _declarationRevision(input.snapshot.manifest);
       return input;
     });
@@ -149,7 +149,7 @@ describe('contribution catalog data', () => {
 
   it('projects native declarations through the same immutable lookup contract', () => {
     const catalog = createContributionCatalog(app);
-    catalog.setNative([{ id: 'native', settings: { assistant: group }, features: { notes: { settings: group } } }]);
+    catalog.setNative([{ id: 'native', settings: { assistant: group }, features: { notes: { description: 'Feature declaration fixture.', settings: group } } }]);
     expect(catalog.packSettings('native').assistant).toEqual(group);
     expect(catalog.featureSettings(resolveName('native/notes'))).toEqual(group);
     expect(catalog.settings().dependencies.native).toEqual([]);
@@ -193,7 +193,7 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(runtime, 'throw new Error("catalog executed runtime");');
       const file = path.join(dir, PACK_LAYOUT.snapshot);
       const input = source('poisoned');
-      input.snapshot.manifest.features = { notes: { settings: structuredClone(group) } };
+      input.snapshot.manifest.features = { notes: { description: 'Feature declaration fixture.', settings: structuredClone(group) } };
       input.snapshot.declarationRevision = _declarationRevision(input.snapshot.manifest);
       fs.writeFileSync(file, JSON.stringify(input.snapshot));
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(input.snapshot.manifest));
@@ -254,14 +254,14 @@ it('checks source binding identity before acceptance and preserves declarations 
 
 it('projects native, disabled installed and authoring plugins without activating implementations', () => {
   const catalog = createContributionCatalog(app);
-  const native = { id: 'native', features: { view: { plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
   catalog.setNative([native]);
   const installed = source('installed', false);
-  installed.snapshot.manifest.features = { view: { plugin: { label: 'Installed view', state: 'src/state.ts',
+  installed.snapshot.manifest.features = { view: { description: 'Feature declaration fixture.', plugin: { label: 'Installed view', state: 'src/state.ts',
     canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } } } } };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
   catalog.replace([installed]);
-  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { plugin: { label: 'Author view', state: 'src/state.ts' } } } };
+  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { description: 'Present an author view.', plugin: { label: 'Author view', state: 'src/state.ts' } } } };
   catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
   expect(catalog.plugins()).toMatchObject([
     { featureRef: 'native/view', origin: 'native', enabled: true, declaration: { label: 'Native view' } },
@@ -284,12 +284,12 @@ it('keeps reference metadata immutable and independent of native, installed and 
     categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
   };
   const catalog = createContributionCatalog(app);
-  catalog.setNative([{ id: 'native', features: { memos: { references } } }]);
+  catalog.setNative([{ id: 'native', features: { memos: { description: 'Feature declaration fixture.', references } } }]);
   const installed = source('installed', false);
-  installed.snapshot.manifest.features = { memos: { references } };
+  installed.snapshot.manifest.features = { memos: { description: 'Feature declaration fixture.', references } };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
   catalog.replace([installed]);
-  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { memos: { references } } };
+  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { memos: { description: 'Manage memos.', references } } };
   catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
   expect(catalog.references()).toMatchObject([
     { featureRef: 'native/memos', origin: 'native', enabled: true, declaration: references },

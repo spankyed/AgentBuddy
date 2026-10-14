@@ -233,6 +233,7 @@
                 class="px-1 py-0.5 text-[9px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded"
               >{{ feature.designation }}</span>
             </div>
+            <p class="text-xs text-neutral-400 mb-1">{{ feature.description }}</p>
             <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
               <span v-if="feature.hasSystem">system</span>
               <span v-if="feature.plugin">plugin</span>

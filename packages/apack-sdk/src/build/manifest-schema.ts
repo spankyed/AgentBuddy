@@ -58,6 +58,9 @@ const RelationsSchema = z.array(z.string().regex(_RELATION_WIRE_PATTERN, 'Must b
 const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: RelationsSchema.optional() }).strict()
   .describe('Pack-level data declarations without a feature owner.');
 
+const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description must not be blank')
+  .describe('What this feature does, independently of its plugin display label.');
+
 const SettingsDefinitionShape = {
   schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
   defaults: z.record(z.unknown()).describe('Complete explicit baseline values, validated without coercion or schema default population.'),
@@ -89,6 +92,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
+    description: FeatureDescriptionSchema,
     entities: EntitiesSchema.optional(),
     settings: SettingsDefinitionSchema.optional(),
     plugin: z.lazy(() => PluginSchema).optional(),
@@ -442,6 +446,7 @@ const FEATURE_ID_SCHEMA = z.string()
   .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }));
 
 export const FeatureEntrySchema = z.object({
+  description: FeatureDescriptionSchema,
   entities: EntitiesSchema.describe('Entities owned by this feature; placement does not change their wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),

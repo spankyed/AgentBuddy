@@ -16,6 +16,7 @@ const DEFAULT_MANIFEST = {
   id: 'demo-pack', name: 'Demo', version: '1.0.0',
   features: {
     memos: {
+      description: 'Manage fixture memos.',
       plugin: { label: 'Memos', state: 'src/features/memos/fe/state.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
       system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
     },

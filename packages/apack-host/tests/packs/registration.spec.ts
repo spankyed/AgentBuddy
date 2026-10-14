@@ -363,7 +363,7 @@ describe('packContentTargets', () => {
 describe('runtime settings admission', () => {
   let admission: ReturnType<typeof createNativePackTestRegistry>;
   beforeEach(() => { admission = createNativePackTestRegistry(); });
-  const manifest = { id: 'settings-pack', name: 'Settings', version: '1.0.0', features: { widget: {} } };
+  const manifest = { id: 'settings-pack', name: 'Settings', version: '1.0.0', features: { widget: { description: 'Feature declaration fixture.',} } };
   const origin = {
     id: manifest.id, name: manifest.name, version: manifest.version, manifest,
     declarationRevision: 'fixture-revision', dir: '/packs/settings-pack',

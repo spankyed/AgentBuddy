@@ -51,7 +51,7 @@ beforeEach(() => {
   registry.registerPack({ id: 'fe-pack', features: { feature: { system: { machine: recorder('fe-pack'), receives: ['CLIENT_CONNECTED'] } } } }, { declarationRevision: 'fixture-revision',
     artifactRevision: 'a'.repeat(64), artifactFiles: { 'runtime/fe.js': 'b'.repeat(64) },
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir,
-    manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0', features: { feature: { system: { entry: 'system.ts' } } } },
+    manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0', features: { feature: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } } },
   });
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
 });

@@ -27,7 +27,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
   const shell = fakeShell({ plugins: packs.getRegisteredPlugins() });
   const entry = { runtimeRevision: 'first', id: 'ext', feEntry: 'runtime/fe.js', artifactRevision: 'a'.repeat(64),
     declarationRevision: 'current', manifest: { id: 'ext', name: 'Example', version: '1.0.0',
-      features: { own: { plugin: { label: 'ext/own', state: 'src/state.ts', icon: 'Zap', canvas: 'src/canvas.vue' } } } } };
+      features: { own: { description: 'Feature declaration fixture.', plugin: { label: 'ext/own', state: 'src/state.ts', icon: 'Zap', canvas: 'src/canvas.vue' } } } } };
   shell.client.loadedPacks.mockResolvedValue([entry]);
   const app = createActor(createShellMachine({ ...shell.options, packs, packFrontends: frontends }), {
     systemId: 'host/application', input: { ownsLastActivePlugin: false },

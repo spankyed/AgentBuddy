@@ -82,7 +82,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 
 | Entity | Command | What it creates |
 |---|---|---|
-| Feature | `apack pack add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
+| Feature | `apack pack add feature <name> --description <purpose> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
 | Step | `apack pack add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry naming each facet: its `node` (the label and field defaults both the backend and the canvas read), its `build` or `trigger`, and its `fe` |
 | Artifact | `apack pack add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
 | Block | `apack pack add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
@@ -100,7 +100,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 - `src/features/<name>/fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
 - `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
-and adds a keyed `features.<name>` entry with explicit `types` pointing at `be/types.ts`, `settings`, `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
+and adds a keyed `features.<name>` entry with its required `description`, explicit `types` pointing at `be/types.ts`, `settings` (including the custom `form` it writes), `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
 
 ### Code generation
 
@@ -419,7 +419,7 @@ the same report.
 
 Checks:
 - Manifest structure validation
-- Each keyed `features` entry against the pack: its `settings`, `system.entry` and `plugin.state` and component-target files exist, and no two features claim the same `designation`
+- Each keyed `features` entry against the pack: its `settings.form`, `types`, `system.entry` and `plugin.state` and component-target files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
 - **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 

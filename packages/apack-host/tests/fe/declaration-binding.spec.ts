@@ -9,8 +9,8 @@ function fixture() {
   const loadComponents = vi.fn();
   const bindSettings = vi.fn();
   const manifest: PackManifest = { id: 'notes-pack', name: 'Notes', version: '1.0.0',
-    features: { notes: { plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
-      backend: { system: { entry: 'src/system.ts' } }, form: { settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
+    features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
+      backend: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts' } }, form: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
       steps: { note: { node: 'src/node.ts#node', fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: 'src/trigger.ts#node' } },
       artifacts: { text: { icon: 'File', fe: 'src/text.vue' } }, blocks: { note: { kind: 'input', fe: 'src/block.vue' } },
@@ -116,7 +116,7 @@ it('checks declared presentation and panes without resolving a component or pred
 
 it('refuses a native replacement before granting resources and retains the accepted plugin', () => {
   const component = { render: vi.fn() };
-  const native = { id: 'native', features: { view: { plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
+  const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
   const registry = createFePackRegistry({ nativeDeclarations: [native] });
   const registration = { id: 'native', features: { view: { plugin: { label: 'Native view', state: createMachine({}), canvas: component } } } };
   const [accepted] = registry.registerPackFE(registration);

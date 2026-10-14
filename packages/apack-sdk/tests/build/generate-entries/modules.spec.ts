@@ -344,7 +344,7 @@ describe('the snapshot format', () => {
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
+    description: true, entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, types: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
@@ -405,7 +405,7 @@ describe('the snapshot format', () => {
       manifest: {
         fields: ['$manifestVersion', '$schema', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
-        feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
+        feature: ['description', 'designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
@@ -438,7 +438,7 @@ describe('generated type barrel', () => {
     const files = await generatePackFiles(manifest({
       features: [
         // Data for the rest of the pack, and no system of its own
-        { id: 'records', types: 'src/features/records/be/types.ts', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
+        { id: 'records', description: 'Expose record types.', types: 'src/features/records/be/types.ts', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
         { ...system('memos'), types: 'src/features/memos/be/types' },
       ] as PackFeatureEntry[],
     }), { packRoot: root });

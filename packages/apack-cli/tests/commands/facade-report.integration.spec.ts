@@ -36,7 +36,7 @@ const manifest = (...entities: string[]) => JSON.stringify({
   id: ID, name: ID, version: '1.0.0',
   data: { entities: Object.fromEntries(entities.map(name => [name, `src/types.ts#${name}Entity`])) },
 
-  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
+  features: { notifier: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
 });
 
 let parent: string;

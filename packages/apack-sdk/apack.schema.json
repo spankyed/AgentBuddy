@@ -116,6 +116,11 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
+          "description": {
+            "type": "string",
+            "pattern": "\\S",
+            "description": "What this feature does, independently of its plugin display label."
+          },
           "entities": {
             "type": "object",
             "additionalProperties": {
@@ -663,6 +668,9 @@
             "description": "Reference identities and presentation, with explicit navigation and reactive item-provider exports."
           }
         },
+        "required": [
+          "description"
+        ],
         "additionalProperties": false
       },
       "description": "Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice."

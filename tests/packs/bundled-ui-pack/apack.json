@@ -10,6 +10,7 @@
   },
   "features": {
     "scribbles": {
+      "description": "Exercise a custom settings form with bundled UI components.",
       "settings": {
         "schema": {
           "type": "object",

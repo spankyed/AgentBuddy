@@ -38,7 +38,7 @@ function installTestPack() {
     name: 'E2E Test Pack',
     version: '1.0.0',
     features: {
-      hello: {
+      hello: { description: 'Feature declaration fixture.',
         system: {
           entry: 'src/features/hello/be/system.ts',
           events: { incoming: ['HELLO_PING'] },
@@ -46,7 +46,7 @@ function installTestPack() {
         plugin: { label: 'Fixture', state: 'src/features/hello/fe/plugin.ts' },
       },
       // No system — plugin only
-      dataOnly: { plugin: { label: 'Fixture', state: 'src/features/dataOnly/fe/plugin.ts' } },
+      dataOnly: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/features/dataOnly/fe/plugin.ts' } },
     },
   }, null, 2));
 

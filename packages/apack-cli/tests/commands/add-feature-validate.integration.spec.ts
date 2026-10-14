@@ -63,9 +63,15 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
 }
 
 describe('apack pack add feature', () => {
+  it.each([{ options: [] }, { options: ['--description', ''] }, { options: ['--description', '--icon', 'Box'] }])
+    ('requires a purpose before writing feature files ($options)', async ({ options }) => {
+      await expect(addFeature(['memos', ...options], pack)).rejects.toThrow('--description <purpose>');
+      expect(fs.existsSync(path.join(pack, 'src', 'features', 'memos'))).toBe(false);
+      expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features).toEqual({});
+    });
   // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
   it('writes a feature whose code names it and never holds its address', async () => {
-    await addFeature(['memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
     const feature = path.join(pack, 'src', 'features', 'memos');
     const sources = ['fe/state.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
@@ -79,7 +85,7 @@ describe('apack pack add feature', () => {
   // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
   // `init` puts `npm install` before `apack pack add feature` for exactly this reason.
   it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
-    await addFeature(['memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
 
     expect(fs.existsSync(path.join(pack, 'src', 'features', 'memos', 'be', 'system.ts'))).toBe(true);
     const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
@@ -89,7 +95,7 @@ describe('apack pack add feature', () => {
 
   it('writes --designation into apack.json', async () => {
     installDependencies();
-    await addFeature(['memos', '--designation', 'memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.', '--designation', 'memos'], pack);
 
     expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'memos' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
@@ -99,7 +105,7 @@ describe('apack pack add feature', () => {
   // `validate` has always accepted and the manifest schema has always allowed.
   it('writes a designation that differs from the feature name', async () => {
     installDependencies();
-    await addFeature(['memos', '--designation', 'inbox'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.', '--designation', 'inbox'], pack);
 
     expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'inbox' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
@@ -108,7 +114,7 @@ describe('apack pack add feature', () => {
 
 describe('apack pack validate', () => {
   it("reports a feature's invalid settings default, and accepts a designation that is not its id", async () => {
-    await addFeature(['memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
     const manifest = readManifest();
     // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
     manifest.features.memos.designation = 'inbox';

@@ -19,7 +19,7 @@ function fixture() {
 describe('window declaration catalog', () => {
   it('accepts data without executable registration and keeps an immutable owned snapshot', () => {
     const { reader, catalog, sessions, wire } = fixture();
-    catalog.setNative([{ id: 'native-pack', features: { view: { plugin: { label: 'Cold', state: 'src/state.ts' } } } }]);
+    catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Cold', state: 'src/state.ts' } } } }]);
     reader.connect();
     const frame = wire(); sessions[0].receive(frame);
     expect(reader.status()).toBe('ready');
@@ -33,8 +33,8 @@ describe('window declaration catalog', () => {
     const { reader, catalog, sessions, wire } = fixture();
     const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
       categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
-    catalog.setNative([{ id: 'native-pack', features: { memos: { references } } }]);
-    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', features: { memos: { references } } };
+    catalog.setNative([{ id: 'native-pack', features: { memos: { description: 'Feature declaration fixture.', references } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', features: { memos: { description: 'Feature declaration fixture.', references } } };
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {

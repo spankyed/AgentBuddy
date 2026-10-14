@@ -17,7 +17,7 @@ function fixture(id = 'notes-pack', name = 'note', category = 'notes') {
     types: { [name]: { category, icon, svgElements: geometry, navigate } },
     categories: { [category]: { label: category, icon, useItems } },
   };
-  const declaration: NativePackDeclaration = { id, features: { view: { references } } };
+  const declaration: NativePackDeclaration = { id, features: { view: { description: 'Feature declaration fixture.', references } } };
   return { declaration, registration: { id, features: { view: { references: bindings } } }, bindings, navigate, useItems, icon };
 }
 

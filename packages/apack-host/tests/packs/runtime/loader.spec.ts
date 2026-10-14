@@ -126,7 +126,7 @@ describe('pack-loader', () => {
         name: 'Test Pack',
         version: '1.0.0',
         features: {
-          myFeature: { system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } } },
+          myFeature: { description: 'Feature declaration fixture.', system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } } },
         },
       }, "{ myFeature: { system: { machine: { id: 'test-system' }, receives: ['DO_THING'] } } }");
 
@@ -280,8 +280,8 @@ describe('loadAppPacks deterministic registration', () => {
 
   it('orders by pack id and reports both owners when a designation conflicts', () => {
     const packs = path.join(_appDirOf(tmpDir), 'packs');
-    makePack(packs, 'z-default', { id: 'z-default', name: 'Default', version: '1.0.0', features: { owner: { designation: 'loader-spec-role' } } }, "{ owner: { designation: 'loader-spec-role' } }");
-    makePack(packs, 'a-custom', { id: 'a-custom', name: 'Custom', version: '1.0.0', features: { taker: { designation: 'loader-spec-role' } } }, "{ taker: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'z-default', { id: 'z-default', name: 'Default', version: '1.0.0', features: { owner: { description: 'Feature declaration fixture.', designation: 'loader-spec-role' } } }, "{ owner: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'a-custom', { id: 'a-custom', name: 'Custom', version: '1.0.0', features: { taker: { description: 'Feature declaration fixture.', designation: 'loader-spec-role' } } }, "{ taker: { designation: 'loader-spec-role' } }");
     const { loaded } = loadAppPacks(registry);
     expect(registry.designation('loader-spec-role')).toBe('a-custom/taker');
     expect(loaded.map(pack => pack.origin.id)).toEqual(['a-custom']);
@@ -296,7 +296,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
+    const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
@@ -328,7 +328,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it('loads systems, services and EARS from the runtime registration', () => {
     const dir = makeBundledPack('bundled-pack', registration('bundled-pack'), {
-      features: { widget: { system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } } },
+      features: { widget: { description: 'Exercise the widget system.', system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } } },
     });
 
     const [pack] = loadExternalPacks();
@@ -357,7 +357,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `), { features: { widget: { system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
+    `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks();

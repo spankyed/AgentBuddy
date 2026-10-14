@@ -61,6 +61,7 @@ describe('pack full lifecycle: init → install → load', () => {
     delete manifest.hostVersion;
     manifest.features = {
       main: {
+        description: 'Exercise the test system.',
         system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
         plugin: { label: 'Fixture', state: 'src/features/main/fe/plugin.ts' },
       },

@@ -66,7 +66,7 @@ for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
 done
 # From here on, `apack` is the pack's own pinned CLI
 APACK="$PACK/node_modules/.bin/apack"
-"$APACK" pack add feature notes --label Notes >/dev/null
+"$APACK" pack add feature notes --description "Manage notes." --label Notes >/dev/null
 # @apackdev/ui's heavier components must build in a pack, not only in the monorepo
 npm pkg set "dependencies.@apackdev/ui=file:$UI_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund

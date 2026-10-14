@@ -5,7 +5,7 @@ import type { PackManifest } from '../../src/build/manifest.ts';
 
 const manifest: PackManifest = {
   id: 'example', name: 'Example', version: '1.0.0',
-  features: { notes: { settings: {
+  features: { notes: { description: 'Edit notes.', settings: {
     defaults: { first: 1, second: 2 },
     schema: { type: 'object', properties: { first: { type: 'integer' }, second: { type: 'integer' } }, required: ['first', 'second'] },
   } } },
@@ -13,7 +13,7 @@ const manifest: PackManifest = {
 
 it('has the same identity after schema parsing or reordering nested object keys', () => {
   const parsed = ManifestSchema.parse(manifest);
-  const reordered = { ...manifest, features: { notes: { settings: {
+  const reordered = { ...manifest, features: { notes: { description: 'Edit notes.', settings: {
     schema: { required: ['first', 'second'], properties: { second: { type: 'integer' }, first: { type: 'integer' } }, type: 'object' }, defaults: { second: 2, first: 1 },
   } } } };
   expect(_declarationRevision(parsed)).toBe(_declarationRevision(manifest));

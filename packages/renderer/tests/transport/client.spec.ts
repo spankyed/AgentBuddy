@@ -169,7 +169,7 @@ it('feeds declaration data to the real window resource independently of settings
     catalogSubscribe.mock.calls[0][1].onData({ runId: 'catalog-run', snapshot: {
       revision: 1, appSettings: { schema: { type: 'object' }, defaults: {} },
       packs: [], problems: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [],
-      native: [{ id: 'cold-pack', features: { view: { plugin: { label: 'Cold metadata', state: 'never-load.ts' } } } }],
+      native: [{ id: 'cold-pack', features: { view: { description: 'Exercise cold metadata.', plugin: { label: 'Cold metadata', state: 'never-load.ts' } } } }],
     } });
     expect(windowCatalog.status()).toBe('ready');
     expect(windowCatalog.getSnapshot()?.native[0].features?.view.plugin?.label).toBe('Cold metadata');

@@ -83,7 +83,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
   const packs: InstalledPackSummary[] = catalog.packs.map(({ snapshot, integrity, dir, enabled }) => {
     const { manifest } = snapshot;
     const features = Object.entries(manifest.features ?? {}).map(([id, feature]) => ({
-      id, designation: feature.designation, hasSystem: !!feature.system,
+      id, description: feature.description, designation: feature.designation, hasSystem: !!feature.system,
       plugin: plugins.get(resolveName(id, manifest.id)),
       references: references.get(resolveName(id, manifest.id)),
       services: Object.keys(feature.services ?? {}),

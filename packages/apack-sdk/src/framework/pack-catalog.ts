@@ -11,7 +11,7 @@ export interface NativePackDeclaration extends PackDataDeclarations {
   lifecycle?: PackLifecycleDeclaration;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;
-  features?: Record<string, { entities?: Record<string, string | null>; settings?: SettingsDefinition; plugin?: PluginDeclaration; references?: ReferenceDeclarations }>;
+  features?: Record<string, { description: string; entities?: Record<string, string | null>; settings?: SettingsDefinition; plugin?: PluginDeclaration; references?: ReferenceDeclarations }>;
 }
 
 /** Observe committed declaration changes, independently of executable pack activation. */

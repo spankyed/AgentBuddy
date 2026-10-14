@@ -534,7 +534,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     const input = kind === 'layout' ? stage : root;
     const file = path.join(input, 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-    manifest.features = { newFeature: {} };
+    manifest.features = { newFeature: { description: 'Exercise changed declarations.' } };
     fs.writeFileSync(file, JSON.stringify(manifest));
     if (kind === 'layout') {
       // Valid checksums prove file integrity, not agreement with the built declarations.

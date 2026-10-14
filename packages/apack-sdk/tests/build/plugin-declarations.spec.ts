@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ManifestSchema } from '../../src/build/manifest-schema.ts';
 import { _pluginTargets, type PluginDeclaration } from '../../src/framework/plugin-declaration.ts';
 
-const parse = (plugin: unknown) => ManifestSchema.safeParse({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { plugin } } });
+const parse = (plugin: unknown) => ManifestSchema.safeParse({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { description: 'Feature declaration fixture.', plugin } } });
 const plugin: PluginDeclaration = { label: 'Notes', state: 'src/state.ts#machine', icon: { entry: 'src/icon.vue' },
   canvas: { routes: { entry: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } },
   panel: 'src/panel.vue', chat: 'src/chat.vue', isPinned: true, hotkeys: [{ action: 'open', global: false }],

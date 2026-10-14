@@ -7,7 +7,7 @@ vi.mock('../../src/runtime/index.ts', () => ({ appPacks: { catalog } }));
 const { packsRouter } = await import('../../src/transport/packs.ts');
 
 it('streams the common declaration catalog to each window without activating bindings', async () => {
-  catalog.setNative([{ id: 'native-pack', features: { view: { plugin: { label: 'Cold', state: 'does-not-exist.ts' } } } }]);
+  catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Cold', state: 'does-not-exist.ts' } } } }]);
   const caller = packsRouter.createCaller({ client: 'catalog-test', closed: new AbortController().signal });
   const stream = await caller.catalog();
   const first: PackCatalogFrame[] = []; const second: PackCatalogFrame[] = [];
@@ -17,7 +17,7 @@ it('streams the common declaration catalog to each window without activating bin
     expect(first[0].snapshot.native[0].features?.view.plugin?.label).toBe('Cold');
     expect(first[0].runId).toBeTruthy();
     expect(second[0]).toEqual(first[0]);
-    catalog.setNative([{ id: 'native-pack', features: { view: { plugin: { label: 'Updated', state: 'still-absent.ts' } } } }]);
+    catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Updated', state: 'still-absent.ts' } } } }]);
     expect(first.at(-1)?.snapshot.native[0].features?.view.plugin?.label).toBe('Updated');
     expect(first.at(-1)?.runId).toBe(first[0].runId);
     a.unsubscribe(); const received = first.length;
@@ -28,7 +28,7 @@ it('streams the common declaration catalog to each window without activating bin
 
 it('includes disabled installed declarations while no runtime is registered', async () => {
   const manifest = { id: 'disabled-pack', name: 'Disabled', version: '1.0.0', features: {
-    view: { plugin: { label: 'Disabled view', state: 'do-not-load.ts' } },
+    view: { description: 'Feature declaration fixture.', plugin: { label: 'Disabled view', state: 'do-not-load.ts' } },
   } };
   const { _declarationRevision, PACK_SNAPSHOT_FORMAT } = await import('@apackdev/sdk/build');
   catalog.replace([{ dir: '/isolated/disabled-pack', enabled: false, snapshot: {
@@ -38,6 +38,6 @@ it('includes disabled installed declarations while no runtime is registered', as
   const received: PackCatalogFrame[] = [];
   const subscription = stream.subscribe({ next: value => received.push(value) });
   try {
-    expect(received[0].snapshot.packs).toMatchObject([{ enabled: false, snapshot: { manifest: { id: 'disabled-pack', features: { view: { plugin: { label: 'Disabled view' } } } } } }]);
+    expect(received[0].snapshot.packs).toMatchObject([{ enabled: false, snapshot: { manifest: { id: 'disabled-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Disabled view' } } } } } }]);
   } finally { subscription.unsubscribe(); catalog.replace([]); }
 });

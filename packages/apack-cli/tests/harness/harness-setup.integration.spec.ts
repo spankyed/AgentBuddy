@@ -98,7 +98,7 @@ it('sends to its own system and plugin', () => {
   expect(() => services.emitter.sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
-});`, { features: { memos: { system: { entry: 'src/features/memos/be/system.ts' }, plugin: { label: 'Fixture', state: 'src/features/memos/fe/index.ts' } } } });
+});`, { features: { memos: { description: 'Exercise the harness system.', system: { entry: 'src/features/memos/be/system.ts' }, plugin: { label: 'Fixture', state: 'src/features/memos/fe/index.ts' } } } });
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
@@ -166,7 +166,7 @@ describe('apack pack add feature in a pack without the unit test setup', () => {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
-    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos'], pack);
+    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos', '--description', 'Manage memos.'], pack);
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');

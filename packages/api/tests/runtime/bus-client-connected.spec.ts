@@ -48,7 +48,7 @@ function pack(id: string, label = id) {
 const packDirs: string[] = [];
 
 /** An installed pack's origin, with the frontend files `files` names (runtime/fe.js, runtime/fe.css) on disk */
-function loaded(id: string, files: string[], features: Record<string, { system: { entry: string } }> = { feature: { system: { entry: 'system.ts' } } }) {
+function loaded(id: string, files: string[], features: Record<string, { description: string; system: { entry: string } }> = { feature: { description: 'Record client connections.', system: { entry: 'system.ts' } } }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `bus-client-connected-${id}-`));
   packDirs.push(dir);
   for (const file of files) {
@@ -126,7 +126,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
         feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
         background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
       },
-    }, loaded('external-pack', withFrontend, { feature: { system: { entry: 'system.ts' } }, background: { system: { entry: 'background.ts' } } }));
+    }, loaded('external-pack', withFrontend, { feature: { description: 'Publish client state.', system: { entry: 'system.ts' } }, background: { description: 'Run background work.', system: { entry: 'background.ts' } } }));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 

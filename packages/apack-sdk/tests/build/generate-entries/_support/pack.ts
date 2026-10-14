@@ -204,7 +204,7 @@ export const system = (id: string, extra: Record<string, unknown> = {}) => {
   const contract = fs.existsSync(path.join(root, `src/features/${id}/be/contract.ts`))
     ? { contract: `src/features/${id}/be/contract.ts#Contract` }
     : {};
-  return { id, system: { entry, ...contract, ...extra } };
+  return { id, description: `Test system for ${id}.`, system: { entry, ...contract, ...extra } };
 };
 export const withPlugin = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, plugin: pluginWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
 

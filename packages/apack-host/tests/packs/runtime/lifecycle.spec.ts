@@ -66,7 +66,7 @@ describe('installed runtime acceptance', () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const id = 'systems-pack';
     const source = path.join(tmpDir, 'source');
-    const feature = (name: string) => ({ [name]: { system: { entry: 'system.ts' } } });
+    const feature = (name: string) => ({ [name]: { description: `Exercise ${name} system.`, system: { entry: 'system.ts' } } });
     const runtime = (name: string) => `{ ${name}: { system: { machine: { id: '${name}' }, receives: [] } } }`;
     writeManifest(source, { id, name: id, version: '1.0.0', features: feature('old') });
     writeBuild(source, id, runtime('old'));
@@ -222,7 +222,7 @@ describe('activating and tearing down a pack at runtime', () => {
       id: PACK_ID,
       name: 'Activate Pack',
       version: '1.0.0',
-      features: { main: { system: { entry: 'src/features/main/be/system.ts' } } },
+      features: { main: { description: 'Feature declaration fixture.', system: { entry: 'src/features/main/be/system.ts' } } },
       extensions: { commands: { 'activate-memo': { placeholder: 'Text' } } },
       content: { sources: { memos: { applier: 'memos.ts' } } },
       migrations: { pack: { '1.0.0': { description: 'memos', up: 'migration.ts#up' } } },

@@ -76,6 +76,7 @@ function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
 /** What the app lists of a pack's feature (the Packs plugin shows it) */
 export interface PackFeatureSummary {
   id: string;
+  description: string;
   designation?: string;
   hasSystem: boolean;
   plugin?: import('@apackdev/sdk/framework').PluginDeclaration;

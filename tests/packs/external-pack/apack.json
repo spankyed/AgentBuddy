@@ -6,6 +6,7 @@
   "hostVersion": ">=0.3.0",
   "features": {
     "memos": {
+      "description": "Write memos and run reminder flows.",
       "settings": {
         "schema": {
           "type": "object",
@@ -80,6 +81,7 @@
       "types": "src/features/memos/be/types.ts"
     },
     "notes": {
+      "description": "Write, organize and export notes.",
       "settings": {
         "schema": {
           "type": "object",

@@ -51,6 +51,7 @@ Each entry names the file and its export, as `"path#exportName"`. The export can
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "services": {
         "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
       }
@@ -372,6 +373,7 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "repositories": {
         "bookmarkQueries": "src/features/bookmarks/be/repository/queries.ts#bookmarkQueries",
         "bookmarkCommands": "src/features/bookmarks/be/repository/commands.ts#bookmarkCommands"
@@ -437,6 +439,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "entities": {
         "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
         "ImportIndex": null

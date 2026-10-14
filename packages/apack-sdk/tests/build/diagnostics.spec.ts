@@ -20,12 +20,12 @@ describe('pack validation diagnostics', () => {
         message: expect.stringContaining('nonsense'),
       }],
     });
-    expect(parseManifest({ id: 'demo', name: 'Demo', version: '1.0.0', features: { test: { system: { entry: 1 } } } }).diagnostics[0])
+    expect(parseManifest({ id: 'demo', name: 'Demo', version: '1.0.0', features: { test: { description: 'Exercise system validation.', system: { entry: 1 } } } }).diagnostics[0])
       .toMatchObject({ code: 'manifest.invalid_type', path: ['features', 'test', 'system', 'entry'] });
   });
 
   it('addresses a missing source file as a feature declaration', () => {
-    expect(validateFeatures('/no-such-pack', { id: 'demo', features: { test: { system: { entry: 'src/system.ts' } } } }))
+    expect(validateFeatures('/no-such-pack', { id: 'demo', features: { test: { description: 'Exercise system validation.', system: { entry: 'src/system.ts' } } } }))
       .toMatchObject({ status: 'invalid', diagnostics: [{
         code: 'feature.missing-file', severity: 'error', packId: 'demo',
         path: ['features', 'test', 'system', 'entry'], source: 'src/system.ts',

@@ -163,6 +163,7 @@ export interface NativePackDeclaration extends PackDataDeclarations {
     dependencies?: Record<string, string>;
     // (undocumented)
     features?: Record<string, {
+        description: string;
         entities?: Record<string, string | null>;
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;

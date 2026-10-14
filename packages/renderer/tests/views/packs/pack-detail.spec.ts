@@ -24,6 +24,12 @@ afterEach(() => app?.unmount());
 // A pack the app skipped at load (a build in another format, a runtime that threw) is installed and enabled, but
 // runs nothing: its status says so, with the loader's reason, rather than "Enabled"
 describe('an installed pack in the Packs view', () => {
+  it('shows declared feature purpose without a runtime system or plugin', () => {
+    const el = render({ pack: pack({ enabled: false, features: [{
+      id: 'memos', description: 'Write memos and schedule reminders.', hasSystem: false, services: [],
+    }] }) });
+    expect(el.textContent).toContain('Write memos and schedule reminders.');
+  });
   it("shows why it didn't load, in place of its status", () => {
     const el = render({ pack: pack({ loadProblem: 'its snapshot is format 2, written by a newer apack CLI; update apack to use it' }) });
 

@@ -21,7 +21,7 @@ function fixture() {
     onChange(listener) { const notify = () => listener('written'); listeners.add(notify); return () => { listeners.delete(notify); }; },
   };
   const registry = createPackRegistry({
-    nativeDeclarations: [{ id: 'incumbent', features: { widget: {} } }, { id: 'peer', features: {} }],
+    nativeDeclarations: [{ id: 'incumbent', features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
   const generated = _createPackServices();

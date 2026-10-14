@@ -9,7 +9,7 @@ const references = {
   types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [['path', { d: 'M2 6h4' }]], navigate: 'src/references.ts#openMemo' } },
   categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
 };
-const fields = { features: { memos: { references } } };
+const fields = { features: { memos: { description: 'Feature declaration fixture.', references } } };
 const source = () => write('src/references.ts', "throw new Error('Must never execute during generation');\nexport function openMemo(id: string) {}\nexport function useItems() { return []; }\n");
 
 const parse = (features: unknown) => ManifestSchema.safeParse({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features });
@@ -34,7 +34,7 @@ describe('declarative references', () => {
 
   it('applies duplicate ownership checks to native declarations too', () => {
     const result = _NativePackDeclarationSchema.safeParse({ id: 'native-pack', features: {
-      first: { references }, second: { references },
+      first: { description: 'Feature declaration fixture.', references }, second: { description: 'Feature declaration fixture.', references },
     } });
     expect(result.success).toBe(false);
     if (result.success) throw new Error('Expected refusal');
@@ -60,7 +60,7 @@ describe('declarative references', () => {
     const second = structuredClone(references);
     if (kind !== 'categories') second.categories = {} as typeof second.categories;
     if (kind === 'categories') second.types = {} as typeof second.types;
-    const result = parse({ first: { references }, second: { references: second } });
+    const result = parse({ first: { description: 'Declare first references.', references }, second: { description: 'Declare second references.', references: second } });
     expect(result.success).toBe(false);
     if (result.success) throw new Error('Expected refusal');
     expect(result.error.issues.some(issue => issue.message.includes(`Reference ${kind}`) && issue.message.includes('"first"') && issue.message.includes('"second"'))).toBe(true);

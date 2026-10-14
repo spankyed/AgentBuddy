@@ -9,7 +9,7 @@ import { createFePackRegistry, type FePackRegistry } from '../../../../src/fe/pa
 
 /** Expected backend declarations are authored independently of the imported frontend fixture. */
 const declaration = (id: string) => ({ id, name: id, version: '1.0.0',
-  ...(id === 'memo-pack' && { features: { memos: { plugin: { label: 'Memos', state: 'src/plugin.ts' } } } }),
+  ...(id === 'memo-pack' && { features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Memos', state: 'src/plugin.ts' } } } }),
 });
 
 /** The window's half, recorded: each import by URL, and the stylesheets a pack has */
@@ -210,7 +210,7 @@ describe("a pack's frontend", () => {
   });
 
   it('publishes the captured reference metadata checked by the installed loader', async () => {
-    const manifest = { id: 'ext', name: 'Ext', version: '1.0.0', features: { refs: { references: {
+    const manifest = { id: 'ext', name: 'Ext', version: '1.0.0', features: { refs: { description: 'Feature declaration fixture.', references: {
       types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } } } };

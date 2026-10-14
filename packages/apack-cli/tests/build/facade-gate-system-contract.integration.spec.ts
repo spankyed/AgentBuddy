@@ -20,8 +20,8 @@ const MANIFEST: PackManifest = {
   id: 'entry-pack',
   name: 'Entry',
   version: '1.0.0',
-  features: { tags: { system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } } },
-} as PackManifest;
+  features: { tags: { description: 'Manage tags.', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } } },
+};
 
 const CONTRACT = [
   "export type IncomingTagsEvents = { type: 'ADD_TAG'; name: string };",

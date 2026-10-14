@@ -297,7 +297,7 @@ export async function init(args: string[]) {
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
-  console.log(`  apack pack add feature <name>`);
+  console.log(`  apack pack add feature <name> --description "What the feature does"`);
   console.log(`  apack pack build`);
   console.log(`  npm run facade:update   # records the types dependents compile against; commit it`);
   console.log(`\nREADME.md has the rest.`);

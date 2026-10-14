@@ -85,6 +85,7 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "designation": "bookmarks",
       "settings": {
         "schema": { "type": "object", "additionalProperties": false },
@@ -122,6 +123,7 @@ unrepresentable.
 | `plugin` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend plugin. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [plugin declarations](features.md#defining-a-plugin). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
+| `description` | `string` | yes | Nonblank feature purpose, independent of plugin display labels |
 | `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
 | `references` | `object` | no | Keyed reference types and categories, with explicit navigation and reactive item-provider exports |
 
@@ -135,6 +137,7 @@ A feature declares effective-value validation and explicit defaults as JSON data
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
       "settings": {
         "schema": {
@@ -484,6 +487,7 @@ Run `apack pack fetch-deps` to pull dependency snapshots for cross-pack type int
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "entities": {
         "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
         "Tag": null
@@ -556,6 +560,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
       "settings": {
         "schema": { "type": "object", "additionalProperties": false },

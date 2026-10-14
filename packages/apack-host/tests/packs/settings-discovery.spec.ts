@@ -19,7 +19,7 @@ function install(id: string, name = ''): string {
   fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
   const manifest: PackManifest = { id, name: id, version: '1.0.0',
     extensions: { settings: { assistant: { ...definition, defaults: { name } } } },
-    features: { memos: { settings: definition } },
+    features: { memos: { description: 'Feature declaration fixture.', settings: definition } },
   };
   const snapshot = { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} };
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));

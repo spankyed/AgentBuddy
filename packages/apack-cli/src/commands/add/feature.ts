@@ -1,4 +1,4 @@
-import { FEATURE_ID_PATTERN } from '@apackdev/sdk/build';
+import { FEATURE_ID_PATTERN, FeatureEntrySchema } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
@@ -36,15 +36,16 @@ function featureValues(name: string) {
 }
 
 const HELP = `
-Usage: apack pack add feature <name> [options]
+Usage: apack pack add feature <name> --description <purpose> [options]
 
 Options:
+  --description <purpose> Required feature purpose
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
   --designation <role>     The role this feature plays, for getDesignated(role); need not be the feature name
 
 Example:
-  apack pack add feature bookmarks --label "Bookmarks" --icon Bookmark
+  apack pack add feature bookmarks --description "Save and organize bookmarks." --label "Bookmarks" --icon Bookmark
 `.trim();
 
 export async function addFeature(args: string[], root: string) {
@@ -57,6 +58,12 @@ export async function addFeature(args: string[], root: string) {
   if (!name) throw new Error('Feature name is required');
   if (!FEATURE_ID_PATTERN.test(name)) {
     throw new Error(`Feature name "${name}" must start with a lowercase letter and contain only letters and digits (e.g. "notes" or "calendarEvents"); it is used as an identifier in generated code`);
+  }
+
+  const description = parseFlag(args, '--description');
+  const purpose = FeatureEntrySchema.shape.description.safeParse(description);
+  if (!purpose.success || description?.startsWith('--')) {
+    throw new Error('--description <purpose> is required and must not be blank');
   }
 
   const label = parseFlag(args, '--label') || toLabel(name);
@@ -88,8 +95,9 @@ export async function addFeature(args: string[], root: string) {
 
   const manifest = readManifest(root);
   addFeatureToManifest(manifest, name, {
+    description: purpose.data,
     ...(designation !== undefined && { designation }),
-    settings: { schema: { type: 'object', additionalProperties: false }, defaults: {} },
+    settings: { schema: { type: 'object', additionalProperties: false }, defaults: {}, form: `src/features/${name}/fe/settings.vue` },
     system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },
     plugin: { label, icon, state: `src/features/${name}/fe/state.ts`, canvas: `src/features/${name}/fe/canvas/list.vue`, defaultVisible: true, contract: `src/features/${name}/fe/contract.ts#Contract` },
     types: `src/features/${name}/be/types.ts`,

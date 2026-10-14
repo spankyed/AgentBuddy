@@ -104,7 +104,7 @@ describe('a build that fails', () => {
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
       id: 'built-in-pack', name: 'Built-in',
-      features: { memos: { settings: { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } }, defaults: {} } } },
+      features: { memos: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } }, defaults: {} } } },
       content: { sources: { flows: 'src/content/flows' } },
     } });
     const cwd = process.cwd();

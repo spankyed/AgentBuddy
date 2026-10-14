@@ -338,7 +338,7 @@ describe('pack information without activation', () => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       data: { relations: ['parent'] },
-      features: { notes: { entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
+      features: { notes: { description: 'Feature declaration fixture.', entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
         plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
@@ -368,7 +368,7 @@ describe('pack information without activation', () => {
         entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, lifecycleHooks: ['onInit'],
-        features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
+        features: [{ id: 'notes', description: manifest.features.notes.description, designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(fs.existsSync(marker)).toBe(kind === 'activation-failed');
     } finally { system.stop(); }
