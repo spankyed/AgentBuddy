@@ -2655,3 +2655,34 @@ verify external contributions in an already-open editor, dynamic protocols/categ
 scope disposal. Continue every remaining contribution/native/freshness, entity readiness, boundary and
 Phase 6 requirement. Final committed-source --all, full acceptance auditing and archival remain due;
 the whole goal is active and no broader discovery phase is complete.
+
+
+### Frontend declaration read-port checkpoint (2026-10-13)
+
+Source commit `5576298c5` exposes a frontend SDK read port over the existing common catalog.
+Reference projections retain qualified ownership, provenance and available declaration/artifact
+identities. Native and source entries omit identities or eligibility facts they do not possess.
+Projection reads execute no provider, component or navigation target and introduce no authored inventory.
+
+The window reader caches immutable projections by accepted snapshot identity and exposes explicit
+loading, ready, unavailable and disposed states. Retained metadata on disconnect remains visibly
+unavailable. Frontend declaration notifications have their own subscription; backend catalog
+notifications keep their existing backend scope. Renderer composition supplies the real read port;
+test runtimes refuse undeclared catalog access rather than silently supplying an empty inventory.
+
+SDK checks passed 952 tests, focused host checks passed 30, and renderer checks passed 13.
+Iterating the live observer set instead of the publication's captured observers failed the named
+new-observer regression; exact restoration passed all 14 window-reader checks. The initial strict
+run stopped at lint over an inline Set spread. An explicit observer queue fixed that failure without
+suppressing the rule. Final strict validation passed all 30 gates in 478.8 seconds (11 cached),
+including 4,366 host tests, 839 pack tests (two existing skips), 639 integration tests, fresh actual
+external/default-fork Electron acceptance (165.1 seconds), smoke and both packaged-authoring halves.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T03-07-16Z-13212`;
+`/private/tmp/apack-catalog-read-port-strict-final.log`;
+`/private/tmp/apack-catalog-port-observer-mutation.log`.
+
+The read port is delivered; editor and provider consumption is not. Next replace pack-local reference
+aggregates with declaration metadata and eligible owned bindings, verifying external contributions
+in an already-open editor and provider disposal across replacement/removal/view teardown. Every
+remaining discovery kind, native/freshness check, navigation/boundary requirement and Phase 6
+workstream remains required. Final committed-source --all, full acceptance audit and archival remain due.
