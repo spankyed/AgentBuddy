@@ -44,6 +44,7 @@ export interface DevHold {
   forgetApp: () => void;
   holdsServer: (server: { close: () => unknown }) => void;
   holdsMarker: (packId: string) => void;
+  holdsWatcher: (close: () => void | Promise<void>) => void;
   /** Removes the session file this session published */
   holdsSession: (unpublish: () => void) => void;
   /** Everything a synchronous `exit` handler can do. Idempotent */
@@ -57,6 +58,8 @@ export function createDevHold(io: DevHoldIo): DevHold {
   let app: ChildProcess | undefined;
   let server: { close: () => unknown } | undefined;
   let marker: string | undefined;
+  let closeWatcher: (() => void | Promise<void>) | undefined;
+  let watcherClosed: Promise<void> | undefined;
   let unpublish: (() => void) | undefined;
   let releasedNow = false;
   let releasePromise: Promise<void> | undefined;
@@ -68,6 +71,7 @@ export function createDevHold(io: DevHoldIo): DevHold {
     releasedNow = true;
     // The records before the things they describe: one naming a session that has gone is a record of
     // something that is not there
+    watcherClosed = closeWatcher ? Promise.resolve(closeWatcher()) : undefined;
     if (marker !== undefined) io.removeMarker(marker);
     unpublish?.();
     server?.close();
@@ -79,11 +83,13 @@ export function createDevHold(io: DevHoldIo): DevHold {
     forgetApp: () => { app = undefined; },
     holdsServer: next => { server = next; },
     holdsMarker: packId => { marker = packId; },
+    holdsWatcher: close => { if (releasedNow) close(); else closeWatcher = close; },
     holdsSession: next => { unpublish = next; },
     releaseNow,
     // Signal handlers and child-exit handlers must wait for the same cleanup before exiting.
     release: () => releasePromise ??= Promise.resolve().then(async () => {
       releaseNow();
+      if (watcherClosed) await watcherClosed;
       if (app) await awaitExit(app);
       io.removeProfile?.();
     }),

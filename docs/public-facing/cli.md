@@ -149,6 +149,14 @@ does not execute them. Discovery and executable bindings are separate contracts.
 
 Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
 
+`apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
+modules outside `src/`, JSON schemas, assets and help. Generated, build, dependency and Git trees are
+excluded. It publishes through the same staged build before requesting development-host reload;
+invalid edits retain the previous verified artifact. Saves during a build schedule another run.
+`--watch` cannot be combined with other build flags. This builds the complete artifact and can take
+longer than rebundling only the runtime. `apack pack dev` uses this watcher and installs each successful
+publication before reloading; Vite continues serving frontend changes.
+
 A build also writes `.apack/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `APACK_NO_BUILD_READS=1` turns it off, for a read-only tree.
 
 Selected hosts supply their built-in pack dependencies before ambient workspace copies. Incompatible or unbuilt host dependencies fail; explicit manifest `file:` dependencies remain authoritative.

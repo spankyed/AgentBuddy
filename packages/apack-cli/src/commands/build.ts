@@ -75,17 +75,17 @@ export async function buildCommand(args: string[]): Promise<void> {
   const root = findPackRoot(process.cwd());
   ensureCheckoutPackages(root);
   if (args.includes('--watch')) {
-    const { watchPackRuntime } = await import('../build/watch.ts');
+    if (args.length !== 1) throw new Error('--watch cannot be combined with other build flags');
+    const { watchPackBuild } = await import('../build/watch.ts');
     // `npm run dev` forks this and boots the API against the runtime it writes, so it waits to be told the
     // first bundle landed. `process.send` is absent for anyone who ran the command themselves
-    await watchPackRuntime(root, readValidManifest(root).id, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
+    await watchPackBuild(root, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
     return;
   }
   await build(args);
 }
 
-export async function build(args: string[]) {
-  const root = findPackRoot(process.cwd());
+export async function build(args: string[], root = findPackRoot(process.cwd())) {
   const staged = buildStagingDir(root);
   // One build of this pack at a time: two share the staging directory above and each clears it first, so the
   // second would wipe the first's half-written tree and both would rename something over `dist`. A build
@@ -96,7 +96,7 @@ export async function build(args: string[]) {
     onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
   });
   try {
-    await buildIntoStaging(args);
+    await buildIntoStaging(args, root);
   } catch (err) {
     // Whatever failed and wherever, the pack is left with the build it had. Out here rather than beside each
     // `throw` because a phase that fails before the gates are even reached — an invalid manifest, a feature's
@@ -108,8 +108,7 @@ export async function build(args: string[]) {
   }
 }
 
-async function buildIntoStaging(args: string[]) {
-  const root = findPackRoot(process.cwd());
+async function buildIntoStaging(args: string[], root: string) {
   // The installer rejects an invalid manifest; don't build (or let CI publish) one
   const inputsHash = packInputsHash(root);
   const manifest = readValidManifest(root);

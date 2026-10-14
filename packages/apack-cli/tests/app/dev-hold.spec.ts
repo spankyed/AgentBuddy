@@ -4,7 +4,7 @@
 // the thing it describes, and the throwaway data dir goes after the app has actually exited rather than
 // after it has been asked to. Both are asserted here as an order, so a step moved out of place fails rather
 // than being discovered on Windows.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDevHold } from '../../src/app/dev-hold.ts';
 import type { ChildProcess } from 'node:child_process';
 
@@ -87,4 +87,30 @@ it('concurrent shutdown callers wait until the app exits and profile cleanup com
   finish();
   await Promise.all([signal, childExit]);
   expect(removed).toBe(true);
+});
+
+
+it('closes the watcher before app teardown and closes a late watcher immediately', async () => {
+  const { hold, order } = held();
+  hold.holdsWatcher(() => { order.push('watcher.close'); });
+  await hold.release();
+  expect(order[0]).toBe('watcher.close');
+  expect(order.indexOf('watcher.close')).toBeLessThan(order.indexOf('app.kill'));
+  const late = vi.fn();
+  hold.holdsWatcher(late);
+  expect(late).toHaveBeenCalledOnce();
+});
+
+
+it('waits for an in-flight watcher operation before removing the profile', async () => {
+  const { hold, order } = held();
+  let finish!: () => void;
+  hold.holdsWatcher(() => new Promise<void>(resolve => { finish = resolve; }));
+  const released = hold.release();
+  await Promise.resolve();
+  expect(order).toContain('app.kill');
+  expect(order).not.toContain('profile.remove');
+  finish();
+  await released;
+  expect(order.at(-1)).toBe('profile.remove');
 });
