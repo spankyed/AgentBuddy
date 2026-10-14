@@ -94,7 +94,15 @@ These are completion obligations, not optional later improvements.
    authored source files nor executable imports. Snapshot entity/type publication stays flat.
    Preserve EARS behavior; declaration grouping may change inert generated ordering. Compiled content
    bytes and apply identities must remain unchanged. Commit validated source/evidence.
-2. **M2 — relations.** `data.relations` holds stable wire values, generated constants retain their names.
+2. **M2 — relations.** `data.relations` is a list of stable snake_case wire values; generated constants
+   are their uppercase names. Current authored packs use only this mechanical mapping (default-setup:
+   parent_of/has/relates_to); retain their generated constants/types exactly. The historical claim that
+   the old schema already enforced this was false: it admitted arbitrary enum aliases. The new grammar
+   declares the wire vocabulary once, validates it and rejects duplicate/reserved wires. Synthetic
+   fixtures must model the new declaration/binding contract, without an alias/conversion path.
+   Flat snapshot/runtime maps remain derived artifacts, including dependency collision/provenance
+   validation; they are not another author-maintained inventory. Native declarations use the same list
+   and checked binding rule. Installed/offline inspection still needs no executable imports.
    Preserve EARS identities/types, dependency diamonds, collisions and actual external runtime relationships.
 3. **M3 — lifecycle.** Reuse current explicit hook targets and checked membership under `lifecycle`;
    keep no opaque aggregate thunk/module discovery. Preserve hydration/migration/apply/shutdown order,
