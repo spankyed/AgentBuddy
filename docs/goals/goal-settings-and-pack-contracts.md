@@ -203,8 +203,8 @@ and untyped supported paths; reset/defaults, restored data, custom forms and mul
 Implement [manifest consolidation](../plans/manifest-consolidation.md) M1–M6. The original entity/shape
 ownership, relations, module-reference, lifecycle, checks, feature-description, format-key and canonical
 writing outcomes were not optional. Preserve all 17 reconciled decisions and the original phase checks,
-with explicit replacements/exclusions recorded there. The current reference checkpoint is committed;
-start M1 before expanding more discovery consumers across the old split.
+with explicit replacements/exclusions recorded there. M1–M6 source checkpoints are committed and audited below. Their remaining cross-phase requirements
+continue in Phase 3; preserve the consolidated grammar while expanding other consumers.
 
 **Done when:** every required consolidation row has source/validation evidence; generated EARS and
 typed/untyped behavior are preserved; unchanged authored content keeps compiled identity and ordinary
@@ -3454,3 +3454,30 @@ correct them against current readers/build stages, and document receipts, snapsh
 artifact/runtime identities and native differences without claiming unfinished discovery kinds complete.
 Then resume full discovery and every remaining phase, including all three Phase 6 workstreams. Final
 strict `--all` on committed source and complete requirement audit remain due; nothing is archived.
+
+
+### Public artifacts and consolidation acceptance checkpoint (2026-10-14)
+
+Source `0994ae787` adds the public pack artifact contract: source/build/archive/installed/shipped/native
+differences, snapshot versus integrity, declaration/artifact/runtime identities, shape/null semantics,
+source-free declaration reading and build-only editor definitions. CLI/getting-started guidance now
+describes staged publication rather than destroying the prior build, inline settings rather than removed
+settings files, and current lifecycle names. Architecture guidance preserves explicit app/user update
+ownership and producer hashes through staging. The real external scaffold/archive test checks documented
+core artifact paths against actual files. Replacing the documented snapshot path failed that named
+assertion; exact documentation was restored.
+
+Focused checks: six doc link/command checks, 11 real external scaffold/build/typecheck/archive cases,
+and 171 current-tree consolidation tests in nine files. Strict checkpoint passed in 107.0s (22/30 cached):
+1,693 affected host tests and 618 integrations ran; unchanged app, shipped-pack and packaged checks
+were reused by their declared input identities. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T13-41-14Z-31339`;
+`/private/tmp/apack-m6-artifact-strict.log`; `/private/tmp/apack-m1-m6-acceptance.log`.
+Generated EARS and all six compiled content files remain byte-identical. Unrelated issue draft preserved.
+
+M6 is complete across writer, metadata validation, editor assistance and public artifact checkpoints.
+The consolidation plan records a current decision-by-decision acceptance audit for all 17 original
+decisions and both naming questions. It explicitly retains unfinished full contribution discovery,
+`extensions.frontend`, facade naming/capabilities, static content dependency graph and useful CLI
+inventories. Resume Phase 3 on those contracts, then entity navigation, frontend boundaries and all
+three Phase 6 workstreams. No plan is archived; no full-goal completion or final `--all` is claimed.

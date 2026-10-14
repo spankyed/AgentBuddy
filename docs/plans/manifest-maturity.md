@@ -22,9 +22,9 @@ Deliver the remaining work in this order:
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
 2. Complete settings ownership, current-format stored data, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
-3. Complete the required [manifest consolidation](manifest-consolidation.md), checkpoints M1–M6,
-   before extending more consumers across the old entity/shape split. Preserve generated EARS and
-   unchanged compiled content identities; do not treat authored-contract changes as optional audits.
+3. Preserve the completed authored [manifest consolidation](manifest-consolidation.md), checkpoints
+   M1–M6 through `0994ae787`. Its remaining full-kind discovery, frontend naming and facade obligations
+   continue in the next step. Preserve generated EARS/content identities and the shared declarations.
 4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
 5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
@@ -275,3 +275,18 @@ checks for lifecycle/error presentation. Check complete behavior, not just schem
 Keep marketplace categories, optional integrations, a new activation language and process isolation out
 of the immediate work unless their named product or measurement trigger exists. Start with the shared
 foundation and settings checkpoints; use the handoffs above to scope subsequent changes.
+
+
+## Consolidation handoff (2026-10-14)
+
+Authored consolidation M1–M6 is complete through `0994ae787`, including canonical writing, shared
+semantic validation, full field help, real editor assistance and current public artifact documentation.
+The [consolidation audit](manifest-consolidation.md#current-consolidation-acceptance-audit-2026-10-14)
+accounts for all original decisions and both naming questions, separating implemented replacements
+from required remaining discovery work. The execution goal records source commits and strict evidence.
+
+Next is full discovery: remaining contribution kinds/native declarations/freshness, the selected
+frontend container, facade naming/capability checks, static content edges and meaningful CLI inventory.
+Then navigation and frontend boundaries, followed by API consumption, dependency provenance and shipped
+replacement as separate required workstreams. Lazy activation/security isolation/storage remain deferred.
+Nothing is archived and final committed-source strict `--all` remains due.
