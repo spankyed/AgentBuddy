@@ -2733,3 +2733,50 @@ Next migrate parsing/rendering/suggestions and provider scopes together, remove 
 obsolete public types, and verify actual external references in an already-open editor. All other
 discovery kinds/native/freshness, entity routing/readiness, boundaries and the three Phase 6 workstreams
 remain required. Final committed-source --all, whole-goal acceptance auditing and archival remain due.
+
+
+### Editor/provider consumer checkpoint (2026-10-14)
+
+Source commit `20ab75efe` migrates the editor from pack-local reference aggregates to shared declaration
+and eligibility readers. Protocol lookup is metadata-only and evaluated by generic anchor parsing at
+parse time. Existing node views follow geometry changes, resolve current navigation at click time and
+release both declaration and click handlers on retirement. Popup state follows real editor transactions;
+keyboard handlers leave the previous editor through watcher cleanup. Popups mount only with an editor.
+
+The picker starts only the selected eligible category while open. Child effect scopes stop on category
+change, closure, replacement/removal, disconnect and view teardown; stable bindings survive unrelated
+publications. Synchronous closure during provider setup cannot publish stale items. Item filtering
+refuses unknown/inactive/wrong-category types. Generated references now contain only per-feature
+bindings; obsolete aggregate exports and category/provider types are removed. The note-type mapping
+belongs to notes. Providers are documented as synchronous effect-scope composables using
+`onScopeDispose`, without reliance on a component instance or lifecycle hooks.
+
+The first pack frontend build exposed the missing host-shared `@apackdev/sdk/fe/references` subpath.
+The existing shared-module map now supplies that module, preventing a duplicate host binding. The real
+external fixture declares memo references, provides reactive items/navigation, and tests its contribution
+in an existing viewer and editor picker. Its Electron case passes canonical-id navigation and insertion.
+Nineteen focused editor/provider checks pass; provider-disposal and retired-node cleanup mutations fail
+named assertions before exact restoration. Fifty-eight chain-input checks pass; omitting shipped-pack
+inputs fails four named app-fingerprint assertions. Public reports/docs and generated bindings agree.
+
+The initial strict run stopped at notification-loop lint; explicit publication queues fixed it. Consumer
+validation then passed all 30 gates in 450.7 seconds (13 cached), including fresh external acceptance.
+Final lifecycle validation passed in 203.5 seconds (17 cached), including 850 pack tests (two existing
+skips), but revealed that app checks incorrectly cached over changed shipped-pack bytes: they declared
+app bundles and omitted the separately loaded pack artifact. Correct all app-check inputs, including
+opt-in E2E, and remove the stale comment claiming the app compiles pack sources.
+
+The corrected final strict run passed all 30 gates in 209.3 seconds (20 cached), with fresh real
+external/default-fork Electron acceptance (157.1 seconds), smoke (4.9 seconds) and packaged-authoring
+app acceptance (7.6 seconds); unchanged author/package gates were reused. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T04-06-57Z-42359`;
+`/private/tmp/apack-editor-strict-cache-fixed.log`;
+`/private/tmp/apack-editor-provider-disposal-mutation.log`;
+`/private/tmp/apack-editor-retired-node-mutation.log`;
+`/private/tmp/apack-editor-pack-cache-mutation.log`.
+
+Next audit initial document parsing when catalog delivery is delayed, then complete the broader
+editor/declaration contribution migration, every remaining kind/native/freshness check, entity
+routing/readiness, frontend boundaries and the three Phase 6 workstreams. Current live parsing does
+not prove previously unknown anchors upgrade when metadata arrives. Final committed-source --all,
+whole-goal acceptance auditing and archival remain due. The goal remains active.
