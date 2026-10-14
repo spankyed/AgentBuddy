@@ -237,3 +237,19 @@ remain 1/2; capability-based facade acceptance and release metadata are unchange
 M5 is complete. M6 canonical writing/schema/docs coverage and all remaining execution phases stay
 required, including final strict `--all` on committed source and the full reconciled audit. Nothing
 is archived here.
+
+
+## M6 metadata validation checkpoint (2026-10-14)
+
+Source `6c1666d56` validates complete pack versions, nonempty npm host/dependency ranges and dependency
+IDs. One SDK parser serves authored dependency validation and CLI resolution (range, file and GitHub
+forms); native dependencies use ranges only. Generated schema/API reports and public grammar agree.
+Strict checkpoint passed all 30 steps in 532.9s; evidence and focused/mutation checks are recorded in
+the execution goal. EARS and compiled content identities are unchanged.
+
+M6 is unfinished. Current generated-schema inspection found 45 missing field descriptions, principally
+plugin presentation, reference presentation/providers, settings labels and help paths. Complete those
+with behavior-specific guidance and editor assistance checks, not a blanket description filler. npm
+range semantics remain checked by the shared validator rather than represented in generated JSON
+Schema. Native/source/installed/shipped artifact documentation and final M1–M6 acceptance audit remain
+required before resuming all remaining discovery and goal workstreams.

@@ -3395,3 +3395,31 @@ version/range validation and final public/native/installed/shipped artifact docu
 finish all remaining discovery/navigation/boundary/Phase 6 requirements. Final strict `--all` on
 committed source and the full reconciled audit remain mandatory. Nothing is archived; the full
 goal remains active.
+
+
+### Manifest versions and dependency source grammar — M6 checkpoint (2026-10-14)
+
+Source checkpoint `6c1666d56` replaces prefix-only version acceptance with complete SemVer 2.0
+validation, validates nonempty npm host/dependency ranges, and checks dependency pack IDs. Authored
+`file:<path>` and `github:<owner>/<repo> [range]` values use one SDK build parser shared with CLI
+resolution; native declarations admit ranges, since they do not resolve authored source locators.
+Parsing does not execute modules or resolve filesystem/network sources. No obsolete-format handling,
+aliases or release metadata changes were added. SDK runtime/type dependencies are explicit.
+
+Focused checks passed 76 SDK tests, five dependency resolver tests, and 14 actual CLI cases, including
+invalid metadata failure exits and JSON diagnostics at `version`, `hostVersion` and the dependency
+field. Removing range validation failed seven named assertions; exact source was restored before
+validation. Generated schema and SDK build API report were regenerated and reviewed (report normalized
+to LF). All 30 strict steps passed in 532.9s, including external-pack contract/app, smoke, real scaffold
+authoring, packaged authoring (54.0s) and packaged app (7.4s). Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T13-08-23Z-63777`;
+`/private/tmp/apack-m6-semver-strict.log`. Generated EARS and all six compiled content files remain
+byte-identical to the preservation baseline. Unrelated issue draft remains untouched.
+
+M6 remains open: the current generated-schema audit found 45 fields without descriptions, concentrated
+in plugin presentation, references, settings titles/descriptions and help paths. Complete meaningful
+field assistance and nonvacuous editor completion/diagnostics coverage, plus native/installed/shipped
+artifact documentation, before certifying M6. JSON Schema does not encode the semantic npm range
+refinements; authoring tools still perform the shared semantic validation. The full discovery,
+navigation, boundaries and all three Phase 6 workstreams remain required. Final committed-source
+strict `--all` and the complete reconciled requirement audit remain due; nothing is archived.
