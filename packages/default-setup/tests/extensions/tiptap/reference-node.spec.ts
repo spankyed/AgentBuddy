@@ -5,24 +5,40 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import { ReferenceNode } from '../../../src/extensions/tiptap/reference-node.ts';
 
-const navigation = vi.hoisted(() => ({ thread: vi.fn(), document: vi.fn() }));
-vi.mock('../../../src/extensions/tiptap/reference-config.ts', () => ({
-  REFERENCE_TYPES: {
-    thread: { protocol: 'thread', category: 'threads', svgElements: [], navigate: navigation.thread },
-    document: { protocol: 'doc', category: 'documents', svgElements: [], navigate: navigation.document },
-  },
-  CATEGORIES: [], ALL_PROTOCOLS: ['thread', 'doc'],
-}));
+import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
+import { resolveName } from '@apackdev/sdk/ids';
+import type { ReferenceCatalogEntry } from '@apackdev/sdk/framework';
+import type { ReferenceBinding, ReferenceTypeConfig } from '@apackdev/sdk/fe/references';
+
+const navigation = { thread: vi.fn(), document: vi.fn() };
+const listeners = new Set<() => void>();
+let entries: ReferenceCatalogEntry[];
+let bindings: Map<string, ReferenceBinding<ReferenceTypeConfig>>;
+let ready: boolean;
+function addType(name: string, protocol: string, navigate = vi.fn()) {
+  const featureRef = resolveName('links', name + '-pack');
+  entries.push({ packId: name + '-pack', featureRef, origin: 'native', enabled: true, declaration: {
+    types: { [name]: { protocol, category: 'links', icon: 'Link', svgElements: [], navigate: 'src/links.ts#open' } }, categories: {},
+  } });
+  bindings.set(name, { featureRef, binding: { protocol, category: 'links', icon: {}, svgElements: [], navigate } });
+  return navigate;
+}
 
 const editors: Editor[] = [];
 let dom: JSDOM;
 beforeEach(() => {
+  entries = []; bindings = new Map(); ready = true;
+  addType('thread', 'thread', navigation.thread); addType('document', 'doc', navigation.document);
+  startFeTestRuntime({ application: {} as never, settings: {} as never, secrets: {} as never, client: {} as never,
+    catalog: { status: () => ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => entries,
+      subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } },
+    packs: { referenceTypes: () => bindings } as never });
   dom = new JSDOM('<!doctype html><html><body></body></html>');
   // Keep Node's TextEncoder/Uint8Array realm intact for the pack's esbuild harness.
   for (const key of ['window', 'document', 'DOMParser', 'HTMLElement', 'Node', 'MutationObserver', 'MouseEvent', 'getComputedStyle'] as const)
     vi.stubGlobal(key, key === 'window' ? dom.window : dom.window[key]);
 });
-afterEach(() => { for (const editor of editors.splice(0)) editor.destroy(); dom.window.close(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+afterEach(() => { for (const editor of editors.splice(0)) editor.destroy(); dom.window.close(); stopFeTestRuntime(); expect(listeners.size).toBe(0); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 const editor = (content: object | string) => {
   const element = document.createElement('div'); document.body.appendChild(element);
   const instance = new Editor({ element, editable: false, extensions: [StarterKit, Markdown, ReferenceNode], content });
@@ -87,4 +103,41 @@ it('delivers the updated target from an existing node view', () => {
   expect(view.textContent).toBe('Updated label');
   view.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigation.thread).toHaveBeenCalledWith('Thread-two');
+});
+
+it('parses a new external protocol in an already-created editor without starting or rebuilding it', () => {
+  const opened = editor('<p>Open before contribution</p>');
+  const navigate = addType('memo', 'memo');
+  opened.commands.setContent('<p><a href="memo://Memo-one">Memo</a></p>');
+  expect(attrs(opened)).toMatchObject([{ refType: 'memo', refId: 'Memo-one' }]);
+  expect(markdown(opened)).toBe('[Memo](memo://Memo-one)');
+  expect(navigate).not.toHaveBeenCalled();
+  opened.view.dom.querySelector('.reference-pill')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigate).toHaveBeenCalledWith('Memo-one');
+});
+
+it('refreshes an existing node icon and uses current eligible navigation, disposing its listener', () => {
+  const opened = editor(content(reference('Thread-one')));
+  const pill = opened.view.dom.querySelector('.reference-pill')!;
+  entries = entries.map(entry => entry.packId === 'thread-pack' ? { ...entry, declaration: { ...entry.declaration,
+    types: { thread: { ...entry.declaration.types.thread, svgElements: [['path', { d: 'M2 4h8' }]] } } } } : entry);
+  const notified = [...listeners];
+  for (const listener of notified) listener();
+  expect(pill.querySelector('path')?.getAttribute('d')).toBe('M2 4h8');
+  ready = false;
+  pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigation.thread).not.toHaveBeenCalled();
+  expect(opened.getHTML()).toContain('thread://Thread-one');
+  ready = true; bindings.delete('thread');
+  pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigation.thread).not.toHaveBeenCalled();
+});
+
+it('retired node views release navigation handlers as well as declaration listeners', () => {
+  const opened = editor(content(reference('Thread-one')));
+  const retired = opened.view.dom.querySelector('.reference-pill')!;
+  opened.commands.setContent('<p>Reference removed</p>');
+  expect(listeners.size).toBe(0);
+  retired.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigation.thread).not.toHaveBeenCalled();
 });

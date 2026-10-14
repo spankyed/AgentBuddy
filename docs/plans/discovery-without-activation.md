@@ -1621,3 +1621,59 @@ artifact changes or missing receipts, foreign ownership, source metadata, native
 removal/replacement and listener cleanup. Removing owner or artifact matching independently fails the
 corresponding named refusal assertion. Editor consumers and provider scopes are still unmigrated;
 continue the preceding migration sequence, including actual external contribution acceptance.
+
+
+### Editor/provider consumer implementation (2026-10-13)
+
+Editor consumers now use the shared declaration and eligibility readers. Protocol resolution belongs
+to the SDK and distinguishes authoring advertisements from runtime claims. Generic anchor parsing
+looks up current protocols at parse time; rendering/serialization use declaration data, and node views
+subscribe to geometry changes with destruction cleanup. Navigation resolves eligible bindings at click
+time. The empty Markdown DOM hook and pack-local aggregate exports/types are removed. The notes
+entity-to-reference mapping stays with notes rather than recreating a cross-cutting settings/inventory owner.
+
+The picker follows actual editor transaction events, cleans up when its editor changes, and reads
+declared category labels. Only its selected eligible category starts a provider. An owned effect scope
+ends before replacement/removal, on closing/category change/disconnect and on view teardown; stable
+bindings survive unrelated publications. A provider that closes the picker during setup cannot publish
+stale items. Unknown/inactive/wrong-category items are excluded before insertion. Popup mounting now
+waits for a real editor instance. Actual provider failures still belong to the separate pane-boundary work.
+
+The first frontend build exposed an integration prerequisite missed by the read-port checkpoint:
+`@apackdev/sdk/fe/references` was not in the host-shared module map. Its new runtime helpers would have
+inlined a second host binding. Add that subpath to the existing shared map; do not add a separate bridge
+or inline fallback. Pack tests use the supported frontend test runtime's start/stop lifecycle.
+
+The external fixture declares memo references, exports navigation and a reactive provider, and supplies
+a real editor. Its app acceptance check exercises an already-mounted viewer's parsing/navigation and
+the editor picker. Focused tests separately cover protocol additions after editor construction, geometry
+changes, unavailable navigation, provider scope replacement/closure/disconnect/removal and listener
+cleanup. Removing provider disposal fails named lifecycle assertions. Full app acceptance is required
+before recording this as a validated checkpoint.
+
+Continue the broader editor contribution/native/freshness audit and verify initial document parsing
+when catalog delivery is delayed; generic live parsing alone does not prove initial unknown links are
+upgraded when metadata arrives. Every remaining discovery kind, entity readiness, fault boundary and
+Phase 6 workstream remains active, alongside final committed-source --all and the full acceptance audit.
+
+
+### Runtime-check cache correction (2026-10-14)
+
+The final editor cleanup changed the shipped pack's frontend while leaving app workspace bundles
+unchanged. Strict app checks incorrectly reported cached because their declared inputs omitted
+`PACK_OUTPUTS`: the app loads that pack separately at runtime. Correct external-pack app, smoke, full
+E2E and packaged-authoring app inputs to include the separately loaded artifact. A fingerprint regression
+changes only shipped frontend bytes and requires each app check's key to change. Runtime build
+success or unchanged app bundle bytes alone never proves an unchanged running app. This is part of
+required discovery/source-build freshness, not a speculative cache optimization.
+
+
+Editor/provider validation passed all 30 strict gates after the runtime-check cache correction
+(209.3 seconds, 20 cached). External-reference Electron acceptance ran fresh (157 seconds), including
+the real fixture's canonical navigation and picker insertion test, alongside smoke and packaged-authoring
+app acceptance. Earlier full consumer validation passed in 450.7 seconds; final lifecycle verification
+passed 19 focused checks and 850 pack tests. Provider-disposal, retired-node-handler and shipped-pack
+cache-input mutations each fail their named regressions, followed by exact source restoration.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-06-57Z-42359` and
+`/private/tmp/apack-editor-strict-cache-fixed.log`. Initial catalog-delivery behavior and the remaining
+contribution/native/freshness work are still due; this is not whole-goal completion.

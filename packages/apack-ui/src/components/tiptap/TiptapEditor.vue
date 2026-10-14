@@ -13,13 +13,15 @@
       <TiptapBubbleMenu v-if="cfg.textBubbleMenu" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
-    <component
-      v-for="(popup, i) in pluginPopups"
-      :key="i"
-      :is="popup"
-      :editor="editor"
-      :variant="variant"
-    />
+    <template v-if="editor">
+      <component
+        v-for="(popup, i) in pluginPopups"
+        :key="i"
+        :is="popup"
+        :editor="editor"
+        :variant="variant"
+      />
+    </template>
   </div>
 </template>
 

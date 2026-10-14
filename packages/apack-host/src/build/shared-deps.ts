@@ -197,6 +197,7 @@ export interface SdkFeModule {
 
 export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
   '@apackdev/sdk/fe':           { globalKey: 'sdkFe' },
+  '@apackdev/sdk/fe/references': { globalKey: 'sdkFeReferences' },
   '@apackdev/sdk/runtime':      { globalKey: 'sdkRuntime' },
   '@apackdev/sdk/steps':        { globalKey: 'sdkSteps' },
   '@apackdev/sdk/artifacts':    { globalKey: 'sdkArtifacts' },

@@ -21,7 +21,7 @@ src/
     repository.ts          # repository, typed with the repositories declared in apack.json
     repositories.ts        # Those repositories by name, carried by pack-entry.ts's registration
     pack-types.ts          # Facade types apack pack build bundles into dist/types/pack-types.d.ts
-    references.ts          # Which of the feature's things are linkable from an editor (tiptap references)
+    references.ts          # Per-feature executable reference bindings; editor metadata comes from the host catalog
     appliers.ts             # `appliers` for all content types, which pack-entry.ts carries; compiled dir accessors
     content-runtime.ts        # contentRuntime: entity types, relation kinds, repositories, content writers (unit tests; bundled to dist/build/content-runtime.mjs)
     step-types.ts          # Step type augmentation

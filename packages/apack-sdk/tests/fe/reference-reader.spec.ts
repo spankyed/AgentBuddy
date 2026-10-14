@@ -3,7 +3,7 @@ import { shallowRef } from 'vue';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import type { PackCatalogView, ReferenceCatalogEntry } from '../../src/framework/catalog-view.ts';
 import type { ReferenceBinding, ReferenceBindings, ReferenceTypeConfig } from '../../src/fe/reference-types.ts';
-import { getReferenceCategoryBinding, getReferenceCategoryDeclarations, getReferenceTypeBinding, getReferenceTypeDeclaration,
+import { findReferenceTypeByProtocol, getReferenceCategoryBinding, getReferenceCategoryDeclarations, getReferenceTypeBinding, getReferenceTypeDeclaration,
   onReferenceBindingsChanged, onReferenceDeclarationsChanged } from '../../src/fe/reference-types.ts';
 import { resolveName } from '../../src/ids/refs.ts';
 
@@ -103,4 +103,23 @@ it('observes declaration and binding publications independently and releases bot
   for (const listener of f.declarations) listener(); for (const listener of f.bindings) listener();
   expect(changed).toHaveBeenCalledTimes(2);
   stopDeclarations(); stopBindings(); expect(f.declarations.size).toBe(0); expect(f.bindings.size).toBe(0);
+});
+
+it('resolves current protocols without execution and ignores conflicting authoring advertisements', () => {
+  const f = fixture();
+  expect(findReferenceTypeByProtocol('note')).toBe('note');
+  expect(findReferenceTypeByProtocol('unknown')).toBeUndefined();
+  f.state.entries.push({ ...f.entry, origin: 'source', declaration: { ...f.entry.declaration,
+    types: { alternate: { ...f.entry.declaration.types.note } } } });
+  expect(findReferenceTypeByProtocol('note')).toBe('note');
+  expect(f.navigate).not.toHaveBeenCalled(); expect(f.useItems).not.toHaveBeenCalled();
+  f.state.entries = [{ ...f.entry, declaration: { ...f.entry.declaration, types: { note: { ...f.entry.declaration.types.note, protocol: 'changed' } } } }];
+  expect(findReferenceTypeByProtocol('note')).toBeUndefined(); expect(findReferenceTypeByProtocol('changed')).toBe('note');
+});
+
+it('refuses distinct types claiming one protocol rather than choosing insertion order', () => {
+  const f = fixture();
+  f.state.entries.push({ ...f.entry, featureRef: resolveName('other', 'other'), declaration: { ...f.entry.declaration,
+    types: { alternate: { ...f.entry.declaration.types.note } } } });
+  expect(findReferenceTypeByProtocol('note')).toBeUndefined();
 });

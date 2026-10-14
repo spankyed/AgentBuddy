@@ -627,26 +627,7 @@ const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', '
  */
 export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
 
-/**
- * The built-in pack's own sources, which **two steps compile**: `build:default-setup`, which is the pack's build, and
- * `build:runtime`, because the app is built from them too. That second reader is the surprising one and the reason
- * this is named rather than spelled twice — the renderer's `devPackFrontendsPlugin` generates a module of static
- * imports of the pack's generated FE entry, so Vite follows them into each feature's `fe` directory and the pack's
- * components land in the renderer bundle, while the api's tsup traces its generated BE entry the same way.
- *
- * `src` whole rather than a frontend subset, for two independent reasons: a bundler's graph crosses `be`/`fe`
- * freely (`fe/contract.ts` imports `be/types.ts`), and `renderer/tailwind.config.ts` adds
- * `<srcDir>/**` to Tailwind's `content`, so the emitted CSS depends on class-name text in files no bundler
- * traces at all. `apack.json` because the discovery parses it and its `id` is the alias prefix;
- * `package.json` because Vite resolves the pack's `#generated/*` and `#features/*` specifiers through its
- * `imports` map. Not `etc` or `tests`, which no build reads, and not `workspace('default-setup')`, which would
- * make a pack test edit cost an app build.
- *
- * **Hand-written, and not derived from a scan of the packs** as `FIXTURE_OUTPUTS` below is derived
- * from the fixtures: `chain-inputs.spec.ts` derives its population from exactly that function, and a check
- * whose two sides come from one source cannot fail. The asymmetry is what makes a second built-in pack fail
- * that case rather than silently satisfy it.
- */
+/** Authored pack inputs for its build and facade. Runtime app checks consume PACK_OUTPUTS instead. */
 const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/apack.json',
   'packages/default-setup/package.json'];
 
@@ -1148,6 +1129,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+  // App checks load the shipped pack separately at runtime. Its bytes can change while every
+  // app workspace bundle stays identical, so their cache keys must include PACK_OUTPUTS too.
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
@@ -1156,7 +1139,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // name rather than by path, so nothing that reads a step's text can see the edge
     keepsOnFailure: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
-      'tests/scripts/test-default-pack-fork.ts', 'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
+      'tests/scripts/test-default-pack-fork.ts', 'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
@@ -1186,7 +1169,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // so the retry would take it
     keepsOnFailure: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
-      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
+      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
   // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it
@@ -1203,7 +1186,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
-      ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
+      ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   /**
    * Two steps, split at the app boundary: only the last of the check's nine phases launches one.
    *
@@ -1221,5 +1204,5 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_READS] },
   { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-app.sh',
-      'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
+      'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
 ];

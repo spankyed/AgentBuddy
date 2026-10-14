@@ -215,8 +215,8 @@ owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", 
 custom component. SVG geometry supports path, rect and circle tuples.
 
 `navigate(id)` receives a canonical entity ID. `useItems()` is a Vue composable returning a reactive
-reference-item list; call it in a component's setup or an owned effect scope so its subscriptions
-are disposed with that scope.
+reference-item list. Providers must work in an owned effect scope and release subscriptions with
+Vue's `onScopeDispose`; they cannot depend on component lifecycle hooks or a particular component instance.
 Generated frontend entries register these bindings under their owning feature. The host checks
 complete declaration membership and refuses global type, protocol or category collisions before
 publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
@@ -227,6 +227,7 @@ its cleanup function. A disconnected window can retain its last accepted metadat
 that it is unavailable for current execution. Native/source entries do not invent installed receipts
 or source enablement.
 
+`findReferenceTypeByProtocol(protocol)` finds a declared type without executing its owner.
 `getReferenceTypeDeclaration(name)` reads static type geometry/protocol; an ambiguous runtime name
 returns absence. `getReferenceCategoryDeclarations()` lists categories with their owning feature refs,
 including disabled and source declarations, without silently overwriting duplicate names.
@@ -237,8 +238,14 @@ Source advertisements are metadata, not executable claims. Ambiguous runtime nam
 Reactive consumers observe both `onReferenceDeclarationsChanged` and `onReferenceBindingsChanged`,
 and release both subscriptions. Looking up a binding does not call navigation or start an item provider.
 
-The generated reference aggregate currently serves the declaring pack's frontend; app-wide editor
-consumption and provider lifecycle migration are not yet delivered.
+The editor reads these common declarations rather than a pack-local aggregate. Its generic anchor
+parser resolves current protocols even in an already-open editor; HTML/Markdown preserve encoded
+canonical entity ids. Node views follow declared geometry and resolve eligible navigation when clicked.
+The picker starts only the selected category's provider while open, in an owned effect scope. Closing,
+changing category, disconnecting, replacing/removing its binding or destroying the view stops that
+scope. Unrelated publications retain the existing provider. Generated references contain only the
+per-feature bindings registered by the frontend entry. The host shares the reference SDK module with
+pack frontends so its readers use the renderer's catalog and accepted registry.
 
 ## Steps
 

@@ -55,6 +55,35 @@
       "repositories": {
         "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      },
+      "references": {
+        "types": {
+          "memo": {
+            "protocol": "memo",
+            "category": "memos",
+            "icon": "StickyNote",
+            "svgElements": [
+              [
+                "rect",
+                {
+                  "x": "3",
+                  "y": "3",
+                  "width": "18",
+                  "height": "18",
+                  "rx": "2"
+                }
+              ]
+            ],
+            "navigate": "src/features/memos/fe/references.ts#openMemo"
+          }
+        },
+        "categories": {
+          "memos": {
+            "label": "Memos",
+            "icon": "StickyNote",
+            "useItems": "src/features/memos/fe/references.ts#useItems"
+          }
+        }
       }
     },
     "notes": {

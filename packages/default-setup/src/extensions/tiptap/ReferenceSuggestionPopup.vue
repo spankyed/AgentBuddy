@@ -10,14 +10,14 @@
       <template v-if="level === 'category'">
         <div
           v-for="(cat, index) in filteredCategories"
-          :key="cat.id"
+          :key="`${cat.featureRef}/${cat.id}`"
           class="reference-suggestion-item"
           :class="{ 'is-selected': index === selectedIndex }"
           @mousedown.prevent="selectCategory(cat.id)"
           @mouseenter="selectedIndex = index"
         >
           <component :is="getCategoryIcon(cat.id)" class="reference-suggestion-icon" :size="16" />
-          <span>{{ cat.label }}</span>
+          <span>{{ cat.declaration.label }}</span>
         </div>
         <div v-if="filteredCategories.length === 0" class="reference-suggestion-empty">
           No matching categories
@@ -41,7 +41,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="REFERENCE_TYPES[item.type].icon" class="reference-suggestion-icon" :size="16" />
+          <component :is="getReferenceTypeBinding(item.type)?.binding.icon" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
@@ -54,11 +54,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { referenceSuggestionPluginKey } from './reference-suggestion-plugin.ts'
-import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
-import { REFERENCE_TYPES } from './reference-config.ts'
+import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-suggestion-plugin.ts'
+import { useReferenceItems, type ReferenceCategory, type ReferenceItem } from './useReferenceItems.ts'
+import { getReferenceCategoryBinding, getReferenceTypeBinding } from '@apackdev/sdk/fe/references'
 
 const props = defineProps<{
   editor: Editor
@@ -70,12 +70,16 @@ const popupEl = ref<HTMLElement | null>(null)
 const popupStyle = ref<Record<string, string>>({ bottom: '0px', left: '0px' })
 
 function getCategoryIcon(id: ReferenceCategory) {
-  return CATEGORIES.find((c) => c.id === id)?.primaryIcon
+  return getReferenceCategoryBinding(id)?.binding.icon
 }
 
-const pluginState = computed(() => {
-  return props.editor ? referenceSuggestionPluginKey.getState(props.editor.state) : undefined
-})
+const pluginState = shallowRef<ReferenceSuggestionState>()
+watch(() => props.editor, (editor, _previous, onCleanup) => {
+  const update = () => { pluginState.value = referenceSuggestionPluginKey.getState(editor.state) }
+  update()
+  editor.on('transaction', update)
+  onCleanup(() => { editor.off('transaction', update) })
+}, { immediate: true })
 
 const isActive = computed(() => pluginState.value?.active ?? false)
 const level = computed(() => pluginState.value?.level ?? 'category')
@@ -83,21 +87,21 @@ const query = computed(() => pluginState.value?.query ?? '')
 const selectedCategory = computed(() => pluginState.value?.selectedCategory ?? null)
 
 const activeCategoryLabel = computed(() => {
-  const cat = CATEGORIES.find((c) => c.id === selectedCategory.value)
-  return cat?.label ?? ''
+  const cat = categories.value.find((c) => c.id === selectedCategory.value)
+  return cat?.declaration.label ?? ''
 })
 
 const filteredCategories = computed(() => {
   const q = query.value.toLowerCase()
-  if (!q) return CATEGORIES
-  return CATEGORIES.filter((c) => c.label.toLowerCase().includes(q))
+  if (!q) return categories.value
+  return categories.value.filter((c) => c.declaration.label.toLowerCase().includes(q))
 })
 
 watch([query, level], ([q, lvl]) => {
   if (lvl !== 'category' || !q.endsWith(':')) return
-  const typed = q.slice(0, -1)
-  const match = CATEGORIES.find(
-    (c) => c.label.toLowerCase().replace(/\s+/g, '') === typed
+  const typed = q.slice(0, -1).toLowerCase()
+  const match = categories.value.find(
+    (c) => c.declaration.label.toLowerCase().replace(/\s+/g, '') === typed
   )
   if (!match) return
   const state = pluginState.value
@@ -116,7 +120,7 @@ watch([query, level], ([q, lvl]) => {
 })
 
 const itemQuery = computed(() => (level.value === 'items' ? query.value : ''))
-const { items } = useReferenceItems(selectedCategory, itemQuery)
+const { items, categories } = useReferenceItems(selectedCategory, itemQuery, isActive)
 
 watch([filteredCategories, items, level], () => {
   selectedIndex.value = 0
@@ -195,7 +199,7 @@ function handleKeyDown(event: KeyboardEvent) {
   if (!isActive.value) return
 
   const currentList = level.value === 'category' ? filteredCategories.value : items.value
-  const maxIndex = currentList.length - 1
+  const maxIndex = Math.max(0, currentList.length - 1)
 
   switch (event.key) {
     case 'ArrowDown':
@@ -241,34 +245,19 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 }
 
-watch(isActive, (active) => {
-  try {
-    const dom = props.editor?.view?.dom
-    if (!dom) return
-    if (active) {
-      dom.addEventListener('keydown', handleKeyDown, true)
-    } else {
-      dom.removeEventListener('keydown', handleKeyDown, true)
-    }
-  } catch {
-    // Editor may have been destroyed before this watcher fires
-  }
+watch([isActive, () => props.editor], ([active, editor], _previous, onCleanup) => {
+  if (!active) return
+  const dom = editor.view.dom
+  dom.addEventListener('keydown', handleKeyDown, true)
+  onCleanup(() => { dom.removeEventListener('keydown', handleKeyDown, true) })
 }, { immediate: true })
 
 onBeforeUnmount(() => {
-  try {
-    const dom = props.editor?.view?.dom
-    if (dom) {
-      dom.removeEventListener('keydown', handleKeyDown, true)
-    }
-  } catch {
-    // Editor already destroyed
-  }
   document.removeEventListener('mousedown', handleClickOutside, true)
 })
 
 function selectCategory(id: ReferenceCategory) {
-  const cat = CATEGORIES.find((c) => c.id === id)
+  const cat = categories.value.find((c) => c.id === id)
   if (!cat) return
 
   const state = pluginState.value
@@ -277,7 +266,7 @@ function selectCategory(id: ReferenceCategory) {
   const { tr } = props.editor.state
   const from = state.triggerPos + 1
   const to = props.editor.state.selection.head
-  const categoryPrefix = cat.label.toLowerCase().replace(/\s+/g, '') + ':'
+  const categoryPrefix = cat.declaration.label.toLowerCase().replace(/\s+/g, '') + ':'
 
   tr.replaceWith(from, to, props.editor.state.schema.text(categoryPrefix))
   tr.setMeta(referenceSuggestionPluginKey, {

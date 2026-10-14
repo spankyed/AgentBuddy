@@ -7,22 +7,8 @@
 import type { Component } from 'vue';
 import type { Ref } from 'vue';
 
-// @public (undocumented)
-export interface CategoryConfig {
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    primaryIcon: Component;
-}
-
 // @public
-export interface CategoryItemsProvider {
-    // (undocumented)
-    category: string;
-    useItems(): Readonly<Ref<ReferenceItem[]>>;
-}
+export function findReferenceTypeByProtocol(protocol: string): string | undefined;
 
 // @public
 export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']>;

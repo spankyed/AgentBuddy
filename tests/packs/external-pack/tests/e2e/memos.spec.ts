@@ -285,3 +285,31 @@ test('host personal settings follow edits in another window', async ({ appPage, 
     await second.close();
   }
 });
+
+
+test('external reference declarations feed the existing editor and picker with canonical navigation', async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await app.navigate('memos');
+  const editor = appPage.getByTestId('memo-reference-editor').locator('.tiptap');
+  await expect(editor).toBeVisible();
+  await appPage.getByTestId('memo-input').fill('Reference fixture memo');
+  await appPage.getByTestId('memo-add').click();
+  await expect(appPage.getByTestId('memo-list').getByText('Reference fixture memo')).toBeVisible();
+  const memoId = await appPage.evaluate(() => {
+    const actor = (window as any).applicationState.system.get('e2e-fixture/memos');
+    return actor.getSnapshot().context.memos.find((memo: any) => memo.text === 'Reference fixture memo').id as string;
+  });
+  // The preview is already mounted: a newly supplied external URI uses the generic live parser.
+  await appPage.getByTestId('memo-input').fill(`[Reference fixture memo](memo://${encodeURIComponent(memoId)})`);
+  const pill = appPage.getByTestId('memo-preview').locator('.reference-pill');
+  await expect(pill).toHaveText('Reference fixture memo');
+  await pill.click();
+  await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('e2e-fixture/memos').getSnapshot().context.highlighted)).toBe(memoId);
+  await editor.click();
+  await editor.pressSequentially('#memos:');
+  const suggestion = appPage.locator('.reference-suggestion-popup');
+  await expect(suggestion).toBeVisible();
+  await suggestion.getByText('Reference fixture memo', { exact: true }).click();
+  await expect(editor.locator('.reference-pill')).toHaveText('Reference fixture memo');
+  await expect(suggestion).not.toBeVisible();
+});

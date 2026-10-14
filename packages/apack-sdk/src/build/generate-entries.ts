@@ -1841,16 +1841,12 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
     }
     if (lazyComponents) imports.push("import { defineAsyncComponent } from 'vue';");
     return `${HEADER}
-import type { ReferenceBindings, ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
+import type { ReferenceBindings } from '@apackdev/sdk/fe/references';
 ${imports.join('\n')}
 export const FEATURE_REFERENCES: Record<string, ReferenceBindings> = {
 ${featureBindings.join('\n')}
 };
-export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = Object.assign(Object.create(null), ...Object.values(FEATURE_REFERENCES).map(refs => refs.types));
-export const CATEGORIES: CategoryConfig[] = Object.values(FEATURE_REFERENCES).flatMap(refs => Object.entries(refs.categories).map(([id, category]) => ({ id, label: category.label, primaryIcon: category.icon })));
-export const ITEMS_PROVIDERS: CategoryItemsProvider[] = Object.values(FEATURE_REFERENCES).flatMap(refs => Object.entries(refs.categories).map(([category, binding]) => ({ category, useItems: binding.useItems })));
-export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map(cfg => cfg.protocol);
-export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
+
 `;
   }
 

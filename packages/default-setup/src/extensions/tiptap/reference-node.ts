@@ -1,8 +1,8 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin.ts'
-import { REFERENCE_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config.ts'
+import { findReferenceTypeByProtocol, getReferenceTypeDeclaration, getReferenceTypeBinding, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
 
-function createIconSvg(type: ReferenceType): SVGSVGElement {
+function createIconSvg(type: string): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
   const svg = document.createElementNS(ns, 'svg')
   svg.setAttribute('width', '14')
@@ -14,7 +14,7 @@ function createIconSvg(type: ReferenceType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of REFERENCE_TYPES[type]?.svgElements ?? []) {
+  for (const [tag, attrs] of getReferenceTypeDeclaration(type)?.svgElements ?? []) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -41,22 +41,27 @@ export const ReferenceNode = Node.create({
   },
 
   parseHTML() {
-    return Object.entries(REFERENCE_TYPES).map(([refType, cfg]) => ({
-      tag: `a[href^="${cfg.protocol}://"]`,
+    return [{
+      tag: 'a[href]',
       priority: 60,
       getAttrs(node: HTMLElement) {
-        const href = (node as HTMLAnchorElement).getAttribute('href') || ''
+        const href = node.getAttribute('href') || ''
+        const separator = href.indexOf('://')
+        if (separator < 1) return false
+        const protocol = href.slice(0, separator)
+        const refType = findReferenceTypeByProtocol(protocol)
+        if (!refType) return false
         let id: string
-        try { id = decodeURIComponent(href.slice(cfg.protocol.length + 3)) }
+        try { id = decodeURIComponent(href.slice(separator + 3)) }
         catch { return false }
         if (!id) return false
         return { refType, refId: id, shortCode: node.getAttribute('data-short-code') || '', label: node.textContent || '' }
       },
-    }))
+    }]
   },
 
   renderHTML({ node }) {
-    const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
+    const cfg = getReferenceTypeDeclaration(node.attrs.refType)
     if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) return ['span', { class: 'reference-pill' }, node.attrs.label]
     return [
       'a',
@@ -80,7 +85,7 @@ export const ReferenceNode = Node.create({
 
       const icon = document.createElement('span')
       icon.classList.add('reference-pill-icon')
-      icon.appendChild(createIconSvg(node.attrs.refType as ReferenceType))
+      icon.appendChild(createIconSvg(node.attrs.refType))
 
       const label = document.createElement('span')
       label.classList.add('reference-pill-label')
@@ -88,24 +93,32 @@ export const ReferenceNode = Node.create({
 
       dom.appendChild(icon)
       dom.appendChild(label)
+      const stopDeclarations = onReferenceDeclarationsChanged(() => {
+        icon.replaceChildren(createIconSvg(currentNode.attrs.refType))
+      })
 
-      dom.addEventListener('click', (event) => {
+      const onClick = (event: MouseEvent) => {
         if (editor.isEditable && !event.metaKey && !event.ctrlKey) return
 
-        const refType = currentNode.attrs.refType as ReferenceType
+        const refType = currentNode.attrs.refType
         const refId = currentNode.attrs.refId as string
-        const cfg = REFERENCE_TYPES[refType]
+        const cfg = getReferenceTypeBinding(refType)?.binding
 
         if (cfg && typeof refId === 'string' && refId) cfg.navigate(refId)
-      })
+      }
+      dom.addEventListener('click', onClick)
 
       return {
         dom,
+        destroy() {
+          stopDeclarations()
+          dom.removeEventListener('click', onClick)
+        },
         update(updatedNode) {
           if (updatedNode.type.name !== 'reference') return false
           currentNode = updatedNode
           dom.dataset.refType = updatedNode.attrs.refType
-          icon.replaceChildren(createIconSvg(updatedNode.attrs.refType as ReferenceType))
+          icon.replaceChildren(createIconSvg(updatedNode.attrs.refType))
           label.textContent = updatedNode.attrs.label
           return true
         },
@@ -141,7 +154,7 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
+          const cfg = getReferenceTypeDeclaration(node.attrs.refType)
           if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) {
             state.text(node.attrs.label)
             return
@@ -149,15 +162,6 @@ export const ReferenceNode = Node.create({
           state.write('[')
           state.text(node.attrs.label)
           state.write(`](${cfg.protocol}://${encodeURIComponent(node.attrs.refId)})`)
-        },
-        parse: {
-          updateDOM(element: HTMLElement) {
-            for (const protocol of ALL_PROTOCOLS) {
-              element.querySelectorAll(`a[href^="${protocol}://"]`).forEach(() => {
-                // The default markdown parse already creates <a> elements, which parseHTML handles
-              })
-            }
-          },
         },
       },
     }
