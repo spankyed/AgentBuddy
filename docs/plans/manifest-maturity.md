@@ -392,3 +392,40 @@ with fixtures migrated outright. The execution goal owns focused/mutation/extern
 
 Cache execution checkpoints 1 and 2 are implemented. Checkpoint 3 (complete dependency/tool/output
 freshness) remains required, as do the rest of the discovery inventory and broader roadmap.
+
+
+### Freshness implementation audit and execution (2026-10-14)
+
+Current code confirms the recorded renderer defect: `unitStaleReason` compares an input fingerprint
+and output-path existence only. `stampedRunAll` captures inputs before running and records no output
+bytes. Restoring source after an out-of-band build therefore leaves a matching success stamp over
+different output. Atomic multi-output publication has the same gap after interruption between swaps.
+
+Implement shared output evidence first. Record the complete output file set/digests after successful
+work, separately from the pre-run input fingerprint. Source filtering (prose, dotfiles, installed
+modules, compiled-config exclusions) must not silently remove produced files. The tree reader must
+name input/output walks distinctly and the shared sweep must forget both after a declared write.
+A missing/malformed current success record is cold; add no stamp-version adapter or legacy reader.
+Do not change authored pack/layout format stamps or release metadata. Failures during output capture
+or record publication drop success records; retained atomic stamps are valid only while their bytes
+still match.
+
+Acceptance: changed/missing/extra outputs, source restoration after a different manual build, partial
+atomic output replacement, output additions under hidden/shipped directories, and shared-sweep
+forgetting all become stale; unchanged bytes reuse correctly. Exercise the real chain/drive freshness
+consumer in addition to temporary build units. Check cost on the actual graph without weakening
+byte evidence. This fixes output identity, not imported implementation coverage.
+
+Then close implementation/import scope: `generate-entries.ts` hashes its own module and SDK tree,
+while phase-cache `bundlerSource` hashes one bundler file or falls back to CLI version. Imported CLI/
+host helpers are missing in workspace mode and the published phase key can miss changed bundle bytes.
+Use current source/tool roots and packaged code bytes, including their shared implementation closure;
+do not infer contribution existence from imports or use diagnostic build-read logs as cache keys.
+Keep dependent executable content identity, helper chunks, deliberately skipped generation and staged
+phase reuse in the audit. The current build already verifies previous sealed output before phase reuse;
+preserve that guard rather than inventing a second receipt grammar.
+
+Commit validated output and tool/dependency checkpoints separately, with mutation checks, actual
+external authoring and strict evidence in the goal. Remaining contribution discovery, native metadata,
+static content edges, navigation/boundaries/API consumption/replacement and final strict `--all` retain
+their full existing scope.
