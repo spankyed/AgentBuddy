@@ -2803,3 +2803,49 @@ selection/history on publication, ordinary link behavior and actual external-ref
 The correction is designed, not delivered. All remaining discovery/native/freshness, entity-opening,
 boundary and Phase 6 requirements plus final committed-source --all and archival remain outstanding.
 This documentation checkpoint passes `git diff --check`; no new runtime fix is claimed.
+
+
+### Metadata-independent reference identity checkpoint (2026-10-14)
+
+Source commit `c776d1c5d` implements the reference URI correction. A pure SDK framework codec writes
+`apack-ref://<encoded-type>/<encoded-entity-id>` and parses exactly those two nonempty segments,
+refusing malformed encoding, extra paths and raw query/fragment delimiters. It escapes Markdown URL
+delimiters as well as normal URI component characters. The frontend entry reexports the same codec;
+backend consumers need no frontend runtime. No declaration read or activation determines identity.
+
+The existing editor node preserves targets before metadata arrives and after declarations disappear.
+Unknown presentation types retain identity and stay inert until matching accepted bindings are ready.
+Publication updates icons without replacing document state/node identity, changing selection/history or
+replaying navigation. Per-type protocol fields, provenance/collision claims and lookup are removed
+outright, including the shared UI's hardcoded reference schemes and obsolete inline note-scheme click
+branch. Type/category ownership and accepted-binding eligibility remain intact. No legacy URI fallback.
+
+The audit also found backend note backlink extraction tied to the old scheme. It now uses the shared
+codec and a notes-owned mapping shared with the frontend, covering note/task/task-list references,
+escaped labels, encoded ids and deduplication. Authored content examples, independent change-tracking
+expectations and goldens migrate together. Goldens were regenerated with `content-parity:update`;
+all 145 content checks pass. The first content run caught the old syntax in its independent oracle,
+which was corrected. Public schema, three SDK reports, all manifests/fixtures and the real external
+reference/picker acceptance use the current contract.
+
+Focused checks pass 72 SDK checks plus the later shared-codec/content-runtime checks, 80 host checks,
+and 24 editor/provider/backlink checks. Removing URI structure validation fails three malformed-target
+assertions; reintroducing declaration-gated serialization fails unknown/cold-target assertions. Exact
+restoration passes the checks. The initial pack-test attempt correctly refused stale generated
+declarations; rebuilding the pack resolved it without bypassing the freshness guard.
+
+Strict validation passed all 30 gates in 545.8 seconds with no cached gates: 4,405 host tests,
+855 pack tests (two existing skips), 639 integration tests, fresh actual external/default-fork Electron
+acceptance (164.2 seconds), smoke and both packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T04-44-15Z-64383`;
+`/private/tmp/apack-reference-wire-strict.log`;
+`/private/tmp/apack-reference-wire-parser-mutation.log`;
+`/private/tmp/apack-reference-wire-retention-mutation.log`.
+
+The parsing node still belongs to the default pack's editor extension. Next settle intrinsic schema
+availability without that extension, then finish every remaining discovery/native/freshness kind,
+entity opening/readiness, pane boundaries and the three Phase 6 workstreams. A new untracked
+`docs/issues/ISSUE-plan-consolidation-scope-loss.md` reports potential lost original requirements;
+reconcile its evidence with the archived sources before the next implementation, without narrowing
+the original scope to the current ledger. Unrelated draft documents are preserved and not included
+in this checkpoint. Final committed-source --all, full requirement audit and archival remain due.
