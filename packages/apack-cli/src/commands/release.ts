@@ -1,3 +1,4 @@
+import { writeManifest } from '../manifest-writer.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -202,7 +203,8 @@ function writeVersion(root: string, version: string): string[] {
     if (!fs.existsSync(p)) continue;
     const json = JSON.parse(fs.readFileSync(p, 'utf-8'));
     json.version = version;
-    fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
+    if (file === 'apack.json') writeManifest(root, json);
+    else fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
     changed.push(file);
   }
   // The lockfile records the root package's version twice, so leaving it behind tags a commit that

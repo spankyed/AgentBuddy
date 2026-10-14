@@ -1,3 +1,4 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import { FEATURE_ID_PATTERN, FeatureEntrySchema } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import { renderTemplate } from '../../templates.ts';
@@ -5,7 +6,7 @@ import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
-import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
+import { readManifest, addFeature as addFeatureToManifest } from './manifest';
 
 /**
  * The strings a feature's templates are rendered with, derived once. Five of them wrote

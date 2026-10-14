@@ -1,8 +1,9 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
-import { readManifest, writeManifest, addArtifact as addArtifactToManifest } from './manifest';
+import { readManifest, addArtifact as addArtifactToManifest } from './manifest';
 
 const HELP = `
 Usage: apack pack add artifact <type> [options]

@@ -1,3 +1,5 @@
+import type { PackManifest } from '@apackdev/sdk/build';
+import { writeManifest } from '../manifest-writer.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../templates.ts';
@@ -8,9 +10,9 @@ import { resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
 
-const MANIFEST_TEMPLATE = (name: string) => {
+const MANIFEST_TEMPLATE = (name: string): PackManifest => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
-  return JSON.stringify({
+  return {
     $schema: './node_modules/@apackdev/sdk/apack.schema.json',
     id: name,
     name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
@@ -39,7 +41,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
         },
       },
     },
-  }, null, 2);
+  };
 };
 
 /** The scaffold's example content key */
@@ -269,7 +271,7 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'content', EXAMPLE_CONTENT_KEY), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests'), { recursive: true });
 
-  fs.writeFileSync(path.join(dir, 'apack.json'), MANIFEST_TEMPLATE(name));
+  writeManifest(dir, MANIFEST_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'src', 'content', EXAMPLE_CONTENT_KEY, 'hello.md'), EXAMPLE_CONTENT_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);

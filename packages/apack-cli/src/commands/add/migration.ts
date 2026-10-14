@@ -1,9 +1,10 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { MIGRATION_TARGET_PATTERN, type MigrationLine } from '@apackdev/sdk/build';
-import { readManifest, writeManifest, addMigration as addMigrationToManifest } from './manifest';
+import { readManifest, addMigration as addMigrationToManifest } from './manifest';
 
 const HELP = `
 Usage: apack pack add migration [version] [options]

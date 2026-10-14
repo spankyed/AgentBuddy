@@ -1,7 +1,8 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
-import { readManifest, writeManifest, addStep as addStepToManifest } from './manifest';
+import { readManifest, addStep as addStepToManifest } from './manifest';
 import { renderTemplate } from '../../templates.ts';
 
 

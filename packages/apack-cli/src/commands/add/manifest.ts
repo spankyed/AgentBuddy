@@ -1,12 +1,6 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine, PackMigrationDeclaration } from '@apackdev/sdk/build';
 
 export { readManifest } from '../../utils';
-
-export function writeManifest(root: string, manifest: PackManifest): void {
-  fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(manifest, null, 2) + '\n');
-}
 
 export function addFeature(manifest: PackManifest, id: string, entry: PackFeatureEntry): void {
   if (!manifest.features) manifest.features = {};
