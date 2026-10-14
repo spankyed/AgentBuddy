@@ -22,6 +22,8 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-publication-'));
   const root = path.join(temporary, 'source');
   const marker = path.join(temporary, 'activated');
+  const shared = path.join(temporary, 'shared');
+  const hooks = path.join(temporary, 'hooks');
   const registry = createPackRegistry({ settingsForPack: id => settings.forPack(id) });
   startTestRuntime({ appVersion: '1.0.0', entityTypes: HOST_ENTITY_TYPES, packs: registry });
   const settings = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: registry.settingsCatalog }));
@@ -52,6 +54,12 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
       id: 'watched-pack', name: 'Watched', features: { notes: { description: 'Initial purpose.' } },
       lifecycle: { onInit: 'modules/lifecycle.ts#init' },
     }, files: { 'modules/lifecycle.ts': lifecycle('first') } });
+    fs.mkdirSync(shared);
+    fs.mkdirSync(hooks);
+    fs.renameSync(path.join(root, 'apack.json'), path.join(hooks, 'manifest.json'));
+    fs.symlinkSync(path.join(hooks, 'manifest.json'), path.join(shared, 'manifest.json'));
+    fs.symlinkSync(shared, path.join(root, 'config'), 'dir');
+    fs.symlinkSync(path.join(root, 'config/manifest.json'), path.join(root, 'apack.json'));
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('No test API port');
@@ -92,6 +100,26 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
     fs.writeFileSync(path.join(root, 'modules/lifecycle.ts'), lifecycle('third'));
     await vi.waitFor(() => expect(publications).toBeGreaterThan(accepted), { timeout: 20_000 });
     await vi.waitFor(() => expect(registry.getPackRegistration('watched-pack')?.lifecycle?.onInit?.()).toBe('third'), { timeout: 20_000 });
+
+    // Only external data changes below: a root-only watcher cannot observe them.
+    const changed = { ...manifest, features: { notes: { description: 'Atomic manifest replacement.' } } };
+    fs.writeFileSync(path.join(hooks, 'replacement.json'), JSON.stringify(changed));
+    fs.renameSync(path.join(hooks, 'replacement.json'), path.join(hooks, 'manifest.json'));
+    await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Atomic manifest replacement.'), { timeout: 20_000 });
+    const beforeRetarget = publications;
+    changed.features.notes.description = 'Retargeted manifest.';
+    errors.mockClear();
+    fs.writeFileSync(path.join(hooks, 'retargeted.json'), '{');
+    fs.unlinkSync(path.join(shared, 'manifest.json'));
+    fs.symlinkSync(path.join(hooks, 'retargeted.json'), path.join(shared, 'manifest.json'));
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
+    expect(publications).toBe(beforeRetarget);
+    fs.writeFileSync(path.join(hooks, 'retargeted.json'), JSON.stringify(changed));
+    await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Retargeted manifest.'), { timeout: 20_000 });
+    expect(publications).toBeGreaterThan(beforeRetarget);
+    changed.features.notes.description = 'Edited retargeted manifest.';
+    fs.writeFileSync(path.join(hooks, 'retargeted.json'), JSON.stringify(changed));
+    await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Edited retargeted manifest.'), { timeout: 20_000 });
   } finally {
     await watcher?.close();
     backend.stop();

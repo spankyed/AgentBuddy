@@ -11,7 +11,7 @@ export function isPackInputPath(relative: string, generated = false): boolean {
 }
 
 /** Authored files, regardless of extension or source folder; build/dependency trees are separate inputs. */
-export function packInputFiles(root: string, { generated = false, modulesOnly = false }: { generated?: boolean; modulesOnly?: boolean } = {}): string[] {
+export function packInputFiles(root: string, { generated = false, modulesOnly = false, onLink }: { generated?: boolean; modulesOnly?: boolean; onLink?: (file: string, directory: boolean) => void } = {}): string[] {
   const files: string[] = [];
   const ancestors = new Set<string>();
   function walk(dir: string): void {
@@ -23,6 +23,7 @@ export function packInputFiles(root: string, { generated = false, modulesOnly = 
       const relative = path.relative(root, file).split(path.sep).join('/');
       if (!isPackInputPath(relative, generated)) continue;
       const stat = fs.statSync(file);
+      if (onLink && fs.lstatSync(file).isSymbolicLink()) onLink(file, stat.isDirectory());
       if (stat.isDirectory()) walk(file);
       else if (stat.isFile() && (!modulesOnly || /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|json)$/.test(name))) files.push(relative);
     }
@@ -30,6 +31,25 @@ export function packInputFiles(root: string, { generated = false, modulesOnly = 
   }
   if (fs.existsSync(root)) walk(root);
   return files;
+}
+
+export interface PackInputWatchTarget {
+  directory: string;
+  /** A linked file or directory whose replacement must be observed in its parent. */
+  child?: string;
+  relative: string;
+}
+
+/** Linked sources use the same traversal and exclusions as input hashing. */
+export function packInputWatchTargets(root: string): PackInputWatchTarget[] {
+  const targets: PackInputWatchTarget[] = [{ directory: root, relative: '' }];
+  packInputFiles(root, { onLink(file, directory) {
+    const target = fs.realpathSync(file);
+    const relative = path.relative(root, file);
+    targets.push({ directory: path.dirname(target), child: path.basename(target), relative });
+    if (directory) targets.push({ directory: target, relative });
+  } });
+  return targets;
 }
 
 /** Content identity includes filenames and additions/removals, with no timestamp or checkout-path dependence. */

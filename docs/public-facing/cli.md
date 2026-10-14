@@ -151,7 +151,9 @@ Bundle and gate failures are reported and exit with code 1. `--release` minifies
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. Generated, build, dependency and Git trees are
-excluded. It publishes through the same staged build before requesting development-host reload;
+excluded. Linked authored data is watched through atomic replacement and retargeting; executable
+module references still must remain physically inside the pack. It publishes through the same staged
+build before requesting development-host reload;
 invalid edits retain the previous verified artifact. Saves during a build schedule another run.
 `--watch` cannot be combined with other build flags. This builds the complete artifact and can take
 longer than rebundling only the runtime. `apack pack dev` uses this watcher and installs each successful

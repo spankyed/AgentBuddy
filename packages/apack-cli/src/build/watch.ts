@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { build } from '../commands/build.ts';
 import { readValidManifest } from '../utils.ts';
-import { isPackInputPath } from './pack-inputs.ts';
+import { isPackInputPath, packInputWatchTargets } from './pack-inputs.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
 
 const DEBOUNCE_MS = 300;
@@ -68,6 +69,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let pending = false;
   let lastChange = '';
   const publish = async () => {
+    refreshLinks();
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     await build([], root);
   };
@@ -86,14 +88,32 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
       console.error(`[watch] Build/reload failed: ${String(error)}`);
     }
   });
-  // Subscribe before the first build, so a save during startup cannot disappear between build and watch.
-  const watcher = fs.watch(root, { recursive: true }, (_event, filename) => {
-    if (closed || (filename && !isPackInputPath(filename))) return;
-    lastChange = filename ?? 'authored inputs';
+  const request = (relative: string) => {
+    if (closed || !isPackInputPath(relative)) return;
+    lastChange = relative;
     if (ready) runs.request();
     else pending = true;
-  });
-  const close = () => { closed = true; watcher.close(); return runs.close(); };
+  };
+  // Keep the root subscribed while replacing link watches, including during failed builds.
+  const watcher = fs.watch(root, { recursive: true }, (_event, filename) => request(filename ?? 'authored inputs'));
+  let links: fs.FSWatcher[] = [];
+  function refreshLinks(): void {
+    const next: fs.FSWatcher[] = [];
+    try {
+      for (const target of packInputWatchTargets(root).slice(1)) {
+        next.push(fs.watch(target.directory, { recursive: true }, (_event, filename) => {
+          if (target.child && filename && filename !== target.child) return;
+          request(target.child ? target.relative : path.join(target.relative, filename ?? ''));
+        }));
+      }
+    } catch (error) {
+      for (const watch of next) watch.close();
+      throw error;
+    }
+    for (const watch of links) watch.close();
+    links = next;
+  }
+  const close = () => { closed = true; watcher.close(); for (const watch of links) watch.close(); return runs.close(); };
   try {
     await publish();
     options.onFirstBuild?.();

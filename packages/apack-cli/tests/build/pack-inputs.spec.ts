@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packInputsHash } from '../../src/build/pack-inputs.ts';
+import { packInputsHash, packInputWatchTargets } from '../../src/build/pack-inputs.ts';
 
 const roots: string[] = [];
 function pack(file: string, content: string): string {
@@ -43,4 +43,17 @@ describe('pack input identity', () => {
     fs.symlinkSync(root, path.join(root, 'loop'), 'dir');
     expect(() => packInputsHash(root)).toThrow('Cyclic source directory');
   });
+});
+
+
+it('derives linked-directory and atomic-file replacement watches from authored inputs', () => {
+  const root = pack('entry.ts', 'source');
+  const linked = pack('schema.json', '{}');
+  fs.symlinkSync(linked, path.join(root, 'schemas'), 'dir');
+  fs.symlinkSync(path.join(linked, 'schema.json'), path.join(root, 'schema.json'));
+  fs.symlinkSync(linked, path.join(root, 'node_modules'), 'dir');
+  const targets = packInputWatchTargets(root);
+  expect(targets).toContainEqual({ directory: fs.realpathSync(linked), relative: 'schemas' });
+  expect(targets).toContainEqual({ directory: fs.realpathSync(linked), child: 'schema.json', relative: 'schema.json' });
+  expect(targets.some(target => target.relative.startsWith('node_modules'))).toBe(false);
 });
