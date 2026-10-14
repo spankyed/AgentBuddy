@@ -12,12 +12,12 @@ describe('pack validation diagnostics', () => {
     expect(packValidation([{ ...warning, severity: 'error' }], skipped).status).toBe('invalid');
   });
 
-  it('preserves the manifest address, owner and moved-key hint independently of text rendering', () => {
-    expect(parseManifest({ id: 'demo', name: 'Demo', version: '1.0.0', commands: {} })).toMatchObject({
+  it('preserves the manifest address, owner and schema error independently of text rendering', () => {
+    expect(parseManifest({ id: 'demo', name: 'Demo', version: '1.0.0', nonsense: {} })).toMatchObject({
       status: 'invalid',
       diagnostics: [{
         code: 'manifest.unrecognized_keys', severity: 'error', packId: 'demo', path: [],
-        message: expect.stringContaining('"commands" is now "extensions.commands"'),
+        message: expect.stringContaining('nonsense'),
       }],
     });
     expect(parseManifest({ id: 'demo', name: 'Demo', version: '1.0.0', features: { test: { system: { entry: 1 } } } }).diagnostics[0])

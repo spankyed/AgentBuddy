@@ -516,18 +516,6 @@ const ExtensionsSchema = z.object({
 }).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
 
 
-/**
- * The keys that live under `extensions`, which `.strict()` would otherwise refuse at the root with no
- * more than "Unrecognized key". Derived from the section's own shape, so a key added to it is named here
- * too; `bundleUi` is the one that moved to `build` instead, `extensions` being what the pack gives the
- * app and a packaging choice giving it nothing.
- */
-export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(Object.keys(ExtensionsSchema.shape).map((key) => [key, `extensions.${key}`])),
-  packServices: 'extensions.services',
-  bundleUi: 'build.bundleUi',
-};
-
 // ── Main manifest schema ────────────────────────────────────────────
 
 /**

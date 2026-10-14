@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseManifest } from '../../src/build/validate.ts';
-import { _MOVED_ROOT_KEYS } from '../../src/build/manifest-schema.ts';
 
 describe('parseManifest', () => {
   it('accepts default-setup apack.json', () => {
@@ -87,27 +86,9 @@ describe('parseManifest', () => {
     expect(messagesOf(parseManifest({ ...pack, features: parsed }))).toEqual([]);
   });
 
-  /**
-   * `.strict()` refuses a contribution key at the root, which is the whole of the rule — but on its own it
-   * says no more than "Unrecognized key", and the one thing a reader needs is where the key went. The names
-   * are derived from the section's own shape, so a key added to `extensions` is named here without an edit.
-   */
-  it('names where a contribution key went when it is found at the root', () => {
-    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const [key, to] of Object.entries(_MOVED_ROOT_KEYS)) {
-      expect(messagesOf(parseManifest({ ...pack, [key]: {} })), key)
-        .toEqual([expect.stringContaining(`"${key}" is now "${to}"`)]);
-    }
-    // Every key the section holds, and the two that moved elsewhere
-    expect(Object.keys(_MOVED_ROOT_KEYS).sort())
-      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'help', 'packServices', 'services', 'settings', 'steps']);
-  });
-
-  // The hint is for a key that moved; an unrecognized key that never existed gets the plain message
-  it('says nothing extra about a root key that was never a contribution', () => {
+  it('rejects unsupported root fields through the current schema', () => {
     const errors = messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }));
     expect(errors).toEqual([expect.stringContaining('nonsense')]);
-    expect(errors[0]).not.toContain('is now');
   });
 
   it('rejects an app extension name that is not an identifier', () => {
