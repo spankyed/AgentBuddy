@@ -2530,3 +2530,34 @@ complete freshness/static readers, entity destinations/readiness/stale delivery,
 supported consumed APIs, dependency provenance and remaining replacement acceptance. Final goal-wide
 requirement audit, strict --all on finished committed source and archival remain required. This
 prerequisite checkpoint completes none of those broader phases or the full goal.
+
+
+### Declarative reference foundation checkpoint (2026-10-13)
+
+Source commit `9c56c6730` replaces executable reference metadata assemblies with inline feature
+reference declarations. Six shipped types and three categories now declare their identities,
+icons/SVG geometry and checked navigation/item-provider exports. Authored/native schemas refuse
+within-pack feature collisions; generation validates category availability and dependency provenance,
+accepting a shared ancestor through a diamond while refusing different owners. Executable source
+modules contain only navigation and reactive enumeration functions.
+
+The common catalog projects immutable reference declarations for native, installed and authoring
+origins. The production Packs summary/detail path reads those declarations; both a disabled pack and
+an actual activation failure retain their reference metadata. Native references remain data admission
+only: complete native binding/source checks and global runtime ownership are still required.
+
+Sixteen focused reference checks passed. A removed function-kind guard caused the navigation/provider
+refusal tests to fail, and exact restoration returned the suite to passing. The final strict chain
+passed all 30 gates in 548.2 seconds with no cached gates, including 4,324 host unit tests, 839 pack
+unit tests (two existing skips), 639 integration tests, actual external/default-fork Electron acceptance,
+smoke and both packaged-authoring halves. Schema/API reports and authoring documentation agree.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T01-17-42Z-60078`;
+`/private/tmp/apack-reference-declarations-strict.log`.
+
+Next register explicit reference frontend bindings, validate their complete declaration membership,
+reject global owner collisions transactionally and migrate the editor to catalog metadata plus active
+provider lookup. Remove the pack-local generated aggregate after migration; do not retain it as a
+compatibility fallback. Continue other contribution kinds, native/source/dependency freshness,
+eligibility/entity destinations and stale delivery, frontend recovery boundaries and all three Phase 6
+workstreams. Final requirement-by-requirement review, committed-source strict --all and archival remain
+due. This checkpoint does not complete the whole goal or any broader discovery/navigation phase.
