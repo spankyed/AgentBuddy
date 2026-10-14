@@ -1808,3 +1808,23 @@ types. Current resolution still rejects absent/different stamps. Audit build/tes
 consumers and preserve exact runtime/install admission before relaxing type-data resolution. Deliberate
 skip-generation paths remain in the required dependency/tool freshness audit. No adapter, alias,
 synthesized stamp or legacy-key read is authorized. All remaining goal phases retain their scope.
+
+
+### Dependency current-data inspection outcome (2026-10-14)
+
+`0159acd11` completes checkpoint 2 above: honest optional dependency stamps and shared current-data
+validation, actual consumed facade type checks, installed/cache/source resolution and executable-file
+withholding on stamp mismatch. Real producer/consumer builds and editor queries accept capable data;
+poisoned build/runtime files are never imported by that inspection. Content compilation and harness
+execution independently enforce artifact-format eligibility. No aliases, conversions, synthesized
+stamps or obsolete-key readers exist. Exact execution validation remains a current artifact contract.
+Focused tests, restored guard mutations and strict validation pass; the owning goal records evidence.
+
+Checkpoint 3 remains open. Inspected `build --skip-generate` bypasses generation checks, then only
+warns when dependency release versions differ. That cannot prove same-version source/facade/tool
+freshness or generated-file integrity. Implement one generation freshness check shared with normal
+generation; prove skip paths refuse stale/missing/edited outputs before sealing a build. Keep actual
+resolved dependency capabilities and codegen implementation inputs in that identity. Audit normal
+source reload and build cache paths too. Preserve explicit runtime admission and defer no later goal
+phase: remaining contribution/native discovery, frontend naming, content inventory, navigation,
+boundaries and all three Phase 6 streams retain their scope.

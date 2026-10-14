@@ -3562,3 +3562,42 @@ not authorize incompatible runtime execution. Also cover deliberate skip-generat
 remaining dependency/tool freshness work. All full discovery kinds, frontend naming, content/CLI
 inventory, navigation, boundaries and three Phase 6 workstreams remain active. Final committed-source
 strict `--all` and whole-goal completion audit remain due.
+
+
+### Dependency type-data admission — discovery checkpoint (2026-10-14)
+
+Source `0159acd11` completes the dependency current-data reader from the preceding checkpoint.
+`PackDependencySnapshot` retains an optional recorded stamp; `parseDependencySnapshot` validates the
+same current fields/revision/help/name safety as executable snapshot validation. Differing or absent
+stamps are diagnostic context, with no conversion, synthesized stamp, aliases or obsolete-key reader.
+CLI resolution retains the selected source rather than substituting a release solely for its stamp.
+Only matching stamps expose dependency build/runtime/content files. Type-only builds can proceed;
+content compilation and the harness refuse incompatible execution before importing dependency code.
+The execution gate is artifact-format validation, not special handling of historical manifest keys.
+
+Focused checks passed 37 SDK snapshot cases, 27 resolver/reader cases, 22 real producer/consumer build,
+typing/completion and content refusal cases, five actual harness runtime cases, 13 CLI authoring
+validation cases and 17 repository placement cases. The real type-data suites poison dependency build
+and runtime modules; admission does not execute them. Removing executable-file gating caused four
+resolver failures; routing type inspection through exact executable parsing caused three admission
+failures. Both mutations were restored before validation. Reviewed the new SDK API report and public
+artifact documentation. Initial strict failures exposed an unused test binding, a missing placement
+rationale for the shared facade fixture, and a stale validation test expecting the removed resolver
+format refusal. All are corrected without relaxing production validation or restoring legacy handling.
+
+Strict passed in 366.0s (17 of 30 cached), including 1,695 affected host tests, all 680 integration
+cases, actual external app, smoke, packaged authoring and packaged app checks. The preceding run also
+passed the complete 4,546-case host pool. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T15-51-18Z-9762`;
+`/private/tmp/apack-dependency-data-strict-accepted.log`.
+Mutation evidence: `/private/tmp/apack-dependency-data-execution-mutation.log` and
+`/private/tmp/apack-dependency-data-admission-mutation.log`.
+Generated EARS and all six compiled content artifacts are byte-identical to the preserved baseline.
+Release metadata, format constants and the unrelated issue draft are preserved.
+
+Dependency/tool freshness remains required next. Current `build --skip-generate` bypasses generation
+checks; the later version warning cannot detect same-version changes, missing or edited generated
+files, or changed facade capabilities. Audit and enforce those inputs before expanding discovery kinds.
+Native/all-kind discovery, frontend naming, content edges/inventory, entity navigation, frontend
+boundaries and all three Phase 6 workstreams remain required. Final committed-source strict `--all`
+and the whole-goal completion audit remain due.
