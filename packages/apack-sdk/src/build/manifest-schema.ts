@@ -1,7 +1,7 @@
 import type { PackLifecycleDeclaration } from '../framework/lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from '../framework/lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
-import { _MODULE_REFERENCE_PATTERN } from '../framework/module-reference.ts';
+import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from '../framework/module-reference.ts';
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
@@ -45,7 +45,9 @@ function checkDeclaredNames(raw: unknown, ctx: z.RefinementCtx): unknown {
 
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
-/** A named export of a pack source file */
+/** A whole module rather than a selected export. */
+const ModulePathSchema = z.string().regex(_MODULE_PATH_PATTERN, 'Must name a module path, without an export selector');
+/** A named export of a pack source file. */
 const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be "path#exportName"');
 
 const EntitiesSchema = z.record(z.string().min(1), ExportTargetSchema.nullable())
@@ -66,7 +68,7 @@ const SettingsDefinitionShape = {
   defaults: z.record(z.unknown()).describe('Complete explicit baseline values, validated without coercion or schema default population.'),
   title: z.string().min(1).optional(),
   description: z.string().optional(),
-  form: z.string().min(1).describe('Source path of the custom settings form; its default export is a component.').optional(),
+  form: ModulePathSchema.describe('Source path of the custom settings form; its default export is a component.').optional(),
   access: z.enum(['shared', 'owner']).describe('Shared with declared dependents by default; owner restricts writes and resets.').optional(),
 } satisfies Record<keyof SettingsDefinition, z.ZodTypeAny>;
 
@@ -162,7 +164,7 @@ export const StepEntrySchema = z.object({
 });
 
 export const DslEntrySchema = z.object({
-  entry: z.string().describe('Path to the DSL type definition module.'),
+  entry: ModulePathSchema.describe('Path to the DSL type definition module.'),
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
   prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
   globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
@@ -196,7 +198,7 @@ const CONTENT_FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
 /** How a source becomes items: a built-in format or a compiler module, with the settings it uses */
 export const ContentFormatSchema = z.object({
   format: z.enum(['markdown-tree', 'json']).describe('A built-in format: a directory of markdown, or a JSON array of records.').optional(),
-  compiler: z.string().describe('A module in this pack whose default export compiles an entry\'s path into records. Used instead of "format".').optional(),
+  compiler: ModulePathSchema.describe('A module in this pack whose default export compiles an entry\'s path into records. Used instead of "format".').optional(),
   entity: z.union([z.string(), z.array(z.string()).min(1)])
     .describe('The entity types the format\'s items are written as. Omitted, sources using it are compiled and never written (content.datasets).').optional(),
   identity: z.array(z.string()).min(1)
@@ -238,7 +240,7 @@ export const ContentSourceSchema = z.object({
   path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
   format: z.string().regex(CONTENT_FORMAT_REF, 'Must be a content.formats name, or "<dependency id>:<name>"')
     .describe('The format compiling `path`: a name in this pack\'s content.formats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
-  applier: z.string().describe('A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with "path" and "format", the module writes the compiled items.').optional(),
+  applier: ModulePathSchema.describe('A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with "path" and "format", the module writes the compiled items.').optional(),
   onUserEdit: ON_USER_EDIT.optional(),
 }).strict();
 
@@ -288,8 +290,8 @@ const ContentDatasetsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).
 
 
 const SystemSchema = z.object({
-  entry: z.string().describe('Path to the backend system module.'),
-  contract: z.string().describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
+  entry: ModulePathSchema.describe('Path to the backend system module.'),
+  contract: ExportTargetSchema.describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -357,7 +359,7 @@ const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
   fallbackPanel: z.object({ label: z.string().min(1), toggle: z.object({ type: z.string().min(1) }).strict(),
     isShown: ExportTargetSchema }).strict().optional(),
   defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
-  contract: z.string().describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
+  contract: ExportTargetSchema.describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 } satisfies Record<keyof PluginDeclaration, z.ZodTypeAny>).strict();
 
@@ -388,7 +390,7 @@ const EXTENSION_TYPE_SCHEMA = z.string()
  */
 export const BlockEntrySchema = z.object({
   kind: z.enum(['display', 'input']).describe('Whether the chat renders it as content or as something the user acts on. Display is the default.').optional(),
-  fe: z.string().describe('Path to the component that draws it (a .vue file, taken by its default export).').optional(),
+  fe: ModulePathSchema.describe('Path to the component that draws it (a .vue file, taken by its default export).').optional(),
   be: ExportTargetSchema.describe('"path#exportName" of its backend facet (BlockBEFacet), for a block that summarises itself in a transcript.').optional(),
 }).strict();
 
@@ -401,7 +403,7 @@ export const BlockEntrySchema = z.object({
 export const ArtifactEntrySchema = z.object({
   icon: z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must be the name of a lucide-vue-next export, e.g. "ListTodo"')
     .describe('Name of the lucide-vue-next icon shown in the artifact list.'),
-  fe: z.string().describe('Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer.').optional(),
+  fe: ModulePathSchema.describe('Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer.').optional(),
 }).strict();
 
 export const ContentConfigSchema = z.object({
@@ -450,7 +452,7 @@ export const FeatureEntrySchema = z.object({
   entities: EntitiesSchema.describe('Entities owned by this feature; placement does not change their wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
-  types: z.string().min(1).regex(/^[^#]+$/, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
+  types: z.string().min(1).regex(_MODULE_PATH_PATTERN, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema
@@ -473,8 +475,8 @@ const BuildConfigSchema = z.object({
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
 const FEConfigSchema = z.object({
-  tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
-  appExtensions: z.record(IdentifierSchema, z.string()).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
+  tiptapPlugins: ModulePathSchema.describe('Path to tiptap plugin registration module.').optional(),
+  appExtensions: z.record(IdentifierSchema, ModulePathSchema).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
 }).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 
 /**

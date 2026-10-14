@@ -100,6 +100,13 @@ describe('a diamond dependency', () => {
 });
 
 describe('generated imports', () => {
+  it('checks whole-module grammar even without any named exports to inspect', async () => {
+    await expect(generate({ features: { memos: { description: 'Manage memos.', system: { entry: 'src/system#default' } } } }))
+      .rejects.toThrow('without an export selector');
+    await expect(generate({ extensions: { blocks: { text: { fe: 'src/view.vue#default' } } } }))
+      .rejects.toThrow('without an export selector');
+  });
+
   // The extension the module has, not the `.js` this used to write for a `.ts` file: a pack is bundled rather
   // than emitted as individual modules, and every tool in its toolchain resolves `.ts`. Explicit either way,
   // because no runtime resolves an extensionless specifier in ESM — which the second assertion pins.

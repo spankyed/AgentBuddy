@@ -1,6 +1,5 @@
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
-import { _parseModuleReference } from '../framework/module-reference.ts';
-import { _packModuleTargets } from './module-targets.ts';
+import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
 import { resolveTypeModule } from './type-module.ts';
 import * as fs from 'node:fs';
 import { ManifestSchema } from './manifest-schema.ts';
@@ -41,7 +40,7 @@ export function validateManifest(manifestPath: string): PackValidation {
 export function validatePackSources(packRoot: string, manifest: Partial<PackManifest>): PackValidation {
   const diagnostics: PackDiagnostic[] = [];
   for (const entry of _packModuleTargets(manifest)) {
-    const { path, target, kind, named, label } = entry;
+    const { path, target, kind, label } = entry;
     const entity = path.at(-2) === 'entities';
     const group = path[0] === 'extensions' && path[1] === 'settings';
     const feature = path[0] === 'features';
@@ -51,7 +50,7 @@ export function validatePackSources(packRoot: string, manifest: Partial<PackMani
         resolveTypeModule(packRoot, target, label);
         continue;
       }
-      const { source } = _parseModuleReference(target, label, named ? undefined : 'default');
+      const source = _moduleTargetSource(entry);
       const extensions = kind === 'type' ? TYPE_MODULE_EXTENSIONS : kind === 'component' ? [...SCRIPT_MODULE_EXTENSIONS, '.vue'] : SCRIPT_MODULE_EXTENSIONS;
       if (!findSourceModule(packRoot, source, extensions, label)) {
         diagnostics.push({ code: `${code}.${entity ? 'missing-shape-module' : group ? 'missing-form' : 'missing-file'}`,

@@ -1,5 +1,12 @@
 import { expect, it } from 'vitest';
-import { _parseModuleReference } from '../../src/framework/module-reference.ts';
+import { _parseModulePath, _parseModuleReference } from '../../src/framework/module-reference.ts';
+
+it('keeps whole-module paths distinct from export bindings', () => {
+  expect(_parseModulePath('src\\public\\types.ts', 'Public types')).toBe('src/public/types.ts');
+  for (const target of ['', 'src/types.ts#Shape', 'src/types.ts#']) {
+    expect(() => _parseModulePath(target, 'Public types')).toThrow('without an export selector');
+  }
+});
 
 it('requires a named export unless the caller declares default-export semantics', () => {
   expect(_parseModuleReference('src\\model.ts#Shape', 'Shape'))

@@ -5,6 +5,35 @@ import { FeatureEntrySchema } from '../../src/build/manifest-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
 
 describe('parseManifest', () => {
+  it('distinguishes whole modules from named contract exports before reading any source', () => {
+    const pack = { id: 'grammar', name: 'Grammar', version: '1.0.0' };
+    const settings = { schema: { type: 'object' }, defaults: {} };
+    const fields = [
+      { features: { memos: { description: 'Manage memos.', system: { entry: 'src/module#value' } } } },
+      { features: { memos: { description: 'Manage memos.', settings: { ...settings, form: 'src/module#value' } } } },
+      { extensions: { settings: { extra: { ...settings, form: 'src/module#value' } } } },
+      { extensions: { blocks: { extra: { fe: 'src/module#value' } } } },
+      { extensions: { artifacts: { extra: { icon: 'File', fe: 'src/module#value' } } } },
+      { extensions: { fe: { tiptapPlugins: 'src/module#value', appExtensions: { extra: 'src/module#value' } } } },
+      { extensions: { dsl: { extra: { entry: 'src/module#value', targets: ['monaco'] } } } },
+      { content: { formats: { extra: { compiler: 'src/module#value' } } } },
+      { content: { sources: { extra: { applier: 'src/module#value' } } } },
+    ];
+    for (const fieldsOf of fields) {
+      const report = parseManifest({ ...pack, ...fieldsOf });
+      expect(report.status).toBe('invalid');
+      expect(report.diagnostics.every(issue => issue.message.includes('without an export selector'))).toBe(true);
+    }
+    for (const owner of ['system', 'plugin']) {
+      const declaration = owner === 'system' ? { entry: 'src/system', contract: 'src/types' }
+        : { label: 'Memos', state: 'src/plugin#machine', contract: 'src/types' };
+      const feature = { description: 'Manage memos.', [owner]: declaration };
+      expect(parseManifest({ ...pack, features: { memos: feature } }).diagnostics[0].path)
+        .toEqual(['features', 'memos', owner, 'contract']);
+      expect(parseManifest({ ...pack, features: { memos: { ...feature, [owner]: { ...declaration, contract: 'src/types#Contract' } } } }).status).toBe('valid');
+    }
+  });
+
   it('requires a nonblank feature purpose without changing authored text', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     expect(parseManifest({ ...pack, features: { notes: {} } }).status).toBe('invalid');

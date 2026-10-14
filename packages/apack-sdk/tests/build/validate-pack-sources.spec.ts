@@ -30,6 +30,16 @@ const memos = {
 const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.state];
 
 describe('validatePackSources', () => {
+  it('refuses an export selector for a whole module even when its source file exists', () => {
+    const root = pack(['src/system.ts']);
+    const result = validatePackSources(root, { features: { memos: {
+      description: 'Manage memos.', system: { entry: 'src/system#default' },
+    } } });
+    expect(result.status).toBe('invalid');
+    expect(result.diagnostics[0]).toMatchObject({ path: ['features', 'memos', 'system', 'entry'] });
+    expect(result.diagnostics[0].message).toContain('without an export selector');
+  });
+
   it('checks non-feature declarations without needing dependencies or executing sources', () => {
     const manifest: Partial<PackManifest> = {
       dependencies: { unavailable: 'file:./missing' },

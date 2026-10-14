@@ -176,7 +176,7 @@
               },
               "form": {
                 "type": "string",
-                "minLength": 1,
+                "pattern": "^[^#]+$",
                 "description": "Source path of the custom settings form; its default export is a component."
               },
               "access": {
@@ -206,10 +206,12 @@
             "properties": {
               "entry": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the backend system module."
               },
               "contract": {
                 "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                 "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events."
               },
               "events": {
@@ -455,6 +457,7 @@
               },
               "contract": {
                 "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                 "description": "\"path#exportName\" of this plugin's contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin's machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature's system events."
               },
               "default": {
@@ -703,7 +706,7 @@
               },
               "form": {
                 "type": "string",
-                "minLength": 1,
+                "pattern": "^[^#]+$",
                 "description": "Source path of the custom settings form; its default export is a component."
               },
               "access": {
@@ -863,6 +866,7 @@
               },
               "fe": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer."
               }
             },
@@ -891,6 +895,7 @@
               },
               "fe": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the component that draws it (a .vue file, taken by its default export)."
               },
               "be": {
@@ -945,6 +950,7 @@
             "properties": {
               "entry": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the DSL type definition module."
               },
               "targets": {
@@ -989,12 +995,14 @@
           "properties": {
             "tiptapPlugins": {
               "type": "string",
+              "pattern": "^[^#]+$",
               "description": "Path to tiptap plugin registration module."
             },
             "appExtensions": {
               "type": "object",
               "additionalProperties": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[^#]+$"
               },
               "propertyNames": {
                 "pattern": "^[A-Za-z_$][\\w$]*$"
@@ -1050,6 +1058,7 @@
                   },
                   "applier": {
                     "type": "string",
+                    "pattern": "^[^#]+$",
                     "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
                   },
                   "onUserEdit": {
@@ -1086,6 +1095,7 @@
               },
               "applier": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
               },
               "onUserEdit": {
@@ -1119,6 +1129,7 @@
               },
               "compiler": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "A module in this pack whose default export compiles an entry's path into records. Used instead of \"format\"."
               },
               "entity": {

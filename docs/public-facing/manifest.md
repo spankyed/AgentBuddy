@@ -2,6 +2,21 @@
 
 The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and lifecycle hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
+## Module references
+
+Source paths are relative to the pack root, including declarations inside a feature. They may name
+an explicit file, an extensionless module or a directory barrel. Resolution stays within the pack,
+including symlinks. A path and a selected export have different meanings:
+
+| Declaration | Syntax | Meaning |
+|---|---|---|
+| Systems, settings forms, block/artifact views, DSL type modules, frontend app extensions, tiptap modules, content compilers/appliers and feature type barrels | `src/module.ts` | Whole module, with the export convention described by that field; no `#export` selector |
+| Services, repositories, step facets, lifecycle hooks, migrations, content writers, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
+| Plugin machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
+
+Schema validation, source checks and codegen use these same distinctions. Missing modules or required
+exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
+
 ## Field reference
 
 | Field | Type | Required | Description |

@@ -236,7 +236,7 @@ describe('generated services', () => {
       'export type { typeOnly };',
       '// export const commented = {};',
     ].join('\n'));
-    await expect(service('src/memo.ts')).rejects.toThrow('Service "memo": "src/memo.ts" must name its export, as "path#exportName"');
+    await expect(service('src/memo.ts')).rejects.toThrow('Feature "memos": services.memo: "src/memo.ts" must name its export, as "path#exportName"');
     await expect(service('src/missing.ts#memoService')).rejects.toThrow('Service "memo": no file found at src/missing.ts');
     await expect(service('src/memo.ts#memoService')).rejects.toThrow('Service "memo": src/memo.ts doesn\'t export "memoService"');
     await expect(service('src/memo.ts#commented')).rejects.toThrow('Service "memo": src/memo.ts doesn\'t export "commented"');

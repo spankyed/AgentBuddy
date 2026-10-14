@@ -1,6 +1,6 @@
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
-import { _packModuleTargets } from './module-targets.ts';
+import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
@@ -366,6 +366,7 @@ export async function generatePackFiles(
   opts: GenerateEntriesOptions,
 ): Promise<Record<string, string>> {
   const root = opts.packRoot;
+  const moduleTargets = _packModuleTargets(manifest).map(entry => ({ ...entry, source: _moduleTargetSource(entry) }));
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   const depIds = [...depSnapshots.keys()];
   /** `import type { name as alias }` from each dependency's facade, and the aliases */
@@ -479,8 +480,7 @@ export async function generatePackFiles(
 
   /** Every file whose exports codegen reads, so one TypeScript program covers them all */
   function exportedFromFiles(): string[] {
-    const files = _packModuleTargets(manifest).flatMap(({ target, kind, named, label }) => {
-      const source = kind === 'types' ? target : _parseModuleReference(target, label, named ? undefined : 'default').source;
+    const files = moduleTargets.flatMap(({ source, kind, label }) => {
       if (source.endsWith('.vue')) return [];
       const file = findSourceModule(root, source, kind === 'type' || kind === 'types' ? TYPE_MODULE_EXTENSIONS : SCRIPT_MODULE_EXTENSIONS, label);
       return file ? [file] : [];

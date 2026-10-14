@@ -20,6 +20,19 @@ function fixture(extra: object = {}) {
 }
 
 describe('pack doctor static validation', () => {
+  it.each(['doctor', 'validate'])('pack %s diagnoses an export selector where a whole module is required', (command) => {
+    const dir = fixture({ dependencies: { unavailable: 'file:./missing-dependency' },
+      features: { memos: { description: 'Manage memos.', system: { entry: 'src/hooks#onInit' } } },
+    });
+    const result = run(process.execPath, [CLI, 'pack', command], dir);
+    expect(result.code, result.output).toBe(1);
+    expect(result.output).toContain('features.memos.system.entry');
+    expect(result.output).toContain('without an export selector');
+    expect(result.output).not.toContain('Must not execute');
+    expect(fs.existsSync(path.join(dir, 'src/__generated__'))).toBe(false);
+    expect(fs.existsSync(path.join(dir, '.apack'))).toBe(false);
+  });
+
   it.each(['doctor', 'validate'])('pack %s reports missing declared files even with unresolved dependencies', (command) => {
     const dir = fixture({ dependencies: { unavailable: 'file:./missing-dependency' },
       extensions: { steps: { example: { node: 'src/missing#node' } } },
