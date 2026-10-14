@@ -126,10 +126,10 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         // Served from source, the pack's styles come through its own module graph with the rest of it
         const source = io.devFrontends?.[pack.id];
         const fromSource = !!source || !!pack.developmentBaseUrl;
-        if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.artifactRevision ?? '')) {
-          throw new Error(`Pack "${pack.id}" frontend has no accepted artifact identity`);
+        if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.buildRevision ?? '')) {
+          throw new Error(`Pack "${pack.id}" frontend has no accepted build identity`);
         }
-        const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/artifacts/${pack.artifactRevision}`;
+        const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/builds/${pack.buildRevision}`;
         const loadStyles = async () => {
           if (pack.feStyles && !fromSource) {
             style = io.styles.prepare(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
@@ -170,7 +170,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         catch (error) { settings?.dispose(); throw error; }
         // The prepared registry owns provisional authority; publication and CSS share one host commit.
         prepared = packs.preparePackFE(registration, settings, packs.hasPackFE(pack.id),
-          { runtimeRevision: pack.runtimeRevision, artifactRevision: pack.artifactRevision });
+          { runtimeRevision: pack.runtimeRevision, buildRevision: pack.buildRevision });
         checkCurrent();
         return prepared.commit(() => { checkCurrent(); commitStyles(); });
       } catch (error) {

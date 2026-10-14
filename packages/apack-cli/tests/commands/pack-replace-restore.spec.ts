@@ -5,7 +5,7 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { publishRunningApp, findDatabaseWriter, openAppDatabase, openDatabaseStore, readInstalledSchema } from '@apackdev/host/database';
-import { installShippedPacks, readInstalledPacks, recordHostCompatibility, readPackArtifact,
+import { installShippedPacks, readInstalledPacks, recordHostCompatibility, readPackBuild,
   sealPackBuild, writeInstalledPacks, stagePack, createPackArchive } from '@apackdev/host/packs';
 import { restore } from '../../src/commands/pack-restore';
 import { replace } from '../../src/commands/pack-replace';
@@ -83,12 +83,12 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
   expect(readInstalledPacks(context.installedPacksFile)[0]).toMatchObject({ updatesWith: 'user' });
   expect(await installShippedPacks(path.join(host, 'packages'), context.packsDir, { installedPacksFile: context.installedPacksFile }))
     .toMatchObject([{ outcome: 'preserved' }]);
-  expect(readPackArtifact(path.join(context.packsDir, 'default-pack')).snapshot.manifest.version).toBe('2.0.0');
+  expect(readPackBuild(path.join(context.packsDir, 'default-pack')).snapshot.manifest.version).toBe('2.0.0');
   await uninstall(['default-pack']);
   expect(await installShippedPacks(path.join(host, 'packages'), context.packsDir, { installedPacksFile: context.installedPacksFile }))
     .toMatchObject([{ outcome: 'suppressed' }]);
   await restore(['default-pack', '--host', host]);
-  expect(readPackArtifact(path.join(context.packsDir, 'default-pack')).snapshot.manifest.version).toBe('1.0.0');
+  expect(readPackBuild(path.join(context.packsDir, 'default-pack')).snapshot.manifest.version).toBe('1.0.0');
   expect(readInstalledPacks(context.installedPacksFile)[0]).toMatchObject({ enabled: true, updatesWith: 'app' });
   expect(readInstalledPacks(context.installedPacksFile)[0]).not.toHaveProperty('suppressAppInstall');
   const reopened = await openAppDatabase({ env: context.env, userDataDir: context.userDataDir, readOnly: true, log: () => {} });
@@ -100,26 +100,26 @@ it('replaces deliberately, survives boot refresh, then restores a removed defaul
 it('refuses mismatched identity and incompatible restoration before changing the incumbent', async () => {
   const { host, source, context } = fixture();
   await restore(['default-pack', '--host', host]);
-  const before = readPackArtifact(path.join(context.packsDir, 'default-pack'));
+  const before = readPackBuild(path.join(context.packsDir, 'default-pack'));
   const record = readInstalledPacks(context.installedPacksFile);
   const wrong = builtPack(path.join(tmp, 'wrong'), 'another-pack');
   await expect(replace(['default-pack', wrong])).rejects.toThrow('Replacement expected pack');
   expect(fs.existsSync(path.join(context.packsDir, 'another-pack'))).toBe(false);
   builtPack(source, 'default-pack', '3.0.0', '>=9.0.0');
   await expect(restore(['default-pack', '--host', host])).rejects.toThrow('>=9.0.0');
-  expect(readPackArtifact(path.join(context.packsDir, 'default-pack'))).toEqual(before);
+  expect(readPackBuild(path.join(context.packsDir, 'default-pack'))).toEqual(before);
   expect(readInstalledPacks(context.installedPacksFile)).toEqual(record);
 });
 
 it('refuses both operations while the selected app runs', async () => {
   const { host, source, context } = fixture();
   await restore(['default-pack', '--host', host]);
-  const before = readPackArtifact(path.join(context.packsDir, 'default-pack'));
+  const before = readPackBuild(path.join(context.packsDir, 'default-pack'));
   const stop = publishRunningApp(context.userDataDir);
   try {
     await expect(replace(['default-pack', source])).rejects.toThrow('Quit the app');
     await expect(restore(['default-pack', '--host', host])).rejects.toThrow('Quit the app');
-    expect(readPackArtifact(path.join(context.packsDir, 'default-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(context.packsDir, 'default-pack'))).toEqual(before);
   } finally { stop(); }
   expect(findDatabaseWriter(context.userDataDir)).toBeNull();
 });
@@ -148,11 +148,11 @@ it('an explicit host wins over the associated host handoff; missing and duplicat
   const { host, context } = fixture();
   vi.stubEnv('APACK_HOST_ROOT', path.join(tmp, 'missing-handoff'));
   await restore(['default-pack', '--host', host]);
-  const before = readPackArtifact(path.join(context.packsDir, 'default-pack'));
+  const before = readPackBuild(path.join(context.packsDir, 'default-pack'));
   await expect(restore(['missing-pack', '--host', host])).rejects.toThrow('found 0');
   builtPack(path.join(host, 'packages', 'duplicate'));
   await expect(restore(['default-pack', '--host', host])).rejects.toThrow('Duplicate app-shipped pack "default-pack"');
-  expect(readPackArtifact(path.join(context.packsDir, 'default-pack'))).toEqual(before);
+  expect(readPackBuild(path.join(context.packsDir, 'default-pack'))).toEqual(before);
 });
 
 
@@ -166,10 +166,10 @@ it.each(['absent', 'disabled', 'failed', 'removed', 'invalid-source'])('reserves
   if (state === 'removed') writeInstalledPacks([{ id: 'default-pack', enabled: false, suppressAppInstall: true }], context.installedPacksFile);
   if (state === 'invalid-source') fs.rmSync(path.join(source, 'dist'), { recursive: true });
   const before = readInstalledPacks(context.installedPacksFile, { strict: true });
-  const incumbent = fs.existsSync(path.join(context.packsDir, 'default-pack')) ? readPackArtifact(path.join(context.packsDir, 'default-pack')).revision : undefined;
+  const incumbent = fs.existsSync(path.join(context.packsDir, 'default-pack')) ? readPackBuild(path.join(context.packsDir, 'default-pack')).revision : undefined;
   await expect(install([fork, '--host', host])).rejects.toThrow('apack pack replace default-pack');
   expect(readInstalledPacks(context.installedPacksFile, { strict: true })).toEqual(before);
-  if (incumbent) expect(readPackArtifact(path.join(context.packsDir, 'default-pack')).revision).toBe(incumbent);
+  if (incumbent) expect(readPackBuild(path.join(context.packsDir, 'default-pack')).revision).toBe(incumbent);
   else expect(fs.existsSync(path.join(context.packsDir, 'default-pack'))).toBe(false);
 });
 

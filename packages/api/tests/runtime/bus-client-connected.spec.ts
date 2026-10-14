@@ -55,7 +55,7 @@ function loaded(id: string, files: string[], features: Record<string, { descript
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), '');
   }
-  return { declarationRevision: 'fixture-revision', artifactRevision: 'a'.repeat(64), artifactFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])), id, name: id, version: '1.0.0', dir, manifest: { id, name: id, version: '1.0.0', features } };
+  return { declarationRevision: 'fixture-revision', buildRevision: 'a'.repeat(64), buildFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])), id, name: id, version: '1.0.0', dir, manifest: { id, name: id, version: '1.0.0', features } };
 }
 
 const withFrontend = ['runtime/fe.js'];

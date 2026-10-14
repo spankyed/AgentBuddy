@@ -4,10 +4,10 @@ import type { PackOrigin } from '../../../src/packs/registry.ts';
 import { createSettingsAccess } from '../../../src/features/settings/be/access.ts';
 
 const origin = (): PackOrigin => ({
-  id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact',
+  id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'artifact',
   name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack',
 });
-const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', artifactRevision: 'artifact' };
+const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'artifact' };
 
 function setup() {
   const scoped = { get: vi.fn(), set: vi.fn(), reset: vi.fn(), onChange: vi.fn() } as SettingsService;
@@ -31,9 +31,9 @@ describe('settings transport authority', () => {
   it.each([
     { ...expected, id: 'another-pack' },
     { ...expected, declarationRevision: '' },
-    { ...expected, artifactRevision: '' },
+    { ...expected, buildRevision: '' },
     { ...expected, declarationRevision: 'stale' },
-    { ...expected, artifactRevision: 'stale' },
+    { ...expected, buildRevision: 'stale' },
     { ...expected, runtimeRevision: 'stale' },
     { ...expected, runtimeRevision: '' },
   ])('refuses a stale frontend without supplying a service', candidate => {
@@ -42,7 +42,7 @@ describe('settings transport authority', () => {
     expect(settings.forPack).not.toHaveBeenCalled();
   });
 
-  it('refuses an unloaded or replacement runtime even when its artifact identity is unchanged', () => {
+  it('refuses an unloaded or replacement runtime even when its build identity is unchanged', () => {
     const { access, replace } = setup();
     const credential = access.issuePack('window', expected);
     replace(origin());
@@ -58,7 +58,7 @@ describe('settings transport authority', () => {
     const accepted = origin();
     replace(accepted);
     const credential = access.issuePack('window', expected);
-    accepted.artifactRevision = 'changed';
+    accepted.buildRevision = 'changed';
     expect(() => access.resolve('window', credential)).toThrow('Settings access is unavailable');
   });
 

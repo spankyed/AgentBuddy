@@ -100,7 +100,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 ## Protocols
 
-- **`pack://<packId>/artifacts/<revision>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
+- **`pack://<packId>/builds/<revision>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
   - The owner is a pack ID and the revision is the accepted receipt identity. Relative module imports, styles and fonts retain that revision in their URL base.
   - Serves only the installed copy. The receipt must still match the requested revision, and the exact returned bytes must match its listed checksum. Missing/changed files and symlinks fail; there is no shipped or development fallback.
   - Development is separate: the API advertises a live local Vite base URL only in the development environment. The renderer imports that source graph directly; monorepo source frontends use the renderer's Vite graph. Neither is an installed asset request.

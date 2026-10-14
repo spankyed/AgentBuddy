@@ -1,4 +1,4 @@
-import { sealPack } from './artifact-fixture.ts';
+import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack declares which event types each of its plugins receives, and the bus checks every send against
 // that declaration. It reaches the app on the registration the pack's runtime bundle exports, so what this
@@ -73,7 +73,7 @@ describe('where the registry says a pack came from', () => {
     expect(origin?.dir).toBe(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     expect(origin?.manifest?.id).toBe(PACK_ID);
     expect(registry.loadedPacks().map((o) => o.id)).toContain(PACK_ID);
-    expect(registry.packOrigin(PACK_ID)?.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
+    expect(registry.packOrigin(PACK_ID)?.buildRevision).toMatch(/^[a-f0-9]{64}$/);
 
     registry.unregisterPack(PACK_ID);
     expect(registry.packOrigin(PACK_ID)).toBeNull();

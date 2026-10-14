@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { parsePackDependency, CONTENT_INDEX_FILE, parseDependencySnapshot, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackDependencySnapshot } from '@apackdev/sdk/build';
+import { parsePackDependency, CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackDependencySnapshot } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@apackdev/host/packs';
+import { PACK_LAYOUT, extractPackArchive, verifyPack, readDependencyBuild, readCachedDependency, cacheDependency, type DependencyOrigin, type DependencyResolution, type CachedDependencyBuild } from '@apackdev/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
 import { APP_ENVS, resolveAppEnvironment, type AppEnv } from '@apackdev/sdk/env';
 import { configuredHostPackagesDir } from '../app/pack-host';
@@ -16,6 +16,11 @@ import { configuredHostPackagesDir } from '../app/pack-host';
 /** A dependency's files: its snapshot, plus build code and a backend runtime when it ships them. */
 export interface DepFiles {
   snapshot: PackDependencySnapshot;
+  directory: string;
+  kind: DependencyResolution['kind'];
+  revision: string;
+  origin?: DependencyOrigin;
+  resolution?: DependencyResolution;
   /** Type data can be inspectable while executable dependency files are unavailable. */
   executionProblem?: string;
   /** Directory with the dependency's build-time code (build/steps.build.mjs, build/content-compilers.mjs), if present. */
@@ -26,65 +31,52 @@ export interface DepFiles {
   contentDir?: string;
 }
 
-function tryReadSnapshot(filePath: string): PackDependencySnapshot | null {
-  if (fs.existsSync(filePath)) {
-    const raw: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    const result = parseDependencySnapshot(raw);
-    if (!result.snapshot) throw new Error(`${filePath}: ${result.diagnostics.map(issue => issue.message).join('; ')}`);
-    return result.snapshot;
-  }
-  return null;
-}
-
-/**
- * Find artifacts in a pack directory in any layout: an installed or extracted bundle
- * (types/, build/), a pack source built in the pack layout (dist/types, dist/build), or the
- * dependency cache, which holds the snapshot alone.
- */
+/** Read an installed layout or a source pack's built layout without importing code. */
 export function findDepFiles(dir: string): DepFiles | null {
-  const candidates = [
-    { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
-    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
-    // .apack/deps/<id>/ cache
-    { root: dir, snapshot: path.join(dir, 'snapshot.json') },
-  ];
-  for (const c of candidates) {
-    const snapshot = tryReadSnapshot(c.snapshot);
-    if (snapshot) return withBuildAndRuntime(snapshot, c.root);
+  for (const directory of [dir, path.join(dir, 'dist')]) {
+    if (fs.existsSync(path.join(directory, PACK_LAYOUT.snapshot))) {
+      return withBuildAndRuntime(readDependencyBuild(directory));
+    }
   }
   return null;
 }
 
-/** The snapshot plus the build dir, runtime entry and its content under `root`, where they exist */
-function withBuildAndRuntime(snapshot: PackDependencySnapshot, root: string): DepFiles {
-  const buildDir = path.join(root, PACK_LAYOUT.buildDir);
-  const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
-  // One place for every pack's compiled content, named by its index
-  const contentDir = path.join(root, PACK_LAYOUT.contentDir);
-  const hasContent = fs.existsSync(path.join(contentDir, CONTENT_INDEX_FILE));
-  const hasRuntime = fs.existsSync(runtimeEntry);
-  const hasBuild = fs.existsSync(buildDir);
+function withBuildAndRuntime(build: Omit<CachedDependencyBuild, 'resolution'> & {
+  kind: DependencyResolution['kind']; revision: string;
+}): DepFiles {
+  const { snapshot, directory, kind } = build;
   const mismatch = _snapshotFormatMismatch(snapshot);
-  if (mismatch) return { snapshot, executionProblem: _cliFormatMismatchMessage(mismatch) };
-
-  return {
-    snapshot,
-    ...(hasBuild && { buildDir }),
+  if (mismatch) return { ...build, executionProblem: _cliFormatMismatchMessage(mismatch) };
+  if (kind === 'type-data') return { ...build, executionProblem: 'Dependency has no verified executable build; rebuild the complete pack.' };
+  const buildDir = path.join(directory, PACK_LAYOUT.buildDir);
+  const runtimeEntry = path.join(directory, PACK_LAYOUT.runtimeEntry);
+  const contentDir = path.join(directory, PACK_LAYOUT.contentDir);
+  const hasRuntime = fs.existsSync(runtimeEntry);
+  return { ...build,
+    ...(fs.existsSync(buildDir) && { buildDir }),
     ...(hasRuntime && { runtimeEntry }),
-    ...(hasRuntime && hasContent && { contentDir }),
+    ...(hasRuntime && fs.existsSync(path.join(contentDir, CONTENT_INDEX_FILE)) && { contentDir }),
   };
 }
 
-// ── Local cache ──
-
-function depCacheDir(root: string, depId: string): string {
-  return path.join(root, '.apack', 'deps', depId);
+function fromCache(cached: CachedDependencyBuild): ResolvedDepFiles {
+  return { ...withBuildAndRuntime({ directory: cached.directory, snapshot: cached.snapshot,
+    kind: cached.resolution.kind, revision: cached.resolution.revision }), resolution: cached.resolution,
+    origin: cached.resolution.origin, resolvedFrom: originLabel(cached.resolution.origin) };
 }
 
-function resolveFromLocal(root: string, depId: string): DepFiles | null {
-  const dir = depCacheDir(root, depId);
-  const snapshot = tryReadSnapshot(path.join(dir, 'snapshot.json'));
-  return snapshot && withBuildAndRuntime(snapshot, dir);
+function resolveFromLocal(root: string, depId: string): ResolvedDepFiles | null {
+  const cached = readCachedDependency(root, depId);
+  return cached && fromCache(cached);
+}
+
+function originLabel(origin: DependencyOrigin): string {
+  return origin.kind === 'github' ? `github:${origin.repository}@${tagToVersion(origin.tag) ?? origin.tag}` : origin.selection;
+}
+
+function cacheDep(root: string, depId: string, spec: string, files: DepFiles): ResolvedDepFiles {
+  if (!files.origin) throw new Error(`Dependency "${depId}" has no resolution origin`);
+  return fromCache(cacheDependency(root, depId, files.directory, spec, files.origin));
 }
 
 // ── Workspace resolution ──
@@ -104,7 +96,7 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<DepFil
       // `existsSync` per candidate when no build is running, which is every ordinary resolution.
       await waitForPackBuild(candidate, { onWait: (holder) => console.error(`Waiting for ${holder} to finish...`) });
       const found = findDepFiles(candidate);
-      if (found) return found;
+      if (found) return { ...found, origin: { kind: 'workspace', directory: path.resolve(candidate), selection: 'workspace' } };
     }
     if (path.dirname(dir) === dir) return null;
   }
@@ -113,9 +105,9 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<DepFil
 // ── Installed app resolution ──
 
 /** Whether a resolved dependency's version satisfies the range apack.json declares. */
-function inRange(artifacts: DepFiles, range: string): boolean {
+function inRange(files: DepFiles, range: string): boolean {
   if (!range || range === '*') return true;
-  const version = clean(artifacts.snapshot.manifest?.version ?? '');
+  const version = clean(files.snapshot.manifest?.version ?? '');
   return version !== null && satisfies(version, range, { includePrerelease: true });
 }
 
@@ -131,7 +123,7 @@ function usable(found: DepFiles | null, range: string, depId: string): found is 
 function resolveFromInstalledApp(depId: string, range: string): (DepFiles & { env: AppEnv }) | null {
   for (const env of APP_ENVS) {
     const found = findDepFiles(path.join(resolveAppEnvironment({ env }).packsDir, depId));
-    if (usable(found, range, depId)) return { ...found, env };
+    if (usable(found, range, depId)) return { ...found, env, origin: { kind: 'installed-app', directory: path.resolve(resolveAppEnvironment({ env }).packsDir, depId), selection: `installed app (${env})` } };
   }
   return null;
 }
@@ -147,7 +139,7 @@ async function resolveFromConfiguredHost(root: string, depId: string, pinned = f
   if (pinned && !found && fs.existsSync(path.join(dir, PACK_LAYOUT.manifest))) {
     throw new Error(`Selected host dependency "${depId}" has no built snapshot in ${dir}. Build that host's pack before using it.`);
   }
-  return found && { ...found, label: app.label };
+  return found && { ...found, label: app.label, origin: { kind: 'host', directory: path.resolve(dir), selection: app.label } };
 }
 
 // ── File path resolution ──
@@ -193,7 +185,7 @@ function tagToVersion(tag: string): string | null {
   return clean(tag.replace(/^v/, ''));
 }
 
-async function resolveFromGitHub(root: string, depId: string, repo: string, range: string): Promise<DepFiles | null> {
+async function resolveFromGitHub(root: string, depId: string, repo: string, range: string, spec: string): Promise<DepFiles | null> {
   const url = `https://api.github.com/repos/${repo}/releases?per_page=100`;
 
   const res = await fetch(url, { headers: githubHeaders() });
@@ -209,9 +201,7 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
     return null;
   }
 
-  // Newest first. A release a newer CLI wrote gives way to the next older one in range, as a mismatched build on this
-  // machine does. One an older CLI wrote stops here: every release below it is older still, so trying them would only
-  // spend downloads (and GitHub's rate limit). Any other problem stops here too, rather than quietly settling for less
+  // Select the newest satisfying release. Invalid files fail instead of silently substituting a release.
   for (const { release, version } of candidates) {
     // apack pack names the archive <id>-<version>.tgz and publishes its .sha256 next to it
     const asset = release.assets.find(a => a.name === `${depId}-${version}.tgz`);
@@ -225,7 +215,7 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
       return null;
     }
 
-    const found = await downloadAndExtract(root, asset, checksumAsset, depId, version);
+    const found = await downloadAndExtract(root, asset, checksumAsset, depId, version, { kind: 'github', repository: repo, tag: release.tag_name, archive: asset.url, checksum: checksumAsset.url }, spec);
     return found;
   }
   return null;
@@ -249,6 +239,8 @@ async function downloadAndExtract(
   checksumAsset: { name: string; url: string },
   depId: string,
   version: string,
+  origin: DependencyOrigin,
+  spec: string,
 ): Promise<DepFiles | null> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-fetch-'));
   try {
@@ -265,17 +257,16 @@ async function downloadAndExtract(
       console.warn(`  ${asset.name} contains pack "${bundle.id}", not ${depId}`);
       return null;
     }
-    if (bundle.version !== version) throw new Error(`Release ${depId}@${version} contains pack version ${bundle.version}; correct the published artifact.`);
-    const artifacts = findDepFiles(extracted);
-    if (!artifacts) {
+    if (bundle.version !== version) throw new Error(`Release ${depId}@${version} contains pack version ${bundle.version}; correct the published build.`);
+    const files = findDepFiles(extracted);
+    if (!files) {
       console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
       return null;
     }
-    usable(artifacts, '*', depId);
-    if (artifacts.snapshot.manifest.version !== version) throw new Error(`Release ${depId}@${version} contains snapshot version ${artifacts.snapshot.manifest.version}; correct the published artifact.`);
+    usable(files, '*', depId);
+    if (files.snapshot.manifest.version !== version) throw new Error(`Release ${depId}@${version} contains snapshot version ${files.snapshot.manifest.version}; correct the published build.`);
     // The temp dir is removed below; persist into the cache first
-    cacheDep(root, depId, artifacts);
-    return resolveFromLocal(root, depId);
+    return cacheDep(root, depId, spec, { ...files, origin });
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -292,57 +283,10 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
   return null;
 }
 
-// ── Cache ──
-
-function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
-  const depDir = depCacheDir(root, depId);
-  const { snapshot, buildDir, runtimeEntry, contentDir } = artifacts;
-  fs.mkdirSync(depDir, { recursive: true });
-  fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
-
-  const facadesDir = path.join(depDir, 'facades');
-  fs.rmSync(facadesDir, { recursive: true, force: true });
-  if (Object.keys(snapshot.facades).length > 0) {
-    fs.mkdirSync(facadesDir, { recursive: true });
-    for (const [key, content] of Object.entries(snapshot.facades)) {
-      fs.writeFileSync(path.join(facadesDir, `${key}.d.ts`), content);
-    }
-  }
-
-  const cachedBuild = path.join(depDir, 'build');
-  if (buildDir && path.resolve(buildDir) !== path.resolve(cachedBuild)) {
-    fs.rmSync(cachedBuild, { recursive: true, force: true });
-    fs.cpSync(buildDir, cachedBuild, { recursive: true });
-  } else if (!buildDir) {
-    fs.rmSync(cachedBuild, { recursive: true, force: true });
-  }
-
-  // The backend runtime entry and the compiled content it reads; a dependency's FE bundle isn't used
-  const cachedRuntime = path.join(depDir, PACK_LAYOUT.runtimeEntry);
-  if (runtimeEntry && path.resolve(runtimeEntry) !== path.resolve(cachedRuntime)) {
-    fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
-    fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
-    fs.copyFileSync(runtimeEntry, cachedRuntime);
-    if (contentDir) copyContent(contentDir, path.join(depDir, PACK_LAYOUT.contentDir));
-  } else if (!runtimeEntry) {
-    fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
-  }
-}
-
-/**
- * Copies a pack's compiled content. The whole directory, because that is all it holds — it used to pick
- * `*.content.json`, `content.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
- * pack's content is written any more.
- */
-function copyContent(from: string, to: string): void {
-  fs.rmSync(to, { recursive: true, force: true });
-  fs.cpSync(from, to, { recursive: true });
-}
-
 // ── Resolution chain ──
 
 /**
- * A selected host owns its dependency artifacts: never substitute a workspace or another app.
+ * A selected host owns its dependency files: never substitute a workspace or another app.
  * Otherwise prefer the workspace, linked checkout, then installed apps. All must satisfy the range.
  */
 async function resolveFromMachine(root: string, depId: string, range: string, options: DependencyResolutionOptions = {}): Promise<(DepFiles & { resolvedFrom: string }) | null> {
@@ -354,8 +298,8 @@ async function resolveFromMachine(root: string, depId: string, range: string, op
       if (!usable(configured, range, depId)) {
         throw new Error(`Selected host dependency "${depId}" version ${version} does not satisfy ${range}.`);
       }
-      const { label, ...artifacts } = configured;
-      return { ...artifacts, resolvedFrom: label };
+      const { label, ...files } = configured;
+      return { ...files, resolvedFrom: label };
     }
   }
   const workspace = await resolveFromWorkspace(root, depId);
@@ -363,65 +307,50 @@ async function resolveFromMachine(root: string, depId: string, range: string, op
 
   const configured = pinned ? null : await resolveFromConfiguredHost(root, depId, false, options);
   if (configured && usable(configured, range, depId)) {
-    const { label, ...artifacts } = configured;
-    return { ...artifacts, resolvedFrom: label };
+    const { label, ...files } = configured;
+    return { ...files, resolvedFrom: label };
   }
 
   const installed = resolveFromInstalledApp(depId, range);
   if (installed) {
-    const { env, ...artifacts } = installed;
-    return { ...artifacts, resolvedFrom: `installed app (${env})` };
+    const { env, ...files } = installed;
+    return { ...files, resolvedFrom: `installed app (${env})` };
   }
   return null;
 }
 
-async function resolveFromNetwork(root: string, depId: string, github: string | null, range: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+async function resolveFromNetwork(root: string, depId: string, github: string | null, range: string, spec: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   if (github) {
-    const found = await resolveFromGitHub(root, depId, github, range);
+    const found = await resolveFromGitHub(root, depId, github, range, spec);
     return found && { ...found, resolvedFrom: `github:${github}@${found.snapshot.manifest.version}` };
   }
   const registrySource = await lookupRegistry(depId);
   if (registrySource) {
-    const found = await resolveFromGitHub(root, depId, registrySource, range);
+    const found = await resolveFromGitHub(root, depId, registrySource, range, spec);
     if (found) return { ...found, resolvedFrom: `registry → github:${registrySource}@${found.snapshot.manifest.version}` };
   }
   return null;
-}
-
-async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
-  const { github, filePath, range } = parsePackDependency(depValue);
-
-  if (filePath) {
-    const where = `file:${path.resolve(root, filePath)}`;
-    const found = resolveFromFile(root, filePath);
-    if (usable(found, range, depId)) return { ...found, resolvedFrom: where };
-    if (!found) console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
-    return null;
-  }
-
-  return (await resolveFromMachine(root, depId, range)) ?? resolveFromNetwork(root, depId, github, range);
 }
 
 /**
  * A resolved dependency, with where it came from when that is known.
  *
  * The label is the one `apack pack fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
- * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
+ * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the build — the same
  * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
  * recorded in the snapshot, which ships inside the pack.
  */
 export type ResolvedDepFiles = DepFiles & { resolvedFrom?: string };
 
 export interface DependencyResolutionOptions {
-  /** Inspect existing local artifacts only: never download or refresh caches. */
+  /** Inspect existing local files only: never download or refresh caches. */
   readOnly?: boolean;
+  /** Explicit fetching refreshes remote resolutions; ordinary builds may reuse the cache. */
+  refresh?: boolean;
 }
 
-const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedDepFiles | null =>
-  artifacts && { ...artifacts, resolvedFrom };
-
 /**
- * Resolve a dependency's artifacts (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
+ * Resolve a dependency's files (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
  * win and refresh the .apack/deps cache; the cache only stands in for a network source, and
  * only while it satisfies the declared range. Malformed current-data declarations fail before caching. Recorded format stamps describe
  * executable compatibility; type imports are checked against the actual facade capabilities.
@@ -429,31 +358,27 @@ const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedD
 export async function resolveDepFiles(root: string, depId: string, depValue: string, options: DependencyResolutionOptions = {}): Promise<ResolvedDepFiles | null> {
   const { github, filePath, range } = parsePackDependency(depValue);
   if (filePath) {
-    const found = await resolveFromUpstream(root, depId, depValue);
-    return found ?? null;
+    const found = resolveFromFile(root, filePath);
+    if (!usable(found, range, depId)) return null;
+    const source: ResolvedDepFiles = { ...found, resolvedFrom: `file:${path.resolve(root, filePath)}`,
+      origin: { kind: 'file', directory: path.resolve(root, filePath), selection: `file:${path.resolve(root, filePath)}` } };
+    return options.readOnly ? source : cacheDep(root, depId, depValue, source);
   }
 
   const local = await resolveFromMachine(root, depId, range, options);
   if (local) {
     if (options.readOnly) return local;
-    cacheDep(root, depId, local);
-    return withSource(resolveFromLocal(root, depId), local.resolvedFrom);
+    return cacheDep(root, depId, depValue, local);
   }
 
-  // A cache hit carries no source: cacheDep writes the snapshot, facades, build code and runtime, and
-  // nothing about where they came from. Recording provenance in .apack/deps would cover this, and
-  // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   const cached = resolveFromLocal(root, depId);
-  if (usable(cached, range, depId)) return cached;
+  if (!options.refresh && usable(cached, range, depId) && (!github || cached.origin?.kind === 'github' && cached.origin.repository === github)) return cached;
 
   if (options.readOnly) {
     return null;
   }
 
-  const fetched = await resolveFromNetwork(root, depId, github, range);
-  if (!fetched) return null;
-  cacheDep(root, depId, fetched);
-  return withSource(resolveFromLocal(root, depId), fetched.resolvedFrom);
+  return resolveFromNetwork(root, depId, github, range, depValue);
 }
 
 // ── Command ──
@@ -477,9 +402,8 @@ export async function fetchDeps(_args: string[]) {
 
   for (const depId of depIds) {
     const depValue = deps[depId];
-    const result = await resolveFromUpstream(root, depId, depValue);
+    const result = await resolveDepFiles(root, depId, depValue, { refresh: true });
     if (result) {
-      if (!depValue.startsWith('file:')) cacheDep(root, depId, result);
       const entityCount = Object.keys(result.snapshot.types.entities).length;
       const relCount = Object.keys(result.snapshot.types.relKinds).length;
       const facadeCount = Object.keys(result.snapshot.facades).length;

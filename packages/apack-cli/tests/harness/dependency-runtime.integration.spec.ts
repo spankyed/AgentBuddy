@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, cacheDependency, readCachedDependency, sealPackBuild } from '@apackdev/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
@@ -31,13 +31,9 @@ function dependentPack(spec: string): string {
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'dependent-pack', type: 'module' }));
   write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' }, features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'tests/memos-system.ts' }, plugin: { label: 'Fixture', state: 'tests/memos-plugin.ts' } }, widgets: { description: 'Feature declaration fixture.', settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } }));
-  const dep = path.join(root, '.apack', 'deps', 'default-setup');
-  fs.mkdirSync(path.join(dep, 'runtime'), { recursive: true });
-  fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
-  fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs'), path.join(dep, 'runtime', 'index.cjs'));
-  // Its compiled content, from the one place every pack's build writes them, into the one place the harness
-  // reads a dependency's from
-  fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.contentDir), path.join(dep, PACK_LAYOUT.contentDir), { recursive: true });
+  cacheDependency(root, 'default-setup', DEFAULT_SETUP_DIST, '*', {
+    kind: 'host', directory: DEFAULT_SETUP_DIST, selection: 'test checkout',
+  });
   // As `apack pack init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
 import { definePackTestConfig } from '@apackdev/testing/vitest';
@@ -92,13 +88,17 @@ function vitest(root: string) {
 describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime tier", () => {
   it.each([undefined, PACK_SNAPSHOT_FORMAT + 1])('refuses dependency execution before importing a mismatched runtime: %s', format => {
     const root = dependentPack("import { it } from 'vitest'; it('must not reach tests', () => {});");
-    const file = path.join(root, '.apack/deps/default-setup/snapshot.json');
+    const source = path.join(root, 'dependency-producer');
+    fs.cpSync(readCachedDependency(root, 'default-setup')!.directory, source, { recursive: true });
+    const file = path.join(source, PACK_LAYOUT.snapshot);
     const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
     snapshot.format = format;
     fs.writeFileSync(file, JSON.stringify(snapshot));
     const marker = path.join(root, 'runtime-executed');
-    write(root, '.apack/deps/default-setup/runtime/index.cjs',
+    fs.writeFileSync(path.join(source, PACK_LAYOUT.runtimeEntry),
       `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); throw new Error('Poisoned runtime');`);
+    sealPackBuild(source, snapshot.manifest);
+    cacheDependency(root, 'default-setup', source, '*', { kind: 'file', directory: source, selection: 'fixture' });
     const result = vitest(root);
     expect(result.status).not.toBe(0);
     expect(result.stdout + result.stderr).toContain('its snapshot is format');

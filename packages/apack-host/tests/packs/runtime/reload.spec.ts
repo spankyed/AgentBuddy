@@ -1,4 +1,4 @@
-import { sealPack } from './artifact-fixture.ts';
+import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
@@ -193,7 +193,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     await reloadPackById(registry, SHIPPED_ID, bus as never);
     const current = registry.getPackRuntime(SHIPPED_ID)!;
     expect(current.runtimeRevision).not.toBe(previous.runtimeRevision);
-    expect(current.origin.artifactRevision).toBe(previous.origin.artifactRevision);
+    expect(current.origin.buildRevision).toBe(previous.origin.buildRevision);
     expect(getLoadedPackEntries(registry).find(pack => pack.id === SHIPPED_ID)?.runtimeRevision).toBe(current.runtimeRevision);
     unregisterPack(SHIPPED_ID);
     expect(registry.getPackRuntime(SHIPPED_ID)).toBeNull();

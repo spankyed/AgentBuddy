@@ -10,7 +10,7 @@ import { PACK_LOAD_MESSAGES, packRegistered } from '../../../src/packs/load-mess
 import { loadSingleExternalPack, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { sealPack } from './artifact-fixture.ts';
+import { sealPack } from './build-fixture.ts';
 import { testRootEvents } from '@apackdev/sdk/testing';
 
 const PACK_ID = 'load-messages-pack';

@@ -23,16 +23,16 @@ import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
-import { readPackIntegrity, packArtifactRevision } from './assets.ts';
+import { readPackIntegrity, packBuildRevision } from './assets.ts';
 
 export { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
-export { readPackIntegrity, packArtifactRevision, readPackAsset } from './assets.ts';
+export { readPackIntegrity, packBuildRevision, readPackAsset } from './assets.ts';
 
 /** Sections `apack pack build` writes into dist/ and staging copies into the staged pack. */
 const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir] as const;
 
 /** The accepted installed build: declarations and the complete file inventory verified together. */
-export interface PackArtifact {
+export interface PackBuild {
   snapshot: PackSnapshot;
   integrity: PackIntegrity;
   /** Content identity independent of file enumeration order and installation directory. */
@@ -77,21 +77,21 @@ export function hasBuiltPackSections(packRoot: string): boolean {
 /** A pack whose frontend the renderer loads (the API's `packs.loaded`) */
 export interface LoadedPackEntry {
   id: string;
-  /** Host-issued accepted runtime identity, independent of artifact content identity. */
+  /** Host-issued accepted runtime identity, independent of build content identity. */
   runtimeRevision: string;
   /** Declaration identity of the active backend; frontend bindings must match it. */
   declarationRevision: string;
   /** Accepted declarations of the active backend, used to validate frontend binding membership. */
   manifest?: PackManifest;
-  /** Verified accepted build identity; native host registrations have no installed artifact. */
-  artifactRevision?: string;
+  /** Verified accepted build identity; native host registrations have no installed build. */
+  buildRevision?: string;
   name: string;
   version: string;
   /** The pack's runtime/fe.js, when it has one */
   feEntry?: string;
   /** The pack's runtime/fe.css, when it has one */
   feStyles?: string;
-  /** Explicit source delivery for apack pack dev; never used by an installed artifact request. */
+  /** Explicit source delivery for apack pack dev; never used by an installed build request. */
   developmentBaseUrl?: string;
 }
 
@@ -113,19 +113,19 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks' | 'getPackRuntime'>): LoadedPackEntry[] {
-  return registry.loadedPacks().map(({ id, name, version, declarationRevision, artifactRevision, artifactFiles, manifest }) => {
+  return registry.loadedPacks().map(({ id, name, version, declarationRevision, buildRevision, buildFiles, manifest }) => {
     const runtime = registry.getPackRuntime(id);
     if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
     const runtimeRevision = runtime.runtimeRevision;
-    const entry = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined;
-    const styles = artifactFiles && Object.hasOwn(artifactFiles, PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined;
+    const entry = buildFiles && Object.hasOwn(buildFiles, PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined;
+    const styles = buildFiles && Object.hasOwn(buildFiles, PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined;
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
-    if (!entry && !styles) return { id, name, version, runtimeRevision, declarationRevision, artifactRevision };
-    if (!artifactRevision) throw new Error(`Pack "${id}" frontend has no accepted artifact identity`);
+    if (!entry && !styles) return { id, name, version, runtimeRevision, declarationRevision, buildRevision };
+    if (!buildRevision) throw new Error(`Pack "${id}" frontend has no accepted build identity`);
     if (!manifest) throw new Error(`Pack "${id}" frontend has no accepted declarations`);
-    return { id, name, version, runtimeRevision, declarationRevision, artifactRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
+    return { id, name, version, runtimeRevision, declarationRevision, buildRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
   });
 }
 
@@ -172,12 +172,12 @@ export function stagedFileHashes(packRoot: string): Record<string, string> {
 /** Capture a verified source declaration and its published files without executing or staging it. */
 export function readBuiltPackSource(packRoot: string): { snapshot: PackSnapshot; files: Record<string, string>; sourceRevision: string } {
   const built = readBuiltPackIntegrity(packRoot, PACK_SNAPSHOT_FORMAT);
-  const artifact = readPackArtifact(path.join(packRoot, 'dist'));
-  if (!isDeepStrictEqual(built, artifact.integrity)) {
-    throw new Error('Built artifact changed while reading its source declarations; retry with the complete build');
+  const build = readPackBuild(path.join(packRoot, 'dist'));
+  if (!isDeepStrictEqual(built, build.integrity)) {
+    throw new Error('Built build changed while reading its source declarations; retry with the complete build');
   }
   const files = stagedHashes(built);
-  return { snapshot: artifact.snapshot, files, sourceRevision: shippedPackRevision(files) };
+  return { snapshot: build.snapshot, files, sourceRevision: shippedPackRevision(files) };
 }
 
 /** Identity of published source files/layout; distinct from an installed receipt or runtime nonce. */
@@ -249,15 +249,15 @@ export function readPackSnapshot(dir: string): PackSnapshot {
 }
 
 /** Read installed declarations without loading code; refuse changed, missing or additional files. */
-export function readPackArtifact(dir: string): PackArtifact {
+export function readPackBuild(dir: string): PackBuild {
   const { bytes: snapshotBytes, data } = readSnapshotFile(dir);
   const manifestBytes = fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest));
   const snapshot = checkedSnapshot(data, JSON.parse(manifestBytes.toString('utf8')));
   const integrity = verifyPack(dir);
   for (const [file, bytes] of [[PACK_LAYOUT.snapshot, snapshotBytes], [PACK_LAYOUT.manifest, manifestBytes]] as const) {
-    if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified artifact; retry with the complete pack');
+    if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified build; retry with the complete pack');
   }
-  const revision = packArtifactRevision(integrity);
+  const revision = packBuildRevision(integrity);
   return { snapshot, integrity, revision };
 }
 

@@ -21,7 +21,7 @@ import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import type { PackRegistration } from '@apackdev/sdk/framework';
-import { createPackRegistry, type PackOrigin } from '@apackdev/host/packs';
+import { createPackRegistry, readCachedDependency, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
@@ -222,12 +222,14 @@ type CachedDependency = ContentDependency & { snapshot: PackSnapshot; dir: strin
 function readDependencies(packDir: string, manifest: PackManifest): Map<string, CachedDependency> {
   const dependencies = new Map<string, CachedDependency>();
   for (const depId of Object.keys(manifest.dependencies ?? {})) {
-    const dir = path.join(packDir, DEPS_DIR, depId);
-    const snapshotFile = path.join(dir, 'snapshot.json');
-    if (!fs.existsSync(snapshotFile)) {
+    const cached = readCachedDependency(packDir, depId);
+    if (!cached) {
       throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`apack pack build\` once to fetch dependencies.`);
     }
-    const raw: unknown = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8'));
+    const dir = cached.directory;
+    const snapshotFile = path.join(dir, 'types', 'snapshot.json');
+    const raw = cached.snapshot;
+    if (cached.resolution.kind !== 'build') throw new Error(`Dependency "${depId}" has no verified executable build. Run \`apack pack build\` to fetch its complete build.`);
     const mismatch = _snapshotFormatMismatch(raw);
     if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${_cliFormatMismatchMessage(mismatch)}. Run \`apack pack build\` to fetch it again.`);
     const result = parseSnapshot(raw);

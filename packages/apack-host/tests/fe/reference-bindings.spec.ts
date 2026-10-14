@@ -107,13 +107,13 @@ describe('frontend reference admission', () => {
     const packs = createFePackRegistry();
     const first = fixture('first-pack');
     const registration = { ...first.registration, declarationRevision: 'declaration-one' };
-    const identity = { runtimeRevision: 'runtime-one', artifactRevision: 'artifact-one',
+    const identity = { runtimeRevision: 'runtime-one', buildRevision: 'artifact-one',
       featureRef: 'not-owner/view', declarationRevision: 'not-owner-declaration' };
     const prepared = packs.preparePackFE(registration, undefined, false, identity);
     prepared.commit(); prepared.dispose();
     const type = packs.referenceTypes().get('note')!;
     const category = packs.referenceCategories().get('notes')!;
-    expect(type).toMatchObject({ featureRef: 'first-pack/view', declarationRevision: 'declaration-one', runtimeRevision: 'runtime-one', artifactRevision: 'artifact-one' });
+    expect(type).toMatchObject({ featureRef: 'first-pack/view', declarationRevision: 'declaration-one', runtimeRevision: 'runtime-one', buildRevision: 'artifact-one' });
     expect(category.featureRef).toBe('first-pack/view');
     identity.runtimeRevision = 'changed caller';
     expect(type.runtimeRevision).toBe('runtime-one');
@@ -123,7 +123,7 @@ describe('frontend reference admission', () => {
     expect(Reflect.set(type, 'featureRef', 'other/view')).toBe(false);
     const replacement = fixture('first-pack');
     const next = packs.preparePackFE({ ...replacement.registration, declarationRevision: 'declaration-two' }, undefined, true,
-      { runtimeRevision: 'runtime-two', artifactRevision: 'artifact-two' });
+      { runtimeRevision: 'runtime-two', buildRevision: 'artifact-two' });
     next.commit(); next.dispose();
     expect(packs.referenceTypes().get('note')).not.toBe(type);
     expect(packs.referenceTypes().get('note')?.runtimeRevision).toBe('runtime-two');
@@ -136,7 +136,7 @@ describe('frontend reference admission', () => {
     packs.registerPackFE(f.registration);
     const binding = packs.referenceTypes().get('note')!;
     expect(binding.featureRef).toBe('notes-pack/view');
-    expect(binding).not.toHaveProperty('artifactRevision');
+    expect(binding).not.toHaveProperty('buildRevision');
     expect(binding).not.toHaveProperty('runtimeRevision');
     expect(binding).not.toHaveProperty('declarationRevision');
   });

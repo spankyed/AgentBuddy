@@ -32,7 +32,7 @@ export interface PackMigrations {
 /**
  * The pack's lifecycle hooks: code the app runs for it, and nothing else.
  *
- * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
+ * **A registration carries code; the manifest and the compiled builds carry facts.** So nothing here
  * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
  * from where the pack is installed, and what an apply leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
@@ -80,7 +80,7 @@ export interface PackFeature {
 
 export interface PackRegistration {
   id: string;
-  /** Generated bindings identify their declaration data; trusted host registrations have no artifact. */
+  /** Generated bindings identify their declaration data; trusted host registrations have no installed build. */
   declarationRevision?: string;
   /**
    * The pack's features by id. The app runs each at `<packId>/<featureId>` and derives the rest from here:

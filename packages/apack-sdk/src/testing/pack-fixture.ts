@@ -102,7 +102,7 @@ export interface PackFixtureOptions {
  * the installer's own helper: composition, not options, because both already take a directory. A `built: true`
  * option was considered and dropped for that reason — it would own a second way to call something that works.
  * The *installed* shape (a manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different
- * artifact whose layout `@apackdev/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
+ * build whose layout `@apackdev/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
  * layer rule keeps it.
  */
 export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules }: PackFixtureOptions = {}): string {

@@ -83,7 +83,7 @@ It works out which app to use rather than asking: the apack checkout your pack i
 and bundles the runtime and dependent-facing types. Settings definitions are inline in `apack.json`;
 forms remain custom components. The build checks its output before publishing `dist/`, preserving the
 previous build on failure. See [the build command](cli.md#building) for its gates and
-[pack artifacts](pack-artifacts.md) for the files it produces and installs.
+[pack artifacts](pack-builds.md) for the files it produces and installs.
 
 ## Build and distribute
 
@@ -150,7 +150,7 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 - **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@apackdev/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
 - **Content** — actions, prompts, flows and entity rows are compiled at build time and written when the pack loads. See [Content](content.md) for what action code may import.
-- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/artifacts/<revision>/runtime/fe.js`. This is handled automatically.
+- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/builds/<revision>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints
 

@@ -7,8 +7,8 @@ import { readAppPackSources } from '../../src/packs/app-sources.ts';
 import { createContributionCatalog } from '../../src/packs/catalog.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { installPackFromLocal, restoreShippedPack } from '../../src/packs/installer.ts';
-import { PACK_LAYOUT, readPackArtifact } from '../../src/packs/layout.ts';
-import { sealBuild, writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
+import { PACK_LAYOUT, readPackBuild } from '../../src/packs/layout.ts';
+import { sealBuild, writeInstalledPackFixture } from './runtime/build-fixture.ts';
 
 let tmp: string;
 let root: string;
@@ -44,7 +44,7 @@ describe('app-shipped source declarations', () => {
     expect(input.problems).toEqual([]);
     expect(input.sources).toMatchObject([{ id: 'default-pack', dir,
       sourceRevision: expect.stringMatching(/^[a-f0-9]{64}$/) }]);
-    expect(input.sources[0].files).toEqual(readPackArtifact(path.join(dir, 'dist')).integrity.files);
+    expect(input.sources[0].files).toEqual(readPackBuild(path.join(dir, 'dist')).integrity.files);
     expect(fs.statSync(receipt).mtimeMs).toBe(before);
     expect(fs.readdirSync(tmp).sort()).toEqual(['sources']);
   });
@@ -81,7 +81,7 @@ describe('app-shipped source declarations', () => {
     source('default');
     const catalog = createContributionCatalog({ schema: { type: 'object' }, defaults: {} });
     const fork = source('fork', 'default-pack', 'User fork');
-    const installed = readPackArtifact(path.join(fork, 'dist'));
+    const installed = readPackBuild(path.join(fork, 'dist'));
     catalog.replace([{ ...installed, dir: '/installed/default-pack', enabled: false }]);
     const settings = catalog.settings();
     fs.rmSync(fork, { recursive: true });
@@ -134,7 +134,7 @@ describe('app-shipped source declarations', () => {
     const records = path.join(tmp, 'installed-packs.json');
     await installPackFromLocal(dir, packs, { installedPacksFile: records });
     const before = fs.readFileSync(records, 'utf8');
-    const incumbent = readPackArtifact(path.join(packs, 'default-pack'));
+    const incumbent = readPackBuild(path.join(packs, 'default-pack'));
     const offer = readAppPackSources(root).sources[0];
     fs.appendFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), '\n// rebuilt');
     sealBuild(dir);
@@ -142,6 +142,6 @@ describe('app-shipped source declarations', () => {
       installedPacksFile: records, expectedSourceRevision: offer.sourceRevision,
     })).rejects.toThrow('changed before restoration acceptance');
     expect(fs.readFileSync(records, 'utf8')).toBe(before);
-    expect(readPackArtifact(path.join(packs, 'default-pack')).revision).toBe(incumbent.revision);
+    expect(readPackBuild(path.join(packs, 'default-pack')).revision).toBe(incumbent.revision);
   });
 });

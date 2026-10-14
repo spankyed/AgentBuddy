@@ -1,5 +1,5 @@
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-// The EARS names and partition policy of the packs installed in a data dir, read from validated artifacts without
+// The EARS names and partition policy of the packs installed in a data dir, read from validated builds without
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -9,7 +9,7 @@ import { readInstalledPacks } from '../packs/installed.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { PACK_LAYOUT } from '../packs/layout.ts';
-import { readInstalledPackArtifacts } from '../packs/discovery.ts';
+import { readInstalledPackBuilds } from '../packs/discovery.ts';
 
 /** What opening a database needs from the packs: which names are entity types, and where each type is stored */
 export interface DatabaseSchema {
@@ -62,14 +62,14 @@ function readJSON(file: string, what: string): unknown {
 }
 
 /**
- * Every enabled pack installed in the data dir, admitted through the common artifact reader: everything in `packsDir`
+ * Every enabled pack installed in the data dir, admitted through the common build reader: everything in `packsDir`
  * that the registry doesn't list as disabled, since the app registers a pack it hasn't listed yet as enabled.
  */
 function installedManifests({ packsDir, installedPacksFile }: SchemaContext): PackManifest[] {
   const disabled = new Set(readInstalledPacks(installedPacksFile, { strict: true }).filter(pack => !pack.enabled).map(pack => pack.id));
-  return readInstalledPackArtifacts(packsDir).filter(entry => !disabled.has(entry.id)).map(entry => {
-    if (!entry.artifact) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
-    return entry.artifact.snapshot.manifest;
+  return readInstalledPackBuilds(packsDir).filter(entry => !disabled.has(entry.id)).map(entry => {
+    if (!entry.build) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
+    return entry.build.snapshot.manifest;
   });
 }
 

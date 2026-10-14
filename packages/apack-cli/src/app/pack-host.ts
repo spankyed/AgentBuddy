@@ -287,7 +287,7 @@ export async function resolvePackHost(options: HostResolutionOptions): Promise<P
   return target;
 }
 
-/** Pin dependency resolution and execution to one artifact; discard inherited selection requests. */
+/** Pin dependency resolution and execution to one build; discard inherited selection requests. */
 export function setHostHandoff(host: PackHost, env: NodeJS.ProcessEnv): void {
   for (const key of ['APACK_HOST', 'APACK_APP', 'APACK_BUILD', 'APACK_CHANNEL', 'APACK_HOST_ROOT', 'APACK_HOST_EXECUTABLE']) delete env[key];
   if (host.kind === 'source') env.APACK_HOST_ROOT = host.root;

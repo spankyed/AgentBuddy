@@ -6,8 +6,8 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@
 import { resolveName } from '@apackdev/sdk/ids';
 import type { SettingsDefinition } from '@apackdev/sdk/framework';
 import { createContributionCatalog, readInstalledContributionCatalog } from '../../src/packs/catalog.ts';
-import { PACK_LAYOUT, readPackArtifact } from '../../src/packs/layout.ts';
-import { sealPack } from './runtime/artifact-fixture.ts';
+import { PACK_LAYOUT, readPackBuild } from '../../src/packs/layout.ts';
+import { sealPack } from './runtime/build-fixture.ts';
 
 const app: SettingsDefinition = { schema: { type: 'object', properties: { compact: { type: 'boolean' } }, required: ['compact'], additionalProperties: false }, defaults: { compact: false } };
 const group: SettingsDefinition = { schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false }, defaults: { name: '' } };
@@ -18,7 +18,7 @@ function source(id: string, enabled = true) {
 }
 
 describe('contribution catalog data', () => {
-  it('reads help and plugins from a disabled sealed artifact without executing its poisoned runtime', () => {
+  it('reads help and plugins from a disabled sealed build without executing its poisoned runtime', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');
     try {
@@ -36,8 +36,8 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), `throw new Error('Do not activate frontend');`);
       sealPack(dir);
       const catalog = readInstalledContributionCatalog(packsDir, new Set(['help-pack']));
-      const accepted = readPackArtifact(dir);
-      expect(catalog.get('help-pack')?.artifactRevision).toBe(accepted.revision);
+      const accepted = readPackBuild(dir);
+      expect(catalog.get('help-pack')?.buildRevision).toBe(accepted.revision);
       expect(catalog.get('help-pack')?.integrity?.files).toEqual(accepted.integrity.files);
       expect(() => {
         // @ts-expect-error The accepted asset receipt is immutable at the reader boundary.
@@ -200,7 +200,7 @@ describe('contribution catalog data', () => {
       sealPack(dir);
       const before = fs.readFileSync(file, 'utf8');
       const catalog = createContributionCatalog(app);
-      catalog.replace([{ snapshot: readPackArtifact(dir).snapshot, dir, enabled: false }]);
+      catalog.replace([{ snapshot: readPackBuild(dir).snapshot, dir, enabled: false }]);
       expect(catalog.packSettings('poisoned').assistant.defaults.name).toBe('');
       expect(catalog.featureSettings(resolveName('poisoned/notes'))?.defaults.name).toBe('');
       expect(fs.readFileSync(file, 'utf8')).toBe(before);

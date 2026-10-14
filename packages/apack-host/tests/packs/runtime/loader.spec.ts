@@ -1,4 +1,4 @@
-import { sealBuild, sealPack } from './artifact-fixture.ts';
+import { sealBuild, sealPack } from './build-fixture.ts';
 import { _declarationRevision, type PackManifest } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registry } from './test-host.ts';
@@ -16,7 +16,7 @@ import { PACK_SNAPSHOT_FORMAT, contentFile } from '@apackdev/sdk/build';
 import type { ApplyRecord } from '@apackdev/sdk/utils';
 import { recordInstalled, setPackEnabled, readInstalledPacks } from '../../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, readPackArtifact } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, readPackBuild } from '../../../src/packs/layout.ts';
 
 
 /** The features of a loaded pack that have a system */
@@ -271,10 +271,10 @@ describe('loadAppPacks deterministic registration', () => {
     sealBuild(source);
     registry.catalog.setAppPackSources(readAppPackSources(sources));
     const selected = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'a-custom', { id: 'a-custom', name: 'User fork', version: '2.0.0' });
-    const accepted = readPackArtifact(selected);
+    const accepted = readPackBuild(selected);
     loadAppPacks(registry);
     expect(registry.packOrigin('a-custom')).toMatchObject({ name: 'User fork', version: '2.0.0', dir: selected,
-      artifactRevision: accepted.revision, artifactFiles: accepted.integrity.files });
+      buildRevision: accepted.revision, buildFiles: accepted.integrity.files });
     expect(registry.catalog.getSnapshot().appPackSources[0].snapshot.manifest.name).toBe('App default');
   });
 
@@ -287,7 +287,7 @@ describe('loadAppPacks deterministic registration', () => {
     expect(loaded.map(pack => pack.origin.id)).toEqual(['a-custom']);
     expect(registry.loadProblem('z-default')).toContain('a-custom');
     expect(registry.loadProblem('z-default')).toContain('z-default');
-    expect(registry.packOrigin('a-custom')?.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
+    expect(registry.packOrigin('a-custom')?.buildRevision).toMatch(/^[a-f0-9]{64}$/);
   });
 });
 
@@ -446,7 +446,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(problems.get('changed-pack')).toContain('manifest does not match');
   });
 
-  it.each(['runtime/index.cjs', 'runtime/fe.js', 'runtime/content/settings.json'])('refuses changed artifact bytes before runtime execution: %s', file => {
+  it.each(['runtime/index.cjs', 'runtime/fe.js', 'runtime/content/settings.json'])('refuses changed build bytes before runtime execution: %s', file => {
     const dir = makeBundledPack('changed-bytes', 'globalThis.apackArtifactExecuted = true;');
     const target = path.join(dir, file);
     fs.writeFileSync(target, 'original bytes');
@@ -1104,33 +1104,33 @@ describe('loaded packs: accepted frontend assets', () => {
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
     sealPack(dir);
     const [accepted] = loadExternalPacks();
-    expect(accepted.origin.artifactRevision).toMatch(/^[a-f0-9]{64}$/);
-    expect(accepted.origin.artifactFiles?.[PACK_LAYOUT.feEntry]).toMatch(/^[a-f0-9]{64}$/);
+    expect(accepted.origin.buildRevision).toMatch(/^[a-f0-9]{64}$/);
+    expect(accepted.origin.buildFiles?.[PACK_LAYOUT.feEntry]).toMatch(/^[a-f0-9]{64}$/);
     expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, runtimeRevision: 'runtime' }) })[0]).toMatchObject({
-      id: 'identity', declarationRevision: accepted.origin.declarationRevision, artifactRevision: accepted.origin.artifactRevision,
+      id: 'identity', declarationRevision: accepted.origin.declarationRevision, buildRevision: accepted.origin.buildRevision,
       feEntry: PACK_LAYOUT.feEntry,
     });
   });
 
   it('lists every runtime using admitted membership, without reading the current filesystem', () => {
     const revision = 'a'.repeat(64);
-    const pack = (id: string, files: string[]) => ({ declarationRevision: 'fixture-revision', artifactRevision: revision,
-      artifactFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])),
+    const pack = (id: string, files: string[]) => ({ declarationRevision: 'fixture-revision', buildRevision: revision,
+      buildFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])),
       manifest: { id, name: id, version: '2.0.0' },
       id, name: id, version: '2.0.0', dir: '/not-an-installed-directory' });
     const origins = [pack('with-fe', [PACK_LAYOUT.feEntry, PACK_LAYOUT.feStyles]), pack('be-only', [])];
     const loaded = { loadedPacks: () => origins, getPackRuntime: (id: string) => { const origin = origins.find(pack => pack.id === id); return origin ? { origin, runtimeRevision: 'runtime' } : null; } };
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'with-fe', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'with-fe', version: '2.0.0', manifest: { id: 'with-fe', name: 'with-fe', version: '2.0.0' }, feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
-      { id: 'be-only', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', artifactRevision: revision, name: 'be-only', version: '2.0.0' },
+      { id: 'with-fe', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'with-fe', version: '2.0.0', manifest: { id: 'with-fe', name: 'with-fe', version: '2.0.0' }, feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
+      { id: 'be-only', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'be-only', version: '2.0.0' },
     ]);
   });
 
   it('hands the renderer an owned declaration copy rather than a mutable backend origin', () => {
     const manifest = { id: 'copy', name: 'Copy', version: '1.0.0' };
     const origin = { id: manifest.id, name: manifest.name, version: manifest.version, manifest,
-      declarationRevision: _declarationRevision(manifest), artifactRevision: 'a'.repeat(64),
-      artifactFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy' };
+      declarationRevision: _declarationRevision(manifest), buildRevision: 'a'.repeat(64),
+      buildFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy' };
     const loaded = { loadedPacks: () => [origin], getPackRuntime: () => ({ origin, runtimeRevision: 'runtime' }) };
     getLoadedPackEntries(loaded)[0].manifest!.name = 'Changed by reader';
     expect(manifest.name).toBe('Copy');
@@ -1149,7 +1149,7 @@ describe('loaded packs: accepted frontend assets', () => {
     expect(getLoadedPackEntries(loaded)).toEqual(previous);
     sealPack(dir);
     const [replacement] = loadExternalPacks();
-    expect(replacement.origin.artifactRevision).not.toBe(accepted.origin.artifactRevision);
+    expect(replacement.origin.buildRevision).not.toBe(accepted.origin.buildRevision);
     expect(getLoadedPackEntries({ loadedPacks: () => [replacement.origin], getPackRuntime: () => ({ origin: replacement.origin, runtimeRevision: 'replacement' }) })[0].feStyles).toBe(PACK_LAYOUT.feStyles);
     fs.rmSync(path.join(dir, PACK_LAYOUT.feEntry));
     expect(getLoadedPackEntries(loaded)).toEqual(previous);

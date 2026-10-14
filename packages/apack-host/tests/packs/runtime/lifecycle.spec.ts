@@ -1,5 +1,5 @@
-import { writeInstalledPackFixture } from './artifact-fixture.ts';
-import { sealBuild } from './artifact-fixture.ts';
+import { writeInstalledPackFixture } from './build-fixture.ts';
+import { sealBuild } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -18,7 +18,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { acceptInstalledPack } from '../../../src/packs/runtime/lifecycle.ts';
 import { loadSingleExternalPack } from '../../../src/packs/runtime/loader.ts';
-import { readPackArtifact } from '../../../src/packs/layout.ts';
+import { readPackBuild } from '../../../src/packs/layout.ts';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -97,7 +97,7 @@ describe('installed runtime acceptance', () => {
         fails ? 'TEARDOWN_PACK' : 'RELOAD_PACK', 'PACK_CHANGED',
       ]);
       expect(bus.send.mock.calls[0][0].systemIds).toEqual([`${id}/old`, `${id}/replacement`]);
-      expect(readPackArtifact(installed.dir).integrity.version).toBe('2.0.0');
+      expect(readPackBuild(installed.dir).integrity.version).toBe('2.0.0');
       if (fails) expect(isolated.getPackRegistration(id)).toBeNull();
       else expect(isolated.getRegisteredPackSystemIds(id)).toEqual([`${id}/replacement`]);
     } finally {
@@ -112,7 +112,7 @@ describe('installed runtime acceptance', () => {
     writeManifest(source, { id, name: id, version: '1.0.0' });
     writeBuild(source, id);
     const installed = await installPackFromLocal(source, packsDir());
-    const previousArtifact = readPackArtifact(installed.dir);
+    const previousArtifact = readPackBuild(installed.dir);
     const loaded = loadSingleExternalPack(installed.dir);
     if ('problem' in loaded) throw new Error(loaded.problem);
     const listeners = new Set<() => void>();
@@ -140,7 +140,7 @@ describe('installed runtime acceptance', () => {
       await expect(installPackFromLocal(source, packsDir(), { accept: candidate => {
         acceptInstalledPack(isolated, candidate.id, bus as never);
       } })).rejects.toThrow('late binding refused');
-      expect(readPackArtifact(installed.dir)).toEqual(previousArtifact);
+      expect(readPackBuild(installed.dir)).toEqual(previousArtifact);
       const restored = loadSingleExternalPack(installed.dir);
       expect(restored).not.toHaveProperty('problem');
       if ('problem' in restored) throw new Error(restored.problem);

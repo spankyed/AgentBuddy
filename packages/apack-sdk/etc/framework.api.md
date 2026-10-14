@@ -380,7 +380,7 @@ export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
 // @public (undocumented)
 export interface ReferenceCatalogEntry {
     // (undocumented)
-    readonly artifactRevision?: string;
+    readonly buildRevision?: string;
     // (undocumented)
     readonly declaration: DeclarationData<ReferenceDeclarations>;
     // (undocumented)

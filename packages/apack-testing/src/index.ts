@@ -84,7 +84,7 @@ function newestMtime(dir: string): number {
  * Refuses a packed archive older than the build it was supposed to come from.
  *
  * `PACK_ARCHIVE` is the one way past this fixture's rule that a pack is rebuilt before it is tested, and
- * the rule is there because a stale build tested silently is worse than no test. Installing the artifact
+ * the rule is there because a stale build tested silently is worse than no test. Installing the build
  * a release ships is a good reason to skip the rebuild; installing one from before the last change is
  * not, and the two look identical from the outside.
  */
@@ -436,7 +436,7 @@ export function createTest(options: CreateTestOptions = {}) {
           const packDir = path.resolve(process.env.PACK_DIR);
           const manifest = getPackManifest();
           if (!manifest) throw new Error(`No apack.json found in PACK_DIR: ${packDir}`);
-          // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the artifact a
+          // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the build a
           // release ships rather than another build of the same source. Everything else — the plugin ids
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
@@ -473,8 +473,8 @@ export function createTest(options: CreateTestOptions = {}) {
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
           // it does, at boot, naming which side is older. Nothing here can tell — the CLI that runs the fixture
-          // needn't be the app's, and inferring the app's format from an artifact it ships refuses good packs
-          // whenever that artifact is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
+          // needn't be the app's, and inferring the app's format from a build it ships refuses good packs
+          // whenever that build is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
           await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
         }
 

@@ -1,4 +1,4 @@
-import { sealBuild } from './runtime/artifact-fixture.ts';
+import { sealBuild } from './runtime/build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -16,13 +16,13 @@ import {
   packBuildProblem,
   packFileHashes,
   readPackSnapshot,
-  readPackArtifact,
+  readPackBuild,
   stagePack,
   verifyPack,
 } from '../../src/packs/layout.ts';
 import { installPack, installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { packArtifactRevision, readPackAsset } from '../../src/packs/assets.ts';
+import { packBuildRevision, readPackAsset } from '../../src/packs/assets.ts';
 
 let tmp: string;
 
@@ -180,14 +180,14 @@ describe('verifyPack', () => {
       const stage = path.join(tmp, 'stage');
       stagePack(builtPack(), stage);
       const info = readPackIntegrity(stage);
-      const revision = packArtifactRevision(info);
+      const revision = packBuildRevision(info);
       expect(readPackAsset(stage, 'demo-pack', revision, 'runtime/fe.js').toString()).toBe('export default {};');
       const changed = { ...info, formatVersion };
       fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(changed));
       expect(() => verifyPack(stage)).toThrow();
       // Match the malformed receipt's revision, so the format gate must reject it independently.
-      const changedRevision = packArtifactRevision(readPackIntegrity(stage));
-      expect(() => readPackAsset(stage, 'demo-pack', changedRevision, 'runtime/fe.js')).toThrow('artifact changed');
+      const changedRevision = packBuildRevision(readPackIntegrity(stage));
+      expect(() => readPackAsset(stage, 'demo-pack', changedRevision, 'runtime/fe.js')).toThrow('build changed');
     });
 
   it('accepts an untouched bundle', () => {
@@ -218,38 +218,38 @@ describe('verifyPack', () => {
   });
 });
 
-describe('installed artifact reader', () => {
+describe('installed build reader', () => {
   it('reads declarations and a content identity without executing a runtime', () => {
     const stage = path.join(tmp, 'stage');
     const root = builtPack();
     fs.writeFileSync(path.join(root, 'dist/runtime/index.cjs'), 'throw new Error("discovery executed the runtime");');
     sealBuild(root);
     stagePack(root, stage);
-    const artifact = readPackArtifact(stage);
-    expect(artifact.snapshot.manifest.id).toBe('demo-pack');
-    expect(artifact.revision).toMatch(/^[a-f0-9]{64}$/);
+    const build = readPackBuild(stage);
+    expect(build.snapshot.manifest.id).toBe('demo-pack');
+    expect(build.revision).toMatch(/^[a-f0-9]{64}$/);
     const copy = path.join(tmp, 'copy');
     fs.cpSync(stage, copy, { recursive: true });
     const integrity = readPackIntegrity(copy);
     integrity.files = Object.fromEntries(Object.entries(integrity.files).reverse());
     fs.writeFileSync(path.join(copy, 'integrity.json'), JSON.stringify(integrity));
-    expect(readPackArtifact(copy).revision).toBe(artifact.revision);
+    expect(readPackBuild(copy).revision).toBe(build.revision);
   });
 
   it('changes identity when different bytes are deliberately staged with the same declarations', () => {
     const stage = path.join(tmp, 'stage');
     const root = builtPack();
     stagePack(root, stage);
-    const before = readPackArtifact(stage);
+    const before = readPackBuild(stage);
     fs.appendFileSync(path.join(root, 'dist/runtime/index.cjs'), '\n// new build');
     sealBuild(root);
     stagePack(root, stage);
-    const after = readPackArtifact(stage);
+    const after = readPackBuild(stage);
     expect(after.snapshot.declarationRevision).toBe(before.snapshot.declarationRevision);
     expect(after.revision).not.toBe(before.revision);
   });
 
-  it('refuses declarations captured before a different valid artifact replaced them', () => {
+  it('refuses declarations captured before a different valid build replaced them', () => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);
     const read = fs.readFileSync;
@@ -258,7 +258,7 @@ describe('installed artifact reader', () => {
       if (file === path.join(stage, 'integrity.json') && !replaced) {
         replaced = true;
         const snapshot = JSON.parse(read(path.join(stage, 'types/snapshot.json'), 'utf8'));
-        snapshot.manifest.name = 'New artifact';
+        snapshot.manifest.name = 'New build';
         snapshot.declarationRevision = _declarationRevision(snapshot.manifest);
         fs.writeFileSync(path.join(stage, 'types/snapshot.json'), JSON.stringify(snapshot));
         fs.writeFileSync(path.join(stage, 'apack.json'), JSON.stringify(snapshot.manifest));
@@ -269,9 +269,9 @@ describe('installed artifact reader', () => {
     });
     syncBuiltinESMExports();
     try {
-      expect(() => readPackArtifact(stage)).toThrow('Captured declarations do not match');
+      expect(() => readPackBuild(stage)).toThrow('Captured declarations do not match');
       expect(replaced).toBe(true);
-      expect(readPackArtifact(stage).snapshot.manifest.name).toBe('New artifact');
+      expect(readPackBuild(stage).snapshot.manifest.name).toBe('New build');
     } finally {
       spy.mockRestore();
       syncBuiltinESMExports();
@@ -283,7 +283,7 @@ describe('installed artifact reader', () => {
     stagePack(builtPack(), stage);
     const integrity = readPackIntegrity(stage);
     fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify({ ...integrity, id: 'another-pack' }));
-    expect(() => readPackArtifact(stage)).toThrow('identity does not match');
+    expect(() => readPackBuild(stage)).toThrow('identity does not match');
   });
 
   it.each(['id', 'version'] as const)('refuses mismatched integrity %s before replacing an installed pack', async field => {
@@ -307,21 +307,21 @@ describe('installed artifact reader', () => {
     const integrity = readPackIntegrity(stage);
     integrity.files[file] = 'a'.repeat(64);
     fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
-    expect(() => readPackArtifact(stage)).toThrow(`invalid checksum entry ${file}`);
+    expect(() => readPackBuild(stage)).toThrow(`invalid checksum entry ${file}`);
   });
 
   it.each([null, [], {}, { files: {} }])('refuses malformed integrity data: %j', integrity => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);
     fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
-    expect(() => readPackArtifact(stage)).toThrow('Invalid integrity.json');
+    expect(() => readPackBuild(stage)).toThrow('Invalid integrity.json');
   });
 
   it('refuses unrecorded symbolic links instead of silently omitting them', () => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);
     fs.symlinkSync('index.cjs', path.join(stage, 'runtime/linked.cjs'));
-    expect(() => readPackArtifact(stage)).toThrow('symbolic link: runtime/linked.cjs');
+    expect(() => readPackBuild(stage)).toThrow('symbolic link: runtime/linked.cjs');
   });
 
   it('records an own __proto__ file name instead of losing it to object assignment', () => {
@@ -332,7 +332,7 @@ describe('installed artifact reader', () => {
     integrity.files = packFileHashes(stage);
     expect(Object.hasOwn(integrity.files, '__proto__')).toBe(true);
     fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify(integrity));
-    expect(readPackArtifact(stage).integrity.files.__proto__).toBe(sha256File(path.join(stage, '__proto__')));
+    expect(readPackBuild(stage).integrity.files.__proto__).toBe(sha256File(path.join(stage, '__proto__')));
   });
 });
 
@@ -364,7 +364,7 @@ describe('verified installation candidate', () => {
   it.each(['unsealed-change', 'valid-replacement', 'changed-provenance'])('refuses %s during copying before teardown or replacement', async kind => {
     const packsDir = path.join(tmp, 'packs');
     const installed = await installPackFromLocal(builtPack(), packsDir);
-    const before = readPackArtifact(installed.dir).revision;
+    const before = readPackBuild(installed.dir).revision;
     const source = path.join(tmp, 'incoming-layout');
     stagePack(builtPack({ version: '2.0.0' }), source);
     const copy = fs.cpSync;
@@ -384,7 +384,7 @@ describe('verified installation candidate', () => {
       await expect(installPackFromLocal(source, packsDir, { beforePlace })).rejects.toThrow(
         kind === 'unsealed-change' ? 'checksum mismatch runtime/index.cjs' : 'Pack changed while preparing installation');
       expect(beforePlace).not.toHaveBeenCalled();
-      expect(readPackArtifact(installed.dir).revision).toBe(before);
+      expect(readPackBuild(installed.dir).revision).toBe(before);
       expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
     } finally { spy.mockRestore(); syncBuiltinESMExports(); }
   });
@@ -392,7 +392,7 @@ describe('verified installation candidate', () => {
   it('keeps the verified candidate independent of changes to the source during teardown', async () => {
     const source = path.join(tmp, 'incoming-layout');
     stagePack(builtPack(), source);
-    const expected = readPackArtifact(source);
+    const expected = readPackBuild(source);
     const result = await installPackFromLocal(source, path.join(tmp, 'packs'), { beforePlace: manifest => {
       expect(manifest.id).toBe(expected.snapshot.manifest.id);
       fs.appendFileSync(path.join(source, 'runtime/index.cjs'), '\n// changed after candidate acceptance');
@@ -400,15 +400,15 @@ describe('verified installation candidate', () => {
       receipt.files = packFileHashes(source);
       fs.writeFileSync(path.join(source, 'integrity.json'), JSON.stringify(receipt));
     } });
-    expect(readPackArtifact(result.dir).revision).toBe(expected.revision);
+    expect(readPackBuild(result.dir).revision).toBe(expected.revision);
     expect(result.integrity).toEqual(expected.integrity);
-    expect(readPackArtifact(source).revision).not.toBe(expected.revision);
+    expect(readPackBuild(source).revision).not.toBe(expected.revision);
   });
 
   it.each(['hostVersion', 'id'] as const)('checks copied %s when the source changed after its initial hint was read', async field => {
     const packsDir = path.join(tmp, 'packs');
     const installed = await installPackFromLocal(builtPack(), packsDir);
-    const before = readPackArtifact(installed.dir).revision;
+    const before = readPackBuild(installed.dir).revision;
     const source = path.join(tmp, 'incoming-layout');
     stagePack(builtPack({ version: '2.0.0' }), source);
     const read = fs.readFileSync;
@@ -436,8 +436,8 @@ describe('verified installation candidate', () => {
       await expect(installPackFromLocal(source, packsDir, { hostVersion: '0.3.14', beforePlace })).rejects.toThrow(field === 'hostVersion' ? '>=9.0.0' : 'Pack identity changed');
       expect(changed).toBe(true);
       expect(beforePlace).not.toHaveBeenCalled();
-      expect(readPackArtifact(source).snapshot.manifest[field]).toBe(field === 'hostVersion' ? '>=9.0.0' : 'other-pack');
-      expect(readPackArtifact(installed.dir).revision).toBe(before);
+      expect(readPackBuild(source).snapshot.manifest[field]).toBe(field === 'hostVersion' ? '>=9.0.0' : 'other-pack');
+      expect(readPackBuild(installed.dir).revision).toBe(before);
       expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
     } finally { spy.mockRestore(); syncBuiltinESMExports(); }
   });
@@ -445,7 +445,7 @@ describe('verified installation candidate', () => {
   it('does not let hook-owned metadata edits change the installation target or result', async () => {
     const source = path.join(tmp, 'incoming-layout');
     stagePack(builtPack({ dependencies: { dep: '*' } }), source);
-    const expected = readPackArtifact(source);
+    const expected = readPackBuild(source);
     const result = await installPackFromLocal(source, path.join(tmp, 'packs'), { beforePlace: manifest => {
       const editable = manifest as { id: string; version: string; dependencies: Record<string, string> };
       editable.id = '../outside';
@@ -456,44 +456,44 @@ describe('verified installation candidate', () => {
     expect(result.version).toBe('1.2.3');
     expect(result.missingDependencies).toEqual(['dep']);
     expect(result.dir).toBe(path.join(tmp, 'packs/demo-pack'));
-    expect(readPackArtifact(result.dir).revision).toBe(expected.revision);
+    expect(readPackBuild(result.dir).revision).toBe(expected.revision);
     expect(fs.existsSync(path.join(tmp, 'outside'))).toBe(false);
   });
 
-  it('cleans the private candidate and retains the installed artifact if teardown refuses', async () => {
+  it('cleans the private candidate and retains the installed build if teardown refuses', async () => {
     const packsDir = path.join(tmp, 'packs');
     const installed = await installPackFromLocal(builtPack(), packsDir);
-    const before = readPackArtifact(installed.dir).revision;
+    const before = readPackBuild(installed.dir).revision;
     await expect(installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { beforePlace: () => {
       throw new Error('teardown refused');
     } })).rejects.toThrow('teardown refused');
-    expect(readPackArtifact(installed.dir).revision).toBe(before);
+    expect(readPackBuild(installed.dir).revision).toBe(before);
     expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
   });
 });
 
 describe('installation acceptance', () => {
-  it('keeps the prior verified artifact when runtime acceptance refuses a replacement', async () => {
+  it('keeps the prior verified build when runtime acceptance refuses a replacement', async () => {
     const packsDir = path.join(tmp, 'packs');
     const installed = await installPackFromLocal(builtPack(), packsDir);
-    const previous = readPackArtifact(installed.dir);
+    const previous = readPackBuild(installed.dir);
     const accept = vi.fn(candidate => {
       expect(candidate).toMatchObject({ id: installed.id, version: '2.0.0', dir: installed.dir });
-      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
-      expect(readPackArtifact(candidate.dir).revision).not.toBe(previous.revision);
+      expect(readPackBuild(candidate.dir).integrity).toEqual(candidate.integrity);
+      expect(readPackBuild(candidate.dir).revision).not.toBe(previous.revision);
       throw new Error('runtime registration refused');
     });
     await expect(installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { accept }))
       .rejects.toThrow('runtime registration refused');
     expect(accept).toHaveBeenCalledOnce();
-    expect(readPackArtifact(installed.dir)).toEqual(previous);
+    expect(readPackBuild(installed.dir)).toEqual(previous);
     expect(fs.readdirSync(packsDir)).toEqual([installed.id]);
   });
 
   it('removes a refused first installation', async () => {
     const packsDir = path.join(tmp, 'packs');
     await expect(installPackFromLocal(builtPack(), packsDir, { accept: candidate => {
-      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
+      expect(readPackBuild(candidate.dir).integrity).toEqual(candidate.integrity);
       throw new Error('runtime registration refused');
     } })).rejects.toThrow('runtime registration refused');
     expect(fs.readdirSync(packsDir)).toEqual([]);
@@ -503,12 +503,12 @@ describe('installation acceptance', () => {
     const packsDir = path.join(tmp, 'packs');
     await installPackFromLocal(builtPack(), packsDir);
     const result = await installPackFromLocal(builtPack({ version: '2.0.0' }), packsDir, { accept: candidate => {
-      expect(readPackArtifact(candidate.dir).integrity).toEqual(candidate.integrity);
+      expect(readPackBuild(candidate.dir).integrity).toEqual(candidate.integrity);
       candidate.integrity.files['runtime/index.cjs'] = 'callback mutation';
       candidate.missingDependencies.push('callback mutation');
       return undefined;
     } });
-    expect(result.integrity).toEqual(readPackArtifact(result.dir).integrity);
+    expect(result.integrity).toEqual(readPackBuild(result.dir).integrity);
     expect(result.missingDependencies).toEqual([]);
     expect(result.version).toBe('2.0.0');
     expect(fs.readdirSync(packsDir)).toEqual([result.id]);
@@ -540,7 +540,7 @@ describe('installPackFromLocal (pack layout path)', () => {
   it.each([
     ['source', undefined], ['source', PACK_SNAPSHOT_FORMAT],
     ['layout', undefined], ['layout', PACK_SNAPSHOT_FORMAT],
-  ] as const)('retains an installed artifact and skips teardown when a %s has mismatched declarations (app format %s)', async (kind, packFormat) => {
+  ] as const)('retains an installed build and skips teardown when a %s has mismatched declarations (app format %s)', async (kind, packFormat) => {
     const packsDir = path.join(tmp, 'packs');
     const installed = await installPackFromLocal(builtPack(), packsDir);
     const before = packFileHashes(installed.dir);

@@ -10,7 +10,7 @@ afterEach(() => unbindFeHost());
 describe('frontend reference declaration access', () => {
   it('reads disabled metadata from the declaration catalog without consulting executable lookups', () => {
     const declarations: ReferenceCatalogEntry[] = [{ packId: 'cold-pack', featureRef: resolveName('notes', 'cold-pack'),
-      origin: 'installed', enabled: false, declarationRevision: 'decl', artifactRevision: 'artifact', declaration: {
+      origin: 'installed', enabled: false, declarationRevision: 'decl', buildRevision: 'artifact', declaration: {
         types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'never-execute.ts#open' } },
         categories: { notes: { label: 'Cold Notes', icon: 'NotebookText', useItems: 'never-execute.ts#useItems' } },
       } }];

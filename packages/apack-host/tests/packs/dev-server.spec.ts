@@ -1,4 +1,4 @@
-import { sealBuild } from './runtime/artifact-fixture.ts';
+import { sealBuild } from './runtime/build-fixture.ts';
 // `apack pack dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
 import * as fs from 'node:fs';
 import * as os from 'node:os';

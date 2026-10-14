@@ -10,7 +10,7 @@ export interface ReferenceCatalogEntry {
   readonly origin: 'native' | 'installed' | 'source';
   readonly declaration: DeclarationData<ReferenceDeclarations>;
   readonly declarationRevision?: string;
-  readonly artifactRevision?: string;
+  readonly buildRevision?: string;
   readonly enabled?: boolean;
 }
 

@@ -1,4 +1,4 @@
-import { sealPack } from './artifact-fixture.ts';
+import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import './test-host.ts';

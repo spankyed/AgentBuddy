@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { PACK_LAYOUT } from '../../src/packs/layout.ts';
-import { sealPack } from './runtime/artifact-fixture.ts';
+import { sealPack } from './runtime/build-fixture.ts';
 
 let packsDir: string;
 beforeEach(() => { packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-settings-discovery-')); });

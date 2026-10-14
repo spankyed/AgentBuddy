@@ -1,4 +1,4 @@
-# Pack artifacts
+# Pack builds
 
 `apack.json` owns authored declarations. Pack-root-relative module paths identify source used by the
 build; installed discovery reads the built declarations without importing those modules or requiring
@@ -11,7 +11,7 @@ keeps an entity untyped. See the [manifest reference](manifest.md).
 | Completed build | `dist/apack.json`, `dist/types/snapshot.json` and `dist/integrity.json`, alongside built runtime and dependent-facing files. Publication replaces `dist/` after all checks succeed. |
 | Release archive / installed pack | The staged pack layout below, without the `dist/` prefix. Staging verifies producer bytes, omits source maps and build-only standalone editor definitions, and verifies the copied result. Installation requires no source checkout or `node_modules` inside the pack. |
 | App-shipped pack | The same staged layout. The app installs it into the profile's packs directory before discovery. Installation ownership and deliberate replacement are distinct from native composition. |
-| Native host composition | Host-supplied declaration data and separately checked executable registrations. There is no installed directory, file-integrity receipt or invented artifact revision. Native dependency declarations use version ranges, rather than authored file/GitHub source locators. |
+| Native host composition | Host-supplied declaration data and separately checked executable registrations. There is no installed directory, file-integrity receipt or invented build revision. Native dependency declarations use version ranges, rather than authored file/GitHub source locators. |
 
 Build paths below are relative to `dist/`; archive and installed paths are relative to the pack directory.
 Optional files exist only when the build produces that contribution.
@@ -41,7 +41,7 @@ output. `PACK_TYPES_FACADE` names the `pack-types` entry without changing its ph
 Three identities serve different boundaries:
 
 - **Declaration revision:** identifies the declared contract shared by snapshot and generated bindings.
-- **Artifact revision:** identifies the verified installed file inventory; copying or replacing bytes must preserve or change this identity accordingly.
+- **Build revision:** identifies the verified installed file inventory; copying or replacing bytes must preserve or change this identity accordingly.
 - **Runtime revision:** host-issued identity for a particular accepted runtime. Reloading identical files can create a new runtime revision.
 
 Metadata availability does not imply execution readiness. Disabled or failed packs can retain readable

@@ -26,7 +26,7 @@ profile's installation record file and runs before installed-pack discovery.
 - New defaults are app-managed. User-owned copies remain untouched; deliberately removed defaults stay
   absent through `suppressAppInstall`. Disabling keeps files and declarations and changes eligibility.
 - App-owned refresh compares the recorded `shippedRevision` with the current source's published-file
-  identity. Unchanged sources do not repair edited installed files; ordinary artifact admission diagnoses them.
+  identity. Unchanged sources do not repair edited installed files; ordinary build admission diagnoses them.
 - Plain live install refuses advertised default ids even when disabled, absent or failed. Explicit replace
   chooses user ownership; restore selects verified app bytes, enables the pack and resumes app ownership.
   All installed packs can be disabled or removed. The host is native and cannot be installed/removed.
@@ -40,14 +40,14 @@ profile's installation record file and runs before installed-pack discovery.
 - **Discovery** — `discoverPacks(packsDir)` plus the `installed-packs.json` rows, minus the disabled.
 - **Order** — deterministic pack-id order, with no advertisement/ownership priority. Contribution conflicts name both owners; dependency content order is handled separately by `packContentTargets`.
 - **Loading** — `runtime/index.cjs` in the pack's own installed directory, written by its `apack pack build`, required with `withHostResolution()`. The api bundle carries no pack's backend, so this is the path packaged and from source alike.
-- Before loading code, `readPackArtifact` validates declarations and verifies the complete installed file inventory. Changed/missing/extra files, malformed checksums and symbolic links are refused. The accepted content identity is retained in the pack origin separately from its declaration revision.
+- Before loading code, `readPackBuild` validates declarations and verifies the complete installed file inventory. Changed/missing/extra files, malformed checksums and symbolic links are refused. The accepted content identity is retained in the pack origin separately from its declaration revision.
 - A pack with no built runtime, or one whose load throws, has a **load problem recorded** and the rest load.
 - Each loaded module's `setCompiledDir(<pack>/runtime/content)` is called, then `registry.registerPack(mod.registration)`.
 
 ### Installed packs
 
 `loadExternalPacks(registry?)`:
-1. Reads visible installed directories through `readInstalledPackArtifacts()`: validated snapshots, complete asset receipts and directory/manifest owner agreement, or an explicit refusal; no executable imports
+1. Reads visible installed directories through `readInstalledPackBuilds()`: validated snapshots, complete asset receipts and directory/manifest owner agreement, or an explicit refusal; no executable imports
 2. Prunes records only when their directories are gone (`forgetPacksExcept()`); invalid artifacts retain user choices and update provenance. Takes enabled directories, shipped IDs first
 3. Loads each enabled pack with `loadSingleExternalPack(dir)`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
@@ -75,7 +75,7 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 
 | File | Purpose |
 |------|---------|
-| `discovery.ts` | `readInstalledPackArtifacts`, `discoverPacks`, `installedPacks` |
+| `discovery.ts` | `readInstalledPackBuilds`, `discoverPacks`, `installedPacks` |
 | `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`replacePack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Candidate admission and atomic runtime replacement |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, commands, shutdown hooks |
 | `installed.ts` | `installed-packs.json` CRUD |
@@ -195,7 +195,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 `teardownPack(registry, packId, bus)` — runs the pack's shutdown hooks, clears its load problem, `unregisterPack()` (which drops everything the pack registered, its appliers included, and the cached event validation map and partition policy), clears the pack's require cache, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED`. System ids come from the lifecycle lookup, not runtime discovery metadata. The packs system emits `PACK_DEACTIVATED`.
 
-`acceptInstalledPack` runs inside the installer's synchronous acceptance callback: clear the candidate module cache, load/check the final-path artifact and register it (or `replacePack` when an incumbent exists). Refusal clears candidate modules and lets the installer restore the old files without stopping actors or changing install records. The returned starter runs only after filesystem acceptance: retire old shutdown hooks, refresh declarations, initialize/migrate/apply, then restart the union of old and new systems through `RELOAD_PACK` before publishing `PACK_CHANGED`. Initialization failure unregisters the accepted runtime, stops affected actors and reports a load problem; accepted files remain, and arbitrary data effects are not rolled back. New activations use the same startup implementation. Disabled updates replace their artifact and catalog definitions without starting a runtime. Install reserves the source during download and the resolved pack id before placement; update reserves the pack id throughout download and acceptance.
+`acceptInstalledPack` runs inside the installer's synchronous acceptance callback: clear the candidate module cache, load/check the final-path build and register it (or `replacePack` when an incumbent exists). Refusal clears candidate modules and lets the installer restore the old files without stopping actors or changing install records. The returned starter runs only after filesystem acceptance: retire old shutdown hooks, refresh declarations, initialize/migrate/apply, then restart the union of old and new systems through `RELOAD_PACK` before publishing `PACK_CHANGED`. Initialization failure unregisters the accepted runtime, stops affected actors and reports a load problem; accepted files remain, and arbitrary data effects are not rolled back. New activations use the same startup implementation. Disabled updates replace their build and catalog definitions without starting a runtime. Install reserves the source during download and the resolved pack id before placement; update reserves the pack id throughout download and acceptance.
 
 ### Reload (`reload.ts`)
 
@@ -227,7 +227,7 @@ and may retry on a later load request; it is never announced ready. Reconnection
 ## External pack FE entry convention
 
 The `packs.loaded` query reports accepted `feEntry` and `feStyles` receipt members, declaration identity
-and artifact identity. Installed modules and styles use `pack://{packId}/artifacts/{artifactRevision}/…`,
+and build identity. Installed modules and styles use `pack://{packId}/builds/{buildRevision}/…`,
 so relative chunks inherit that same revision. The main protocol verifies the requested receipt and exact
 file bytes; it never serves a changed file or substitutes a shipped copy. Development source delivery is
 explicit and uses its own module graph.

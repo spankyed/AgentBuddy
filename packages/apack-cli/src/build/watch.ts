@@ -61,7 +61,7 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
   };
 }
 
-/** Every edit publishes the same complete artifact as a normal build, then requests reload. */
+/** Every edit publishes the same complete build as a normal build, then requests reload. */
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
   const packId = readValidManifest(root).id;
   let closed = false;

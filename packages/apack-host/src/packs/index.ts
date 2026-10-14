@@ -49,11 +49,13 @@ export type { ReleaseCandidate } from './updater.ts';
 // Pack layout (build output, release archive and installed layout)
 export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
-  sealPackBuild, stagePack, verifyPack, readPackIntegrity, readPackArtifact, isPackLayout,
+  sealPackBuild, stagePack, verifyPack, readPackIntegrity, readPackBuild, isPackLayout,
   packFrontendFiles,
-  packArtifactRevision, readPackAsset,
+  packBuildRevision, readPackAsset,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
   staleBuildOutput,
 } from './layout.ts';
-export type { PackIntegrity, PackArtifact, LoadedPackEntry } from './layout.ts';
+export type { PackIntegrity, PackBuild, LoadedPackEntry } from './layout.ts';
+export { cacheDependency, readCachedDependency, readDependencyBuild } from './dependency-cache.ts';
+export type { DependencyOrigin, DependencyResolution, CachedDependencyBuild } from './dependency-cache.ts';

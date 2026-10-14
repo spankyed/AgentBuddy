@@ -6,22 +6,22 @@ import { getAppEnvironment } from '../../app-environment.ts';
 import { readPackAsset } from '@apackdev/host/packs/assets';
 
 /** Revision in the URL base also qualifies relative chunks, styles and their assets. */
-export function packRequestTarget(requestUrl: string): { packId: string; artifactRevision: string; filePath: string } | null {
+export function packRequestTarget(requestUrl: string): { packId: string; buildRevision: string; filePath: string } | null {
   try {
     const url = new URL(requestUrl);
     if (url.protocol !== 'pack:' || !/^[a-z][a-z0-9-]*$/.test(url.hostname)
       || url.username || url.password || url.port) return null;
-    const match = /^\/artifacts\/([a-f0-9]{64})\/(.+)$/.exec(decodeURIComponent(url.pathname));
-    return match ? { packId: url.hostname, artifactRevision: match[1], filePath: match[2] } : null;
+    const match = /^\/builds\/([a-f0-9]{64})\/(.+)$/.exec(decodeURIComponent(url.pathname));
+    return match ? { packId: url.hostname, buildRevision: match[1], filePath: match[2] } : null;
   } catch { return null; }
 }
 
-/** Installed assets have one owner/root and must match the artifact the caller accepted. */
-export function readPackFile({ packsDir, packId, artifactRevision, filePath }: {
-  packsDir: string; packId: string; artifactRevision: string; filePath: string;
+/** Installed assets have one owner/root and must match the build the caller accepted. */
+export function readPackFile({ packsDir, packId, buildRevision, filePath }: {
+  packsDir: string; packId: string; buildRevision: string; filePath: string;
 }): Buffer {
   if (!/^[a-z][a-z0-9-]*$/.test(packId)) throw new Error('Invalid pack id');
-  return readPackAsset(path.join(packsDir, packId), packId, artifactRevision, filePath);
+  return readPackAsset(path.join(packsDir, packId), packId, buildRevision, filePath);
 }
 
 export const MIME_TYPES: Record<string, string> = {

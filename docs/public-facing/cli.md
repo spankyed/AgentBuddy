@@ -110,7 +110,7 @@ Read `apack.json` and generate all files in `src/__generated__/`. Uses input has
 
 #### `apack pack fetch-deps`
 
-Resolve every dependency and cache its snapshot, build code and backend runtime in `.apack/deps/<id>/`. Resolution order:
+Resolve every dependency into `.apack/deps/<id>/`: a resolution record retains the declared spec, exact version, origin and content revision; immutable builds retain the complete verified pack layout. Resolution order:
 
 1. Explicit `file:` dependencies: read directly, with no fallback
 2. A selected host's own dependency artifacts, when `APACK_HOST` or the CLI's resolved host handoff is present
@@ -118,9 +118,9 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 4. The linked checkout when no host was explicitly selected
 5. Installed app packs, then cached artifacts or GitHub releases as applicable
 
-Every source must satisfy the declared range and snapshot format. A selected host's unbuilt or
+Every source must satisfy the declared range and pack identity. Current type data can be inspected independently of its executable-format stamp. Executable files require a matching stamp and a verified complete build; type-only data exposes no executable paths. A selected host's unbuilt or
 incompatible dependency fails rather than being replaced by another workspace or app. Explicit
-`file:` dependencies remain authoritative. `apack pack build` uses the same resolution rules;
+`file:` dependencies remain authoritative and are copied into a verified cache artifact for builds and tests. A cache hit preserves its original provenance; changed GitHub origins cannot reuse another repository’s cached resolution. Publication keeps previously resolved artifact paths intact. `apack pack build` uses the same resolution rules;
 see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 ### Building
@@ -129,7 +129,7 @@ see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 A build writes a verified pack layout into a staging directory, then replaces `dist/` only after
 all phases succeed. A failed build preserves the previous complete `dist/`. See
-[pack artifacts](pack-artifacts.md) for the build, archive, installed and native layouts.
+[pack artifacts](pack-builds.md) for the build, archive, installed and native layouts.
 
 The build:
 
@@ -154,8 +154,8 @@ modules outside `src/`, JSON schemas, assets and help. Generated, build, depende
 excluded. Linked authored data is watched through atomic replacement and retargeting; executable
 module references still must remain physically inside the pack. It publishes through the same staged
 build before requesting development-host reload;
-invalid edits retain the previous verified artifact. Saves during a build schedule another run.
-`--watch` cannot be combined with other build flags. This builds the complete artifact and can take
+invalid edits retain the previous verified build. Saves during a build schedule another run.
+`--watch` cannot be combined with other build flags. This builds the complete build and can take
 longer than rebundling only the runtime. `apack pack dev` uses this watcher and installs each successful
 publication before reloading; Vite continues serving frontend changes.
 
@@ -560,7 +560,7 @@ A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside i
 #### `apack pack replace <id> <source> [--profile <name>]`
 
 Deliberately replace the named pack using any source supported by `pack install`. The incoming
-manifest must claim that exact ID. The installed artifact becomes user-managed, so app refreshes
+manifest must claim that exact ID. The installed build becomes user-managed, so app refreshes
 preserve it. An advertised app-default ID or app-managed incumbent refuses ordinary `pack install` and points to this command.
 Replacement can also fill an explicitly named missing slot; it preserves stored database overrides.
 
@@ -570,7 +570,7 @@ apack pack replace default-setup ./my-default-setup
 
 #### `apack pack restore <id> --host <path|beta> [--profile <name>]`
 
-Restore a pack from the selected app's shipped artifacts, re-enable it and resume app-managed updates.
+Restore a pack from the selected app's shipped builds, re-enable it and resume app-managed updates.
 This clears deliberate-removal suppression and preserves stored settings/content overrides.
 
 ```bash

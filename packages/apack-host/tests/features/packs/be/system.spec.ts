@@ -1,5 +1,5 @@
 import { _packEntityTypes } from '@apackdev/sdk/framework';
-import { writeInstalledPackFixture, sealPack, sealBuild } from '../../../packs/runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture, sealPack, sealBuild } from '../../../packs/runtime/build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -18,7 +18,7 @@ import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { readPackArtifact, createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
+import { readPackBuild, createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
 import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
@@ -219,7 +219,7 @@ describe('app-default installation intent and lifecycle', () => {
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
       const installed = path.join(resolveAppEnvironment().packsDir, PACK_ID);
       if (kind === 'absent' || kind === 'invalid-source') expect(fs.existsSync(installed)).toBe(false);
-      else expect(readPackArtifact(installed).snapshot.manifest.version).toBe('1.0.0');
+      else expect(readPackBuild(installed).snapshot.manifest.version).toBe('1.0.0');
     } finally { system.stop(); }
   });
 
@@ -257,11 +257,11 @@ describe('app-default installation intent and lifecycle', () => {
       await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(2));
       expect(readInstalledPacks().find(record => record.id === PACK_ID)?.updatesWith).toBe('user');
       expect(registry.getPackRuntime(PACK_ID)!.runtimeRevision).not.toBe(initialRevision);
-      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('2.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('2.0.0');
       system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
       await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(3));
       expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ updatesWith: 'app', enabled: true });
-      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_INSTALL_FAILED');
     } finally { system.stop(); }
   });
@@ -282,7 +282,7 @@ describe('app-default installation intent and lifecycle', () => {
       expect(registry.getPackRuntime(PACK_ID)).toEqual(before);
       expect(readInstalledPacks()).toEqual(record);
       expect(registry.catalog.getSnapshot().appPackSources[0].sourceRevision).toBe(source.sourceRevision);
-      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
     } finally { system.stop(); }
   });
 });
@@ -351,7 +351,7 @@ describe('pack information without activation', () => {
     const marker = path.join(tmpDir, 'executed');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
     sealPack(dir);
-    expect(() => readPackArtifact(dir)).not.toThrow();
+    expect(() => readPackBuild(dir)).not.toThrow();
     setPackEnabled(PACK_ID, kind !== 'disabled');
     if (kind === 'activation-failed') {
       const bus = createActor(setup({}).createMachine({})).start();
@@ -570,7 +570,7 @@ describe('installing over a pack that is already running', () => {
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
     const previous = registry.getPackRuntime(PACK_ID);
     const registration = registry.getPackRegistration(PACK_ID);
-    const artifact = readPackArtifact(installed.dir);
+    const artifact = readPackBuild(installed.dir);
     const records = readInstalledPacks();
     const system = runPacksSystem();
     try {
@@ -578,7 +578,7 @@ describe('installing over a pack that is already running', () => {
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
       expect(registry.getPackRegistration(PACK_ID)).toBe(registration);
       expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
-      expect(readPackArtifact(installed.dir)).toEqual(artifact);
+      expect(readPackBuild(installed.dir)).toEqual(artifact);
       expect(readInstalledPacks()).toEqual(records);
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
       expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
@@ -604,7 +604,7 @@ describe('installing over a pack that is already running', () => {
         packSlug: b, error: expect.stringContaining('Operation already in progress'),
       });
       expect(registry.packOrigin(PACK_ID)?.version).toBe('2.0.0');
-      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
     } finally { system.stop(); }
   });
 
@@ -624,7 +624,7 @@ describe('installing over a pack that is already running', () => {
       });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
-      expect(readPackArtifact(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
       expect(system.sent.map(e => e.type)).toContain('PACK_CHANGED');
     } finally { system.stop(); }
   });
@@ -813,7 +813,7 @@ describe('app-source update offers and acceptance', () => {
       system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
       await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_COMPLETE'));
       expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ enabled, updatesWith: 'app', shippedRevision: source.sourceRevision });
-      expect(readPackArtifact(installed()).snapshot.manifest.version).toBe('2.0.0');
+      expect(readPackBuild(installed()).snapshot.manifest.version).toBe('2.0.0');
       expect(registry.catalog.get(PACK_ID)?.enabled).toBe(enabled);
       if (!enabled) {
         expect(registry.getPackRegistration(PACK_ID)).toBeNull();
@@ -867,7 +867,7 @@ describe('app-source update offers and acceptance', () => {
       system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
       expect(emitted(system.sent).find(event => event.type === 'PACK_UPDATE_FAILED')?.error).toContain('app-source');
       expect(fetch).not.toHaveBeenCalled();
-      expect(readPackArtifact(installed()).snapshot.manifest.version).toBe('1.0.0');
+      expect(readPackBuild(installed()).snapshot.manifest.version).toBe('1.0.0');
     } finally { system.stop(); vi.unstubAllGlobals(); }
   });
 
@@ -875,14 +875,14 @@ describe('app-source update offers and acceptance', () => {
     await ownDefault();
     packSource('2.0.0');
     offer();
-    const before = readPackArtifact(installed()).revision;
+    const before = readPackBuild(installed()).revision;
     const runtime = registry.getPackRuntime(PACK_ID);
     const records = readInstalledPacks();
     const system = runPacksSystem();
     try {
       system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: '0'.repeat(64) });
       await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_FAILED'));
-      expect(readPackArtifact(installed()).revision).toBe(before);
+      expect(readPackBuild(installed()).revision).toBe(before);
       expect(registry.getPackRuntime(PACK_ID)).toEqual(runtime);
       expect(readInstalledPacks()).toEqual(records);
     } finally { system.stop(); }
@@ -1049,7 +1049,7 @@ describe('a user answering for one of a pack’s content items', () => {
 
   function registerContentPack(): void {
     const dir = path.join(resolveAppEnvironment().packsDir, CONTENT_PACK);
-    const { snapshot, integrity, revision } = readPackArtifact(dir);
+    const { snapshot, integrity, revision } = readPackBuild(dir);
     const manifest = snapshot.manifest;
     registry.registerPack({
       declarationRevision: snapshot.declarationRevision,
@@ -1068,7 +1068,7 @@ describe('a user answering for one of a pack’s content items', () => {
         },
       },
     }, { id: manifest.id, name: manifest.name, version: manifest.version, manifest, dir,
-      declarationRevision: snapshot.declarationRevision, artifactRevision: revision, artifactFiles: integrity.files });
+      declarationRevision: snapshot.declarationRevision, buildRevision: revision, buildFiles: integrity.files });
   }
 
   const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;

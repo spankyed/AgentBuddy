@@ -5,7 +5,7 @@ The `apack` app and pack CLI: scaffold, generate, build, test, pack, release and
 Installed-pack mutations share `withPackMutation`, the selected profile's storage lock. `pack replace`
 checks the explicit target id and chooses user-managed updates; plain install requires an explicit/associated offline host and refuses its advertised defaults
 (including invalid advertisements) or an app-managed incumbent. Named replacement needs no host selection. `pack restore` reads the selected host packages without activation/download, restores the
-named shipped artifact, re-enables it and resumes app updates. Its `--host` source selection is independent
+named shipped build, re-enables it and resumes app updates. Its `--host` source selection is independent
 of `--profile` storage. Both preserve database overrides. See `commands/pack-{install,replace,restore}.ts`.
 
 ## Layout
@@ -245,3 +245,9 @@ call `scripts/app-dev.mjs` through source resolution; the app-only launch help a
 not under CLI command modules; detached app spawning calls that same entry point
 in the selected checkout. Pack spawning continues to call `apack pack dev`. Shared session lifecycle
 and automation implementation remain in this package so both callers use the same ownership rules.
+
+Dependency resolution caches complete verified builds by content revision under
+`.apack/deps/<id>/builds/<revision>/`. A separately published `resolution.json` retains spec,
+version and structured origin. CLI and harness use the shared host cache reader; snapshot-only type
+data never exposes executable paths. Explicit `file:` builds also cache coherent producer bytes,
+while read-only inspection writes nothing. Previously resolved paths remain valid after publication.

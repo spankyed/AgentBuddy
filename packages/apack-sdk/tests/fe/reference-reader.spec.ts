@@ -12,12 +12,12 @@ afterEach(unbindFeHost);
 function fixture() {
   const featureRef = resolveName('notes', 'author');
   const entry: ReferenceCatalogEntry = { packId: 'author', featureRef, origin: 'installed', enabled: true,
-    declarationRevision: 'declaration-one', artifactRevision: 'artifact-one', declaration: {
+    declarationRevision: 'declaration-one', buildRevision: 'artifact-one', declaration: {
       types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } };
   const icon = { render: vi.fn() }; const navigate = vi.fn(); const useItems = vi.fn(() => shallowRef([]));
-  const identity = { featureRef, declarationRevision: entry.declarationRevision, artifactRevision: entry.artifactRevision, runtimeRevision: 'runtime-one' };
+  const identity = { featureRef, declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one' };
   const type: ReferenceBinding<ReferenceTypeConfig> = { ...identity, binding: { category: 'notes', svgElements: [], icon, navigate } };
   const category: ReferenceBinding<ReferenceBindings['categories'][string]> = { ...identity, binding: { label: 'Notes', icon, useItems } };
   const state: { status: ReturnType<PackCatalogView['status']>; entries: ReferenceCatalogEntry[] } = { status: 'ready', entries: [entry] };
@@ -51,7 +51,7 @@ it.each(['loading', 'disconnected', 'error', 'disposed'] as const)('refuses exec
 it.each([
   ['disabled', { enabled: false }], ['missing enablement', { enabled: undefined }],
   ['new declarations', { declarationRevision: 'declaration-two' }], ['missing declaration stamp', { declarationRevision: undefined }],
-  ['new artifact', { artifactRevision: 'artifact-two' }], ['missing artifact receipt', { artifactRevision: undefined }],
+  ['new artifact', { buildRevision: 'artifact-two' }], ['missing artifact receipt', { buildRevision: undefined }],
   ['foreign owner', { featureRef: resolveName('notes', 'other') }], ['source only', { origin: 'source' as const }],
 ])('refuses %s for both executable groups', (_name, change) => {
   const f = fixture(); f.state.entries = [{ ...f.entry, ...change }];
@@ -65,9 +65,9 @@ it('refuses installed bindings without a runtime identity', () => {
 });
 
 it('admits native bindings without manufacturing installed receipts and refuses stamped impostors', () => {
-  const f = fixture(); f.state.entries = [{ ...f.entry, origin: 'native', declarationRevision: undefined, artifactRevision: undefined }];
-  const type = { ...f.type, declarationRevision: undefined, artifactRevision: undefined, runtimeRevision: undefined };
-  const category = { ...f.category, declarationRevision: undefined, artifactRevision: undefined, runtimeRevision: undefined };
+  const f = fixture(); f.state.entries = [{ ...f.entry, origin: 'native', declarationRevision: undefined, buildRevision: undefined }];
+  const type = { ...f.type, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined };
+  const category = { ...f.category, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined };
   f.types.set('note', type); f.categories.set('notes', category);
   expect(getReferenceTypeBinding('note')).toBe(type); expect(getReferenceCategoryBinding('notes')).toBe(category);
   f.types.set('note', f.type); f.categories.set('notes', f.category);
@@ -75,7 +75,7 @@ it('admits native bindings without manufacturing installed receipts and refuses 
 });
 
 it('does not treat a source advertisement as a second runtime claim', () => {
-  const f = fixture(); f.state.entries.push({ ...f.entry, origin: 'source', enabled: undefined, artifactRevision: undefined });
+  const f = fixture(); f.state.entries.push({ ...f.entry, origin: 'source', enabled: undefined, buildRevision: undefined });
   expect(getReferenceTypeBinding('note')).toBe(f.type); expect(getReferenceCategoryBinding('notes')).toBe(f.category);
   expect(getReferenceCategoryDeclarations()).toHaveLength(2);
 });

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
-import { PACK_LAYOUT, readPackArtifact, stagePack, verifyPack } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readPackBuild, stagePack, verifyPack } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { generateEntries } from '../../src/commands/generate-entries';
 
@@ -106,15 +106,15 @@ describe('a build that fails', () => {
     process.chdir(root);
     try {
       await build([]);
-      expect(readPackArtifact(dir).snapshot.help).toEqual([{ id: 'start', title: 'Start', body: 'First article' }]);
+      expect(readPackBuild(dir).snapshot.help).toEqual([{ id: 'start', title: 'Start', body: 'First article' }]);
       fs.writeFileSync(file, '# Updated\nChanged article');
       await build([]);
-      expect(readPackArtifact(dir).snapshot.help![0]).toMatchObject({ title: 'Updated', body: expect.stringContaining('Changed article') });
+      expect(readPackBuild(dir).snapshot.help![0]).toMatchObject({ title: 'Updated', body: expect.stringContaining('Changed article') });
       const accepted = fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8');
       fs.writeFileSync(file, 'Missing title');
       await expect(build([])).rejects.toThrow('first H1');
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8')).toBe(accepted);
-      expect(readPackArtifact(dir).snapshot.help![0].title).toBe('Updated');
+      expect(readPackBuild(dir).snapshot.help![0].title).toBe('Updated');
     } finally { process.chdir(cwd); }
   });
 
@@ -196,7 +196,7 @@ describe('a completed build', () => {
     process.chdir(root);
     try {
       await build(['--skip-fe']);
-      const first = readPackArtifact(dir);
+      const first = readPackBuild(dir);
       expect(first.integrity.files[PACK_LAYOUT.runtimeEntry]).toMatch(/^[a-f0-9]{64}$/);
       const reusable = path.join(dir, 'types/pack-types.d.ts');
       const original = fs.readFileSync(reusable, 'utf8');
@@ -204,7 +204,7 @@ describe('a completed build', () => {
       expect(() => verifyPack(dir)).toThrow('checksum mismatch types/pack-types.d.ts');
       await build(['--skip-fe']);
       expect(fs.readFileSync(reusable, 'utf8')).toBe(original);
-      expect(readPackArtifact(dir).revision).toBe(first.revision);
+      expect(readPackBuild(dir).revision).toBe(first.revision);
       const stage = path.join(root, 'stage');
       stagePack(root, stage);
       expect(verifyPack(stage).id).toBe('sealed-build');

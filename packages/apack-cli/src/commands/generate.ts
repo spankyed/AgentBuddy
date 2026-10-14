@@ -6,14 +6,14 @@ export async function resolveDependencyFiles(root: string, deps: Record<string, 
   const result = new Map<string, ResolvedDepFiles>();
   const unresolved: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
-    const artifacts = await resolveDepFiles(root, depId, depValue, options);
-    if (!artifacts) {
+    const files = await resolveDepFiles(root, depId, depValue, options);
+    if (!files) {
       unresolved.push(depValue.startsWith('file:')
         ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "apack pack build" there first)`
         : `${depId} ("${depValue}"): not found in the installed app, a workspace, a GitHub release or the local cache`);
       continue;
     }
-    result.set(depId, artifacts);
+    result.set(depId, files);
   }
   // Generated types and flow helpers depend on every dependency; continuing would fail
   // later with misleading errors (e.g. missing flow helper exports)
@@ -30,7 +30,7 @@ export interface ResolvedDeps {
 
 export async function resolveDeps(root: string, deps?: Record<string, string>, options: DependencyResolutionOptions = {}): Promise<ResolvedDeps> {
   const files = await resolveDependencyFiles(root, deps, options);
-  const depSnapshots = new Map([...files].map(([id, artifacts]) => [id, artifacts.snapshot]));
+  const depSnapshots = new Map([...files].map(([id, files]) => [id, files.snapshot]));
 
   const depTypes = new Map<string, PackTypeManifest>();
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);

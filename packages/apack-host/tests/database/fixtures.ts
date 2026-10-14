@@ -1,6 +1,6 @@
 // Data dirs for the database specs: a built-in pack published as the app publishes it, external packs installed,
 // and a database written through the composition the app uses
-import { writeInstalledPackFixture } from '../packs/runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

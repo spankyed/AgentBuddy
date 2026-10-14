@@ -99,10 +99,10 @@ test('pack plugin renders with its own styles', async ({ appPage, app }) => {
     await expect(canvas).toBeVisible({ timeout: 10_000 });
     await expect(canvas).toHaveCSS('padding-top', '13px');
     const style = await appPage.locator('link[data-pack-id="e2e-fixture"]').getAttribute('href');
-    const artifactBase = style!.replace(/runtime\/fe\.css$/, '');
-    expect(artifactBase).toMatch(/^pack:\/\/e2e-fixture\/artifacts\/[a-f0-9]{64}\/$/);
+    const buildBase = style!.replace(/runtime\/fe\.css$/, '');
+    expect(buildBase).toMatch(/^pack:\/\/e2e-fixture\/builds\/[a-f0-9]{64}\/$/);
     expect(resources.filter(url => url.endsWith('.js') && !url.endsWith('/fe.js')).length).toBeGreaterThan(0);
-    expect(resources.every(url => url.startsWith(artifactBase))).toBe(true);
+    expect(resources.every(url => url.startsWith(buildBase))).toBe(true);
 
     // The form is data-independent (the memo list grows across runs), so it can be a stable
     // baseline that catches pack styles regressing. Update with: npm run test:external-pack -- -u

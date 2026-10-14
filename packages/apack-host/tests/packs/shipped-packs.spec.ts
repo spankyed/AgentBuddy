@@ -1,4 +1,4 @@
-import { sealBuild } from './runtime/artifact-fixture.ts';
+import { sealBuild } from './runtime/build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 // The packs the app ships are installed packs: the boot installs them into the data dir, so there is one
 // kind of pack on disk and one load path to it. What this pins is when the boot writes and when it does not
@@ -8,7 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installShippedPacks, installPackFromLocal, uninstallPack, restoreShippedPack, updateShippedPack } from '../../src/packs/installer.ts';
-import { PACK_LAYOUT, readPackIntegrity, readPackArtifact, stagePack, verifyPack } from '../../src/packs/layout.ts';
+import { PACK_LAYOUT, readPackIntegrity, readPackBuild, stagePack, verifyPack } from '../../src/packs/layout.ts';
 import { readInstalledPacks, writeInstalledPacks, forgetPacksExcept } from '../../src/packs/installed.ts';
 import { registry } from './runtime/test-host.ts';
 import { loadAppPacks } from '../../src/packs/runtime/loader.ts';
@@ -95,7 +95,7 @@ describe('installing the packs the app ships', () => {
     expect(fs.readFileSync(path.join(packsDir, 'shipped-pack', PACK_LAYOUT.runtimeEntry), 'utf-8')).toBe('// a user got in here');
   });
 
-  it.each(['missing', 'malformed', 'wrong-owner', 'extra-link'])('does not repair invalid installed files at boot; artifact admission reports the defect: %s', async kind => {
+  it.each(['missing', 'malformed', 'wrong-owner', 'extra-link'])('does not repair invalid installed files at boot; build admission reports the defect: %s', async kind => {
     shipPack('shipped-pack');
     await installShippedPacks(shipped, packsDir, { installedPacksFile: recordsFile() });
     const dir = path.join(packsDir, 'shipped-pack');
@@ -105,7 +105,7 @@ describe('installing the packs the app ships', () => {
     else if (kind === 'wrong-owner') fs.writeFileSync(file, JSON.stringify({ ...readPackIntegrity(dir), id: 'other-pack' }));
     else fs.symlinkSync('index.cjs', path.join(dir, PACK_LAYOUT.runtimeDir, 'link.cjs'));
     expect(await outcomes()).toEqual(['shipped-pack=unchanged']);
-    expect(() => readPackArtifact(dir)).toThrow();
+    expect(() => readPackBuild(dir)).toThrow();
     if (kind === 'extra-link') expect(fs.existsSync(path.join(dir, PACK_LAYOUT.runtimeDir, 'link.cjs'))).toBe(true);
   });
 
@@ -148,12 +148,12 @@ describe('explicit installation ownership', () => {
   it('refuses a wrong restore identity without changing either namespace or the incumbent', async () => {
     shipPack('shipped-pack');
     await outcomes();
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     const records = readInstalledPacks(recordsFile(), { strict: true });
     const other = shipPack('other-pack');
     await expect(restoreShippedPack('shipped-pack', other, packsDir, { installedPacksFile: recordsFile() }))
       .rejects.toThrow('Restore expected pack');
-    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
     expect(fs.existsSync(path.join(packsDir, 'other-pack'))).toBe(false);
     expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(records);
   });
@@ -194,15 +194,15 @@ describe('explicit installation ownership', () => {
     }
   });
 
-  it('does not adopt an unrecorded artifact, even when its bytes equal the app artifact', async () => {
+  it('does not adopt an unrecorded build, even when its bytes equal the app build', async () => {
     const source = shipPack('shipped-pack');
     stagePack(source, path.join(packsDir, 'shipped-pack'));
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     expect(await outcomes()).toEqual(['shipped-pack=preserved']);
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.runtimeEntry), 'exports.registration = { id: "shipped-pack", changed: true };');
     sealBuild(source);
     expect(await outcomes()).toEqual(['shipped-pack=preserved']);
-    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
     expect(fs.existsSync(recordsFile())).toBe(false);
   });
 
@@ -216,25 +216,25 @@ describe('explicit installation ownership', () => {
     await installPackFromLocal(fork, packsDir, { installedPacksFile: recordsFile() });
     expect(readInstalledPacks(recordsFile())[0]).toMatchObject({ updatesWith: 'user' });
     expect(readInstalledPacks(recordsFile())[0]).not.toHaveProperty('shippedRevision');
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.runtimeEntry), 'exports.registration = { id: "shipped-pack", changed: true };');
     sealBuild(source);
     expect(await installShippedPacks(shipped, packsDir, { installedPacksFile: recordsFile(), only: 'shipped-pack' }))
       .toEqual([{ id: 'shipped-pack', outcome: 'preserved' }]);
-    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
   });
 
   it('restores app ownership when a proposed user installation is refused', async () => {
     const source = shipPack('shipped-pack');
     await outcomes();
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     const records = readInstalledPacks(recordsFile(), { strict: true });
     await expect(installPackFromLocal(source, packsDir, { installedPacksFile: recordsFile(), accept: () => {
       expect(readInstalledPacks(recordsFile())[0].updatesWith).toBe('user');
       throw new Error('runtime refused');
     } })).rejects.toThrow('runtime refused');
     expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(records);
-    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
   });
 
   it('retains disabled intent through an app-managed refresh', async () => {
@@ -260,10 +260,10 @@ describe('explicit installation ownership', () => {
     ]);
   });
 
-  it('restores artifact and ownership records when candidate acceptance refuses', async () => {
+  it('restores build and ownership records when candidate acceptance refuses', async () => {
     const source = shipPack('shipped-pack');
     await outcomes();
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     const records = readInstalledPacks(recordsFile(), { strict: true });
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.runtimeEntry), 'exports.registration = { id: "shipped-pack", changed: true };');
     sealBuild(source);
@@ -271,7 +271,7 @@ describe('explicit installation ownership', () => {
     expect(await installShippedPacks(shipped, packsDir, { installedPacksFile: recordsFile(), accept }))
       .toMatchObject([{ outcome: 'failed', error: 'runtime refused' }]);
     expect(accept).toHaveBeenCalledOnce();
-    expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+    expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
     expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(records);
   });
 
@@ -282,10 +282,10 @@ describe('explicit installation ownership', () => {
     expect(fs.existsSync(path.join(packsDir, 'shipped-pack'))).toBe(false);
   });
 
-  it('keeps the incumbent artifact and record when saving the new ownership revision fails', async () => {
+  it('keeps the incumbent build and record when saving the new ownership revision fails', async () => {
     const source = shipPack('shipped-pack');
     await outcomes();
-    const before = readPackArtifact(path.join(packsDir, 'shipped-pack'));
+    const before = readPackBuild(path.join(packsDir, 'shipped-pack'));
     const records = readInstalledPacks(recordsFile(), { strict: true });
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.runtimeEntry), 'exports.registration = { id: "shipped-pack", changed: true };');
     sealBuild(source);
@@ -294,12 +294,12 @@ describe('explicit installation ownership', () => {
     try {
       expect(await installShippedPacks(shipped, packsDir, { installedPacksFile: recordsFile() }))
         .toMatchObject([{ outcome: 'failed', error: expect.stringContaining('Cannot save installation decisions') }]);
-      expect(readPackArtifact(path.join(packsDir, 'shipped-pack'))).toEqual(before);
+      expect(readPackBuild(path.join(packsDir, 'shipped-pack'))).toEqual(before);
       expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(records);
     } finally { fs.chmodSync(parent, 0o700); }
   });
 
-  it('refuses a first candidate without leaving ownership or artifact behind', async () => {
+  it('refuses a first candidate without leaving ownership or build behind', async () => {
     shipPack('shipped-pack');
     expect(await installShippedPacks(shipped, packsDir, { installedPacksFile: recordsFile(), accept: () => {
       throw new Error('candidate refused');
@@ -322,7 +322,7 @@ describe('explicit installation ownership', () => {
 });
 
 
-it('preserves the running app-owned artifact, catalog and record when a shipped reload collides', async () => {
+it('preserves the running app-owned build, catalog and record when a shipped reload collides', async () => {
   const previousEnv = { env: process.env.APACK_ENV, data: process.env.APACK_USER_DATA_DIR, shipped: process.env.SHIPPED_PACKS_DIR };
   process.env.APACK_ENV = 'test';
   process.env.APACK_USER_DATA_DIR = path.join(tmp, 'profile');
@@ -338,7 +338,7 @@ it('preserves the running app-owned artifact, catalog and record when a shipped 
     loadAppPacks(registry);
     const previousRegistration = registry.getPackRegistration(id);
     const previousRuntime = registry.getPackRuntime(id);
-    const previousArtifact = readPackArtifact(path.join(packsDir, id));
+    const previousArtifact = readPackBuild(path.join(packsDir, id));
     const previousCatalog = registry.catalog.getSnapshot();
     const previousRecords = readInstalledPacks(recordsFile(), { strict: true });
     registry.registerPack({ id: 'collision-owner', services: { taken: {} } });
@@ -348,7 +348,7 @@ it('preserves the running app-owned artifact, catalog and record when a shipped 
     await expect(reloadPackById(registry, id, bus as never)).rejects.toThrow('Service collision');
     expect(registry.getPackRegistration(id)).toBe(previousRegistration);
     expect(registry.getPackRuntime(id)).toEqual(previousRuntime);
-    expect(readPackArtifact(path.join(packsDir, id))).toEqual(previousArtifact);
+    expect(readPackBuild(path.join(packsDir, id))).toEqual(previousArtifact);
     expect(registry.catalog.getSnapshot().packs).toEqual(previousCatalog.packs);
     expect(readInstalledPacks(recordsFile(), { strict: true })).toEqual(previousRecords);
     expect(bus.send).not.toHaveBeenCalled();
@@ -367,7 +367,7 @@ it('preserves the running app-owned artifact, catalog and record when a shipped 
 it('refuses an app update when ownership changes during preparation, retaining incumbent bytes', async () => {
   const dir = shipPack('shipped-pack');
   await installShippedPacks(shipped, packsDir, { installedPacksFile });
-  const before = readPackArtifact(path.join(packsDir, 'shipped-pack')).revision;
+  const before = readPackBuild(path.join(packsDir, 'shipped-pack')).revision;
   fs.appendFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), '\n// update');
   sealBuild(dir);
   const source = readAppPackSources(shipped).sources[0];
@@ -375,6 +375,6 @@ it('refuses an app update when ownership changes during preparation, retaining i
     installedPacksFile, expectedSourceRevision: source.sourceRevision,
     beforePlace: () => { writeInstalledPacks([{ id: 'shipped-pack', enabled: false, updatesWith: 'user' }], installedPacksFile); },
   })).rejects.toThrow('no longer app-managed');
-  expect(readPackArtifact(path.join(packsDir, 'shipped-pack')).revision).toBe(before);
+  expect(readPackBuild(path.join(packsDir, 'shipped-pack')).revision).toBe(before);
   expect(readInstalledPacks(installedPacksFile, { strict: true })).toEqual([{ id: 'shipped-pack', enabled: false, updatesWith: 'user' }]);
 });

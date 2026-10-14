@@ -26,7 +26,7 @@ import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/event
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { readInstalledPackArtifacts, packContentOrder } from './discovery.ts';
+import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
 import { createOwnedStore, createDesignationStore } from './extensions.ts';
 import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
@@ -96,7 +96,7 @@ export interface PackExtensions {
   features: PackFeatureSummary[];
 }
 
-/** An available app default; neither an installed artifact nor an active owner. */
+/** An available app default; neither an installed build nor an active owner. */
 export interface AppPackSourceSummary {
   id: string;
   name: string;
@@ -107,7 +107,7 @@ export interface AppPackSourceSummary {
 export interface InstalledPackSummary extends PackExtensions {
   id: string;
   name: string;
-  /** Absent when this installed artifact has no accepted declarations. */
+  /** Absent when this installed build has no accepted declarations. */
   version?: string;
   enabled: boolean;
   /** Installation ownership determines automatic updates; advertisement never grants privileges. */
@@ -178,9 +178,9 @@ export interface PackOrigin {
   /** The declarations validated for this active runtime, retained across filesystem changes. */
   declarationRevision: string;
   /** Verified installed file identity; absent only for native registrations supplied by the host. */
-  artifactRevision?: string;
+  buildRevision?: string;
   /** File membership/checksums admitted with this runtime, never reconstructed from changed disk bytes. */
-  artifactFiles?: Readonly<Record<string, string>>;
+  buildFiles?: Readonly<Record<string, string>>;
   name: string;
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
@@ -242,7 +242,7 @@ export interface PackRegistry extends PackRegistryView {
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
-  /** Accepted installed runtime identity; replacement changes it even when artifact bytes do not. */
+  /** Accepted installed runtime identity; replacement changes it even when build bytes do not. */
   getPackRuntime(packId: string): { origin: PackOrigin; runtimeRevision: string } | null;
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
@@ -404,10 +404,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const sources: PackCatalogSource[] = [];
     const problems: PackCatalogProblem[] = [];
     const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
-    for (const entry of readInstalledPackArtifacts(packsDir)) {
+    for (const entry of readInstalledPackBuilds(packsDir)) {
       const { id, dir } = entry;
-      if (entry.artifact) {
-        const { snapshot, integrity } = entry.artifact;
+      if (entry.build) {
+        const { snapshot, integrity } = entry.build;
         sources.push({ snapshot, integrity, dir, enabled: !disabled.has(id) });
       } else {
         const previous = previousByDir.get(dir);

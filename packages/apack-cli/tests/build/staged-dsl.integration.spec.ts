@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
-import { PACK_LAYOUT, readPackArtifact } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readPackBuild } from '@apackdev/host/packs';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 packagesBuiltOrRefuse('npm run packages:ensure');
@@ -13,7 +13,7 @@ let root: string;
 afterEach(() => { if (root) fs.rmSync(root, { recursive: true, force: true }); });
 
 describe('staged DSL definitions', () => {
-  it('preserves a verified artifact on a later failure, then publishes and reuses the current definitions with its frontend', async () => {
+  it('preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend', async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-staged-dsl-'));
     const dir = path.join(root, 'dist');
     fs.mkdirSync(dir);
@@ -25,7 +25,7 @@ describe('staged DSL definitions', () => {
     process.chdir(root);
     try {
       await build([]);
-      const first = readPackArtifact(dir);
+      const first = readPackBuild(dir);
       const definitions = path.join(dir, 'defs/monaco/rows-defs.d.ts');
       const original = fs.readFileSync(definitions, 'utf8');
       expect(original).toContain('before: true');
@@ -36,14 +36,14 @@ describe('staged DSL definitions', () => {
       const lifecycle = path.join(root, 'src/lifecycle.ts');
       fs.writeFileSync(lifecycle, 'import "./missing-runtime.ts"; export function apply() {}');
       await expect(build([])).rejects.toThrow('Runtime bundle failed');
-      expect(readPackArtifact(dir).revision).toBe(first.revision);
+      expect(readPackBuild(dir).revision).toBe(first.revision);
       expect(fs.readFileSync(definitions, 'utf8')).toBe(original);
       expect(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')).toBe(reads);
       expect(fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8')).toBe(cache);
       expect(fs.existsSync(buildStagingDir(root))).toBe(false);
       fs.writeFileSync(lifecycle, 'export function apply() {}');
       await build([]);
-      const current = readPackArtifact(dir);
+      const current = readPackBuild(dir);
       expect(current.revision).not.toBe(first.revision);
       expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');
       const frontend = fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8');
@@ -55,13 +55,13 @@ describe('staged DSL definitions', () => {
         expect(log.mock.calls.flat().join('\n')).toContain('dsl defs: unchanged, reused');
         expect(log.mock.calls.flat().join('\n')).toContain('fe: unchanged, reused');
       } finally { log.mockRestore(); }
-      expect(readPackArtifact(dir).revision).toBe(current.revision);
+      expect(readPackBuild(dir).revision).toBe(current.revision);
       const manifestFile = path.join(root, 'apack.json');
       const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
       delete manifest.extensions.dsl;
       fs.writeFileSync(manifestFile, JSON.stringify(manifest));
       await build([]);
-      expect(readPackArtifact(dir).snapshot.manifest.extensions?.dsl).toBeUndefined();
+      expect(readPackBuild(dir).snapshot.manifest.extensions?.dsl).toBeUndefined();
       expect(fs.existsSync(definitions)).toBe(false);
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('after: true');
     } finally { process.chdir(cwd); }

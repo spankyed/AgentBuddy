@@ -40,9 +40,9 @@ export function parseReferenceHref(href: string): ReferenceTarget | undefined;
 // @public
 export interface ReferenceBinding<T> {
     // (undocumented)
-    readonly artifactRevision?: string;
-    // (undocumented)
     readonly binding: Readonly<T>;
+    // (undocumented)
+    readonly buildRevision?: string;
     // (undocumented)
     readonly declarationRevision?: string;
     // (undocumented)

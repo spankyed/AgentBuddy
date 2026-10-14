@@ -8,7 +8,7 @@ function sha256(content: string | Buffer): string {
 }
 
 /** The receipt's content identity, shared by admission and revisioned asset delivery. */
-export function packArtifactRevision(integrity: PackIntegrity): string {
+export function packBuildRevision(integrity: PackIntegrity): string {
   const files = Object.entries(integrity.files).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   return sha256(JSON.stringify({ formatVersion: integrity.formatVersion, files }));
 }
@@ -22,7 +22,7 @@ export function readPackAsset(dir: string, packId: string, revision: string, fil
   if (!integrity || integrity.id !== packId || typeof integrity.formatVersion !== 'number'
     || !Number.isFinite(integrity.formatVersion) || integrity.formatVersion !== PACK_LAYOUT_VERSION
     || !integrity.files || typeof integrity.files !== 'object' || Array.isArray(integrity.files)
-    || packArtifactRevision(integrity) !== revision) throw new Error(`Pack "${packId}" artifact changed; reload its frontend`);
+    || packBuildRevision(integrity) !== revision) throw new Error(`Pack "${packId}" build changed; reload its frontend`);
   const expected = Object.hasOwn(integrity.files, file) ? integrity.files[file] : undefined;
   if (!expected || !/^[a-f0-9]{64}$/.test(expected)) throw new Error(`Pack "${packId}" does not declare asset "${file}"`);
   const root = fs.realpathSync(dir);

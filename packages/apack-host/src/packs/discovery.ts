@@ -5,7 +5,7 @@ import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { packRecord, packRecords, type PackRecord } from './installed.ts';
 import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
-import { PACK_LAYOUT, readPackArtifact, type PackArtifact } from './layout.ts';
+import { PACK_LAYOUT, readPackBuild, type PackBuild } from './layout.ts';
 import type { PackManifest } from '@apackdev/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -22,42 +22,42 @@ export function discoverPackDirectories(packsDir: string): string[] {
     .map(entry => path.join(packsDir, entry.name));
 }
 
-/** Directory presence is installation evidence even when its artifact cannot be admitted. */
-export type InstalledPackArtifact = { id: string; dir: string } & (
-  | { artifact: PackArtifact; problem?: never }
-  | { artifact?: never; problem: string }
+/** Directory presence is installation evidence even when its build cannot be admitted. */
+export type InstalledPackBuild = { id: string; dir: string } & (
+  | { build: PackBuild; problem?: never }
+  | { build?: never; problem: string }
 );
 
-/** Read a managed installed directory; producer/staging directories use readPackArtifact directly. */
-export function readInstalledPackArtifact(dir: string): PackArtifact {
+/** Read a managed installed directory; producer/staging directories use readPackBuild directly. */
+export function readInstalledPackBuild(dir: string): PackBuild {
   const id = path.basename(dir);
   if (!PACK_ID_PATTERN.test(id)) throw new Error(`Invalid installed pack directory "${id}"`);
-  const artifact = readPackArtifact(dir);
-  if (artifact.snapshot.manifest.id !== id) {
-    throw new Error(`Installed directory "${id}" contains pack "${artifact.snapshot.manifest.id}"`);
+  const build = readPackBuild(dir);
+  if (build.snapshot.manifest.id !== id) {
+    throw new Error(`Installed directory "${id}" contains pack "${build.snapshot.manifest.id}"`);
   }
-  if (!hasOwn(artifact.integrity.files, PACK_LAYOUT.runtimeEntry)) {
+  if (!hasOwn(build.integrity.files, PACK_LAYOUT.runtimeEntry)) {
     throw new Error(`Installed pack "${id}" has no ${PACK_LAYOUT.runtimeEntry} asset in its receipt`);
   }
-  return artifact;
+  return build;
 }
 
 /** One data-only admission path for installed inventory, with a refusal for every invalid directory. */
-export function readInstalledPackArtifacts(packsDir: string): InstalledPackArtifact[] {
+export function readInstalledPackBuilds(packsDir: string): InstalledPackBuild[] {
   return discoverPackDirectories(packsDir).map(dir => {
     const id = path.basename(dir);
-    try { return { id, dir, artifact: readInstalledPackArtifact(dir) }; }
+    try { return { id, dir, build: readInstalledPackBuild(dir) }; }
     catch (error) { return { id, dir, problem: errorMessage(error) }; }
   });
 }
 
 export function discoverPacks(packsDir: string): DiscoveredPack[] {
-  return readInstalledPackArtifacts(packsDir).flatMap(entry => {
-    if (!entry.artifact) {
+  return readInstalledPackBuilds(packsDir).flatMap(entry => {
+    if (!entry.build) {
       logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
       return [];
     }
-    return [{ manifest: entry.artifact.snapshot.manifest, dir: entry.dir }];
+    return [{ manifest: entry.build.snapshot.manifest, dir: entry.dir }];
   });
 }
 
@@ -75,7 +75,7 @@ export interface InstalledPack extends DiscoveredPack {
 /**
  * Every pack in the packs directory, enabled or not, with what the app has recorded about it.
  *
- * The admitted artifacts an install, update or toggle can act on; the catalog also lists refusals. A pack with no row is here
+ * The admitted builds an install, update or toggle can act on; the catalog also lists refusals. A pack with no row is here
  * like any other: the directory is what makes it installed.
  */
 export function installedPacks(packsDir = resolveAppEnvironment().packsDir): InstalledPack[] {

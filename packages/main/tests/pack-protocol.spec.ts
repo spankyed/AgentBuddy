@@ -2,23 +2,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { packArtifactRevision, sealPackBuild } from '@apackdev/host/packs';
+import { packBuildRevision, sealPackBuild } from '@apackdev/host/packs';
 import { MIME_TYPES, packRequestTarget, readPackFile } from '../src/modules/pack-protocol/PackProtocol.ts';
 
 const revision = 'a'.repeat(64);
-const base = `pack://my-pack/artifacts/${revision}/runtime/fe.js`;
+const base = `pack://my-pack/builds/${revision}/runtime/fe.js`;
 
-it('retains the artifact identity in relative module, stylesheet and font requests', () => {
+it('retains the build identity in relative module, stylesheet and font requests', () => {
   for (const relative of ['chunks/widget.js', 'fe.css', '../fonts/ui.woff2']) {
-    expect(packRequestTarget(new URL(relative, base).href)?.artifactRevision).toBe(revision);
+    expect(packRequestTarget(new URL(relative, base).href)?.buildRevision).toBe(revision);
   }
-  expect(packRequestTarget(base)).toEqual({ packId: 'my-pack', artifactRevision: revision, filePath: 'runtime/fe.js' });
+  expect(packRequestTarget(base)).toEqual({ packId: 'my-pack', buildRevision: revision, filePath: 'runtime/fe.js' });
   expect(packRequestTarget(base.replace('fe.js', 'a%20b.js'))?.filePath).toBe('runtime/a b.js');
 });
 
 it('refuses unversioned URLs, malformed revisions, foreign schemes and invalid owners', () => {
   for (const url of [
-    'pack://my-pack/runtime/fe.js', 'pack://my-pack/artifacts/short/runtime/fe.js',
+    'pack://my-pack/runtime/fe.js', 'pack://my-pack/builds/short/runtime/fe.js',
     base.replace('pack:', 'https:'), base.replace('my-pack', '..'), base.replace('my-pack', 'pack_x'),
     base.replace('my-pack', '1pack'), base.replace('fe.js', '%zz'), 'not a url',
   ]) expect(packRequestTarget(url), url).toBeNull();
@@ -41,9 +41,9 @@ describe('accepted installed asset delivery', () => {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), body);
   }
-  const seal = () => packArtifactRevision(sealPackBuild(dir, { id: 'my-pack', name: 'My pack', version: '1.0.0' }));
-  const read = (filePath = 'runtime/fe.js', artifactRevision = accepted) =>
-    readPackFile({ packsDir, packId: 'my-pack', artifactRevision, filePath });
+  const seal = () => packBuildRevision(sealPackBuild(dir, { id: 'my-pack', name: 'My pack', version: '1.0.0' }));
+  const read = (filePath = 'runtime/fe.js', buildRevision = accepted) =>
+    readPackFile({ packsDir, packId: 'my-pack', buildRevision, filePath });
   beforeEach(() => {
     tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pack-assets-')));
     packsDir = path.join(tmp, 'packs');
@@ -61,7 +61,7 @@ describe('accepted installed asset delivery', () => {
     expect(read('runtime/fe.css').toString()).toBe('body { color: red; }');
   });
 
-  it('refuses a changed file without manufacturing a new artifact identity', () => {
+  it('refuses a changed file without manufacturing a new build identity', () => {
     write('runtime/chunks/widget.js', 'export const widget = 2;');
     expect(() => read('runtime/chunks/widget.js')).toThrow('changed; rebuild and reinstall');
   });
@@ -70,7 +70,7 @@ describe('accepted installed asset delivery', () => {
     write('runtime/chunks/widget.js', 'export const widget = 2;');
     const replacement = seal();
     expect(replacement).not.toBe(accepted);
-    expect(() => read()).toThrow('artifact changed');
+    expect(() => read()).toThrow('build changed');
     expect(read('runtime/chunks/widget.js', replacement).toString()).toContain('= 2');
   });
 

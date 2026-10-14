@@ -48,7 +48,7 @@ describe('window declaration catalog', () => {
       { featureRef: 'installed-pack/memos', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },
       { featureRef: 'source-pack/memos', origin: 'source', declarationRevision: _declarationRevision(manifest) },
     ]);
-    expect(entries[0]).not.toHaveProperty('artifactRevision');
+    expect(entries[0]).not.toHaveProperty('buildRevision');
     expect(entries[2]).not.toHaveProperty('enabled');
     expect(reader.catalog.references()).toBe(entries);
     reader.disconnect();

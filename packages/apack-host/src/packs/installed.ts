@@ -1,8 +1,8 @@
 /**
  * What the app has recorded about the external packs it has.
  *
- * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `readInstalledPackArtifacts`
- * (`discovery.ts`) reads it independently of artifact validity. This file is a side table keyed by pack id, holding only what the
+ * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `readInstalledPackBuilds`
+ * (`discovery.ts`) reads it independently of build validity. This file is a side table keyed by pack id, holding only what the
  * directory cannot say: the user's enabled choice, where an install came from, and what the last apply and
  * update check found. A pack with no row is installed all the same; development installs can write
  * the directory without recording an update source.
@@ -24,11 +24,11 @@ const logger = createLogger('installed-packs');
 export interface PackRecord {
   id: string;
   enabled: boolean;
-  /** Only explicit app ownership permits refresh from the shipped artifact. Absence means user-owned. */
+  /** Only explicit app ownership permits refresh from the shipped build. Absence means user-owned. */
   updatesWith?: 'app' | 'user';
   /** Published shipped files last accepted for an app-owned installation. */
   shippedRevision?: string;
-  /** Deliberate removal: boot must not put the shipped artifact back. Independent of enablement. */
+  /** Deliberate removal: boot must not put the shipped build back. Independent of enablement. */
   suppressAppInstall?: true;
   /** When it was first recorded as installed; absent for unrecorded development installs */
   installedAt?: string;

@@ -1,4 +1,4 @@
-import { writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture } from './runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

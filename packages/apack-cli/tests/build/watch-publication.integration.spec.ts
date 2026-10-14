@@ -11,7 +11,7 @@ import { createSettingsStore, createSettingsService } from '@apackdev/host/setti
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
-import { createPackRegistry, readPackArtifact, stagePack } from '@apackdev/host/packs';
+import { createPackRegistry, readPackBuild, stagePack } from '@apackdev/host/packs';
 import { reloadPackById } from '@apackdev/host/packs/runtime';
 import { HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -70,7 +70,7 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
       place: { env: 'test', userDataDir: environment.userDataDir },
       onBuilt: async () => { stagePack(root, installed); publications++; },
     });
-    const initial = readPackArtifact(path.join(root, 'dist'));
+    const initial = readPackBuild(path.join(root, 'dist'));
     stagePack(root, installed);
     registry.refreshCatalog(environment.packsDir);
     expect(fs.existsSync(marker), 'catalog inspection must not activate pack modules').toBe(false);
@@ -85,9 +85,9 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
     fs.writeFileSync(path.join(root, 'modules/lifecycle.ts'), lifecycle('second'));
     await vi.waitFor(() => expect(reloads > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
-    const updated = readPackArtifact(path.join(root, 'dist'));
+    const updated = readPackBuild(path.join(root, 'dist'));
     expect(updated.revision).not.toBe(initial.revision);
-    expect(registry.catalog.get('watched-pack')?.artifactRevision).toBe(readPackArtifact(installed).revision);
+    expect(registry.catalog.get('watched-pack')?.buildRevision).toBe(readPackBuild(installed).revision);
     expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Updated purpose.');
     expect(registry.getPackRegistration('watched-pack')?.lifecycle?.onInit?.()).toBe('second');
 
@@ -95,7 +95,7 @@ it.skipIf(!built)('publishes source and manifest edits together, reloads verifie
     fs.writeFileSync(path.join(root, 'modules/lifecycle.ts'), 'export function init( {');
     await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
     expect(publications).toBe(accepted);
-    expect(readPackArtifact(path.join(root, 'dist')).revision).toBe(updated.revision);
+    expect(readPackBuild(path.join(root, 'dist')).revision).toBe(updated.revision);
     expect(registry.getPackRegistration('watched-pack')?.lifecycle?.onInit?.()).toBe('second');
     fs.writeFileSync(path.join(root, 'modules/lifecycle.ts'), lifecycle('third'));
     await vi.waitFor(() => expect(publications).toBeGreaterThan(accepted), { timeout: 20_000 });

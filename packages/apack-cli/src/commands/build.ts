@@ -136,12 +136,12 @@ async function buildIntoStaging(args: string[], root: string) {
   const dependencies = new Map<string, ContentDependency>();
   const depSnapshots = new Map<string, PackDependencySnapshot>();
   const dependencyFiles = await resolveDependencyFiles(root, manifest.dependencies);
-  for (const [depId, artifacts] of dependencyFiles) {
-    if (artifacts.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${artifacts.executionProblem}`);
-    const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
+  for (const [depId, files] of dependencyFiles) {
+    if (files.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${files.executionProblem}`);
+    const stepsModule = files.buildDir && path.join(files.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
-    dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
-    depSnapshots.set(depId, artifacts.snapshot);
+    dependencies.set(depId, { manifest: files.snapshot.manifest, ...(files.buildDir && { buildDir: files.buildDir }) });
+    depSnapshots.set(depId, files.snapshot);
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
@@ -235,7 +235,7 @@ async function buildIntoStaging(args: string[], root: string) {
     // The reviewed report of this facade, held to the bundle in hand — the one moment nothing can be stale
     // about it. A **warning**, not a `fail`: the collected failures below are for output dependents cannot
     // use, and a report that has not caught up is not that. It would also mean a pack author could not start
-    // the app until they had rewritten a reviewed artifact mid-change, where `facade:check` is the gate that
+    // the app until they had rewritten a reviewed report mid-change, where `facade:check` is the gate that
     // says so once — its own chain step, and CI. A pack with no report has nothing to be stale against
     if (fs.existsSync(facadeReportFile(root))) {
       const report = compareFacadeReport(root, facadeReportText(packTypes.content, root, manifest.id));

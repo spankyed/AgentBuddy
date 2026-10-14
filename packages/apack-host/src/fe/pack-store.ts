@@ -19,7 +19,7 @@ import { frontendBindingProblem } from './declaration-binding.ts';
 /** Supplied by the host loader, separate from a module's authored registration. */
 export interface FrontendIdentity {
   runtimeRevision: string;
-  artifactRevision?: string;
+  buildRevision?: string;
 }
 
 type OwnedReferenceBindings = {
@@ -119,7 +119,7 @@ function captureReferenceType(type: ReferenceTypeConfig): ReferenceTypeConfig {
 function capture(registration: PackFERegistration, identity?: FrontendIdentity): FrontendContributions {
   const reg = addressed({ ...registration });
   const runtimeRevision = identity?.runtimeRevision;
-  const artifactRevision = identity?.artifactRevision;
+  const buildRevision = identity?.buildRevision;
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
@@ -135,7 +135,7 @@ function capture(registration: PackFERegistration, identity?: FrontendIdentity):
       const owner = { featureRef: resolveName(id, reg.id),
         ...(reg.declarationRevision !== undefined ? { declarationRevision: reg.declarationRevision } : {}),
         ...(runtimeRevision !== undefined ? { runtimeRevision } : {}),
-        ...(artifactRevision !== undefined ? { artifactRevision } : {}) };
+        ...(buildRevision !== undefined ? { buildRevision } : {}) };
       return [{
         types: Object.fromEntries(Object.entries(references.types).map(([name, type]) => [name,
           Object.freeze({ ...owner, binding: captureReferenceType(type) })])),

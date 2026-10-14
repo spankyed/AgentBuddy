@@ -74,7 +74,7 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
 /** A data dir the app ran on: default-setup installed, its state, settings, and notes with a relation and a role */
 async function appDataDir(): Promise<string> {
   const dir = tempDir('apack-db-');
-  // Install the actual verified artifact, as the app does; settings discovery reads its sealed declarations.
+  // Install the actual verified build, as the app does; settings discovery reads its sealed declarations.
   const packDir = path.join(_appDirOf(dir), 'packs', 'default-setup');
   fs.mkdirSync(path.dirname(packDir), { recursive: true });
   fs.cpSync(DEFAULT_SETUP_DIST, packDir, { recursive: true });

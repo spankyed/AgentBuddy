@@ -160,7 +160,7 @@ export function checkDependencies(
 /** What installing the packs the app ships came to, per pack */
 export interface ShippedPackInstall {
   id: string;
-  /** Installation decisions; unchanged source identity does not certify the installed artifact's health. */
+  /** Installation decisions; unchanged source identity does not certify the installed build's health. */
   outcome: 'installed' | 'updated' | 'unchanged' | 'preserved' | 'suppressed' | 'failed';
   /** Why, when it failed */
   error?: string;
@@ -223,7 +223,7 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
   return results;
 }
 
-/** Deliberately restore the named shipped artifact, including a missing or user-owned installation. */
+/** Deliberately restore the named shipped build, including a missing or user-owned installation. */
 export function restoreShippedPack(
   id: string, source: string, packsDir: string,
   options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string },

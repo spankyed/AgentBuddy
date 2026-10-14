@@ -32,10 +32,10 @@ export function getReferenceCategoryDeclarations(): readonly ReferenceCategoryMe
 function matches<T>(owner: ReferenceCatalogEntry, accepted: ReferenceBinding<T>): boolean {
   if (owner.featureRef !== accepted.featureRef || owner.enabled !== true) return false;
   if (owner.origin === 'native') {
-    return accepted.declarationRevision === undefined && accepted.artifactRevision === undefined && accepted.runtimeRevision === undefined;
+    return accepted.declarationRevision === undefined && accepted.buildRevision === undefined && accepted.runtimeRevision === undefined;
   }
-  return owner.origin === 'installed' && !!owner.declarationRevision && !!owner.artifactRevision && !!accepted.runtimeRevision
-    && owner.declarationRevision === accepted.declarationRevision && owner.artifactRevision === accepted.artifactRevision;
+  return owner.origin === 'installed' && !!owner.declarationRevision && !!owner.buildRevision && !!accepted.runtimeRevision
+    && owner.declarationRevision === accepted.declarationRevision && owner.buildRevision === accepted.buildRevision;
 }
 
 function eligible<T>(name: string, group: 'types' | 'categories', bindings: () => ReadonlyMap<string, ReferenceBinding<T>>): ReferenceBinding<T> | undefined {
@@ -46,7 +46,7 @@ function eligible<T>(name: string, group: 'types' | 'categories', bindings: () =
   return accepted && matches(owner, accepted) ? accepted : undefined;
 }
 
-/** Accepted navigation/icon binding only while its owner and installed artifact match current declarations. */
+/** Accepted navigation/icon binding only while its owner and installed build match current declarations. */
 export function getReferenceTypeBinding(name: string): ReferenceBinding<ReferenceTypeConfig> | undefined {
   return eligible(name, 'types', () => boundFeHost().packs.referenceTypes());
 }

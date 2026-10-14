@@ -4,7 +4,7 @@
  * Keys cover authored pack files, generated entries, the phase's additional inputs, tools and options.
  * Diagnostic build-read records do not define this scope: additions must invalidate reuse even when
  * no previous build read them. Reused output is copied into the staged tree before publication, so
- * reuse produces the same artifact as running the phase. Release and development keys stay distinct.
+ * reuse produces the same output as running the phase. Release and development keys stay distinct.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

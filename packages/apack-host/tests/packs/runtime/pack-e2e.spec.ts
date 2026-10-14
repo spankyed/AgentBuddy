@@ -1,4 +1,4 @@
-import { sealPack } from './artifact-fixture.ts';
+import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 /**
  * E2E test: exercises the real pack loading pipeline against an isolated

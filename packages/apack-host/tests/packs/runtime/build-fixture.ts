@@ -17,7 +17,7 @@ export function sealBuild(root: string): void {
   sealPackBuild(path.join(root, 'dist'), manifest);
 }
 
-/** A complete installed artifact for data-only consumers; executing it is a fixture failure. */
+/** A complete installed build for data-only consumers; executing it is a fixture failure. */
 export function writeInstalledPackFixture(dir: string, manifest: PackManifest): void {
   fs.mkdirSync(path.join(dir, PACK_LAYOUT.runtimeDir), { recursive: true });
   fs.mkdirSync(path.join(dir, PACK_LAYOUT.typesDir), { recursive: true });

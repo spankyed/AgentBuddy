@@ -25,7 +25,7 @@ export interface PackFEFeature {
 
 /** What a pack's generated FE entry registers with the host. */
 export interface PackFERegistration {
-  /** Generated bindings identify the same declarations as the installed artifact. */
+  /** Generated bindings identify the same declarations as the installed build. */
   declarationRevision?: string;
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;

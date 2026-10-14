@@ -1,7 +1,7 @@
 import { referenceCatalogEntries } from './catalog-references.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
-import { readInstalledPackArtifacts } from './discovery.ts';
-import { packArtifactRevision, shippedPackRevision, type PackIntegrity } from './layout.ts';
+import { readInstalledPackBuilds } from './discovery.ts';
+import { packBuildRevision, shippedPackRevision, type PackIntegrity } from './layout.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
@@ -12,14 +12,14 @@ import { createLogger } from '@apackdev/sdk/logger';
 
 type CatalogData<T> = T extends object ? { readonly [K in keyof T]: CatalogData<T[K]> } : T;
 
-/** An installed artifact's declarations and host-owned enablement, independent of activation. */
+/** An installed build's declarations and host-owned enablement, independent of activation. */
 export interface PackCatalogEntry {
   readonly snapshot: CatalogData<PackSnapshot>;
   readonly dir: string;
   readonly enabled: boolean;
   /** Verified installed asset receipt; source/dependency data projections do not manufacture one. */
   readonly integrity?: CatalogData<PackIntegrity>;
-  readonly artifactRevision?: string;
+  readonly buildRevision?: string;
 }
 
 export interface PackCatalogSource {
@@ -235,7 +235,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
           throw new Error(`Pack "${id}" asset receipt does not match its declarations`);
         }
         next.set(id, { ...candidate, snapshot: result.snapshot,
-          ...(candidate.integrity && { artifactRevision: packArtifactRevision(candidate.integrity) }) });
+          ...(candidate.integrity && { buildRevision: packBuildRevision(candidate.integrity) }) });
       }
       publish({ packs: [...next.values()], problems });
     },
@@ -252,9 +252,9 @@ export type ContributionCatalog = ReturnType<typeof createContributionCatalog>;
 /** Offline tools refuse incomplete installed definitions instead of treating invalid packs as absent. */
 export function readInstalledContributionCatalog(packsDir: string, disabled: ReadonlySet<string>): ContributionCatalog {
   const catalog = createContributionCatalog(appSettingsDefinition);
-  catalog.replace(readInstalledPackArtifacts(packsDir).map(entry => {
-    if (!entry.artifact) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
-    const { snapshot, integrity } = entry.artifact;
+  catalog.replace(readInstalledPackBuilds(packsDir).map(entry => {
+    if (!entry.build) throw new Error(`Pack "${entry.id}" declarations in ${entry.dir}: ${entry.problem}`);
+    const { snapshot, integrity } = entry.build;
     return { snapshot, integrity, dir: entry.dir, enabled: !disabled.has(entry.id) };
   }));
   return catalog;

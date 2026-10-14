@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFrontendIO } from '@/adapters/pack-frontends';
 
-const stylesheetUrl = (packId = 'ext', revision = 'a') => `pack://${packId}/artifacts/${revision.repeat(64)}/runtime/fe.css`;
+const stylesheetUrl = (packId = 'ext', revision = 'a') => `pack://${packId}/builds/${revision.repeat(64)}/runtime/fe.css`;
 const links = () => [...document.querySelectorAll('link[data-pack-id]')] as HTMLLinkElement[];
 const linkFor = (href: string) => links().find(link => link.href === href)!;
 const load = (href: string) => linkFor(href).onload?.(new Event('load'));

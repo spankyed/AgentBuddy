@@ -79,12 +79,12 @@ export function disconnectWindowSettings(): void {
 
 /** Declaration acceptance precedes this call; issuance verifies the backend's accepted artifact too. */
 export async function settingsForPack(pack: LoadedPackEntry): Promise<FrontendSettingsBinding> {
-  if (!pack.artifactRevision) throw new Error(`Pack "${pack.id}" has no accepted artifact identity`);
+  if (!pack.buildRevision) throw new Error(`Pack "${pack.id}" has no accepted build identity`);
   const accepted = connection;
   if (!accepted) throw new Error('The settings connection is unavailable.');
   await snapshotReady(accepted);
   const credential = await trpc.settings.openPack.mutate({
-    id: pack.id, runtimeRevision: pack.runtimeRevision, declarationRevision: pack.declarationRevision, artifactRevision: pack.artifactRevision,
+    id: pack.id, runtimeRevision: pack.runtimeRevision, declarationRevision: pack.declarationRevision, buildRevision: pack.buildRevision,
   });
   const close = () => releaseCredential(credential);
   try {

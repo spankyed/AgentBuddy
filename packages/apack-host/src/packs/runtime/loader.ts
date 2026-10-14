@@ -5,7 +5,7 @@ import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { _packDeclarationProblem, type PackRegistration } from '@apackdev/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
-import { readInstalledPackArtifact, readInstalledPackArtifacts, type PackManifest } from '../discovery.ts';
+import { readInstalledPackBuild, readInstalledPackBuilds, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
 import { PACK_LAYOUT } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
@@ -63,12 +63,12 @@ function skipped(id: string, problem: string): PackLoadProblem {
 export function loadSingleExternalPack(
   dir: string,
 ): LoadedPack | PackLoadProblem {
-  let artifact;
-  try { artifact = readInstalledPackArtifact(dir); }
+  let build;
+  try { build = readInstalledPackBuild(dir); }
   catch (error) { return skipped(path.basename(dir), (error as Error).message); }
-  const { snapshot, integrity, revision: artifactRevision } = artifact;
+  const { snapshot, integrity, revision: buildRevision } = build;
   const { manifest, declarationRevision } = snapshot;
-  const artifactFiles = Object.freeze({ ...integrity.files });
+  const buildFiles = Object.freeze({ ...integrity.files });
   const appVersion = getAppVersion();
   if (!isHostCompatible(manifest.hostVersion, appVersion)) {
     return skipped(manifest.id, `requires host ${manifest.hostVersion}, running ${appVersion}`);
@@ -83,7 +83,7 @@ export function loadSingleExternalPack(
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, artifactRevision, artifactFiles, dir, manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, buildRevision, buildFiles, dir, manifest },
   };
 }
 
@@ -133,7 +133,7 @@ export function clearPackRequireCache(packDir: string): void {
  */
 export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
   const { packsDir } = resolveAppEnvironment();
-  const discovered = readInstalledPackArtifacts(packsDir);
+  const discovered = readInstalledPackBuilds(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
   forgetPacksExcept(new Set(discovered.map(entry => entry.id)));
   const disabled = disabledPackIds();
@@ -145,12 +145,12 @@ export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
   const loaded: LoadedPack[] = [];
 
   for (const entry of enabled) {
-    if (!entry.artifact) {
+    if (!entry.build) {
       logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
       problems?.recordLoadProblem(entry.id, entry.problem);
       continue;
     }
-    const { dir, artifact: { snapshot: { manifest } } } = entry;
+    const { dir, build: { snapshot: { manifest } } } = entry;
     const pack = loadSingleExternalPack(dir);
     if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
     else loaded.push(pack);

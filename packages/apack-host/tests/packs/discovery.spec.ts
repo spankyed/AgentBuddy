@@ -1,10 +1,10 @@
-import { writeInstalledPackFixture } from './runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture } from './runtime/build-fixture.ts';
 import type { PackManifest } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { readInstalledPackArtifacts, discoverPacks, installedPacks } from '../../src/packs/discovery.ts';
+import { readInstalledPackBuilds, discoverPacks, installedPacks } from '../../src/packs/discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -24,17 +24,17 @@ function writeManifest(name: string, manifest: Record<string, unknown>): string 
   return dir;
 }
 
-describe('installed artifact admission', () => {
+describe('installed build admission', () => {
   it('keeps unreadable directories in the inventory and excludes hidden publication candidates', () => {
     fs.mkdirSync(path.join(packagesDir, 'broken'));
     fs.mkdirSync(path.join(packagesDir, '.candidate'));
-    const entries = readInstalledPackArtifacts(packagesDir);
+    const entries = readInstalledPackBuilds(packagesDir);
     expect(entries).toEqual([{ id: 'broken', dir: path.join(packagesDir, 'broken'), problem: expect.any(String) }]);
   });
 
-  it('refuses a complete artifact installed under another owner and never runs its modules', () => {
+  it('refuses a complete build installed under another owner and never runs its modules', () => {
     writeManifest('local-pack', { id: 'other-pack', name: 'Other', version: '1.0.0' });
-    const entries = readInstalledPackArtifacts(packagesDir);
+    const entries = readInstalledPackBuilds(packagesDir);
     expect(entries).toEqual([{ id: 'local-pack', dir: path.join(packagesDir, 'local-pack'),
       problem: 'Installed directory "local-pack" contains pack "other-pack"' }]);
     expect(discoverPacks(packagesDir)).toEqual([]);

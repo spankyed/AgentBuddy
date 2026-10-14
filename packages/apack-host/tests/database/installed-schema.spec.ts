@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { writeInstalledPackFixture } from '../packs/runtime/artifact-fixture.ts';
+import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
