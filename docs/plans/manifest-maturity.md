@@ -381,3 +381,14 @@ create caches or fetch network data.
 This closes the inspection portion of provenance and improves the current compiled-content inventory.
 It does not claim complete contribution discovery or static flow/action dependency edges; those and the
 remaining tool/dependency/output freshness checkpoint retain their existing acceptance criteria.
+
+
+### Inspection implementation outcome (2026-10-14)
+
+`d6fa2c6dc` implements the inspection checkpoint above: one read-only dependency frame, retained
+provenance in text/JSON, honest verified/unbuilt/invalid/stale build metadata and receipt-checked
+compiled content identities/counts. The current index validator is shared across writer and readers,
+with fixtures migrated outright. The execution goal owns focused/mutation/external/strict evidence.
+
+Cache execution checkpoints 1 and 2 are implemented. Checkpoint 3 (complete dependency/tool/output
+freshness) remains required, as do the rest of the discovery inventory and broader roadmap.

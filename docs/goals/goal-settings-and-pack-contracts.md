@@ -3846,3 +3846,54 @@ freshness gap. Continue all contribution/native discovery kinds, frontend migrat
 edges/inventory, navigation, failure boundaries and every Phase 6 workstream. This checkpoint does
 not complete Phase 6 or the goal. Final committed-source strict `--all` and the complete requirement
 audit remain due; lazy activation and stronger security isolation remain deferred.
+
+
+### Read-only pack inspection and compiled index — checkpoint (2026-10-14)
+
+Source `d6fa2c6dc` adds text/JSON dependency provenance to pack info, doctor and validation. A single
+read-only resolution frame supplies both codegen validation and diagnostic metadata: declared spec,
+exact version, structured origin, delivery directory, content revision and executable availability.
+Missing/invalid data remains explicit. Info verifies complete build output and reads content through
+the accepted receipt; source-file counts and directory-presence success claims are removed. Build
+status distinguishes unbuilt, verified, invalid and stale declarations without claiming complete source
+freshness. JSON reports contain metadata rather than entire generated facade bodies.
+
+One current `parseContentIndex` validator now serves compilation, preview, import, harness and inspection.
+It checks owner/format, entry counts/identities and duplicate keys without activation. Producer validation
+precedes writing while preserving existing serialized bytes. Preview/import retain their provider
+requirements; discovery reads data independently. Removed the redundant historical pack-ID reader and
+migrated incomplete indexes in fixtures outright. A stale fixture `content.artifacts` key becomes the
+current `content.datasets` declaration; actual artifact contributions are unchanged.
+
+Evidence:
+
+- Expanded focused writer/reader/inspection/import checks pass 196 cases:
+  `/private/tmp/apack-inspection-fixture-audit.log`. Core inspection cases also pass 78 cases in
+  `/private/tmp/apack-pack-inspection-focused-final.log`; SDK/CLI/testing typechecks pass.
+- Actual producer/consumer builds and doctor checks pass 15 integration cases:
+  `/private/tmp/apack-inspection-external.log`. The new external fixture deletes producer source, then
+  the producer directory, and proves compiled IDs/counts, cached origin and static dependent validation
+  without executing its poisoned lifecycle module or rewriting the cache record.
+- Removing index validation fails five cases; disabling read-only resolution fails the linked-build
+  case; omitting full inventory checks fails two cases; ignoring missing dependencies fails three.
+  Source was restored exactly. Logs: `/private/tmp/apack-inspection-index-mutation.log`,
+  `/private/tmp/apack-inspection-readonly-mutation.log`,
+  `/private/tmp/apack-inspection-inventory-mutation.log`,
+  `/private/tmp/apack-inspection-incomplete-mutation.log`.
+- Regenerated SDK build API report adds only `parseContentIndex`; unchanged feature/manifest type
+  members reorder because type traversal changes. AST normalization of type-literal member order
+  proves old/new reports identical after excluding the new parser declaration. No EARS widening.
+- Strict `npm run chain -- --strict --cores 1` passes in 474.4s (15 of 30 cached):
+  `/private/tmp/apack-pack-inspection-strict-reviewed.log`,
+  `node_modules/.cache/apack-chain/runs/2026-10-14T20-23-33Z-80067`. It includes 4,588 host cases,
+  855 pack cases with two existing skips, 684 integration cases and real external/smoke/packaged app
+  checks. Initial strict failure exposed two retired-message assertions; migrated them to current
+  schema errors while preserving failure-recording/import assertions. Focused reload passes 18 cases.
+- Generated EARS and all six baseline compiled content files, including the index, remain byte-identical.
+  Current format constants and release metadata are unchanged; the unrelated issue draft is untouched.
+
+Provenance storage/admission and its inspection presentation are implemented. Required dependency/tool
+implementation/import graph and output freshness remain, including the observed manually rebuilt
+renderer output surviving source restoration behind an unchanged input key. Full contribution/native
+discovery, static flow/action edges, frontend migration, navigation, boundaries and all Phase 6
+workstreams retain their scope. Final committed-source strict `--all` and full audit remain due.

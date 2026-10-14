@@ -1934,3 +1934,17 @@ and complete strict evidence. Historical checkpoint prose retains its historical
 Storage/admission is implemented; provenance inspection, dependency/tool graph and out-of-band output
 freshness remain required. Neither this cache nor the naming cleanup closes the remaining contribution
 inventory, native declarations, frontend boundaries, navigation or Phase 6 workstreams.
+
+
+### Inspection data outcome (2026-10-14)
+
+`d6fa2c6dc` removes filesystem-count substitutes from pack info. Verified compiled index metadata and
+dependency provenance are available without module activation, source files, downloads or cache writes.
+The shared index validator also protects existing writer/preview/import/harness paths without changing
+provider requirements or serialized output. Info distinguishes data availability from execution and
+verified bytes from current authored declarations; doctor uses one dependency frame for checks and
+presentation. The execution goal records evidence, including actual producer source removal.
+
+This improves compiled inventory and completes provenance presentation, not discovery for every kind.
+Static flow/action dependency edges, native/other contribution kinds, complete tool/dependency/output
+freshness, frontend migration and later goal phases remain required.
