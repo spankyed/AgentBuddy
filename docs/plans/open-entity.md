@@ -121,19 +121,18 @@ exists in the current reference type. Remove obsolete fields only as their calle
 
 Each leaves the tree green and is landable alone.
 
-**Phase 0 — settle the short-code hazard.** `openEntity` takes an entity id, and the tiptap markdown-parse
-path may not hold one. `reference-node.ts`'s `getAttrs` does `refId: href.slice(protocol.length + 3)`, i.e.
-the **short code**, and `thread` and `document` have short codes distinct from their ids (`note`, `task`,
-`tasklist` and `folder` use the id for both). Nothing resolves one: `SELECT_THREAD`'s id passes straight to
-`VIEW_THREAD` (`features/threads/fe/state.ts:399`), and a thread's short code is `T-<count>`, which
-`entityTypeOf` reads as entity type `T`.
+**Phase 0 — preserve canonical reference identity.** The audit confirmed a reachable Markdown
+round-trip bug: the picker inserted an entity id but serialization wrote its short code into href.
+Use the percent-encoded entity id as the canonical URL target and decode exactly once when parsing.
+Labels and short codes remain presentation. HTML can retain the display code as an attribute;
+Markdown preserves its visible label. Duplicate codes must retain distinct ids, malformed/empty
+URLs must not become references, and an updated node view must navigate its new target.
 
-This is **pre-existing** — today's `navigate(refId)` has the same exposure — so Phase 0 establishes whether it
-is reachable (does stored content round-trip through markdown, or through ProseMirror JSON which keeps
-`refId`?). Fix reachable short-code resolution before migrating those callers; test missing and ambiguous
-references explicitly. Static reference descriptors cannot resolve user-created short codes by themselves. The design does not depend on the answer: `openEntity` takes an
-entity id, and resolving a short code to one is the reference system's job, on the side of the boundary that
-knows short codes exist.
+Do not add a lookup or old-format fallback to reinterpret saved short-code URLs. There are no users
+requiring that compatibility path. Explicit user entry of a short code is a separate operation,
+which must resolve ambiguity before calling openEntity; current parsing does not introduce it.
+See the [identity audit and selected correction](#reference-identity-prerequisite-audit-and-correction-2026-10-13).
+The primitive still handles missing entities and unavailable destinations usefully in Phase 1.
 
 **Phase 1 — the primitive.** `entityTypeOf` promoted to `@apackdev/ears`' barrel; `OpenEntity` in
 `PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
@@ -201,3 +200,59 @@ runs, but opening still waits for the current handler to be ready.
 - Not a change to how a feature opens its own things internally. `NOTE.OPEN` keeps working and keeps its name.
 - Not a replacement for `untypedOpenPlugin`, which stays the door for opening a *plugin* — a navigation
   rather than a thing.
+
+
+### Reference identity prerequisite audit and correction (2026-10-13)
+
+The short-code hazard is reachable: the reference picker inserts both the entity id and short code,
+but ReferenceNode serializes its href using shortCode; Threads input reads the Markdown serializer
+when sending a message. Reparsing then assigns that URL target to refId, and navigation sends it as
+an entity id. Threads and documents therefore lose their real targets on this supported route.
+
+Use stable entity ids as canonical URL targets and keep human labels/short codes as presentation.
+Percent-encode the target and decode once; malformed/empty targets must not create a reference node.
+HTML retains an optional short-code data attribute; Markdown keeps its visible label. Do not guess
+ids from display text, consult a mutable list to interpret saved links, or add an old short-code read
+path. Duplicate short codes then have no bearing on target identity. Explicit user entry of a short
+code is a separate resolver operation and is not silently introduced by reference parsing.
+
+Audit also found that a node view's update changes its displayed label/icon while its click closure
+still uses the original node. Retain the latest accepted node for click delivery. Unknown reference
+types and missing ids must not default to thread navigation. Escape Markdown labels through the
+serializer's text method, preserving canonical targets for punctuation-bearing labels/ids.
+
+Implement and test this prerequisite through actual Tiptap HTML/Markdown round trips and node-view
+updates before moving the six navigation callbacks to entity opening. Test same-code/different-id
+references, encoded ids, malformed URLs, missing ids, unknown types and a changed target in an existing
+node view. This fixes the current writer/parser contract; actual entity destination readiness and
+unavailable/missing-entity results remain required by subsequent phases. No historical conversion,
+compatibility fallback or fake actor is added.
+
+
+The prerequisite implementation now writes encoded entity ids in HTML/Markdown URLs, decodes once,
+keeps HTML display-code attributes, escapes Markdown labels through the serializer and refuses empty
+or malformed targets. Unknown types/missing ids produce plain presentation and no navigation; they
+never default to a thread. Node-view updates retain the latest accepted node for click delivery.
+
+Eight tests run actual Tiptap parsing/serialization and DOM node views for thread/document round trips,
+same-code/different-id targets, encoded punctuation, malformed URLs, missing ids/unknown types and
+in-place updates. Descriptor callbacks are test stand-ins, so this proves delivered identity rather
+than full destination readiness. Typechecking passes with a narrow typed Markdown storage adapter.
+Short-code serialization makes four cases fail; retaining the stale node makes the update case fail.
+Exact source is restored after each mutation. Strict validation remains required before commit.
+
+The pack declares its editor/DOM test dependencies. The offline install initially selected newer cached
+Tiptap releases; the original locked package resolutions were restored, with only dev-dependency
+metadata added. Tests retain Node's binary globals and install DOM globals locally, avoiding the
+repository's documented jsdom/esbuild realm conflict. There are no runtime compatibility reads or
+production-data changes. Declarative references/categories/providers, entity routing and remaining
+readiness/stale-delivery work remain required by the full goal.
+
+
+Strict checkpoint validation passes all 30 gates in 491.1 seconds (none cached), including the full
+unit/integration suites, actual external-pack app acceptance, smoke and both packaged-authoring halves.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T00-51-53Z-23984`;
+`/private/tmp/apack-reference-identity-strict.log`. This verifies the canonical reference writer/parser
+prerequisite and retains the full later routing/discovery scope. Descriptor navigation callbacks still
+exist; actual entity destination lookup, unavailable/missing-entity outcomes and stale delivery remain
+unfinished. No plan is archived and this is not final goal-wide strict --all acceptance.

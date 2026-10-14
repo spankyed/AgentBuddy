@@ -14,7 +14,7 @@ function createIconSvg(type: ReferenceType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of REFERENCE_TYPES[type]?.svgElements || REFERENCE_TYPES.thread.svgElements) {
+  for (const [tag, attrs] of REFERENCE_TYPES[type]?.svgElements ?? []) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -33,7 +33,7 @@ export const ReferenceNode = Node.create({
 
   addAttributes() {
     return {
-      refType: { default: 'thread' },
+      refType: { default: null },
       refId: { default: null },
       shortCode: { default: '' },
       label: { default: '' },
@@ -46,21 +46,25 @@ export const ReferenceNode = Node.create({
       priority: 60,
       getAttrs(node: HTMLElement) {
         const href = (node as HTMLAnchorElement).getAttribute('href') || ''
-        const id = href.slice(cfg.protocol.length + 3)
-        return { refType, refId: id, shortCode: id, label: node.textContent || '' }
+        let id: string
+        try { id = decodeURIComponent(href.slice(cfg.protocol.length + 3)) }
+        catch { return false }
+        if (!id) return false
+        return { refType, refId: id, shortCode: node.getAttribute('data-short-code') || '', label: node.textContent || '' }
       },
     }))
   },
 
   renderHTML({ node }) {
     const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
-    const protocol = cfg?.protocol || 'thread'
+    if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) return ['span', { class: 'reference-pill' }, node.attrs.label]
     return [
       'a',
       mergeAttributes({
-        href: `${protocol}://${node.attrs.shortCode}`,
+        href: `${cfg.protocol}://${encodeURIComponent(node.attrs.refId)}`,
         class: 'reference-pill',
         'data-ref-type': node.attrs.refType,
+        'data-short-code': node.attrs.shortCode,
       }),
       node.attrs.label,
     ]
@@ -68,6 +72,7 @@ export const ReferenceNode = Node.create({
 
   addNodeView() {
     return ({ node, editor }) => {
+      let currentNode = node
       const dom = document.createElement('span')
       dom.classList.add('reference-pill')
       dom.dataset.refType = node.attrs.refType
@@ -87,17 +92,18 @@ export const ReferenceNode = Node.create({
       dom.addEventListener('click', (event) => {
         if (editor.isEditable && !event.metaKey && !event.ctrlKey) return
 
-        const refType = node.attrs.refType as ReferenceType
-        const refId = node.attrs.refId as string
+        const refType = currentNode.attrs.refType as ReferenceType
+        const refId = currentNode.attrs.refId as string
         const cfg = REFERENCE_TYPES[refType]
 
-        cfg.navigate(refId)
+        if (cfg && typeof refId === 'string' && refId) cfg.navigate(refId)
       })
 
       return {
         dom,
         update(updatedNode) {
           if (updatedNode.type.name !== 'reference') return false
+          currentNode = updatedNode
           dom.dataset.refType = updatedNode.attrs.refType
           icon.replaceChildren(createIconSvg(updatedNode.attrs.refType as ReferenceType))
           label.textContent = updatedNode.attrs.label
@@ -136,8 +142,13 @@ export const ReferenceNode = Node.create({
       markdown: {
         serialize(state: any, node: any) {
           const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
-          const protocol = cfg?.protocol || 'thread'
-          state.write(`[${node.attrs.label}](${protocol}://${node.attrs.shortCode})`)
+          if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) {
+            state.text(node.attrs.label)
+            return
+          }
+          state.write('[')
+          state.text(node.attrs.label)
+          state.write(`](${cfg.protocol}://${encodeURIComponent(node.attrs.refId)})`)
         },
         parse: {
           updateDOM(element: HTMLElement) {
