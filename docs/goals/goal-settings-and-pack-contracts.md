@@ -4101,3 +4101,51 @@ contract before certifying freshness, then the separate manual-build/drive launc
 remaining discovery/native/static-content requirement, navigation, frontend boundary and all three
 Phase 6 workstreams stays required, followed by committed-source strict --all and full completion audit.
 No work is archived; the unrelated issue draft is untouched.
+
+### Inherited compiler configuration checkpoint (2026-10-14)
+
+Source `8261e98c8` introduces a common CLI compiler-configuration reader and includes every
+configuration/inheritance file it resolves in the compilation key. TypeScript's current parser
+resolves relative/package/array inheritance and JSON comments; keys cover normalized relative
+filenames and exact bytes, including parents outside the authored root. DSL option selection,
+facade checking and source-resolution rules use the same reader. Missing config retains each
+caller's existing defaults; malformed/circular/missing parents and invalid options never become
+empty or partial options. Only no-input diagnostics are ignored for entry-driven inspection.
+The SDK's separate compiler-version-bound module reader likewise refuses parsed configuration
+errors; no TypeScript internals or new APIs are exposed to packs.
+
+A real external-generation regression keeps authored tsconfig/package versions unchanged while
+changing an outside parent mapping: the generated stamp is stale and registration event metadata
+changes. Malformed parent content refuses while retaining accepted generated files. The fixture
+correctly inherits paths as a whole, matching TypeScript's override semantics. Five configuration
+reader cases, two direct SDK cases, twelve existing DSL/facade integration cases and the repaired
+actual generation case pass. Mutation removal of bytes/refusal fails two/two tests respectively;
+SDK refusal and scope consumption removal each fail one. All source mutations restore exactly.
+
+The first strict run exceeded the unit suite's 15s limit in a case doing two real builds; premature
+fixture cleanup caused subsequent cwd failures. Move the entire real-build publication test file
+unchanged to build-output-swap.integration.spec.ts, its appropriate suite, instead of increasing
+unit budgets or weakening assertions. All nine publication cases pass there. Accepted strict
+validation passes all 30 gates in 651.0s (16 cached), including external/watcher/typing authoring,
+runtime build, smoke and packaged app acceptance. Evidence:
+`/private/tmp/apack-compiler-config-reviewed-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T23-39-19Z-53265`. Initial failure evidence remains
+`/private/tmp/apack-compiler-config-strict.log`; it is not acceptance evidence. Focused/integration/
+mutation evidence: `/private/tmp/apack-compiler-config-focused-final.log`,
+`/private/tmp/apack-compiler-config-integration-reviewed.log`,
+`/private/tmp/apack-compiler-config-integration.log` (DSL/facade cases passed; its early inherited-
+fixture failure was repaired), `/private/tmp/apack-compiler-config-build-publication.log`, and
+`/private/tmp/apack-compiler-config-{bytes,refusal,sdk-refusal,consumption}-mutation.log`.
+Committed-source warm strict passes in 1.1s with 29/30 cached:
+`/private/tmp/apack-compiler-config-warm-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T23-50-44Z-83069`. EARS and six compiled content files
+remain byte-identical. No public API/schema/format/release metadata changes; unrelated issue draft
+is untouched.
+
+Configuration-file coverage and refusal semantics are implemented. External path-mapped/imported
+file bytes, undeclared resolution, loaded-code versus captured disk identity, complete frozen
+execution/publication and scope cost remain unproven and required. Complete that audit/work before
+certifying freshness, then manual-build/drive launch behavior. Retain every remaining contribution/
+native/static-content discovery requirement, navigation, frontend boundary and all three Phase 6
+workstreams; final committed-source strict --all and the full completion audit remain due. Nothing
+is archived from this checkpoint.

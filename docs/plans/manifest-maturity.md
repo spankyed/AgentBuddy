@@ -557,3 +557,41 @@ proof. Current default-setup's tsconfig has local generated/feature/extension ma
 parent config; inspect external authoring contracts rather than assuming a nonexistent repo base
 config. Then settle manual runtime build/drive freshness. All remaining contribution discovery and
 downstream Phases 0–7, including every Phase 6 workstream and final strict --all, retain their scope.
+
+### Compiler configuration audit and checkpoint design (2026-10-14)
+
+The installed-package key does not capture inherited tsconfig files outside the authored pack.
+Current DSL compilation and facade checking also turn some malformed/missing-parent configurations
+into empty/partial options; pack resolution already reports those errors. Resolve inheritance using
+TypeScript's current parser, collect the actual configuration bytes during that traversal (not a
+previous build-read log), and key normalized pack-relative filenames/bytes. Relative/package/array
+inheritance, JSON comments and current resolution metadata must be covered without importing code.
+
+Share one CLI reader across configuration keys, DSL option selection, facade checking and source-
+resolution rules. Preserve existing absent-config defaults at each caller. Malformed/circular/missing
+inheritance and invalid options are explicit failures; only no-source-input diagnostics may be ignored
+for entry-driven inspection. The SDK's separate compiler-version-bound module reader must reject the
+same nonfatal configuration errors instead of validating exports with partial options; do not expose
+TypeScript internals as new pack API merely to share that private reader across package boundaries.
+
+Prove same authored config and package versions with changed external parent mappings produce stale
+generation and changed registration event metadata, and that malformed parents retain generated files.
+Focused reader/SDK and actual external-generation paths, guard-removal mutations and strict validation
+precede commit. This closes configuration-file coverage and refusal semantics, not imported file bytes
+at external path targets or immutable already-loaded implementation. Those and scope cost/frozen
+execution remain required, followed by manual-build/drive and every discovery/downstream goal phase.
+
+### Compiler configuration outcome (2026-10-14)
+
+`8261e98c8` implements inherited configuration byte coverage and explicit CLI/SDK refusal above.
+Generation/cached keys now follow parent files outside the authored pack; valid absent/empty
+entry-driven cases retain their established semantics. The goal records reader/SDK, actual parent
+mapping, DSL/facade, four guard mutations and required strict evidence. Real-build publication tests
+move unchanged into integration after the unit budget exposed incorrect placement; no budgets or
+assertions are relaxed. Committed-source unchanged strict reuse is 1.1s.
+
+Next: external path/import file closure and undeclared resolution, already-loaded code/disk identity
+and complete frozen execution/publication, with measured scope cost. Configuration discovery alone
+does not prove those inputs covered. Then manual runtime build/drive freshness and all remaining
+discovery/native/static-content/navigation/frontend/API/provenance/replacement requirements. The
+full goal, every Phase 6 workstream and final committed-source strict --all remain active.
