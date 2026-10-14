@@ -2980,3 +2980,34 @@ root move; native declarations currently have no lifecycle field. Preserve execu
 then finish M4–M6 and the entire remaining discovery/settings/navigation/boundaries/Phase 6 goal.
 Final committed-source strict `--all` and the complete requirement audit remain required; nothing is
 archived or declared globally complete.
+
+
+### Checked lifecycle declarations — M3 (2026-10-14)
+
+Source checkpoint `e063ec1a5` replaces authored and runtime `boot` properties with `lifecycle`.
+`PackLifecycleDeclaration` carries targets; `PackLifecycleHooks` carries functions. One membership
+and callability guard serves native and installed admission without invoking callbacks. Native
+metadata survives unload, and invalid bindings fail before registration/catalog publication.
+Generators, schemas, API reports, readers, native fixtures, external manifests, UI and public docs
+moved together. Actual app boot remains a process phase; activation, hydration, migrations, content
+apply and shutdown retain their existing order. No compatibility alias or conversion was added.
+
+Validation:
+- Generated EARS and all six compiled content files are byte-identical to
+  `/private/tmp/apack-m3-baseline`; the facade report is unchanged.
+- Native/installed admission and host-runtime checks: 61 passed after exact restoration. Removing
+  membership and function checks separately failed named assertions; logs are
+  `/private/tmp/apack-m3-{membership,function}-mutation.log`.
+- Full strict chain passed in 573.1s (9/30 cached), including actual external Electron app (187.3s),
+  smoke (5.6s), packaged authoring (63.3s) and packaged app (8.8s). Evidence:
+  `node_modules/.cache/apack-chain/runs/2026-10-14T06-50-36Z-98234`.
+- Final review restored meaningful boot-phase comments and removed an unrelated malformed lifecycle
+  property from a collision fixture, giving that fixture a direct `PackManifest` annotation. Its
+  focused test passed. Reviewed-source strict validation passed in 287.6s (15/30 cached), with
+  typechecks, lint, host/pack/integration checks freshly run; app checks retained the full-run evidence.
+  Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T07-01-12Z-29230`,
+  `/private/tmp/apack-m3-strict-reviewed.log`. `git diff --check` passed.
+
+M3 is complete. Remove unnecessary moved-key diagnostics under the no-compatibility rule, then
+continue M4–M6 and every remaining goal phase. Final committed-source strict `--all` and the full
+requirement audit remain required. The unrelated issue draft stays untracked. Nothing is archived.
