@@ -3195,3 +3195,32 @@ expected-export checks across actual readers, and cross-pack default-selection e
 these before M5/M6, then every remaining discovery/navigation/boundary and Phase 6 requirement.
 Final strict `--all` on committed source and the full reconciled audit remain mandatory. Nothing is
 archived; the full goal remains active.
+
+### Purpose-specific module grammar — M4 checkpoint (2026-10-14)
+
+Source `9b674ece3` distinguishes whole-module paths from named-export references and permitted
+default-export bindings. A shared module-path grammar serves schemas and source/type resolution;
+module/export syntax remains shared for TypeScript type references and executable bindings, with
+purpose-specific checks. The derived target inventory carries the reference mode instead of an
+ambiguous boolean. Codegen normalizes it once before emission, including packs with no named
+exports to inspect. Systems/forms/views/DSL/frontend/content whole modules reject export selectors;
+system/plugin contracts require their named TypeScript exports. Plugin/reference binding syntax and
+loading/route metadata remain intact. Generated schema assistance and public manifest docs agree.
+
+Evidence: focused SDK checks passed (217), including schema purpose cases, actual existing-file
+validation and codegen without export inspection; real CLI doctor/validate checks passed (7).
+Disabling the module-path guard failed both named parser and codegen assertions; exact source
+restored (`/private/tmp/apack-m4-grammar-purpose-mutation.log`). A service diagnostic now arises
+earlier with feature/field ownership; migrated its exact expected text, retaining missing-file/export
+and non-service-object assertions. Strict passed in 515.8s (all 30 steps fresh): host 4,449 tests,
+pack 855 plus two existing skips, integration 649, external contract/app, smoke and both packaged
+authoring halves. Actual app 156.6s, smoke 4.9s, authoring 53.8s, packaged app 7.6s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T10-37-32Z-38363`,
+`/private/tmp/apack-m4-grammar-strict.log`. EARS and six compiled content files remain byte-identical
+to `/private/tmp/apack-m4-description-baseline`; facade/API checks pass unchanged. Reviewed source,
+schema and explicit committed paths; unrelated issue draft remains untracked/excluded.
+
+M4 still requires conventional expected-export checks, scaffold/layout agreement and cross-pack
+default-selection evidence. Then complete M5/M6 and all remaining discovery/navigation/boundary and
+Phase 6 workstreams. Final strict `--all` on committed source and the full reconciled audit remain
+mandatory. Nothing is archived; the entire goal remains active.

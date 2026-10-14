@@ -200,8 +200,10 @@ existing normalized entity projection. Routes/loading metadata remain intact.
 
 Real CLI checks prove missing step/migration files are errors even with unresolved dependencies;
 other unverified checks remain explicitly incomplete. The module inventory distinguishes script,
-component, type-export and type-module purposes. M4 remains open for scaffold/layout agreement and
-cross-pack default selection. Audit each module's reference grammar against its actual codegen reader:
-whole-module paths must not be accepted as named-export bindings when their reader only takes a
-module, and statically knowable expected exports must be checked without activation. Prove these
-boundaries together through external authoring; file presence alone does not finish the contract.
+component, type-export and type-module purposes. `9b674ece3` makes whole-module paths, required named
+exports and optional default-export bindings explicit in schemas and source/codegen readers. Codegen
+checks grammar before emission even without named bindings. M4 remains open for scaffold/layout
+agreement, conventional expected-export checks and cross-pack default selection. Statically knowable
+exports must be checked without activation, including the conventions of whole-module readers. Prove
+these boundaries through external authoring; file presence and correct grammar alone do not finish
+the contract.
