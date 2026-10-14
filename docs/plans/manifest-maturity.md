@@ -81,7 +81,7 @@ the settings plan, as that goal already specifies.
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
 | Module-reference syntax | Required M1/M4: shape references use `path#export`; one parser/refusal contract, retaining richer component/loading declarations and explicit type-barrel semantics |
-| Schema descriptions, moved-key hints, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
+| Schema descriptions, current-schema diagnostics, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
 | Default navigation and feature descriptions | Preserve landed plugin defaults/designations; require meaningful feature `description` through schema, scaffold, native/catalog and inspection in M4 |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
 | Build/check configuration and sidecars | Preserve build options; required M5 moves allowances to `checks.allow` and removes the sidecar, with unknown/non-switchable refusals. M6 centralizes current-shape writing/order |
@@ -164,7 +164,7 @@ Tighten existing values before adding more fields:
   responsible for conflicts involving unrelated installed packs.
 
 Targets: `manifest-schema.ts`, `build/validate.ts`, codegen export checks, CLI validate/build and installer
-diagnostics. Do not regress the existing moved-key replacement hints.
+diagnostics. Use current-schema errors; do not retain obsolete-key inventories or migration hints.
 
 Evidence: invalid semver/ranges fail at the manifest path; missing dependencies produce an incomplete
 result; text and machine output report the same underlying issue; install refuses an invalid artifact

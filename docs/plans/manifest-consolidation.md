@@ -133,3 +133,32 @@ publishing, PRs or pushes. Lazy activation, strong isolation and general storage
 
 Tracking repair does not finish this work. Closure requires implementation and acceptance evidence for
 every active row above and every original goal requirement. Preserve unrelated draft documents.
+
+## M4 source audit and authoring boundary (2026-10-14)
+
+Current `generateTypes()` treats `typesEntry` as a module path, then silently falls back to
+`src/features/<id>/be/types` and probes an adjacent `export-types.ts`. `validateFeatures()` only
+checks explicit `typesEntry`; doctor delegates to it. Scaffolding writes `be/types.ts` without
+declaring it. Default-setup has eleven conventional type modules and three export-type companions
+(threads, notes, library). This mismatch lets generation expose types which the manifest never
+declares and lets a missing inferred file disappear without a diagnostic.
+
+M4 must retain type-only export-star semantics while making that contribution explicit:
+- Optional `features.<id>.types` names one pack-root-relative TypeScript module. It is a module
+  path, not `path#export`, because it exports all public types rather than one executable binding.
+- Generation reads only declared modules; no filesystem fallback or companion probing. Existing
+  public type exports must remain available by composing companions in the declared authored barrel.
+  Compare dependent-pack typing/completions and generated facade exports before/after; do not widen
+  entity shapes or EARS types to repair failures. No declaration means no feature type contribution.
+- Scaffold declares its generated module explicitly. Validation, doctor and generation share module
+  path resolution, including extension handling, containment and missing-module diagnostics.
+  Arbitrary declared locations remain supported; scaffold conventions are authoring defaults.
+- Required nonblank feature `description` describes purpose, separate from plugin display label.
+  Native declarations and catalog summaries carry it; it does not belong in executable bindings.
+  Scaffolding requires an explicit `--description` before writing files. Migrate all real manifests,
+  native declarations, fixtures, templates and public docs in the description checkpoint.
+
+Use separate strictly validated checkpoints for feature-purpose metadata and the type-module/tool
+contract when that makes migration review clearer. Preserve designation/default-selection tests and
+explicit runtime contribution membership. This audit does not certify the remaining target/export
+checks, schema descriptions or discovery kinds complete.
