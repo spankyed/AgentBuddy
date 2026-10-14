@@ -419,7 +419,9 @@ the same report.
 
 Checks:
 - Manifest structure validation
-- Each keyed `features` entry against the pack: its `settings.form`, `types`, `system.entry` and `plugin.state` and component-target files exist, and no two features claim the same `designation`
+- Declared module files: feature types/contracts, systems, plugins, references and forms; entity shapes; services, repositories, steps, blocks, artifacts, DSL modules, frontend extensions, lifecycle hooks, migrations and content writers/compilers/appliers. Paths stay within the pack, including symlinks. File checks run even when dependencies are unresolved.
+- Feature designation ownership: no two features claim the same role
+- Static export and contract checks through in-memory codegen when source files and dependencies are available; modules are not activated
 - Dependency resolution (a warning when one can't be resolved)
 - **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 

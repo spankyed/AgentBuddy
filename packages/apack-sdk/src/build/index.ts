@@ -65,7 +65,7 @@ export type { GenerateEntriesOptions } from './generate-entries.ts';
 // Resolve conditions for building pack code against a linked checkout
 
 // Pack validation
-export { validateManifest, validateFeatures, parseManifest } from './validate.ts';
+export { validateManifest, validatePackSources, parseManifest } from './validate.ts';
 export { packValidation } from './diagnostics.ts';
 export type { PackDiagnostic, SkippedPackCheck, PackValidation } from './diagnostics.ts';
 export { generateSettingsTypes } from './settings-types.ts';

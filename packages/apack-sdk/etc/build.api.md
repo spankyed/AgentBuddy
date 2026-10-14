@@ -2957,9 +2957,6 @@ export interface Track {
 // @public (undocumented)
 export const TYPE_MODULE_EXTENSIONS: readonly [".ts", ".tsx", ".mts", ".cts"];
 
-// @public
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions' | 'data'>>): PackValidation;
-
 // @public (undocumented)
 export function validateFlowDSL(dsl: unknown, options?: ValidateOptions): ValidationResult;
 
@@ -2970,6 +2967,9 @@ export function validateFlows(merged: FlowDSL, actionLabels: string[], promptLab
 
 // @public (undocumented)
 export function validateManifest(manifestPath: string): PackValidation;
+
+// @public
+export function validatePackSources(packRoot: string, manifest: Partial<PackManifest>): PackValidation;
 
 // @public (undocumented)
 export interface ValidationError {

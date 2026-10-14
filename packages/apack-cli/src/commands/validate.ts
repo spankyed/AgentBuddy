@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import {
-  generatePackFiles, packValidation, validateManifest, validateFeatures,
+  generatePackFiles, packValidation, validateManifest, validatePackSources,
   type PackDiagnostic, type PackValidation, type SkippedPackCheck,
 } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
@@ -18,8 +18,8 @@ export async function validatePack(root: string): Promise<PackValidation> {
   if (manifestResult.status === 'valid') {
     const manifest = readManifest(root);
     packId = manifest.id;
-    const features = validateFeatures(root, manifest);
-    diagnostics.push(...features.diagnostics);
+    const sources = validatePackSources(root, manifest);
+    diagnostics.push(...sources.diagnostics);
     let resolved: Awaited<ReturnType<typeof resolveDeps>> | undefined;
     try {
       resolved = await resolveDeps(root, manifest.dependencies, { readOnly: true });
@@ -32,8 +32,8 @@ export async function validatePack(root: string): Promise<PackValidation> {
       skippedChecks.push({ check: 'dependencies', reason });
     }
 
-    if (features.status !== 'valid' || !resolved) {
-      skippedChecks.push({ check: 'codegen', reason: 'Requires valid feature files and resolved dependencies.' });
+    if (sources.status !== 'valid' || !resolved) {
+      skippedChecks.push({ check: 'codegen', reason: 'Requires valid declared sources and resolved dependencies.' });
     } else {
       try {
         // Generates in memory: checks exports, contracts and content without writing generated files.
@@ -44,7 +44,7 @@ export async function validatePack(root: string): Promise<PackValidation> {
       }
     }
   } else {
-    for (const check of ['feature-files', 'dependencies', 'codegen', 'source-rules']) {
+    for (const check of ['declared-sources', 'dependencies', 'codegen', 'source-rules']) {
       skippedChecks.push({ check, reason: 'Requires a valid manifest.' });
     }
     return packValidation(diagnostics, skippedChecks);

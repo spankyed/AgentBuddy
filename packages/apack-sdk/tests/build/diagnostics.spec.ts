@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { packValidation, type PackDiagnostic } from '../../src/build/diagnostics.ts';
-import { parseManifest, validateFeatures } from '../../src/build/validate.ts';
+import { parseManifest, validatePackSources } from '../../src/build/validate.ts';
 
 describe('pack validation diagnostics', () => {
   it('never declares skipped checks valid, and keeps errors invalid even when checks were skipped', () => {
@@ -25,7 +25,7 @@ describe('pack validation diagnostics', () => {
   });
 
   it('addresses a missing source file as a feature declaration', () => {
-    expect(validateFeatures('/no-such-pack', { id: 'demo', features: { test: { description: 'Exercise system validation.', system: { entry: 'src/system.ts' } } } }))
+    expect(validatePackSources('/no-such-pack', { id: 'demo', features: { test: { description: 'Exercise system validation.', system: { entry: 'src/system.ts' } } } }))
       .toMatchObject({ status: 'invalid', diagnostics: [{
         code: 'feature.missing-file', severity: 'error', packId: 'demo',
         path: ['features', 'test', 'system', 'entry'], source: 'src/system.ts',

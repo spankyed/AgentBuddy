@@ -1,5 +1,6 @@
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
+import { _packModuleTargets } from './module-targets.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
@@ -18,7 +19,6 @@ import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
-import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _pluginTargets, type ComponentTarget } from '../framework/plugin-declaration.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
@@ -479,31 +479,13 @@ export async function generatePackFiles(
 
   /** Every file whose exports codegen reads, so one TypeScript program covers them all */
   function exportedFromFiles(): string[] {
-    const features = packFeatures(manifest);
-    const targets = [
-      ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
-      ...Object.values(manifest.extensions?.services ?? {}),
-      ...Object.values(manifest.content?.writers ?? {}),
-      ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
-      ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
-      ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
-      ...Object.values(manifest.lifecycle ?? {}),
-      ...features.flatMap(feature => feature.references ? _referenceTargets(feature.references).map(([, target]) => target).filter(target => !_parseModuleReference(target, 'Module reference', 'default').source.endsWith('.vue')) : []),
-      ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !_parseModuleReference(target, 'Module reference', 'default').source.endsWith('.vue')) : []),
-    ].map((target) => _parseModuleReference(target, 'Module reference', 'default').source);
-    const sources = [
-      ...targets,
-      ..._packEntities(manifest).flatMap(({ name, shape }) => shape === null ? [] : [_parseModuleReference(shape, `Entity shape "${name}"`).source]),
-      // Named as a module rather than a `path#export`, but its export name is a convention codegen checks,
-      // so it has to be in the program for `exportOf` to see it
-      ...(manifest.extensions?.fe?.tiptapPlugins ? [manifest.extensions.fe.tiptapPlugins] : []),
-      // Events and published state types come from contract leaves, never inferred machine types.
-      // Plugin machines also enter this program through targets above for value-export checks.
-      // Keeping contracts independent still prevents their machine closure leaking into facade types.
-      ...features.flatMap((f) => (f.plugin?.contract ? [_parseModuleReference(f.plugin.contract, `Feature "${f.id}": plugin.contract`).source] : [])),
-      ...features.flatMap((f) => (f.system?.contract ? [_parseModuleReference(f.system.contract, `Feature "${f.id}": system.contract`).source] : [])),
-    ];
-    return [...new Set(sources.map(source => sourceFileOf(source)).filter((file): file is string => file !== undefined))];
+    const files = _packModuleTargets(manifest).flatMap(({ target, kind, named, label }) => {
+      const source = kind === 'types' ? target : _parseModuleReference(target, label, named ? undefined : 'default').source;
+      if (source.endsWith('.vue')) return [];
+      const file = findSourceModule(root, source, kind === 'type' || kind === 'types' ? TYPE_MODULE_EXTENSIONS : SCRIPT_MODULE_EXTENSIONS, label);
+      return file ? [file] : [];
+    });
+    return [...new Set(files)];
   }
 
   let moduleExports: ModuleExports | undefined;

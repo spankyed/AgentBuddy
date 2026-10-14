@@ -42,7 +42,7 @@ describe('pack authoring validation', () => {
     fs.writeFileSync(path.join(root, 'apack.json'), '{');
     expect(await validatePack(root)).toMatchObject({
       status: 'invalid', diagnostics: [expect.objectContaining({ code: 'manifest.json' })],
-      skippedChecks: [{ check: 'feature-files' }, { check: 'dependencies' }, { check: 'codegen' }, { check: 'source-rules' }],
+      skippedChecks: [{ check: 'declared-sources' }, { check: 'dependencies' }, { check: 'codegen' }, { check: 'source-rules' }],
     });
     expect(resolveDeps).not.toHaveBeenCalled();
     expect(generatePackFiles).not.toHaveBeenCalled();
