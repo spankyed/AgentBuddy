@@ -32,6 +32,9 @@ barrels remain type-only and Vue component exports are checked by the frontend b
 exports are inspected too, including CommonJS default-import semantics. Missing modules or required
 exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
 
+Built and installed declarations use the [pack artifact contract](pack-artifacts.md); native host
+composition supplies declarations directly, without an installed receipt.
+
 The CLI writes root, feature-definition and extension-kind fields in schema order. Feature IDs,
 contribution maps, dependency maps, arrays and custom settings/schema data retain their authored
 order. `init`, `add` and the release version editor share this writer.

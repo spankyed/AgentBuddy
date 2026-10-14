@@ -127,37 +127,27 @@ see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 #### `apack pack build [--skip-generate] [--skip-fe] [--release]`
 
-External packs build into `dist/` in the pack layout:
+A build writes a verified pack layout into a staging directory, then replaces `dist/` only after
+all phases succeed. A failed build preserves the previous complete `dist/`. See
+[pack artifacts](pack-artifacts.md) for the build, archive, installed and native layouts.
 
-```
-dist/
-  runtime/index.cjs          backend: systems, services, steps, lifecycle hooks, migrations
-  runtime/fe.js, fe.css      frontend
-  runtime/content/             compiled content
-  build/steps.build.mjs      step build facets, for dependents' flow validation (with steps.build)
-  build/content-runtime.mjs     entity types, repositories and content writers, for dependents' unit tests
-  build/content-compilers.mjs   content format compiler modules (with content.formats[].compiler)
-  types/pack-types.d.ts      facade types for dependents
-  types/snapshot.json        types, facade types, flow helpers, manifest, SDK version
-  defs/monaco/<name>-defs.d.ts  editor definitions per dsl entry with a monaco target
-```
+The build:
 
-Steps:
+1. Validates `apack.json`, prepares staging, and resolves dependencies.
+2. Generates `src/__generated__/` from declarations and dependency snapshots (skip with `--skip-generate`). Declared settings schemas/defaults are inline; custom forms are separate declared modules.
+3. Enforces pack rules, including the manifest's `checks.allow`, and refuses unresolved dependencies. Warns if generated dependency types differ from the resolved versions.
+4. Compiles `content.sources` into `runtime/content/`, validating flows against dependency step build code, and bundles declared content compilers for dependents.
+5. Bundles and checks the standalone `types/pack-types.d.ts` facade. Its imports must resolve through `@apackdev/*`, SDK peers or Node built-ins; a committed facade report mismatch produces a warning (`apack pack facade-report`).
+6. Bundles flow helpers, step build facets and the content runtime used by dependents. Checks that the content runtime can load in a fresh Node process with the supported SDK dependencies.
+7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry.
+8. Validates the snapshot and generated declaration identities, refuses inputs changed during the build, writes the manifest and integrity receipt, verifies the completed layout, and publishes staging as `dist/`.
 
-1. Validates `apack.json` and fails on an invalid manifest
-2. Clears `dist/`
-3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
-4. Checks each feature's `settings` file exists and declares only valid `schema`, `defaults` and `visible`
-5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
-6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
-7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack pack facade-report`)
-8. Writes `types/snapshot.json`, and notes entity types explicitly declared with a `null` shape
-9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apackdev/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apackdev/sdk`'s optional peers
-10. Bundles the backend runtime into `runtime/index.cjs`
-11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@apackdev/*` and the entry's `inline` packages
-12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
+The snapshot includes declaration data, entity/relation types, facade declarations, compiled help,
+flow helpers and contribution provenance. Explicit `null` entity shapes remain untyped. Build-time
+compilers, helpers and content runtime may execute during building; inspecting the completed snapshot
+does not execute them. Discovery and executable bindings are separate contracts.
 
-Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
+Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
 
 A build also writes `.apack/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `APACK_NO_BUILD_READS=1` turns it off, for a read-only tree.
 

@@ -79,20 +79,11 @@ This launches apack with your pack installed and keeps it in step with your edit
 
 It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else a cached/downloaded Beta build your `hostVersion` accepts. `--host <path>` and `--host beta` name one outright, and it always says which it chose and why. A source app already using that data dir is reused only after its session verifies the selected checkout. Packaged hosts require an unused profile because their running app identity cannot be verified.
 
-The build pipeline (`apack pack build`):
-
-1. Validates `apack.json` and clears `dist/`
-2. `apack generate` and `apack pack generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
-3. Checks each feature's settings file sets only its own plugin's settings
-4. Resolves dependencies, warning when the generated dependency types are from a different version
-5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
-6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@apackdev/*` packages, `@apackdev/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
-7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your content formats' compiler modules). The build loads the content runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@apackdev/sdk` peers such as `@tiptap/pm`
-9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
-10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
-
-See [CLI Reference](cli.md#building) for details.
+`apack pack build` validates declarations, generates entries, resolves dependencies, compiles content
+and bundles the runtime and dependent-facing types. Settings definitions are inline in `apack.json`;
+forms remain custom components. The build checks its output before publishing `dist/`, preserving the
+previous build on failure. See [the build command](cli.md#building) for its gates and
+[pack artifacts](pack-artifacts.md) for the files it produces and installs.
 
 ## Build and distribute
 
