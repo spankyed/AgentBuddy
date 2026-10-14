@@ -2702,3 +2702,34 @@ includes dynamic parsing in an already-created editor, scoped provider cleanup, 
 disconnected execution refusal, stable unrelated updates and an actual external contributor.
 This documentation-only checkpoint passed `git diff --check`; it claims no new runtime validation.
 The goal remains active with all previously recorded outstanding requirements unchanged.
+
+
+### Shared reference eligibility reader checkpoint (2026-10-13)
+
+Source commit `7de659194` supplies the SDK join between common reference declarations and accepted
+frontend bindings. Static type/category reads never consult executable registrations. Categories retain
+qualified owners and duplicate names. Ambiguous installed/native names refuse executable lookup;
+source advertisements do not become runtime claims. Installed execution requires ready catalog status,
+explicit enablement, matching feature/declaration/artifact identity and an accepted runtime identity.
+Native bindings use their unstamped native contract. Lookup returns the stable accepted binding and
+never invokes navigation, providers or components. Consumers can observe both publication lifetimes
+through separate declaration/binding subscriptions and release each explicitly.
+
+Twenty-one focused checks and the full SDK suite (971 tests, 85 files) pass. Independently removing
+owner and artifact checks fails the corresponding named refusal assertion; byte restoration returns
+the focused suite to passing. SDK typecheck and the regenerated public API report agree. The first
+API-report command hit the sandbox's local IPC restriction; the authorized escalated rerun passed.
+
+Strict validation passed every one of 30 gates in 555.6 seconds with no cached gates, including
+4,385 host tests, 839 pack tests (two existing skips), 639 integration tests, actual external/default-fork
+Electron acceptance (160.3 seconds), smoke and both packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T03-26-20Z-46494`;
+`/private/tmp/apack-reference-reader-strict.log`;
+`/private/tmp/apack-reference-reader-owner-mutation.log`;
+`/private/tmp/apack-reference-reader-artifact-mutation.log`.
+
+The shared reader is implemented; current editor/provider consumers still use the pack-local aggregates.
+Next migrate parsing/rendering/suggestions and provider scopes together, remove those aggregates and
+obsolete public types, and verify actual external references in an already-open editor. All other
+discovery kinds/native/freshness, entity routing/readiness, boundaries and the three Phase 6 workstreams
+remain required. Final committed-source --all, whole-goal acceptance auditing and archival remain due.
