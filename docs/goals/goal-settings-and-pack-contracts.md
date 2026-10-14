@@ -2869,3 +2869,31 @@ entity opening/readiness, pane boundaries and the three Phase 6 workstreams. A n
 reconcile its evidence with the archived sources before the next implementation, without narrowing
 the original scope to the current ledger. Unrelated draft documents are preserved and not included
 in this checkpoint. Final committed-source --all, full requirement audit and archival remain due.
+
+
+### Original manifest scope reconciliation (2026-10-14)
+
+Documentation commit `7f7c75749` restores concrete manifest outcomes that consolidation had weakened
+to audits/deferrals. [Manifest consolidation](../plans/manifest-consolidation.md) maps all 17 original
+decisions, both naming questions, all seven original phases and their checks, plus convention-first,
+declarative-contribution and facade requirements. Current schema/tool/reader inspection corroborates
+unfinished entity/shape maps, relation identity maps, lifecycle root, check sidecar, missing feature
+purpose, format key, canonical writer and facade terminology. Static keyed lifecycle bindings already
+exist; their current checked contract replaces the old opaque module proposal.
+
+The roadmap, discovery plan and goal now require M1–M6 before expanding more consumers across the
+old entity split. Required checks include preserved generated EARS/typed-untyped behavior, content
+identity/no syntax-only reapplication, all loosely typed/native/source/install readers, authoring tool
+agreement, schema descriptions/assistance and complete public docs. Flow/action relationships, actual
+CLI inventory and capability-based facade acceptance remain explicit completion obligations.
+
+The public frontend container is selected as `extensions.frontend` for its declarative migration;
+`hostVersion` stays the one-host compatibility range. Explicit keyed existence, richer binding data,
+settings/help redesign and host-established provenance remain; obsolete `provides`, inferred existence,
+partition/volatile additions, compatibility and version bumps are not restored. Lazy activation and
+strong isolation remain deferred/separate. Archival changes only the predecessor's successor notice.
+
+Verification: every original decision number 1–17 occurs exactly once in the reconciliation; active
+local documentation links resolve; `git diff --check` passes. This is tracking/design repair, not runtime
+completion. The new scope-loss issue and recovery prompt remain unrelated untracked drafts. Start M1
+by pinning generated EARS/content/completion evidence, then implement the required consolidation.

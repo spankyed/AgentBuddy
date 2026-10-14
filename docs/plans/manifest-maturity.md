@@ -74,7 +74,7 @@ the settings plan, as that goal already specifies.
 | Item | Decision and destination |
 |---|---|
 | Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor |
-| Conventional implementation paths | Optional later authoring convenience; a declared contribution with a missing implementation fails, never silently disappears |
+| Conventional implementation paths | Required M4 shared layout for supported scaffold conventions and tool/doc agreement; no implicit existence or forced file renaming. Extra conveniences remain optional |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | Required M1: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
 | Relation identity maps | Required M2: `data.relations` wire values with unchanged generated constants/types and collision/provenance behavior |
