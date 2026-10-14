@@ -3109,3 +3109,31 @@ M4 remains open for the inspected target parsing/resolution and authoring-tool a
 with the findings in the consolidation plan. Complete it before M5/M6, then finish every remaining
 discovery/navigation/boundary requirement and all three Phase 6 workstreams. Final strict `--all`
 on committed source and the complete reconciled audit remain mandatory. Nothing is archived.
+
+
+### Shared module parser and contained file resolution — M4 checkpoint (2026-10-14)
+
+Source `4285d748c` shares parsing for named references and documented default component exports.
+Malformed references fail in either mode. One file finder resolves extensionless modules and
+directory barrels, checks lexical/physical pack containment, and selects allowed extensions by
+purpose. Shape files remain TypeScript-only and never execute. Codegen and validation use it;
+doctor shares the step/migration file rules. Feature validation now checks contract, service,
+repository and entity-shape files; the latter reuses `_packEntities`, without a reader-specific merge.
+Routes, loading and component metadata objects remain intact. SDK build API report is updated.
+
+Evidence: 95 focused parser, diagnostics, file, shape and generation checks passed, including
+poisoned modules, missing targets and path/symlink escapes. Removing both containment checks failed
+named assertions; exact source restored (`/private/tmp/apack-m4-target-containment-mutation.log`).
+SDK/CLI compilation passed. Strict caught four unnecessary quote escapes; removed them before the
+source commit. Final strict passed in 637.2s (1/30 cached): host 4,444 tests, pack 855 plus two existing skips,
+integration 642, real Electron app 181.3s,
+smoke 5.8s, packaged authoring 63.1s and packaged app 8.1s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T09-35-08Z-32154`,
+`/private/tmp/apack-m4-target-strict-lint-fixed.log`. Generated EARS and six compiled content files
+remain byte-identical to `/private/tmp/apack-m4-description-baseline`; the facade report passes.
+Reviewed source/API changes and diff checks; the unrelated draft remains untracked/excluded.
+
+M4 remains required for doctor's complete static-export/incomplete reporting, remaining target
+coverage, scaffold/layout agreement and cross-pack default-selection evidence. Then complete M5/M6
+and every remaining discovery, navigation, boundary and Phase 6 requirement. Final strict `--all`
+on committed source and the full reconciled audit remain mandatory. Nothing is archived.

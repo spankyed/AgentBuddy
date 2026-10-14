@@ -80,7 +80,7 @@ the settings plan, as that goal already specifies.
 | Relation identity maps | M2 implemented in `3ff590240`: `data.relations` wire lists, unchanged generated EARS/content, validated names/uniqueness/reservations, native bindings and collision/provenance behavior |
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
-| Module-reference syntax | M1 uses one shape-reference parser; M4 type authoring implemented in `0e65ece42` uses explicit module paths with type-only export-star semantics. Retain richer component/loading declarations and finish remaining target checks |
+| Module-reference syntax | M1 uses one shape-reference parser; M4 type authoring implemented in `0e65ece42` uses explicit module paths with type-only export-star semantics. Shared named/default parsing and contained file resolution implemented in `4285d748c`. Retain richer component/loading declarations; complete remaining static-export and authoring-tool checks |
 | Schema descriptions, current-schema diagnostics, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
 | Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. Preserve defaults/designations and complete remaining M4 target/layout checks |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |

@@ -189,3 +189,15 @@ exports as valid. Derive any shared target inventory from declarations, never au
 Use real external packs with nonconventional paths, extensionless/directory targets, missing
 modules/exports and type-only targets, proving validation never executes their modules. Preserve
 the existing designation/default-plugin collision and cross-pack selection behavior with evidence.
+
+
+Shared module parsing/resolution is implemented in `4285d748c`. `_parseModuleReference` supports
+explicit default-export semantics where the existing component contract permits them; type/shape
+references still require named exports. `findSourceModule` resolves script/type/component files with
+lexical and physical containment. Codegen, feature-file checks and doctor's step/migration checks
+use it; feature checks now include contracts, services, repositories and entity shapes through the
+existing normalized entity projection. Routes/loading metadata remain intact.
+
+M4 is not complete: finish doctor's static export checks with honest incomplete outcomes, the
+remaining derived target coverage and scaffold/layout agreement regression, and document/evidence
+cross-pack default selection. Do not mark M4 complete from file checks alone.
