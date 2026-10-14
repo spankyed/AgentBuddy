@@ -1,4 +1,5 @@
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
+import type { ReferenceTypeConfig, ReferenceBindings } from '../fe/reference-types.ts';
 import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { SettingsPort } from '../fe/settings.ts';
@@ -20,11 +21,16 @@ export interface FeClient {
 
 /** The packs whose frontends the renderer registered, read-only */
 export interface FePackRegistryView extends PackExtensionsView {
+  /** Observe committed contribution changes; refused or disposed candidates publish nothing. */
+  onChanged(listener: (packId: string) => void): () => void;
   /** Every registered plugin, in registration order */
   plugins(): Plugin[];
   /** The first registered default plugin */
   defaultPlugin(): Plugin | undefined;
   tiptapPlugins(): TiptapPlugin[];
+  /** Accepted executable reference bindings; declarations have a separate catalog lifetime. */
+  referenceTypes(): ReadonlyMap<string, Readonly<ReferenceTypeConfig>>;
+  referenceCategories(): ReadonlyMap<string, Readonly<ReferenceBindings['categories'][string]>>;
   /** The component a pack registered for an app extension slot */
   appExtension(slot: string): Component | undefined;
   /** The DSL types packs registered for the code editors, by name */

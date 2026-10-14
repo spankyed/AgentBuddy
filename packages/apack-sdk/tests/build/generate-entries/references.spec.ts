@@ -28,6 +28,8 @@ describe('declarative references', () => {
     expect(output).toContain('import { useItems as');
     expect(output).toContain('label: "Memos"');
     expect(output).not.toContain('...types');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { FEATURE_REFERENCES } from './references.ts';");
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('references: FEATURE_REFERENCES["memos"]!');
   });
 
   it('applies duplicate ownership checks to native declarations too', () => {

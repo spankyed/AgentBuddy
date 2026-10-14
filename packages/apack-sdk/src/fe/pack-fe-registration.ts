@@ -1,3 +1,4 @@
+import type { ReferenceBindings } from './reference-types.ts';
 import type { Component } from 'vue';
 import type { PluginDefinition } from './plugin.ts';
 import type { TiptapPlugin } from './tiptap-plugins.ts';
@@ -12,6 +13,8 @@ import type { StepDefinition } from '../steps/types.ts';
  */
 export interface PackFEFeature {
   plugin?: PluginDefinition;
+  /** Checked reference bindings owned by this feature. Discovery uses its declaration separately. */
+  references?: ReferenceBindings;
   /** Custom presentation for this feature's declared preferences, independent of its plugin. */
   settingsForm?: Component;
   /** The role the feature plays (apack.json `features[].designation`) */

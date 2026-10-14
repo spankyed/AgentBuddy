@@ -1296,9 +1296,10 @@ only, and publishes immutable reference/category metadata through the common cat
 pack-details reader must use that data with disabled/failed runtime coverage. This is the foundation,
 not completed cross-pack reference discovery or runtime consumption.
 
-The following checkpoint registers reference bindings as explicit frontend contributions, validates
-them against their declarations before publication, preserves accepted bindings on refusal, and
-migrates editor/category readers to the common catalog plus active provider lookup. Cover external
+The following work has two checkpoints: frontend binding admission, then catalog/editor integration.
+Register reference bindings as explicit frontend contributions, validate them against declarations
+before publication and preserve accepted bindings on refusal. Then migrate editor/category readers
+to the common catalog plus active provider lookup. Cover external
 packs, disabled/failed contributions, unrelated owner collisions and dependency diamonds. Dynamic
 items still require their provider's execution and scope disposal. Finish native contribution coverage,
 entity routing/readiness and stale delivery without keeping the local/runtime discovery aggregate as
@@ -1333,3 +1334,69 @@ log: `/private/tmp/apack-reference-declarations-strict.log`.
 Other contribution kinds, full native/source/dependency freshness, shell eligibility/entity routing,
 frontend recovery boundaries, all three Phase 6 workstreams and final committed-source strict --all
 acceptance remain required. No incomplete plans are archived.
+
+### Reference frontend admission plan (2026-10-13)
+
+Bindings belong to `PackFEFeature.references`, preserving the manifest's owning feature. The generated
+reference module is the single producer of those bindings; the frontend entry registers them. Admission
+checks exact type/category membership, protocols, category names, SVG geometry, labels, component
+shapes and callable navigation/providers. Do not invoke these contributions to validate them.
+
+Global types, protocols and categories require explicit collision checks: `createOwnedStore` defaults
+to last-wins folding and does not enforce exclusivity. Build candidate maps before running candidate
+resources; keep the accepted maps/resources unchanged on refusal or abandoned preparation. Replacement
+and removal release captured keys. Capture authored reference data before both native and installed
+validation; otherwise a getter can pass validation and publish a different protocol. Freeze accepted
+metadata while retaining executable component/function identities.
+
+Use one frontend registry `onChanged` subscription for committed contribution changes. The previous
+forms-only name concealed that it already fired for all registration changes; migrate forms readers
+without keeping an alias. Reference metadata discovery remains the common catalog's responsibility,
+independent of this active-binding read view.
+
+This admission checkpoint precedes the catalog/editor migration. The current editor aggregate remains
+an ordinary current consumer, with no old declaration format or runtime discovery fallback. Remove it
+when readers migrate. Carry common declarations into the window independently of loaded runtimes;
+using active bindings alone would lose disabled/failed metadata. Cover protocol/category additions in
+an already-open editor and scope/dispose reactive providers on replacement, removal and view teardown.
+
+#### Window declaration transport audit
+
+`packages/api/src/transport/packs.ts` currently exposes only `packs.loaded`, derived from accepted
+runtime registrations. `ShellClient.loadedPacks()` and the shell's frontend loader reconcile that
+runtime list. Neither is a declaration-discovery transport: disabled and activation-failed packs
+are absent. Keep this execution/readiness path distinct from the next window catalog integration.
+
+Expose the existing common catalog's accepted declaration data without loading pack modules. Its
+window reader needs current origin/revision/availability, committed updates and reconnect/cancellation
+handling; late responses from a superseded backend/window lifetime must not replace current metadata.
+The frontend reference maps above supply accepted executable bindings, not the declaration inventory.
+Do not implement discovery by inspecting those maps or by creating another authored reference list.
+
+### Reference frontend admission checkpoint (2026-10-13)
+
+Implemented per-feature `ReferenceBindings` in generated frontend registrations, exact binding checks,
+global type/protocol/category ownership checks and immutable accepted metadata. Candidate conflicts
+refuse before resource hooks and preserve incumbent maps. Prepared abandonment publishes nothing;
+replacement/removal release captured keys. Native and installed validation now use captured reference
+data, fixing a reproduced getter that previously validated `note` but published `changed`.
+
+The frontend registry's general `onChanged` subscription replaces its misleading forms-only name;
+all forms/style/test callers and the testing shell read-port adapter are migrated with no alias.
+Discovery still reads the common declaration catalog. The generated pack-local aggregate is derived
+from the same per-feature bindings and remains the current editor consumer until the next migration;
+this does not deliver app-wide editor discovery or reactive provider lifecycle yet.
+
+Nineteen focused admission tests and the installed getter regression pass. Disabling ownership refusal
+failed five targeted assertions; disabling the callable navigation guard failed its targeted assertion.
+Both exact source restorations returned all 19 admission cases to passing. The strict chain passed all
+30 gates in 520.5 seconds with no cached gates: 4,344 host unit tests, 839 pack tests (two existing skips),
+639 integration tests, real external/default-fork Electron acceptance, smoke and both packaged-authoring
+halves. Updated SDK reports cover bindings and the shared change-subscription contract.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T01-50-14Z-96639`;
+log: `/private/tmp/apack-reference-bindings-strict.log`.
+
+Next implement the window declaration transport and catalog/editor/provider migration described above,
+including an actual external reference contributor in a live editor. Complete native locator checks,
+other contribution kinds, freshness, entity routing, boundaries, all Phase 6 streams and final committed
+--all acceptance. This checkpoint closes admission only; the discovery plan and owning goal stay active.

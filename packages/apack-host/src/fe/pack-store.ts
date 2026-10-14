@@ -1,5 +1,6 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
+import type { ReferenceTypeConfig, ReferenceBindings } from '@apackdev/sdk/fe/references';
 import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
@@ -12,6 +13,7 @@ import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { NativePackDeclaration } from '@apackdev/sdk/framework';
+import { captureFrontendReferences } from './reference-bindings.ts';
 import { frontendBindingProblem } from './declaration-binding.ts';
 
 type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
@@ -41,8 +43,6 @@ export interface FePackRegistry extends FePackRegistryView {
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
   /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
   settingsForm(target: SettingsTarget): SettingsForm | undefined;
-  /** The accepted forms change only after a registration or removal commits. */
-  onSettingsFormsChanged(listener: (packId: string) => void): () => void;
 }
 
 /**
@@ -92,7 +92,14 @@ interface FrontendContributions {
   tiptapPlugins: TiptapPlugin[];
   appExtensions: Array<readonly [string, SettingsForm]>;
   dslTypes: Array<readonly [string, DslTypeConfig]>;
+  references: Array<readonly [FeatureRef, ReferenceBindings]>;
   bindSettings: PackFERegistration['bindSettings'];
+}
+
+function captureReferenceType(type: ReferenceTypeConfig): ReferenceTypeConfig {
+  const svgElements = structuredClone(type.svgElements);
+  for (const element of svgElements) { Object.freeze(element[1]); Object.freeze(element); }
+  return Object.freeze({ ...type, svgElements: Object.freeze(svgElements) });
 }
 
 function capture(registration: PackFERegistration): FrontendContributions {
@@ -106,6 +113,12 @@ function capture(registration: PackFERegistration): FrontendContributions {
         ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
       ...Object.entries(reg.settingsForms ?? {}).map(([id, component]) => [formKey({ kind: 'pack', packId: reg.id, groupId: id }), component] as const),
     ],
+    references: Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.references
+      ? [[resolveName(id, reg.id), {
+        types: Object.fromEntries(Object.entries(feature.references.types).map(([name, type]) => [name,
+          captureReferenceType(type)])),
+        categories: Object.fromEntries(Object.entries(feature.references.categories).map(([name, category]) => [name, Object.freeze({ ...category })])),
+      }] as const] : []),
     steps: (reg.steps ?? []).map(value => [value.type, value]),
     artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
     blocks: (reg.blocks ?? []).map(value => [value.type, value]),
@@ -125,7 +138,26 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPlugin[] = [];
+  const referenceTypes = new Map<string, ReferenceTypeConfig>();
+  const referenceCategories = new Map<string, ReferenceBindings['categories'][string]>();
+  const referenceOwners = { types: new Map<string, FeatureRef>(), protocols: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
+  const claim = (kind: keyof typeof referenceOwners, name: string, owner: FeatureRef) => {
+    const previous = referenceOwners[kind].get(name);
+    if (previous !== undefined) throw new Error(`Reference ${kind} "${name}" claimed by both features "${previous}" and "${owner}"`);
+    referenceOwners[kind].set(name, owner);
+  };
   for (const pack of packs) {
+    for (const [owner, references] of pack.references) {
+      for (const [name, type] of Object.entries(references.types)) {
+        claim('types', name, owner);
+        claim('protocols', type.protocol, owner);
+        referenceTypes.set(name, type);
+      }
+      for (const [name, category] of Object.entries(references.categories)) {
+        claim('categories', name, owner);
+        referenceCategories.set(name, category);
+      }
+    }
     designations.register(pack.roles);
     plugins.push(...pack.addressed.map(({ plugin }) => plugin));
     defaultPlugin ??= pack.addressed.find(feature => feature.default)?.plugin;
@@ -137,7 +169,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const [key, value] of pack.dslTypes) dslTypes.set(key, value, pack.id);
     tiptapPlugins.push(...pack.tiptapPlugins);
   }
-  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins };
+  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -148,7 +180,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
   let accepted = new Map<string, FrontendContributions>();
   let tables = buildTables(accepted.values());
   const bindings = new Map<string, ReturnType<typeof createFrontendSettingsBinding>>();
-  const formListeners = new Set<(packId: string) => void>();
+  const listeners = new Set<(packId: string) => void>();
   let revision = 0;
   let changing = false;
   function mutate<T>(operation: () => T): T {
@@ -156,10 +188,10 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     changing = true;
     try { return operation(); } finally { changing = false; }
   }
-  function publishForms(packId: string) {
-    for (const listener of formListeners) {
+  function publishChange(packId: string) {
+    for (const listener of listeners) {
       try { listener(packId); }
-      catch (error) { logger.error('Settings form listener failed', error instanceof Error ? error : new Error(String(error))); }
+      catch (error) { logger.error('Frontend registry listener failed', error instanceof Error ? error : new Error(String(error))); }
     }
   }
   function retire(binding: ReturnType<typeof createFrontendSettingsBinding> | undefined) {
@@ -192,7 +224,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
           state = 'committed';
           revision++;
           retire(previous);
-          publishForms(id);
+          publishChange(id);
           return plugins;
         }); } catch (error) { dispose(); throw error; }
       },
@@ -208,7 +240,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     });
   }
   function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
-    registration = { ...registration };
+    registration = captureFrontendReferences(registration);
     const declaration = native.get(registration.id);
     if (declaration) {
       const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
@@ -262,13 +294,15 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     getRegisteredPlugins: () => [...tables.plugins],
     getAppExtension: key => tables.appExtensions.get(key),
     settingsForm: target => tables.forms.get(formKey(target)),
-    onSettingsFormsChanged(listener) { formListeners.add(listener); return () => { formListeners.delete(listener); }; },
+    onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     designation: key => tables.designations.get(key),
     step: key => tables.steps.get(key), steps: () => tables.steps.all(),
     artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
     block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
     plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,
     tiptapPlugins: () => [...tables.tiptapPlugins],
+    referenceTypes: () => new Map(tables.referenceTypes),
+    referenceCategories: () => new Map(tables.referenceCategories),
     appExtension: key => tables.appExtensions.get(key), dslTypes: () => new Map(tables.dslTypes.entries()),
   };
 }

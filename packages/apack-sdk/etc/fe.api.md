@@ -532,6 +532,7 @@ export interface PackFEFeature {
     designation?: string;
     // (undocumented)
     plugin?: PluginDefinition;
+    references?: ReferenceBindings;
     settingsForm?: Component;
 }
 

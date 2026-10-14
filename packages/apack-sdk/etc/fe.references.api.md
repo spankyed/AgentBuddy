@@ -24,6 +24,18 @@ export interface CategoryItemsProvider {
     useItems(): Readonly<Ref<ReferenceItem[]>>;
 }
 
+// @public
+export interface ReferenceBindings {
+    // (undocumented)
+    categories: Record<string, {
+        label: string;
+        icon: Component;
+        useItems(): Readonly<Ref<ReferenceItem[]>>;
+    }>;
+    // (undocumented)
+    types: Record<string, ReferenceTypeConfig>;
+}
+
 // @public (undocumented)
 export interface ReferenceItem {
     // (undocumented)

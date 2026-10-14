@@ -216,7 +216,10 @@ custom component. SVG geometry supports path, rect and circle tuples.
 
 `navigate(id)` receives a canonical entity ID. `useItems()` is a Vue composable returning a reactive
 reference-item list; call it in a component's setup so its subscriptions share the component's lifetime.
-Metadata remains discoverable while a pack is disabled or its runtime fails. The generated reference
+Generated frontend entries register these bindings under their owning feature. The host checks
+complete declaration membership and refuses global type, protocol or category collisions before
+publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
+The generated reference
 aggregate currently serves the declaring pack's frontend; app-wide external reference consumption is
 not yet delivered.
 

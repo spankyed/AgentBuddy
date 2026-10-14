@@ -29,7 +29,7 @@ describe('prepared frontend replacement', () => {
     packs.registerPackFE(registration('Old', old.hook), old.transport);
     const previous = packs.settingsForm(formTarget);
     const notified = vi.fn();
-    packs.onSettingsFormsChanged(notified);
+    packs.onChanged(notified);
     const next = binding();
     expect(() => packs.replacePackFE(registration('New', port => { next.hook(port); throw new Error('refused'); }), next.transport)).toThrow('refused');
     expect(packs.settingsForm(formTarget)).toBe(previous);
@@ -69,7 +69,7 @@ describe('prepared frontend replacement', () => {
       expect(old.port.status()).toBe('disposed');
       expect(next.port.get(target)).toEqual({ limit: 1 });
     });
-    const stop = packs.onSettingsFormsChanged(observed);
+    const stop = packs.onChanged(observed);
     packs.replacePackFE(registration('New', next.hook), next.transport);
     expect(observed).toHaveBeenCalledOnce();
     expect(old.cleanup).toHaveBeenCalledOnce();

@@ -46,7 +46,7 @@ const props = defineProps<{
 }>();
 const actor: SettingsState = usePlugin();
 const formRevision = ref(0);
-onScopeDispose(fePacks.onSettingsFormsChanged(packId => {
+onScopeDispose(fePacks.onChanged(packId => {
   const target = props.target;
   const owner = target.kind === 'pack' ? target.packId : target.kind === 'feature' ? splitRef(target.featureRef)?.packId : undefined;
   if (owner === packId) formRevision.value++;

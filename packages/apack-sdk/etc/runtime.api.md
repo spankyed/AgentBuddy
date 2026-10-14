@@ -23,6 +23,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
@@ -62,7 +63,11 @@ export interface FePackRegistryView extends PackExtensionsView {
     appExtension(slot: string): Component | undefined;
     defaultPlugin(): Plugin_2 | undefined;
     dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+    onChanged(listener: (packId: string) => void): () => void;
     plugins(): Plugin_2[];
+    // (undocumented)
+    referenceCategories(): ReadonlyMap<string, Readonly<ReferenceBindings['categories'][string]>>;
+    referenceTypes(): ReadonlyMap<string, Readonly<ReferenceTypeConfig>>;
     // (undocumented)
     tiptapPlugins(): TiptapPlugin[];
 }

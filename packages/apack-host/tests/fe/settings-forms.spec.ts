@@ -22,7 +22,7 @@ it('registers feature and group forms independently of plugins and keeps identic
 it('publishes accepted forms atomically and never publishes a refused registration', () => {
   const packs = createFePackRegistry();
   const read = vi.fn(() => packs.settingsForm(group));
-  const stop = packs.onSettingsFormsChanged(read);
+  const stop = packs.onChanged(read);
   expect(() => packs.registerPackFE({ id: 'owner', settingsForms: { shared: groupForm }, bindSettings: () => { throw new Error('refused'); } })).toThrow('requires host-bound');
   expect(read).not.toHaveBeenCalled();
   expect(packs.settingsForm(group)).toBeUndefined();
@@ -43,9 +43,9 @@ it('refuses group IDs that could claim another owner', () => {
 
 it('isolates subscriber failure from acceptance and other readers', () => {
   const packs = createFePackRegistry();
-  packs.onSettingsFormsChanged(() => { throw new Error('broken view'); });
+  packs.onChanged(() => { throw new Error('broken view'); });
   const read = vi.fn();
-  packs.onSettingsFormsChanged(read);
+  packs.onChanged(read);
   expect(() => packs.registerPackFE({ id: 'owner', settingsForms: { shared: groupForm } })).not.toThrow();
   expect(read).toHaveBeenCalledOnce();
   expect(packs.settingsForm(group)).toBe(groupForm);

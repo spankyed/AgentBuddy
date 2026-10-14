@@ -209,6 +209,26 @@ describe("a pack's frontend", () => {
     expect(io.settingsForPack).not.toHaveBeenCalled();
   });
 
+  it('publishes the captured reference metadata checked by the installed loader', async () => {
+    const manifest = { id: 'ext', name: 'Ext', version: '1.0.0', features: { refs: { references: {
+      types: { note: { protocol: 'note', category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
+      categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
+    } } } };
+    const type = { protocol: 'note', category: 'notes', icon: {}, svgElements: [], navigate: vi.fn() };
+    let reads = 0;
+    Object.defineProperty(type, 'protocol', { enumerable: true, get: () => ++reads === 1 ? 'note' : 'changed' });
+    const registration = { id: 'ext', declarationRevision: 'current', features: { refs: { references: {
+      types: { note: type }, categories: { notes: { label: 'Notes', icon: {}, useItems: vi.fn() } },
+    } } } };
+    const { io } = fakeIO({ [`pack://ext/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
+    const registry = createFePackRegistry();
+    await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
+      manifest, declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js' });
+    expect(registry.referenceTypes().get('note')?.protocol).toBe('note');
+    expect(reads).toBe(1);
+    expect(type.navigate).not.toHaveBeenCalled();
+  });
+
   it('registers what its entry exports, and answers with the plugins it added', async () => {
     const registration = { id: 'memo-pack', declarationRevision: 'current', features: { memos: { plugin: { label: 'Memos', state: createMachine({}) } } } };
     const { io } = fakeIO({ [`pack://memo-pack/artifacts/${artifactRevision}/runtime/fe.js`]: registration });
@@ -316,7 +336,7 @@ describe("a pack's frontend", () => {
       declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' };
     await frontends.load(pack);
     const observations: string[] = [];
-    registry.onSettingsFormsChanged(() => observations.push(styles[0].href));
+    registry.onChanged(() => observations.push(styles[0].href));
     await frontends.load({ ...pack, artifactRevision: nextRevision });
     expect(observations).toEqual([`pack://ext/artifacts/${nextRevision}/runtime/fe.css`]);
     expect(styles).toHaveLength(1);

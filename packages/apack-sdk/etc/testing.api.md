@@ -22,6 +22,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';

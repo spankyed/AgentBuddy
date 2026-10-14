@@ -31,3 +31,13 @@ export interface CategoryItemsProvider {
   /** The category's items as they change: a composable, called in the setup of the component that lists them */
   useItems(): Readonly<Ref<ReferenceItem[]>>
 }
+
+/** Executable bindings for one feature's declared reference contributions. */
+export interface ReferenceBindings {
+  types: Record<string, ReferenceTypeConfig>
+  categories: Record<string, {
+    label: string
+    icon: Component
+    useItems(): Readonly<Ref<ReferenceItem[]>>
+  }>
+}

@@ -50,9 +50,12 @@ const running = new Set<TestShell>();
  */
 function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView): FePackRegistryView {
   return {
+    onChanged: listener => frontend.onChanged(listener),
     plugins: () => frontend.plugins(),
     defaultPlugin: () => frontend.defaultPlugin(),
     tiptapPlugins: () => frontend.tiptapPlugins(),
+    referenceTypes: () => frontend.referenceTypes(),
+    referenceCategories: () => frontend.referenceCategories(),
     appExtension: (slot) => frontend.appExtension(slot),
     dslTypes: () => frontend.dslTypes(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),

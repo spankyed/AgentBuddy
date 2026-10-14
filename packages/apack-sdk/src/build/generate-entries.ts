@@ -1064,11 +1064,12 @@ ${contractCheck}`;
     // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
     const defaultFeature = pluginFeatures.find(f => f.plugin?.default);
     // A designated feature with no plugin is listed for its role, so a frontend send to that role resolves
-    const featureEntries = features.filter((f) => f.plugin || f.designation || f.settings?.form).map((f) => {
+    const featureEntries = features.filter((f) => f.plugin || f.designation || f.settings?.form || f.references).map((f) => {
       const parts = f.plugin ? [`plugin: ${pluginBinding(f.id)}`] : [];
       if (f.designation) parts.push(`designation: '${f.designation}'`);
       if (f === defaultFeature) parts.push('default: true');
       if (f.settings?.form) parts.push(`settingsForm: __settingsFeature_${f.id}`);
+      if (f.references) parts.push(`references: FEATURE_REFERENCES[${JSON.stringify(f.id)}]!`);
       return `    '${f.id}': { ${parts.join(', ')} },\n`;
     }).join('');
 
@@ -1079,6 +1080,7 @@ ${contractCheck}`;
     const steps = stepDefinitionsFor('frontend');
 
     const extraImports: string[] = [];
+    if (features.some(feature => feature.references)) extraImports.push("import { FEATURE_REFERENCES } from './references.ts';");
     if (fe.tiptapPlugins) {
       // The manifest names the module and the export name is this convention, so it is checked here: a
       // renamed export otherwise reaches the author as a missing binding in a generated file, naming
@@ -1790,9 +1792,7 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
       }
     }
     const imports: string[] = [];
-    const types: string[] = [];
-    const categories: string[] = [];
-    const providers: string[] = [];
+    const featureBindings: string[] = [];
     let nextBinding = 0;
     let lazyComponents = false;
     const bind = (label: string, reference: string, callable: boolean, lazy = false): string => {
@@ -1826,6 +1826,8 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
     for (const feature of packFeatures(manifest)) {
       const references = feature.references;
       if (!references) continue;
+      const types: string[] = [];
+      const categories: string[] = [];
       for (const [name, type] of Object.entries(references.types)) {
         const label = `features.${feature.id}.references.types.${name}`;
         const { icon: declaredIcon, navigate, ...data } = type;
@@ -1833,23 +1835,20 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
       }
       for (const [name, category] of Object.entries(references.categories)) {
         const label = `features.${feature.id}.references.categories.${name}`;
-        categories.push(`  { id: ${JSON.stringify(name)}, label: ${JSON.stringify(category.label)}, primaryIcon: ${icon(`${label}.icon`, category.icon)} },`);
-        providers.push(`  { category: ${JSON.stringify(name)}, useItems: ${bind(`${label}.useItems`, category.useItems, true)} },`);
+        categories.push(`  ${JSON.stringify(name)}: { label: ${JSON.stringify(category.label)}, icon: ${icon(`${label}.icon`, category.icon)}, useItems: ${bind(`${label}.useItems`, category.useItems, true)} },`);
       }
+      featureBindings.push(`  ${JSON.stringify(feature.id)}: { types: {\n${types.join('\n')}\n  }, categories: {\n${categories.join('\n')}\n  } },`);
     }
     if (lazyComponents) imports.push("import { defineAsyncComponent } from 'vue';");
     return `${HEADER}
-import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
+import type { ReferenceBindings, ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 ${imports.join('\n')}
-export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
-${types.join('\n')}
+export const FEATURE_REFERENCES: Record<string, ReferenceBindings> = {
+${featureBindings.join('\n')}
 };
-export const CATEGORIES: CategoryConfig[] = [
-${categories.join('\n')}
-];
-export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
-${providers.join('\n')}
-];
+export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = Object.assign(Object.create(null), ...Object.values(FEATURE_REFERENCES).map(refs => refs.types));
+export const CATEGORIES: CategoryConfig[] = Object.values(FEATURE_REFERENCES).flatMap(refs => Object.entries(refs.categories).map(([id, category]) => ({ id, label: category.label, primaryIcon: category.icon })));
+export const ITEMS_PROVIDERS: CategoryItemsProvider[] = Object.values(FEATURE_REFERENCES).flatMap(refs => Object.entries(refs.categories).map(([category, binding]) => ({ category, useItems: binding.useItems })));
 export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map(cfg => cfg.protocol);
 export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 `;

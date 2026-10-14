@@ -7,6 +7,7 @@ import type { SettingsPort } from '../fe/settings.ts';
 
 /** A frontend with nothing registered: what a test sees before its own pack's frontend is bound */
 const noFrontends: FePackRegistryView = {
+  onChanged: () => () => {},
   designation: () => undefined,
   step: () => undefined,
   steps: () => [],
@@ -17,6 +18,8 @@ const noFrontends: FePackRegistryView = {
   plugins: () => [],
   defaultPlugin: () => undefined,
   tiptapPlugins: () => [],
+  referenceTypes: () => new Map(),
+  referenceCategories: () => new Map(),
   appExtension: () => undefined,
   dslTypes: () => new Map(),
 };

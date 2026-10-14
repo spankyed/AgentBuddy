@@ -1,5 +1,5 @@
 import type { PackManifest } from '@apackdev/sdk/build';
-import type { PluginDeclaration, SettingsDefinition } from '@apackdev/sdk/framework';
+import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations } from '@apackdev/sdk/framework';
 import type { PackFERegistration, PackFEFeature, PluginDefinition } from '@apackdev/sdk/fe';
 import { isPlainObject, hasOwn } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys } from '../packs/binding-shape.ts';
@@ -9,7 +9,7 @@ const REGISTRATION_KEYS = {
   steps: true, artifacts: true, blocks: true, appExtensions: true, dslTypes: true, tiptapPlugins: true,
 } satisfies Record<keyof PackFERegistration, true>;
 
-const FEATURE_KEYS = { plugin: true, settingsForm: true, designation: true, default: true } satisfies Record<keyof PackFEFeature, true>;
+const FEATURE_KEYS = { plugin: true, settingsForm: true, designation: true, default: true, references: true } satisfies Record<keyof PackFEFeature, true>;
 const PLUGIN_KEYS = { label: true, state: true, icon: true, canvas: true, panel: true, chat: true,
   isPinned: true, hotkeys: true, options: true, fallbackPanel: true } satisfies Record<keyof PluginDefinition, true>;
 const optionalKeys = (actual: unknown, keys: string[]) => sameKeys(actual === undefined ? {} : actual, keys);
@@ -49,21 +49,55 @@ function pluginBindingProblem(declaration: PluginDeclaration, plugin: unknown): 
     || typeof fallback.isShown !== 'function') return problem('fallbackPanel');
 }
 
+/** Validate the complete reference facet without calling navigation, providers or components. */
+function referenceBindingProblem(declaration: ReferenceDeclarations, actual: unknown): string | undefined {
+  if (!sameKeys(actual, ['types', 'categories'])) return 'references';
+  const bindings = actual as Record<string, unknown>;
+  if (!sameKeys(bindings.types, Object.keys(declaration.types))) return 'references.types';
+  if (!sameKeys(bindings.categories, Object.keys(declaration.categories))) return 'references.categories';
+  for (const [id, expected] of Object.entries(declaration.types)) {
+    const value = (bindings.types as Record<string, unknown>)[id];
+    const path = `references.types.${id}`;
+    if (!sameKeys(value, ['protocol', 'category', 'icon', 'svgElements', 'navigate'])) return path;
+    const type = value as Record<string, unknown>;
+    if (type.protocol !== expected.protocol || type.category !== expected.category
+      || !isComponent(type.icon) || typeof type.navigate !== 'function') return path;
+    if (!Array.isArray(type.svgElements) || type.svgElements.length !== expected.svgElements.length) return `${path}.svgElements`;
+    for (const [index, [tag, attrs]] of expected.svgElements.entries()) {
+      const element = type.svgElements[index];
+      if (!Array.isArray(element) || element.length !== 2 || element[0] !== tag
+        || !sameKeys(element[1], Object.keys(attrs)) || Object.entries(attrs).some(([key, value]) => element[1][key] !== value)) return `${path}.svgElements`;
+    }
+  }
+  for (const [id, expected] of Object.entries(declaration.categories)) {
+    const value = (bindings.categories as Record<string, unknown>)[id];
+    if (!sameKeys(value, ['label', 'icon', 'useItems'])) return `references.categories.${id}`;
+    const category = value as Record<string, unknown>;
+    if (category.label !== expected.label || !isComponent(category.icon)
+      || typeof category.useItems !== 'function') return `references.categories.${id}`;
+  }
+}
+
 /** Check declared identities before registering components, resolving factories or granting settings access. */
 export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'extensions'> & {
-  features?: Record<string, { plugin?: PluginDeclaration; designation?: string; settings?: SettingsDefinition }>;
+  features?: Record<string, { plugin?: PluginDeclaration; designation?: string; settings?: SettingsDefinition; references?: ReferenceDeclarations }>;
 }, registration: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" frontend ${path} does not match its accepted declarations`;
   if (!isPlainObject(registration)) return problem('registration');
   if (Object.keys(registration).some(key => !hasOwn(REGISTRATION_KEYS, key))) return problem('registration fields');
   if (registration.bindSettings !== undefined && typeof registration.bindSettings !== 'function') return problem('bindSettings');
   const declared = Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) =>
-    feature.plugin || feature.designation || feature.settings?.form));
+    feature.plugin || feature.designation || feature.settings?.form || feature.references));
   const features = registration.features === undefined ? {} : registration.features;
   if (!sameKeys(features, Object.keys(declared))) return problem('features');
   for (const [id, feature] of Object.entries(features as Record<string, unknown>)) {
     const expected = declared[id];
     if (!isPlainObject(feature) || Object.keys(feature).some(key => !hasOwn(FEATURE_KEYS, key))) return problem(`features.${id}`);
+    if ((feature.references !== undefined) !== !!expected.references) return problem(`features.${id}.references`);
+    if (expected.references) {
+      const mismatch = referenceBindingProblem(expected.references, feature.references);
+      if (mismatch) return problem(`features.${id}.${mismatch}`);
+    }
     if (feature.designation !== expected.designation) return problem(`features.${id}.designation`);
     if (feature.default !== (expected.plugin?.default ? true : undefined)) return problem(`features.${id}.default`);
     if ((feature.plugin !== undefined) !== !!expected.plugin) return problem(`features.${id}.plugin`);
