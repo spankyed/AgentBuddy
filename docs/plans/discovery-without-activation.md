@@ -1905,3 +1905,14 @@ rebuild was necessary before the accepted final app checks. Audit output identit
 implementation/import graphs. Preserve dependency origin/version/content and receipt requirements,
 independent type-data inspection, and every remaining discovery/native and later goal phase. The local
 editor checkpoint does not complete broader editor contribution declarations or frontend migration.
+
+
+### Dependency identity checkpoint (2026-10-14)
+
+`439883713` validates requested versus embedded pack IDs across local/file/cache resolution and selected
+release versus artifact/snapshot versions before caching. Focused checks and three caught identity
+mutations plus strict validation are recorded in the execution goal. This closes identity substitution
+only; cache receipts, coherent publication and persistent provenance/content identity remain required.
+Current schema validation rejects invalid declarations normally; no obsolete-key inventory or special
+historical-format refusal is introduced. Exact executable artifact-format checks remain distinct from
+capability-based inspection of current type data.

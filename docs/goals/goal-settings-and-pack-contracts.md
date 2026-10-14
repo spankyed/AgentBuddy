@@ -3769,3 +3769,24 @@ identity in the required source/tool freshness audit; input identity alone canno
 Continue dependency receipts/provenance, complete tool graph identity, all contribution/native kinds,
 frontend naming, static edges/inventory, navigation, boundaries and every Phase 6 workstream. Final
 committed-source strict `--all` and the whole-goal completion audit remain due.
+
+
+### Resolved dependency identity — checkpoint (2026-10-14)
+
+Source `439883713` checks every selected machine/file/cache snapshot against the requested pack ID.
+Downloaded releases must also match the selected release version in both artifact and snapshot before
+cache publication. These are current identity checks, not historical-format recognition or conversion.
+
+Focused dependency checks pass (31 cases):
+`/private/tmp/apack-dependency-identity-focused-final.log`. Removing the snapshot identity check fails
+three cases (explicit file, renamed cache and downloaded snapshot); source was restored exactly:
+`/private/tmp/apack-dependency-identity-mutation.log`. Strict validation passes in 573.1s (1 of 30 cached),
+including external-pack app, smoke and packaged authoring/app checks:
+`/private/tmp/apack-dependency-identity-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T18-39-38Z-44407`. Generated EARS and all six baseline
+compiled content files are byte-identical. The unrelated issue draft remains untouched.
+
+This checkpoint does not establish cache receipt verification, atomic publication or retained origin/
+content identity. Complete that required provenance work next, then continue output/tool freshness and
+the remaining discovery/navigation/frontend/API/replacement scope. Final strict `--all` on committed
+source and the complete requirement audit remain due.
