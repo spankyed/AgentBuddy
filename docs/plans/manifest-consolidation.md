@@ -253,3 +253,17 @@ with behavior-specific guidance and editor assistance checks, not a blanket desc
 range semantics remain checked by the shared validator rather than represented in generated JSON
 Schema. Native/source/installed/shipped artifact documentation and final M1–M6 acceptance audit remain
 required before resuming all remaining discovery and goal workstreams.
+
+
+## M6 editor assistance checkpoint (2026-10-14)
+
+Source `9e9a9ac0e` closes the missing-field-description audit and proves actual completion, hover and
+structural diagnostics with VS Code's JSON language service, offline. Nested maps, tuple items and union
+component forms are included; description-removal mutations fail the coverage and hover checks.
+Accepted value grammar and generated EARS/content bytes are unchanged. Strict passed all 30 steps in
+512.3s; execution-goal evidence records the tests and exact run. SDK API reports remain unchanged.
+
+M6 remains required for complete current artifact/native/shipped documentation and the M1–M6
+acceptance audit. Public build guides still describe removed settings files/boot hooks; update these
+and explain snapshot/receipt/declaration/runtime distinctions from current code before certifying M6.
+All remaining discovery/navigation/boundary and Phase 6 workstreams retain their scope.
