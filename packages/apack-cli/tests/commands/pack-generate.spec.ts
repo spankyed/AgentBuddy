@@ -5,8 +5,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { bundlePackTypes } from '../../src/build/types-bundler';
+import { dependencyTypes } from '../../src/commands/generate';
+import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
-import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot, type PackTypeManifest } from '@apackdev/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 
 let tmpDir: string;
 
@@ -144,8 +146,8 @@ describe('apack pack generate-entries', () => {
       manifest: depManifest,
     };
 
-    const depRoot = path.join(tmpDir, 'dependency');
-    fs.mkdirSync(depRoot);
+    const depRoot = path.join(tmpDir, '.apack', 'dependency');
+    fs.mkdirSync(depRoot, { recursive: true });
     fs.symlinkSync(path.resolve(__dirname, '../../../..', 'node_modules'), path.join(depRoot, 'node_modules'), 'dir');
     for (const [file, content] of Object.entries(await sdkBuild.generatePackFiles(snapshot.manifest, { packRoot: depRoot }))) {
       const target = path.join(depRoot, file);
@@ -155,10 +157,15 @@ describe('apack pack generate-entries', () => {
     const facade = await bundlePackTypes(depRoot, path.join(depRoot, 'pack-types.d.ts'));
     if (!facade.success) throw new Error(facade.error);
     snapshot.facades[PACK_TYPES_FACADE] = facade.content;
-    const depTypes = new Map<string, PackTypeManifest>([['dep-pack', snapshot.types]]);
-    const depSnapshots = new Map<string, PackSnapshot>([['dep-pack', snapshot]]);
+    const snapshotFile = path.join(depRoot, PACK_LAYOUT.snapshot);
+    fs.mkdirSync(path.dirname(snapshotFile), { recursive: true });
+    const resolve = () => {
+      fs.writeFileSync(snapshotFile, JSON.stringify(snapshot));
+      return dependencyTypes(new Map([['dep-pack', readDependencyBuild(depRoot)]]));
+    };
+    let dependencies = resolve();
 
-    await generateEntries(['--force'], tmpDir, depTypes, depSnapshots);
+    await generateEntries(['--force'], tmpDir, dependencies);
 
     const output = readGenerated();
     // Own entity
@@ -166,11 +173,12 @@ describe('apack pack generate-entries', () => {
     // Dep entity (with source comment)
     expect(output).toContain("export const DepWidget = 'DepWidget'");
     const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'apack.json'), 'utf8'));
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).not.toThrow();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).not.toThrow();
     snapshot.facades[PACK_TYPES_FACADE] += '\n// same-version facade change\n';
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).toThrow('inputs changed');
-    await generateEntries([], tmpDir, depTypes, depSnapshots);
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).not.toThrow();
+    dependencies = resolve();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).toThrow('inputs changed');
+    await generateEntries([], tmpDir, dependencies);
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).not.toThrow();
     expect(output).toContain('// dep-pack');
     // Dep relKind
     expect(output).toContain("export const DEP_REL = 'dep_rel'");
@@ -260,10 +268,10 @@ describe('the inputs stamp', () => {
     await generateEntries([], tmpDir);
     const original = readGenerated();
     fs.writeFileSync(generated('ears.ts'), original + '\n// edited\n');
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).toThrow('modified src/__generated__/ears.ts');
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).toThrow('modified src/__generated__/ears.ts');
     await generateEntries([], tmpDir);
     expect(readGenerated()).toBe(original);
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).not.toThrow();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).not.toThrow();
   });
 
   it('refuses same-version source changes on the skip path', async () => {
@@ -273,7 +281,7 @@ describe('the inputs stamp', () => {
     fs.writeFileSync(source, 'export const value = 1;');
     await generateEntries([], tmpDir);
     fs.writeFileSync(source, 'export const value = 2;');
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).toThrow('inputs changed');
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).toThrow('inputs changed');
   });
 
   it('still skips when every recorded file is there', async () => {

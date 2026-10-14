@@ -40,7 +40,7 @@ export async function validatePack(root: string): Promise<PackValidation & { dep
     } else {
       try {
         // Generates in memory: checks exports, contracts and content without writing generated files.
-        await generatePackFiles(manifest, { packRoot: root, ...resolved });
+        await generatePackFiles(manifest, { packRoot: root, depTypes: resolved.depTypes, depSnapshots: resolved.depSnapshots });
       } catch (err) {
         diagnostics.push({ code: 'codegen.failed', severity: 'error', packId, path: [], message: errorMessage(err) });
         skippedChecks.push({ check: 'remaining-codegen', reason: 'Code generation stopped at its first error.' });

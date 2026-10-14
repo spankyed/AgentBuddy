@@ -12,7 +12,7 @@ import {
   parseSnapshot,
   compileHelp,
   _declarationRevision,
-  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackDependencySnapshot, type PackTypeManifest, type ContentDependency,
+  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { apackScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
@@ -30,7 +30,7 @@ import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild, verifyPack } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
-import { resolveDependencyFiles } from './generate';
+import { dependencyTypes, resolveDependencyFiles } from './generate';
 import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
@@ -134,20 +134,19 @@ async function buildIntoStaging(args: string[], root: string) {
   const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
   const dependencyStepModules: string[] = [];
   const dependencies = new Map<string, ContentDependency>();
-  const depSnapshots = new Map<string, PackDependencySnapshot>();
   const dependencyFiles = await resolveDependencyFiles(root, manifest.dependencies);
   for (const [depId, files] of dependencyFiles) {
     if (files.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${files.executionProblem}`);
     const stepsModule = files.buildDir && path.join(files.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
     dependencies.set(depId, { manifest: files.snapshot.manifest, ...(files.buildDir && { buildDir: files.buildDir }) });
-    depSnapshots.set(depId, files.snapshot);
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
-  const depTypes = new Map([...depSnapshots].map(([id, snapshot]) => [id, snapshot.types]));
-  if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, depSnapshots);
-  else await generateEntries([], root, depTypes, depSnapshots);
+  const resolvedDependencies = dependencyTypes(dependencyFiles);
+  const { depSnapshots } = resolvedDependencies;
+  if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, resolvedDependencies);
+  else await generateEntries([], root, resolvedDependencies);
 
   // Every rule a pack is held to, reported together: an author fixes them in one pass rather than one build
   // each, and the switchable ones say how to allow them (`build/pack-rules.ts`)
@@ -217,7 +216,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const facades: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`);
-  const typesHash = typesInputsHash(root, depSnapshots);
+  const typesHash = typesInputsHash(root, dependencyFiles);
   const typesStale = reuseProblem(stamps.types, distDir, typesHash)
     ?? (reads && !reads.carry('types') ? 'no reads recorded to carry' : null);
   const packTypes = typesStale === null
@@ -272,7 +271,7 @@ async function buildIntoStaging(args: string[], root: string) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
-    try { assertGeneratedCurrent(root, manifest, depSnapshots); }
+    try { assertGeneratedCurrent(root, manifest, resolvedDependencies); }
     catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
     if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
     failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));
@@ -338,7 +337,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.extensions?.dsl) {
     const dslScope = apackScope(root);
-    const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs);
+    const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs, dependencyFiles);
     const dslStale = dslHash === null ? 'scope incomplete'
       : reuseProblem(stamps.dslDefs, distDir, dslHash) ?? (reads && !reads.carry('dslDefs') ? 'no reads recorded to carry' : null);
     const defs = dslStale === null
@@ -373,7 +372,7 @@ async function buildIntoStaging(args: string[], root: string) {
     // No hash without the whole scope, and so no stamp either: recording one would let the next build that
     // also cannot resolve them match it and reuse a bundle compiled against who knows what
     const definitionsDir = path.join(outputDir, DEFS_DIR);
-    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs);
+    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs, dependencyFiles);
     // Reused rather than skipped: the staged tree is renamed over `dist`, so the files have to be here
     // either way. `--skip-fe` is the other thing, and omits them on purpose
     const problem = feHash === null

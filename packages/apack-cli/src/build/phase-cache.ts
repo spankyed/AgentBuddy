@@ -12,6 +12,8 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { packInputsHash } from './pack-inputs.ts';
 import { buildToolHash } from './tool-identity.ts';
+import { dependencyInputsHash } from './dependency-inputs.ts';
+import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
 
 /** Where the stamps live: beside `reads.json`, in the directory every pack already ignores */
 const CACHE_FILE = path.join('.apack', 'build-cache.json');
@@ -145,19 +147,19 @@ function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
 }
 
 /** Hash the same DSL definitions the bundle resolves, whether staged or already published. */
-export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[]): string {
+export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
   return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release,
-    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs] });
+    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs], dependencies });
 }
 
 /** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
-export function typesInputsHash(root: string, depSnapshots: ReadonlyMap<string, unknown>): string {
-  return phaseInputsHash(root, { bundler: 'types-bundler.ts', depSnapshots });
+export function typesInputsHash(root: string, dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
+  return phaseInputsHash(root, { bundler: 'types-bundler.ts', dependencies });
 }
 
 /** The DSL defs: the manifest's `dsl` entries, the sources they name, and the packages their types come from */
-export function dslInputsHash(root: string, apackDirs: readonly string[]): string {
-  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs });
+export function dslInputsHash(root: string, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
+  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs, dependencies });
 }
 
 /**
@@ -168,7 +170,7 @@ function phaseInputsHash(root: string, o: {
   readonly bundler: string;
   readonly release?: boolean;
   readonly dirs?: readonly string[];
-  readonly depSnapshots?: ReadonlyMap<string, unknown>;
+  readonly dependencies: ReadonlyMap<string, ResolvedDepFiles>;
 }): string {
   const hash = createHash('sha256');
   if (o.release !== undefined) hash.update(`release:${o.release}`);
@@ -177,9 +179,6 @@ function phaseInputsHash(root: string, o: {
   hash.update(bundlerVersions());
   hash.update(packInputsHash(root, { generated: true }));
   for (const dir of o.dirs ?? []) hashTree(hash, dir);
-  for (const id of [...(o.depSnapshots?.keys() ?? [])].sort()) {
-    hash.update(id);
-    hash.update(JSON.stringify(o.depSnapshots!.get(id)));
-  }
+  hash.update(dependencyInputsHash(o.dependencies));
   return hash.digest('hex');
 }

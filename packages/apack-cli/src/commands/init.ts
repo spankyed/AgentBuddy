@@ -289,8 +289,8 @@ export async function init(args: string[]) {
   );
 
   const initManifest = readManifest(dir);
-  const { depTypes, depSnapshots } = await resolveDeps(dir, initManifest.dependencies);
-  await generateEntries([], dir, depTypes, depSnapshots);
+  const dependencies = await resolveDeps(dir, initManifest.dependencies);
+  await generateEntries([], dir, dependencies);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your content code:`);

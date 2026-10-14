@@ -51,8 +51,8 @@ export async function facadeReport(args: string[]): Promise<void> {
   // pack author running it by hand still gets an answer over a tree nobody has built.
   if (args.includes('--skip-generate')) {
     const manifest = readValidManifest(packDir);
-    const { depSnapshots } = await resolveDeps(packDir, manifest.dependencies, { readOnly: true });
-    assertGeneratedCurrent(packDir, manifest, depSnapshots);
+    const dependencies = await resolveDeps(packDir, manifest.dependencies, { readOnly: true });
+    assertGeneratedCurrent(packDir, manifest, dependencies);
   } else await generateEntries([]);
   // Into the scratch directory, never dist/: that is the build's output, and a check that wrote it would both
   // claim a build had run and race one that had

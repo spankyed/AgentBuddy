@@ -1,26 +1,28 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackManifest, PackTypeManifest, PackDependencySnapshot } from '@apackdev/sdk/build';
+import { isDeepStrictEqual } from 'node:util';
+import type { PackManifest } from '@apackdev/sdk/build';
 import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest } from '../utils';
-import { resolveDeps } from './generate';
+import { resolveDeps, type ResolvedDeps } from './generate';
 import { packInputsHash } from '../build/pack-inputs.ts';
 import { buildToolHash } from '../build/tool-identity.ts';
+import { assertDependencyInputsCurrent, dependencyInputsHash } from '../build/dependency-inputs.ts';
 
 const HASH_FILE = '.inputs-hash';
-function computeInputsHash(root: string, manifest: PackManifest, depSnapshots: Map<string, PackDependencySnapshot>): string {
+function computeInputsHash(root: string, manifest: PackManifest, dependencies: ResolvedDeps): string {
+  if (!isDeepStrictEqual(Object.keys(manifest.dependencies ?? {}).sort(), [...dependencies.files.keys()].sort())) {
+    throw new Error('Resolved dependencies differ from apack.json; retry generation');
+  }
+  assertDependencyInputsCurrent(dependencies.files);
   const hash = createHash('sha256');
   hash.update(packInputsHash(root, { modulesOnly: true }));
   // The parsed declarations used below are part of the identity, even if disk changes between reads.
   hash.update(JSON.stringify(manifest));
   hash.update(buildToolHash());
-  // Generated flow helpers and types depend on every resolved dependency, wherever it came from
-  for (const depId of [...depSnapshots.keys()].sort()) {
-    hash.update(depId);
-    hash.update(JSON.stringify(depSnapshots.get(depId)));
-  }
+  hash.update(dependencyInputsHash(dependencies.files));
   return hash.digest('hex');
 }
 
@@ -67,16 +69,15 @@ function staleReason(hashPath: string, root: string, currentHash: string): strin
 }
 
 /** Skipping generation requires the same evidence that permits normal generation to reuse its files. */
-export function assertGeneratedCurrent(root: string, manifest: PackManifest, depSnapshots: Map<string, PackDependencySnapshot>): void {
-  const problem = staleReason(path.join(root, 'src/__generated__', HASH_FILE), root, computeInputsHash(root, manifest, depSnapshots));
+export function assertGeneratedCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps): void {
+  const problem = staleReason(path.join(root, 'src/__generated__', HASH_FILE), root, computeInputsHash(root, manifest, dependencies));
   if (problem) throw new Error(`Generated pack files are stale: ${problem}. Run "apack pack generate-entries" or build without --skip-generate.`);
 }
 
 export async function generateEntries(
   _args: string[],
   packRoot?: string,
-  depTypes?: Map<string, PackTypeManifest>,
-  depSnapshots?: Map<string, PackDependencySnapshot>,
+  dependencies?: ResolvedDeps,
 ) {
   if (_args.some(arg => arg !== '--force')) throw new Error('Usage: apack pack generate-entries [--force]');
   const root = packRoot ?? findPackRoot(process.cwd());
@@ -86,12 +87,8 @@ export async function generateEntries(
   // Code generated from a manifest the installer would reject would describe a pack that can't install
   const manifest = readValidManifest(root);
 
-  if (!depSnapshots) {
-    const resolved = await resolveDeps(root, manifest.dependencies);
-    depTypes = resolved.depTypes;
-    depSnapshots = resolved.depSnapshots;
-  }
-  const currentHash = computeInputsHash(root, manifest, depSnapshots);
+  dependencies ??= await resolveDeps(root, manifest.dependencies);
+  const currentHash = computeInputsHash(root, manifest, dependencies);
 
   const stale = force ? 'forced' : staleReason(hashPath, root, currentHash);
   if (stale === null) {
@@ -114,7 +111,7 @@ export async function generateEntries(
     ),
   });
   try {
-    await writeGenerated(root, outDir, hashPath, currentHash, manifest, depTypes, depSnapshots);
+    await writeGenerated(root, outDir, hashPath, currentHash, manifest, dependencies);
   } finally {
     lock.release();
   }
@@ -129,10 +126,12 @@ async function writeGenerated(
   hashPath: string,
   currentHash: string,
   manifest: PackManifest,
-  depTypes: Map<string, PackTypeManifest> | undefined,
-  depSnapshots: Map<string, PackDependencySnapshot>,
+  dependencies: ResolvedDeps,
 ) {
-  const files = await generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
+  const files = await generatePackFiles(manifest, { packRoot: root, depTypes: dependencies.depTypes, depSnapshots: dependencies.depSnapshots });
+  if (computeInputsHash(root, manifest, dependencies) !== currentHash) {
+    throw new Error('Pack generation inputs changed; retry before publishing generated files');
+  }
 
   // Dependencies' facade types are rewritten from their snapshots each time
   fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });

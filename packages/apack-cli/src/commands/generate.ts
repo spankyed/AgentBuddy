@@ -24,8 +24,9 @@ export async function resolveDependencyFiles(root: string, deps: Record<string, 
 }
 
 export interface ResolvedDeps {
-  depTypes: Map<string, PackTypeManifest>;
-  depSnapshots: Map<string, PackDependencySnapshot>;
+  readonly depTypes: Map<string, PackTypeManifest>;
+  readonly depSnapshots: Map<string, PackDependencySnapshot>;
+  readonly files: ReadonlyMap<string, ResolvedDepFiles>;
 }
 
 export async function resolveDeps(root: string, deps?: Record<string, string>, options: DependencyResolutionOptions = {}): Promise<ResolvedDeps> {
@@ -40,5 +41,5 @@ export function dependencyTypes(files: ReadonlyMap<string, ResolvedDepFiles>): R
   const depTypes = new Map<string, PackTypeManifest>();
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
 
-  return { depTypes, depSnapshots };
+  return { depTypes, depSnapshots, files };
 }
