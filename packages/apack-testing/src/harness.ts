@@ -31,7 +31,7 @@ import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, compileHelp, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@apackdev/sdk/build';
+import { compileFlowDSL, compilePack, compileHelp, parseContentIndex, resolveContentSources, CONTENT_INDEX_FILE, ManifestSchema, parseSnapshot, _declarationRevision, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency } from '@apackdev/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@apackdev/sdk/repositories';
 import { installedEngine, untypedQx } from '@apackdev/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@apackdev/sdk/utils';
@@ -407,7 +407,7 @@ export async function importContent(options: ImportContentOptions = {}): Promise
       log: () => {},
     });
     // Registered appliers whose key wasn't compiled find no content file and skip
-    const index = JSON.parse(fs.readFileSync(path.join(outputDir, CONTENT_INDEX_FILE), 'utf-8')) as ContentIndex;
+    const index = parseContentIndex(JSON.parse(fs.readFileSync(path.join(outputDir, CONTENT_INDEX_FILE), 'utf-8')));
     const written = new Set(index.entries.filter((entry) => entry.written).map((entry) => entry.key));
     const result = importCompiledContent({ compiledDir: outputDir, mode: options.mode });
     return Object.fromEntries(Object.entries(result).filter(([key]) => written.has(key)));

@@ -44,7 +44,7 @@ function builtInPack(snapshot: object = { declarationRevision: _declarationRevis
   // Compiled content, where `apack pack build` writes them for every pack
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"content":[]}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: 'base-pack', entries: [] }));
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });

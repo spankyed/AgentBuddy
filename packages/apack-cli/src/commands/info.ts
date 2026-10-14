@@ -1,51 +1,83 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findPackRoot, readManifest } from '../utils';
+import { isDeepStrictEqual } from 'node:util';
+import { _packEntities, parseContentIndex, CONTENT_INDEX_FILE, type ContentIndex } from '@apackdev/sdk/build';
+import { PACK_LAYOUT, readPackBuild, readPackAsset, type PackBuild } from '@apackdev/host/packs';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { findPackRoot, readValidManifest } from '../utils';
+import { inspectDependencies, describeDependency } from '../build/dependency-inspection.ts';
 
-export async function info(_args: string[]) {
-  const root = findPackRoot(process.cwd());
-  const manifest = readManifest(root);
-
-  const features = Object.keys(manifest.features ?? {}).length;
-  const steps = Object.keys(manifest.extensions?.steps ?? {}).length;
-  const packServices = Object.keys(manifest.extensions?.services ?? {}).length;
-  const deps = manifest.dependencies ? Object.keys(manifest.dependencies).length : 0;
-  const hasDist = fs.existsSync(path.join(root, 'dist'));
-
-  // From the manifest's own paths, not a guess at the conventional directory: a pack may put its
-  // content anywhere, and reporting 0 for one that does is worse than reporting nothing
-  const sourceCount = (key: string): number => {
-    const entry = manifest.content?.sources?.[key];
-    const rel = typeof entry === 'string' ? entry : entry?.path;
-    const dir = rel && path.join(root, rel);
-    return dir && fs.existsSync(dir) ? countFiles(dir, '.ts') : 0;
-  };
-  const [actions, prompts, flows] = ['actions', 'prompts', 'flows'].map(sourceCount);
-
-  console.log(`
-  Pack:       ${manifest.id}
-  Version:    ${manifest.version || 'n/a'}
-  Host:       ${manifest.hostVersion || 'n/a'}
-
-  Features:   ${features}
-  Steps:      ${steps}
-  Services:   ${packServices}
-  Content:    ${actions} actions, ${prompts} prompts, ${flows} flows
-  Deps:       ${deps}
-
-  Built:      ${hasDist ? 'yes' : 'no'}
-  Root:       ${root}
-`.trimEnd());
+function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifest>): {
+  status: 'unbuilt' | 'verified' | 'stale' | 'invalid';
+  directory: string;
+  problem?: string;
+  revision?: string;
+  metadata?: { declarationRevision: string; format: number; sdkVersion?: string;
+    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds']; facades: string[] };
+  content?: ContentIndex;
+} {
+  const directory = fs.existsSync(path.join(root, PACK_LAYOUT.integrity)) ? root : path.join(root, 'dist');
+  if (!fs.existsSync(directory)) return { status: 'unbuilt', directory };
+  try {
+    const build = readPackBuild(directory);
+    const indexFile = `${PACK_LAYOUT.contentDir}/${CONTENT_INDEX_FILE}`;
+    const declaredContent = build.snapshot.manifest.content;
+    if (!Object.hasOwn(build.integrity.files, indexFile)
+      && (Object.keys(declaredContent?.sources ?? {}).length || Object.keys(declaredContent?.datasets ?? {}).length)) {
+      throw new Error('Build is missing its declared compiled content index; rebuild the complete pack.');
+    }
+    const content = Object.hasOwn(build.integrity.files, indexFile)
+      ? parseContentIndex(JSON.parse(readPackAsset(directory, build.snapshot.manifest.id, build.revision, indexFile).toString('utf8')))
+      : undefined;
+    if (content && content.packId !== build.snapshot.manifest.id) throw new Error(`Content index belongs to "${content.packId}", not "${build.snapshot.manifest.id}"`);
+    const stale = !isDeepStrictEqual(manifest, build.snapshot.manifest);
+    return { status: stale ? 'stale' : 'verified', directory, revision: build.revision,
+      metadata: { declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
+        sdkVersion: build.snapshot.sdkVersion, entities: _packEntities(build.snapshot.manifest),
+        relations: build.snapshot.types.relKinds, facades: Object.keys(build.snapshot.facades) },
+      ...(content && { content }), ...(stale && { problem: 'Built declarations differ from the current manifest; rebuild the pack.' }),
+    };
+  } catch (error) {
+    return { status: 'invalid', directory, problem: errorMessage(error) };
+  }
 }
 
-function countFiles(dir: string, ext: string): number {
-  let count = 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      count += countFiles(path.join(dir, entry.name), ext);
-    } else if (entry.name.endsWith(ext) && !entry.name.startsWith('_')) {
-      count++;
+/** Inspect declarations, verified output and dependencies without importing pack modules or writing files. */
+export async function inspectPack(root: string) {
+  const manifest = readValidManifest(root);
+  const dependencies = await inspectDependencies(root, manifest.dependencies);
+  return { root, id: manifest.id, name: manifest.name, version: manifest.version, hostVersion: manifest.hostVersion,
+    declared: {
+      features: Object.entries(manifest.features ?? {}).map(([id, feature]) => ({ id, description: feature.description,
+        ...(feature.plugin && { label: feature.plugin.label }) })),
+      steps: Object.keys(manifest.extensions?.steps ?? {}),
+      services: Object.keys(manifest.extensions?.services ?? {}),
+      entities: _packEntities(manifest), relations: manifest.data?.relations ?? [],
+      content: { sources: Object.keys(manifest.content?.sources ?? {}), datasets: Object.keys(manifest.content?.datasets ?? {}) },
+    },
+    build: inspectBuild(root, manifest), dependencies: dependencies.entries,
+  };
+}
+
+export async function info(args: string[]) {
+  if (args.some(arg => arg !== '--json')) throw new Error('Usage: apack pack info [--json]');
+  const report = await inspectPack(findPackRoot(process.cwd()));
+  if (args.includes('--json')) { console.log(JSON.stringify(report)); return; }
+  console.log(`Pack: ${report.id} (${report.name})\nVersion: ${report.version}\nHost: ${report.hostVersion ?? 'unrestricted'}\nRoot: ${report.root}`);
+  console.log(`\nDeclared features (${report.declared.features.length}):`);
+  for (const feature of report.declared.features) console.log(`  ${feature.id}${feature.label ? ` — ${feature.label}` : ''}: ${feature.description}`);
+  for (const kind of ['steps', 'services'] as const) console.log(`Declared ${kind}: ${report.declared[kind].join(', ') || '(none)'}`);
+  console.log(`\nBuild: ${report.build.status}${report.build.revision ? `; revision ${report.build.revision}` : ''}`);
+  if (report.build.problem) console.log(`  ${report.build.problem}`);
+  if (report.build.content) {
+    console.log('Compiled content:');
+    for (const entry of report.build.content.entries) {
+      console.log(`  ${entry.key}: ${entry.count} item(s)${entry.written ? '' : ' (dataset)'}`);
+      for (const item of entry.items) console.log(`    ${item.key}${item.description ? ` — ${item.description}` : ''}`);
     }
+  } else console.log(`Compiled content: ${report.build.status === 'verified' ? 'none' : 'unavailable'}`);
+  if (report.dependencies.length) {
+    console.log('\nDependencies:');
+    for (const dependency of report.dependencies) console.log(`  ${describeDependency(dependency)}`);
   }
-  return count;
 }

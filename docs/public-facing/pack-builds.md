@@ -67,3 +67,9 @@ precedence over stale generated files during these checks, without executing dep
 Build and source checks validate exported shape types and executable targets before publication.
 Installed discovery validates built data and integrity; activation separately checks binding membership
 and invokes lifecycle behavior. See [building](cli.md#building) and [pack development](getting-started.md).
+
+Compiled content `runtime/content/content.json` carries the compiling pack ID, declared source/dataset
+keys, compiler-reported counts and item identities/descriptions. The shared current-index parser
+validates its envelope and refuses duplicate keys. Pack inspection reads this data through its accepted
+receipt without loading compilers or content modules; preview/import still require their registered
+providers. `apack pack info --json` reports verified output and retained dependency provenance.

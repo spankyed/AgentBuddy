@@ -3,34 +3,37 @@ import {
   generatePackFiles, packValidation, validateManifest, validatePackSources,
   type PackDiagnostic, type PackValidation, type SkippedPackCheck,
 } from '@apackdev/sdk/build';
-import { resolveDeps } from './generate';
+import { dependencyTypes, type ResolvedDeps } from './generate';
+import { inspectDependencies, type DependencyInspection } from '../build/dependency-inspection.ts';
 import { findPackRoot, readManifest } from '../utils';
 import { packRuleProblems, PACK_RULES } from '../build/pack-rules.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /** Authoring checks are read-only; unresolved dependencies leave a useful but incomplete report. */
-export async function validatePack(root: string): Promise<PackValidation> {
+export async function validatePack(root: string): Promise<PackValidation & { dependencies: DependencyInspection[] }> {
   const manifestResult = validateManifest(path.join(root, 'apack.json'));
   const diagnostics: PackDiagnostic[] = [...manifestResult.diagnostics];
   const skippedChecks: SkippedPackCheck[] = [];
   let packId: string | undefined;
+  let dependencies: DependencyInspection[] = [];
 
   if (manifestResult.status === 'valid') {
     const manifest = readManifest(root);
     packId = manifest.id;
     const sources = validatePackSources(root, manifest);
     diagnostics.push(...sources.diagnostics);
-    let resolved: Awaited<ReturnType<typeof resolveDeps>> | undefined;
-    try {
-      resolved = await resolveDeps(root, manifest.dependencies, { readOnly: true });
-    } catch (err) {
-      const reason = errorMessage(err);
+    let resolved: ResolvedDeps | undefined;
+    const inspection = await inspectDependencies(root, manifest.dependencies);
+    dependencies = inspection.entries;
+    const failed = dependencies.filter(entry => entry.status !== 'resolved');
+    if (failed.length) {
+      const reason = failed.map(entry => `${entry.id} (${entry.spec}): ${entry.problem}`).join('; ');
       diagnostics.push({
         code: 'dependency.unresolved', severity: 'warning', packId, path: ['dependencies'],
         message: reason, suggestion: 'Run "apack pack fetch-deps"; build linked dependencies first.',
       });
       skippedChecks.push({ check: 'dependencies', reason });
-    }
+    } else resolved = dependencyTypes(inspection.files);
 
     if (sources.status !== 'valid' || !resolved) {
       skippedChecks.push({ check: 'codegen', reason: 'Requires valid declared sources and resolved dependencies.' });
@@ -47,7 +50,7 @@ export async function validatePack(root: string): Promise<PackValidation> {
     for (const check of ['declared-sources', 'dependencies', 'codegen', 'source-rules']) {
       skippedChecks.push({ check, reason: 'Requires a valid manifest.' });
     }
-    return packValidation(diagnostics, skippedChecks);
+    return { ...packValidation(diagnostics, skippedChecks), dependencies };
   }
 
   // Independent source rules still run when other checks fail.
@@ -60,7 +63,7 @@ export async function validatePack(root: string): Promise<PackValidation> {
       });
     }
   }
-  return packValidation(diagnostics, skippedChecks);
+  return { ...packValidation(diagnostics, skippedChecks), dependencies };
 }
 
 export async function validate(args: string[]) {

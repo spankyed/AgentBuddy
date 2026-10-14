@@ -30,6 +30,11 @@ export interface ResolvedDeps {
 
 export async function resolveDeps(root: string, deps?: Record<string, string>, options: DependencyResolutionOptions = {}): Promise<ResolvedDeps> {
   const files = await resolveDependencyFiles(root, deps, options);
+  return dependencyTypes(files);
+}
+
+/** Project the snapshots already resolved for this frame; validation and generation share it. */
+export function dependencyTypes(files: ReadonlyMap<string, ResolvedDepFiles>): ResolvedDeps {
   const depSnapshots = new Map([...files].map(([id, files]) => [id, files.snapshot]));
 
   const depTypes = new Map<string, PackTypeManifest>();

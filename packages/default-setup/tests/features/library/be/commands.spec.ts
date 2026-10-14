@@ -125,7 +125,7 @@ describe('slash commands from the library commands folder', () => {
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
   })
 
-  it("reports only a failure for content that don't name their pack, even when no section is selected", async () => {
+  it("reports only failure for content that does not name its pack, even when no section is selected", async () => {
     // With every section deselected no applier runs, so nothing else reads the missing pack id
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-content-'))
     dependentDirs.push(dir)
@@ -137,7 +137,7 @@ describe('slash commands from the library commands folder', () => {
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
     const failed = await app.nextEmit('host/settings', 'PACK_CONTENT_IMPORT_FAILED') as unknown as { error: string }
 
-    expect(failed.error).toContain("doesn't name the pack that compiled this content")
+    expect(failed.error).toContain('packId')
     expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_CONTENT_IMPORTED')
   })
 

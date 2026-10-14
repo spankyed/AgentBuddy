@@ -3,10 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generatePackFiles } from '@apackdev/sdk/build';
-import { resolveDeps } from '../../src/commands/generate';
+import { inspectDependencies } from '../../src/build/dependency-inspection.ts';
 import { validate, validatePack } from '../../src/commands/validate';
 
-vi.mock('../../src/commands/generate', () => ({ resolveDeps: vi.fn() }));
+vi.mock('../../src/build/dependency-inspection.ts', () => ({ inspectDependencies: vi.fn() }));
 vi.mock('@apackdev/sdk/build', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/sdk/build')>(), generatePackFiles: vi.fn(),
 }));
@@ -16,7 +16,7 @@ const manifest = { id: 'demo', name: 'Demo', version: '1.0.0' };
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-validation-'));
   fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(manifest));
-  vi.mocked(resolveDeps).mockResolvedValue({ depTypes: new Map(), depSnapshots: new Map() });
+  vi.mocked(inspectDependencies).mockResolvedValue({ entries: [], files: new Map() });
 });
 afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe('pack authoring validation', () => {
   it('reports failed dependency resolution as incomplete, without running codegen or creating output', async () => {
-    vi.mocked(resolveDeps).mockRejectedValue(new Error('Unresolved dependency "base"'));
+    vi.mocked(inspectDependencies).mockResolvedValue({ entries: [{ id: 'base', spec: '*', status: 'unavailable', problem: 'Unresolved dependency base' }], files: new Map() });
     const before = fs.readdirSync(root);
     const report = await validatePack(root);
     expect(report).toMatchObject({
@@ -34,7 +34,7 @@ describe('pack authoring validation', () => {
       skippedChecks: [{ check: 'dependencies' }, { check: 'codegen' }],
     });
     expect(generatePackFiles).not.toHaveBeenCalled();
-    expect(resolveDeps).toHaveBeenCalledWith(root, undefined, { readOnly: true });
+    expect(inspectDependencies).toHaveBeenCalledWith(root, undefined);
     expect(fs.readdirSync(root)).toEqual(before);
   });
 
@@ -44,7 +44,7 @@ describe('pack authoring validation', () => {
       status: 'invalid', diagnostics: [expect.objectContaining({ code: 'manifest.json' })],
       skippedChecks: [{ check: 'declared-sources' }, { check: 'dependencies' }, { check: 'codegen' }, { check: 'source-rules' }],
     });
-    expect(resolveDeps).not.toHaveBeenCalled();
+    expect(inspectDependencies).not.toHaveBeenCalled();
     expect(generatePackFiles).not.toHaveBeenCalled();
   });
 
@@ -58,7 +58,7 @@ describe('pack authoring validation', () => {
   });
 
   it.each(['text', 'json'])('renders an incomplete %s report and exits 2 without claiming validity', async format => {
-    vi.mocked(resolveDeps).mockRejectedValue(new Error('Offline'));
+    vi.mocked(inspectDependencies).mockResolvedValue({ entries: [{ id: 'base', spec: '*', status: 'unavailable', problem: 'Offline' }], files: new Map() });
     vi.spyOn(process, 'cwd').mockReturnValue(root);
     const output = vi.spyOn(console, 'log').mockImplementation(() => {});
     const exit = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit'); });

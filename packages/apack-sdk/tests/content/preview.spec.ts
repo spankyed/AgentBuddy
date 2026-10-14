@@ -39,7 +39,7 @@ async function compileDemo(): Promise<string> {
         glossary: { path: 'glossary.json', format: 'terms' },
         notes: { path: 'notes.json', format: 'terms' },
       },
-      artifacts: { faqs: { path: 'faqs.json', format: 'records' } },
+      datasets: { faqs: { path: 'faqs.json', format: 'records' } },
     },
   }));
   await compilePack({ packDir: root, outputDir: out });

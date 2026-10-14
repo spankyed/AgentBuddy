@@ -955,7 +955,7 @@ describe('importing a pack’s content', () => {
     const dir = path.join(tmpDir, 'compiled');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({
-      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1 }],
+      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1, identity: ['name'], items: [{ key: 'Intro' }] }],
     }));
     fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({
       records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],

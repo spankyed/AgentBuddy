@@ -453,11 +453,11 @@ the next app version may rename — so there is nothing to allow, and naming one
 
 Exits with code 1 on errors.
 
-#### `apack pack doctor`
+#### `apack pack doctor [--json]`
 
 Read-only source health using the same manifest, target, static export, contract and source-rule checks
 as `apack pack validate`. Modules are inspected without activation; generated output is not written.
-Missing generated files produce a reminder to run `apack pack generate-entries`.
+Dependency details retain the declared spec, exact version, origin, delivery path and content revision. Data availability and executable availability are distinct. Missing generated files produce a reminder to run `apack pack generate-entries`. `--json` emits one validation report with the same dependency inspection frame used for static checks.
 
 Exits 0 when validation is complete and valid, 1 for errors, and 2 when dependency resolution prevents
 complete checking. Unchecked work is listed explicitly; incomplete checks are never reported as valid.
@@ -481,9 +481,11 @@ name order, literal unions sorted, and the pack's own path shortened to `.`. Tha
 for a reason worth knowing: TypeScript prints an inferred union's members in the order it created the member
 types, and that order varies between builds, so an unnormalised report would differ from itself.
 
-#### `apack pack info`
+#### `apack pack info [--json]`
 
-Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow content file counts, dependency count, whether `dist/` exists, and the pack root.
+Inspect declared features, entities, steps and services, verified build metadata, compiled content item IDs/descriptions/counts, and dependency provenance. `--json` emits one structured report with the same data as text. Inspection never activates pack modules, downloads dependencies or populates caches.
+
+Build status distinguishes unbuilt, verified, invalid and stale declarations. Compiled content comes from a receipt-checked index; missing or invalid output is unavailable, rather than inferred from source file counts. A verified build proves its output bytes, not that every authored input is unchanged. Dependency details distinguish missing/invalid data from resolved type data whose execution is unavailable.
 
 ### Testing
 

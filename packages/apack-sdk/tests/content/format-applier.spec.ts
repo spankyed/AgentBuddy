@@ -38,7 +38,7 @@ afterAll(() => {
 function compiled(packId: string, records: Array<{ name: string; body: string; version?: string; [field: string]: unknown }>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
   const contentItems: ContentItem[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, contentHash: `${fields.name}-${version}` }));
   fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({ records: contentItems }));
   return dir;
@@ -520,10 +520,10 @@ describe("two packs' records with the same entry key and identity", () => {
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B, revised']);
   });
 
-  it('fail with a rebuild error when the compiled content name no pack', () => {
+  it('refuses compiled content that names no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }));
-    expect(() => apply(dir)).toThrow(/doesn't name the pack that compiled this content: rebuild the pack/);
+    expect(() => apply(dir)).toThrow('packId');
   });
 });
 
@@ -536,7 +536,7 @@ describe("a folder another pack written", () => {
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-tree-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     const records: ContentItem[] = [{
       entity: 'Folder',
       name: 'internal',

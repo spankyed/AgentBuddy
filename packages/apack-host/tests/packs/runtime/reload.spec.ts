@@ -383,7 +383,7 @@ describe('reloading a pack', () => {
   it("records a first-time pack's apply failure", async () => {
     resetTestData();
     writeRebuild(runtime());
-    // Compiled content from a pack built by an older CLI: importCompiledContent refuses them, which is a failed apply
+    // Invalid current index data must record an apply failure without claiming success.
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, entries: [] }),
@@ -393,7 +393,7 @@ describe('reloading a pack', () => {
     await reloadPackById(registry, PACK_ID, bus as never);
 
     expect(readInstalledPacks()).toMatchObject([
-      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled this content") }),
+      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining('packId') }),
     ]);
   });
 

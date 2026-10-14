@@ -14,6 +14,7 @@ export {
 } from './content/items.ts';
 export { resolveContentSources, type ResolvedContentSource, type ContentDependency, type ContentCompilerModuleRef } from './content/resolve.ts';
 export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, ContentIndex, ContentIndexEntry } from './content-compiler.ts';
+export { parseContentIndex } from './content-index.ts';
 
 // Compile utilities
 export { compileSourceDir, bundleFile, contentHash } from './compile-utils.ts';

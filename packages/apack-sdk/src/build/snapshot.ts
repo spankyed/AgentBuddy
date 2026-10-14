@@ -5,7 +5,7 @@ import { packValidation, type PackValidation } from './diagnostics.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { _HelpDocumentsSchema, _helpDataProblem } from './help-data.ts';
 
-/** The complete data artifact; executable pack modules are never needed to validate it. */
+/** The complete compiled snapshot; executable pack modules are never needed to validate it. */
 const SnapshotShape = {
   declarationRevision: z.string().regex(/^[a-f0-9]{64}$/, 'Must be a SHA-256 declaration revision'),
   format: z.number().int().nonnegative(),

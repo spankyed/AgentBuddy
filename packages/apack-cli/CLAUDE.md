@@ -251,3 +251,7 @@ Dependency resolution caches complete verified builds by content revision under
 version and structured origin. CLI and harness use the shared host cache reader; snapshot-only type
 data never exposes executable paths. Explicit `file:` builds also cache coherent producer bytes,
 while read-only inspection writes nothing. Previously resolved paths remain valid after publication.
+
+`build/dependency-inspection.ts` captures one read-only dependency frame for validation and doctor
+presentation. `pack info --json` uses the same resolver and reads compiled content through the
+verified build receipt, not source file counts. Missing, invalid and stale declarations remain explicit.

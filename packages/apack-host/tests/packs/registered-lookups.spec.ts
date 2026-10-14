@@ -166,7 +166,7 @@ describe('appliers', () => {
   function compiledDir(packId: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'registered-appliers-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     return dir;
   }
   const applier = (key: string, created: number): ContentApplier => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
@@ -275,7 +275,7 @@ describe('a pack whose registration is refused', () => {
   const contentOf = (packId: string) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
     scratch.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     return dir;
   };
   const anApplier = (key: string): ContentApplier => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });

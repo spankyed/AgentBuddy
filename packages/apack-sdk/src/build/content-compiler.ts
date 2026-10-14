@@ -4,6 +4,7 @@ import { pathToFileURL } from 'url';
 import type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackContentPreviewItem } from './preview.ts';
+import { parseContentIndex } from './content-index.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { contentFile } from './manifest.ts';
@@ -233,13 +234,14 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     }
   }
 
+  const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
+  parseContentIndex(index);
   const mediaRoot = path.join(outputDir, 'media');
   for (const { key, media, output, index } of compiled) {
     fs.writeFileSync(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
     log(`  ${key}: ${index.count}`);
   }
-  const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
   fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
 
   return { counts: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };
