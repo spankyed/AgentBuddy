@@ -77,6 +77,7 @@ export interface PackFeatureSummary {
   designation?: string;
   hasSystem: boolean;
   plugin?: import('@apackdev/sdk/framework').PluginDeclaration;
+  references?: import('@apackdev/sdk/framework').ReferenceDeclarations;
   services: readonly string[];
 }
 

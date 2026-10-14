@@ -236,6 +236,7 @@
             <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
               <span v-if="feature.hasSystem">system</span>
               <span v-if="feature.plugin">plugin</span>
+              <span v-if="feature.references && Object.keys(feature.references.types).length">references: {{ Object.keys(feature.references.types).join(', ') }}</span>
               <span v-if="feature.services.length">services: {{ feature.services.join(', ') }}</span>
             </div>
           </div>

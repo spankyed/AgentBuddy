@@ -1247,3 +1247,89 @@ This completes this plugin declaration/binding/catalog-details checkpoint, not a
 the larger goal. Source/asset provenance checks for the remaining native contributions, other static
 consumers, shell readiness/navigation, boundaries, consumed APIs, dependency identity and final strict
 --all on finished committed source remain required. No unfinished plans are archived.
+
+
+### Reference declaration prototype plan (2026-10-13)
+
+Audit after `27803b90f`: six reference types, three categories and three item providers are defined
+inside executable feature modules. Codegen spreads their type objects and concatenates categories;
+useReferenceItems constructs a last-wins Map by category. Nothing can inspect these names from the
+manifest, and duplicate names/protocols can overwrite one another. The generated aggregate is currently
+pack-local and is consumed by default-setup's editor; external declarations do not automatically enter
+an app-wide reference registry. Do not claim that generating an external aggregate closes that gap.
+
+Replace the string references key with inline maps:
+
+```json
+"references": {
+  "types": {
+    "note": {
+      "protocol": "note",
+      "category": "notes",
+      "icon": "NotebookText",
+      "svgElements": [["path", { "d": "M2 6h4" }]],
+      "navigate": "src/features/notes/fe/references.ts#openNote"
+    }
+  },
+  "categories": {
+    "notes": {
+      "label": "Notes",
+      "icon": "NotebookText",
+      "useItems": "src/features/notes/fe/references.ts#useItems"
+    }
+  }
+}
+```
+
+Types, URI protocols and category names retain their current global identity; category providers are
+owned by their declared category. Duplicate feature claims within a pack refuse with both feature ids;
+dependency diamonds retain actual ownership while distinct owners conflict. Do not silently compose
+providers where the existing contract has one provider per category. Type/category icons use the same
+Lucide convention as existing artifact declarations; preserve custom component capability through an
+explicit component target if the shared declaration needs it. SVG tuples remain data, not executable
+factories. Navigation and useItems are checked function exports and are never called for discovery.
+Navigation callbacks remain until the entity-opening phases migrate their callers.
+
+The first coherent checkpoint adds shared schema/types, derives codegen from inline declarations,
+checks named exports and duplicate claims, migrates the three shipped modules to executable functions
+only, and publishes immutable reference/category metadata through the common catalog. A production
+pack-details reader must use that data with disabled/failed runtime coverage. This is the foundation,
+not completed cross-pack reference discovery or runtime consumption.
+
+The following checkpoint registers reference bindings as explicit frontend contributions, validates
+them against their declarations before publication, preserves accepted bindings on refusal, and
+migrates editor/category readers to the common catalog plus active provider lookup. Cover external
+packs, disabled/failed contributions, unrelated owner collisions and dependency diamonds. Dynamic
+items still require their provider's execution and scope disposal. Finish native contribution coverage,
+entity routing/readiness and stale delivery without keeping the local/runtime discovery aggregate as
+a compatibility fallback. Regenerate schemas/API reports and public authoring docs with each usable
+checkpoint; final goal-wide acceptance still covers every remaining kind and workstream.
+
+### Declarative reference foundation checkpoint (2026-10-13)
+
+Implemented the first reference checkpoint above. The manifest owns six shipped reference types,
+three categories, their icons/SVG geometry and explicit navigation/provider targets. The three source
+modules now export executable functions only. Shared authored/native schema checks refuse duplicate
+feature claims; generation checks function exports, category availability and dependency ownership,
+including shared-ancestor diamonds and unrelated collisions. Custom component icons retain explicit
+lazy loading. Source-file diagnostics include reference targets.
+
+The common catalog exposes immutable native, installed and source reference declarations with truthful
+origin/revision/enabled information. The production Packs summary and detail view read those declarations;
+an isolated real activation failure and a disabled pack both retain their metadata. This is data discovery,
+not app-wide executable admission: the editor still consumes its pack-local generated aggregate. Finish
+explicit frontend reference bindings, transactional collision/retirement checks and the catalog-driven
+editor/provider migration next. Do not retain the aggregate as a fallback after that migration.
+
+Evidence: 16 focused reference checks passed, including native duplicates, no module execution,
+custom lazy icons, function refusals, dependency categories and diamonds. Removing the function-kind
+guard caused two named refusal assertions to fail; byte restoration returned all 16 to passing. The
+strict chain passed all 30 gates in 548.2 seconds with no cached gates: 4,324 host unit tests, 839 pack
+unit tests (two existing skips), 639 integration tests, real external/default-fork app acceptance,
+smoke and both packaged-authoring halves. Public schema, API reports and authoring docs are updated.
+Run evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T01-17-42Z-60078`;
+log: `/private/tmp/apack-reference-declarations-strict.log`.
+
+Other contribution kinds, full native/source/dependency freshness, shell eligibility/entity routing,
+frontend recovery boundaries, all three Phase 6 workstreams and final committed-source strict --all
+acceptance remain required. No incomplete plans are archived.

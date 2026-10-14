@@ -501,7 +501,43 @@
           }
         ]
       },
-      "references": "src/features/threads/fe/references",
+      "references": {
+        "types": {
+          "thread": {
+            "protocol": "thread",
+            "category": "threads",
+            "icon": "History",
+            "svgElements": [
+              [
+                "path",
+                {
+                  "d": "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M3 3v5h5"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M12 7v5l4 2"
+                }
+              ]
+            ],
+            "navigate": "src/features/threads/fe/references.ts#openThread"
+          }
+        },
+        "categories": {
+          "threads": {
+            "label": "Threads",
+            "icon": "History",
+            "useItems": "src/features/threads/fe/references.ts#useItems"
+          }
+        }
+      },
       "services": {
         "chat": "src/features/threads/be/services/chat.ts#chatService",
         "artifact": "src/features/threads/be/services/artifact.ts#artifactService",
@@ -838,7 +874,137 @@
         "canvas": "src/features/notes/fe/canvas.vue",
         "panel": "src/features/notes/fe/panel.vue"
       },
-      "references": "src/features/notes/fe/references",
+      "references": {
+        "types": {
+          "note": {
+            "protocol": "note",
+            "category": "notes",
+            "icon": "NotebookText",
+            "svgElements": [
+              [
+                "path",
+                {
+                  "d": "M2 6h4"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M2 10h4"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M2 14h4"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M2 18h4"
+                }
+              ],
+              [
+                "rect",
+                {
+                  "width": "16",
+                  "height": "20",
+                  "x": "4",
+                  "y": "2",
+                  "rx": "2"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M9.5 8h5"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M9.5 12H16"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M9.5 16H14"
+                }
+              ]
+            ],
+            "navigate": "src/features/notes/fe/references.ts#openNote"
+          },
+          "task": {
+            "protocol": "task",
+            "category": "notes",
+            "icon": "CircleCheck",
+            "svgElements": [
+              [
+                "circle",
+                {
+                  "cx": "12",
+                  "cy": "12",
+                  "r": "10"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "m9 12 2 2 4-4"
+                }
+              ]
+            ],
+            "navigate": "src/features/notes/fe/references.ts#openNote"
+          },
+          "tasklist": {
+            "protocol": "tasklist",
+            "category": "notes",
+            "icon": "ListChecks",
+            "svgElements": [
+              [
+                "path",
+                {
+                  "d": "m3 17 2 2 4-4"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "m3 7 2 2 4-4"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M13 6h8"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M13 12h8"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M13 18h8"
+                }
+              ]
+            ],
+            "navigate": "src/features/notes/fe/references.ts#openNote"
+          }
+        },
+        "categories": {
+          "notes": {
+            "label": "Notes",
+            "icon": "NotebookText",
+            "useItems": "src/features/notes/fe/references.ts#useItems"
+          }
+        }
+      },
       "services": {},
       "repositories": {
         "noteQueries": "src/features/notes/be/repository/index.ts#noteQueries",
@@ -965,7 +1131,63 @@
         "panel": "src/features/library/fe/panel.vue",
         "isPinned": true
       },
-      "references": "src/features/library/fe/references",
+      "references": {
+        "types": {
+          "document": {
+            "protocol": "doc",
+            "category": "documents",
+            "icon": "Library",
+            "svgElements": [
+              [
+                "path",
+                {
+                  "d": "m16 6 4 14"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M12 6v14"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M8 8v12"
+                }
+              ],
+              [
+                "path",
+                {
+                  "d": "M4 4v16"
+                }
+              ]
+            ],
+            "navigate": "src/features/library/fe/references.ts#openDocument"
+          },
+          "folder": {
+            "protocol": "folder",
+            "category": "documents",
+            "icon": "Folder",
+            "svgElements": [
+              [
+                "path",
+                {
+                  "d": "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                }
+              ]
+            ],
+            "navigate": "src/features/library/fe/references.ts#openFolder"
+          }
+        },
+        "categories": {
+          "documents": {
+            "label": "Library",
+            "icon": "Library",
+            "useItems": "src/features/library/fe/references.ts#useItems"
+          }
+        }
+      },
       "services": {
         "library": "src/features/library/be/services/library.ts#libraryService"
       },

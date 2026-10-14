@@ -46,7 +46,7 @@ export interface ReferenceTypeConfig {
     // (undocumented)
     protocol: string;
     // (undocumented)
-    svgElements: SvgElement[];
+    svgElements: readonly ReferenceSvgElement[];
 }
 
 // (No @packageDocumentation comment for this package)

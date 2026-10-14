@@ -1,13 +1,13 @@
 import type { Component, Ref } from 'vue'
 
-type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
+import type { ReferenceSvgElement } from '../framework/reference-declaration.ts'
 
 /** Defines how an entity type appears and navigates when contributed to the UI. */
 export interface ReferenceTypeConfig {
   protocol: string
   category: string
   icon: Component
-  svgElements: SvgElement[]
+  svgElements: readonly ReferenceSvgElement[]
   /** Opens the entity a reference names */
   navigate: (refId: string) => void
 }

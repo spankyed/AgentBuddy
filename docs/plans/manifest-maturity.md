@@ -233,14 +233,13 @@ not simply a process-spawning task.
 
 ## Contract maintenance alongside every step
 
-Make schema descriptions, public docs, templates and actual runtime behavior agree. Two current audit
-targets illustrate the problem:
+Make schema descriptions, public docs, templates and actual runtime behavior agree. Recent corrections
+and their remaining acceptance illustrate the boundary:
 
-- `builtIn` is author-declared, while runtime origin determines shipped provenance and the registry says
-  it does not decide behavior from that field. Remove the inert declaration or define a concrete consumer;
-  do not let pack authors assert trusted origin.
-- The feature `references` schema description still says external packs are ignored despite newer
-  codegen support. Correct the description and cover the supported external case.
+- `builtIn` has been removed. App-source provenance and explicit update ownership replace the inert
+  author-declared shipping privilege; pack authors cannot assert trusted origin.
+- Reference metadata is now inline and validated for every pack. Its generated frontend aggregate
+  remains pack-local; finish app-wide external binding/consumer integration before claiming full support.
 
 Regenerate schemas/API reports when the public surface changes. Apply the repository's snapshot-format
 rule when a reader would misinterpret a changed contract; do not bump package release versions. Update

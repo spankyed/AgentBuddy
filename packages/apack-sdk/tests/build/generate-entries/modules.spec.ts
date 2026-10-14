@@ -423,7 +423,7 @@ describe('the snapshot format', () => {
         system: ['machine', 'receives'],
         plugin: ['defaultVisible', 'receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
+      provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceProtocols', 'referenceTypes', 'relKinds'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });

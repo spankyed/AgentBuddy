@@ -61,6 +61,8 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
   const catalog = registry.catalog.getSnapshot();
   const plugins = new Map(registry.catalog.plugins().filter(plugin => plugin.origin === 'installed')
     .map(plugin => [plugin.featureRef, plugin.declaration]));
+  const references = new Map(registry.catalog.references().filter(entry => entry.origin === 'installed')
+    .map(entry => [entry.featureRef, entry.declaration]));
   const records = packRecords();
   const base = (id: string, dir: string, enabled: boolean) => {
     const record = packRecord(id, records);
@@ -82,6 +84,7 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
     const features = Object.entries(manifest.features ?? {}).map(([id, feature]) => ({
       id, designation: feature.designation, hasSystem: !!feature.system,
       plugin: plugins.get(resolveName(id, manifest.id)),
+      references: references.get(resolveName(id, manifest.id)),
       services: Object.keys(feature.services ?? {}),
     }));
     const extensions = manifest.extensions;

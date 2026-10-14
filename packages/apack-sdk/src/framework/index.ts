@@ -11,3 +11,5 @@ export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValid
 export { _packDeclarationProblem } from './declaration-binding.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';
 export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';
+
+export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclaration, type ReferenceCategoryDeclaration, type ReferenceSvgElement } from './reference-declaration.ts';

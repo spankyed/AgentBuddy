@@ -24,6 +24,11 @@ import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import { untypedQx, untypedTx } from '@apackdev/ears';
 
+const referenceDeclarations = {
+  types: { note: { protocol: 'note', category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/references.ts#openNote' } },
+  categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
+};
+
 const PACK_ID = 'reinstall-pack';
 
 let tmpDir: string;
@@ -328,12 +333,12 @@ describe('pack information without activation', () => {
     return (event!.packs as InstalledPackSummary[]).find(pack => pack.id === PACK_ID)!;
   };
 
-  it('lists disabled declarations without executing modules or reading undeclared frontend files', () => {
+  it.each(['disabled', 'activation-failed'])('lists %s declarations without requiring runtime registration or undeclared frontend files', kind => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       entities: { Memo: 'Memo' }, relKinds: { Child: 'parent' },
       features: { notes: { designation: 'notes', system: { entry: 'src/system.ts' },
-        plugin: { label: 'Fixture', state: 'src/plugin.ts' }, services: { notesApi: 'src/api.ts#notesApi' } } },
+        plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
       extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
       migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
       boot: { onInit: 'src/hooks.ts#onInit' } };
@@ -346,19 +351,25 @@ describe('pack information without activation', () => {
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
     sealPack(dir);
     expect(() => readPackArtifact(dir)).not.toThrow();
-    setPackEnabled(PACK_ID, false);
+    setPackEnabled(PACK_ID, kind !== 'disabled');
+    if (kind === 'activation-failed') {
+      const bus = createActor(setup({}).createMachine({})).start();
+      try { expect(activatePack(registry, PACK_ID, bus)).toBe(false); }
+      finally { bus.stop(); }
+      expect(registry.loadProblem(PACK_ID)).toContain('Do not activate');
+    }
     registry.refreshCatalog(resolveAppEnvironment().packsDir);
     // A file that was never part of the accepted artifact must not advertise available frontend code.
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not import");');
     const system = runPacksSystem();
     try {
-      expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: false,
+      expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
         entities: manifest.entities, entityCount: 1, relKinds: manifest.relKinds, hasFrontend: false,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, bootHooks: ['onInit'],
-        features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, services: ['notesApi'] }] });
+        features: [{ id: 'notes', designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
-      expect(fs.existsSync(marker)).toBe(false);
+      expect(fs.existsSync(marker)).toBe(kind === 'activation-failed');
     } finally { system.stop(); }
   });
 

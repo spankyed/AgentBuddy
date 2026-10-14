@@ -145,6 +145,9 @@ export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): 
 export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
+  referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
+  referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
+  referenceProtocols: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.values(f.references?.types ?? {}).map(t => t.protocol)),
   commands: (m: ProvenanceManifest) => Object.keys(m.extensions?.commands ?? {}),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
@@ -160,7 +163,7 @@ export interface ProvenanceManifest {
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
   extensions?: { commands?: Readonly<Record<string, unknown>> };
-  features?: Record<string, { plugin?: unknown }>;
+  features?: Record<string, { plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 
 /**

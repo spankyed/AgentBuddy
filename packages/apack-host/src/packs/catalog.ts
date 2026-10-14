@@ -5,7 +5,7 @@ import { appSettingsDefinition } from '../features/settings/be/app-definition.ts
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
 import { parseSnapshot, ManifestSchema, _NativePackDeclarationSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration, type ReferenceDeclarations } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -42,6 +42,16 @@ export interface PluginCatalogEntry {
   readonly packId: string;
   readonly origin: 'native' | 'installed' | 'source';
   readonly declaration: CatalogData<PluginDeclaration>;
+  readonly declarationRevision?: string;
+  readonly enabled?: boolean;
+}
+
+/** Reference metadata stays visible when executable providers are unavailable. */
+export interface ReferenceCatalogEntry {
+  readonly featureRef: FeatureRef;
+  readonly packId: string;
+  readonly origin: PluginCatalogEntry['origin'];
+  readonly declaration: CatalogData<ReferenceDeclarations>;
   readonly declarationRevision?: string;
   readonly enabled?: boolean;
 }
@@ -163,6 +173,19 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         origin: PluginCatalogEntry['origin'], identity: Pick<PluginCatalogEntry, 'enabled' | 'declarationRevision'> = {}) =>
         Object.entries(features ?? {}).flatMap(([id, feature]) => feature.plugin
           ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.plugin, ...identity })] : []);
+      return Object.freeze([
+        ...current.native.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true })),
+        ...current.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',
+          { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision })),
+        ...current.sourcePacks.flatMap(pack => collect(pack.manifest.id, pack.manifest.features, 'source',
+          { declarationRevision: pack.declarationRevision })),
+      ]);
+    },
+    references(): readonly ReferenceCatalogEntry[] {
+      const collect = (packId: string, features: Record<string, { references?: CatalogData<ReferenceDeclarations> }> | undefined,
+        origin: ReferenceCatalogEntry['origin'], identity: Pick<ReferenceCatalogEntry, 'enabled' | 'declarationRevision'> = {}) =>
+        Object.entries(features ?? {}).flatMap(([id, feature]) => feature.references
+          ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.references, ...identity })] : []);
       return Object.freeze([
         ...current.native.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true })),
         ...current.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',

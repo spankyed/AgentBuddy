@@ -6,6 +6,7 @@ import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
 import { _compileSettingsDefinition, _SettingsDefaultsError } from '../framework/settings-validation.ts';
 import type { SettingsDefinition } from '../framework/settings-definition.ts';
 import type { PackMigrations } from '../framework/pack-registration.ts';
+import type { ReferenceDeclarations } from '../framework/reference-declaration.ts';
 import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
@@ -83,8 +84,9 @@ export const _NativePackDeclarationSchema = z.object({
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
     settings: SettingsDefinitionSchema.optional(),
     plugin: z.lazy(() => PluginSchema).optional(),
+    references: z.lazy(() => ReferencesSchema).optional(),
   }).strict()).optional(),
-}).strict();
+}).strict().superRefine((declaration, ctx) => checkReferenceClaims(declaration.features, ctx));
 
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
@@ -288,6 +290,48 @@ const ComponentModuleSchema = z.object({
 }).strict();
 const ComponentTargetSchema = z.union([ModuleTargetSchema, ComponentModuleSchema]);
 
+/** The same feature ownership checks apply to authored and native declarations. */
+function checkReferenceClaims(features: Record<string, { references?: ReferenceDeclarations }> | undefined, ctx: z.RefinementCtx): void {
+  const referenceClaims = { types: new Map<string, string>(), categories: new Map<string, string>(), protocols: new Map<string, string>() };
+  const claim = (kind: keyof typeof referenceClaims, name: string, feature: string, path: string[]) => {
+    const previous = referenceClaims[kind].get(name);
+    if (previous !== undefined) ctx.addIssue({ code: 'custom', path,
+      message: `Reference ${kind} "${name}" claimed by both features "${previous}" and "${feature}"` });
+    else referenceClaims[kind].set(name, feature);
+  };
+  for (const [feature, entry] of Object.entries(features ?? {})) {
+    for (const [name, type] of Object.entries(entry.references?.types ?? {})) {
+      const path = ['features', feature, 'references', 'types', name];
+      claim('types', name, feature, path);
+      claim('protocols', type.protocol, feature, [...path, 'protocol']);
+    }
+    for (const name of Object.keys(entry.references?.categories ?? {})) {
+      claim('categories', name, feature, ['features', feature, 'references', 'categories', name]);
+    }
+  }
+}
+
+const ReferenceNameSchema = z.string().regex(/^[a-z][a-z0-9_-]*$/, 'Must be a lowercase reference name');
+const ReferenceIconSchema = z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]);
+const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
+  types: z.record(ReferenceNameSchema, z.object({
+    protocol: z.string().regex(/^[a-z][a-z0-9+.-]*$/, 'Must be a lowercase URI scheme'),
+    category: ReferenceNameSchema,
+    icon: ReferenceIconSchema,
+    svgElements: z.array(z.union([
+      z.tuple([z.literal('path'), z.object({ d: z.string() }).strict()]),
+      z.tuple([z.literal('rect'), z.record(z.string())]),
+      z.tuple([z.literal('circle'), z.record(z.string())]),
+    ])),
+    navigate: ExportTargetSchema,
+  }).strict()),
+  categories: z.record(ReferenceNameSchema, z.object({
+    label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label'),
+    icon: ReferenceIconSchema,
+    useItems: ExportTargetSchema,
+  }).strict()),
+}).strict();
+
 const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
   label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label'),
   state: ModuleTargetSchema.describe('Machine module, by default export or path#exportName.'),
@@ -402,7 +446,7 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: z.record(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
-  references: z.string().describe('Path to a module declaring which of this feature\'s things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs.').optional(),
+  references: ReferencesSchema.describe('Reference identities and presentation, with explicit navigation and reactive item-provider exports.').optional(),
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
@@ -579,6 +623,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   migrations: MigrationsSchema.optional(),
   build: BuildConfigSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
+  checkReferenceClaims(manifest.features, ctx);
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
   const claimedDefault = Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.plugin?.default);
   if (claimedDefault.length > 1) {

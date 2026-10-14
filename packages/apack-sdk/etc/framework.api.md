@@ -154,6 +154,7 @@ export interface NativePackDeclaration {
     features?: Record<string, {
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;
+        references?: ReferenceDeclarations;
     }>;
     // (undocumented)
     id: string;
@@ -312,6 +313,46 @@ export interface PluginDeclaration {
 
 // @internal
 export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
+
+// @public (undocumented)
+export interface ReferenceCategoryDeclaration {
+    // (undocumented)
+    icon: NonNullable<PluginDeclaration['icon']>;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    useItems: string;
+}
+
+// @public
+export interface ReferenceDeclarations {
+    // (undocumented)
+    categories: Record<string, ReferenceCategoryDeclaration>;
+    // (undocumented)
+    types: Record<string, ReferenceTypeDeclaration>;
+}
+
+// @public
+export type ReferenceSvgElement = readonly ['path', {
+    readonly d: string;
+}] | readonly ['rect', Readonly<Record<string, string>>] | readonly ['circle', Readonly<Record<string, string>>];
+
+// @internal
+export function _referenceTargets(references: ReferenceDeclarations): [string, string][];
+
+// @public (undocumented)
+export interface ReferenceTypeDeclaration {
+    // (undocumented)
+    category: string;
+    // (undocumented)
+    icon: NonNullable<PluginDeclaration['icon']>;
+    // (undocumented)
+    navigate: string;
+    // (undocumented)
+    protocol: string;
+    // (undocumented)
+    svgElements: readonly ReferenceSvgElement[];
+}
 
 // @public
 export interface SettingsCatalog {

@@ -14,6 +14,7 @@ import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _pluginTargets, type ComponentTarget } from '../framework/plugin-declaration.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
@@ -491,6 +492,7 @@ export async function generatePackFiles(
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
       ...Object.values(manifest.boot ?? {}),
+      ...features.flatMap(feature => feature.references ? _referenceTargets(feature.references).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
       ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
@@ -1769,36 +1771,86 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
   }
 
   function generateReferences(): string {
-    const features = packFeatures(manifest);
-    const referenceFeatures = features.filter(f => f.references);
-
-    const imports = referenceFeatures.map((f, i) => {
-      const importPath = toImportPath(root, f.references!);
-      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${importPath}';`;
-    }).join('\n');
-
-    const typesSpread = referenceFeatures.map((_, i) => `  ...types${i},`).join('\n');
-    const categoriesSpread = referenceFeatures.map((_, i) => `  ...categories${i},`).join('\n');
-    const providersEntries = referenceFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
-
+    const claims = { referenceTypes: new Map<string, string>(), referenceCategories: new Map<string, string>(), referenceProtocols: new Map<string, string>() };
+    for (const kind of Object.keys(claims) as (keyof typeof claims)[]) {
+      const claim = (name: string, owner: string) => {
+        const previous = claims[kind].get(name);
+        if (previous !== undefined && previous !== owner) throw new Error(`${kind} "${name}" declared by both packs "${previous}" and "${owner}"`);
+        claims[kind].set(name, owner);
+      };
+      for (const [depId, snapshot] of depSnapshots) {
+        for (const [name, owner] of Object.entries(snapshot.provenance?.[kind] ?? {})) claim(name, owner);
+        for (const name of PROVENANCE_KINDS[kind](snapshot.manifest)) claim(name, depId);
+      }
+      for (const name of PROVENANCE_KINDS[kind](manifest)) claim(name, manifest.id);
+    }
+    for (const feature of packFeatures(manifest)) {
+      for (const [name, type] of Object.entries(feature.references?.types ?? {})) {
+        if (!claims.referenceCategories.has(type.category)) throw new Error(`features.${feature.id}.references.types.${name}: undeclared category "${type.category}"`);
+      }
+    }
+    const imports: string[] = [];
+    const types: string[] = [];
+    const categories: string[] = [];
+    const providers: string[] = [];
+    let nextBinding = 0;
+    let lazyComponents = false;
+    const bind = (label: string, reference: string, callable: boolean, lazy = false): string => {
+      const [source, exported = 'default'] = reference.split('#');
+      if (source!.endsWith('.vue')) {
+        if (callable || exported !== 'default') throw new Error(`${label}: expected a function export, or a default component export`);
+        if (!existsSync(resolve(root, source!)) || !statSync(resolve(root, source!)).isFile()) throw new Error(`${label}: no component found at ${source}`);
+      } else {
+        const file = sourceFileOf(source!);
+        if (!file) throw new Error(`${label}: no module found at ${source}`);
+        const value = exportOf(file, exported)?.value;
+        if (!value || (callable && value !== 'function')) throw new Error(`${label}: ${source} must export ${exported} as ${callable ? 'a function' : 'a value'}`);
+      }
+      if (lazy) {
+        lazyComponents = true;
+        return `defineAsyncComponent(() => import(${JSON.stringify(toImportPath(root, source!))}).then(module => module.${exported}))`;
+      }
+      const binding = `__reference_${nextBinding++}`;
+      const from = JSON.stringify(toImportPath(root, source!));
+      imports.push(exported === 'default' ? `import ${binding} from ${from};` : `import { ${exported} as ${binding} } from ${from};`);
+      return binding;
+    };
+    const icon = (label: string, declaration: NonNullable<PackFeature['references']>['types'][string]['icon']): string => {
+      if (typeof declaration === 'string') {
+        const binding = `__reference_${nextBinding++}`;
+        imports.push(`import { ${declaration} as ${binding} } from 'lucide-vue-next';`);
+        return binding;
+      }
+      return bind(label, declaration.entry, false, declaration.load === 'lazy');
+    };
+    for (const feature of packFeatures(manifest)) {
+      const references = feature.references;
+      if (!references) continue;
+      for (const [name, type] of Object.entries(references.types)) {
+        const label = `features.${feature.id}.references.types.${name}`;
+        const { icon: declaredIcon, navigate, ...data } = type;
+        types.push(`  ${JSON.stringify(name)}: { ...${JSON.stringify(data)}, icon: ${icon(`${label}.icon`, declaredIcon)}, navigate: ${bind(`${label}.navigate`, navigate, true)} },`);
+      }
+      for (const [name, category] of Object.entries(references.categories)) {
+        const label = `features.${feature.id}.references.categories.${name}`;
+        categories.push(`  { id: ${JSON.stringify(name)}, label: ${JSON.stringify(category.label)}, primaryIcon: ${icon(`${label}.icon`, category.icon)} },`);
+        providers.push(`  { category: ${JSON.stringify(name)}, useItems: ${bind(`${label}.useItems`, category.useItems, true)} },`);
+      }
+    }
+    if (lazyComponents) imports.push("import { defineAsyncComponent } from 'vue';");
     return `${HEADER}
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
-${imports}
-
+${imports.join('\n')}
 export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
-${typesSpread}
+${types.join('\n')}
 };
-
 export const CATEGORIES: CategoryConfig[] = [
-${categoriesSpread}
+${categories.join('\n')}
 ];
-
 export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
-${providersEntries}
+${providers.join('\n')}
 ];
-
-export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
-
+export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map(cfg => cfg.protocol);
 export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 `;
   }

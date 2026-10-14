@@ -277,3 +277,30 @@ it('projects native, disabled installed and authoring plugins without activating
   catalog.replace([]);
   expect(catalog.plugins().map(plugin => plugin.origin)).toEqual(['native', 'source']);
 });
+
+it('keeps reference metadata immutable and independent of native, installed and source activation', () => {
+  const references = {
+    types: { memo: { protocol: 'memo', category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/references.ts#openMemo' } },
+    categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
+  };
+  const catalog = createContributionCatalog(app);
+  catalog.setNative([{ id: 'native', features: { memos: { references } } }]);
+  const installed = source('installed', false);
+  installed.snapshot.manifest.features = { memos: { references } };
+  installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  catalog.replace([installed]);
+  const author = { id: 'author', name: 'Author', version: '1.0.0', features: { memos: { references } } };
+  catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
+  expect(catalog.references()).toMatchObject([
+    { featureRef: 'native/memos', origin: 'native', enabled: true, declaration: references },
+    { featureRef: 'installed/memos', origin: 'installed', enabled: false, declaration: references },
+    { featureRef: 'author/memos', origin: 'source', declaration: references },
+  ]);
+  expect(catalog.references()[0].declarationRevision).toBeUndefined();
+  expect(catalog.references()[2].enabled).toBeUndefined();
+  references.categories.memos.label = 'Changed caller';
+  expect(catalog.references()[0].declaration.categories.memos.label).toBe('Memos');
+  expect(Reflect.set(catalog.references()[1].declaration.categories.memos, 'label', 'Changed reader')).toBe(false);
+  catalog.replace([]);
+  expect(catalog.references().map(entry => entry.origin)).toEqual(['native', 'source']);
+});

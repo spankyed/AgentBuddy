@@ -1,3 +1,4 @@
+import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -65,6 +66,7 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
   for (const feature of packFeatures(manifest)) {
     const files: [string, string | undefined][] = [
       ['settings.form', feature.settings?.form],
+      ...(feature.references ? _referenceTargets(feature.references).map(([field, target]): [string, string] => [`references.${field}`, target.split('#')[0]!]) : []),
       ['system.entry', feature.system?.entry],
       ...(feature.plugin ? _pluginTargets(feature.plugin).map(([field, target]): [string, string] => [`plugin.${field}`, target.split('#')[0]!]) : []),
       // Written without its extension, as codegen reads it. A typo here costs the feature its types in

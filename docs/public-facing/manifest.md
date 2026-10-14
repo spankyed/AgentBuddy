@@ -124,7 +124,7 @@ unrepresentable.
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
-| `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. Built-in packs only: ignored for external packs |
+| `references` | `object` | no | Keyed reference types and categories, with explicit navigation and reactive item-provider exports |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 
@@ -181,6 +181,44 @@ Pack-wide preferences use the same definition under `extensions.settings.<groupI
 `packs[packId][groupId]`. Use a group for preferences shared across features; app preferences belong
 to the host. Pack and feature declarations remain visible in Settings when their executable form
 is unavailable; the JSON editor remains available. There is no pack-owned assembly of app settings.
+
+### Reference declarations
+
+A feature declares reference identities and presentation as data. Navigation and item enumeration are
+named function exports; build tooling checks those exports without executing the module.
+
+```json
+"references": {
+  "types": {
+    "memo": {
+      "protocol": "memo",
+      "category": "memos",
+      "icon": "NotebookText",
+      "svgElements": [["path", { "d": "M2 6h4" }]],
+      "navigate": "src/features/memos/fe/references.ts#openMemo"
+    }
+  },
+  "categories": {
+    "memos": {
+      "label": "Memos",
+      "icon": "NotebookText",
+      "useItems": "src/features/memos/fe/references.ts#useItems"
+    }
+  }
+}
+```
+
+Type names, categories and URI protocols have global identities. Duplicate claims within a pack or
+across its dependency tree fail validation/build; a shared ancestor arriving through two dependencies
+retains its actual owner. A type may use a category declared by its pack or a dependency. Each category
+owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
+custom component. SVG geometry supports path, rect and circle tuples.
+
+`navigate(id)` receives a canonical entity ID. `useItems()` is a Vue composable returning a reactive
+reference-item list; call it in a component's setup so its subscriptions share the component's lifetime.
+Metadata remains discoverable while a pack is disabled or its runtime fails. The generated reference
+aggregate currently serves the declaring pack's frontend; app-wide external reference consumption is
+not yet delivered.
 
 ## Steps
 

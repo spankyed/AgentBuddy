@@ -482,8 +482,185 @@
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
           "references": {
-            "type": "string",
-            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
+            "type": "object",
+            "properties": {
+              "types": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "protocol": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9+.-]*$"
+                    },
+                    "category": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Za-z0-9]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                            },
+                            "load": {
+                              "type": "string",
+                              "const": "lazy"
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "svgElements": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "path"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "d": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "d"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "rect"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "circle"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "navigate": {
+                      "type": "string",
+                      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "category",
+                    "icon",
+                    "svgElements",
+                    "navigate"
+                  ],
+                  "additionalProperties": false
+                },
+                "propertyNames": {
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                }
+              },
+              "categories": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Za-z0-9]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                            },
+                            "load": {
+                              "type": "string",
+                              "const": "lazy"
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "useItems": {
+                      "type": "string",
+                      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "icon",
+                    "useItems"
+                  ],
+                  "additionalProperties": false
+                },
+                "propertyNames": {
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                }
+              }
+            },
+            "required": [
+              "types",
+              "categories"
+            ],
+            "additionalProperties": false,
+            "description": "Reference identities and presentation, with explicit navigation and reactive item-provider exports."
           }
         },
         "additionalProperties": false
