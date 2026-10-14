@@ -38,6 +38,7 @@ exports are errors; dependency problems that prevent complete export checking ar
 | `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
 | `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
+| `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `lifecycle` | `PackLifecycleConfig` | no | Explicit lifecycle functions; see [Lifecycle configuration](#lifecycle-configuration) |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
@@ -313,6 +314,7 @@ A step's directory is the dirname of the first facet it names: its `types.ts` an
 | Field | Type | Description |
 |---|---|---|
 | `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger. `step` is the default |
+| `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists the supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
 | `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
 | `fe` | `string` | `"path#exportName"` of its `StepFEFacet`: what the flow editor draws and the form it opens |

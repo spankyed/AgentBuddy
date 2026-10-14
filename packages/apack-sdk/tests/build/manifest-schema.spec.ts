@@ -3,8 +3,21 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/build/manifest-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
+import { ALLOWABLE_PACK_CHECKS } from '../../src/build/pack-checks.ts';
 
 describe('parseManifest', () => {
+  it('documents and enforces the same inline check allowances', () => {
+    const schema = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf8'));
+    expect(schema.properties.checks.properties.allow.items.enum).toEqual([...ALLOWABLE_PACK_CHECKS]);
+    const pack = { id: 'checks', name: 'Checks', version: '1.0.0' };
+    expect(parseManifest({ ...pack, checks: { allow: [...ALLOWABLE_PACK_CHECKS] } }).status).toBe('valid');
+    for (const checks of [{ allow: ['host-imports'] }, { allow: ['unknown'] }, { allow: 'backend-console' }, null, { unknown: true }]) {
+      const report = parseManifest({ ...pack, checks });
+      expect(report.status).toBe('invalid');
+      expect(report.diagnostics[0].path[0]).toBe('checks');
+    }
+  });
+
   it('enforces the same default-plugin uniqueness for native declarations', () => {
     const feature = { description: 'Show fixture items.', plugin: { label: 'Items', state: 'state.ts', default: true } };
     expect(_NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature } }).success).toBe(true);

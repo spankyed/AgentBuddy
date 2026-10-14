@@ -3,6 +3,7 @@ export { LIFECYCLE_HOOK_NAMES } from '../framework/lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from '../framework/module-reference.ts';
 import { z } from 'zod';
+import { PackChecksSchema } from './pack-checks.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
@@ -628,6 +629,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),
   build: BuildConfigSchema.optional(),
+  checks: PackChecksSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
   checkReferenceClaims(manifest.features, ctx);
   checkDefaultPluginClaims(manifest.features, ctx);

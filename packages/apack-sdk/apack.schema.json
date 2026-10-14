@@ -1303,6 +1303,27 @@
       },
       "additionalProperties": false,
       "description": "Build-time configuration: settings that change what the build produces, never what the app loads."
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "cross-feature-imports",
+              "untyped-sends",
+              "raw-transport",
+              "backend-console",
+              "repository-casts"
+            ]
+          },
+          "description": "Development conventions explicitly allowed by this pack; all other checks remain enabled."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Build-time source-check policy; does not change runtime permissions."
     }
   },
   "required": [

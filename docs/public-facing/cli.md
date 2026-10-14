@@ -442,11 +442,10 @@ Checks:
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
 | `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@apackdev/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@apackdev/sdk/testing`, and rename a field of your own that collides | no |
 
-A rule marked switchable has no effect at run time, so a pack may switch it off in **`apack.checks.json`**
-at its root:
+A rule marked switchable is a development convention a pack may allow in **`apack.json`**:
 
 ```json
-{ "allow": ["backend-console", "untyped-sends"] }
+{ "checks": { "allow": ["backend-console", "untyped-sends"] } }
 ```
 
 The others report something that breaks — a specifier nothing resolves, an import the bundler refuses, a name

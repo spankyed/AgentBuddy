@@ -27,6 +27,9 @@ export interface ActionMeta {
 // @public (undocumented)
 export const actionsCompiler: SpecialtyCompiler<DslCompiled>;
 
+// @public
+export const ALLOWABLE_PACK_CHECKS: readonly ["cross-feature-imports", "untyped-sends", "raw-transport", "backend-console", "repository-casts"];
+
 // @public (undocumented)
 export function buildPackConfigFromManifest(manifest: PackManifest, packDir: string, options?: PackConfigOptions): Promise<PackConfig>;
 
@@ -358,13 +361,13 @@ export const ContentSourceSchema: z.ZodObject<{
     applier: z.ZodOptional<z.ZodString>;
     onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
 }, "strict", z.ZodTypeAny, {
-    format?: string | undefined;
     path?: string | undefined;
+    format?: string | undefined;
     applier?: string | undefined;
     onUserEdit?: "theirs" | "offer" | undefined;
 }, {
-    format?: string | undefined;
     path?: string | undefined;
+    format?: string | undefined;
     applier?: string | undefined;
     onUserEdit?: "theirs" | "offer" | undefined;
 }>;
@@ -1126,23 +1129,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             applier: z.ZodOptional<z.ZodString>;
             onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
         }, "strict", z.ZodTypeAny, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>]>>, Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>, Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
@@ -1152,23 +1155,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             applier: z.ZodOptional<z.ZodString>;
             onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
         }, "strict", z.ZodTypeAny, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>, Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>, Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
@@ -1272,14 +1275,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     }, "strict", z.ZodTypeAny, {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1303,14 +1306,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     }, {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1382,6 +1385,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     }, {
         opaqueDeps?: string[] | undefined;
         bundleUi?: boolean | undefined;
+    }>>;
+    checks: z.ZodOptional<z.ZodObject<{
+        allow: z.ZodOptional<z.ZodArray<z.ZodEnum<["cross-feature-imports", "untyped-sends", "raw-transport", "backend-console", "repository-casts"]>, "many">>;
+    }, "strict", z.ZodTypeAny, {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
+    }, {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -1492,14 +1502,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     content?: {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1531,6 +1541,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description: string;
             up: string;
         }> | undefined;
+    } | undefined;
+    checks?: {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     } | undefined;
 }, {
     id: string;
@@ -1627,14 +1640,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     content?: {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1666,6 +1679,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description: string;
             up: string;
         }> | undefined;
+    } | undefined;
+    checks?: {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     } | undefined;
 }>, {
     id: string;
@@ -1776,14 +1792,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     content?: {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1815,6 +1831,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description: string;
             up: string;
         }> | undefined;
+    } | undefined;
+    checks?: {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     } | undefined;
 }, {
     id: string;
@@ -1911,14 +1930,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     content?: {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -1950,6 +1969,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description: string;
             up: string;
         }> | undefined;
+    } | undefined;
+    checks?: {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     } | undefined;
 }>, {
     id: string;
@@ -2060,14 +2082,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     } | undefined;
     content?: {
         sources?: Record<string, string | {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         datasets?: Record<string, {
-            format?: string | undefined;
             path?: string | undefined;
+            format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
@@ -2099,6 +2121,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description: string;
             up: string;
         }> | undefined;
+    } | undefined;
+    checks?: {
+        allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
     } | undefined;
 }, unknown>;
 
@@ -2463,6 +2488,15 @@ export interface PackBuildDefinitions {
     // (undocumented)
     steps: StepDefinition[];
 }
+
+// @public (undocumented)
+export const PackChecksSchema: z.ZodObject<{
+    allow: z.ZodOptional<z.ZodArray<z.ZodEnum<["cross-feature-imports", "untyped-sends", "raw-transport", "backend-console", "repository-casts"]>, "many">>;
+}, "strict", z.ZodTypeAny, {
+    allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
+}, {
+    allow?: ("cross-feature-imports" | "untyped-sends" | "raw-transport" | "backend-console" | "repository-casts")[] | undefined;
+}>;
 
 // @public
 export interface PackConfig {

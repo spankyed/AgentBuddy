@@ -370,7 +370,7 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, lifecycle: true, build: true,
+    $manifestVersion: true, $schema: true, lifecycle: true, build: true, checks: true,
     dependencies: true, description: true, data: true,  extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
     permissions: true, content: true, version: true,
@@ -440,7 +440,7 @@ describe('the snapshot format', () => {
       format: 1,
       fields: ['declarationRevision', 'defs', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
-        fields: ['$manifestVersion', '$schema', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
+        fields: ['$manifestVersion', '$schema', 'build', 'checks', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
         feature: ['description', 'designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
         system: ['contract', 'entry', 'events'],

@@ -20,6 +20,26 @@ function fixture(extra: object = {}) {
 }
 
 describe('pack doctor static validation', () => {
+  it.each(['doctor', 'validate'])('pack %s enforces inline check policy without executing source', (command) => {
+    const dir = fixture();
+    fs.mkdirSync(path.join(dir, 'src/extensions'));
+    fs.writeFileSync(path.join(dir, 'src/extensions/log.ts'), 'throw new Error("Must not execute"); console.log("sample");');
+    const invoke = () => run(process.execPath, [CLI, 'pack', command], dir);
+    const failure = invoke();
+    expect(failure.code, failure.output).toBe(1);
+    expect(failure.output).toContain('backend-console');
+    const file = path.join(dir, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, JSON.stringify({ ...manifest, checks: { allow: ['backend-console'] } }));
+    const allowed = invoke();
+    expect(allowed.code, allowed.output).toBe(0);
+    fs.writeFileSync(file, JSON.stringify({ ...manifest, checks: { allow: ['host-imports'] } }));
+    const refused = invoke();
+    expect(refused.code, refused.output).toBe(1);
+    expect(refused.output).toContain('checks.allow.0');
+    expect(fs.existsSync(path.join(dir, 'src/__generated__'))).toBe(false);
+  });
+
   it.each(['doctor', 'validate'])('pack %s checks a system module default export without activation', (command) => {
     const dir = fixture({ features: { memos: { description: 'Manage memos.', system: { entry: 'src/hooks' } } } });
     const result = run(process.execPath, [CLI, 'pack', command], dir);

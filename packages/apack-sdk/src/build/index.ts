@@ -86,3 +86,5 @@ export type { MigrationLine } from './manifest-schema.ts';
 // consumer tsconfigs reject). Import directly from './fe-bundler'.
 
 export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations, type _PackEntityDeclaration } from '../framework/data-declaration.ts';
+
+export { ALLOWABLE_PACK_CHECKS, PackChecksSchema } from './pack-checks.ts';
