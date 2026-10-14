@@ -69,6 +69,9 @@ export type DiffResult<T> = null | {
 };
 
 // @public
+export function formatReferenceHref(target: ReferenceTarget): string;
+
+// @public
 export function getPackCommands(): PackCommand[];
 
 // @public (undocumented)
@@ -283,6 +286,9 @@ export function packSystem(entry: SystemEntry, options?: {
 }): PackFeatureSystem;
 
 // @public
+export function parseReferenceHref(href: string): ReferenceTarget | undefined;
+
+// @public
 export interface PluginDeclaration {
     // (undocumented)
     canvas?: ComponentTarget | {
@@ -372,6 +378,14 @@ export type ReferenceSvgElement = readonly ['path', {
     readonly d: string;
 }] | readonly ['rect', Readonly<Record<string, string>>] | readonly ['circle', Readonly<Record<string, string>>];
 
+// @public
+export interface ReferenceTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly type: string;
+}
+
 // @internal
 export function _referenceTargets(references: ReferenceDeclarations): [string, string][];
 
@@ -383,8 +397,6 @@ export interface ReferenceTypeDeclaration {
     icon: NonNullable<PluginDeclaration['icon']>;
     // (undocumented)
     navigate: string;
-    // (undocumented)
-    protocol: string;
     // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }

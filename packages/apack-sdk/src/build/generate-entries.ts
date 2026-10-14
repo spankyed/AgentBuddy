@@ -1773,7 +1773,7 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
   }
 
   function generateReferences(): string {
-    const claims = { referenceTypes: new Map<string, string>(), referenceCategories: new Map<string, string>(), referenceProtocols: new Map<string, string>() };
+    const claims = { referenceTypes: new Map<string, string>(), referenceCategories: new Map<string, string>() };
     for (const kind of Object.keys(claims) as (keyof typeof claims)[]) {
       const claim = (name: string, owner: string) => {
         const previous = claims[kind].get(name);

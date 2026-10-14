@@ -5,12 +5,13 @@ import type { Component, Ref } from 'vue'
 
 import type { ReferenceSvgElement } from '../framework/reference-declaration.ts'
 
-export { findReferenceTypeByProtocol, getReferenceTypeDeclaration, getReferenceCategoryDeclarations, getReferenceTypeBinding, getReferenceCategoryBinding, onReferenceBindingsChanged } from './reference-reader.ts'
+export { getReferenceTypeDeclaration, getReferenceCategoryDeclarations, getReferenceTypeBinding, getReferenceCategoryBinding, onReferenceBindingsChanged } from './reference-reader.ts'
+export { formatReferenceHref, parseReferenceHref } from '../framework/reference-link.ts'
+export type { ReferenceTarget } from '../framework/reference-link.ts'
 export type { ReferenceCategoryMetadata } from './reference-reader.ts'
 
 /** Defines how an entity type appears and navigates when contributed to the UI. */
 export interface ReferenceTypeConfig {
-  protocol: string
   category: string
   icon: Component
   svgElements: readonly ReferenceSvgElement[]

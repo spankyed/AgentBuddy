@@ -211,12 +211,12 @@ describe("a pack's frontend", () => {
 
   it('publishes the captured reference metadata checked by the installed loader', async () => {
     const manifest = { id: 'ext', name: 'Ext', version: '1.0.0', features: { refs: { references: {
-      types: { note: { protocol: 'note', category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
+      types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } } } };
-    const type = { protocol: 'note', category: 'notes', icon: {}, svgElements: [], navigate: vi.fn() };
+    const type = { category: 'notes', icon: {}, svgElements: [], navigate: vi.fn() };
     let reads = 0;
-    Object.defineProperty(type, 'protocol', { enumerable: true, get: () => ++reads === 1 ? 'note' : 'changed' });
+    Object.defineProperty(type, 'category', { enumerable: true, get: () => ++reads === 1 ? 'notes' : 'changed' });
     const registration = { id: 'ext', declarationRevision: 'current', features: { refs: { references: {
       types: { note: type }, categories: { notes: { label: 'Notes', icon: {}, useItems: vi.fn() } },
     } } } };
@@ -225,7 +225,7 @@ describe("a pack's frontend", () => {
     await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
       manifest, declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js' });
     expect(registry.referenceTypes().get('note')).toMatchObject({ featureRef: 'ext/refs',
-      declarationRevision: 'current', runtimeRevision: 'runtime', artifactRevision, binding: { protocol: 'note' } });
+      declarationRevision: 'current', runtimeRevision: 'runtime', artifactRevision, binding: { category: 'notes' } });
     expect(reads).toBe(1);
     expect(type.navigate).not.toHaveBeenCalled();
   });

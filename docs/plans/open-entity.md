@@ -108,8 +108,7 @@ own internal event; what changes is that nothing outside sends them. Dropping th
 ## What this deletes
 
 - `ReferenceTypeConfig.plugin` and `ReferenceTypeConfig.navigate` — a feature publishing how to open its
-  things is the thing being removed, and the config shrinks to what it is for: `protocol`, `category`,
-  `icon`, `svgElements`. The click handler in `extensions/tiptap/reference-node.ts` becomes
+  things is the thing being removed, and the config shrinks to what it is for: `category`, `icon`, `svgElements`. The click handler in `extensions/tiptap/reference-node.ts` becomes
   `openEntity(node.attrs.refId)`.
 - The six `navigate` closures, which are each `openPlugin(<own plugin>, { type: <constant>, <field>: refId })`
   with no branching — six declarations, none of which needed a function.
@@ -298,3 +297,45 @@ strict checkpoint chain with its corrected shipped-pack inputs and record the co
 This replaces the Phase 0 per-type-scheme parsing/writing design, not the entity-opening primitive.
 Phase 4 still supplies checked `opens`, canonical-id destination resolution, useful missing/disabled
 results and stale-window/revision refusal. The URI alone neither activates nor authorizes a destination.
+
+
+### Reference identity implementation (2026-10-14)
+
+The pure SDK framework formatter/parser now implements the internal URI above; the frontend reference
+entry reexports that same implementation because its shared entry can be loaded by pack frontends.
+Neither formatter nor parser reads a host or catalog. Encoding also escapes Markdown URL delimiters
+such as parentheses, preserving ids across editor serialization and backend link extraction.
+
+The existing node parses and serializes type/id directly, keeping unknown targets inert rather than
+dropping them. Metadata arrival updates geometry through the existing view subscription without
+changing document state, selection/history or replaying navigation. Static metadata still supplies
+presentation and accepted bindings still gate navigation. Per-type protocols, provenance/claims/lookup
+and the shared UI hardcoded list are removed outright. The obsolete inline note-scheme click branch
+is removed; sub-document blocks remain a separate existing contract for the entity-navigation phase.
+
+Note backlink extraction uses the common parser and the notes feature's shared presentation mapping,
+including tasks and task lists. Authored content examples and their independent expectations are
+migrated; goldens are regenerated through `content-parity:update`, never edited by hand. The first
+content run caught the old URI syntax in the independent change-tracking oracle; that oracle now
+expects the current format. Templates, public schema/reports and the external reference fixture agree.
+
+Focused proof covers pure encoded identities, malformed/foreign URI refusal, cold HTML/Markdown
+parse/write, absent declarations after load, unchanged document state and node identity on publication,
+readiness-gated navigation, ordinary web/mail links, and encoded backend backlinks. Removing the URI
+structure guard or reintroducing declaration-gated serialization fails named regression assertions.
+Full strict and real external acceptance are required before recording a validated checkpoint.
+
+The parsing node is still provided by the default pack's editor extension. The broader native/editor
+discovery audit must also settle intrinsic reference-schema availability when that extension is absent;
+this checkpoint proves absence of reference-provider metadata, not absence of the parser itself.
+Entity opening, checked `opens`, unavailable destinations and stale delivery remain due as above.
+
+
+The reference identity checkpoint passed all 30 strict gates in 545.8 seconds with no cached gates,
+including 4,405 host tests, 855 pack tests (two existing skips), 639 integration tests, fresh real
+external-reference/default-fork Electron acceptance, smoke and both packaged-authoring halves.
+The external reference/picker case passes with the new URI. Schema and three reviewed SDK API
+reports agree; content parity passes all 145 checks after deliberate golden regeneration.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-44-15Z-64383`;
+`/private/tmp/apack-reference-wire-strict.log`. The intrinsic editor-schema ownership and remaining
+whole-goal work above are still required.

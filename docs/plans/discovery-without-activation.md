@@ -259,7 +259,7 @@ current readers. Nested contribution lists matter as much as top-level keys.
 | Settings | Inline pack/feature schemas, defaults and form references; host app definition | Catalog-based extraction landed in `f3416ad2f`; retain its policy, restore and window checks while completing the other kinds |
 | Steps/triggers | Type names, facet paths, runtime flags and DSL metadata | Materialize palette labels/categories, initial node values, static connection metadata and facet availability |
 | Blocks/artifacts | Type names, facet paths and artifact icon names | Audit remaining labels/metadata; expose descriptors without importing viewers or backend facets |
-| References | A feature names an executable reference module | Declare protocols, categories, labels, icons and provider/navigation bindings currently exported from that module |
+| References | A feature names an executable reference module | Declare type/category identities, labels, icons and provider/navigation bindings currently exported from that module |
 | Editor contributions | DSL declarations, app-extension slot paths and a Tiptap module path | Individually identify editor extensions; expose static DSL assets and slot metadata without module evaluation |
 | Help/content/datasets | Help source path, formats, sources/datasets and writer paths | Publish readable help and compiled-content indexes/assets; separate declared content from rows an applier creates |
 | Services/repositories/events | Provided names, contract source paths and generated type declarations | Publish callable API/event contracts and required dependencies as data/type artifacts; no service construction for inspection |
@@ -307,7 +307,7 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | FE `appExtensions` | Named slot/component references, retaining actual slot composition/ownership policy |
 | FE `tiptapPlugins.extensions`, `popups`, `isSuggestionActive` | Give anonymous contributions stable declared identities; availability in data, extension/component/predicate objects executable |
 | FE `dslTypes.prefix`, `schema`, `globals`, `language` | Static editor declarations/assets; read without executing generated frontend imports |
-| Feature `references`; reference `protocol`, `category`, `icon`, `svgElements`, `navigate` | Protocol/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
+| Feature `references`; reference `category`, `icon`, `svgElements`, `navigate` | Type/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
 | Reference categories `id`, `label`, `primaryIcon`; provider `category`, `useItems` | Category/provider identity and icon data discoverable; live reactive items require that provider's execution and disposal |
 | Content sources/datasets/formats and compiled `content.json` | Declared keys, formats, entity targets and compiled indexes/assets; rows written by appliers are not discovery results |
 | Manifest `typesEntry`, plugin/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
@@ -587,7 +587,7 @@ Today's declared slash commands fire `user.command` into flows; discovery must n
 `apack-sdk/src/build/generate-entries.ts` builds reference maps/categories/provider arrays by importing
 feature modules. `default-setup/src/extensions/tiptap/useReferenceItems.ts` then invokes every provider's
 `useItems()` when the picker mounts. Generate data descriptors separately from navigation/provider
-bindings; move category/protocol/icon readers to the catalog. Initialize providers only for actual item
+bindings; move category/icon readers to the catalog; parse stored targets independently of metadata. Initialize providers only for actual item
 queries, with explicit lifetime/disposal, rather than to list categories. Audit `reference-config.ts`,
 `ReferenceSuggestionPopup.vue` and `reference-suggestion-plugin.ts` together. Dependency-scoped generated
 contracts remain useful; do not replace them with an untyped global provider search.
@@ -1698,3 +1698,29 @@ new parser must preserve a target while its pack is absent as well as during fir
 publication should refresh presentation without replacing the document or invoking navigation.
 The failing reproduction and source audit establish the next implementation; the wire correction
 has not been implemented or validated yet.
+
+
+### Metadata-independent reference identity implementation (2026-10-14)
+
+Follow the implemented [reference identity contract](open-entity.md#reference-identity-implementation-2026-10-14).
+The SDK has one pure URI formatter/parser usable by backend and frontend. Existing editor nodes
+preserve canonical identity before metadata arrives or after it disappears. Per-type protocols and
+their claims are removed rather than becoming aliases; category/type ownership remains unchanged.
+Backend note/task backlinks use the same parser. Public schema, reports, manifests, content examples
+and actual external reference acceptance migrate to the current URI format.
+
+Continue the intrinsic editor-schema ownership audit: a default-pack-supplied parsing extension is
+not proof that a host-only editor preserves references without activating that pack. Resolve this
+alongside native editor declarations rather than claim all editor discovery delivered. Entity
+routing/readiness, every other contribution/native/freshness kind, failure boundaries and Phase 6
+work remain active. Current focused checks do not substitute for final strict/app validation.
+
+
+The reference identity checkpoint passed all 30 strict gates in 545.8 seconds with no cached gates,
+including 4,405 host tests, 855 pack tests (two existing skips), 639 integration tests, fresh real
+external-reference/default-fork Electron acceptance, smoke and both packaged-authoring halves.
+The external reference/picker case passes with the new URI. Schema and three reviewed SDK API
+reports agree; content parity passes all 145 checks after deliberate golden regeneration.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-44-15Z-64383`;
+`/private/tmp/apack-reference-wire-strict.log`. The intrinsic editor-schema ownership and remaining
+whole-goal work above are still required.

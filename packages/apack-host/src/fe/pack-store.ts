@@ -161,7 +161,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const tiptapPlugins: TiptapPlugin[] = [];
   const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
   const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
-  const referenceOwners = { types: new Map<string, FeatureRef>(), protocols: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
+  const referenceOwners = { types: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
   const claim = (kind: keyof typeof referenceOwners, name: string, owner: FeatureRef) => {
     const previous = referenceOwners[kind].get(name);
     if (previous !== undefined) throw new Error(`Reference ${kind} "${name}" claimed by both features "${previous}" and "${owner}"`);
@@ -171,7 +171,6 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const references of pack.references) {
       for (const [name, type] of Object.entries(references.types)) {
         claim('types', name, type.featureRef);
-        claim('protocols', type.binding.protocol, type.featureRef);
         referenceTypes.set(name, type);
       }
       for (const [name, category] of Object.entries(references.categories)) {

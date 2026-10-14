@@ -191,7 +191,6 @@ named function exports; build tooling checks those exports without executing the
 "references": {
   "types": {
     "memo": {
-      "protocol": "memo",
       "category": "memos",
       "icon": "NotebookText",
       "svgElements": [["path", { "d": "M2 6h4" }]],
@@ -208,7 +207,7 @@ named function exports; build tooling checks those exports without executing the
 }
 ```
 
-Type names, categories and URI protocols have global identities. Duplicate claims within a pack or
+Reference type and category names have global identities. Duplicate claims within a pack or
 across its dependency tree fail validation/build; a shared ancestor arriving through two dependencies
 retains its actual owner. A type may use a category declared by its pack or a dependency. Each category
 owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
@@ -218,7 +217,7 @@ custom component. SVG geometry supports path, rect and circle tuples.
 reference-item list. Providers must work in an owned effect scope and release subscriptions with
 Vue's `onScopeDispose`; they cannot depend on component lifecycle hooks or a particular component instance.
 Generated frontend entries register these bindings under their owning feature. The host checks
-complete declaration membership and refuses global type, protocol or category collisions before
+complete declaration membership and refuses global type or category collisions before
 publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
 The SDK's `@apackdev/sdk/fe/references` exposes `getReferenceDeclarations()`,
 `getReferenceCatalogStatus()` and `onReferenceDeclarationsChanged(listener)` over the common catalog.
@@ -227,8 +226,7 @@ its cleanup function. A disconnected window can retain its last accepted metadat
 that it is unavailable for current execution. Native/source entries do not invent installed receipts
 or source enablement.
 
-`findReferenceTypeByProtocol(protocol)` finds a declared type without executing its owner.
-`getReferenceTypeDeclaration(name)` reads static type geometry/protocol; an ambiguous runtime name
+`getReferenceTypeDeclaration(name)` reads static type presentation; an ambiguous runtime name
 returns absence. `getReferenceCategoryDeclarations()` lists categories with their owning feature refs,
 including disabled and source declarations, without silently overwriting duplicate names.
 `getReferenceTypeBinding(name)` and `getReferenceCategoryBinding(name)` return stable accepted entries
@@ -239,8 +237,9 @@ Reactive consumers observe both `onReferenceDeclarationsChanged` and `onReferenc
 and release both subscriptions. Looking up a binding does not call navigation or start an item provider.
 
 The editor reads these common declarations rather than a pack-local aggregate. Its generic anchor
-parser resolves current protocols even in an already-open editor; HTML/Markdown preserve encoded
-canonical entity ids. Node views follow declared geometry and resolve eligible navigation when clicked.
+parser reads `apack-ref://<encoded-type>/<encoded-entity-id>` independently of metadata; HTML/Markdown
+preserve this identity while declarations are loading or absent. `formatReferenceHref({ type, id })`
+and `parseReferenceHref(href)` are pure SDK helpers; malformed or unrelated URIs are refused. Node views follow declared geometry and resolve eligible navigation when clicked.
 The picker starts only the selected category's provider while open, in an owned effect scope. Closing,
 changing category, disconnecting, replacing/removing its binding or destroying the view stops that
 scope. Unrelated publications retain the existing provider. Generated references contain only the

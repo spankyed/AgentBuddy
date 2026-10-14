@@ -8,7 +8,7 @@ import type { Component } from 'vue';
 import type { Ref } from 'vue';
 
 // @public
-export function findReferenceTypeByProtocol(protocol: string): string | undefined;
+export function formatReferenceHref(target: ReferenceTarget): string;
 
 // @public
 export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']>;
@@ -33,6 +33,9 @@ export function onReferenceBindingsChanged(listener: () => void): () => void;
 
 // @public
 export function onReferenceDeclarationsChanged(listener: () => void): () => void;
+
+// @public
+export function parseReferenceHref(href: string): ReferenceTarget | undefined;
 
 // @public
 export interface ReferenceBinding<T> {
@@ -83,14 +86,20 @@ export interface ReferenceItem {
 }
 
 // @public
+export interface ReferenceTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
 export interface ReferenceTypeConfig {
     // (undocumented)
     category: string;
     // (undocumented)
     icon: Component;
     navigate: (refId: string) => void;
-    // (undocumented)
-    protocol: string;
     // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }

@@ -292,7 +292,7 @@ const ComponentTargetSchema = z.union([ModuleTargetSchema, ComponentModuleSchema
 
 /** The same feature ownership checks apply to authored and native declarations. */
 function checkReferenceClaims(features: Record<string, { references?: ReferenceDeclarations }> | undefined, ctx: z.RefinementCtx): void {
-  const referenceClaims = { types: new Map<string, string>(), categories: new Map<string, string>(), protocols: new Map<string, string>() };
+  const referenceClaims = { types: new Map<string, string>(), categories: new Map<string, string>() };
   const claim = (kind: keyof typeof referenceClaims, name: string, feature: string, path: string[]) => {
     const previous = referenceClaims[kind].get(name);
     if (previous !== undefined) ctx.addIssue({ code: 'custom', path,
@@ -300,10 +300,9 @@ function checkReferenceClaims(features: Record<string, { references?: ReferenceD
     else referenceClaims[kind].set(name, feature);
   };
   for (const [feature, entry] of Object.entries(features ?? {})) {
-    for (const [name, type] of Object.entries(entry.references?.types ?? {})) {
+    for (const name of Object.keys(entry.references?.types ?? {})) {
       const path = ['features', feature, 'references', 'types', name];
       claim('types', name, feature, path);
-      claim('protocols', type.protocol, feature, [...path, 'protocol']);
     }
     for (const name of Object.keys(entry.references?.categories ?? {})) {
       claim('categories', name, feature, ['features', feature, 'references', 'categories', name]);
@@ -315,7 +314,6 @@ const ReferenceNameSchema = z.string().regex(/^[a-z][a-z0-9_-]*$/, 'Must be a lo
 const ReferenceIconSchema = z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]);
 const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
   types: z.record(ReferenceNameSchema, z.object({
-    protocol: z.string().regex(/^[a-z][a-z0-9+.-]*$/, 'Must be a lowercase URI scheme'),
     category: ReferenceNameSchema,
     icon: ReferenceIconSchema,
     svgElements: z.array(z.union([

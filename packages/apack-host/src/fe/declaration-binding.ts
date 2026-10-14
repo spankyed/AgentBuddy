@@ -58,9 +58,9 @@ function referenceBindingProblem(declaration: ReferenceDeclarations, actual: unk
   for (const [id, expected] of Object.entries(declaration.types)) {
     const value = (bindings.types as Record<string, unknown>)[id];
     const path = `references.types.${id}`;
-    if (!sameKeys(value, ['protocol', 'category', 'icon', 'svgElements', 'navigate'])) return path;
+    if (!sameKeys(value, ['category', 'icon', 'svgElements', 'navigate'])) return path;
     const type = value as Record<string, unknown>;
-    if (type.protocol !== expected.protocol || type.category !== expected.category
+    if (type.category !== expected.category
       || !isComponent(type.icon) || typeof type.navigate !== 'function') return path;
     if (!Array.isArray(type.svgElements) || type.svgElements.length !== expected.svgElements.length) return `${path}.svgElements`;
     for (const [index, [tag, attrs]] of expected.svgElements.entries()) {

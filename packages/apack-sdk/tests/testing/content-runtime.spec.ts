@@ -36,7 +36,7 @@ describe.skipIf(!built)("a built pack's content runtime", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(DEFAULT_SETUP, 'apack.json'), 'utf-8')) as PackManifest;
     const source = path.join(dir, 'notes');
     fs.mkdirSync(path.join(source, 'plan'), { recursive: true });
-    fs.writeFileSync(path.join(source, 'intro.md'), '---\ntitle: Intro\n---\nSee the [plan](note://Note-plan-target).\n');
+    fs.writeFileSync(path.join(source, 'intro.md'), '---\ntitle: Intro\n---\nSee the [plan](apack-ref://note/Note-plan-target).\n');
     fs.writeFileSync(path.join(source, 'plan', 'index.md'), '---\ntitle: Plan\ntype: tasklist\n---\nSteps.\n');
     fs.writeFileSync(path.join(source, 'plan', 'first.md'), '---\ntype: task\n---\nDo it.\n');
     const compiled = path.join(dir, 'compiled');

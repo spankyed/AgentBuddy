@@ -2516,7 +2516,6 @@ export const PROVENANCE_KINDS: {
     readonly relKinds: (m: ProvenanceManifest) => string[];
     readonly referenceTypes: (m: ProvenanceManifest) => string[];
     readonly referenceCategories: (m: ProvenanceManifest) => string[];
-    readonly referenceProtocols: (m: ProvenanceManifest) => string[];
     readonly commands: (m: ProvenanceManifest) => string[];
     readonly plugins: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };

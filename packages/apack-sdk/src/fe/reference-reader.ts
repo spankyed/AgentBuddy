@@ -18,21 +18,9 @@ function ownerOf(name: string, group: 'types' | 'categories'): ReferenceCatalogE
   return candidates.length === 1 ? candidates[0] : undefined;
 }
 
-/** Current declared geometry and protocol; reading never consults executable registrations. */
+/** Current declared presentation; reading never consults executable registrations. */
 export function getReferenceTypeDeclaration(name: string): DeclarationData<ReferenceTypeDeclaration> | undefined {
   return ownerOf(name, 'types')?.declaration.types[name];
-}
-
-/** Finds an unambiguous declared type name for a URI protocol, without executing its owner. */
-export function findReferenceTypeByProtocol(protocol: string): string | undefined {
-  const entries = boundFeHost().catalog.references();
-  const claims = entries.flatMap(entry => Object.entries(entry.declaration.types)
-    .filter(([, type]) => type.protocol === protocol).map(([name]) => ({ name, origin: entry.origin })));
-  const runtimeClaims = claims.filter(claim => claim.origin !== 'source');
-  const candidates = runtimeClaims.length ? runtimeClaims : claims;
-  if (candidates.length !== 1) return undefined;
-  const name = candidates[0].name;
-  return getReferenceTypeDeclaration(name)?.protocol === protocol ? name : undefined;
 }
 
 /** Category labels remain discoverable when their providers are disabled or unavailable. */

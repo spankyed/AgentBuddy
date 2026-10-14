@@ -34,10 +34,6 @@ export function createEditorClickHandler(emit: ClickEmit) {
     // Other links require ctrl/cmd+click in editor mode
     if (!(event.ctrlKey || event.metaKey)) return false
     if (!href) return false
-    if (href.startsWith('note://')) {
-      emit.noteLinkClick(href.slice('note://'.length))
-      return true
-    }
     const url = /^https?:\/\//.test(href) ? href : `https://${href}`
     openLink(url)
     return true

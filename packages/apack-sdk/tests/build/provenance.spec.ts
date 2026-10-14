@@ -69,7 +69,7 @@ describe('_mergeProvenance', () => {
       relKinds: { tagged: 'tagged' },
       extensions: { commands: { note: { placeholder: 'x' } } },
       features: { memos: { plugin: {}, references: {
-        types: { memo: { protocol: 'memo', category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#openMemo' } },
+        types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#openMemo' } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
       } }, headless: {} },
     };
@@ -79,7 +79,6 @@ describe('_mergeProvenance', () => {
       ['commands', { note: 'base-pack' }],
       ['referenceTypes', { memo: 'base-pack' }],
       ['referenceCategories', { memos: 'base-pack' }],
-      ['referenceProtocols', { memo: 'base-pack' }],
       // A feature without a plugin owns no plugin id: nothing could be sent there
       ['plugins', { 'base-pack/memos': 'base-pack' }],
     ];

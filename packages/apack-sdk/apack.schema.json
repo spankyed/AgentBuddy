@@ -489,10 +489,6 @@
                 "additionalProperties": {
                   "type": "object",
                   "properties": {
-                    "protocol": {
-                      "type": "string",
-                      "pattern": "^[a-z][a-z0-9+.-]*$"
-                    },
                     "category": {
                       "type": "string",
                       "pattern": "^[a-z][a-z0-9_-]*$"
@@ -592,7 +588,6 @@
                     }
                   },
                   "required": [
-                    "protocol",
                     "category",
                     "icon",
                     "svgElements",

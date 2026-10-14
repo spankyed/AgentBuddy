@@ -6,7 +6,7 @@ import { setupPackFixture, generate, dependency, manifest, write } from './_supp
 setupPackFixture();
 
 const references = {
-  types: { memo: { protocol: 'memo', category: 'memos', icon: 'NotebookText', svgElements: [['path', { d: 'M2 6h4' }]], navigate: 'src/references.ts#openMemo' } },
+  types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [['path', { d: 'M2 6h4' }]], navigate: 'src/references.ts#openMemo' } },
   categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
 };
 const fields = { features: { memos: { references } } };
@@ -23,7 +23,7 @@ describe('declarative references', () => {
     expect(parsed.data.features!.memos.references).toEqual(references);
     const files = await generate(fields);
     const output = files['src/__generated__/references.ts'];
-    expect(output).toContain('"memo": { ...{"protocol":"memo","category":"memos","svgElements"');
+    expect(output).toContain('"memo": { ...{"category":"memos","svgElements"');
     expect(output).toContain('import { openMemo as');
     expect(output).toContain('import { useItems as');
     expect(output).toContain('label: "Memos"');
@@ -56,10 +56,9 @@ describe('declarative references', () => {
     await expect(generate(fields)).rejects.toThrow('must export useItems as a function');
   });
 
-  it.each(['types', 'categories', 'protocols'])('refuses duplicate %s claims naming both features', kind => {
+  it.each(['types', 'categories'])('refuses duplicate %s claims naming both features', kind => {
     const second = structuredClone(references);
     if (kind !== 'categories') second.categories = {} as typeof second.categories;
-    if (kind === 'protocols') second.types = { other: { ...references.types.memo } } as unknown as typeof second.types;
     if (kind === 'categories') second.types = {} as typeof second.types;
     const result = parse({ first: { references }, second: { references: second } });
     expect(result.success).toBe(false);
@@ -70,7 +69,7 @@ describe('declarative references', () => {
   it.each([
     'src/references.ts',
     { ...references, categories: { memos: { ...references.categories.memos, useItems: 'src/references.ts' } } },
-    { ...references, types: { memo: { ...references.types.memo, protocol: 'bad://scheme' } } },
+    { ...references, types: { memo: { ...references.types.memo, protocol: 'memo' } } },
     { ...references, types: { memo: { ...references.types.memo, svgElements: [['script', {}]] } } },
   ])('refuses invalid declarations (%j)', declaration => {
     expect(parse({ memos: { references: declaration } }).success).toBe(false);
@@ -102,6 +101,6 @@ describe('declarative references', () => {
     await expect(generate({}, { 'left-pack': left, 'right-pack': right })).resolves.toBeDefined();
     const other = { ...right, provenance: { ...provenance, referenceTypes: { memo: 'other-pack' } } };
     await expect(generate({}, { 'left-pack': left, 'right-pack': other })).rejects.toThrow('"origin-pack" and "other-pack"');
-    expect(_buildProvenance([], { id: 'origin-pack', manifest: manifest(fields) })).toMatchObject({ referenceTypes: { memo: 'origin-pack' }, referenceCategories: { memos: 'origin-pack' }, referenceProtocols: { memo: 'origin-pack' } });
+    expect(_buildProvenance([], { id: 'origin-pack', manifest: manifest(fields) })).toMatchObject({ referenceTypes: { memo: 'origin-pack' }, referenceCategories: { memos: 'origin-pack' } });
   });
 });

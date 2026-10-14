@@ -300,7 +300,7 @@ test('external reference declarations feed the existing editor and picker with c
     return actor.getSnapshot().context.memos.find((memo: any) => memo.text === 'Reference fixture memo').id as string;
   });
   // The preview is already mounted: a newly supplied external URI uses the generic live parser.
-  await appPage.getByTestId('memo-input').fill(`[Reference fixture memo](memo://${encodeURIComponent(memoId)})`);
+  await appPage.getByTestId('memo-input').fill(`[Reference fixture memo](apack-ref://memo/${encodeURIComponent(memoId)})`);
   const pill = appPage.getByTestId('memo-preview').locator('.reference-pill');
   await expect(pill).toHaveText('Reference fixture memo');
   await pill.click();

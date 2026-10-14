@@ -1,5 +1,5 @@
 import { openPlugin, usePluginState } from '#generated/fe.ts'
-import { NOTE_TYPE_TO_REFERENCE_TYPE } from './reference-types.ts'
+import { NOTE_TYPE_TO_REFERENCE_TYPE } from '../reference-types.ts'
 import { id as notes } from './state.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
 

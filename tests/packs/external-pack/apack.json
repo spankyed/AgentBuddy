@@ -59,7 +59,6 @@
       "references": {
         "types": {
           "memo": {
-            "protocol": "memo",
             "category": "memos",
             "icon": "StickyNote",
             "svgElements": [

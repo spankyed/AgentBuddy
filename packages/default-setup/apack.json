@@ -504,7 +504,6 @@
       "references": {
         "types": {
           "thread": {
-            "protocol": "thread",
             "category": "threads",
             "icon": "History",
             "svgElements": [
@@ -877,7 +876,6 @@
       "references": {
         "types": {
           "note": {
-            "protocol": "note",
             "category": "notes",
             "icon": "NotebookText",
             "svgElements": [
@@ -937,7 +935,6 @@
             "navigate": "src/features/notes/fe/references.ts#openNote"
           },
           "task": {
-            "protocol": "task",
             "category": "notes",
             "icon": "CircleCheck",
             "svgElements": [
@@ -959,7 +956,6 @@
             "navigate": "src/features/notes/fe/references.ts#openNote"
           },
           "tasklist": {
-            "protocol": "tasklist",
             "category": "notes",
             "icon": "ListChecks",
             "svgElements": [
@@ -1134,7 +1130,6 @@
       "references": {
         "types": {
           "document": {
-            "protocol": "doc",
             "category": "documents",
             "icon": "Library",
             "svgElements": [
@@ -1166,7 +1161,6 @@
             "navigate": "src/features/library/fe/references.ts#openDocument"
           },
           "folder": {
-            "protocol": "folder",
             "category": "documents",
             "icon": "Folder",
             "svgElements": [

@@ -4,7 +4,6 @@ import type { PluginDeclaration } from './plugin-declaration.ts';
 export type ReferenceSvgElement = readonly ['path', { readonly d: string }] | readonly ['rect', Readonly<Record<string, string>>] | readonly ['circle', Readonly<Record<string, string>>];
 
 export interface ReferenceTypeDeclaration {
-  protocol: string;
   category: string;
   icon: NonNullable<PluginDeclaration['icon']>;
   svgElements: readonly ReferenceSvgElement[];

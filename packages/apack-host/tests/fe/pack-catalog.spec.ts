@@ -31,7 +31,7 @@ describe('window declaration catalog', () => {
 
   it('projects native, disabled installed and source declarations with truthful identities and stable entries', () => {
     const { reader, catalog, sessions, wire } = fixture();
-    const references = { types: { memo: { protocol: 'memo', category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
+    const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
       categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
     catalog.setNative([{ id: 'native-pack', features: { memos: { references } } }]);
     const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', features: { memos: { references } } };

@@ -15,3 +15,5 @@ export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog
 export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclaration, type ReferenceCategoryDeclaration, type ReferenceSvgElement } from './reference-declaration.ts';
 
 export type { PackCatalogView, ReferenceCatalogEntry, DeclarationData } from './catalog-view.ts';
+
+export { formatReferenceHref, parseReferenceHref, type ReferenceTarget } from './reference-link.ts';

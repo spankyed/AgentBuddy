@@ -15,12 +15,12 @@ const listeners = new Set<() => void>();
 let entries: ReferenceCatalogEntry[];
 let bindings: Map<string, ReferenceBinding<ReferenceTypeConfig>>;
 let ready: boolean;
-function addType(name: string, protocol: string, navigate = vi.fn()) {
+function addType(name: string, navigate = vi.fn()) {
   const featureRef = resolveName('links', name + '-pack');
   entries.push({ packId: name + '-pack', featureRef, origin: 'native', enabled: true, declaration: {
-    types: { [name]: { protocol, category: 'links', icon: 'Link', svgElements: [], navigate: 'src/links.ts#open' } }, categories: {},
+    types: { [name]: { category: 'links', icon: 'Link', svgElements: [], navigate: 'src/links.ts#open' } }, categories: {},
   } });
-  bindings.set(name, { featureRef, binding: { protocol, category: 'links', icon: {}, svgElements: [], navigate } });
+  bindings.set(name, { featureRef, binding: { category: 'links', icon: {}, svgElements: [], navigate } });
   return navigate;
 }
 
@@ -28,7 +28,7 @@ const editors: Editor[] = [];
 let dom: JSDOM;
 beforeEach(() => {
   entries = []; bindings = new Map(); ready = true;
-  addType('thread', 'thread', navigation.thread); addType('document', 'doc', navigation.document);
+  addType('thread', navigation.thread); addType('document', navigation.document);
   startFeTestRuntime({ application: {} as never, settings: {} as never, secrets: {} as never, client: {} as never,
     catalog: { status: () => ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => entries,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } },
@@ -58,10 +58,10 @@ const markdown = (instance: Editor): string => (instance.storage as unknown as {
 it.each([['thread', 'Thread-first', 'T-12'], ['document', 'Document-first', 'DOC-12']])(
   'keeps the %s entity id through HTML and Markdown instead of its display code', (type, id, code) => {
     const original = editor(content(reference(id, type, 'Friendly label', code)));
-    const protocol = type === 'thread' ? 'thread' : 'doc';
-    expect(original.getHTML()).toContain(`href="${protocol}://${id}"`);
+    const href = `apack-ref://${type}/${id}`;
+    expect(original.getHTML()).toContain(`href="${href}"`);
     expect(attrs(editor(original.getHTML()))).toMatchObject([{ refId: id, shortCode: code, label: 'Friendly label' }]);
-    expect(markdown(original)).toBe(`[Friendly label](${protocol}://${id})`);
+    expect(markdown(original)).toBe(`[Friendly label](${href})`);
     const restored = editor(markdown(original));
     expect(attrs(restored)).toMatchObject([{ refId: id, label: 'Friendly label' }]);
     restored.view.dom.querySelector('.reference-pill')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -75,21 +75,21 @@ it('keeps distinct ids when two references share a short code', () => {
 });
 
 it('encodes targets once and escapes punctuation in visible Markdown labels', () => {
-  const id = 'Thread-a/#value %'; const label = 'A [label] with \\ punctuation';
+  const id = 'Thread-a/(part)#value %'; const label = 'A [label] with \\ punctuation';
   const original = editor(content(reference(id, 'thread', label)));
-  expect(markdown(original)).toContain(`thread://${encodeURIComponent(id)}`);
+  expect(markdown(original)).toContain('apack-ref://thread/Thread-a%2F%28part%29%23value%20%25');
   expect(attrs(editor(markdown(original)))).toMatchObject([{ refId: id, label }]);
   expect(attrs(editor(original.getHTML()))).toMatchObject([{ refId: id, label }]);
 });
 
-it.each(['thread://', 'thread://Thread-%ZZ'])('refuses an empty or malformed encoded target %s', href => {
+it.each(['apack-ref://thread/', 'apack-ref://thread/Thread-%ZZ'])('refuses an empty or malformed encoded target %s', href => {
   expect(attrs(editor(`<p><a href="${href}">Bad reference</a></p>`))).toEqual([]);
 });
 
 it('does not turn unknown types or missing ids into thread links or navigation', () => {
   const original = editor(content(reference('Thread-one', 'unknown'), reference(null)));
-  expect(original.getHTML()).not.toContain('href=');
-  expect(markdown(original)).not.toContain('thread://');
+  expect(original.getHTML()).toContain('apack-ref://unknown/Thread-one');
+  expect(markdown(original)).toContain('apack-ref://unknown/Thread-one');
   for (const node of original.view.dom.querySelectorAll('.reference-pill')) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigation.thread).not.toHaveBeenCalled();
 });
@@ -105,12 +105,12 @@ it('delivers the updated target from an existing node view', () => {
   expect(navigation.thread).toHaveBeenCalledWith('Thread-two');
 });
 
-it('parses a new external protocol in an already-created editor without starting or rebuilding it', () => {
+it('parses a new external reference in an already-created editor without starting or rebuilding it', () => {
   const opened = editor('<p>Open before contribution</p>');
-  const navigate = addType('memo', 'memo');
-  opened.commands.setContent('<p><a href="memo://Memo-one">Memo</a></p>');
+  const navigate = addType('memo');
+  opened.commands.setContent('<p><a href="apack-ref://memo/Memo-one">Memo</a></p>');
   expect(attrs(opened)).toMatchObject([{ refType: 'memo', refId: 'Memo-one' }]);
-  expect(markdown(opened)).toBe('[Memo](memo://Memo-one)');
+  expect(markdown(opened)).toBe('[Memo](apack-ref://memo/Memo-one)');
   expect(navigate).not.toHaveBeenCalled();
   opened.view.dom.querySelector('.reference-pill')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigate).toHaveBeenCalledWith('Memo-one');
@@ -127,7 +127,7 @@ it('refreshes an existing node icon and uses current eligible navigation, dispos
   ready = false;
   pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigation.thread).not.toHaveBeenCalled();
-  expect(opened.getHTML()).toContain('thread://Thread-one');
+  expect(opened.getHTML()).toContain('apack-ref://thread/Thread-one');
   ready = true; bindings.delete('thread');
   pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigation.thread).not.toHaveBeenCalled();
@@ -140,4 +140,37 @@ it('retired node views release navigation handlers as well as declaration listen
   expect(listeners.size).toBe(0);
   retired.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(navigation.thread).not.toHaveBeenCalled();
+});
+
+it.each(['html', 'markdown'] as const)('preserves a cold %s target and updates presentation without replacing document state', format => {
+  entries = []; bindings.clear(); ready = false;
+  const href = 'apack-ref://memo/Memo-before-catalog';
+  const opened = editor(format === 'html' ? `<p><a href="${href}">Saved memo</a></p>` : `[Saved memo](${href})`);
+  expect(attrs(opened)).toMatchObject([{ refType: 'memo', refId: 'Memo-before-catalog' }]);
+  expect(markdown(opened)).toBe(`[Saved memo](${href})`);
+  const state = opened.state;
+  const node = opened.view.dom.querySelector('.reference-pill')!;
+  const navigate = addType('memo');
+  entries = entries.map(entry => ({ ...entry, declaration: { ...entry.declaration,
+    types: { memo: { ...entry.declaration.types.memo, svgElements: [['path', { d: 'M2 4h8' }]] } } } }));
+  const notified = [...listeners]; for (const listener of notified) listener();
+  expect(opened.state).toBe(state);
+  expect(opened.view.dom.querySelector('.reference-pill')).toBe(node);
+  expect(node.querySelector('path')?.getAttribute('d')).toBe('M2 4h8');
+  node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigate).not.toHaveBeenCalled();
+  ready = true;
+  node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(navigate).toHaveBeenCalledWith('Memo-before-catalog');
+  entries = []; bindings.clear();
+  expect(markdown(opened)).toBe(`[Saved memo](${href})`);
+  expect(opened.getHTML()).toContain(href);
+});
+
+it('keeps ordinary web/mail links separate from internal references', () => {
+  entries = []; bindings.clear(); ready = false;
+  const opened = editor('<p><a href="https://example.com/a">Web</a> <a href="mailto:hello@example.com">Mail</a></p>');
+  expect(attrs(opened)).toEqual([]);
+  expect(opened.getHTML()).toContain('https://example.com/a');
+  expect(opened.getHTML()).toContain('mailto:hello@example.com');
 });

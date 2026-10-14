@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin.ts'
-import { findReferenceTypeByProtocol, getReferenceTypeDeclaration, getReferenceTypeBinding, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
+import { formatReferenceHref, parseReferenceHref, getReferenceTypeDeclaration, getReferenceTypeBinding, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
 
 function createIconSvg(type: string): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
@@ -42,31 +42,22 @@ export const ReferenceNode = Node.create({
 
   parseHTML() {
     return [{
-      tag: 'a[href]',
+      tag: 'a[href^="apack-ref://"]',
       priority: 60,
       getAttrs(node: HTMLElement) {
-        const href = node.getAttribute('href') || ''
-        const separator = href.indexOf('://')
-        if (separator < 1) return false
-        const protocol = href.slice(0, separator)
-        const refType = findReferenceTypeByProtocol(protocol)
-        if (!refType) return false
-        let id: string
-        try { id = decodeURIComponent(href.slice(separator + 3)) }
-        catch { return false }
-        if (!id) return false
-        return { refType, refId: id, shortCode: node.getAttribute('data-short-code') || '', label: node.textContent || '' }
+        const target = parseReferenceHref(node.getAttribute('href') || '')
+        if (!target) return false
+        return { refType: target.type, refId: target.id, shortCode: node.getAttribute('data-short-code') || '', label: node.textContent || '' }
       },
     }]
   },
 
   renderHTML({ node }) {
-    const cfg = getReferenceTypeDeclaration(node.attrs.refType)
-    if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) return ['span', { class: 'reference-pill' }, node.attrs.label]
+    if (typeof node.attrs.refType !== 'string' || !node.attrs.refType || typeof node.attrs.refId !== 'string' || !node.attrs.refId) return ['span', { class: 'reference-pill' }, node.attrs.label]
     return [
       'a',
       mergeAttributes({
-        href: `${cfg.protocol}://${encodeURIComponent(node.attrs.refId)}`,
+        href: formatReferenceHref({ type: node.attrs.refType, id: node.attrs.refId }),
         class: 'reference-pill',
         'data-ref-type': node.attrs.refType,
         'data-short-code': node.attrs.shortCode,
@@ -154,14 +145,13 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const cfg = getReferenceTypeDeclaration(node.attrs.refType)
-          if (!cfg || typeof node.attrs.refId !== 'string' || !node.attrs.refId) {
+          if (typeof node.attrs.refType !== 'string' || !node.attrs.refType || typeof node.attrs.refId !== 'string' || !node.attrs.refId) {
             state.text(node.attrs.label)
             return
           }
           state.write('[')
           state.text(node.attrs.label)
-          state.write(`](${cfg.protocol}://${encodeURIComponent(node.attrs.refId)})`)
+          state.write(`](${formatReferenceHref({ type: node.attrs.refType, id: node.attrs.refId })})`)
         },
       },
     }
