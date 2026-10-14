@@ -301,8 +301,8 @@ export function entitiesWithoutShapes(manifest: PackDataDeclarations): string[] 
   return _packEntities(manifest).filter(({ shape }) => shape === null).map(({ name }) => name);
 }
 
-/** The type-bundle key in a pack's snapshot defs, written by `apack pack build` */
-export const PACK_TYPES_DEF = 'pack-types';
+/** The type-bundle key in a pack's snapshot facades, written by `apack pack build` */
+export const PACK_TYPES_FACADE = 'pack-types';
 
 /**
  * A dependency's facade types in a pack, relative to the pack root.
@@ -369,6 +369,13 @@ export async function generatePackFiles(
   const moduleTargets = _packModuleTargets(manifest).map(entry => ({ ...entry, source: _moduleTargetSource(entry) }));
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   const depIds = [...depSnapshots.keys()];
+  const depFacades = new Map([...depSnapshots].map(([depId, snapshot]) => {
+    const facade = snapshot.facades[PACK_TYPES_FACADE];
+    if (typeof facade !== 'string' || !facade.trim()) {
+      throw new Error(`Dependency "${depId}" is missing its ${PACK_TYPES_FACADE} facade; rebuild that dependency with "apack pack build" before generating entries`);
+    }
+    return [depId, facade] as const;
+  }));
   /** `import type { name as alias }` from each dependency's facade, and the aliases */
   function depTypeImports(name: string, from: readonly string[] = depIds): { imports: string[]; aliases: string[] } {
     return {
@@ -2119,7 +2126,7 @@ export const runtimeServices = _createPackServices();
     // Each dependency's facade types, from its snapshot
     ...depIds.map((depId) => {
       const snap = depSnapshots.get(depId)!;
-      return [_depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${snap.defs[PACK_TYPES_DEF]}`];
+      return [_depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${depFacades.get(depId)!}`];
     }),
     // Each dependency's flow helpers module and its declarations, from its snapshot
     ...[...depSnapshots].flatMap(([depId, snap]) => snap.flowHelpers

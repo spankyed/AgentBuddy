@@ -14,7 +14,7 @@ const group: SettingsDefinition = { schema: { type: 'object', properties: { name
 
 function source(id: string, enabled = true) {
   const manifest: PackManifest = { id, name: id, version: '1.0.0', extensions: { settings: { assistant: structuredClone(group) } } };
-  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} } };
+  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} } };
 }
 
 describe('contribution catalog data', () => {
@@ -25,7 +25,7 @@ describe('contribution catalog data', () => {
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
         features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' } } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-        manifest, types: { entities: {}, relKinds: {} }, defs: {},
+        manifest, types: { entities: {}, relKinds: {} }, facades: {},
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
       fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
       fs.mkdirSync(path.join(dir, 'types'));

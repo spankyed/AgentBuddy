@@ -21,7 +21,7 @@ function install(id: string, name = ''): string {
     extensions: { settings: { assistant: { ...definition, defaults: { name } } } },
     features: { memos: { description: 'Feature declaration fixture.', settings: definition } },
   };
-  const snapshot = { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} };
+  const snapshot = { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} };
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify(snapshot));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), 'throw new Error("must not activate during discovery");');

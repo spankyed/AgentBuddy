@@ -39,7 +39,7 @@ describe('window declaration catalog', () => {
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
       format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed,
-      types: { entities: {}, relKinds: {} }, defs: {},
+      types: { entities: {}, relKinds: {} }, facades: {},
     } }]);
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();

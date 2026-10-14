@@ -2471,7 +2471,7 @@ export function on(event: string, exits: DSLStepNode[][], label?: string): Track
 export const PACK_SNAPSHOT_FORMAT = 1;
 
 // @public
-export const PACK_TYPES_DEF = "pack-types";
+export const PACK_TYPES_FACADE = "pack-types";
 
 // @public
 export interface PackBuildDefinitions {
@@ -2615,8 +2615,7 @@ export function _packRelationTypes(declaration: PackDataDeclarations): Record<st
 // @public (undocumented)
 export interface PackSnapshot {
     declarationRevision: string;
-    // (undocumented)
-    defs: Record<string, string>;
+    facades: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
     format: number;
     help?: HelpDocument[];

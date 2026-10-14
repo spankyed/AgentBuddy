@@ -44,7 +44,7 @@ export function packFeatures(manifest: { features?: Record<string, PackFeatureEn
 
 /**
  * The format of a pack's build, recorded in its snapshot: everything another apack reads from what `apack pack build`
- * wrote. A dependent's codegen reads the facade types in `defs['pack-types']` and the exports generated code imports
+ * wrote. A dependent's codegen reads the facade types in `facades['pack-types']` and the exports generated code imports
  * from them, `types`, `provenance` and its kinds, `flowHelpers`, and the manifest's fields. The app loads the
  * registration the runtime bundle exports, and refuses to install or load a build in another format.
  *
@@ -71,7 +71,8 @@ export interface PackSnapshot {
   /** Identifies the same declared data in generated backend/frontend bindings. */
   declarationRevision: string;
   types: PackTypeManifest;
-  defs: Record<string, string>;
+  /** Dependent-facing TypeScript declaration bundles, keyed by facade name. */
+  facades: Record<string, string>;
   manifest: PackManifest;
   /** Materialized articles; required when the manifest declares help. */
   help?: import('../framework/pack-help.ts').HelpDocument[];

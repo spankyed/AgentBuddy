@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 import { warnStaleDepTypes } from '../../src/commands/generate-entries';
 
 let root: string;
@@ -21,7 +21,7 @@ async function generateDepTypes(version: string): Promise<void> {
   // The exports generation imports from every dependency's facade
   const facade = ['PackEntityShapes', 'PackStepNodes', 'SendablePluginEvents', 'PackSystemEvents', 'Services', 'Repositories']
     .map((name) => `export type ${name} = {};`).join('\n');
-  const snapshot = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base', version }), types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, manifest: { id: 'base-pack', name: 'Base', version }, format: PACK_SNAPSHOT_FORMAT } as PackSnapshot;
+  const snapshot = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base', version }), types: { entities: {}, relKinds: {} }, facades: { [PACK_TYPES_FACADE]: facade }, manifest: { id: 'base-pack', name: 'Base', version }, format: PACK_SNAPSHOT_FORMAT } as PackSnapshot;
   for (const [file, content] of Object.entries(await generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);

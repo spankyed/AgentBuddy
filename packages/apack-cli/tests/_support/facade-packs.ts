@@ -471,14 +471,14 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
   it("writes the dependency's facade types into its snapshot", () => {
     const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
-    expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
+    expect(snapshot.facades['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
   });
 
   it("gives dependents the dependency's system events without its machines", () => {
     const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
-    expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
-    expect(snapshot.defs['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
-    expect(snapshot.defs['pack-types']).not.toContain('StateMachine');
+    expect(snapshot.facades['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
+    expect(snapshot.facades['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
+    expect(snapshot.facades['pack-types']).not.toContain('StateMachine');
   });
 
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', async (moduleResolution) => {

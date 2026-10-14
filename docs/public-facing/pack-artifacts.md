@@ -33,7 +33,10 @@ The source build also produces `dist/defs/monaco/<name>-defs.d.ts` for declared 
 Generated frontend code imports these as raw text, embedding them in the frontend bundle. Staging
 does not ship the standalone `defs/` directory. `.apack/reads.json` and phase stamps are development
 build records, not installed declarations. Facade declarations and DSL editor definitions serve
-different consumers even though both contain TypeScript declarations.
+different consumers even though both contain TypeScript declarations. Snapshot `facades` and the
+dependency cache's `facades/` hold dependent-facing declarations, keyed by lowercase names containing
+letters, digits and hyphens (such as `pack-types`); `defs/monaco/` remains the DSL build
+output. `PACK_TYPES_FACADE` names the `pack-types` entry without changing its physical filename.
 
 Three identities serve different boundaries:
 

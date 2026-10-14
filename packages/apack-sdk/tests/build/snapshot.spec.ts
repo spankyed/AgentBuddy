@@ -7,7 +7,7 @@ const snapshot = (): PackSnapshot => ({
   declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
   format: PACK_SNAPSHOT_FORMAT,
   manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
-  types: { entities: {}, relKinds: {} }, defs: {},
+  types: { entities: {}, relKinds: {} }, facades: {},
 });
 
 describe('snapshot data reader', () => {
@@ -95,7 +95,7 @@ describe('snapshot data reader', () => {
     ['manifest', { id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { plugin: {} } } }, ['manifest', 'features', 'notes', 'plugin', 'label']],
     ['types', {}, ['types', 'entities']],
     ['types', { entities: { Memo: 1 }, relKinds: {} }, ['types', 'entities', 'Memo']],
-    ['defs', { 'pack-types': false }, ['defs', 'pack-types']],
+    ['facades', { 'pack-types': false }, ['facades', 'pack-types']],
     ['flowHelpers', { exports: [], module: '' }, ['flowHelpers', 'types']],
     ['provenance', { unknownKind: {} }, ['provenance', 'unknownKind']],
     ['provenance', { entities: { Memo: false } }, ['provenance', 'entities', 'Memo']],
@@ -104,6 +104,15 @@ describe('snapshot data reader', () => {
     expect(result.status).toBe('invalid');
     expect(result.snapshot).toBeUndefined();
     expect(result.diagnostics.some(issue => JSON.stringify(issue.path) === JSON.stringify(path))).toBe(true);
+  });
+
+
+  it.each(['../outside', '../../outside', 'nested/name', 'nested\\name', '/absolute', 'pack-types.d.ts', '', '..'])
+  ('refuses a facade name that cannot be a cache filename: %j', name => {
+    const result = parseSnapshot({ ...snapshot(), facades: { [name]: 'export {};' } });
+    expect(result.status).toBe('invalid');
+    expect(result.snapshot).toBeUndefined();
+    expect(result.diagnostics.some(issue => issue.path.join('.') === ['facades', name].join('.'))).toBe(true);
   });
 
   it('refuses unknown fields instead of silently stripping contributions', () => {

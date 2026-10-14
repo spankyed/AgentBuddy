@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { bundlePackTypes } from '../../src/build/types-bundler';
 import { bundlePackFlowHelpers } from '../../src/build/flow-helpers-bundler';
 
 /**
@@ -88,7 +89,9 @@ beforeAll(async () => {
   }
   const bundled = await bundlePackFlowHelpers(base, path.join(base, 'dist', 'types'));
   if (!bundled.success) throw new Error(bundled.error);
-  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
+  const facade = await bundlePackTypes(base, path.join(base, 'dist', 'types', 'pack-types.d.ts'));
+  if (!facade.success) throw new Error(facade.error);
+  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, facades: { [PACK_TYPES_FACADE]: facade.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
   for (const [file, content] of Object.entries(await generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {

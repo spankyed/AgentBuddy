@@ -13,7 +13,7 @@ const SnapshotShape = {
   manifest: ManifestSchema,
   help: _HelpDocumentsSchema.optional(),
   types: z.object({ entities: z.record(z.string()), relKinds: z.record(z.string()) }).strict(),
-  defs: z.record(z.string()),
+  facades: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/, 'Facade names must be lowercase identifiers with hyphens, suitable for cache filenames'), z.string()),
   provenance: z.record(z.enum(Object.keys(PROVENANCE_KINDS) as [ProvenanceKind, ...ProvenanceKind[]]), z.record(z.string())).optional(),
   flowHelpers: z.object({ exports: z.array(z.string()), module: z.string(), types: z.string() }).strict().optional(),
 } satisfies Record<keyof PackSnapshot, z.ZodTypeAny>;

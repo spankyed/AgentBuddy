@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import {
   compilePack,
   buildPackConfigFromManifest,
-  PACK_TYPES_DEF,
+  PACK_TYPES_FACADE,
   PACK_SNAPSHOT_FORMAT,
   entitiesWithoutShapes,
   CONTENT_COMPILERS_FILE,
@@ -219,8 +219,8 @@ async function buildIntoStaging(args: string[]) {
     relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), _packRelationTypes(manifest)),
   };
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
-  const defs: Record<string, string> = {};
-  const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
+  const facades: Record<string, string> = {};
+  const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`);
   const typesHash = typesInputsHash(root, depSnapshots);
   const typesStale = reuseProblem(stamps.types, distDir, typesHash)
     ?? (reads && !reads.carry('types') ? 'no reads recorded to carry' : null);
@@ -231,11 +231,11 @@ async function buildIntoStaging(args: string[]) {
        { success: true as const, content: fs.readFileSync(packTypesFile, 'utf-8') })
     : await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'));
   if (typesStale !== null && packTypes.success) {
-    nextStamps.types = { hash: typesHash, files: [path.join(PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`)] };
+    nextStamps.types = { hash: typesHash, files: [path.join(PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`)] };
   }
   const packTypesProblems = packTypes.success ? facadeProblems(root, packTypesFile) : [];
   if (packTypes.success && packTypesProblems.length === 0) {
-    defs[PACK_TYPES_DEF] = packTypes.content;
+    facades[PACK_TYPES_FACADE] = packTypes.content;
     // The reviewed report of this facade, held to the bundle in hand — the one moment nothing can be stale
     // about it. A **warning**, not a `fail`: the collected failures below are for output dependents cannot
     // use, and a report that has not caught up is not that. It would also mean a pack author could not start
@@ -270,7 +270,7 @@ async function buildIntoStaging(args: string[]) {
   const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
   const snapshot: PackSnapshot = {
     declarationRevision: _declarationRevision(manifest),
-    types, defs, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
+    types, facades, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
     ...(manifest.extensions?.help && { help: compileHelp(root, manifest) }),
     ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),

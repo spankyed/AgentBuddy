@@ -4,8 +4,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { bundlePackTypes } from '../../src/build/types-bundler';
 import { generateEntries } from '../../src/commands/generate-entries';
-import { PACK_SNAPSHOT_FORMAT, type PackSnapshot, type PackTypeManifest } from '@apackdev/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot, type PackTypeManifest } from '@apackdev/sdk/build';
 
 let tmpDir: string;
 
@@ -131,15 +132,29 @@ describe('apack pack generate-entries', () => {
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
-    const snapshot: PackSnapshot = { declarationRevision: _declarationRevision({ id: 'dep-pack', name: 'Dep Pack', version: '0.1.0' }),
+    const depManifest: PackManifest = { id: 'dep-pack', name: 'Dep Pack', version: '0.1.0',
+      data: { entities: { DepWidget: null }, relations: ['dep_rel'] } };
+    const snapshot: PackSnapshot = { declarationRevision: _declarationRevision(depManifest),
       format: PACK_SNAPSHOT_FORMAT,
       types: {
         entities: { DepWidget: 'DepWidget' },
         relKinds: { DEP_REL: 'dep_rel' },
       },
-      defs: {},
-      manifest: { id: 'dep-pack', name: 'Dep Pack', version: '0.1.0' },
+      facades: {},
+      manifest: depManifest,
     };
+
+    const depRoot = path.join(tmpDir, 'dependency');
+    fs.mkdirSync(depRoot);
+    fs.symlinkSync(path.resolve(__dirname, '../../../..', 'node_modules'), path.join(depRoot, 'node_modules'), 'dir');
+    for (const [file, content] of Object.entries(await sdkBuild.generatePackFiles(snapshot.manifest, { packRoot: depRoot }))) {
+      const target = path.join(depRoot, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, content);
+    }
+    const facade = await bundlePackTypes(depRoot, path.join(depRoot, 'pack-types.d.ts'));
+    if (!facade.success) throw new Error(facade.error);
+    snapshot.facades[PACK_TYPES_FACADE] = facade.content;
     const depTypes = new Map<string, PackTypeManifest>([['dep-pack', snapshot.types]]);
     const depSnapshots = new Map<string, PackSnapshot>([['dep-pack', snapshot]]);
 

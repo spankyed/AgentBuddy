@@ -36,7 +36,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach } from 'vitest';
-import { PACK_TYPES_DEF, generatePackFiles } from '../../../../src/build/generate-entries.ts';
+import { PACK_TYPES_FACADE, generatePackFiles } from '../../../../src/build/generate-entries.ts';
 import { PACK_SNAPSHOT_FORMAT } from '../../../../src/build/manifest.ts';
 import type { PackManifest, PackSnapshot } from '../../../../src/build/manifest.ts';
 
@@ -44,7 +44,7 @@ import type { PackManifest, PackSnapshot } from '../../../../src/build/manifest.
  * Re-exported because the fixture already imports them for its own helpers, so a spec file that asserts on
  * codegen's output takes them from here rather than reaching past this module to the same source.
  */
-export { PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, generatePackFiles };
+export { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, generatePackFiles };
 
 /** The case's own pack root, reassigned per case below and read live by every helper here. */
 export let root: string;
@@ -125,16 +125,16 @@ export function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, s
   const body = Object.entries({ ...FACADE_DEFAULTS, ...overrides })
     .map(([name, type]) => `export type ${name} = ${type};`)
     .join('\n');
-  return { [PACK_TYPES_DEF]: body };
+  return { [PACK_TYPES_FACADE]: body };
 }
 
 /** A dependency facade that also publishes `PackPluginState`, as one built from a pack with plugins does */
-export function withPluginState(defs: Record<string, string>): Record<string, string> {
-  return { ...defs, [PACK_TYPES_DEF]: `${defs[PACK_TYPES_DEF]}\nexport type PackPluginState = {};` };
+export function withPluginState(facades: Record<string, string>): Record<string, string> {
+  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackPluginState = {};` };
 }
 
-export function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
+export function dependency(fields: Record<string, unknown>, facades: Record<string, string> = facade()): PackSnapshot {
+  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, facades, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
 export async function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Promise<Record<string, string>> {

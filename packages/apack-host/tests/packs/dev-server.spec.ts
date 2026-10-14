@@ -40,7 +40,7 @@ function builtPack(): string {
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/fe.js', 'export default {};');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
-  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, defs: {} }));
+  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, facades: {} }));
   sealBuild(root);
   return root;
 }

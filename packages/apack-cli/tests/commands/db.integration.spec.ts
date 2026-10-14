@@ -1049,7 +1049,7 @@ describe('apack db import', () => {
     fs.mkdirSync(path.join(packDir, PACK_LAYOUT.typesDir), { recursive: true });
     fs.mkdirSync(path.join(packDir, PACK_LAYOUT.runtimeDir), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, defs: {} }));
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Offline discovery must not activate");');
     sealPackBuild(packDir, manifest);
     await write(source, () => {

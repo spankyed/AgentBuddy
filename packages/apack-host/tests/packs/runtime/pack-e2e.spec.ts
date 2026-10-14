@@ -51,7 +51,7 @@ function installTestPack() {
   }, null, 2));
 
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, defs: {} }));
+  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');

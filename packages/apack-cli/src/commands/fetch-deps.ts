@@ -322,12 +322,12 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
-  const defsDir = path.join(depDir, 'defs');
-  fs.rmSync(defsDir, { recursive: true, force: true });
-  if (Object.keys(snapshot.defs).length > 0) {
-    fs.mkdirSync(defsDir, { recursive: true });
-    for (const [key, content] of Object.entries(snapshot.defs)) {
-      fs.writeFileSync(path.join(defsDir, `${key}.d.ts`), content);
+  const facadesDir = path.join(depDir, 'facades');
+  fs.rmSync(facadesDir, { recursive: true, force: true });
+  if (Object.keys(snapshot.facades).length > 0) {
+    fs.mkdirSync(facadesDir, { recursive: true });
+    for (const [key, content] of Object.entries(snapshot.facades)) {
+      fs.writeFileSync(path.join(facadesDir, `${key}.d.ts`), content);
     }
   }
 
@@ -466,7 +466,7 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
     return withSource(resolveFromLocal(root, depId), local.resolvedFrom);
   }
 
-  // A cache hit carries no source: cacheDep writes the snapshot, defs, build code and runtime, and
+  // A cache hit carries no source: cacheDep writes the snapshot, facades, build code and runtime, and
   // nothing about where they came from. Recording provenance in .apack/deps would cover this, and
   // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   const cached = readCandidate(() => resolveFromLocal(root, depId), 'the .apack/deps cache', rejected);
@@ -511,8 +511,8 @@ export async function fetchDeps(_args: string[]) {
       if (!depValue.startsWith('file:')) cacheDep(root, depId, result);
       const entityCount = Object.keys(result.snapshot.types.entities).length;
       const relCount = Object.keys(result.snapshot.types.relKinds).length;
-      const defCount = Object.keys(result.snapshot.defs).length;
-      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds, ${defCount} def(s) (${result.resolvedFrom})`);
+      const facadeCount = Object.keys(result.snapshot.facades).length;
+      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds, ${facadeCount} facade(s) (${result.resolvedFrom})`);
       resolved++;
     } else {
       failed.push(depId);

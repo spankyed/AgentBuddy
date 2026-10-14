@@ -133,7 +133,7 @@ describe('apack pack validate', () => {
   it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
     const old = path.join(tmp, 'old-pack');
     fs.mkdirSync(path.join(old, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(old, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
+    fs.writeFileSync(path.join(old, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
     const manifest = readManifest();
     manifest.dependencies = { 'old-pack': `file:${old}` };
     fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));

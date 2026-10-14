@@ -22,6 +22,12 @@ import { setupPackFixture, dependency, facade, generate, system, write } from '.
 setupPackFixture();
 
 describe('generated entity shapes', () => {
+  const missingFacades: Record<string, string>[] = [{}, { 'pack-types': '' }, { 'pack-types': '  ' }];
+  it.each(missingFacades)('refuses missing dependency facades before emitting generated typing: %s', async facades => {
+    await expect(generate({}, { 'base-pack': dependency({}, facades) }))
+      .rejects.toThrow('Dependency "base-pack" is missing its pack-types facade; rebuild that dependency');
+  });
+
   it('imports own shapes under aliases and dependency shapes from their facade types', async () => {
     write('src/features/memos/be/types.ts', 'export interface ItemEntity { text: string }\n');
     const files = await generate(

@@ -25,7 +25,7 @@ describe('releasesInRange', () => {
 });
 
 describe('dependency artifact reading', () => {
-  it.each([false, true])('validates snapshot data without loading runtime code (malformed: %s)', malformed => {
+  it.each(['valid', 'malformed', 'unsafe-name'])('validates snapshot data without loading runtime code: %s', mode => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snapshot-reader-'));
     try {
       fs.mkdirSync(path.join(dir, 'types'));
@@ -34,10 +34,10 @@ describe('dependency artifact reading', () => {
       fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
         format: PACK_SNAPSHOT_FORMAT,
         manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
-        types: { entities: {}, relKinds: {} }, defs: malformed ? { 'pack-types': false } : {},
+        types: { entities: {}, relKinds: {} }, facades: mode === 'malformed' ? { 'pack-types': false } : mode === 'unsafe-name' ? { '../escape': 'export {};' } : {},
       }));
       const before = fs.readFileSync(path.join(dir, 'types', 'snapshot.json'), 'utf-8');
-      if (malformed) expect(() => findDepFiles(dir)).toThrow('defs.pack-types');
+      if (mode !== 'valid') expect(() => findDepFiles(dir)).toThrow(mode === 'malformed' ? 'facades.pack-types' : 'Facade names');
       else expect(findDepFiles(dir)?.snapshot.manifest.id).toBe('fixture-pack');
       expect(fs.readFileSync(path.join(dir, 'types', 'snapshot.json'), 'utf-8')).toBe(before);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }

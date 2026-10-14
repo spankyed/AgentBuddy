@@ -28,7 +28,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-function builtInPack(snapshot: object = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version: '1.0.0' }), types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', name: 'Base Pack', version: '1.0.0' }, format: PACK_SNAPSHOT_FORMAT }) {
+function builtInPack(snapshot: object = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version: '1.0.0' }), types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version: '1.0.0' }, format: PACK_SNAPSHOT_FORMAT }) {
   // Deliberately not a sibling/workspace path of the author pack, so only the installed-app source can find it
   const dir = path.join(tmp, 'app-bundle', 'resources', 'default-pack-source');
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
@@ -145,7 +145,7 @@ describe('dependency resolution from an installed app', () => {
 
   /** A shipped pack's snapshot; `fields` overrides any of it, `format: undefined` included */
   const snapshotOf = (version: string, fields: object = {}) =>
-    ({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
+    ({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
 
   /** The pack installed in an app's data dir, as the app's boot leaves it */
   async function publishInstalled(version: string, steps = 'export const steps = [];', fields: object = {}) {
@@ -257,7 +257,7 @@ describe('dependency resolution from an installed app', () => {
     const manifest = { id: 'dep-pack', name: 'Dep', version };
     fs.writeFileSync(path.join(src, 'apack.json'), JSON.stringify(manifest));
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
-    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, facades: {}, manifest, format }));
     const stage = path.join(tmp, `stage-${version}`);
     sealPackBuild(path.join(src, 'dist'), manifest);
     stagePack(src, stage);
@@ -352,7 +352,7 @@ describe('resolved host dependency ownership', () => {
     for (const [root, version] of [[workspace, '2.0.0'], [selected, '1.0.0']]) {
       const dependency = path.join(root, 'packages', 'base-pack');
       fs.cpSync(source, dependency, { recursive: true });
-      fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT }));
+      fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT }));
     }
     vi.stubEnv('APACK_HOST_ROOT', selected);
     return { selected, workspace, pack };

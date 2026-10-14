@@ -24,7 +24,7 @@ export function writeInstalledPackFixture(dir: string, manifest: PackManifest): 
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
-    types: { entities: {}, relKinds: {} }, defs: {},
+    types: { entities: {}, relKinds: {} }, facades: {},
   }));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Data discovery must not activate this fixture");');
   sealPack(dir);
