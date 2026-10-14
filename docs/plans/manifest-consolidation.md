@@ -24,7 +24,7 @@ A landed result still needs its applicable regression checks in the final requir
 | 4 | Replace root relation identity maps with pack-level `data.relations` wire values. Required. | Implemented in `3ff590240`: snake_case wire lists, uppercase derived constants, one shared data declaration/projection module, duplicate/SDK reservation checks, native exact binding admission, schema assistance and all current readers. EARS and compiled content stayed byte-identical; collisions, dependency provenance, offline and actual runtime paths passed. | M2 |
 | 5 | Remove partition-policy machinery; proposed `volatile` addition needed a separate real storage requirement. Excluded under the settled storage scope. | The predecessor itself records removal and says not to add volatility without an actual need. Do not recreate it, widen entity values for it, or require its obsolete external-pack test. Retain existing storage behavior; general storage work remains separate. | Preservation |
 | 6 | Designation is a role distinct from feature id, with collision checks. Landed; preserve. | `validate.ts:validateFeatures` checks role collisions without requiring equality; `FeatureEntrySchema.designation` is a string. Recheck nonmatching role/id, within-pack and cross-pack conflicts through actual registration. | M4/final |
-| 7 | Explicit feature contributions, useful authoring layout and consistent type-module naming. The `provides`/inferred-existence mechanism is replaced, not its tool agreement. | Current keyed features and explicit targets are the authority. Retain pack-root-relative declared paths, ownership/import boundaries and named missing-target failures. Consolidate supported scaffold layout across add/doctor/validation/codegen/docs. Include the original `typesEntry` → `types` authoring rename, preserving type-barrel semantics. | M4 |
+| 7 | Explicit feature contributions, useful authoring layout and consistent type-module naming. The `provides`/inferred-existence mechanism is replaced, not its tool agreement. | Current keyed features and explicit targets are the authority. Retain pack-root-relative declared paths, ownership/import boundaries and named missing-target failures. Consolidate supported scaffold layout across add/doctor/validation/codegen/docs. Type-module authoring is implemented in `0e65ece42`: explicit `types`, shared resolution, no conventional/companion inference, unchanged public facade. Complete descriptions and remaining target/layout checks in M4. | M4 |
 | 8 | Avoid duplicate contribution existence and meaningless annotations. Replaced by keyed declarations with metadata and checked bindings. | Schema has explicit system/plugin/settings/reference declarations; no `provides` list is needed. Do not introduce boolean authoring placeholders. Early validation checks known declaration/export errors; runtime admission checks dynamic binding membership. Unused utility exports are not undeclared contributions. | M4/discovery |
 | 9 | Contributions live under `extensions`; settle settings/help placement. Landed in part and deliberately redesigned. | SDK `ExtensionsSchema` has contribution fields, `extensions.settings`, `extensions.help`; host settings are independent. Preserve these and ordinary strict schema validation. Historical moved-key diagnostics were removed in `dd960261a`; unsupported fields use current-schema errors. Full metadata/binding migration for remaining kinds stays required. | Discovery/final |
 | 10 | Content is grouped and lifecycle has a coherent declaration. Content grouping landed; lifecycle root move required. | `ContentConfigSchema` groups sources/datasets/formats/writers. M3 (`e063ec1a5`) uses `LifecycleConfigSchema` and one native/installed checked binding guard for explicit targets. Use `lifecycle: { onInit: "path#export", onShutdown: "path#export" }`, replacing the historical opaque single-module proposal. Migrate discovery/codegen/native bindings; preserve actual execution/order and unchanged-content apply identity. | M3 |
@@ -155,10 +155,18 @@ M4 must retain type-only export-star semantics while making that contribution ex
   Arbitrary declared locations remain supported; scaffold conventions are authoring defaults.
 - Required nonblank feature `description` describes purpose, separate from plugin display label.
   Native declarations and catalog summaries carry it; it does not belong in executable bindings.
-  Scaffolding requires an explicit `--description` before writing files. Migrate all real manifests,
+  Scaffolding requires an explicit `--description` before writing files and validates it with the
+  same field schema, rejecting missing/blank values and another flag consumed as the value. Keep
+  descriptions in declaration/catalog data, not executable feature bindings. Migrate all real manifests,
   native declarations, fixtures, templates and public docs in the description checkpoint.
 
 Use separate strictly validated checkpoints for feature-purpose metadata and the type-module/tool
 contract when that makes migration review clearer. Preserve designation/default-selection tests and
 explicit runtime contribution membership. This audit does not certify the remaining target/export
 checks, schema descriptions or discovery kinds complete.
+
+M4's scaffold audit also found an undeclared `fe/settings.vue`: `add feature` creates the custom form
+but omits `settings.form`. Declare the file the command writes rather than teach discovery to probe
+for it. Preserve the existing custom-form template; this does not introduce generated settings forms.
+Check the authored declaration and real external build/typecheck/pack/doctor paths together.
+Native `application` purpose describes shell visibility and the last active plugin, not process boot.

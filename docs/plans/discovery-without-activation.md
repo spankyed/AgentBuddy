@@ -310,7 +310,7 @@ Each grouped row accounts for its named fields; new fields must extend the event
 | Feature `references`; reference `category`, `icon`, `svgElements`, `navigate` | Type/category/static icon data discoverable; navigation binding remains until entity-opening callers migrate |
 | Reference categories `id`, `label`, `primaryIcon`; provider `category`, `useItems` | Category/provider identity and icon data discoverable; live reactive items require that provider's execution and disposal |
 | Content sources/datasets/formats and compiled `content.json` | Declared keys, formats, entity targets and compiled indexes/assets; rows written by appliers are not discovery results |
-| Manifest `typesEntry`, plugin/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
+| Manifest `features.<id>.types`, plugin/system contracts and snapshot `defs`, `types`, `flowHelpers`, `provenance` | Build inputs materialize type/event/facade assets and true dependency ownership; source paths alone are insufficient installed discovery |
 | Manifest `build`, `$schema`, `$manifestVersion`, license/description/version/dependencies/host range | Build options are authoring inputs; compatibility/identity metadata is data; descriptive permissions do not establish grants |
 
 Current consumers confirmed: backend registration/defaults stores, frontend registration/default selection,

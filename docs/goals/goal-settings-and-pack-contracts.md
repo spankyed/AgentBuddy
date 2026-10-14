@@ -3031,3 +3031,42 @@ M4's inspected authoring design is committed in `eaa187b07`. Feature purpose and
 authoring remain next, followed by all M5/M6 and remaining discovery, navigation, frontend boundaries
 and three Phase 6 workstreams. Final strict `--all` on committed source and requirement-by-requirement
 audit remain mandatory. The unrelated issue draft remains untracked; no work is archived.
+
+
+### Explicit feature type modules — M4 authoring checkpoint (2026-10-14)
+
+Source `0e65ece42` replaces `typesEntry` with optional `types`, a pack-root-relative TypeScript
+module whose public types are re-exported. Generation reads only declared modules; conventional
+feature files and `export-types.ts` companions no longer create contributions implicitly. One
+resolver serves generation and validation; doctor already uses that validation. It handles explicit
+extensions and directory barrels, and rejects absolute, escaping and external symlink targets.
+Scaffolding declares its generated type module. Default-setup declares eleven modules and explicitly
+composes its three companion export files, preserving the public facade without widening shapes or EARS.
+
+Schema, API report, real manifests, external fixture, authoring tests and public docs moved together.
+JSON Schema exposes the module-versus-single-export restriction. Corrected stale designation guidance
+and the typed-EARS guide's obsolete Settings-entity claim. Native type/facade production remains part
+of the full native discovery audit; this source checkpoint does not certify that work complete.
+
+Evidence:
+- Final focused schema/generation/validation: 81 passed. Inference, containment and module-reference
+  restriction mutations each failed named assertions; exact source restored. Logs:
+  `/private/tmp/apack-m4-types-{inference,containment,reference}-mutation.log`.
+- Baseline `/private/tmp/apack-m4-types-baseline`: generated EARS and all six compiled content files
+  remain byte-identical. The published facade report passes unchanged.
+- Full strict first run passed in 646.3s. Final reviewed source passed all 30 strict steps in 613.4s:
+  host 4,432 tests, pack 855 plus two existing skips, integration 639, real Electron app 174.8s,
+  smoke 5.3s, and packaged authoring/app checks. Evidence:
+  `node_modules/.cache/apack-chain/runs/2026-10-14T07-42-34Z-24389`,
+  `/private/tmp/apack-m4-types-strict-reviewed.log`. Diff/schema/API review and diff checks passed.
+- A new agreement test caught a stale generated schema during parallel preparation. Serial
+  regeneration resolved the mismatch; the generator imports source, so stale SDK output was not
+  established as the cause.
+- An unrelated draft had become staged during validation and was accidentally included in the
+  initial commit. Amended only that new commit to exclude it and restored its staged addition;
+  its contents were preserved. Future commits use explicit paths, including commit path selection.
+
+M4 remains in progress: required feature descriptions, declared scaffold forms and remaining
+authoring/target checks come next. M5/M6, full discovery, navigation, boundaries and all three Phase 6
+workstreams remain required. Final strict `--all` on committed source and the complete requirement
+audit remain mandatory. Nothing is archived.
