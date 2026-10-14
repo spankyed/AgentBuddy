@@ -2939,3 +2939,44 @@ Validation:
 M1 is complete. Continue M2 relations, then M3–M6 before expanding discovery. The entire remaining
 goal, including all three Phase 6 workstreams, stays active; final committed-source strict `--all`
 and the complete reconciled requirement audit remain mandatory at closure. Nothing is archived.
+
+
+### Relation vocabulary consolidation — M2 (2026-10-14)
+
+Source checkpoint `3ff590240` replaces authored root `relKinds` maps with `data.relations` wire lists.
+All authored packs were inspected: their constants are already the uppercase wire names. The
+predecessor's claim that the old schema enforced that convention was incorrect; new validation now
+makes it explicit. Native declarations use the same vocabulary and checked runtime membership.
+`data-declaration.ts` and `PackDataDeclarations` provide one shared input for entity ownership/shapes
+and relation vocabulary, avoiding separate intersected data interfaces. `_packRelationTypes` feeds
+codegen, provenance, schema/Packs inspection and runtime admission. Runtime/snapshot EARS maps remain
+flat derived artifacts. No compatibility handling, aliases or conversion paths were introduced.
+
+Schemas, templates, authored/native fixtures, all readers, CLI authoring, API reports and public docs
+moved together. A source-free installed fixture with a poisoned executable proves relation discovery
+without activation. Byte comparison against `/private/tmp/apack-m2-baseline` preserved generated
+`ears.ts` and all six compiled content files exactly; the existing facade report still passes unchanged.
+
+Validation:
+- SDK schema/projection/provenance/generation checks: 124 tests; host/API/CLI focused: 219; actual
+  dependent-pack typing/completions and provenance integrations: 15; console fixture: three.
+- Removed duplicate-wire checks, uppercase enum derivation, SDK reservation checks and offline reader
+  projection in separate mutations. Each failed assertions; exact source restored, then 21 checks
+  passed. Logs: `/private/tmp/apack-m2-{duplicate,enum,reserved,offline}-mutation.log`.
+- Strict checkpoint passed in 380.7s (16/30 cached): full host run before the final pack-fixture repair
+  passed 4,425 tests; final host subset passed 945, pack 855 plus two existing skips, integration 639.
+  Actual Electron app (168.1s), smoke (5.0s), packaged author (56.2s) and packaged app (7.7s) passed.
+  Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T06-26-58Z-64383`,
+  `/private/tmp/apack-m2-strict-console-repaired.log`; full host evidence:
+  `node_modules/.cache/apack-chain/runs/2026-10-14T06-24-23Z-57682/test-unit-host.log`.
+- Strict caught one test-fixture inference error and a console fixture's lowercase enum alias; fixed
+  the fixtures without widening production types. Reviewed schema/API diffs; `git diff --check` passed.
+- The prompt draft disappeared during this work, leaving the untracked scope-loss issue's link broken.
+  Repaired only that reference to the active consolidation plan; its draft remains untracked and was
+  excluded from source commits. Documentation-link checks passed all six tests.
+
+M2 is complete. M3 must cover native lifecycle metadata and checked membership as well as the authored
+root move; native declarations currently have no lifecycle field. Preserve execution/content identity,
+then finish M4–M6 and the entire remaining discovery/settings/navigation/boundaries/Phase 6 goal.
+Final committed-source strict `--all` and the complete requirement audit remain required; nothing is
+archived or declared globally complete.

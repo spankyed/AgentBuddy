@@ -1,6 +1,6 @@
 # Complete the manifest consolidation
 
-Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`; M2–M6 remain required.
+Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3–M6 remain required.
 
 This restores unfinished outcomes from the [manifest redesign](../archive/goals/goal-manifest-redesign.md),
 [convention-first plan](../archive/plans/manifest-convention-first.md),
@@ -18,10 +18,10 @@ A landed result still needs its applicable regression checks in the final requir
 
 | Decision | Intended outcome and disposition | Current evidence and remaining acceptance | Checkpoint |
 |---|---|---|---|
-| 1 | Group by concern and write a stable, readable manifest. Required; replace the obsolete exact root-key count/order with ordering for the current schema. | M1 removed root `entities`/`entityShapes`. Root `relKinds`/`boot` remain in SDK `manifest-schema.ts`. CLI `add/manifest.ts:writeManifest` only stringifies insertion order. Centralize root/feature/extension field order; every authoring writer uses it. Preserve contribution-member and array order where it affects behavior. | M1–M6 |
+| 1 | Group by concern and write a stable, readable manifest. Required; replace the obsolete exact root-key count/order with ordering for the current schema. | M1 removed root `entities`/`entityShapes`. M2 moved relations to `data.relations`; root `boot` remains in SDK `manifest-schema.ts`. CLI `add/manifest.ts:writeManifest` only stringifies insertion order. Centralize root/feature/extension field order; every authoring writer uses it. Preserve contribution-member and array order where it affects behavior. | M1–M6 |
 | 2 | One module/export reference syntax. Required for shape references; retain objects that carry actual metadata. | M1 uses `path#export` shape declarations, the shared module-reference parser/grammar and purpose-specific TypeScript export checking. Component entry/load objects remain intact. Audit other genuine module/export duplication in M4; preserve named/default export semantics. Module-only type barrels must retain their explicit export-star semantics rather than pretend to be default value exports. | M1, M4 |
 | 3 | Declare an entity and its shape once, under its owning feature or `data.entities`. Required. | Implemented in `2fff8bb76`: `_packEntities` is the normalized ownership/shape projection; `_packEntityTypes` derives flat wire identities for generation, schema/Packs inspection, bindings and provenance. Native declarations use the same grammar and checked runtime identities. `SearchIndex`/`IndexedDoc` remain null/untyped; source-free poisoned-runtime discovery and two empty-reader mutations passed. Flat compiled types and EARS behavior are preserved. | M1 |
-| 4 | Replace root relation identity maps with pack-level `data.relations` wire values. Required. | Root `relKinds` remains. Current schema checks names/values, so derive the same constants from the same wire strings. Prove generated EARS, relation types, collisions and dependency provenance unchanged. | M2 |
+| 4 | Replace root relation identity maps with pack-level `data.relations` wire values. Required. | Implemented in `3ff590240`: snake_case wire lists, uppercase derived constants, one shared data declaration/projection module, duplicate/SDK reservation checks, native exact binding admission, schema assistance and all current readers. EARS and compiled content stayed byte-identical; collisions, dependency provenance, offline and actual runtime paths passed. | M2 |
 | 5 | Remove partition-policy machinery; proposed `volatile` addition needed a separate real storage requirement. Excluded under the settled storage scope. | The predecessor itself records removal and says not to add volatility without an actual need. Do not recreate it, widen entity values for it, or require its obsolete external-pack test. Retain existing storage behavior; general storage work remains separate. | Preservation |
 | 6 | Designation is a role distinct from feature id, with collision checks. Landed; preserve. | `validate.ts:validateFeatures` checks role collisions without requiring equality; `FeatureEntrySchema.designation` is a string. Recheck nonmatching role/id, within-pack and cross-pack conflicts through actual registration. | M4/final |
 | 7 | Explicit feature contributions, useful authoring layout and consistent type-module naming. The `provides`/inferred-existence mechanism is replaced, not its tool agreement. | Current keyed features and explicit targets are the authority. Retain pack-root-relative declared paths, ownership/import boundaries and named missing-target failures. Consolidate supported scaffold layout across add/doctor/validation/codegen/docs. Include the original `typesEntry` → `types` authoring rename, preserving type-barrel semantics. | M4 |
@@ -106,7 +106,9 @@ These are completion obligations, not optional later improvements.
    Preserve EARS identities/types, dependency diamonds, collisions and actual external runtime relationships.
 3. **M3 — lifecycle.** Reuse current explicit hook targets and checked membership under `lifecycle`;
    keep no opaque aggregate thunk/module discovery. Preserve hydration/migration/apply/shutdown order,
-   resource cleanup and content apply identity. A manifest root rename need not rename every useful
+   resource cleanup and content apply identity. Native declarations currently lack lifecycle metadata;
+   add the same explicit targets and check native binding membership/callability before publication.
+   A manifest root rename need not rename every useful
    internal registration/runtime type; document the boundary explicitly.
 4. **M4 — feature purpose and authoring contract.** Require descriptions, settle the feature `types`
    module syntax from its actual export-star reader, shared scaffold/layout/target resolution and early

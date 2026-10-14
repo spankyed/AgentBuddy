@@ -77,7 +77,7 @@ the settings plan, as that goal already specifies.
 | Conventional implementation paths | Required M4 shared layout for supported scaffold conventions and tool/doc agreement; no implicit existence or forced file renaming. Extra conveniences remain optional |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | M1 implemented in `2fff8bb76`: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
-| Relation identity maps | Required M2: `data.relations` wire values with unchanged generated constants/types and collision/provenance behavior |
+| Relation identity maps | M2 implemented in `3ff590240`: `data.relations` wire lists, unchanged generated EARS/content, validated names/uniqueness/reservations, native bindings and collision/provenance behavior |
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
 | `boot`/`lifecycle` metadata | Required M3: current explicit checked hook bindings under declarative `lifecycle`; preserve order and prevent syntax-only content reapplication |
 | Module-reference syntax | Required M1/M4: shape references use `path#export`; one parser/refusal contract, retaining richer component/loading declarations and explicit type-barrel semantics |
