@@ -2897,3 +2897,5 @@ Verification: every original decision number 1–17 occurs exactly once in the r
 local documentation links resolve; `git diff --check` passes. This is tracking/design repair, not runtime
 completion. The new scope-loss issue and recovery prompt remain unrelated untracked drafts. Start M1
 by pinning generated EARS/content/completion evidence, then implement the required consolidation.
+
+- M1 baseline: facade typing/completions passed all 10 tests under bundler/node16 resolution (`/private/tmp/apack-manifest-consolidation-completion-baseline.log`). Generated EARS and six compiled content files are pinned in `/private/tmp/apack-manifest-consolidation-baseline`; type references remain build-time only and installed discovery must require neither source files nor executable imports.
