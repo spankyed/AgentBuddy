@@ -3362,3 +3362,36 @@ M5 is complete together with inline checks `24bd9f116`. Proceed to M6 canonical 
 schema/docs coverage, then every remaining discovery/navigation/boundary/Phase 6 workstream. Final
 strict `--all` on committed source and the complete reconciled audit remain mandatory. Nothing is
 archived; the entire goal remains active.
+
+### Shared manifest writer — M6 checkpoint (2026-10-14)
+
+Source `4bd88f6c9` centralizes manifest serialization/writing in the CLI's `manifest-writer.ts`.
+Root, feature-definition and extension-kind field order comes directly from the current schemas,
+without a second authored field inventory or an obsolete root-key count/order. Feature IDs, named
+contribution/dependency/entity maps, arrays and custom settings/schema properties retain authored
+order. Serialization does not mutate input and is idempotent. Init/add and the release version
+editor use the same writer; release scripts/workflows are not changed or executed, and no current
+release/version metadata is edited. Public/contributor docs state the ordering boundary.
+
+Evidence: the serializer regression verifies exact structural order, retained data/order, unchanged
+input and idempotence. Removing root ordering failed its named assertion; exact source restored
+(`/private/tmp/apack-m6-writer-order-mutation.log`). CLI compilation passed. Real authoring and
+isolated release-editor tests passed (38). The first scaffold run refused stale testing/tooling
+packages; refreshed them before the passing run. The unit's first expected root order placed
+dependencies differently from the schema; corrected that expectation to the chosen schema order,
+retaining all preservation assertions. Audited all authoring writes; no direct manifest stringify
+remains in those paths outside the shared serializer.
+
+Strict passed in 442.1s (1/30 cached): affected host 3,063 tests, pack 855 plus two existing skips,
+integration 653, external contract/app, smoke and both packaged-authoring halves. Actual app 155.4s,
+smoke 4.8s, authoring 53.8s and packaged app 7.9s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T12-38-22Z-29382`,
+`/private/tmp/apack-m6-writer-strict.log`. EARS and six compiled content files remain byte-identical
+to `/private/tmp/apack-m4-description-baseline`; schema/API/facade checks pass unchanged. Reviewed
+thirteen committed paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M6 remains required for complete meaningful schema descriptions, editor completion/diagnostics,
+version/range validation and final public/native/installed/shipped artifact documentation. Then
+finish all remaining discovery/navigation/boundary/Phase 6 requirements. Final strict `--all` on
+committed source and the full reconciled audit remain mandatory. Nothing is archived; the full
+goal remains active.
