@@ -2496,3 +2496,37 @@ remaining native/source provenance and static readers, then shell eligibility/re
 and stale delivery. Frontend boundaries, supported consumed APIs, dependency identity, remaining replacement
 acceptance and final requirement audit remain required. Final strict --all on finished committed source
 and archival remain due. No unfinished plan is archived or requirement moved out of the active scope.
+
+
+### Canonical reference identity prerequisite checkpoint (2026-10-13)
+
+`fe32a83ba` fixes a reachable writer/parser defect: the picker stored entity ids but HTML/Markdown
+serialization used short codes, and Threads sends the Markdown output. References now write encoded
+entity ids, decode once, preserve presentation separately and escape Markdown labels. Empty/malformed
+targets are refused; unknown types/missing ids do not fall back to thread navigation. Updating a node
+view also updates its click target, eliminating delivery to the original entity after a visual update.
+The owning entity-opening plan's Phase 0 now describes this canonical contract instead of requiring
+an implicit lookup of saved short-code URLs. No legacy reader, conversion or fake actor is introduced.
+
+Eight actual Tiptap HTML/Markdown/DOM tests pass, with typechecking. They verify thread/document
+identity, duplicate display codes, encoded punctuation, invalid links and updated click delivery.
+Restoring short-code serialization fails four cases; restoring the stale closure fails the update
+case; exact source is restored and all eight checks pass again. Descriptor callbacks are stand-ins,
+so this proves identity delivery, not the full entity destination/readiness coordinator.
+
+The pack declares the already available editor/DOM test dependencies. An offline install initially
+selected newer cached Tiptap packages; the original locked resolutions were restored. Comparison of
+every lockfile entry proves only default-setup dev-dependency metadata differs. Node's binary globals
+remain intact while the tests install DOM globals locally, avoiding the documented esbuild/jsdom realm
+conflict. Production data, application release versions and existing package resolutions are unchanged.
+
+Strict validation passes all 30 gates in 491.1 seconds (none cached), including full units/integration,
+actual external app, smoke and both packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T00-51-53Z-23984`;
+`/private/tmp/apack-reference-identity-strict.log`.
+
+Continue declarative references/categories/providers and remaining contribution kinds/native metadata,
+complete freshness/static readers, entity destinations/readiness/stale delivery, frontend boundaries,
+supported consumed APIs, dependency provenance and remaining replacement acceptance. Final goal-wide
+requirement audit, strict --all on finished committed source and archival remain required. This
+prerequisite checkpoint completes none of those broader phases or the full goal.
