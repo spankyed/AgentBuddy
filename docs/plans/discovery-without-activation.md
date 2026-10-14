@@ -1451,3 +1451,46 @@ external contributions in an already-open editor, provider disposal and disabled
 Remove the pack-local aggregate when that migration lands. Complete all remaining contribution kinds,
 native/freshness checks, entity routing, boundaries, Phase 6 workstreams and final committed --all.
 Transport is delivered; discovery consumers and the owning goal remain unfinished.
+
+### Reference binding identity audit and prerequisite (2026-10-13)
+
+Before migrating readers, the active reference maps exposed only configurations. Global names could
+not identify the owning feature or distinguish an accepted binding from a declaration at that name.
+Extend each read entry with the qualified feature ref, declaration revision and host-supplied runtime/
+artifact revisions. Module registration owns its declaration stamp; the host loader supplies executable
+identity separately. Capture only those identity fields, so unrelated caller fields cannot overwrite
+ownership. Native bindings must not manufacture installed/runtime receipt identities.
+
+Create immutable read entries once during candidate capture, rather than during table rebuilding.
+An unrelated pack change must retain entry identity; accepted replacement must change it. This gives
+provider scopes a precise replacement signal and prevents unnecessary restarts. Membership/collision
+admission and accepted metadata remain unchanged. These maps are executable availability, not the
+common declaration catalog; no reader may infer missing declarations from their contents.
+
+The next consumer migration still requires the SDK declaration read port, catalog-driven parsing/
+rendering/category discovery, scoped providers and an actual external reference contributor in a live
+editor. Eligibility must compare owner and declaration/accepted identity rather than treating a global
+name match as sufficient. Entity delivery/readiness still needs its separate planned coordinator.
+
+### Owned reference identity checkpoint (2026-10-13)
+
+Implemented the identity prerequisite above. Reference read entries retain qualified feature ownership,
+module declaration stamps and the runtime/artifact identity supplied by the host loader. The host
+captures only its identity fields; extra caller fields cannot overwrite ownership or the declaration
+stamp. Native entries omit installed/runtime identities rather than inventing receipts. Entries are
+immutable and stable across unrelated registry changes, while accepted replacement creates new entries.
+All existing readers/tests use the owned entry shape; no old-shape alias or fallback is retained.
+
+Twenty-one admission checks and 31 loader checks passed. Recreating entries while rebuilding tables
+failed the stability assertion; exact restoration passed all 21 admission cases. SDK reports agree.
+The strict chain passed all 30 gates in 543.3 seconds with no cached gates, including 4,362 host tests,
+839 pack tests (two existing skips), 639 integration tests, real external/default-fork Electron acceptance,
+smoke and both packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T02-40-19Z-74516`;
+log `/private/tmp/apack-reference-identity-strict.log`.
+
+Next deliver the declaration read port and catalog/editor/provider migration. The pack-local editor
+aggregate still exists as its current consumer and must be removed with that migration. Verify actual
+external references in an already-open editor, changed protocols/categories and provider disposal.
+This identity checkpoint does not complete discovery, entity readiness or the larger goal; all remaining
+kinds/native/freshness, boundaries, Phase 6 streams and final committed --all acceptance remain due.

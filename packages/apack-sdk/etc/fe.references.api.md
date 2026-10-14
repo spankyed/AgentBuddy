@@ -25,6 +25,20 @@ export interface CategoryItemsProvider {
 }
 
 // @public
+export interface ReferenceBinding<T> {
+    // (undocumented)
+    readonly artifactRevision?: string;
+    // (undocumented)
+    readonly binding: Readonly<T>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly runtimeRevision?: string;
+}
+
+// @public
 export interface ReferenceBindings {
     // (undocumented)
     categories: Record<string, {

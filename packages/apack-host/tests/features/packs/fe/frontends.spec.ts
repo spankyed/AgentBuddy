@@ -224,7 +224,8 @@ describe("a pack's frontend", () => {
     const registry = createFePackRegistry();
     await createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', id: 'ext', name: 'Ext', version: '1.0.0',
       manifest, declarationRevision: 'current', artifactRevision, feEntry: 'runtime/fe.js' });
-    expect(registry.referenceTypes().get('note')?.protocol).toBe('note');
+    expect(registry.referenceTypes().get('note')).toMatchObject({ featureRef: 'ext/refs',
+      declarationRevision: 'current', runtimeRevision: 'runtime', artifactRevision, binding: { protocol: 'note' } });
     expect(reads).toBe(1);
     expect(type.navigate).not.toHaveBeenCalled();
   });

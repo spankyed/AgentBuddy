@@ -30,8 +30,8 @@ describe('frontend reference admission', () => {
     expect(packs.referenceTypes().size).toBe(0);
     pending.commit();
     pending.dispose();
-    expect(packs.referenceTypes().get('note')?.navigate).toBe(f.navigate);
-    expect(packs.referenceCategories().get('notes')?.useItems).toBe(f.useItems);
+    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(f.navigate);
+    expect(packs.referenceCategories().get('notes')?.binding.useItems).toBe(f.useItems);
     expect(f.navigate).not.toHaveBeenCalled();
     expect(f.useItems).not.toHaveBeenCalled();
     expect(f.icon.render).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('frontend reference admission', () => {
     packs.registerPackFE(first.registration);
     expect(() => packs.registerPackFE(second.registration)).toThrow(`Reference ${kind}`);
     expect(() => packs.registerPackFE(second.registration)).toThrow('"first-pack/view" and "second-pack/view"');
-    expect(packs.referenceTypes().get('note')?.navigate).toBe(first.navigate);
+    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(first.navigate);
     expect(packs.hasPackFE('second-pack')).toBe(false);
   });
 
@@ -81,8 +81,8 @@ describe('frontend reference admission', () => {
     const bindSettings = vi.fn();
     expect(() => packs.replacePackFE({ ...candidate.registration, bindSettings })).toThrow('Reference types');
     expect(bindSettings).not.toHaveBeenCalled();
-    expect(packs.referenceTypes().get('other')?.navigate).toBe(second.navigate);
-    expect(packs.referenceTypes().get('note')?.navigate).toBe(first.navigate);
+    expect(packs.referenceTypes().get('other')?.binding.navigate).toBe(second.navigate);
+    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(first.navigate);
   });
 
   it('retires old keys on replacement and releases keys on removal', () => {
@@ -97,11 +97,49 @@ describe('frontend reference admission', () => {
     prepared.dispose();
     expect(packs.referenceTypes().has('note')).toBe(false);
     expect(packs.referenceCategories().has('notes')).toBe(false);
-    expect(packs.referenceTypes().get('other')?.navigate).toBe(replacement.navigate);
+    expect(packs.referenceTypes().get('other')?.binding.navigate).toBe(replacement.navigate);
     packs.unregisterPackFE('first-pack');
     expect(packs.referenceTypes().size).toBe(0);
     expect(packs.referenceCategories().size).toBe(0);
     expect(() => packs.registerPackFE(fixture('new-pack', 'other', 'other', 'other').registration)).not.toThrow();
+  });
+
+  it('retains owner and host-supplied identities with stable entries across unrelated changes', () => {
+    const packs = createFePackRegistry();
+    const first = fixture('first-pack');
+    const registration = { ...first.registration, declarationRevision: 'declaration-one' };
+    const identity = { runtimeRevision: 'runtime-one', artifactRevision: 'artifact-one',
+      featureRef: 'not-owner/view', declarationRevision: 'not-owner-declaration' };
+    const prepared = packs.preparePackFE(registration, undefined, false, identity);
+    prepared.commit(); prepared.dispose();
+    const type = packs.referenceTypes().get('note')!;
+    const category = packs.referenceCategories().get('notes')!;
+    expect(type).toMatchObject({ featureRef: 'first-pack/view', declarationRevision: 'declaration-one', runtimeRevision: 'runtime-one', artifactRevision: 'artifact-one' });
+    expect(category.featureRef).toBe('first-pack/view');
+    identity.runtimeRevision = 'changed caller';
+    expect(type.runtimeRevision).toBe('runtime-one');
+    packs.registerPackFE(fixture('second-pack', 'other', 'other', 'other').registration);
+    expect(packs.referenceTypes().get('note')).toBe(type);
+    expect(packs.referenceCategories().get('notes')).toBe(category);
+    expect(Reflect.set(type, 'featureRef', 'other/view')).toBe(false);
+    const replacement = fixture('first-pack');
+    const next = packs.preparePackFE({ ...replacement.registration, declarationRevision: 'declaration-two' }, undefined, true,
+      { runtimeRevision: 'runtime-two', artifactRevision: 'artifact-two' });
+    next.commit(); next.dispose();
+    expect(packs.referenceTypes().get('note')).not.toBe(type);
+    expect(packs.referenceTypes().get('note')?.runtimeRevision).toBe('runtime-two');
+    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(replacement.navigate);
+  });
+
+  it('does not manufacture installed identities for native bindings', () => {
+    const f = fixture();
+    const packs = createFePackRegistry({ nativeDeclarations: [f.declaration] });
+    packs.registerPackFE(f.registration);
+    const binding = packs.referenceTypes().get('note')!;
+    expect(binding.featureRef).toBe('notes-pack/view');
+    expect(binding).not.toHaveProperty('artifactRevision');
+    expect(binding).not.toHaveProperty('runtimeRevision');
+    expect(binding).not.toHaveProperty('declarationRevision');
   });
 
   it('publishes current lookups once on commit/removal, and never for refusal or disposal', () => {
@@ -130,7 +168,7 @@ describe('frontend reference admission', () => {
       get: () => ++reads === 1 ? 'note' : 'changed' });
     const packs = createFePackRegistry({ nativeDeclarations: [f.declaration] });
     packs.registerPackFE(f.registration);
-    expect(packs.referenceTypes().get('note')?.protocol).toBe('note');
+    expect(packs.referenceTypes().get('note')?.binding.protocol).toBe('note');
     expect(reads).toBe(1);
   });
 
@@ -141,10 +179,10 @@ describe('frontend reference admission', () => {
     f.bindings.types.note.protocol = 'changed';
     f.bindings.categories.notes.label = 'Changed';
     const types = packs.referenceTypes();
-    expect(types.get('note')?.protocol).toBe('note');
-    expect(Reflect.set(types.get('note')!, 'protocol', 'mutated')).toBe(false);
-    expect(Reflect.set(types.get('note')!.svgElements[0][1], 'd', 'mutated')).toBe(false);
-    expect(packs.referenceCategories().get('notes')?.label).toBe('notes');
+    expect(types.get('note')?.binding.protocol).toBe('note');
+    expect(Reflect.set(types.get('note')!.binding, 'protocol', 'mutated')).toBe(false);
+    expect(Reflect.set(types.get('note')!.binding.svgElements[0][1], 'd', 'mutated')).toBe(false);
+    expect(packs.referenceCategories().get('notes')?.binding.label).toBe('notes');
     (types as Map<string, unknown>).clear();
     expect(packs.referenceTypes().size).toBe(1);
   });

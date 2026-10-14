@@ -169,7 +169,8 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         try { checkCurrent(); }
         catch (error) { settings?.dispose(); throw error; }
         // The prepared registry owns provisional authority; publication and CSS share one host commit.
-        prepared = packs.preparePackFE(registration, settings, packs.hasPackFE(pack.id));
+        prepared = packs.preparePackFE(registration, settings, packs.hasPackFE(pack.id),
+          { runtimeRevision: pack.runtimeRevision, artifactRevision: pack.artifactRevision });
         checkCurrent();
         return prepared.commit(() => { checkCurrent(); commitStyles(); });
       } catch (error) {

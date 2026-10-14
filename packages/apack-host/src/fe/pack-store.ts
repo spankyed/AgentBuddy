@@ -1,6 +1,6 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
-import type { ReferenceTypeConfig, ReferenceBindings } from '@apackdev/sdk/fe/references';
+import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
 import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
@@ -15,6 +15,17 @@ import { createLogger } from '@apackdev/sdk/logger';
 import type { NativePackDeclaration } from '@apackdev/sdk/framework';
 import { captureFrontendReferences } from './reference-bindings.ts';
 import { frontendBindingProblem } from './declaration-binding.ts';
+
+/** Supplied by the host loader, separate from a module's authored registration. */
+export interface FrontendIdentity {
+  runtimeRevision: string;
+  artifactRevision?: string;
+}
+
+type OwnedReferenceBindings = {
+  types: Record<string, ReferenceBinding<ReferenceTypeConfig>>;
+  categories: Record<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
+};
 
 type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
 
@@ -31,7 +42,7 @@ export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
   registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
   /** Prepare a fresh or replacement frontend without publishing it; disposal cancels only this candidate. */
-  preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean): PreparedFrontend;
+  preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean, identity?: FrontendIdentity): PreparedFrontend;
   /** Replace an existing owner; failure preserves its accepted resources. */
   replacePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
   hasPackFE(packId: string): boolean;
@@ -92,7 +103,7 @@ interface FrontendContributions {
   tiptapPlugins: TiptapPlugin[];
   appExtensions: Array<readonly [string, SettingsForm]>;
   dslTypes: Array<readonly [string, DslTypeConfig]>;
-  references: Array<readonly [FeatureRef, ReferenceBindings]>;
+  references: OwnedReferenceBindings[];
   bindSettings: PackFERegistration['bindSettings'];
 }
 
@@ -102,8 +113,10 @@ function captureReferenceType(type: ReferenceTypeConfig): ReferenceTypeConfig {
   return Object.freeze({ ...type, svgElements: Object.freeze(svgElements) });
 }
 
-function capture(registration: PackFERegistration): FrontendContributions {
+function capture(registration: PackFERegistration, identity?: FrontendIdentity): FrontendContributions {
   const reg = addressed({ ...registration });
+  const runtimeRevision = identity?.runtimeRevision;
+  const artifactRevision = identity?.artifactRevision;
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
@@ -113,12 +126,20 @@ function capture(registration: PackFERegistration): FrontendContributions {
         ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
       ...Object.entries(reg.settingsForms ?? {}).map(([id, component]) => [formKey({ kind: 'pack', packId: reg.id, groupId: id }), component] as const),
     ],
-    references: Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.references
-      ? [[resolveName(id, reg.id), {
-        types: Object.fromEntries(Object.entries(feature.references.types).map(([name, type]) => [name,
-          captureReferenceType(type)])),
-        categories: Object.fromEntries(Object.entries(feature.references.categories).map(([name, category]) => [name, Object.freeze({ ...category })])),
-      }] as const] : []),
+    references: Object.entries(reg.features ?? {}).flatMap(([id, feature]) => {
+      const references = feature.references;
+      if (!references) return [];
+      const owner = { featureRef: resolveName(id, reg.id),
+        ...(reg.declarationRevision !== undefined ? { declarationRevision: reg.declarationRevision } : {}),
+        ...(runtimeRevision !== undefined ? { runtimeRevision } : {}),
+        ...(artifactRevision !== undefined ? { artifactRevision } : {}) };
+      return [{
+        types: Object.fromEntries(Object.entries(references.types).map(([name, type]) => [name,
+          Object.freeze({ ...owner, binding: captureReferenceType(type) })])),
+        categories: Object.fromEntries(Object.entries(references.categories).map(([name, category]) => [name,
+          Object.freeze({ ...owner, binding: Object.freeze({ ...category }) })])),
+      }];
+    }),
     steps: (reg.steps ?? []).map(value => [value.type, value]),
     artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
     blocks: (reg.blocks ?? []).map(value => [value.type, value]),
@@ -138,8 +159,8 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPlugin[] = [];
-  const referenceTypes = new Map<string, ReferenceTypeConfig>();
-  const referenceCategories = new Map<string, ReferenceBindings['categories'][string]>();
+  const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
+  const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
   const referenceOwners = { types: new Map<string, FeatureRef>(), protocols: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
   const claim = (kind: keyof typeof referenceOwners, name: string, owner: FeatureRef) => {
     const previous = referenceOwners[kind].get(name);
@@ -147,14 +168,14 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     referenceOwners[kind].set(name, owner);
   };
   for (const pack of packs) {
-    for (const [owner, references] of pack.references) {
+    for (const references of pack.references) {
       for (const [name, type] of Object.entries(references.types)) {
-        claim('types', name, owner);
-        claim('protocols', type.protocol, owner);
+        claim('types', name, type.featureRef);
+        claim('protocols', type.binding.protocol, type.featureRef);
         referenceTypes.set(name, type);
       }
       for (const [name, category] of Object.entries(references.categories)) {
-        claim('categories', name, owner);
+        claim('categories', name, category.featureRef);
         referenceCategories.set(name, category);
       }
     }
@@ -239,7 +260,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
       return prepareChange(id, next, buildTables(next.values()), undefined, []);
     });
   }
-  function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
+  function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false, identity?: FrontendIdentity): PreparedFrontend {
     registration = captureFrontendReferences(registration);
     const declaration = native.get(registration.id);
     if (declaration) {
@@ -253,7 +274,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
         const { id, ...definition } = registration;
         if (accepted.has(id) !== replacing) throw new Error(replacing
           ? `Pack "${id}" frontend is not registered` : `Pack "${id}" frontend is already registered`);
-        const candidate = capture({ ...definition, id });
+        const candidate = capture({ ...definition, id }, identity);
         const next = new Map(accepted);
         next.set(id, candidate);
         buildTables(next.values());

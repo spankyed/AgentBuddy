@@ -66,8 +66,8 @@ export interface FePackRegistryView extends PackExtensionsView {
     onChanged(listener: (packId: string) => void): () => void;
     plugins(): Plugin_2[];
     // (undocumented)
-    referenceCategories(): ReadonlyMap<string, Readonly<ReferenceBindings['categories'][string]>>;
-    referenceTypes(): ReadonlyMap<string, Readonly<ReferenceTypeConfig>>;
+    referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
+    referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
     // (undocumented)
     tiptapPlugins(): TiptapPlugin[];
 }

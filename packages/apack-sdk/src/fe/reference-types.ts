@@ -1,3 +1,4 @@
+import type { FeatureRef } from '../ids/refs.ts'
 import type { Component, Ref } from 'vue'
 
 import type { ReferenceSvgElement } from '../framework/reference-declaration.ts'
@@ -40,4 +41,13 @@ export interface ReferenceBindings {
     icon: Component
     useItems(): Readonly<Ref<ReferenceItem[]>>
   }>
+}
+
+/** An accepted reference contribution and the identity the host admitted it under. */
+export interface ReferenceBinding<T> {
+  readonly featureRef: FeatureRef
+  readonly declarationRevision?: string
+  readonly runtimeRevision?: string
+  readonly artifactRevision?: string
+  readonly binding: Readonly<T>
 }
