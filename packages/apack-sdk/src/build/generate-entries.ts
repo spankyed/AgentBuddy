@@ -1,3 +1,4 @@
+import { resolveTypeModule } from './type-module.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
@@ -844,10 +845,6 @@ ${items.join('\n')}
   }
 
 
-  function typesEntry(feature: PackFeature): string {
-    return feature.typesEntry ?? `src/features/${feature.id}/be/types`;
-  }
-
   /**
    * The steps this pack declares, each with the directory its modules sit in. A step's `types.ts` and
    * `helpers.ts` are read from there, because they sit beside the facets rather than being declared — the
@@ -1578,25 +1575,12 @@ ${entries}
   }
 
   function generateTypes(): string {
-    // Every feature, not only the ones with a system: the barrel is how one feature names another's types
-    // (`#generated/types`), and a feature may have repositories or services and no system at all — whose argument
-    // and return types are exactly what its callers need. Having a types module is what decides, below.
-    const features = packFeatures(manifest);
-
-    const perFeature = features.map(f => {
-      const lines: string[] = [];
-      const tPath = typesEntry(f);
-      const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');
-      if (existsSync(fullTypesPath)) {
-        lines.push(`export type * from '${toImportPath(root, tPath)}';`);
-      }
-      const exportTypesPath = tPath.replace(/types$/, 'export-types');
-      const fullExportTypesPath = join(root, exportTypesPath) + '.ts';
-      if (existsSync(fullExportTypesPath)) {
-        lines.push(`export type * from '${toImportPath(root, exportTypesPath)}';`);
-      }
-      return lines.join('\n');
-    }).filter(Boolean).join('\n\n');
+    // Type contributions are independent of systems; only explicitly declared modules enter the barrel.
+    const perFeature = packFeatures(manifest).flatMap(({ id, types }) => {
+      if (types === undefined) return [];
+      const source = resolveTypeModule(root, types, `Feature "${id}": types`);
+      return [`export type * from '${toImportPath(root, source)}';`];
+    }).join('\n\n');
 
     const nodeTypes = stepNodeTypes();
     const nodeEntity = nodeTypes.length

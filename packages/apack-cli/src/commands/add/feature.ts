@@ -92,6 +92,7 @@ export async function addFeature(args: string[], root: string) {
     settings: { schema: { type: 'object', additionalProperties: false }, defaults: {} },
     system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },
     plugin: { label, icon, state: `src/features/${name}/fe/state.ts`, canvas: `src/features/${name}/fe/canvas/list.vue`, defaultVisible: true, contract: `src/features/${name}/fe/contract.ts#Contract` },
+    types: `src/features/${name}/be/types.ts`,
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,

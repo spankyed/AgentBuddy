@@ -445,7 +445,7 @@ export const FeatureEntrySchema = z.object({
   entities: EntitiesSchema.describe('Entities owned by this feature; placement does not change their wire names.').optional(),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: SettingsDefinitionSchema.describe('Declarative feature preferences: effective-value schema and explicit defaults.').optional(),
-  typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
+  types: z.string().min(1).regex(/^[^#]+$/, 'Must name a TypeScript module, not a single export').describe('Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema

@@ -1,3 +1,4 @@
+import { resolveTypeModule } from './type-module.ts';
 import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import * as fs from 'node:fs';
@@ -55,9 +56,6 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
       ...(feature.references ? _referenceTargets(feature.references).map(([field, target]): [string, string] => [`references.${field}`, target.split('#')[0]!]) : []),
       ['system.entry', feature.system?.entry],
       ...(feature.plugin ? _pluginTargets(feature.plugin).map(([field, target]): [string, string] => [`plugin.${field}`, target.split('#')[0]!]) : []),
-      // Written without its extension, as codegen reads it. A typo here costs the feature its types in
-      // `#generated/types` and says nothing, which is worth a word at validate time
-      ['typesEntry', feature.typesEntry?.endsWith('.ts') === false ? `${feature.typesEntry}.ts` : feature.typesEntry],
     ];
     for (const [field, file] of files) {
       if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
@@ -66,6 +64,14 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
           path: ['features', feature.id, ...field.split('.')], source: file,
           message: `Feature "${feature.id}": ${field} file "${file}" not found`,
         });
+      }
+    }
+    if (feature.types !== undefined) {
+      try { resolveTypeModule(packRoot, feature.types, `Feature "${feature.id}": types`); }
+      catch (error) {
+        diagnostics.push({ code: 'feature.type-module', severity: 'error', packId: manifest.id,
+          path: ['features', feature.id, 'types'], source: feature.types,
+          message: error instanceof Error ? error.message : String(error) });
       }
     }
     if (feature.designation !== undefined) {

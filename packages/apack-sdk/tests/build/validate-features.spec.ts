@@ -67,18 +67,30 @@ describe('validateFeatures', () => {
 
 // A feature's types module reaches the rest of the pack through `#generated/types`. A path that isn't there
 // contributes nothing and says nothing, so validate is where a typo in it surfaces.
-describe('typesEntry', () => {
+describe('types', () => {
+  it('resolves a declared directory barrel and refuses an escaping module', () => {
+    const root = pack(['src/public/index.ts']);
+    expect(messagesOf(validateFeatures(root, { features: { memos: { types: 'src/public' } } }))).toEqual([]);
+    for (const types of ['../outside.ts', path.join(root, 'src/public/index.ts')]) {
+      expect(messagesOf(validateFeatures(root, { features: { memos: { types } } }))[0])
+        .toContain('pack-root-relative and stay within the pack');
+    }
+    const outside = pack(['external.ts']);
+    fs.symlinkSync(path.join(outside, 'external.ts'), path.join(root, 'linked.ts'));
+    expect(messagesOf(validateFeatures(root, { features: { memos: { types: 'linked.ts' } } }))[0])
+      .toContain('type module must stay within the pack');
+  });
   it('accepts one whose module exists, written with or without its extension', () => {
     const root = pack([...memosFiles, 'src/features/memos/be/types.ts']);
-    for (const typesEntry of ['src/features/memos/be/types', 'src/features/memos/be/types.ts']) {
-      expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry } } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
+    for (const types of ['src/features/memos/be/types', 'src/features/memos/be/types.ts']) {
+      expect(validateFeatures(root, { features: { memos: { ...memos, types } } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
     }
   });
 
   it('reports one whose module is not there', () => {
     const root = pack(memosFiles);
-    expect(messagesOf(validateFeatures(root, { features: { memos: { ...memos, typesEntry: 'src/features/memos/be/typos' } } })))
-      .toEqual(['Feature "memos": typesEntry file "src/features/memos/be/typos.ts" not found']);
+    expect(messagesOf(validateFeatures(root, { features: { memos: { ...memos, types: 'src/features/memos/be/typos' } } })))
+      .toEqual(['Feature "memos": types: no TypeScript module found at src/features/memos/be/typos (.ts or /index.ts)']);
   });
 
   it('says nothing about a feature that declares none', () => {

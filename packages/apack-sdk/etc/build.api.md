@@ -489,7 +489,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }, unknown>>;
-    typesEntry: z.ZodOptional<z.ZodString>;
+    types: z.ZodOptional<z.ZodString>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
         contract: z.ZodOptional<z.ZodString>;
@@ -530,8 +530,8 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     plugin?: PluginDeclaration | undefined;
     references?: ReferenceDeclarations | undefined;
+    types?: string | undefined;
     designation?: string | undefined;
-    typesEntry?: string | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -546,8 +546,8 @@ export const FeatureEntrySchema: z.ZodObject<{
     settings?: unknown;
     plugin?: PluginDeclaration | undefined;
     references?: ReferenceDeclarations | undefined;
+    types?: string | undefined;
     designation?: string | undefined;
-    typesEntry?: string | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -681,7 +681,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             description?: string | undefined;
             access?: "owner" | "shared" | undefined;
         }, unknown>>;
-        typesEntry: z.ZodOptional<z.ZodString>;
+        types: z.ZodOptional<z.ZodString>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
             contract: z.ZodOptional<z.ZodString>;
@@ -722,8 +722,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -738,8 +738,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1397,8 +1397,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1538,8 +1538,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1679,8 +1679,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1820,8 +1820,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1961,8 +1961,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
+        types?: string | undefined;
         designation?: string | undefined;
-        typesEntry?: string | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;

@@ -24,7 +24,7 @@ describe('parseManifest', () => {
     expect(errorsOf({ data: { relations: ['holds'] } })).toEqual([]);
     // A name only an object's prototype has is a pack's to use
     expect(errorsOf({ data: { entities: { constructor: null, toString: null } } })).toEqual([]);
-    // Settings is a pack's entity (default-setup's)
+    // Settings is not an SDK-reserved entity name
     expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null }, relations: ['pinned'] }, })).toEqual([]);
   });
 
@@ -33,6 +33,17 @@ describe('parseManifest', () => {
     expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: 'src/types.ts#' } } }))[0]).toContain('path#exportName');
     expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: null } },
       features: { memos: { entities: { Memo: null } } } }))[0]).toContain('both "data" and "features.memos"');
+  });
+
+  it('keeps type-module validation and generated schema assistance consistent', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    const field = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf-8'))
+      .properties.features.additionalProperties.properties.types;
+    expect(new RegExp(field.pattern).test('src/public/types.ts')).toBe(true);
+    expect(new RegExp(field.pattern).test('src/public/types.ts#Memo')).toBe(false);
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { types: 'src/public/types.ts' } } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { types: 'src/public/types.ts#Memo' } } }))[0])
+      .toContain('Must name a TypeScript module, not a single export');
   });
 
   it('accepts a minimal valid manifest', () => {

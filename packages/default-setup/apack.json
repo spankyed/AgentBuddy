@@ -534,7 +534,8 @@
         "Thread": "src/features/threads/be/types.ts#ThreadEntity",
         "Message": "src/features/threads/be/types.ts#MessageEntity",
         "Artifact": "src/features/threads/be/types.ts#ArtifactEntity"
-      }
+      },
+      "types": "src/features/threads/be/types.ts"
     },
     "code": {
       "settings": {
@@ -818,7 +819,8 @@
       },
       "entities": {
         "Terminal": "src/features/code/be/repository/index.ts#TerminalEntity"
-      }
+      },
+      "types": "src/features/code/be/types.ts"
     },
     "notes": {
       "settings": {
@@ -998,7 +1000,8 @@
       },
       "entities": {
         "Note": "src/features/notes/be/types.ts#NoteEntity"
-      }
+      },
+      "types": "src/features/notes/be/types.ts"
     },
     "browser": {
       "designation": "browser",
@@ -1047,7 +1050,8 @@
       "entities": {
         "BrowserTab": "src/features/browser/be/types.ts#BrowserTabEntity",
         "BrowserBookmark": "src/features/browser/be/types.ts#BrowserBookmarkEntity"
-      }
+      },
+      "types": "src/features/browser/be/types.ts"
     },
     "library": {
       "settings": {
@@ -1191,7 +1195,8 @@
         "IndexedDoc": null,
         "Document": "src/features/library/be/types.ts#DocumentEntity",
         "Collection": "src/features/library/be/types.ts#CollectionEntity"
-      }
+      },
+      "types": "src/features/library/be/types.ts"
     },
     "flows": {
       "settings": {
@@ -1214,7 +1219,6 @@
         "title": "Flows",
         "form": "src/features/flows/fe/settings.vue"
       },
-      "typesEntry": "src/features/flows/be/types",
       "system": {
         "entry": "src/features/flows/be/system.ts",
         "contract": "src/features/flows/be/contract.ts#Contract"
@@ -1236,7 +1240,8 @@
       "repositories": {
         "flowsQueries": "src/features/flows/be/repository/index.ts#flowsQueries",
         "flowsCommands": "src/features/flows/be/repository/index.ts#flowsCommands"
-      }
+      },
+      "types": "src/features/flows/be/types"
     },
     "actions": {
       "settings": {
@@ -1316,7 +1321,8 @@
       "repositories": {
         "actionQueries": "src/features/actions/be/repository/index.ts#actionQueries",
         "actionCommands": "src/features/actions/be/repository/index.ts#actionCommands"
-      }
+      },
+      "types": "src/features/actions/be/types.ts"
     },
     "prompts": {
       "settings": {
@@ -1396,7 +1402,8 @@
       "repositories": {
         "promptQueries": "src/features/prompts/be/repository/index.ts#promptQueries",
         "promptCommands": "src/features/prompts/be/repository/index.ts#promptCommands"
-      }
+      },
+      "types": "src/features/prompts/be/types.ts"
     },
     "brain": {
       "designation": "brain",
@@ -1454,7 +1461,8 @@
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
         "brainCommands": "src/features/brain/be/repository/index.ts#brainCommands"
-      }
+      },
+      "types": "src/features/brain/be/types.ts"
     },
     "database": {
       "settings": {
@@ -1528,7 +1536,8 @@
       },
       "services": {
         "database": "src/features/database/be/services/database.ts#databaseService"
-      }
+      },
+      "types": "src/features/database/be/types.ts"
     },
     "logs": {
       "designation": "logs",
@@ -1580,7 +1589,8 @@
         "canvas": "src/features/logs/fe/canvas.vue",
         "isPinned": true
       },
-      "services": {}
+      "services": {},
+      "types": "src/features/logs/be/types.ts"
     }
   },
   "extensions": {

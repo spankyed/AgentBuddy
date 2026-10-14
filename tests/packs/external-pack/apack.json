@@ -76,7 +76,8 @@
       },
       "entities": {
         "Memo": "src/features/memos/be/types.ts#MemoEntity"
-      }
+      },
+      "types": "src/features/memos/be/types.ts"
     },
     "notes": {
       "settings": {

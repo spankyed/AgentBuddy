@@ -345,7 +345,7 @@ describe('the snapshot format', () => {
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
     entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
-    settings: true, system: true, typesEntry: true,
+    settings: true, system: true, types: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
@@ -405,7 +405,7 @@ describe('the snapshot format', () => {
       manifest: {
         fields: ['$manifestVersion', '$schema', 'build', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
-        feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        feature: ['designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
@@ -427,7 +427,7 @@ describe('the snapshot format', () => {
 
 // The barrel is how one feature names another's types (`#generated/types`). A feature may have repositories or
 // services and no system at all, and the types its callers need are the ones its repository and service signatures
-// use — so what decides is whether it has a types module, not whether it has a system.
+// use — so the declaration decides, independently of whether it has a system.
 describe('generated type barrel', () => {
   it("takes every feature's types module, with or without a system", async () => {
     write('src/features/records/be/types.ts', 'export interface RecordRow { id: string }');
@@ -438,8 +438,8 @@ describe('generated type barrel', () => {
     const files = await generatePackFiles(manifest({
       features: [
         // Data for the rest of the pack, and no system of its own
-        { id: 'records', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
-        system('memos'),
+        { id: 'records', types: 'src/features/records/be/types.ts', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
+        { ...system('memos'), types: 'src/features/memos/be/types' },
       ] as PackFeatureEntry[],
     }), { packRoot: root });
 
@@ -447,13 +447,30 @@ describe('generated type barrel', () => {
     expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/memos/be/types.ts';");
   });
 
-  it('leaves out a feature with no types module, whatever else it has', async () => {
+  it('leaves out undeclared modules even when conventional files exist', async () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+    write('src/features/memos/be/types.ts', 'throw new Error("must not execute"); export interface Memo {}');
+    write('src/features/memos/be/export-types.ts', 'export interface ExportedMemo {}');
 
     const files = await generatePackFiles(manifest({
       features: [system('memos')] as PackFeatureEntry[],
     }), { packRoot: root });
 
     expect(files['src/__generated__/types.ts']).not.toContain('features/memos/be/types');
+    expect(files['src/__generated__/types.ts']).not.toContain('export-types');
+  });
+
+  it('names the feature when a declared type module is missing', async () => {
+    await expect(generate({ features: { memos: { types: 'src/missing.ts' } } }))
+      .rejects.toThrow('Feature "memos": types: no TypeScript module found at src/missing.ts');
+  });
+
+  it('exports an explicitly located type barrel without executing it or probing companions', async () => {
+    write('src/public/index.ts', 'throw new Error("must not execute"); export type * from "./models.ts";');
+    write('src/public/models.ts', 'export interface Memo { text: string }');
+    write('src/public/export-types.ts', 'export interface Undeclared {}');
+    const files = await generate({ features: { memos: { types: 'src/public' } } });
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../public/index.ts';");
+    expect(files['src/__generated__/types.ts']).not.toContain('export-types');
   });
 });

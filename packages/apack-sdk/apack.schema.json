@@ -190,9 +190,11 @@
             "additionalProperties": false,
             "description": "Declarative feature preferences: effective-value schema and explicit defaults."
           },
-          "typesEntry": {
+          "types": {
             "type": "string",
-            "description": "Additional types to include in the generated type barrel."
+            "minLength": 1,
+            "pattern": "^[^#]+$",
+            "description": "Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference."
           },
           "system": {
             "type": "object",
