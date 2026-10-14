@@ -28,7 +28,22 @@ export interface CategoryItemsProvider {
 export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']>;
 
 // @public
+export function getReferenceCategoryBinding(name: string): ReferenceBinding<ReferenceBindings['categories'][string]> | undefined;
+
+// @public
+export function getReferenceCategoryDeclarations(): readonly ReferenceCategoryMetadata[];
+
+// @public
 export function getReferenceDeclarations(): readonly ReferenceCatalogEntry[];
+
+// @public
+export function getReferenceTypeBinding(name: string): ReferenceBinding<ReferenceTypeConfig> | undefined;
+
+// @public
+export function getReferenceTypeDeclaration(name: string): DeclarationData<ReferenceTypeDeclaration> | undefined;
+
+// @public
+export function onReferenceBindingsChanged(listener: () => void): () => void;
 
 // @public
 export function onReferenceDeclarationsChanged(listener: () => void): () => void;
@@ -57,6 +72,16 @@ export interface ReferenceBindings {
     }>;
     // (undocumented)
     types: Record<string, ReferenceTypeConfig>;
+}
+
+// @public (undocumented)
+export interface ReferenceCategoryMetadata {
+    // (undocumented)
+    readonly declaration: DeclarationData<ReferenceCategoryDeclaration>;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly id: string;
 }
 
 // @public (undocumented)

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
-import { getReferenceDeclarations, getReferenceCatalogStatus, onReferenceDeclarationsChanged } from '../../src/fe/reference-types.ts';
+import { getReferenceDeclarations, getReferenceCatalogStatus, onReferenceDeclarationsChanged,
+  getReferenceTypeDeclaration, getReferenceCategoryDeclarations } from '../../src/fe/reference-types.ts';
 import type { PackCatalogView, ReferenceCatalogEntry } from '../../src/framework/catalog-view.ts';
 import { resolveName } from '../../src/ids/refs.ts';
 
@@ -18,6 +19,8 @@ describe('frontend reference declaration access', () => {
     bindFeHost({ catalog, packs: forbidden as never, application: forbidden as never, client: forbidden as never, secrets: forbidden as never, settings: forbidden as never });
     expect(getReferenceDeclarations()).toBe(declarations);
     expect(getReferenceCatalogStatus()).toBe('ready');
+    expect(getReferenceTypeDeclaration('note')).toBe(declarations[0].declaration.types.note);
+    expect(getReferenceCategoryDeclarations()).toMatchObject([{ id: 'notes', featureRef: 'cold-pack/notes' }]);
   });
 
   it('subscribes to window declaration changes and exposes unavailable status independently of retained data', () => {

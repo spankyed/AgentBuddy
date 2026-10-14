@@ -5,6 +5,9 @@ import type { Component, Ref } from 'vue'
 
 import type { ReferenceSvgElement } from '../framework/reference-declaration.ts'
 
+export { getReferenceTypeDeclaration, getReferenceCategoryDeclarations, getReferenceTypeBinding, getReferenceCategoryBinding, onReferenceBindingsChanged } from './reference-reader.ts'
+export type { ReferenceCategoryMetadata } from './reference-reader.ts'
+
 /** Defines how an entity type appears and navigates when contributed to the UI. */
 export interface ReferenceTypeConfig {
   protocol: string

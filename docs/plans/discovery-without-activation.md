@@ -1600,3 +1600,24 @@ array realm intact in editor tests by using the existing explicit JSDOM-global s
 This sequence changes consumers and subscription ownership, not stored document format. Entity
 destination readiness and frontend failure recovery remain requirements of their dedicated plans;
 the reference reader must not invent a parallel routing or fault-boundary implementation.
+
+
+### Reference eligibility reader implementation (2026-10-13)
+
+The SDK now owns the join between common declarations and accepted reference bindings. Metadata
+readers never consult executable registrations. Category metadata retains qualified feature ownership
+and duplicate names; no map silently overwrites an owner's category. Global-name type/binding readers
+refuse ambiguous runtime claims. Authoring source advertisements do not supersede or duplicate an
+installed/native runtime claim; source-only entries remain descriptive and cannot execute.
+
+Executable lookup requires ready catalog status, explicit enablement and matching feature ownership.
+Installed entries also require a matching nonempty declaration/artifact identity and an accepted runtime
+identity. Native bindings have no installed stamps. Readers return the stable accepted object without
+calling its provider/navigation/component. Frontend binding notifications are separate from declaration
+notifications, so consumers can follow either publication order and dispose both subscriptions.
+
+Focused tests cover both executable groups, status changes, disabled/missing enablement, declaration/
+artifact changes or missing receipts, foreign ownership, source metadata, native bindings, ambiguity,
+removal/replacement and listener cleanup. Removing owner or artifact matching independently fails the
+corresponding named refusal assertion. Editor consumers and provider scopes are still unmigrated;
+continue the preceding migration sequence, including actual external contribution acceptance.

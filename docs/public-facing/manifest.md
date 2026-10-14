@@ -215,7 +215,8 @@ owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", 
 custom component. SVG geometry supports path, rect and circle tuples.
 
 `navigate(id)` receives a canonical entity ID. `useItems()` is a Vue composable returning a reactive
-reference-item list; call it in a component's setup so its subscriptions share the component's lifetime.
+reference-item list; call it in a component's setup or an owned effect scope so its subscriptions
+are disposed with that scope.
 Generated frontend entries register these bindings under their owning feature. The host checks
 complete declaration membership and refuses global type, protocol or category collisions before
 publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
@@ -225,6 +226,16 @@ Reading declarations never invokes navigation, item providers or components. The
 its cleanup function. A disconnected window can retain its last accepted metadata; status reports
 that it is unavailable for current execution. Native/source entries do not invent installed receipts
 or source enablement.
+
+`getReferenceTypeDeclaration(name)` reads static type geometry/protocol; an ambiguous runtime name
+returns absence. `getReferenceCategoryDeclarations()` lists categories with their owning feature refs,
+including disabled and source declarations, without silently overwriting duplicate names.
+`getReferenceTypeBinding(name)` and `getReferenceCategoryBinding(name)` return stable accepted entries
+only with a ready catalog and matching enabled owner. Installed entries require matching declaration
+and artifact identities plus a runtime identity; native entries carry no invented installed receipts.
+Source advertisements are metadata, not executable claims. Ambiguous runtime names cannot execute.
+Reactive consumers observe both `onReferenceDeclarationsChanged` and `onReferenceBindingsChanged`,
+and release both subscriptions. Looking up a binding does not call navigation or start an item provider.
 
 The generated reference aggregate currently serves the declaring pack's frontend; app-wide editor
 consumption and provider lifecycle migration are not yet delivered.
