@@ -198,6 +198,8 @@ lexical and physical containment. Codegen, feature-file checks and doctor's step
 use it; feature checks now include contracts, services, repositories and entity shapes through the
 existing normalized entity projection. Routes/loading metadata remain intact.
 
-M4 is not complete: finish doctor's static export checks with honest incomplete outcomes, the
-remaining derived target coverage and scaffold/layout agreement regression, and document/evidence
-cross-pack default selection. Do not mark M4 complete from file checks alone.
+Doctor shares static validation in `d80c0ff1b`, including missing-export errors and an explicit incomplete
+result when dependencies cannot be resolved. Real CLI tests prove no module activation or generated
+writes. M4 is not complete: finish derived target coverage and scaffold/layout agreement, and prove
+cross-pack default selection. In particular, independent file checks must cover non-feature targets
+even when dependency resolution prevents codegen; the incomplete result does not replace those checks.

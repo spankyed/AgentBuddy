@@ -3137,3 +3137,28 @@ M4 remains required for doctor's complete static-export/incomplete reporting, re
 coverage, scaffold/layout agreement and cross-pack default-selection evidence. Then complete M5/M6
 and every remaining discovery, navigation, boundary and Phase 6 requirement. Final strict `--all`
 on committed source and the full reconciled audit remain mandatory. Nothing is archived.
+
+### Doctor shares static validation — M4 checkpoint (2026-10-14)
+
+Source `d80c0ff1b` makes `pack doctor` use the existing read-only `validatePack` result rather than
+a separate collection of checks. It reports missing exports/contracts, source-rule errors and skipped
+checks consistently with `pack validate`: exit 0 for complete valid checks, 1 for errors and 2 for
+incomplete checking. The absent generated-directory reminder remains. Public and contributor CLI
+docs describe these outcomes. No executable pack activation or generated writes are introduced.
+
+Evidence: three real CLI tests passed, covering extensionless targets with a poisoned module, a
+missing lifecycle export and unresolved dependencies without cache writes. Forcing the incomplete
+exit to success failed the named assertion; exact source restored
+(`/private/tmp/apack-m4-doctor-status-mutation.log`). Strict validation passed in 455.7s
+(1/30 cached): affected host 3,052 tests, shipped pack 855 plus two existing skips, integration 645;
+external-pack contract, real app, smoke and both packaged-authoring halves passed. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T10-04-59Z-66359`,
+`/private/tmp/apack-m4-doctor-strict.log`. Generated EARS and six compiled content files remain
+byte-identical to `/private/tmp/apack-m4-description-baseline`; the facade check passes unchanged.
+Reviewed the four committed paths and diff checks; the unrelated issue draft remains excluded.
+
+M4 remains required for complete declaration-derived target coverage, including independent file
+checks when dependencies are unavailable, scaffold/layout agreement and cross-pack default-selection
+evidence. Then complete M5/M6 and all remaining discovery/navigation/boundary/Phase 6 requirements.
+Final strict `--all` on committed source and the complete reconciled audit remain mandatory.
+Nothing is archived and the goal remains active.
