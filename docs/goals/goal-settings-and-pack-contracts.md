@@ -3684,3 +3684,47 @@ linked-development policy next; prove changes cannot silently keep old declarati
 Then continue all remaining native/contribution kinds, frontend naming, static content edges/CLI
 inventory, entity navigation, frontend boundaries and all three Phase 6 workstreams. Final strict
 `--all` on committed source and the whole-goal completion audit are still due.
+
+
+### Linked authored input freshness — discovery checkpoint (2026-10-14)
+
+Source `255e80e4d` derives linked-input subscriptions from the existing authored-input traversal and
+exclusions. Linked directories are watched recursively; parent subscriptions observe atomic file or
+directory replacement. Subscriptions refresh before validation/build, so retargeting to malformed data
+still observes its later repair. Failed refresh preserves existing subscriptions; session close disposes
+all link watches and waits for active work. Executable module references retain their physical pack-root
+confinement. The initial test attempted an external executable module and was correctly refused;
+the real integration uses linked declarative manifest data, supported by the existing reader/hash model.
+
+Nine focused input/scheduler cases and the real filesystem/installation/host-reload case pass. The
+integration covers linked directories/files, external atomic manifest replacement, invalid retarget
+retention, repair and subsequent edits to the new target. Removing link subscriptions fails the catalog
+assertion after an external atomic save; tooling was rebuilt under the temporary mutation, then source
+was restored exactly. Evidence: `/private/tmp/apack-linked-inputs-unit.log`,
+`/private/tmp/apack-linked-inputs-integration-final.log`, `/private/tmp/apack-linked-inputs-mutation.log`.
+
+Strict passed in 272.3s (25 of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-14T17-36-34Z-69540`;
+`/private/tmp/apack-linked-inputs-strict-accepted.log`. Its accepted unchanged-source predecessor ran
+3,073 host cases, 855 pack cases with two existing skips, and all 682 integration cases in
+`2026-10-14T17-26-58Z-42940`. The first run rejected an unnecessary 90s test timeout, now restored to
+the repository's 60s budget. An unchanged staged-build case timed out under load and passed in isolation
+with its original timeout/assertions before the successful pool rerun. A later external-app run failed
+waiting for Monaco, then passed on unchanged-source retry. That does not establish offline readiness.
+Generated EARS and six compiled content artifacts remain byte-identical. No public SDK API, format
+constant or release metadata changes; the unrelated issue draft is preserved.
+
+The audit confirms remaining required work, not optional follow-ups:
+- Dependency cache writes lose source provenance; `resolveFromLocal` reads only snapshot/executable
+  files. The comment dismissing provenance does not override Phase 6's requirement.
+- Local `findDepFiles` exposes matching-stamp executable pointers based on existence, without receipt
+  verification. Audit cache publication and exact source/version/content identity before execution,
+  preserving independent current-data type inspection.
+- Tool implementation/import graphs and dependency build-code changes need complete freshness evidence;
+  a version or single-file hash is not proof of the whole graph.
+- Monaco currently uses the loader's jsDelivr default with no renderer override. Provide local editor
+  and worker assets and prove real completion/diagnostics with external networking unavailable.
+
+Continue those audits, then every remaining contribution/native kind, frontend naming, static edges
+and CLI inventory, navigation, boundaries and all three Phase 6 workstreams. Final committed-source
+strict `--all` and requirement-by-requirement whole-goal audit remain due.

@@ -1866,3 +1866,25 @@ source policy, and prove their changes cannot silently reuse stale declarations 
 input knowledge rather than inventing a separate authored contribution inventory. All remaining
 contribution/native discovery, frontend naming, navigation, boundaries and Phase 6 streams remain
 required; lazy activation and stronger isolation stay deferred.
+
+
+### Linked input outcome and dependency/tool evidence (2026-10-14)
+
+`255e80e4d` closes linked authored-data subscription gaps through shared input traversal, parent watches
+for atomic replacement and subscription refresh before validation. Executable modules remain physically
+inside their pack; no confinement exception is added. Real linked-manifest/host-runtime checks, a restored
+subscription mutation and strict validation pass; the execution goal records exact evidence and failures.
+
+Checkpoint 3 remains open for dependency/tool graph identity and provenance. Inspected local dependency
+resolution exposes executable files by stamp/existence without verifying receipts, while cache writes
+and reads omit resolved source identity. Replace this with coherent verified cache publication and
+recorded exact origin/version/content identity, retaining independent type-data inspection. Inspect
+source and bundled tool implementation inputs, imported helpers and dependency build code; prove their
+changes invalidate stale outputs without relying on release-version changes. Do not preserve the cache
+comment that treats provenance as optional. Source and cached/installed artifact identities must agree.
+
+The editor offline audit is also required: the Monaco loader defaults to jsDelivr, and no renderer
+configuration overrides it. The external settings-editor test failed once awaiting the editor and then
+passed on retry; network-backed success is not offline acceptance. Ship local editor/worker assets and
+exercise real schema completion/diagnostics without external networking. All other goal phases retain
+their scope; lazy activation and stronger isolation remain deferred.
