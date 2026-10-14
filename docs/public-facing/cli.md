@@ -454,13 +454,12 @@ Exits with code 1 on errors.
 
 #### `apack pack doctor`
 
-Health checks with pass/warn/fail output. Failures exit with code 1; warnings alone succeed.
+Read-only source health using the same manifest, target, static export, contract and source-rule checks
+as `apack pack validate`. Modules are inspected without activation; generated output is not written.
+Missing generated files produce a reminder to run `apack pack generate-entries`.
 
-- `apack.json` exists and parses
-- `id` and `hostVersion` are set
-- `src/__generated__/` exists (warn)
-- Each feature's system, plugin state and component targets exist
-- Each facet path an `extensions.steps` entry names exists (its `node`, `build` or `trigger`, `runtime.handler` and `fe`)
+Exits 0 when validation is complete and valid, 1 for errors, and 2 when dependency resolution prevents
+complete checking. Unchecked work is listed explicitly; incomplete checks are never reported as valid.
 
 #### `apack pack facade-report [--update]`
 
