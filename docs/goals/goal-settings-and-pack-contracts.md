@@ -3011,3 +3011,23 @@ Validation:
 M3 is complete. Remove unnecessary moved-key diagnostics under the no-compatibility rule, then
 continue M4–M6 and every remaining goal phase. Final committed-source strict `--all` and the full
 requirement audit remain required. The unrelated issue draft stays untracked. Nothing is archived.
+
+
+### Current-schema diagnostics without obsolete-key knowledge (2026-10-14)
+
+Source checkpoint `dd960261a` removes `_MOVED_ROOT_KEYS` and `movedKeyHint`. Validation retains
+strict current-schema errors, diagnostic codes, pack ownership and field paths. Tests now assert
+those supported diagnostics rather than an inventory of historical keys. This supersedes the
+predecessor's moved-key-hint requirement under the user's explicit no-legacy-handling direction.
+The active roadmap and consolidation plan use the same rule; archived history remains unchanged.
+
+Focused schema/diagnostic checks passed 41 tests; documentation links passed six. All 30 strict
+steps ran and passed in 677.0s: host 4,428 tests, shipped pack 855 plus two existing skips, integration
+639, actual external Electron app 187.0s, smoke 5.5s, packaged authoring 60.9s and packaged app 8.3s.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T07-09-38Z-56229`,
+`/private/tmp/apack-schema-current-strict.log`. Reviewed diff and `git diff --check` passed.
+
+M4's inspected authoring design is committed in `eaa187b07`. Feature purpose and explicit type-module
+authoring remain next, followed by all M5/M6 and remaining discovery, navigation, frontend boundaries
+and three Phase 6 workstreams. Final strict `--all` on committed source and requirement-by-requirement
+audit remain mandatory. The unrelated issue draft remains untracked; no work is archived.
