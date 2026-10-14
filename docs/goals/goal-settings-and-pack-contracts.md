@@ -4003,3 +4003,48 @@ checkpoint. The separate mtime-based drive nudge/manual-runtime-build contract s
 producer/launch decision. Complete those, then resume every remaining contribution/native/static-content
 discovery requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Final
 committed-source strict --all and the full completion audit remain required; nothing is archived.
+
+### Verified dependency frame checkpoint (2026-10-14)
+
+Source `ce503269b` preserves verified dependency files alongside their type/snapshot projection in
+`ResolvedDeps`. Generation, initialization, facade reporting and build callers migrate to that one
+frame. Every cached phase hashes id/kind/full build revision/snapshot, independent of delivery path.
+Identical-snapshot same-version helper changes now invalidate generation and all cached phases.
+The captured directories are re-read through the common data-only verifier before reuse and before
+publication; changing the selected resolution does not revoke valid previously pinned bytes. No pack
+code activates during verification. Incomplete frames refuse instead of silently returning empty data.
+
+Generation rechecks its inputs after asynchronous compilation, before replacing files/stamps. Final
+build publication uses the same generated-current/dependency checks. A real content compiler changes
+accepted cached dependency runtime bytes during a --skip-generate build: publication refuses while the
+prior complete consumer build and generated stamp remain intact. Metadata fixtures use current parsed
+snapshots and actual generated/bundled facades; no production or fixture facade exports were fabricated
+to bypass a gate. SDK options receive only type/snapshot data, not host-private file metadata.
+
+Validation: 47 focused tests and the actual producer/consumer publication regression pass. Removing
+revision identity fails two tests, verification fails five, the post-async generation check fails one,
+and the final publication check fails the real compiler regression. Every source mutation is restored
+exactly. Required strict passes all 30 gates in 598.9s (one cached), including external authoring,
+watcher/harness/typing integration, runtime build, smoke and packaged app checks. Accepted evidence:
+`/private/tmp/apack-dependency-frame-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T22-11-49Z-46991`. Committed-source warm strict passes in
+1.0s with 29/30 cached: `/private/tmp/apack-dependency-frame-warm-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T22-23-11Z-78476`. Focused/mutation evidence is in
+`/private/tmp/apack-dependency-frame-focused-final.log`,
+`/private/tmp/apack-dependency-frame-publication.log`, and
+`/private/tmp/apack-dependency-frame-{revision,verification,generation,publication}-mutation.log`.
+Generated EARS and six compiled content files remain byte-identical to the baseline. No public SDK
+API/schema/format/release metadata changes. The unrelated issue draft remains untouched.
+
+The next audit has concrete remaining inputs: TypeScript and json-schema-to-typescript/AJV/Zod used by
+generation resolve outside owned source trees; the phase version list also omits rollup-plugin-dts.
+`/private/tmp/apack-external-tool-resolution-audit.log` records actual owner/entry/metadata/version
+resolution, including SDK-local AJV 8 and package.json not being exported by rollup-plugin-dts. Cover
+actual compiler implementations and consumer type/bundle import inputs through data-only resolution,
+including package-local overrides, transitive helpers and current conditional exports. Do not use
+observed diagnostic read logs or version-only guesses as complete byte evidence. Revalidate the same
+scope at publication and measure its cost. The full frozen-input/publication audit and the separate
+manual-build/drive launch contract still remain before certifying overall freshness. Then complete all
+remaining contribution/native/static-content discovery, navigation, frontend boundaries and all three
+Phase 6 workstreams. Final committed-source strict --all and full requirement audit remain due; no
+work is archived from this checkpoint.
