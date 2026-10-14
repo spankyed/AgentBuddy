@@ -1746,3 +1746,49 @@ The public frontend container becomes `extensions.frontend` as those contributio
 `hostVersion` remains the single-host compatibility range. All native/source/install readers, fixtures,
 templates, schema/reports and public docs migrate together. Intrinsic editor-schema ownership, every
 remaining kind, navigation/readiness, boundaries and all Phase 6 streams remain active.
+
+
+### Dependency facade audit and checkpoints (2026-10-14)
+
+Current inspection contradicts the earlier claim that capability-based dependency admission already
+exists. `fetch-deps.ts` calls `_snapshotFormatMismatch` before `parseSnapshot`; installed dependency
+tests explicitly refuse absent/different stamps. They prove exact-format refusal, not capability
+acceptance. In addition, `generatePackFiles` interpolates a missing facade as `undefined`, so an empty
+facade map can reach generated typing without a named dependency error. Correct these defects rather
+than treating the historical evidence as proof.
+
+Implement in coherent checkpoints:
+
+1. Use `PackSnapshot.facades`, `PACK_TYPES_FACADE` and cache `facades/`, preserving DSL `defs/monaco`
+   and physical `pack-types.d.ts`. Refuse missing/empty required facade data in codegen before output;
+   migrate producers, schema, every reader, native/test fixtures, reports and public docs outright.
+2. Inspect declared facade type exports against the actual generated consumer's requirements. A
+   missing/incapable facade must name dependency, required exports and rebuild remedy. Dependency
+   discovery accepts usable current-data capabilities with absent/different artifact stamps as
+   diagnostic context; installation/runtime artifact readers retain their explicit exact format policy.
+   Use one current-data reader with honest optional stamp types for dependencies, not a dual reader,
+   old-format converter, synthesized stamp or fake export. Actual dependent TypeScript/build checks
+   must prove acceptance and refusal, including cached and installed candidates.
+3. Keep required facade inputs in source/dependency freshness and provenance. A runtime test must
+   independently satisfy runtime admission; type capability acceptance does not authorize executing
+   an incompatible runtime. Preserve existing DSL assets and controlled EARS types throughout.
+
+This is part of full discovery, before expanding remaining contribution kinds. Native all-kind
+declarations, steps/triggers/editor assets, frontend naming, static content edges, CLI inventory and
+all later execution phases remain required. No release/version metadata or format constant is changed
+by the vocabulary checkpoint.
+
+
+### Facade vocabulary/data validation outcome (2026-10-14)
+
+Checkpoint 1 above is implemented in `c1d8497b4`: snapshot `facades`, `PACK_TYPES_FACADE`, cache
+`facades/`, named missing-content refusal and safe cache names are migrated with all readers/fixtures/
+reports/public docs. DSL definitions and physical facade filenames are preserved. Actual dependent
+facade typing/completion and flow-helper execution pass; guard mutations fail. Strict passed all
+30 steps in 504.7s, recorded in the execution goal.
+
+Checkpoint 2 is still required. Current format-refusal tests remain valid artifact-policy tests; they
+do not demonstrate capable type admission. Implement the separate current-data dependency reader,
+actual required type-export checking and honest stamp diagnostics, including installed/cache/real
+authoring checks. Keep runtime execution admission distinct. Remaining kinds and all later phases
+retain their scope.

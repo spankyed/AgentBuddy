@@ -31,7 +31,7 @@ A landed result still needs its applicable regression checks in the final requir
 | 11 | Schema assistance and public docs specify the supported contract completely. Required. | Completed through `9e9a9ac0e` and `0994ae787`: all generated properties have behavior-specific help, real offline JSON completion/hover/diagnostics are checked, and public docs describe source/build/archive/installed/shipped/native differences and explicit null shapes. Shared semantic validation remains necessary beyond editor structure checks. Maintain docs when remaining discovery kinds change. | M6 |
 | 12 | Default selection belongs to its plugin, with uniqueness. Landed; preserve. | `PluginSchema.default`, schema refinement and generated plugin metadata hold the claim. No root `defaultPlugin`. M4 (`11bdc7faa`) shares authored/native default-claim validation and checks frontend claims atomically. Tests preserve first-registered selection, replacement priority, removal promotion and re-registration order; public docs describe the policy. | M4/final |
 | 13 | Every feature explains its purpose; scaffolding collects it and validation requires it. Required. | Implemented in `ae7a995bd`: shared required/nonblank `description` validation, authored/native declarations, explicit required scaffold input, cold catalog summaries and feature UI. Real manifests and all fixture producers migrated; no runtime-binding metadata or `about` alias. | M4 |
-| 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Capability-based facade acceptance remains covered by twenty installed-dependency checks. No replacement format key or version accommodation. | M5 |
+| 14 | Delete unused `$manifestVersion`; preserve artifact-format policy and release metadata. Required. | Removed outright in `9374189e5`, including schema/API/field audit/public docs. Snapshot/layout constants remain 1/2. Layout verification and asset delivery require exact stamps; independent mutations prove fractional rejection. Those installed-dependency checks prove exact-format refusal, not capability admission; the corrected discovery audit owns the required capability reader. No replacement format key or version accommodation. | M5 |
 | 15 | Finish deliberate naming now; preserve release discipline. Required maintenance, not blanket renaming. | Completed naming baseline `3d389b9c8` remains authoritative. Resolve the two questions below explicitly. Document later breaking/additive evolution against current artifact contracts; no release/version edits in this goal. | M4–M6/final |
 | 16 | Change all owned contracts together without compatibility. Required throughout. | Root CLAUDE prohibits aliases, dual reads and obsolete-format conversion. Cover loosely typed readers and all native/source/installed shapes, authoring tools, fixtures/templates/docs; developer backup work remains separate. | Every checkpoint |
 | 17 | Build options and check allowances have one authored manifest, no sidecars. Implemented in `24bd9f116`; preserve at final audit. | `build.bundleUi`/`opaqueDeps` remain. `checks.allow` uses one SDK policy/schema shared with CLI rule metadata and enforcement. Sidecar reader and live references are removed. Unknown/non-switchable names and malformed values are refused; real CLI enforcement and pasteable guidance pass. | M5 |
@@ -76,7 +76,7 @@ These are completion obligations, not optional later improvements.
 | `apack pack info` lists actual contributions | Discovery CLI checkpoint: real compiled identities/labels, including a source-file count different from output count. Source/unbuilt/failed availability is explicit; no silent file-count substitute or executable imports. `info.ts` currently counts `.ts` files. |
 | Shared authoring/validation/doctor/codegen/layout docs | M4/M6: explicit declarations determine existence; supported scaffold conventions have one shared definition. Validate their declared targets and ownership, doctor diagnoses the same targets, and a regression checks documented layout against the actual authoring contract. |
 | Early refusal of statically undeclared/missing contributions | M4/discovery: `pack validate` names declaration/export errors knowable without executing the pack. Keep runtime exact-membership validation for dynamic bindings. Never execute a pack to satisfy the early check or reject unrelated utility exports. |
-| Facade terminology | Discovery/dependency checkpoint: `PackSnapshot.facades`, `PACK_TYPES_FACADE`, cache `facades/` and matching summaries/diagnostics/docs; keep DSL `defs`. SDK `manifest.ts`/CLI `fetch-deps.ts` still use the old facade names. |
+| Facade terminology | Discovery/dependency checkpoint: `PackSnapshot.facades`, `PACK_TYPES_FACADE`, cache `facades/` and matching summaries/diagnostics/docs; keep DSL `defs`. Vocabulary implemented in `c1d8497b4`; capability-based dependency admission remains required under the corrected discovery audit. |
 | Required facade contracts | Same checkpoint: a missing/incapable required facade fails naming dependency/rebuild remedy, without silently dropping typing. Preserve acceptance based on capabilities; missing/different recorded format and SDK version remain diagnostic context when capabilities suffice. Retain structural/cache/refusal regressions and actual dependent/external authoring checks. |
 | Declarative contribution core | Discovery retains exhaustive kind/consumer classification, compiled static metadata, checked bindings, ownership, poisoned executable dependency tests and zero activation/user-data writes. No second inventory, `provides` or implicit existence. |
 | Settings, APIs, navigation, boundaries, replacement | Their active plans and every existing execution phase remain required. This reconciliation adds missing obligations; it does not discard existing work or certify it complete. |
@@ -232,7 +232,7 @@ in `9374189e5`: the authored manifest has no `$manifestVersion`, and current gen
 handles unsupported keys. No alias, conversion or dedicated historical-format detection is added.
 Receipt verification and asset delivery compare the exact supported stamp; tests recompute malformed
 receipt revisions so format rejection is independent of revision mismatch. Snapshot/layout stamps
-remain 1/2; capability-based facade acceptance and release metadata are unchanged.
+remain 1/2; exact-format artifact checks and release metadata are unchanged. Capability-based dependency admission remains required (see the corrected discovery audit).
 
 M5 is complete. M6 canonical writing/schema/docs coverage and all remaining execution phases stay
 required, including final strict `--all` on committed source and the full reconciled audit. Nothing
@@ -308,3 +308,13 @@ content edges and meaningful CLI inventories continue in full discovery. These a
 work, not exclusions justified by a smaller discovery prerequisite. Do not archive this plan while its
 additional consolidated requirements remain unfinished. Final strict `--all` on committed source and
 the whole-goal requirement audit remain mandatory.
+
+
+## Facade handoff correction (2026-10-14)
+
+`c1d8497b4` implements the selected facade terminology and missing-data/cache-name refusals, preserving
+DSL definitions and generated EARS/content. The actual reader audit disproves the earlier assertion
+that capability-based dependency admission already existed: those installed-dependency checks exercise
+exact-format refusal. The discovery plan owns the required capability reader/export checks next,
+separately from runtime/install format policy. This corrects the evidence; it does not exclude or
+defer the requested outcome. The execution goal records focused, mutation and strict results.

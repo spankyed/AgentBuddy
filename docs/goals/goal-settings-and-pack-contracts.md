@@ -3481,3 +3481,42 @@ decisions and both naming questions. It explicitly retains unfinished full contr
 `extensions.frontend`, facade naming/capabilities, static content dependency graph and useful CLI
 inventories. Resume Phase 3 on those contracts, then entity navigation, frontend boundaries and all
 three Phase 6 workstreams. No plan is archived; no full-goal completion or final `--all` is claimed.
+
+
+### Facade vocabulary and data refusal — discovery checkpoint (2026-10-14)
+
+Source `c1d8497b4` uses `PackSnapshot.facades`, `PACK_TYPES_FACADE` and dependency-cache `facades/`
+through producer, schema, codegen, resolver, fixtures, API report and public docs. Physical
+`pack-types.d.ts` and DSL `defs/monaco` paths/behavior remain unchanged; no old-key reader, alias or
+conversion is added. Codegen refuses missing/empty required facade content before producing files,
+naming the dependency and rebuild remedy instead of emitting `undefined`. Current snapshot validation
+rejects unsafe facade names before cache writes. A read-only probe had demonstrated that `../outside`
+was accepted and would escape the facade directory; the shared schema and actual dependency reader
+now refuse those names.
+
+Focused validation passed 90 SDK tests, 116 resolver/artifact/version checks, ten real facade typing
+and completion cases, three dependent flow-helper typing/runtime cases, 15 generation cases, and
+the final 62 SDK guard plus six actual dependency-reader checks. Removing missing-content validation
+failed three named assertions; removing cache-name validation failed eight. Exact source was restored.
+Two fixtures that previously supplied empty facade maps now bundle their actual generated facade;
+no production shape was added or widened. Strict caught a new test inference error and an accidentally
+renamed DSL log expectation; both were corrected without weakening assertions. API report was
+regenerated, normalized and reviewed.
+
+Reviewed strict passed in 504.7s (1/30 cached), including external pack/app, smoke, packaged authoring
+and packaged app. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T14-09-04Z-65038`;
+`/private/tmp/apack-discovery-facades-strict-reviewed.log`. Earlier failures:
+`/private/tmp/apack-discovery-facades-strict.log` and
+`/private/tmp/apack-discovery-facades-strict-final.log`. Generated EARS and all six compiled content
+files remain byte-identical. Format constants and release/version metadata are unchanged; unrelated
+issue draft preserved.
+
+Current inspection corrects the earlier M5/roadmap evidence: the installed-dependency suite proves
+exact-format refusal, not capability-based type admission. Claims that capability acceptance was
+already implemented or tested are superseded by this audit. The required next checkpoint validates
+exported facade capabilities and accepts usable current-data dependency typing with absent/different
+stamps as diagnostic context, separately from exact runtime/install admission. Preserve honest optional
+stamp types and current-key/schema validation; no synthetic stamp, fake export, old-format adapter or
+dual read. All remaining full discovery, frontend naming, static content/CLI inventory, navigation,
+boundaries and three Phase 6 workstreams remain active. No final `--all` or completion is claimed.
