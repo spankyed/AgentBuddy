@@ -2780,3 +2780,26 @@ editor/declaration contribution migration, every remaining kind/native/freshness
 routing/readiness, frontend boundaries and the three Phase 6 workstreams. Current live parsing does
 not prove previously unknown anchors upgrade when metadata arrives. Final committed-source --all,
 whole-goal acceptance auditing and archival remain due. The goal remains active.
+
+
+### Delayed-catalog reference identity audit (2026-10-14)
+
+Plan commit `6dd6f62b8` corrects the stored-reference contract after an actual Tiptap reproduction
+showed target loss before declaration delivery: Markdown with a cold memo URI serializes as label
+text, so later metadata cannot recover its entity id. Evidence:
+`/private/tmp/apack-reference-delayed-catalog-repro.log` (named target-retention assertion failed).
+The temporary red assertion was removed by exact byte restoration; source remains at the validated
+consumer checkpoint. The audit also found hardcoded pack schemes in the shared UI Link configuration.
+
+The owning [entity-opening plan](../plans/open-entity.md#reference-wire-identity-correction-2026-10-14)
+and discovery plan now specify one internal reference URI carrying encoded reference type and
+canonical entity id. Parse/write identity without metadata; use declarations for presentation and
+accepted bindings for execution. Keep existing node attributes, without a provisional entity or
+reparsing user documents. Remove per-type protocol fields/provenance/lookup and the UI scheme list,
+migrating every owned contract and example outright. No old-format parsing or compatibility layer.
+
+Next implement and validate this correction, including absent/late metadata, unchanged document/
+selection/history on publication, ordinary link behavior and actual external-reference acceptance.
+The correction is designed, not delivered. All remaining discovery/native/freshness, entity-opening,
+boundary and Phase 6 requirements plus final committed-source --all and archival remain outstanding.
+This documentation checkpoint passes `git diff --check`; no new runtime fix is claimed.
