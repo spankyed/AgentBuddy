@@ -21,7 +21,7 @@ validated implementation checkpoint before beginning the next; apply the settled
 to new APIs without reopening the completed naming project.
 
 Finished when:
-- Phases 0–7 meet their Done when conditions, including all three Phase 6 workstreams.
+- Phases 0–7 meet their Done when conditions, including restored manifest-consolidation M1–M6 and all three Phase 6 workstreams.
 - Host, pack and feature settings use the common declarative contract and current-format stored data.
 - Every supported contribution is discoverable without executable pack/dependency activation;
   generated bindings, catalog identities, updates and source-build freshness agree.
@@ -39,7 +39,7 @@ Constraints for isolated test data, typed EARS, migrations and validation. No co
 
 # Complete settings and discoverable pack contracts
 
-Status: in progress on `session/settings-pack-contracts`; naming conventions are complete. This executes the five remaining work items in
+Status: in progress on `session/settings-pack-contracts`; naming conventions are complete. This executes the remaining work items, including restored manifest consolidation, in
 [manifest maturity](../plans/manifest-maturity.md), building on the completed naming prerequisite.
 Lazy activation is deferred.
 
@@ -198,6 +198,21 @@ before replacing live data.
 no default-setup; disabled definitions remain readable/validated; shared/owner policies hold through typed
 and untyped supported paths; reset/defaults, restored data, custom forms and multiple windows behave correctly.
 
+### Required manifest consolidation before extending Phase 3
+
+Implement [manifest consolidation](../plans/manifest-consolidation.md) M1–M6. The original entity/shape
+ownership, relations, module-reference, lifecycle, checks, feature-description, format-key and canonical
+writing outcomes were not optional. Preserve all 17 reconciled decisions and the original phase checks,
+with explicit replacements/exclusions recorded there. The current reference checkpoint is committed;
+start M1 before expanding more discovery consumers across the old split.
+
+**Done when:** every required consolidation row has source/validation evidence; generated EARS and
+typed/untyped behavior are preserved; unchanged authored content keeps compiled identity and ordinary
+boot/apply behavior; all native/source/installed and loosely typed readers, authoring tools, schemas,
+reports, fixtures/templates and public docs agree. Required field descriptions and canonical writing
+have explicit checks. The completed naming baseline, current format constants, existing settings
+contract and release metadata remain intact. No compatibility, inferred existence or volatility addition.
+
 ### Phase 3 — Complete discovery and remove obsolete glue
 
 Finish the [discovery plan](../plans/discovery-without-activation.md) on Phase 1's foundation. Extend
@@ -208,7 +223,12 @@ projections without deleting real execution, readiness, teardown or user-content
 **Done when:** all discovery acceptance checks pass, including poisoned executable pack/dependency entries,
 zero activation or user-data writes during discovery, disabled/failed pack metadata, ownership diamonds,
 atomic catalog updates and stale frontend completion rejection. Actual queries still execute their required
-providers. Source watch/codegen publication cannot pair new bindings with stale descriptors.
+providers. Source watch/codegen publication cannot pair new bindings with stale descriptors. Compiled
+content inventory includes static flow/action edges and named rename/missing-reference checks with
+honest dynamic-reference status. `apack pack info` shows actual contribution identities and useful
+metadata, including unbuilt/unavailable status without source-file-count substitution. Facade field,
+constant and cache naming are consistent (`facades`, `PACK_TYPES_FACADE`); missing required facades
+fail by dependency name with a rebuild remedy, preserving capability-based acceptance and DSL defs.
 
 ### Phase 4 — Entity navigation
 
@@ -252,7 +272,7 @@ templates and public contracts updated. No workstream is merely marked “follow
 ### Phase 7 — Final review and completion
 
 Review the entire implemented diff for correctness and completeness
-against the inventory and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, artifact revisions, dependency ownership, import
+against the inventory, all reconciled original requirements in manifest consolidation, and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, artifact revisions, dependency ownership, import
 migration, multiple windows, disable/uninstall/reinstall, and external authoring.
 
 Run focused checks as changes are made, `npm run chain` at validated checkpoints, and the full strict

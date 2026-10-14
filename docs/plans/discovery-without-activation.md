@@ -1724,3 +1724,25 @@ reports agree; content parity passes all 145 checks after deliberate golden rege
 Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-44-15Z-64383`;
 `/private/tmp/apack-reference-wire-strict.log`. The intrinsic editor-schema ownership and remaining
 whole-goal work above are still required.
+
+
+### Restored manifest requirements and handoff (2026-10-14)
+
+[Manifest consolidation](manifest-consolidation.md) restores all 17 original redesign decisions,
+settles both naming questions and maps every original phase check. Complete its M1–M6 before
+extending additional consumers across the split root entity/shape declarations. Existing settings and
+reference checkpoints remain valid; they do not complete this restored scope. The roadmap and owning
+goal now require these outcomes rather than merely surveys or syntax deferrals.
+
+Discovery additionally owes static flow-to-action relationships and rename-side diagnostics, actual
+`apack pack info` contribution identities/availability, consistent authoring/doctor/codegen declarations
+and named early validation where possible without execution. Dynamic binding validation remains an
+activation boundary; unused utility exports are not undeclared contributions. Preserve source/build
+freshness and no unnecessary content reapplication through manifest-only changes.
+
+The facade checkpoint must use `facades`, `PACK_TYPES_FACADE` and cache `facades/`, with named
+missing/incapable dependency refusal and unchanged capability-based acceptance. DSL defs remain defs.
+The public frontend container becomes `extensions.frontend` as those contributions become declarative;
+`hostVersion` remains the single-host compatibility range. All native/source/install readers, fixtures,
+templates, schema/reports and public docs migrate together. Intrinsic editor-schema ownership, every
+remaining kind, navigation/readiness, boundaries and all Phase 6 streams remain active.

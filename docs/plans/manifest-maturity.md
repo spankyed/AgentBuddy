@@ -1,6 +1,6 @@
 # Make pack manifests dependable contracts
 
-Status: planned. Written 2026-10-12 on `AS/feature-settings-rework`.
+Status: in progress; scope reconciled 2026-10-14. Originally written 2026-10-12 on `AS/feature-settings-rework`.
 
 ## Goal and sequence
 
@@ -22,11 +22,14 @@ Deliver the remaining work in this order:
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and artifact freshness for each migrated kind. Do not create a temporary settings-only catalog.
 2. Complete settings ownership, current-format stored data, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
-3. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
+3. Complete the required [manifest consolidation](manifest-consolidation.md), checkpoints M1–M6,
+   before extending more consumers across the old entity/shape split. Preserve generated EARS and
+   unchanged compiled content identities; do not treat authored-contract changes as optional audits.
+4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
-4. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
+5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
-5. Finish consumed-API contracts, dependency provenance and
+6. Finish consumed-API contracts, dependency provenance and
    [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
    on validated artifact publication and committed catalog updates; consumed APIs need not wait for replacement.
 
@@ -40,6 +43,7 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 | Naming — complete | Use the completed contracts as the starting baseline; do not repeat their refactors |
 | Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
 | Settings | Host/pack/feature ownership, current-format stored data, schema-backed handles and policy, custom forms and window runtime work on that foundation |
+| Manifest consolidation | Entity/shape ownership, relations, lifecycle, checks, descriptions, format-key removal and canonical writing satisfy M1–M6 with preserved EARS/content behavior |
 | Complete discovery | Every supported kind and static consumer uses descriptors; activation outcomes remain separate, stale loads are rejected and obsolete discovery glue is deleted |
 | Navigation and boundaries | Catalog destinations drive entity opening; failing panes/forms leave the shell usable |
 | API consumption, provenance, replacement | Independent follow-ups reuse catalog identities and caller binding; replacement distinguishes update ownership, disable and removal |
@@ -72,18 +76,23 @@ the settings plan, as that goal already specifies.
 | Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor |
 | Conventional implementation paths | Optional later authoring convenience; a declared contribution with a missing implementation fails, never silently disappears |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
-| Entity names/shapes and feature ownership | Re-audit in the inventory; preserve typed EARS behavior and use one normalized projection for all readers. Moving storage syntax is not a prerequisite |
-| Relation identity maps | Defer syntax simplification until a concrete reader benefits; preserve wire values and generated contracts |
+| Entity names/shapes and feature ownership | Required M1: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
+| Relation identity maps | Required M2: `data.relations` wire values with unchanged generated constants/types and collision/provenance behavior |
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
-| `boot`/`lifecycle` metadata | Discovery owns static hook presence and descriptions. Lifecycle audit owns execution/order; a rename alone does not establish the contract |
-| Module-reference syntax | Share resolution/checking where it overlaps; retain deliberate component/default versus named-export differences. No blanket encoding rewrite |
+| `boot`/`lifecycle` metadata | Required M3: current explicit checked hook bindings under declarative `lifecycle`; preserve order and prevent syntax-only content reapplication |
+| Module-reference syntax | Required M1/M4: shape references use `path#export`; one parser/refusal contract, retaining richer component/loading declarations and explicit type-barrel semantics |
 | Schema descriptions, moved-key hints, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
-| Default navigation and feature descriptions | Discovery owns static metadata and stable selection policy; avoid duplicate claims in runtime objects |
+| Default navigation and feature descriptions | Preserve landed plugin defaults/designations; require meaningful feature `description` through schema, scaffold, native/catalog and inspection in M4 |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
-| Build/check configuration and sidecars | Preserve landed build structure. Re-audit remaining check configuration with authoring diagnostics; no exact root-key count/order gate |
-| `extensions.fe` and `hostVersion` cosmetic alternatives | Deferred; existing names remain until a contract change provides a concrete reason to change them |
-| Snapshot `defs` versus DSL definitions | Settle facade field/cache terminology while extending the descriptor. Reject missing required facade contracts with a rebuild remedy; keep DSL vocabulary distinct |
-| Format/version assumptions | Follow current artifact-format rules, coordinate related changes and regenerate consumers. Do not bump release versions or treat older example formats as authoritative |
+| Build/check configuration and sidecars | Preserve build options; required M5 moves allowances to `checks.allow` and removes the sidecar, with unknown/non-switchable refusals. M6 centralizes current-shape writing/order |
+| `extensions.fe` and `hostVersion` questions | Settled in consolidation: public `extensions.frontend` during its declarative migration; keep `hostVersion` for one host range. No blanket fe/be rename |
+| Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, cache `facades/`, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
+| Format/version assumptions | Required M5 removes `$manifestVersion` and audits exact layout-stamp acceptance; preserve current snapshot/layout constants and release metadata, separately from facade capability acceptance |
+
+The [complete reconciliation](manifest-consolidation.md) accounts for every original decision, both
+naming questions, phase checks, flow/action dependency edges, CLI contribution inventory, authoring
+tool agreement and unchanged-content identity. Each active requirement needs implementation evidence;
+this ledger is not permission to downgrade an outcome to a survey.
 
 ### Other tracks and documents to revisit
 
