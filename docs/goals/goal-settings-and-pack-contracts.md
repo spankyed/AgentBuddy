@@ -3520,3 +3520,45 @@ stamps as diagnostic context, separately from exact runtime/install admission. P
 stamp types and current-key/schema validation; no synthetic stamp, fake export, old-format adapter or
 dual read. All remaining full discovery, frontend naming, static content/CLI inventory, navigation,
 boundaries and three Phase 6 workstreams remain active. No final `--all` or completion is claimed.
+
+
+### Consumed facade type capabilities — discovery checkpoint (2026-10-14)
+
+Source `b1eeebd19` checks every type actually imported by dependency codegen through the existing
+TypeScript export reader. Requirements come from real import generation, not a second capability
+inventory. Plugin state is required when the consumer emits frontend state access, rather than merely
+because a dependency has plugins. Missing, value-only, unresolved and syntactically malformed
+declarations fail with the dependency name, required type/context and rebuild remedy. Type aliases
+resolve normally; no fake export, widened EARS shape or fallback typing is emitted.
+
+The shared reader admits virtual bundled declaration text, including relative re-exports before
+generated directories exist. It uses canonical paths and one program for source modules and dependency
+facades. Virtual snapshot text overrides stale generated files, without writing files or loading pack
+modules. A read-only probe demonstrated that TypeScript parser recovery could expose an export from
+malformed text; syntax diagnostics now prevent that false capability. Generic unresolved-type advice
+no longer incorrectly assumes every caller is reading events. SDK API reports remain unchanged.
+
+Focused checks passed 63 SDK export/shape cases, 113 affected fixture/generation cases, and 23 actual
+source/published facade typing, completion and dependent flow-helper cases. Removing export validation
+failed all eight missing-type assertions; removing syntax validation failed the malformed-facade
+assertion, with exact restoration before validation. The first strict run exposed unit fixtures that
+declared plugins but omitted their state export. Fixtures now model the generator's actual never state
+for plugins without a state contract. The version-warning fixture bundles a real producer facade
+instead of maintaining an outdated export list. Production typing and original assertions are retained.
+
+Final strict passed all 30 steps in 509.1s (1 cached), including real external app, smoke, packaged
+authoring and packaged app. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T15-00-05Z-38446`;
+`/private/tmp/apack-facade-capabilities-strict-final.log`. Initial fixture failures:
+`/private/tmp/apack-facade-capabilities-strict.log`; interim accepted source before the syntax fix:
+`/private/tmp/apack-facade-capabilities-strict-reviewed.log`. Generated EARS and all six compiled
+content files remain byte-identical. Format/release metadata and unrelated issue draft are preserved.
+
+The capability checkpoint is not yet complete: resolver/parser types still require the exact snapshot
+stamp. Next implement honest optional dependency stamp types and shared current-data validation,
+accepting usable current-data typing with absent/different stamps as diagnostic context. Audit every
+build/test runtime loader before allowing that data through resolution: successful type inspection must
+not authorize incompatible runtime execution. Also cover deliberate skip-generation paths in the
+remaining dependency/tool freshness work. All full discovery kinds, frontend naming, content/CLI
+inventory, navigation, boundaries and three Phase 6 workstreams remain active. Final committed-source
+strict `--all` and whole-goal completion audit remain due.

@@ -1792,3 +1792,19 @@ do not demonstrate capable type admission. Implement the separate current-data d
 actual required type-export checking and honest stamp diagnostics, including installed/cache/real
 authoring checks. Keep runtime execution admission distinct. Remaining kinds and all later phases
 retain their scope.
+
+
+### Consumed facade export inspection outcome (2026-10-14)
+
+`b1eeebd19` implements actual consumed type-export checks using the shared TypeScript reader and
+virtual bundled declarations, with stale-file precedence and no directory writes. Required imports
+define requirements; backend-only consumers do not acquire unused plugin-state requirements. Syntax
+recovery cannot count as usable capability. Missing/value-only/unresolved/syntax-invalid types fail
+by dependency and rebuild remedy. Focused/mutation/real authoring checks and all 30 strict steps passed;
+the execution goal records source and exact evidence. EARS/content bytes and API reports are unchanged.
+
+Checkpoint 2 remains open for the separate dependency current-data reader and honest optional stamp
+types. Current resolution still rejects absent/different stamps. Audit build/test executable dependency
+consumers and preserve exact runtime/install admission before relaxing type-data resolution. Deliberate
+skip-generation paths remain in the required dependency/tool freshness audit. No adapter, alias,
+synthesized stamp or legacy-key read is authorized. All remaining goal phases retain their scope.
