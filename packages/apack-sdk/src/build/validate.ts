@@ -1,8 +1,10 @@
+import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
+import { _parseModuleReference } from '../framework/module-reference.ts';
+import { _packEntities } from '../framework/data-declaration.ts';
 import { resolveTypeModule } from './type-module.ts';
 import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { ManifestSchema } from './manifest-schema.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
 import { packValidation, type PackDiagnostic, type PackValidation } from './diagnostics.ts';
@@ -47,23 +49,34 @@ export function validateManifest(manifestPath: string): PackValidation {
  * object, so the last one would silently win — which is what the check below is for. Across packs
  * `registerPack` throws.
  */
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions'>>): PackValidation {
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions' | 'data'>>): PackValidation {
   const diagnostics: PackDiagnostic[] = [];
   const designatedBy = new Map<string, string>();
   for (const feature of packFeatures(manifest)) {
     const files: [string, string | undefined][] = [
       ['settings.form', feature.settings?.form],
-      ...(feature.references ? _referenceTargets(feature.references).map(([field, target]): [string, string] => [`references.${field}`, target.split('#')[0]!]) : []),
+      ...(feature.references ? _referenceTargets(feature.references).map(([field, target]): [string, string] => [`references.${field}`, target]) : []),
       ['system.entry', feature.system?.entry],
-      ...(feature.plugin ? _pluginTargets(feature.plugin).map(([field, target]): [string, string] => [`plugin.${field}`, target.split('#')[0]!]) : []),
+      ['system.contract', feature.system?.contract],
+      ['plugin.contract', feature.plugin?.contract],
+      ...Object.entries(feature.services ?? {}).map(([name, target]): [string, string] => [`services.${name}`, target]),
+      ...Object.entries(feature.repositories ?? {}).map(([name, target]): [string, string] => [`repositories.${name}`, target]),
+      ...(feature.plugin ? _pluginTargets(feature.plugin).map(([field, target]): [string, string] => [`plugin.${field}`, target]) : []),
     ];
-    for (const [field, file] of files) {
-      if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
-        diagnostics.push({
-          code: 'feature.missing-file', severity: 'error', packId: manifest.id,
-          path: ['features', feature.id, ...field.split('.')], source: file,
-          message: `Feature "${feature.id}": ${field} file "${file}" not found`,
-        });
+    for (const [field, target] of files) {
+      if (target === undefined) continue;
+      const address = ['features', feature.id, ...field.split('.')];
+      const label = `Feature "${feature.id}": ${field}`;
+      try {
+        const { source } = _parseModuleReference(target, label, 'default');
+        if (!findSourceModule(packRoot, source, [...SCRIPT_MODULE_EXTENSIONS, '.vue'], label)) {
+          diagnostics.push({ code: 'feature.missing-file', severity: 'error', packId: manifest.id,
+            path: address, source,
+            message: `${label} file "${source}" not found` });
+        }
+      } catch (error) {
+        diagnostics.push({ code: 'feature.invalid-target', severity: 'error', packId: manifest.id,
+          path: address, source: target, message: error instanceof Error ? error.message : String(error) });
       }
     }
     if (feature.types !== undefined) {
@@ -88,13 +101,35 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
     }
   }
   for (const [groupId, definition] of Object.entries(manifest.extensions?.settings ?? {})) {
-    const file = definition.form;
-    if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
-      diagnostics.push({
-        code: 'settings.missing-form', severity: 'error', packId: manifest.id,
-        path: ['extensions', 'settings', groupId, 'form'], source: file,
-        message: `Settings group "${groupId}": form file "${file}" not found`,
-      });
+    const target = definition.form;
+    if (target === undefined) continue;
+    const label = `Settings group "${groupId}": form`;
+    try {
+      const { source } = _parseModuleReference(target, label, 'default');
+      if (!findSourceModule(packRoot, source, [...SCRIPT_MODULE_EXTENSIONS, '.vue'], label)) {
+        diagnostics.push({ code: 'settings.missing-form', severity: 'error', packId: manifest.id,
+          path: ['extensions', 'settings', groupId, 'form'], source,
+          message: `${label} file "${source}" not found` });
+      }
+    } catch (error) {
+      diagnostics.push({ code: 'settings.invalid-form', severity: 'error', packId: manifest.id,
+        path: ['extensions', 'settings', groupId, 'form'], source: target,
+        message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  for (const { name, owner, shape } of _packEntities(manifest)) {
+    if (shape === null) continue;
+    const label = `Entity shape "${name}"`;
+    const address = [...owner.split('.'), 'entities', name];
+    try {
+      const { source } = _parseModuleReference(shape, label);
+      if (!findSourceModule(packRoot, source, TYPE_MODULE_EXTENSIONS, label)) {
+        diagnostics.push({ code: 'entity.missing-shape-module', severity: 'error', packId: manifest.id,
+          path: address, source, message: `${label}: no module found at ${source}` });
+      }
+    } catch (error) {
+      diagnostics.push({ code: 'entity.invalid-shape-target', severity: 'error', packId: manifest.id,
+        path: address, source: shape, message: error instanceof Error ? error.message : String(error) });
     }
   }
   return packValidation(diagnostics);

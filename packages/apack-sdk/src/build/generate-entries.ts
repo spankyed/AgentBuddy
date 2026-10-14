@@ -1,11 +1,12 @@
+import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import { _parseModuleReference } from '../framework/module-reference.ts';
 import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
-import { readFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { dirname, extname, isAbsolute, join, relative, resolve } from 'path';
+import { dirname, extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -271,7 +272,6 @@ const _everyFacetIsRouted: [UnroutedFacet] extends [never] ? true : UnroutedFace
 void _everyFacetIsRouted;
 
 /** Extensions of the TypeScript sources codegen reads exports from */
-const MODULE_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
 
 /**
  * Specifier from src/__generated__ to a manifest path (relative to the pack root), naming the file that is
@@ -465,19 +465,14 @@ export async function generatePackFiles(
   // ── Manifest export targets ────────────────────────────────────
 
   /** The pack source file a manifest path names: the file itself, `<path>.ts` or `<path>/index.ts` */
-  function sourceFileOf(manifestPath: string): string | undefined {
-    const normalized = manifestPath.split('\\').join('/');
-    const fromRoot = relative(root, resolve(root, normalized));
-    if (isAbsolute(normalized) || fromRoot === '..' || fromRoot.startsWith('../') || fromRoot.startsWith('..\\')) return undefined;
-    return [normalized, `${normalized}.ts`, `${normalized}/index.ts`]
-      .map((candidate) => join(root, candidate))
-      .find((file) => MODULE_SOURCE_EXTENSIONS.has(extname(file)) && existsSync(file) && statSync(file).isFile());
+  function sourceFileOf(manifestPath: string, label = `Module "${manifestPath}"`): string | undefined {
+    return findSourceModule(root, manifestPath, SCRIPT_MODULE_EXTENSIONS, label);
   }
 
   /** A `"path#exportName"` manifest value: the source path, the export and the file */
-  function exportTarget(label: string, target: string): { source: string; exportName: string; file: string } {
+  function exportTarget(label: string, target: string, extensions: readonly string[] = SCRIPT_MODULE_EXTENSIONS): { source: string; exportName: string; file: string } {
     const { source, exportName } = _parseModuleReference(target, label);
-    const file = sourceFileOf(source);
+    const file = findSourceModule(root, source, extensions, label);
     if (!file) throw new Error(`${label}: no file found at ${source} (.ts or /index.ts)`);
     return { source, exportName, file };
   }
@@ -493,9 +488,9 @@ export async function generatePackFiles(
       ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...MIGRATION_LINES.flatMap((line) => Object.values(manifest.migrations?.[line] ?? {}).map(entry => entry.up)),
       ...Object.values(manifest.lifecycle ?? {}),
-      ...features.flatMap(feature => feature.references ? _referenceTargets(feature.references).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
-      ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !target.split('#')[0]!.endsWith('.vue')) : []),
-    ].map((target) => target.split('#')[0]);
+      ...features.flatMap(feature => feature.references ? _referenceTargets(feature.references).map(([, target]) => target).filter(target => !_parseModuleReference(target, 'Module reference', 'default').source.endsWith('.vue')) : []),
+      ...features.flatMap(feature => feature.plugin ? _pluginTargets(feature.plugin).map(([, target]) => target).filter(target => !_parseModuleReference(target, 'Module reference', 'default').source.endsWith('.vue')) : []),
+    ].map((target) => _parseModuleReference(target, 'Module reference', 'default').source);
     const sources = [
       ...targets,
       ..._packEntities(manifest).flatMap(({ name, shape }) => shape === null ? [] : [_parseModuleReference(shape, `Entity shape "${name}"`).source]),
@@ -505,10 +500,10 @@ export async function generatePackFiles(
       // Events and published state types come from contract leaves, never inferred machine types.
       // Plugin machines also enter this program through targets above for value-export checks.
       // Keeping contracts independent still prevents their machine closure leaking into facade types.
-      ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
-      ...features.flatMap((f) => (f.system?.contract ? [f.system.contract.split('#')[0]!] : [])),
+      ...features.flatMap((f) => (f.plugin?.contract ? [_parseModuleReference(f.plugin.contract, `Feature "${f.id}": plugin.contract`).source] : [])),
+      ...features.flatMap((f) => (f.system?.contract ? [_parseModuleReference(f.system.contract, `Feature "${f.id}": system.contract`).source] : [])),
     ];
-    return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
+    return [...new Set(sources.map(source => sourceFileOf(source)).filter((file): file is string => file !== undefined))];
   }
 
   let moduleExports: ModuleExports | undefined;
@@ -815,10 +810,9 @@ ${items.join('\n')}
 
   /** A manifest path naming a component file, taken by its default export */
   function componentFile(label: string, manifestPath: string): string {
-    const normalized = manifestPath.split('\\').join('/');
-    const file = join(root, normalized);
-    if (!existsSync(file) || !statSync(file).isFile()) throw new Error(`${label}: no file at ${normalized}`);
-    return normalized;
+    const file = findSourceModule(root, manifestPath, [...SCRIPT_MODULE_EXTENSIONS, '.vue'], label);
+    if (!file) throw new Error(`${label}: no file at ${manifestPath}`);
+    return relative(root, file).split('\\').join('/');
   }
 
   function receivedEventTypes(feature: PackFeature): string[] {
@@ -878,7 +872,7 @@ ${items.join('\n')}
     ];
     const dirs = facets
       .filter((pair): pair is [string, string] => pair[1] !== undefined)
-      .map(([name, target]) => [name, dirname(target.split('#')[0]!)] as const);
+      .map(([name, target]) => [name, dirname(_parseModuleReference(target, 'Module reference', 'default').source)] as const);
     if (dirs.length === 0) {
       throw new Error(`Step "${type}" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has`);
     }
@@ -1013,19 +1007,19 @@ ${contractCheck}`;
       const plugin = feature.plugin!;
       let nextBinding = 0;
       for (const [field, reference] of _pluginTargets(plugin)) {
-        const [source, exported = 'default'] = reference.split('#');
         const label = `features.${feature.id}.plugin.${field}`;
+        const { source, exportName: exported } = _parseModuleReference(reference, label, 'default');
         if (source!.endsWith('.vue')) {
-          if (!existsSync(resolve(root, source!)) || !statSync(resolve(root, source!)).isFile()) throw new Error(`${label}: no component found at ${source}`);
+          if (!findSourceModule(root, source, ['.vue'], label)) throw new Error(`${label}: no component found at ${source}`);
           if (exported !== 'default') throw new Error(`${label}: Vue components use their default export`);
         } else {
-          const file = sourceFileOf(source!);
+          const file = sourceFileOf(source, label);
           if (!file) throw new Error(`${label}: no module found at ${source}`);
           if (!exportOf(file, exported)?.value) throw new Error(`${label}: ${source} doesn't export ${exported} as a value`);
         }
       }
       const target = (reference: string): string => {
-        const [source, exported = 'default'] = reference.split('#');
+        const { source, exportName: exported } = _parseModuleReference(reference, 'Component reference', 'default');
         const binding = `${pluginBinding(feature.id)}_${nextBinding++}`;
         const from = JSON.stringify(toImportPath(root, source!));
         pluginImports.push(exported === 'default' ? `import ${binding} from ${from};`
@@ -1035,7 +1029,7 @@ ${contractCheck}`;
       const component = (reference: ComponentTarget): string => {
         if (typeof reference === 'string' || reference.load !== 'lazy') return target(typeof reference === 'string' ? reference : reference.entry);
         lazyComponents = true;
-        const [source, exported = 'default'] = reference.entry.split('#');
+        const { source, exportName: exported } = _parseModuleReference(reference.entry, 'Component reference', 'default');
         return `defineAsyncComponent(() => import(${JSON.stringify(toImportPath(root, source!))}).then(module => module.${exported}))`;
       };
       const properties = [`label: ${JSON.stringify(plugin.label)}`, `state: ${target(plugin.state)}`];
@@ -1780,12 +1774,12 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
     let nextBinding = 0;
     let lazyComponents = false;
     const bind = (label: string, reference: string, callable: boolean, lazy = false): string => {
-      const [source, exported = 'default'] = reference.split('#');
+      const { source, exportName: exported } = _parseModuleReference(reference, label, 'default');
       if (source!.endsWith('.vue')) {
         if (callable || exported !== 'default') throw new Error(`${label}: expected a function export, or a default component export`);
-        if (!existsSync(resolve(root, source!)) || !statSync(resolve(root, source!)).isFile()) throw new Error(`${label}: no component found at ${source}`);
+        if (!findSourceModule(root, source, ['.vue'], label)) throw new Error(`${label}: no component found at ${source}`);
       } else {
-        const file = sourceFileOf(source!);
+        const file = sourceFileOf(source, label);
         if (!file) throw new Error(`${label}: no module found at ${source}`);
         const value = exportOf(file, exported)?.value;
         if (!value || (callable && value !== 'function')) throw new Error(`${label}: ${source} must export ${exported} as ${callable ? 'a function' : 'a value'}`);
@@ -1935,7 +1929,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     const entries: string[] = [];
     for (const { name: entity, shape } of _packEntities(manifest)) {
       if (shape === null) continue;
-      const { source, exportName: typeName, file } = exportTarget(`Entity shape "${entity}"`, shape);
+      const { source, exportName: typeName, file } = exportTarget(`Entity shape "${entity}"`, shape, TYPE_MODULE_EXTENSIONS);
       if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove its entity declaration`);
       }
@@ -2007,7 +2001,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     // `trackField` is a member of the TriggerFacet, so it is read from the module the manifest names for it
     // rather than guessed at by filename
     const facet = step.entry.trigger?.facet;
-    const file = facet && sourceFileOf(facet.split('#')[0]!);
+    const file = facet && sourceFileOf(_parseModuleReference(facet, 'Step facet').source);
     const match = file ? readFileSync(file, 'utf-8').match(/trackField:\s*['"](\w+)['"]/) : null;
     if (!match) return null;
     const trackField = match[1];

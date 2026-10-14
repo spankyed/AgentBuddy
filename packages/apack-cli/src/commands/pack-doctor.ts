@@ -1,4 +1,4 @@
-import { validateFeatures } from '@apackdev/sdk/build';
+import { _parseModuleReference, findSourceModule, SCRIPT_MODULE_EXTENSIONS, validateFeatures } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parseManifest, MIGRATION_LINES } from '@apackdev/sdk/build';
@@ -59,7 +59,7 @@ export async function doctor(args: string[]) {
     for (const [type, entry] of Object.entries(parsed.extensions?.steps ?? {})) {
       const targets = [entry.node, entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
       for (const target of targets) {
-        if (target && !fs.existsSync(path.join(root, target.split('#')[0]!))) missing.push(`${type} (${target})`);
+        if (target && !findSourceModule(root, _parseModuleReference(target, `Step "${type}"`, 'default').source, SCRIPT_MODULE_EXTENSIONS, `Step "${type}"`)) missing.push(`${type} (${target})`);
       }
     }
     if (missing.length) return `missing: ${missing.join(', ')}`;
@@ -70,7 +70,7 @@ export async function doctor(args: string[]) {
     // Both lines: a file missing under either is a migration that cannot run, and reading one map would
     // report `pass` over a pack whose migrations are all declared on the other
     const missing = MIGRATION_LINES.flatMap((line) => Object.entries(parsed.migrations?.[line] ?? {})
-      .filter(([, target]) => !fs.existsSync(path.join(root, target.up.split('#')[0]!)))
+      .filter(([version, target]) => !findSourceModule(root, _parseModuleReference(target.up, `Migration ${line}/${version}`).source, SCRIPT_MODULE_EXTENSIONS, `Migration ${line}/${version}`))
       .map(([version, target]) => `${line}/${version} (${target.up})`));
     if (missing.length) return `missing: ${missing.join(', ')}`;
     return 'pass';

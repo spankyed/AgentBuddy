@@ -80,7 +80,7 @@ describe('feature-owned entity declarations', () => {
     await expect(generate({ data: { entities: { Memo: 'src/missing.ts#MemoShape' } } }))
       .rejects.toThrow('Entity shape "Memo": no file found at src/missing.ts');
     await expect(generate({ data: { entities: { Memo: '../outside.ts#MemoShape' } } }))
-      .rejects.toThrow('Entity shape "Memo": no file found at ../outside.ts');
+      .rejects.toThrow('Entity shape "Memo": module must be pack-root-relative and stay within the pack');
   });
 
   it('refuses duplicate ownership before generating a runtime inventory', async () => {

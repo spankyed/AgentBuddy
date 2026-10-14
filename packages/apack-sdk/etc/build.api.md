@@ -561,6 +561,9 @@ export const FeatureEntrySchema: z.ZodObject<{
     repositories?: Record<string, string> | undefined;
 }>;
 
+// @public
+export function findSourceModule(root: string, target: string, extensions: readonly string[], label: string): string | undefined;
+
 // @public (undocumented)
 export interface FlowConfig {
     // (undocumented)
@@ -2629,6 +2632,12 @@ export function parseMarkdownFile(text: string, file?: string): {
     body: string;
 };
 
+// @internal
+export function _parseModuleReference(target: string, label: string, defaultExport?: 'default'): {
+    source: string;
+    exportName: string;
+};
+
 // @public
 export function parseSnapshot(raw: unknown): PackSnapshotValidation;
 
@@ -2713,6 +2722,9 @@ export type ResolvedContentSource = {
 
 // @public (undocumented)
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
+
+// @public (undocumented)
+export const SCRIPT_MODULE_EXTENSIONS: readonly [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 
 // @public (undocumented)
 export interface SkippedPackCheck {
@@ -2942,8 +2954,11 @@ export interface Track {
     schedule?: string;
 }
 
+// @public (undocumented)
+export const TYPE_MODULE_EXTENSIONS: readonly [".ts", ".tsx", ".mts", ".cts"];
+
 // @public
-export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions'>>): PackValidation;
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'> & Partial<Pick<PackManifest, 'id' | 'extensions' | 'data'>>): PackValidation;
 
 // @public (undocumented)
 export function validateFlowDSL(dsl: unknown, options?: ValidateOptions): ValidationResult;

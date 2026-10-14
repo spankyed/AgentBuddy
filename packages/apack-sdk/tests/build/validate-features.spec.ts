@@ -29,6 +29,35 @@ const memos = {
 const memosFiles = [memos.settings.form, memos.system.entry, memos.plugin.state];
 
 describe('validateFeatures', () => {
+  it('checks declared contracts, services, repositories and shapes through common module resolution', () => {
+    const root = pack(['src/system.ts', 'src/views/index.ts', 'src/types.ts', 'src/queries.ts']);
+    fs.writeFileSync(path.join(root, 'src/types.ts'), 'throw new Error("Do not execute"); export interface Contract {}');
+    const manifest = { id: 'fixture', features: { memos: {
+      description: 'Manage memos.', system: { entry: 'src/system', contract: 'src/types#Contract' },
+      plugin: { label: 'Memos', state: 'src/views' },
+      services: { memos: 'src/queries#queries' }, repositories: { memoQueries: 'src/queries#queries' },
+      entities: { Memo: 'src/types#Contract' },
+    } } };
+    expect(validateFeatures(root, manifest).status).toBe('valid');
+    fs.rmSync(path.join(root, 'src/types.ts'));
+    expect(validateFeatures(root, manifest).diagnostics.map(issue => issue.path)).toEqual([
+      ['features', 'memos', 'system', 'contract'], ['features', 'memos', 'entities', 'Memo'],
+    ]);
+  });
+
+  it('refuses component targets that escape the pack through paths or symlinks', () => {
+    const root = pack(['src/state.ts']);
+    const outside = pack(['outside.vue']);
+    fs.symlinkSync(path.join(outside, 'outside.vue'), path.join(root, 'linked.vue'));
+    for (const canvas of ['../outside.vue', 'linked.vue']) {
+      const result = validateFeatures(root, { features: { memos: {
+        description: 'Manage memos.', plugin: { label: 'Memos', state: 'src/state.ts', canvas },
+      } } });
+      expect(result.status).toBe('invalid');
+      expect(result.diagnostics[0]).toMatchObject({ path: ['features', 'memos', 'plugin', 'canvas'] });
+      expect(result.diagnostics[0].message).toContain('stay within the pack');
+    }
+  });
   it('accepts features whose files exist and whose designation is the feature id', () => {
     const root = pack(memosFiles);
     expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'memos' } } })).toEqual({ status: 'valid', diagnostics: [], skippedChecks: [] });
@@ -79,7 +108,7 @@ describe('types', () => {
     const outside = pack(['external.ts']);
     fs.symlinkSync(path.join(outside, 'external.ts'), path.join(root, 'linked.ts'));
     expect(messagesOf(validateFeatures(root, { features: { memos: { description: 'Manage memos.', types: 'linked.ts' } } }))[0])
-      .toContain('type module must stay within the pack');
+      .toContain('module must stay within the pack');
   });
   it('accepts one whose module exists, written with or without its extension', () => {
     const root = pack([...memosFiles, 'src/features/memos/be/types.ts']);
