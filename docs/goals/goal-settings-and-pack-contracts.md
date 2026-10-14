@@ -3728,3 +3728,44 @@ The audit confirms remaining required work, not optional follow-ups:
 Continue those audits, then every remaining contribution/native kind, frontend naming, static edges
 and CLI inventory, navigation, boundaries and all three Phase 6 workstreams. Final committed-source
 strict `--all` and requirement-by-requirement whole-goal audit remain due.
+
+
+### Local Monaco and offline assistance — editor checkpoint (2026-10-14)
+
+Source `07d544606` configures the Vue editor loader with locally bundled Monaco and Vite-built
+editor/JSON/CSS/HTML/TypeScript workers before component mount. Existing components share the renderer's
+editor instance. The external settings JSON test blocks non-local HTTP, reloads the renderer under that
+block, and proves real completion, descriptions, diagnostics and validated saving with no attempted
+external request. Removing the bootstrap and rebuilding the app fails that test with Monaco loading
+errors under the network block. Renderer source was restored exactly and runtime outputs explicitly
+rebuilt before accepted validation. Evidence: `/private/tmp/apack-offline-monaco-loading-mutation.log`,
+`/private/tmp/apack-offline-monaco-runtime-restored.log`,
+`/private/tmp/apack-offline-monaco-reloaded-app.log`.
+
+Bundling exposed a disposal cancellation previously recognized only by its vendor-path stack. Monaco
+now has a dedicated vendor chunk, and the filter inspects its origin frame. Application cancellations
+remain fatal even when a later frame dispatches through Monaco. Seven error tests pass; changing the
+filter to inspect any frame fails the application-origin assertion. Evidence:
+`/private/tmp/apack-offline-monaco-errors-final.log`,
+`/private/tmp/apack-offline-monaco-origin-mutation.log`.
+The repeated 15s unit timeout in the unchanged five-build staged-DSL case was corrected by moving the
+case intact into the CLI integration suite. Its assertions and production behavior are preserved;
+the focused integration passed in 15.2s instead of expanding the unit timeout.
+
+Strict passed in 173.7s (28 of 30 cached), evidence
+`node_modules/.cache/apack-chain/runs/2026-10-14T18-24-25Z-41347`;
+`/private/tmp/apack-offline-monaco-strict-restored.log`.
+The accepted predecessor `2026-10-14T18-01-57Z-96454` ran 3,148 host cases, 855 pack cases with two
+existing skips, all 683 integration cases, external app, smoke and packaged authoring/app checks in
+652.4s. The final external-app run includes startup network blocking; unchanged smoke/packaged evidence
+was reused. Generated EARS and six compiled content artifacts remain byte-identical. No public SDK
+signature, format constant or release metadata changes. The unrelated issue draft remains untouched.
+
+The negative runtime-build probe also exposed a remaining output-freshness issue: after source was
+restored, the chain reused its earlier successful input key while the manually built renderer output
+still lacked local Monaco setup. That failed app run is not accepted evidence. Explicit output rebuild
+restored the bootstrap, and the final focused/strict checks pass. Include out-of-band builds/output
+identity in the required source/tool freshness audit; input identity alone cannot prove current output.
+Continue dependency receipts/provenance, complete tool graph identity, all contribution/native kinds,
+frontend naming, static edges/inventory, navigation, boundaries and every Phase 6 workstream. Final
+committed-source strict `--all` and the whole-goal completion audit remain due.

@@ -1888,3 +1888,20 @@ configuration overrides it. The external settings-editor test failed once awaiti
 passed on retry; network-backed success is not offline acceptance. Ship local editor/worker assets and
 exercise real schema completion/diagnostics without external networking. All other goal phases retain
 their scope; lazy activation and stronger isolation remain deferred.
+
+
+### Offline editor outcome and output identity gap (2026-10-14)
+
+`07d544606` closes the inspected CDN editor/worker dependency: renderer-owned Monaco and all supported
+language workers are bundled locally. A real renderer reload and JSON assistance/save test runs with
+external HTTP blocked, with a rebuilt negative bootstrap mutation proving refusal. Disposal cancellation
+uses vendor origin, preserving application errors routed through Monaco. The execution goal records
+source, focused checks, restored mutations and strict evidence; the moved staged-DSL integration keeps
+all its original assertions.
+
+Source/tool freshness remains open. A negative out-of-band renderer build followed by exact source
+restoration left stale built output while the chain reused the previous source-input key. Explicit
+rebuild was necessary before the accepted final app checks. Audit output identity as well as input and
+implementation/import graphs. Preserve dependency origin/version/content and receipt requirements,
+independent type-data inspection, and every remaining discovery/native and later goal phase. The local
+editor checkpoint does not complete broader editor contribution declarations or frontend migration.
