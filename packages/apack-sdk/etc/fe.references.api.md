@@ -25,6 +25,15 @@ export interface CategoryItemsProvider {
 }
 
 // @public
+export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']>;
+
+// @public
+export function getReferenceDeclarations(): readonly ReferenceCatalogEntry[];
+
+// @public
+export function onReferenceDeclarationsChanged(listener: () => void): () => void;
+
+// @public
 export interface ReferenceBinding<T> {
     // (undocumented)
     readonly artifactRevision?: string;

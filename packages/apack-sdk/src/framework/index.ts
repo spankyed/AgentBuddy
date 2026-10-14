@@ -13,3 +13,5 @@ export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-va
 export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';
 
 export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclaration, type ReferenceCategoryDeclaration, type ReferenceSvgElement } from './reference-declaration.ts';
+
+export type { PackCatalogView, ReferenceCatalogEntry, DeclarationData } from './catalog-view.ts';

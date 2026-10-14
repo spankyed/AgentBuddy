@@ -7,7 +7,7 @@ import { bindFeHost } from '@apackdev/sdk/runtime';
 import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 
 const { registerPackFE, unregisterPackFE, ...registry } = createFePackRegistry();
-bindFeHost({ application: {} as never, secrets: {} as never, settings: {} as never, client: {} as never, packs: registry });
+bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as never, settings: {} as never, client: {} as never, packs: registry });
 
 const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
 

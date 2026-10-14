@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { createContributionCatalog } from '../../src/packs/catalog.ts';
 import type { PackCatalogFrame } from '../../src/packs/catalog.ts';
 import { createWindowPackCatalog } from '../../src/fe/pack-catalog.ts';
@@ -26,6 +27,44 @@ describe('window declaration catalog', () => {
     (frame.snapshot.native[0] as { id: string }).id = 'changed';
     expect(reader.getSnapshot()?.native[0].id).toBe('native-pack');
     expect(Reflect.set(reader.getSnapshot()!, 'revision', 900)).toBe(false);
+  });
+
+  it('projects native, disabled installed and source declarations with truthful identities and stable entries', () => {
+    const { reader, catalog, sessions, wire } = fixture();
+    const references = { types: { memo: { protocol: 'memo', category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
+      categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
+    catalog.setNative([{ id: 'native-pack', features: { memos: { references } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', features: { memos: { references } } };
+    catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
+    const installed = { ...manifest, id: 'installed-pack' };
+    catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
+      format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed,
+      types: { entities: {}, relKinds: {} }, defs: {},
+    } }]);
+    reader.connect(); sessions[0].receive(wire());
+    const entries = reader.catalog.references();
+    expect(entries).toMatchObject([
+      { featureRef: 'native-pack/memos', origin: 'native', enabled: true },
+      { featureRef: 'installed-pack/memos', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },
+      { featureRef: 'source-pack/memos', origin: 'source', declarationRevision: _declarationRevision(manifest) },
+    ]);
+    expect(entries[0]).not.toHaveProperty('artifactRevision');
+    expect(entries[2]).not.toHaveProperty('enabled');
+    expect(reader.catalog.references()).toBe(entries);
+    reader.disconnect();
+    expect(reader.catalog.references()).toBe(entries);
+    expect(reader.catalog.status()).toBe('disconnected');
+    expect(Reflect.set(entries[0].declaration.categories.memos, 'label', 'changed')).toBe(false);
+    reader.dispose();
+  });
+
+  it('does not invoke observers added during the current publication', () => {
+    const { reader, sessions, wire } = fixture(); const next = vi.fn();
+    reader.catalog.subscribe(() => { reader.catalog.subscribe(next); });
+    reader.connect();
+    expect(next).not.toHaveBeenCalled();
+    sessions[0].receive(wire());
+    expect(next).toHaveBeenCalledOnce(); reader.dispose();
   });
 
   it('accepts newer revisions and ignores older frames', () => {

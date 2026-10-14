@@ -43,6 +43,11 @@ export interface ContentRuntime {
 }
 
 // @public
+export type DeclarationData<T> = T extends object ? {
+    readonly [K in keyof T]: DeclarationData<T[K]>;
+} : T;
+
+// @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
     type: string;
 } = {
@@ -171,6 +176,18 @@ export interface PackBootHooks {
     onInit?: () => void;
     // (undocumented)
     onShutdown?: () => void;
+}
+
+// @public
+export interface PackCatalogView {
+    // (undocumented)
+    problem(): string | undefined;
+    // (undocumented)
+    references(): readonly ReferenceCatalogEntry[];
+    // (undocumented)
+    status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
+    // (undocumented)
+    subscribe(listener: () => void): () => void;
 }
 
 // @public
@@ -313,6 +330,24 @@ export interface PluginDeclaration {
 
 // @internal
 export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
+
+// @public (undocumented)
+export interface ReferenceCatalogEntry {
+    // (undocumented)
+    readonly artifactRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<ReferenceDeclarations>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+}
 
 // @public (undocumented)
 export interface ReferenceCategoryDeclaration {

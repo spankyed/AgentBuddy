@@ -219,9 +219,15 @@ reference-item list; call it in a component's setup so its subscriptions share t
 Generated frontend entries register these bindings under their owning feature. The host checks
 complete declaration membership and refuses global type, protocol or category collisions before
 publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
-The generated reference
-aggregate currently serves the declaring pack's frontend; app-wide external reference consumption is
-not yet delivered.
+The SDK's `@apackdev/sdk/fe/references` exposes `getReferenceDeclarations()`,
+`getReferenceCatalogStatus()` and `onReferenceDeclarationsChanged(listener)` over the common catalog.
+Reading declarations never invokes navigation, item providers or components. The subscription returns
+its cleanup function. A disconnected window can retain its last accepted metadata; status reports
+that it is unavailable for current execution. Native/source entries do not invent installed receipts
+or source enablement.
+
+The generated reference aggregate currently serves the declaring pack's frontend; app-wide editor
+consumption and provider lifecycle migration are not yet delivered.
 
 ## Steps
 

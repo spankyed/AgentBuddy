@@ -1,3 +1,4 @@
+import type { PackCatalogView } from '../framework/catalog-view.ts';
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '../fe/reference-types.ts';
 import type { Message } from '../events/index.ts';
@@ -39,6 +40,8 @@ export interface FePackRegistryView extends PackExtensionsView {
 
 /** The running app, as the SDK reaches it in the renderer */
 export interface FeHostRuntime {
+  /** Common declarations, independent of the accepted executable frontend registry. */
+  catalog: PackCatalogView;
   /** The app shell, which spawns the plugins, holds which is open and lays out the panels */
   application: HostShell;
   /** The API's secrets procedures */

@@ -1,4 +1,6 @@
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
+import type { PackCatalogView, ReferenceCatalogEntry } from '@apackdev/sdk/framework';
+import { referenceCatalogEntries } from '../packs/catalog-references.ts';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -22,7 +24,13 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const logger = createLogger('declaration-catalog-window');
   const listeners = new Set<() => void>();
-  const tell = () => { for (const listener of listeners) { try { listener(); } catch (error) { logger.error('Catalog listener failed', error); } } };
+  const tell = () => {
+    // New observers wait for the next publication, even if registered by a current observer.
+    const notified = [...listeners];
+    for (const listener of notified) {
+      try { listener(); } catch (error) { logger.error('Catalog listener failed', error); }
+    }
+  };
   const close = () => {
     generation++;
     clearTimeout(timer); timer = undefined;
@@ -60,7 +68,22 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
     tell();
   }
 
+  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[] } | undefined;
+  const references = (): readonly ReferenceCatalogEntry[] => {
+    const snapshot = frame?.snapshot;
+    if (!snapshot) return [];
+    if (projected?.snapshot === snapshot) return projected.references;
+    const entries = referenceCatalogEntries(snapshot);
+    projected = { snapshot, references: entries };
+    return entries;
+  };
+  const catalog: PackCatalogView = {
+    status: () => status, problem: () => problem, references,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+
   return {
+    catalog,
     getSnapshot: (): PackCatalogSnapshot | undefined => frame?.snapshot,
     status: () => status,
     problem: () => problem,
@@ -69,6 +92,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
       if (status === 'disposed') throw new Error('Declaration catalog is disposed');
       close();
       frame = undefined;
+      projected = undefined;
       status = 'loading';
       problem = undefined;
       const accepted = generation;
@@ -92,6 +116,6 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
       }
     },
     disconnect() { if (status === 'disposed' || status === 'disconnected') return; close(); status = 'disconnected'; tell(); },
-    dispose() { if (status === 'disposed') return; close(); status = 'disposed'; frame = undefined; tell(); listeners.clear(); },
+    dispose() { if (status === 'disposed') return; close(); status = 'disposed'; frame = undefined; projected = undefined; tell(); listeners.clear(); },
   };
 }

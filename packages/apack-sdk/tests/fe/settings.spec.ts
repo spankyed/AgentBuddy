@@ -19,7 +19,7 @@ beforeEach(() => {
   settings = fakeSettings({ app: { projects: ['one'] }, features: { [CODE]: { mdEditorDefault: true } } })
   frontendSettings = _createFeSettings()
   frontendSettings.bindSettings(settings).activate()
-  bindFeHost({ application: {} as never, secrets: {} as never, settings, client: {} as never, packs: {} as never })
+  bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as never, settings, client: {} as never, packs: {} as never })
 })
 afterEach(() => unbindFeHost())
 

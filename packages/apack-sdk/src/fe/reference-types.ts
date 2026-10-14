@@ -1,3 +1,5 @@
+import { boundFeHost } from '../runtime/fe-host.ts'
+import type { ReferenceCatalogEntry, PackCatalogView } from '../framework/catalog-view.ts'
 import type { FeatureRef } from '../ids/refs.ts'
 import type { Component, Ref } from 'vue'
 
@@ -50,4 +52,19 @@ export interface ReferenceBinding<T> {
   readonly runtimeRevision?: string
   readonly artifactRevision?: string
   readonly binding: Readonly<T>
+}
+
+/** Metadata remains available without executing navigation, providers or components. */
+export function getReferenceDeclarations(): readonly ReferenceCatalogEntry[] {
+  return boundFeHost().catalog.references()
+}
+
+/** A retained snapshot may be unavailable after disconnect; execution must use current readiness. */
+export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']> {
+  return boundFeHost().catalog.status()
+}
+
+/** Observe declaration updates independently of executable registration changes. */
+export function onReferenceDeclarationsChanged(listener: () => void): () => void {
+  return boundFeHost().catalog.subscribe(listener)
 }

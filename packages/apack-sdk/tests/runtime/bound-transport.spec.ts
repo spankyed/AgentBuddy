@@ -120,7 +120,7 @@ describe('on the bound bus', () => {
 describe('with a frontend bound too', () => {
   it('sends to systems through the frontend, whose packs the lookups read', () => {
     const sentByFrontend: Message[] = [];
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: {} as never,
       secrets: {} as never,
     settings: {} as never,

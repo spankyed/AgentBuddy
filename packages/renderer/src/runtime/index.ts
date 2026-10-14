@@ -5,6 +5,7 @@ import type { HostShell } from '@apackdev/sdk/fe';
 import { feClient } from '@/transport/client';
 import { fePacks } from '@/runtime/packs';
 import { secretsClient } from '@/transport/secrets';
+import { windowCatalog } from '@/runtime/catalog';
 import { settingsPort } from '@/runtime/settings';
 
 /**
@@ -13,6 +14,7 @@ import { settingsPort } from '@/runtime/settings';
  */
 export function bindRendererHost(application: () => HostShell | undefined): void {
   bindFeHost({
+    catalog: windowCatalog.catalog,
     get application() {
       const actor = application();
       if (!actor) throw new Error("The application actor isn't created yet: SDK code reached it while the renderer was starting");

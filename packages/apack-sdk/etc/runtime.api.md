@@ -52,6 +52,7 @@ export interface FeClient {
 // @public
 export interface FeHostRuntime {
     application: HostShell;
+    catalog: PackCatalogView;
     client: FeClient;
     packs: FePackRegistryView;
     secrets: SecretsClient;

@@ -12,7 +12,7 @@ const notes = { id: 'notes-actor' } as unknown as AnyActorRef;
 
 beforeEach(() => {
   const running: Record<string, AnyActorRef> = { 'memo-pack/memos': memos, 'default-setup/notes': notes };
-  bindFeHost({
+  bindFeHost({ catalog: {} as never,
     application: { system: { get: (ref: string) => running[ref] }, subscribe: () => ({ unsubscribe() {} }) } as never,
     secrets: {} as never,
     settings: {} as never,

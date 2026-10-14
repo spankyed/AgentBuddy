@@ -1494,3 +1494,56 @@ aggregate still exists as its current consumer and must be removed with that mig
 external references in an already-open editor, changed protocols/categories and provider disposal.
 This identity checkpoint does not complete discovery, entity readiness or the larger goal; all remaining
 kinds/native/freshness, boundaries, Phase 6 streams and final committed --all acceptance remain due.
+
+### Common declaration read-port plan (2026-10-13)
+
+Expose typed projections from the existing common catalog through `FeHostRuntime.catalog`; do not
+create another authored inventory or derive declarations from active registrations. References are
+its first frontend projection. Share `ReferenceCatalogEntry` across host/window/SDK and one pure
+projection function across backend and window snapshots. Carry truthful origin, qualified ownership,
+enablement and declaration/artifact identity; native/source entries never manufacture installed receipts.
+
+SDK frontend helpers read declarations and status through that port and subscribe explicitly to
+frontend declaration changes. Keep the backend framework's catalog subscription on the backend:
+choosing the frontend implicitly when both runtimes are bound would make backend actors observe the
+wrong catalog in tests. Tests that reach declarations must provide their catalog explicitly rather
+than receiving a fabricated empty inventory.
+
+Cache the window projection by accepted snapshot identity and retain it with unavailable status after
+disconnect. Clear it on new connection/disposal. Snapshot observer sets before notifying: subscriptions
+created while recreating a view/provider must not be invoked by the current publication. Data reading
+must never call providers, navigation or component factories.
+
+After this read-port checkpoint, migrate editor parsing/rendering/category readers and provider scopes,
+remove the pack-local aggregate, and prove dynamic external contributions in an already-open editor.
+Declaration status and owned executable identities remain separate inputs to eligibility; entity
+readiness/delivery follows its dedicated plan. All other discovery kinds and full-goal work remain active.
+
+### Shared declaration read-port checkpoint (2026-10-13)
+
+Implemented `PackCatalogView` on the frontend runtime and the shared SDK reference catalog entry type.
+Backend/window readers use one pure projection function over the same common catalog. SDK helpers
+read metadata/status and subscribe to frontend declaration changes without consulting active bindings
+or invoking contribution code. Backend framework notifications remain backend-scoped. Existing test
+bindings provide the new port explicitly; tests needing declarations must supply their catalog.
+
+The window caches reference entries by accepted snapshot identity, retains them with disconnected
+status and clears the cache on a new connection/disposal. Notification queues exclude observers added
+during the current publication. An observer mutation was caught by the new regression assertion;
+exact restoration returned all 14 window reader checks to passing. Thirty focused host checks, 952 SDK
+checks and 13 renderer checks pass. Metadata tests cover native, disabled installed and authoring
+sources, truthful identity/enablement, immutability, unavailable status and subscription cleanup.
+
+Strict validation passed all 30 gates in 478.8 seconds (11 cached), including 4,366 host tests, 839 pack
+tests (two existing skips), 639 integration tests, fresh external/default-fork Electron acceptance,
+smoke and both packaged-authoring halves. The initial strict run caught a generic lint rule on an
+inline Set copy; an explicit notification queue preserves the required semantics and passes lint.
+SDK reports and public docs agree. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T03-07-16Z-13212`;
+log `/private/tmp/apack-catalog-read-port-strict-final.log`.
+
+The read port is delivered; reference/editor/provider migration is not. Next replace pack-local
+aggregate consumers with catalog metadata and owned accepted bindings, prove external contributions
+and protocol/category updates in a live editor, and dispose providers across binding/view lifetimes.
+Then finish other contribution/native/freshness, entity readiness, boundaries and every Phase 6 stream.
+Final committed --all, complete acceptance auditing and archival remain due. The goal stays active.
