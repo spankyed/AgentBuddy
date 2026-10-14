@@ -30,9 +30,8 @@ import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild, verifyPack } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
-import { resolveDeps } from './generate';
-import { resolveDepFiles } from './fetch-deps';
-import { generateEntries, warnStaleDepTypes } from './generate-entries';
+import { resolveDependencyFiles } from './generate';
+import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
 /** Loads a pack's content compiler module, which may be TypeScript */
@@ -131,11 +130,25 @@ async function buildIntoStaging(args: string[]) {
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(outputDir, { recursive: true });
 
-  if (!args.includes('--skip-generate')) {
-    const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
-    await generateEntries([], undefined, depTypes, depSnapshots);
+  // Dependencies' step build code, so this pack's flows validate against real step definitions,
+  // and their manifests and build dirs, so entries naming their content formats compile with them
+  const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
+  const dependencyStepModules: string[] = [];
+  const dependencies = new Map<string, ContentDependency>();
+  const depSnapshots = new Map<string, PackDependencySnapshot>();
+  const dependencyFiles = await resolveDependencyFiles(root, manifest.dependencies);
+  for (const [depId, artifacts] of dependencyFiles) {
+    if (artifacts.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${artifacts.executionProblem}`);
+    const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
+    if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
+    dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
+    depSnapshots.set(depId, artifacts.snapshot);
   }
+  warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
+  const depTypes = new Map([...depSnapshots].map(([id, snapshot]) => [id, snapshot.types]));
+  if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, depSnapshots);
+  else await generateEntries([], root, depTypes, depSnapshots);
 
   // Every rule a pack is held to, reported together: an author fixes them in one pass rather than one build
   // each, and the switchable ones say how to allow them (`build/pack-rules.ts`)
@@ -145,23 +158,6 @@ async function buildIntoStaging(args: string[]) {
   console.log(`Building pack: ${manifest.name} v${manifest.version}${release ? ' (release)' : ''}`);
 
   let packConfig: PackConfig | null = null;
-
-  // Dependencies' step build code, so this pack's flows validate against real step definitions,
-  // and their manifests and build dirs, so entries naming their content formats compile with them
-  const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
-  const dependencyStepModules: string[] = [];
-  const dependencies = new Map<string, ContentDependency>();
-  const depSnapshots = new Map<string, PackDependencySnapshot>();
-  for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
-    const artifacts = await resolveDepFiles(root, depId, depValue);
-    if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
-    if (artifacts.executionProblem && Object.keys(content).length) throw new Error(`Dependency "${depId}" cannot supply build code: ${artifacts.executionProblem}`);
-    const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
-    if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
-    dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
-    depSnapshots.set(depId, artifacts.snapshot);
-  }
-  warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
   if (Object.keys(content).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
@@ -277,6 +273,8 @@ async function buildIntoStaging(args: string[]) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
+    try { assertGeneratedCurrent(root, manifest, depSnapshots); }
+    catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
     if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
     failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));
     const validation = parseSnapshot(snapshot);

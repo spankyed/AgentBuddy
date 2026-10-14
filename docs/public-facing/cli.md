@@ -134,7 +134,7 @@ all phases succeed. A failed build preserves the previous complete `dist/`. See
 The build:
 
 1. Validates `apack.json`, prepares staging, and resolves dependencies.
-2. Generates `src/__generated__/` from declarations and dependency snapshots (skip with `--skip-generate`). Declared settings schemas/defaults are inline; custom forms are separate declared modules.
+2. Generates `src/__generated__/` from declarations and dependency snapshots (`--skip-generate` requires unchanged generation inputs and exact recorded output bytes; stale or missing files refuse before bundling). Declared settings schemas/defaults are inline; custom forms are separate declared modules.
 3. Enforces pack rules, including the manifest's `checks.allow`, and refuses unresolved dependencies. Warns if generated dependency types differ from the resolved versions.
 4. Compiles `content.sources` into `runtime/content/`, validating flows against dependency step build code, and bundles declared content compilers for dependents.
 5. Bundles and checks the standalone `types/pack-types.d.ts` facade. Its imports must resolve through `@apackdev/*`, SDK peers or Node built-ins; a committed facade report mismatch produces a warning (`apack pack facade-report`).

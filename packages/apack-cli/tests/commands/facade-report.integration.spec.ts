@@ -90,6 +90,20 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
     expect(output).toContain('is up to date');
   });
 
+  it('refuses edited generated files on the skip path without updating the report', async () => {
+    const entry = path.join(pack, 'src/__generated__/pack-types.ts');
+    const original = fs.readFileSync(entry, 'utf8');
+    const report = readReport();
+    fs.appendFileSync(entry, '\n// edited facade\n');
+    try {
+      const { code, output } = await callCli(pack, 'facade-report', ['--skip-generate', '--update']);
+      expect(code).toBe(1);
+      expect(output).toContain('modified src/__generated__/pack-types.ts');
+      expect(readReport()).toBe(report);
+    } finally { fs.writeFileSync(entry, original); }
+    expect((await callCli(pack, 'facade-report', ['--skip-generate'])).code).toBe(0);
+  });
+
   /** Up to date writes nothing, asserted on the bytes: the message would say so either way */
   it('leaves the report alone when it is current, --update included', async () => {
     const recorded = readReport();

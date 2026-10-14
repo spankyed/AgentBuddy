@@ -6,7 +6,7 @@ import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackArtifact, stagePack, verifyPack } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { generatePackFiles } from '@apackdev/sdk/build';
+import { generateEntries } from '../../src/commands/generate-entries';
 
 /**
  * **`apack pack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
@@ -61,17 +61,36 @@ describe('a build that fails', () => {
     packFixture({ at: root, manifest: { id: 'stale-codegen', name: 'Before', features: {} } });
     const manifestFile = path.join(root, 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-    for (const [file, source] of Object.entries(await generatePackFiles(manifest, { packRoot: root }))) {
-      const target = path.join(root, file);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, source);
-    }
+    await generateEntries([], root);
     fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'After' }));
     const cwd = process.cwd();
     process.chdir(root);
     try {
-      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow('pack-entry.ts does not match the manifest');
+      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow('Generated pack files are stale: inputs changed');
     } finally { process.chdir(cwd); }
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
+
+  it.each(['missing', 'modified'])('refuses %s generated code before replacing the previous artifact', async (change) => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, manifest: { id: 'damaged-codegen', name: 'Test', features: {},
+      content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } },
+    }, files: {
+      'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../compiler-executed', import.meta.url), 'yes'); export default function compile() { return []; }",
+      'src/data.ts': 'export default [];',
+    } });
+    await generateEntries([], root);
+    const entry = path.join(root, 'src/__generated__/pack-entry.ts');
+    if (change === 'missing') fs.rmSync(entry);
+    else fs.appendFileSync(entry, '\nthrow new Error("edited entry executed");\n');
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow(`${change} src/__generated__/pack-entry.ts`);
+    } finally { process.chdir(cwd); }
+    expect(fs.existsSync(path.join(root, 'compiler-executed'))).toBe(false);
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
@@ -126,9 +145,9 @@ describe('a pack whose content compiler modules fail to bundle', () => {
     const root = path.dirname(dir);
     packFixture({
       at: root,
-      files: { 'src/tags.ts': 'export default () => [;\n' },
+      files: { 'src/tags.ts': 'import "./missing-compiler.ts"; export default () => [];\n' },
       manifest: {
-        id: 'built-in-pack', name: 'Built-in',
+        id: 'built-in-pack', name: 'Built-in', features: {},
         // Not used by an entry here, so only the bundle for dependents compiles it
         content: { sources: { flows: 'src/content/flows' }, formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
       },
@@ -137,7 +156,7 @@ describe('a pack whose content compiler modules fail to bundle', () => {
     const exitCode = process.exitCode;
     process.chdir(root);
     try {
-      await expect(build(['--skip-generate'])).rejects.toThrow(/Content compiler bundle failed/);
+      await expect(build([])).rejects.toThrow(/Content compiler bundle failed/);
     } finally {
       process.chdir(cwd);
       process.exitCode = exitCode;
@@ -152,14 +171,13 @@ describe('a pack whose runtime fails to bundle', () => {
     const root = path.dirname(dist);
     packFixture({
       at: root,
-      // The generated backend entry the runtime bundles doesn't parse
-      files: { 'src/__generated__/pack-entry.ts': 'export default {;\n' },
-      manifest: { id: 'broken-runtime', name: 'Broken' },
+      files: { 'src/lifecycle.ts': 'import "./missing-runtime.ts"; export function apply() {}' },
+      manifest: { id: 'broken-runtime', name: 'Broken', features: {}, lifecycle: { onInit: 'src/lifecycle.ts#apply' } },
     });
     const cwd = process.cwd();
     process.chdir(root);
     try {
-      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow(/Build failed, so no snapshot was written:\n[\s\S]*Runtime bundle failed/);
+      await expect(build(['--skip-fe'])).rejects.toThrow(/Build failed, so no snapshot was written:\n[\s\S]*Runtime bundle failed/);
     } finally {
       process.chdir(cwd);
     }
@@ -200,9 +218,9 @@ describe('staged DSL definitions', () => {
     const dir = previousBuild([]);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
-      id: 'staged-dsl', name: 'Staged DSL', features: {},
+      id: 'staged-dsl', name: 'Staged DSL', features: {}, lifecycle: { onInit: 'src/lifecycle.ts#apply' },
       extensions: { dsl: { rows: { entry: 'src/rows.ts', targets: ['monaco'], prefix: '', globals: { row: 'Row' } } } },
-    }, files: { 'src/rows.ts': 'export interface Row { before: true }' }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
+    }, files: { 'src/rows.ts': 'export interface Row { before: true }', 'src/lifecycle.ts': 'export function apply() {}' }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
     const cwd = process.cwd();
     process.chdir(root);
     try {
@@ -215,17 +233,16 @@ describe('staged DSL definitions', () => {
       const reads = fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8');
       const cache = fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8');
       fs.writeFileSync(path.join(root, 'src/rows.ts'), 'export interface Row { after: true }');
-      const entry = path.join(root, 'src/__generated__/pack-entry.ts');
-      const valid = fs.readFileSync(entry, 'utf8');
-      fs.appendFileSync(entry, '\nimport "./missing-runtime.ts";');
-      await expect(build(['--skip-generate'])).rejects.toThrow('Runtime bundle failed');
+      const lifecycle = path.join(root, 'src/lifecycle.ts');
+      fs.writeFileSync(lifecycle, 'import "./missing-runtime.ts"; export function apply() {}');
+      await expect(build([])).rejects.toThrow('Runtime bundle failed');
       expect(readPackArtifact(dir).revision).toBe(first.revision);
       expect(fs.readFileSync(definitions, 'utf8')).toBe(original);
       expect(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')).toBe(reads);
       expect(fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8')).toBe(cache);
       expect(fs.existsSync(buildStagingDir(root))).toBe(false);
-      fs.writeFileSync(entry, valid);
-      await build(['--skip-generate']);
+      fs.writeFileSync(lifecycle, 'export function apply() {}');
+      await build([]);
       const current = readPackArtifact(dir);
       expect(current.revision).not.toBe(first.revision);
       expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { bundlePackTypes } from '../../src/build/types-bundler';
-import { generateEntries } from '../../src/commands/generate-entries';
+import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
 import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot, type PackTypeManifest } from '@apackdev/sdk/build';
 
 let tmpDir: string;
@@ -165,6 +165,12 @@ describe('apack pack generate-entries', () => {
     expect(output).toContain("export const MyEntity = 'MyEntity'");
     // Dep entity (with source comment)
     expect(output).toContain("export const DepWidget = 'DepWidget'");
+    const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'apack.json'), 'utf8'));
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).not.toThrow();
+    snapshot.facades[PACK_TYPES_FACADE] += '\n// same-version facade change\n';
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).toThrow('inputs changed');
+    await generateEntries([], tmpDir, depTypes, depSnapshots);
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, depSnapshots)).not.toThrow();
     expect(output).toContain('// dep-pack');
     // Dep relKind
     expect(output).toContain("export const DEP_REL = 'dep_rel'");
@@ -248,6 +254,28 @@ describe('the inputs stamp', () => {
     expect(said.join('\n'), 'and it did not claim the tree was current').not.toMatch(/inputs unchanged/);
   });
 
+  it('refuses edited outputs on the skip path and repairs them on normal generation', async () => {
+    const manifest = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    writeManifest(manifest);
+    await generateEntries([], tmpDir);
+    const original = readGenerated();
+    fs.writeFileSync(generated('ears.ts'), original + '\n// edited\n');
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).toThrow('modified src/__generated__/ears.ts');
+    await generateEntries([], tmpDir);
+    expect(readGenerated()).toBe(original);
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).not.toThrow();
+  });
+
+  it('refuses same-version source changes on the skip path', async () => {
+    const manifest = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    writeManifest(manifest);
+    const source = path.join(tmpDir, 'module.ts');
+    fs.writeFileSync(source, 'export const value = 1;');
+    await generateEntries([], tmpDir);
+    fs.writeFileSync(source, 'export const value = 2;');
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, new Map())).toThrow('inputs changed');
+  });
+
   it('still skips when every recorded file is there', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
     await generateEntries([], tmpDir);
@@ -279,8 +307,8 @@ describe('the inputs stamp', () => {
     await generateEntries([], tmpDir);
     expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
 
-    const stamp = JSON.parse(fs.readFileSync(generated('.inputs-hash'), 'utf-8')) as { files: string[] };
-    expect(stamp.files, 'and it is not recorded as an output').not.toContain('src/__generated__/fe.ts');
+    const stamp = JSON.parse(fs.readFileSync(generated('.inputs-hash'), 'utf-8')) as { files: Record<string, string> };
+    expect(Object.keys(stamp.files), 'and it is not recorded as an output').not.toContain('src/__generated__/fe.ts');
 
     const said: string[] = [];
     const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });

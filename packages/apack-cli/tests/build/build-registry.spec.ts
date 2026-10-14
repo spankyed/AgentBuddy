@@ -8,6 +8,7 @@ import { PACK_LAYOUT } from '@apackdev/host/packs';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { createPackRegistry } from '@apackdev/host/packs';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { build } from '../../src/commands/build';
 
 const bound = createPackRegistry();
@@ -45,30 +46,25 @@ function pack(stepInFlow: string): string {
     },
     content: { sources: { flows: 'src/content/flows' } },
   }));
-  // The build loads its own step facets from the module codegen writes, which this fixture plants directly
-  write('src/__generated__/steps-build.ts', `export const steps = [
-    { type: 'listener', kind: 'trigger', trigger: { trackField: 'event', compile: () => ({}), decompile: () => ({}) } },
-    { type: 'note', kind: 'step', build: { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' } },
-  ];\n`);
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+  write('src/steps/listener/build.ts', `
+export const listenerNode = { label: 'Listener' };
+export const listenerTrigger = { trackField: 'event', compile: () => ({}), decompile: () => ({}) };
+`);
+  write('src/steps/note/build.ts', `
+export const noteNode = { label: 'Note' };
+export const noteBuild = { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' };
+`);
   write('src/content/flows/main.ts', `export default { Main: [{ event: 'flow.entry', exits: [[{ type: '${stepInFlow}' }]] }] };\n`);
   return root;
 }
 
-/**
- * What the build said it compiled.
- *
- * **Its report rather than its output, because a build that fails now publishes nothing.** The later phases
- * fail here for want of installed dependencies — the facade gate needs `@apackdev/sdk` resolvable from the pack
- * — and phase 4, the one this file is about, has already run by then. The compiled content used to be read from
- * `dist` in place; a build assembles that tree aside and removes it when it fails, so what survives a failed
- * build is what it printed. `result.counts` is the count behind that line, so the line is the count.
- */
 async function compiledContent(root: string): Promise<string> {
   const cwd = process.cwd();
   process.chdir(root);
   const log = vi.spyOn(console, 'log').mockImplementation(() => {});
   try {
-    await build(['--skip-generate', '--skip-fe']).catch(() => {});
+    await build(['--skip-fe']);
     return log.mock.calls.flat().join('\n');
   } finally {
     process.chdir(cwd);
@@ -84,17 +80,14 @@ describe('a build', () => {
     expect(bound.steps(), 'and the registry this process bound saw none of them').toEqual([]);
     expect(stepRegistry.all()).toEqual([]);
 
-    // The build failed after that, so it published none of it — which is why the claim above is read off the
-    // report. `build-output-swap.spec.ts` is where that behaviour is the subject rather than the condition
-    expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.contentDir, 'flows.content.json'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.contentDir, 'flows.content.json'))).toBe(true);
   });
 
-  /**
-   * **What stops the case above passing over a build that loaded nothing.** The bound registry remains empty
-   * even if the compiler loads no definitions, so the discriminating claim is this one: name a step no
-   * definition declares and the flow compiles to nothing, with no count reported for it.
-   */
-  it('compiles no flow whose step is one no definition declares', async () => {
-    expect(await compiledContent(pack('no-such-step'))).not.toMatch(/flows: \d/);
+  it('refuses a flow that names an undeclared step', async () => {
+    const root = pack('no-such-step');
+    await expect(compiledContent(root)).rejects.toThrow('Invalid step type: "no-such-step"');
+    expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.snapshot))).toBe(false);
+    expect(bound.steps()).toEqual([]);
+    expect(stepRegistry.all()).toEqual([]);
   });
 });
