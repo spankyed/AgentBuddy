@@ -3293,3 +3293,41 @@ M4 is complete across its description/type/parser/inventory/grammar/export/layou
 Proceed to M5 checks/format cleanup, then M6 canonical writing and full schema/docs coverage. Every
 remaining discovery/navigation/boundary/Phase 6 requirement remains active. Final strict `--all` on
 committed source and the complete reconciled audit remain mandatory. Nothing is archived.
+
+### Inline check allowances — M5 checkpoint (2026-10-14)
+
+Source `24bd9f116` moves source-check allowances to `apack.json` `checks.allow`. One SDK build
+policy lists the five allowable conventions; manifest schema completion, CLI switchability and
+enforcement derive from it. Rule implementations/precedence remain in the CLI. Deleted the sidecar
+reader outright; no aliases, dual reads, filename-specific refusal or conversion. Updated guidance,
+public docs, root CLAUDE and schema/API artifacts; no live source/script/public-doc references remain.
+Standalone source auditing still works without a manifest, with all checks enabled. Owned packs
+validate the current checks object with the same schema; null/malformed/unknown/non-switchable
+values are errors. Rule tooling reads only that manifest field and imports no desktop-launch helpers.
+
+Evidence: 101 schema/rule tests and 11 actual CLI doctor/validate cases passed, covering supported
+completion values, malformed policy, mandatory/unknown-rule refusal, allowed convention execution
+policy and no source activation/generated writes. Pasting printed advice into a real manifest
+silences the intended rule. Ignoring allowances failed two named assertions; exact source restored
+(`/private/tmp/apack-m5-checks-enforcement-mutation.log`). Focused review caught a missing diagnostic
+return during editing; restored it before validation. The initial metadata-only source tests exposed
+the need to preserve unowned source-directory auditing; schema validation is scoped to checks there.
+
+Strict identified both halves of the snapshot-field audit needing the additive key and an unwanted
+desktop utility import in repository tooling. Recorded checks in the complete field audit without
+changing stamps, and kept tooling dependencies scoped. The targeted contract audit passed. Reviewed
+API report changes: new policy/schema and optional checks field; unrelated format/path property
+ordering is inert. Final strict passed in 400.6s (15/30 cached): host 4,462 tests, pack 855 plus two
+existing skips, integration 653, external contract/app, smoke and both packaged authoring halves.
+Actual app 159.4s, smoke 4.9s, authoring 53.4s, packaged app 7.5s. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T12-02-43Z-58912`,
+`/private/tmp/apack-m5-checks-strict-final.log`. Earlier type/audit findings:
+`2026-10-14T11-54-40Z-48764`, `2026-10-14T11-57-21Z-51021`,
+`2026-10-14T11-59-08Z-51726` under the same evidence directory. EARS and six compiled content files
+remain byte-identical to `/private/tmp/apack-m4-description-baseline`; facade checks pass unchanged.
+Reviewed thirteen committed paths and diff checks; unrelated issue draft remains untracked/excluded.
+
+M5 remains required for deleting `$manifestVersion` and exact layout-format validation, preserving
+format stamps/release metadata and facade-capability semantics. M6 and all discovery/navigation/
+boundary/Phase 6 requirements remain active. Final strict `--all` on committed source and the full
+reconciled audit remain mandatory. Nothing is archived.
