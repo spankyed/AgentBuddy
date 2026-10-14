@@ -22,6 +22,7 @@ import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime
 import { buildReads } from '../build/build-reads';
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
 import { packInputsHash } from '../build/pack-inputs.ts';
+import { captureCompilationInputs } from '../build/compilation-inputs.ts';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -145,8 +146,9 @@ async function buildIntoStaging(args: string[], root: string) {
 
   const resolvedDependencies = dependencyTypes(dependencyFiles);
   const { depSnapshots } = resolvedDependencies;
-  if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, resolvedDependencies);
-  else await generateEntries([], root, resolvedDependencies);
+  const compilation = captureCompilationInputs(root);
+  if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation);
+  else await generateEntries([], root, resolvedDependencies, compilation);
 
   // Every rule a pack is held to, reported together: an author fixes them in one pass rather than one build
   // each, and the switchable ones say how to allow them (`build/pack-rules.ts`)
@@ -216,7 +218,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const facades: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`);
-  const typesHash = typesInputsHash(root, dependencyFiles);
+  const typesHash = typesInputsHash(root, dependencyFiles, compilation);
   const typesStale = reuseProblem(stamps.types, distDir, typesHash)
     ?? (reads && !reads.carry('types') ? 'no reads recorded to carry' : null);
   const packTypes = typesStale === null
@@ -271,7 +273,7 @@ async function buildIntoStaging(args: string[], root: string) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };
   const finish = () => {
-    try { assertGeneratedCurrent(root, manifest, resolvedDependencies); }
+    try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
     catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
     if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
     failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));
@@ -337,7 +339,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.extensions?.dsl) {
     const dslScope = apackScope(root);
-    const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs, dependencyFiles);
+    const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs, dependencyFiles, compilation);
     const dslStale = dslHash === null ? 'scope incomplete'
       : reuseProblem(stamps.dslDefs, distDir, dslHash) ?? (reads && !reads.carry('dslDefs') ? 'no reads recorded to carry' : null);
     const defs = dslStale === null
@@ -372,7 +374,7 @@ async function buildIntoStaging(args: string[], root: string) {
     // No hash without the whole scope, and so no stamp either: recording one would let the next build that
     // also cannot resolve them match it and reuse a bundle compiled against who knows what
     const definitionsDir = path.join(outputDir, DEFS_DIR);
-    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs, dependencyFiles);
+    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs, dependencyFiles, compilation);
     // Reused rather than skipped: the staged tree is renamed over `dist`, so the files have to be here
     // either way. `--skip-fe` is the other thing, and omits them on purpose
     const problem = feHash === null

@@ -254,7 +254,9 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     fs.writeFileSync(servicePath, 'export const cacheService = {};\n');
 
     // produces: regenerates services.ts, whose content is asserted below
-    const generate = await callCli(pack, 'generate-entries');
+    // Both runs use the actual CLI's conditions; Vitest's development condition is a different input.
+    const generate = run('node', [CLI, 'pack', 'generate-entries'], pack);
+    expect(generate.code, generate.output).toBe(0);
     expect(generate.output).not.toMatch(/inputs unchanged/);
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion

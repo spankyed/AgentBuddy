@@ -8,11 +8,11 @@ import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest } from '../utils';
 import { resolveDeps, type ResolvedDeps } from './generate';
 import { packInputsHash } from '../build/pack-inputs.ts';
-import { buildToolHash } from '../build/tool-identity.ts';
+import { captureCompilationInputs, type CompilationInputs } from '../build/compilation-inputs.ts';
 import { assertDependencyInputsCurrent, dependencyInputsHash } from '../build/dependency-inputs.ts';
 
 const HASH_FILE = '.inputs-hash';
-function computeInputsHash(root: string, manifest: PackManifest, dependencies: ResolvedDeps): string {
+function computeInputsHash(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation: CompilationInputs): string {
   if (!isDeepStrictEqual(Object.keys(manifest.dependencies ?? {}).sort(), [...dependencies.files.keys()].sort())) {
     throw new Error('Resolved dependencies differ from apack.json; retry generation');
   }
@@ -21,7 +21,7 @@ function computeInputsHash(root: string, manifest: PackManifest, dependencies: R
   hash.update(packInputsHash(root, { modulesOnly: true }));
   // The parsed declarations used below are part of the identity, even if disk changes between reads.
   hash.update(JSON.stringify(manifest));
-  hash.update(buildToolHash());
+  hash.update(compilation.hash);
   hash.update(dependencyInputsHash(dependencies.files));
   return hash.digest('hex');
 }
@@ -69,8 +69,10 @@ function staleReason(hashPath: string, root: string, currentHash: string): strin
 }
 
 /** Skipping generation requires the same evidence that permits normal generation to reuse its files. */
-export function assertGeneratedCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps): void {
-  const problem = staleReason(path.join(root, 'src/__generated__', HASH_FILE), root, computeInputsHash(root, manifest, dependencies));
+export function assertGeneratedCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation?: CompilationInputs): void {
+  const scope = compilation ?? captureCompilationInputs(root);
+  if (compilation) compilation.assertCurrent();
+  const problem = staleReason(path.join(root, 'src/__generated__', HASH_FILE), root, computeInputsHash(root, manifest, dependencies, scope));
   if (problem) throw new Error(`Generated pack files are stale: ${problem}. Run "apack pack generate-entries" or build without --skip-generate.`);
 }
 
@@ -78,6 +80,7 @@ export async function generateEntries(
   _args: string[],
   packRoot?: string,
   dependencies?: ResolvedDeps,
+  compilation?: CompilationInputs,
 ) {
   if (_args.some(arg => arg !== '--force')) throw new Error('Usage: apack pack generate-entries [--force]');
   const root = packRoot ?? findPackRoot(process.cwd());
@@ -88,7 +91,8 @@ export async function generateEntries(
   const manifest = readValidManifest(root);
 
   dependencies ??= await resolveDeps(root, manifest.dependencies);
-  const currentHash = computeInputsHash(root, manifest, dependencies);
+  compilation ??= captureCompilationInputs(root);
+  const currentHash = computeInputsHash(root, manifest, dependencies, compilation);
 
   const stale = force ? 'forced' : staleReason(hashPath, root, currentHash);
   if (stale === null) {
@@ -111,7 +115,7 @@ export async function generateEntries(
     ),
   });
   try {
-    await writeGenerated(root, outDir, hashPath, currentHash, manifest, dependencies);
+    await writeGenerated(root, outDir, hashPath, currentHash, manifest, dependencies, compilation);
   } finally {
     lock.release();
   }
@@ -127,9 +131,11 @@ async function writeGenerated(
   currentHash: string,
   manifest: PackManifest,
   dependencies: ResolvedDeps,
+  compilation: CompilationInputs,
 ) {
   const files = await generatePackFiles(manifest, { packRoot: root, depTypes: dependencies.depTypes, depSnapshots: dependencies.depSnapshots });
-  if (computeInputsHash(root, manifest, dependencies) !== currentHash) {
+  compilation.assertCurrent();
+  if (computeInputsHash(root, manifest, dependencies, compilation) !== currentHash) {
     throw new Error('Pack generation inputs changed; retry before publishing generated files');
   }
 

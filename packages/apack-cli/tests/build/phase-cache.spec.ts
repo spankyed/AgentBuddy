@@ -7,7 +7,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dslInputsHash, feInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash } from '../../src/build/phase-cache';
 import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { _declarationRevision } from '@apackdev/sdk/build';
-import * as toolIdentity from '../../src/build/tool-identity.ts';
+
+const compilation = { hash: 'test-compiler', assertCurrent() {} };
+
 
 const dirs: string[] = [];
 
@@ -33,14 +35,11 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-it('invalidates every cached phase when the shared tool implementation changes', () => {
+it('invalidates every cached phase when captured compiler inputs change', () => {
   const root = tmp({ 'apack.json': '{"id":"p"}' });
-  const tool = vi.spyOn(toolIdentity, 'buildToolHash').mockReturnValue('before');
-  const phases = [() => feInputsHash(root, { release: false }, [], new Map()),
-    () => typesInputsHash(root, new Map()), () => dslInputsHash(root, [], new Map())];
-  const before = phases.map(hash => hash());
-  tool.mockReturnValue('after');
-  phases.forEach((hash, index) => expect(hash()).not.toBe(before[index]));
+  const phases = [scope => feInputsHash(root, { release: false }, [], new Map(), scope),
+    scope => typesInputsHash(root, new Map(), scope), scope => dslInputsHash(root, [], new Map(), scope)] satisfies Array<(scope: typeof compilation) => string>;
+  for (const hash of phases) expect(hash({ ...compilation, hash: 'after' })).not.toBe(hash(compilation));
 });
 
 describe('reuseProblem', () => {
@@ -84,7 +83,7 @@ describe('feInputsHash', () => {
 
   it('is the same for the same tree, so an untouched pack reuses', () => {
     const root = pack();
-    expect(feInputsHash(root, { release: false }, [], new Map())).toBe(feInputsHash(root, { release: false }, [], new Map()));
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).toBe(feInputsHash(root, { release: false }, [], new Map(), compilation));
   });
 
   it('hashes staged definitions and ignores the prior published copy when the build supplies a staged directory', () => {
@@ -94,62 +93,62 @@ describe('feInputsHash', () => {
     const current = path.join(definitionsDir, 'row.d.ts');
     fs.writeFileSync(current, 'before');
     const options = { release: false, definitionsDir };
-    const before = feInputsHash(root, options, [], new Map());
+    const before = feInputsHash(root, options, [], new Map(), compilation);
     fs.mkdirSync(path.join(root, 'dist/defs'), { recursive: true });
     fs.writeFileSync(path.join(root, 'dist/defs/row.d.ts'), 'unrelated old output');
-    expect(feInputsHash(root, options, [], new Map())).toBe(before);
+    expect(feInputsHash(root, options, [], new Map(), compilation)).toBe(before);
     fs.writeFileSync(current, 'after');
-    expect(feInputsHash(root, options, [], new Map())).not.toBe(before);
+    expect(feInputsHash(root, options, [], new Map(), compilation)).not.toBe(before);
   });
 
   it('moves when a source changes', () => {
     const root = pack();
-    const before = feInputsHash(root, { release: false }, [], new Map());
+    const before = feInputsHash(root, { release: false }, [], new Map(), compilation);
     fs.writeFileSync(path.join(root, 'src/a.ts'), 'export const a = 2');
-    expect(feInputsHash(root, { release: false }, [], new Map())).not.toBe(before);
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).not.toBe(before);
   });
 
   it.each(['assets/icon.svg', 'components/entry.vue', 'vite.config.mts', 'package-lock.json'])('invalidates for authored input %s outside the old source scope', file => {
     const root = pack();
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), 'before');
-    const before = feInputsHash(root, { release: false }, [], new Map());
+    const before = feInputsHash(root, { release: false }, [], new Map(), compilation);
     fs.writeFileSync(path.join(root, file), 'after');
-    expect(feInputsHash(root, { release: false }, [], new Map())).not.toBe(before);
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).not.toBe(before);
   });
 
   it('ignores unrelated build output while including generated bundle entries', () => {
     const root = pack();
-    const before = feInputsHash(root, { release: false }, [], new Map());
+    const before = feInputsHash(root, { release: false }, [], new Map(), compilation);
     fs.mkdirSync(path.join(root, '.apack'), { recursive: true });
     fs.writeFileSync(path.join(root, '.apack/cache.json'), '{}');
     fs.mkdirSync(path.join(root, 'dist/runtime'), { recursive: true });
     fs.writeFileSync(path.join(root, 'dist/runtime/index.cjs'), 'output');
-    expect(feInputsHash(root, { release: false }, [], new Map())).toBe(before);
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).toBe(before);
     fs.mkdirSync(path.join(root, 'src/__generated__'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src/__generated__/pack-entry-fe.ts'), 'new entry');
-    expect(feInputsHash(root, { release: false }, [], new Map())).not.toBe(before);
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).not.toBe(before);
   });
 
   it('moves with --release, so a development bundle is never published as one', () => {
     const root = pack();
-    expect(feInputsHash(root, { release: true }, [], new Map())).not.toBe(feInputsHash(root, { release: false }, [], new Map()));
+    expect(feInputsHash(root, { release: true }, [], new Map(), compilation)).not.toBe(feInputsHash(root, { release: false }, [], new Map(), compilation));
   });
 
   it('moves when a package it compiles against changes, which is outside the pack', () => {
     const root = pack();
     const sdk = tmp({ 'index.js': 'v1' });
-    const before = feInputsHash(root, { release: false }, [sdk], new Map());
+    const before = feInputsHash(root, { release: false }, [sdk], new Map(), compilation);
     fs.writeFileSync(path.join(sdk, 'index.js'), 'v2');
-    expect(feInputsHash(root, { release: false }, [sdk], new Map())).not.toBe(before);
+    expect(feInputsHash(root, { release: false }, [sdk], new Map(), compilation)).not.toBe(before);
   });
 
   it('ignores a touch, because the key is content and not a timestamp', () => {
     const root = pack();
-    const before = feInputsHash(root, { release: false }, [], new Map());
+    const before = feInputsHash(root, { release: false }, [], new Map(), compilation);
     const later = new Date(Date.now() + 60_000);
     fs.utimesSync(path.join(root, 'src/a.ts'), later, later);
-    expect(feInputsHash(root, { release: false }, [], new Map())).toBe(before);
+    expect(feInputsHash(root, { release: false }, [], new Map(), compilation)).toBe(before);
   });
 });
 
@@ -158,26 +157,26 @@ describe('the other two gated phases', () => {
 
   it('the facade hash moves when a source changes', () => {
     const root = pack();
-    const before = typesInputsHash(root, new Map());
+    const before = typesInputsHash(root, new Map(), compilation);
     fs.writeFileSync(path.join(root, 'src/a.ts'), 'export const a = 2');
-    expect(typesInputsHash(root, new Map())).not.toBe(before);
+    expect(typesInputsHash(root, new Map(), compilation)).not.toBe(before);
   });
 
   it("the facade hash moves when a dependency's snapshot does, which is what it compiles against", () => {
     const root = pack();
-    expect(typesInputsHash(root, dependency('1.0.0')))
-      .not.toBe(typesInputsHash(root, dependency('1.0.1')));
+    expect(typesInputsHash(root, dependency('1.0.0'), compilation))
+      .not.toBe(typesInputsHash(root, dependency('1.0.1'), compilation));
   });
 
   it('the DSL hash moves when the manifest changes, since its entries are what it reads', () => {
     const root = pack();
-    const before = dslInputsHash(root, [], new Map());
+    const before = dslInputsHash(root, [], new Map(), compilation);
     fs.writeFileSync(path.join(root, 'apack.json'), '{"id":"p","dsl":{}}');
-    expect(dslInputsHash(root, [], new Map())).not.toBe(before);
+    expect(dslInputsHash(root, [], new Map(), compilation)).not.toBe(before);
   });
 
   it('gives each phase its own hash, so one going stale does not rebuild the others', () => {
     const root = pack();
-    expect(new Set([feInputsHash(root, { release: false }, [], new Map()), typesInputsHash(root, new Map()), dslInputsHash(root, [], new Map())]).size).toBe(3);
+    expect(new Set([feInputsHash(root, { release: false }, [], new Map(), compilation), typesInputsHash(root, new Map(), compilation), dslInputsHash(root, [], new Map(), compilation)]).size).toBe(3);
   });
 });

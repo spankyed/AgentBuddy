@@ -10,6 +10,9 @@ import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
 import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 
+const compilation = { hash: 'test-compiler', assertCurrent() {} };
+
+
 let tmpDir: string;
 
 beforeEach(() => {
@@ -37,7 +40,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: { Widget: null, Gadget: null }, relations: [] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     expect(output).toContain("export const Widget = 'Widget'");
@@ -54,7 +57,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: {}, relations: ['owns', 'follows'] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     expect(output).toContain("export const OWNS = 'owns'");
@@ -70,7 +73,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: { Alpha: null, Beta: null }, relations: [] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = Entity.Alpha | Entity.Beta');
@@ -84,7 +87,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: { Item: null }, relations: [] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     // BaseEntity is re-exported from the SDK rather than redeclared per pack,
@@ -102,7 +105,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: {}, relations: [] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = string');
@@ -118,7 +121,7 @@ describe('apack pack generate-entries', () => {
       data: { entities: {}, relations: [] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
 
     const output = readGenerated();
     expect(output).toContain("export const Role = 'role'");
@@ -165,7 +168,7 @@ describe('apack pack generate-entries', () => {
     };
     let dependencies = resolve();
 
-    await generateEntries(['--force'], tmpDir, dependencies);
+    await generateEntries(['--force'], tmpDir, dependencies, compilation);
 
     const output = readGenerated();
     // Own entity
@@ -173,12 +176,12 @@ describe('apack pack generate-entries', () => {
     // Dep entity (with source comment)
     expect(output).toContain("export const DepWidget = 'DepWidget'");
     const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'apack.json'), 'utf8'));
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).not.toThrow();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies, compilation)).not.toThrow();
     snapshot.facades[PACK_TYPES_FACADE] += '\n// same-version facade change\n';
     dependencies = resolve();
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).toThrow('inputs changed');
-    await generateEntries([], tmpDir, dependencies);
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies)).not.toThrow();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies, compilation)).toThrow('inputs changed');
+    await generateEntries([], tmpDir, dependencies, compilation);
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencies, compilation)).not.toThrow();
     expect(output).toContain('// dep-pack');
     // Dep relKind
     expect(output).toContain("export const DEP_REL = 'dep_rel'");
@@ -192,10 +195,10 @@ describe('apack pack generate-entries', () => {
       data: { entities: { A: null, B: null }, relations: ['r'] },
     });
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
     const first = readGenerated();
 
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
     const second = readGenerated();
 
     expect(first).toBe(second);
@@ -212,14 +215,14 @@ describe('the inputs stamp', () => {
 
   it('holds its lock until async generation settles and preserves files and stamp after rejection', async () => {
     writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     const output = fs.readFileSync(generated('settings.ts'), 'utf8');
     const stamp = fs.readFileSync(generated('.inputs-hash'), 'utf8');
     let refuse!: (error: Error) => void;
     const pending = new Promise<Record<string, string>>((_, reject) => { refuse = reject; });
     const spy = vi.spyOn(sdkBuild, 'generatePackFiles').mockReturnValueOnce(pending);
     try {
-      const result = expect(generateEntries(['--force'], tmpDir)).rejects.toThrow('type generation failed');
+      const result = expect(generateEntries(['--force'], tmpDir, undefined, compilation)).rejects.toThrow('type generation failed');
       await vi.waitFor(() => expect(fs.existsSync(generated('.generating.lock'))).toBe(true));
       expect(fs.readFileSync(generated('.inputs-hash'), 'utf8')).toBe(stamp);
       refuse(new Error('type generation failed'));
@@ -230,7 +233,7 @@ describe('the inputs stamp', () => {
     } finally {
       spy.mockRestore();
     }
-    await generateEntries(['--force'], tmpDir);
+    await generateEntries(['--force'], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('.generating.lock'))).toBe(false);
   });
 
@@ -240,22 +243,22 @@ describe('the inputs stamp', () => {
     fs.mkdirSync(path.join(tmpDir, 'modules'));
     const file = path.join(tmpDir, 'modules/service.ts');
     fs.writeFileSync(file, 'export const service = { before: () => 1 };');
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     const output = generated('services.ts');
     expect(fs.readFileSync(output, 'utf8')).toContain('service as __service_service');
     fs.writeFileSync(file, 'export const renamed = { after: () => 2 };');
-    await expect(generateEntries([], tmpDir)).rejects.toThrow('service');
+    await expect(generateEntries([], tmpDir, undefined, compilation)).rejects.toThrow('service');
   });
 
   it('regenerates a file that was deleted, rather than reporting the tree unchanged', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('ears.ts'))).toBe(true);
 
     fs.rmSync(generated('ears.ts'));
     const said: string[] = [];
     const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     log.mockRestore();
 
     expect(fs.existsSync(generated('ears.ts')), 'the missing file is back').toBe(true);
@@ -265,13 +268,13 @@ describe('the inputs stamp', () => {
   it('refuses edited outputs on the skip path and repairs them on normal generation', async () => {
     const manifest = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     writeManifest(manifest);
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     const original = readGenerated();
     fs.writeFileSync(generated('ears.ts'), original + '\n// edited\n');
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).toThrow('modified src/__generated__/ears.ts');
-    await generateEntries([], tmpDir);
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()), compilation)).toThrow('modified src/__generated__/ears.ts');
+    await generateEntries([], tmpDir, undefined, compilation);
     expect(readGenerated()).toBe(original);
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).not.toThrow();
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()), compilation)).not.toThrow();
   });
 
   it('refuses same-version source changes on the skip path', async () => {
@@ -279,18 +282,18 @@ describe('the inputs stamp', () => {
     writeManifest(manifest);
     const source = path.join(tmpDir, 'module.ts');
     fs.writeFileSync(source, 'export const value = 1;');
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     fs.writeFileSync(source, 'export const value = 2;');
-    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()))).toThrow('inputs changed');
+    expect(() => assertGeneratedCurrent(tmpDir, manifest, dependencyTypes(new Map()), compilation)).toThrow('inputs changed');
   });
 
   it('still skips when every recorded file is there', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
 
     const said: string[] = [];
     const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     log.mockRestore();
     expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
@@ -300,10 +303,10 @@ describe('the inputs stamp', () => {
     fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
     const prose = path.join(tmpDir, 'src/README.md');
     fs.writeFileSync(prose, 'Draft');
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     fs.writeFileSync(prose, 'Updated prose');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     expect(log).toHaveBeenCalledWith(expect.stringContaining('inputs unchanged'));
     log.mockRestore();
   });
@@ -312,7 +315,7 @@ describe('the inputs stamp', () => {
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
     writeManifest({ id: 'test-pack', name: 'Test Pack', version: '0.1.0', data: { entities: { Widget: null }, relations: [] }, });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
 
     const stamp = JSON.parse(fs.readFileSync(generated('.inputs-hash'), 'utf-8')) as { files: Record<string, string> };
@@ -320,7 +323,7 @@ describe('the inputs stamp', () => {
 
     const said: string[] = [];
     const log = vi.spyOn(console, 'log').mockImplementation((m) => { said.push(String(m)); });
-    await generateEntries([], tmpDir);
+    await generateEntries([], tmpDir, undefined, compilation);
     log.mockRestore();
     expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
@@ -332,7 +335,7 @@ it('keeps Markdown help out of executable generation and its cache inputs', asyn
   fs.mkdirSync(help, { recursive: true });
   const file = path.join(help, 'start.md');
   fs.writeFileSync(file, '# Start\nFirst body');
-  await generateEntries([], tmpDir);
+  await generateEntries([], tmpDir, undefined, compilation);
   const entry = path.join(tmpDir, 'src/__generated__/pack-entry.ts');
   const before = fs.readFileSync(entry, 'utf8');
   expect(before).not.toContain('First body');
@@ -340,7 +343,7 @@ it('keeps Markdown help out of executable generation and its cache inputs', asyn
   try {
     for (const body of ['# Start\nUpdated body', 'Missing title']) {
       fs.writeFileSync(file, body);
-      await generateEntries([], tmpDir);
+      await generateEntries([], tmpDir, undefined, compilation);
       expect(fs.readFileSync(entry, 'utf8')).toBe(before);
       expect(log).toHaveBeenLastCalledWith(expect.stringContaining('inputs unchanged'));
     }

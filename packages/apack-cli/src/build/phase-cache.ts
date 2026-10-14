@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { packInputsHash } from './pack-inputs.ts';
-import { buildToolHash } from './tool-identity.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
 import { dependencyInputsHash } from './dependency-inputs.ts';
 import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
 
@@ -116,27 +116,6 @@ export function apackScope(packDir: string): { readonly dirs: readonly string[] 
   return missing.length > 0 ? { missing } : { dirs };
 }
 
-/**
- * The versions of the tools that do the bundling, so upgrading one invalidates what it produced.
- *
- * **Deliberately one set for every phase rather than per phase.** A typescript bump invalidating the
- * frontend bundle costs one rebuild; the other error — a phase reusing output a different bundler made —
- * is silent, and over-broad is the safe direction for a cache key. Before reuse existed this needed no
- * answer at all, because the bundler always ran.
- *
- * `buildToolHash` covers the CLI's implementation; this covers installed bundling tools.
- */
-function bundlerVersions(): string {
-  const require = createRequire(import.meta.url);
-  return ['vite', 'rollup', 'esbuild', 'typescript'].map((pkg) => {
-    try {
-      return `${pkg}@${(JSON.parse(fs.readFileSync(require.resolve(`${pkg}/package.json`), 'utf-8')) as { version?: string }).version ?? '?'}`;
-    } catch {
-      return `${pkg}@absent`;
-    }
-  }).join(',');
-}
-
 /** Hashable file lists, each a scope rather than a list of reads */
 function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
   for (const file of filesUnder(dir)) {
@@ -147,19 +126,19 @@ function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
 }
 
 /** Hash the same DSL definitions the bundle resolves, whether staged or already published. */
-export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
+export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
   return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release,
-    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs], dependencies });
+    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs], dependencies, compilation });
 }
 
 /** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
-export function typesInputsHash(root: string, dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
-  return phaseInputsHash(root, { bundler: 'types-bundler.ts', dependencies });
+export function typesInputsHash(root: string, dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
+  return phaseInputsHash(root, { bundler: 'types-bundler.ts', dependencies, compilation });
 }
 
 /** The DSL defs: the manifest's `dsl` entries, the sources they name, and the packages their types come from */
-export function dslInputsHash(root: string, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>): string {
-  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs, dependencies });
+export function dslInputsHash(root: string, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
+  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs, dependencies, compilation });
 }
 
 /**
@@ -171,12 +150,12 @@ function phaseInputsHash(root: string, o: {
   readonly release?: boolean;
   readonly dirs?: readonly string[];
   readonly dependencies: ReadonlyMap<string, ResolvedDepFiles>;
+  readonly compilation: CompilationInputs;
 }): string {
   const hash = createHash('sha256');
   if (o.release !== undefined) hash.update(`release:${o.release}`);
   hash.update(o.bundler);
-  hash.update(buildToolHash());
-  hash.update(bundlerVersions());
+  hash.update(o.compilation.hash);
   hash.update(packInputsHash(root, { generated: true }));
   for (const dir of o.dirs ?? []) hashTree(hash, dir);
   hash.update(dependencyInputsHash(o.dependencies));

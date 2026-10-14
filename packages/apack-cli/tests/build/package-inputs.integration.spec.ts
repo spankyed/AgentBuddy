@@ -1,0 +1,77 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import * as sdkBuild from '@apackdev/sdk/build';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
+import { assertGeneratedCurrent } from '../../src/commands/generate-entries.ts';
+import { dependencyTypes } from '../../src/commands/generate.ts';
+
+let root: string | undefined;
+afterEach(() => { vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
+
+async function consumer() {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-installed-types-'));
+  const modules = path.join(root, 'node_modules');
+  fs.mkdirSync(path.join(modules, '@apackdev'), { recursive: true });
+  for (const name of ['sdk', 'ears']) fs.symlinkSync(path.join(REPO_ROOT, 'node_modules/@apackdev', name), path.join(modules, '@apackdev', name), 'dir');
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules/xstate'), path.join(modules, 'xstate'), 'dir');
+  const library = path.join(modules, 'external-events');
+  fs.mkdirSync(library);
+  fs.writeFileSync(path.join(library, 'package.json'), JSON.stringify({ name: 'external-events', version: '1.0.0',
+    exports: { '.': { types: './index.d.ts', default: './index.js' } } }));
+  fs.writeFileSync(path.join(library, 'index.js'), 'throw new Error("Do not activate declaration providers");');
+  const declarations = (event: string) => `export type Contract = { incoming: { type: 'FETCH' }; outgoing: { type: '${event}' } };`;
+  fs.writeFileSync(path.join(library, 'index.d.ts'), declarations('BEFORE'));
+  const manifest = { id: 'type-consumer', name: 'Type Consumer', version: '1.0.0',
+    features: { view: { description: 'Imported event contract.', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' },
+      plugin: { label: 'View', state: 'src/plugin.ts' } } } };
+  const pack = preparePack(root, manifest.id, {
+    'apack.json': JSON.stringify(manifest),
+    'package.json': JSON.stringify({ ...JSON.parse(packageJson(manifest.id)), dependencies: {
+      'external-events': '1.0.0', '@apackdev/sdk': '0.1.0', '@apackdev/ears': '0.1.0', xstate: '^5.19.2' } }),
+    'tsconfig.json': tsconfig, 'src/contract.ts': "export type { Contract } from 'external-events';",
+    'src/plugin.ts': "import { createMachine } from 'xstate'; export default createMachine({ id: 'view' });",
+    'src/system.ts': `import { setup } from 'xstate'; import { defineSystem } from '@apackdev/sdk/framework';
+import type { Contract } from './contract.ts'; const spec = defineSystem<Contract>();
+export default { spec, machine: setup({ types: spec.types }).createMachine({ id: 'view' }) };`,
+  }, modules);
+  const first = await callCli(pack, 'generate-entries');
+  expect(first.code, first.output).toBe(0);
+  const events = path.join(pack, 'src/__generated__/pack-entry.ts');
+  expect(fs.readFileSync(events, 'utf8')).toContain('BEFORE');
+  return { pack, library, manifest, events, declarations };
+}
+
+it('regenerates event metadata for changed installed types with unchanged package versions', async () => {
+  const { pack, library, manifest, events, declarations } = await consumer();
+  const packageBytes = fs.readFileSync(path.join(library, 'package.json'));
+  fs.writeFileSync(path.join(library, 'index.d.ts'), declarations('AFTERX'));
+  expect(() => assertGeneratedCurrent(pack, manifest, dependencyTypes(new Map()))).toThrow('inputs changed');
+  const second = await callCli(pack, 'generate-entries');
+  expect(second.code, second.output).toBe(0);
+  expect(second.output).not.toContain('inputs unchanged');
+  const updated = fs.readFileSync(events, 'utf8');
+  expect(updated).toContain('AFTERX');
+  expect(updated).not.toContain('BEFORE');
+  expect(fs.readFileSync(path.join(library, 'package.json'))).toEqual(packageBytes);
+});
+
+it('preserves generated files when installed package bytes change during async generation', async () => {
+  const { pack, library, events, declarations } = await consumer();
+  const before = fs.readFileSync(events);
+  const stampFile = path.join(pack, 'src/__generated__/.inputs-hash');
+  const stamp = fs.readFileSync(stampFile);
+  const generate = sdkBuild.generatePackFiles;
+  vi.spyOn(sdkBuild, 'generatePackFiles').mockImplementationOnce(async (...args) => {
+    const files = await generate(...args);
+    fs.writeFileSync(path.join(library, 'index.d.ts'), declarations('RACED'));
+    return files;
+  });
+  const refused = await callCli(pack, 'generate-entries', ['--force']);
+  expect(refused.code, refused.output).toBe(1);
+  expect(refused.output).toContain('Compiler or installed package inputs changed');
+  expect(fs.readFileSync(events)).toEqual(before);
+  expect(fs.readFileSync(stampFile)).toEqual(stamp);
+});

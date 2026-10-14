@@ -18,9 +18,7 @@ function packageRoot(entry: string): string {
 /** Complete implementation scopes, rather than a previous build's observed imports. */
 export function buildToolHash(moduleUrl = import.meta.url): string {
   const entry = fileURLToPath(moduleUrl);
-  const root = packageRoot(entry);
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  if (manifest.name !== '@apackdev/cli') throw new Error(`Unexpected build tool package: ${manifest.name}`);
+  const root = cliPackageDirectory(moduleUrl);
   const source = path.relative(root, entry).split(path.sep)[0] === 'src';
   const scopes: Array<{ name: string; root: string; directory: string }> = [
     { name: '@apackdev/cli', root, directory: source ? 'src' : 'dist' },
@@ -32,19 +30,18 @@ export function buildToolHash(moduleUrl = import.meta.url): string {
       ['@apackdev/sdk', '@apackdev/sdk/build'],
       ['@apackdev/ears', '@apackdev/ears'],
     ] as const) {
-      // Published SDK/EARS outputs contain their own package.json; the exported metadata identifies
-      // the workspace owner rather than mistaking its nested dist directory for the source package.
+      // Exported metadata identifies the workspace owner, rather than its nested published dist.
       const owner = name === '@apackdev/host' ? packageRoot(require.resolve(specifier))
         : path.dirname(require.resolve(`${name}/package.json`));
       scopes.push({ name, root: owner, directory: 'src' });
     }
   } else {
-    // The bundled generator still reads the installed SDK's declarations and package exports.
+    // Bundled code still reads installed SDK declarations, including package-root installations.
     const owner = path.dirname(require.resolve('@apackdev/sdk/package.json'));
     const compiled = packageRoot(require.resolve('@apackdev/sdk/build'));
     scopes.push({ name: '@apackdev/sdk', root: owner, directory: path.relative(owner, compiled) || '.' });
   }
-  // Published CLI code inlines host/SDK/EARS. Hash every shipped chunk, not its version.
+  // Published CLI code inlines host/SDK/EARS; include every shipped chunk, not only a version.
   const hash = createHash('sha256');
   hash.update(source ? 'source' : 'bundle');
   for (const scope of scopes) {
@@ -58,4 +55,12 @@ export function buildToolHash(moduleUrl = import.meta.url): string {
   }
   hash.update(packInputsHash(path.join(root, 'bin')));
   return hash.digest('hex');
+}
+
+/** The executing CLI's owner, shared by implementation and npm resolution scopes. */
+export function cliPackageDirectory(moduleUrl = import.meta.url): string {
+  const root = packageRoot(fileURLToPath(moduleUrl));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  if (manifest.name !== '@apackdev/cli') throw new Error(`Unexpected build tool package: ${manifest.name}`);
+  return root;
 }
