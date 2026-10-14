@@ -2627,3 +2627,31 @@ reference contributor in an already-open editor and dispose providers on binding
 the pack-local aggregate at that migration. All remaining kinds/native/freshness, entity routing,
 boundaries and Phase 6 streams remain required, alongside final committed-source --all and the complete
 acceptance audit. Transport is delivered; the owning goal and discovery consumers remain unfinished.
+
+
+### Owned reference identity prerequisite checkpoint (2026-10-13)
+
+Source commit `53bcabf62` preserves qualified feature ownership and accepted identities in reference
+read entries. Module declaration stamps remain separate from the runtime/artifact revisions supplied
+by the host loader. Capturing only host identity fields prevents unrelated caller fields from overwriting
+the owner or declaration stamp. Native bindings omit installed/runtime identities instead of inventing
+receipts. Immutable entries remain stable across unrelated pack changes and change on replacement.
+
+The pre-migration audit found that configurations keyed only by global names could not prove ownership
+or eligibility. This checkpoint fixes that prerequisite, not the consumer migration. All existing
+binding readers/tests use the owned shape, without a compatibility alias or runtime discovery fallback.
+Twenty-one admission and 31 loader checks pass. Recreating entries during table rebuilding failed the
+stability assertion; exact restoration returned all admission checks to passing. SDK reports agree.
+
+Strict validation passed all 30 gates in 543.3 seconds with no cached gates, including 4,362 host tests,
+839 pack tests (two existing skips), 639 integration tests, actual external/default-fork Electron
+acceptance, smoke and both packaged-authoring halves. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-14T02-40-19Z-74516`;
+`/private/tmp/apack-reference-identity-strict.log`.
+
+Next deliver the SDK declaration read port and catalog/editor/provider migration, retaining owner and
+lifetime identity for eligibility. Remove the current pack-local editor aggregate at that migration;
+verify external contributions in an already-open editor, dynamic protocols/categories and provider
+scope disposal. Continue every remaining contribution/native/freshness, entity readiness, boundary and
+Phase 6 requirement. Final committed-source --all, full acceptance auditing and archival remain due;
+the whole goal is active and no broader discovery phase is complete.
