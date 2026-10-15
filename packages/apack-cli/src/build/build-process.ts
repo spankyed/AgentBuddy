@@ -5,8 +5,12 @@ import { compilationConditions } from './compilation-inputs.ts';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { BUILD_INPUTS_IPC_ENV, readBuildWatchInputs, type BuildWatchInputs } from './build-watch-inputs.ts';
 
-/** A watched build gets fresh compiler and pack module caches, including transitive imports. */
-export async function runPackBuild(root: string, onInputs: (inputs: BuildWatchInputs) => void | Promise<void>): Promise<void> {
+/** Development builds get fresh compiler and pack module caches, including transitive imports. */
+export async function runPackBuild(root: string, { onInputs, signal }: {
+  onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
+  signal?: AbortSignal;
+} = {}): Promise<void> {
+  signal?.throwIfAborted();
   // Bring linked code up to date before the child loads its CLI bundle.
   ensureCheckoutPackages(root);
   await new Promise<void>((resolve, reject) => {
@@ -17,11 +21,12 @@ export async function runPackBuild(root: string, onInputs: (inputs: BuildWatchIn
       cliBin(), 'pack', 'build',
     ], {
       cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-      env: { ...process.env, [BUILD_INPUTS_IPC_ENV]: '1', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1' },
+      signal,
+      env: { ...process.env, [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1' },
     });
     child.on('message', message => {
       const inputs = readBuildWatchInputs(message);
-      if (inputs) {
+      if (inputs && onInputs) {
         observing = observing.then(() => onInputs(inputs)).catch(error => {
           observationError ??= error instanceof Error ? error : new Error(String(error));
         });

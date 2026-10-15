@@ -91,7 +91,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     frontendSignature = beforeFrontend.hash;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     let reported: { inputs: BuildWatchInputs; snapshot: FrontendInputSnapshot } | undefined;
-    await runPackBuild(root, async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; });
+    await runPackBuild(root, { onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
     if (closed) return false;
     const accepted = reported?.inputs.successful ? reported.inputs : { files: [], directories: [], successful: true };
     await frontend.accept(accepted);

@@ -45,20 +45,19 @@ describe('the checkout a pack\'s @apackdev packages come from', () => {
 });
 
 /**
- * Which entry points bring a checkout's packages up to date. `apack pack dev` rebuilds the pack on every
- * file change through `build()`, and the freshness check reads every source of all five packages — so
- * the check belongs to the command a user runs, not to the function the watch loop calls.
+ * Public build/test commands refresh directly; development orchestration refreshes before starting
+ * a fresh build process, so it cannot retain compiler modules from the replaced installation.
  */
 describe('the commands that refresh a checkout before loading its packages', () => {
   const source = (file: string) => fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', file), 'utf-8');
 
-  it.each(['commands/test.ts', 'commands/dev.ts', 'commands/build.ts'])('%s asks the checkout to build', (file) => {
+  it.each(['commands/test.ts', 'commands/build.ts', 'build/build-process.ts'])('%s asks the checkout to build', (file) => {
     expect(source(file)).toContain('ensureCheckoutPackages(');
   });
 
-  it('asks once per apack pack build, not once per rebuild in apack pack dev', () => {
+  it('keeps checkout refresh at the public build entry rather than in-process compilation', () => {
     const build = source('commands/build.ts');
-    // buildCommand is what the CLI dispatches; build() is what dev's watch loop calls
+    // Development builds run this command in a fresh process; build() only compiles.
     const command = build.indexOf('export async function buildCommand');
     const reusable = build.indexOf('export async function build(');
     expect(command).toBeGreaterThan(-1);

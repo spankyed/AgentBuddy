@@ -1,9 +1,8 @@
 import { recordCliInstall } from '../app/installed-packs';
-import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { build } from './build';
+import { runPackBuild } from '../build/build-process.ts';
 import { findPackRoot, readManifest } from '../utils';
 import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
@@ -292,6 +291,9 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       },
     } : {}),
   });
+  const startupBuild = new AbortController();
+  const releaseNow = () => { startupBuild.abort(); hold.releaseNow(); };
+  const release = () => { startupBuild.abort(); return hold.release(); };
 
   /**
    * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
@@ -351,14 +353,14 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   /** Release, then exit, so the profile goes with the app as it does for any other way this ends. */
   async function reap(why: string): Promise<void> {
     console.log(`\nClosing the app this question started: ${why}.`);
-    await hold.release();
+    await release();
     process.exit(0);
   }
 
-  hooks.teardown = hold.release;
-  process.on('exit', hold.releaseNow);
+  hooks.teardown = release;
+  process.on('exit', releaseNow);
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(signal, () => void hold.release().then(() => process.exit(0)));
+    process.on(signal, () => void release().then(() => process.exit(0)));
   }
 
   if (profile && withSecrets) {
@@ -373,11 +375,8 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   }
 
   if (pack) {
-    // The build and the app both read the @apackdev packages' dist; from a checkout that dist is built on demand
-    ensureCheckoutPackages(pack.root);
-
     console.log('Running initial build...\n');
-    await build([]);
+    await runPackBuild(pack.root, { signal: startupBuild.signal });
   }
 
   /**
@@ -435,7 +434,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       // port a driver needs. An app that was already here has a session of its own or is not attachable,
       // and either way is not this command's to describe.
       await publish(launchedAt);
-      spawned.once('exit', () => void hold.release().then(() => process.exit(0)));
+      spawned.once('exit', () => void release().then(() => process.exit(0)));
     }
   }
 
