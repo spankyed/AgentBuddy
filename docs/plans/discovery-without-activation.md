@@ -2215,3 +2215,33 @@ The aggregate gate and final committed-source strict `--all` remain required. Th
 not complete intrinsic editor-schema ownership, native editor composition, live editor/palette
 migration, remaining contribution discovery/source freshness, navigation, boundaries or Phase 6.
 No scope is excluded or archived.
+
+### Intrinsic reference schema ownership checkpoint
+
+Current code still declares the `reference` Tiptap node in default-setup's suggestions group. That
+module owns persistence parsing/serialization, node presentation and a pack-specific suggestion
+plugin. Consequently a renderer without default-setup's frontend lacks the stored-document schema,
+even though reference declarations themselves are available without activation.
+
+Split those responsibilities at the existing composition boundary:
+
+- Move `ReferenceNode` into `@apackdev/ui` with the other document primitives. Preserve its wire node
+  name, attributes, URI parser, HTML/Markdown behavior, node-view refresh/disposal and eligible click
+  behavior. Navigation callbacks remain until the entity-navigation phase migrates them.
+- The host's native declaration claims `tiptapPlugins.references.extensions.reference`, with its
+  module/export reference. The renderer supplies that UI object in its existing `host` registration.
+  Native declarations remain data-only; host/backend code does not import UI or the Tiptap node.
+  Existing checked binding and cross-pack ownership rules cover the intrinsic name too.
+- Default-setup declares a separate `referenceSuggestion` extension that installs its existing
+  ProseMirror suggestion plugin. It no longer owns the reference node. No alias, fallback node,
+  invented feature, second registry or duplicated document-schema inventory.
+- Move the node behavior tests with its owner; prove cold HTML/Markdown and stored JSON preserve
+  targets with no external packs registered. Exercise actual renderer host registration and collision
+  refusal, and prove the pack's suggestion extension still installs its plugin alongside the native
+  node. Update public exports/reports and manifest documentation with the move.
+
+This checkpoint does not complete live editor recomposition: editors already open while a contributed
+extension group changes still need an explicit state-preserving strategy. Resolve that next, including
+pending edits, selection/history, removed nodes and popup/provider disposal; do not pretend a fresh
+editor instance or static metadata alone proves that behavior. Other discovery/freshness, navigation,
+boundaries, dependency/API/replacement work and the aggregate strict gate remain required.
