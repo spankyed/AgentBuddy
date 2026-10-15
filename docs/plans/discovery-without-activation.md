@@ -2690,3 +2690,21 @@ reproduces `__proto__` entity declarations disappearing during schema decoding. 
 preservation gap after the 2B.2 admission checkpoint and before checkpoint 3 switches live readers.
 It is required work, alongside the complete remaining discovery/compiler/navigation/boundary/Phase 6
 scope; the opaque-default repair alone does not close all keyed declarations.
+
+
+#### Mandatory admission outcome (2026-10-15)
+
+`e5dcdec63` completes 2B.2: mandatory native/loaded declaration authority, full preparation capture and
+cleanup, valid public native test composition, and accepted step binding rows. Identity checks precede
+settings binding; JSON checks precede declarative reads/copies. Capture itself is guarded against registry
+reentry. Metadata containers are owned while executable identities remain intact. Native bindings have
+no installed stamps; backend stamps remain backend identities through development frontend delivery.
+The loader pins its entry/declarations before awaits. Getter, cleanup, async identity and reentry
+reproductions and ten guard mutations pass; strict and committed-source strict pass. The goal records
+source, counts and runs. Public frontend testing has its own host entry, avoiding private test imports
+and backend build tooling in the renderer.
+
+Next finish the required keyed-declaration preservation correction linked above before switching live
+readers in checkpoint 3. Then remove active-only caches and finish the full remaining kind/content/asset,
+compiler/freshness/scope-cost, native/editor, navigation, boundary and Phase 6 work. 2B.2 does not replace
+those acceptance criteria or final committed-source strict `--all` validation.

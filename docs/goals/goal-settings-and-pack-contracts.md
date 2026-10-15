@@ -204,7 +204,9 @@ Implement [manifest consolidation](../plans/manifest-consolidation.md) M1–M6. 
 ownership, relations, module-reference, lifecycle, checks, feature-description, format-key and canonical
 writing outcomes were not optional. Preserve all 17 reconciled decisions and the original phase checks,
 with explicit replacements/exclusions recorded there. M1–M6 source checkpoints are committed and audited below. Their remaining cross-phase requirements
-continue in Phase 3; preserve the consolidated grammar while expanding other consumers.
+continue in Phase 3; preserve the consolidated grammar while expanding other consumers. The required
+[own-key preservation correction](../plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
+reopens a specific M1 acceptance condition and must precede the next discovery-reader switch.
 
 **Done when:** every required consolidation row has source/validation evidence; generated EARS and
 typed/untyped behavior are preserved; unchanged authored content keeps compiled identity and ordinary
@@ -4899,3 +4901,56 @@ provisional-settings cleanup, real fixture/shell migration, and accepted owner/r
 The unknown-owner frontend bypass is still required unfinished work. Finish this before checkpoint 3's
 live consumers/cache removal. Every other phase and the final committed-source strict `--all` audit
 remain required; this foundation checkpoint completes neither 2B.2 nor the goal.
+
+
+### Mandatory frontend admission checkpoint (2026-10-15)
+
+Source `e5dcdec63` completes discovery **2B.2**. Registry writes require explicit native declarations or
+the accepted backend entry; the unknown-owner bypass and optional native constructor checking are gone.
+Declaration data is checked before copying. Binding metadata, declaration-directed routes, facet/slot
+containers and DSL globals are captured before comparison, retaining machines/components/callbacks.
+Capture and validation share the registry's preparation guard; reentrant getters cannot publish nested
+writes. Every refused candidate retires provisional settings, including failures before settings binding.
+
+Accepted step rows retain owner, immutable declaration data and backend runtime/build/declaration
+identities, with stable entries across unrelated publication. Native rows manufacture no installed
+identities. Source delivery does not change backend authority. The loader owns its input/declarations
+before awaits: mutating the caller's entry can no longer make old code claim newer identities or refuse
+its originally accepted metadata. `getStepFrontendBindings()` exposes these rows through the SDK.
+Public native frontend fixture composition supplies valid stand-ins without inferring production data.
+`@apackdev/host/fe/testing` separates frontend test composition from backend build tooling.
+
+Evidence:
+
+- Focused runs pass (654 tests across 61 files; subsequent 497-test public-entry/boundary run and 26-test
+  capture/reentry check). Ten mutations of identity, cleanup, routes, facets, DSL globals, slots, pinned
+  delivery, accepted revisions, JSON-before-read and capture reentry fail their intended assertions;
+  exact source restored. Logs: `/private/tmp/apack-mandatory-frontend-mutation-*.log`.
+- Getter repetition, declarative identity read before JSON validation, mutable async delivery identities
+  and getter reentry were reproduced before their fixes. Reproductions:
+  `/private/tmp/apack-mandatory-frontend-{facet-getters,loaded-json,async-identity,capture-reentry}-baseline.log`.
+  Fix checks: `/private/tmp/apack-mandatory-frontend-{getters-fixed,race-fixed,capture-reentry-fixed}.log`
+  and the final strict run.
+  The first strict run caught renderer imports from host-private tests; moving to the public frontend
+  testing entry also avoids importing the backend's Node build tooling into renderer tests. No boundary
+  exception or environment shim was added. Reviewed SDK reports and public/internal architecture docs.
+- Final `npm run chain -- --strict --cores 1` passes all 30 steps in 856.3s:
+  `node_modules/.cache/apack-chain/runs/2026-10-15T15-07-32Z-14020`,
+  `/private/tmp/apack-mandatory-frontend-validated-strict.log`. Host: 397 files/4,739 tests; integration:
+  57 files/739 tests; shipped pack: 846 tests, existing one file/two tests skipped. Real external contract,
+  app replacement/restart, smoke and packaged authoring/app checks pass. All seven baseline EARS/content
+  files and the shipped facade report remain unchanged. No deadline changes or release metadata edits.
+- Committed-source strict passes in 1.0s (29/30 cached):
+  `node_modules/.cache/apack-chain/runs/2026-10-15T15-22-26Z-49794`,
+  `/private/tmp/apack-mandatory-frontend-committed-strict.log`. The separately staged issue is uncommitted;
+  its existing working-tree link correction is retained and its staged content is preserved.
+
+Required next: correct the independently reproduced keyed-declaration loss in
+[manifest consolidation](../plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15),
+then checkpoint 3's live palette/style/default/layout readers and permanent-cache removal. A current
+valid `__proto__` entity key disappears during Zod decoding; the opaque-default fix did not cover keyed
+contributions. Audit and preserve all keyed declarations with accurate schema/type/diagnostic behavior;
+prove generated typed/untyped EARS, ownership and offline behavior. This is required completion work.
+All remaining discovery/compiler/freshness/scope-cost, native lifecycle, cold editor readiness, navigation,
+frontend boundaries and all three Phase 6 workstreams remain required, followed by the complete 17-decision/
+phase audit and committed-source strict `--all`. Neither discovery nor the goal is complete.

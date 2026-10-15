@@ -73,10 +73,10 @@ the settings plan, as that goal already specifies.
 
 | Item | Decision and destination |
 |---|---|
-| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; complete frontend admission authority, live readers and remaining kinds/assets stay required |
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; mandatory frontend admission and accepted binding rows land in `e5dcdec63`; keyed-declaration preservation, live readers and remaining kinds/assets stay required |
 | Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 still owns final documentation/schema coverage |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
-| Entity names/shapes and feature ownership | M1 implemented in `2fff8bb76`: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
+| Entity names/shapes and feature ownership | M1 lands in `2fff8bb76`: owned feature/pack declarations, explicit null for untyped and one projection. Required [own-key preservation correction](manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15) remains before the next reader switch; current schema decoding can erase an accepted entity name |
 | Relation identity maps | M2 implemented in `3ff590240`: `data.relations` wire lists, unchanged generated EARS/content, validated names/uniqueness/reservations, native bindings and collision/provenance behavior |
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
@@ -715,3 +715,17 @@ real authoring/app checks; generated EARS/content/facade identity is preserved. 
 source and evidence. Mandatory frontend admission authority, complete capture/cleanup, fixture/shell
 migration and binding owner/revision data remain required before live readers. All remaining phases and
 final committed-source strict `--all` stay in scope.
+
+
+### Mandatory frontend admission and preservation audit (2026-10-15)
+
+`e5dcdec63` completes discovery 2B.2: checked native/loaded authority for every frontend write, owned
+metadata and accepted backend identities, transactional capture/cleanup, and source-delivery input
+pinning. Public frontend testing stays separate from backend tooling. Ten mutations and strict validation
+pass, including external/app/authoring checks; the goal records source and evidence.
+
+A read-only audit independently proves keyed `__proto__` entity declarations disappearing during schema
+decoding. Correct that required M1 preservation gap in manifest consolidation before checkpoint 3 migrates
+live readers. The prior opaque-default correction is insufficient for keyed declarations. The complete
+remaining discovery, compiler/freshness, navigation, boundary and Phase 6 scope remains required; this is
+not goal completion or final committed-source strict `--all` validation.
