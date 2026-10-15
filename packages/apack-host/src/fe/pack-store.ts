@@ -5,9 +5,9 @@ import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, Dsl
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { createDesignationStore, createOwnedStore } from '../packs/extensions.ts';
+import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { _mergeStepDefinitions, type StepDefinition } from '@apackdev/sdk/steps';
+import type { StepDefinition } from '@apackdev/sdk/steps';
 import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
@@ -155,7 +155,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const plugins: Plugin[] = [];
   let defaultPlugin: Plugin | undefined;
   const designations = createDesignationStore();
-  const steps = createOwnedStore<StepDefinition>(_mergeStepDefinitions);
+  const steps = createOwnedStepStore();
   const artifacts = createOwnedStore<ArtifactDefinition>();
   const blocks = createOwnedStore<BlockDefinition>();
   const appExtensions = createOwnedStore<SettingsForm>();
@@ -276,7 +276,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     const declaration = native.get(registration.id);
     if (declaration) {
       const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
-        extensions: { settings: declaration.settings, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
+        extensions: { settings: declaration.settings, steps: declaration.steps, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
       if (problem) throw new Error(problem);
     }
     const binding = createFrontendSettingsBinding(settings);

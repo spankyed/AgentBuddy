@@ -77,7 +77,7 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 |------|---------|
 | `discovery.ts` | `readInstalledPackBuilds`, `discoverPacks`, `installedPacks` |
 | `registry.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`replacePack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Candidate admission and atomic runtime replacement |
-| `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, content writers, appliers, commands, shutdown hooks |
+| `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (one active owner per step wire), designations, content writers, appliers, commands, shutdown hooks |
 | `installed.ts` | `installed-packs.json` CRUD |
 | `module-bridge.ts` | `withModuleBridge()` |
 | `layout.ts` | Pack layout, stage/verify, archives, `packFileHashes`/`stagedFileHashes` |

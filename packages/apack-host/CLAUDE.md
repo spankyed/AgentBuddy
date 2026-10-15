@@ -190,6 +190,14 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`). The context
 
 - `receiveClientEvent(registry, event)` (`bus/client-events.ts`) is what the API's `bus.send` procedure delegates to: it checks the event's `systemId` and `type` against the registry's `getEventValidationMap()` (a `*` entry accepts any type) and throws `UnknownClientEventError` otherwise — naming who sent it, as the bus's drops and the shell's refusals do, through `senderSuffix` (`@apackdev/sdk/events`) — logs it through the `app-events` logger (arrays over 5 items become `{ count, sample }`), and emits it on the SDK's bound `rootEvents` (`tests/bus/client-events.spec.ts`).
 
+Native `steps` use the same `StepEntry` grammar as authored `extensions.steps`. The common catalog's
+`steps()` projection and a window's `PackCatalogView.steps()` retain native, disabled installed and unbuilt
+source metadata without code loading. Entries identify `(packId, type)`; inactive claims remain visible,
+but two active packs cannot share a step wire. Backend native admission checks node data and executable
+slots before settings binding. Step data is captured before validation; node/default/presentation/slot/
+layout data is immutable, while executable component/function identities remain intact. Full native
+frontend admission authority is the next required discovery checkpoint, before palette consumer changes.
+
 ## Packs frontend (`features/packs/fe/`)
 
 The host `packs` feature's frontend, beside the system that answers it (`features/packs/be/system.ts`), for the

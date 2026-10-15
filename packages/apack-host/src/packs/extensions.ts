@@ -1,17 +1,16 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
-import { _mergeStepDefinitions, type StepDefinition } from '@apackdev/sdk/steps';
+import type { StepDefinition } from '@apackdev/sdk/steps';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
  * Values packs contribute per key, folded in registration order.
  *
  * Each contribution is kept with the pack that made it, so removing a pack re-folds what is left rather
- * than dropping the key. Two packs may hold one key between them — a step's build and frontend facets
- * routinely arrive from different packs, and an app-extension slot or a DSL type name is simply taken by
- * whoever registered last — so dropping the key when one of them unregisters would take the other's
- * contribution with it.
+ * than dropping the key. App-extension slots and DSL names may be shared, with the latest contribution
+ * selected; removing one owner must preserve the other contributions. Step wires use the exclusive
+ * ownership wrapper below instead.
  *
  * `fold` defaults to last-wins. Pass one that combines when a key is meant to be shared.
  */
@@ -47,20 +46,23 @@ export function createOwnedStore<V>(fold: (existing: V, next: V) => V = (_, next
   };
 }
 
-/** Definitions by type, over `createOwnedStore`: a type's contributions fold with `merge`, last-wins by default */
-export function createDefinitionStore<T extends { type: string }>(merge: (existing: T, def: T) => T = (_, def) => def) {
-  const store = createOwnedStore<T>(merge);
+/** One active pack owns a step wire; executable facets never fold across owners. */
+export function createOwnedStepStore() {
+  const store = createOwnedStore<StepDefinition>();
+  const owners = new Map<string, string>();
   return {
-    register: (def: T, owner: string): void => store.set(def.type, def, owner),
-    unregister: (type: string, owner: string): void => store.remove(type, owner),
-    get: store.get,
-    all: store.all,
+    ...store,
+    set(type: string, value: StepDefinition, owner: string): void {
+      const previous = owners.get(type);
+      if (previous !== undefined) throw new Error(`Step "${type}" is already owned by pack "${previous}"; pack "${owner}" cannot register it again`);
+      owners.set(type, owner);
+      store.set(type, value, owner);
+    },
+    remove(type: string, owner: string): void {
+      if (owners.get(type) === owner) owners.delete(type);
+      store.remove(type, owner);
+    },
   };
-}
-
-/** Step definitions, a type's build, runtime and frontend facets combining across registrations */
-export function createStepStore() {
-  return createDefinitionStore<StepDefinition>(_mergeStepDefinitions);
 }
 
 /** Role → id of the system or plugin that plays it; one feature plays a role, so a taken role is refused */

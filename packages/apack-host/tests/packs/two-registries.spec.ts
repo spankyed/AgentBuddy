@@ -6,13 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { services } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
-import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { stepRegistry } from '@apackdev/sdk/steps';
 import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
 const pack = (id: string, role: string, step: string, service: string, featureId: string): PackRegistration => ({
   id,
-  steps: [{ type: step, kind: 'step' } as StepDefinition],
+  steps: [{ type: step, kind: 'step', node: { label: step } }],
   services: { [service]: { from: id } },
   features: {
     [featureId]: {

@@ -73,9 +73,16 @@ const DataSchema = z.object({ entities: EntitiesSchema.optional(), relations: Re
 const FeatureDescriptionSchema = z.string().regex(/\S/, 'Feature description must not be blank')
   .describe('What this feature does, independently of its plugin display label.');
 
+/** Zod record decoding drops an own __proto__ key; opaque JSON data must preserve every key. */
+const JsonObjectSchema = z.custom<Record<string, unknown>>(value => value !== null && typeof value === 'object' && !Array.isArray(value), 'Expected a JSON object')
+  .superRefine((value, ctx) => {
+    for (const problem of _settingsJsonProblems(value)) ctx.addIssue({ code: 'custom', path: [...problem.path],
+      message: 'Must contain finite, acyclic JSON data with ordinary data properties' });
+  }).transform(value => structuredClone(value));
+
 const SettingsDefinitionShape = {
   schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
-  defaults: z.record(z.unknown()).describe('Complete explicit baseline values, validated without coercion or schema default population.'),
+  defaults: JsonObjectSchema.describe('Complete explicit baseline values, validated without coercion or schema default population.'),
   title: z.string().min(1).describe("Display title for this preference group; falls back to its group ID or feature label.").optional(),
   description: z.string().describe("Explanatory text shown above this group's custom settings form.").optional(),
   form: ModulePathSchema.describe('Source path of the custom settings form; its default export is a component.').optional(),
@@ -120,13 +127,14 @@ function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.R
   }
 }
 
-/** @internal Host composition admits the same settings data without external-pack entry paths. */
+/** @internal Host composition admits shared declaration data independently of executable bindings. */
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
   dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
+  steps: z.lazy(() => ExtensionsSchema.shape.steps),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
@@ -181,10 +189,7 @@ export const StepEntrySchema = z.object({
   node: z.object({
     label: z.string().regex(/\S/, 'Node label must not be blank').describe('Label a new node starts with, also shown on its canvas.'),
     defaultLabel: z.string().describe('Palette label when different from the node label.').optional(),
-    defaults: z.record(z.unknown()).superRefine((defaults, ctx) => {
-      for (const problem of _settingsJsonProblems(defaults)) ctx.addIssue({ code: 'custom', path: [...problem.path],
-        message: 'Node defaults must be finite, acyclic JSON data' });
-    }).describe('Initial JSON node fields; these must satisfy the step or trigger validation.').optional(),
+    defaults: JsonObjectSchema.describe('Initial JSON node fields; these must satisfy the step or trigger validation.').optional(),
   }).strict().describe('Node labels and initial values, available without importing step code. Both generated registrations carry this data.'),
   build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
   trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),

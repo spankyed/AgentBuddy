@@ -161,9 +161,9 @@
                 "$ref": "http://json-schema.org/draft-07/schema#"
               },
               "defaults": {
+                "description": "Complete explicit baseline values, validated without coercion or schema default population.",
                 "type": "object",
-                "additionalProperties": {},
-                "description": "Complete explicit baseline values, validated without coercion or schema default population."
+                "additionalProperties": {}
               },
               "title": {
                 "type": "string",
@@ -734,9 +734,9 @@
                 "$ref": "http://json-schema.org/draft-07/schema#"
               },
               "defaults": {
+                "description": "Complete explicit baseline values, validated without coercion or schema default population.",
                 "type": "object",
-                "additionalProperties": {},
-                "description": "Complete explicit baseline values, validated without coercion or schema default population."
+                "additionalProperties": {}
               },
               "title": {
                 "type": "string",
@@ -813,9 +813,9 @@
                     "description": "Palette label when different from the node label."
                   },
                   "defaults": {
+                    "description": "Initial JSON node fields; these must satisfy the step or trigger validation.",
                     "type": "object",
-                    "additionalProperties": {},
-                    "description": "Initial JSON node fields; these must satisfy the step or trigger validation."
+                    "additionalProperties": {}
                   }
                 },
                 "required": [

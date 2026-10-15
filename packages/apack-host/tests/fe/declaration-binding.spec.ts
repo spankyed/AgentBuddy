@@ -201,3 +201,37 @@ it('checks step presentation, component membership and callable layouts without 
   expect(component.render).not.toHaveBeenCalled();
   expect(getHeight).not.toHaveBeenCalled();
 });
+
+it('checks admitted native steps and owns their data while preserving executable component identities', () => {
+  const render = vi.fn();
+  const component = { render };
+  const getHeight = vi.fn(() => 70);
+  const node = { label: 'Memo', defaults: { tags: ['draft'] } };
+  const config = { icon: component, category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } };
+  const registration = { id: 'native', steps: [{ type: 'memo', node,
+    fe: { colorKey: 'blue', nodeConfig: config, components: { form: component }, layout: { hasInput: true, getHeight } },
+  }] };
+  const declaration = { id: 'native', steps: { memo: { node: structuredClone(node), fe: {
+    colorKey: 'blue', nodeConfig: { ...config, icon: 'Box' }, components: { form: 'native.vue' },
+    layout: { hasInput: true, getHeight: 'native.ts#getHeight' },
+  } } } };
+  const packs = createFePackRegistry({ nativeDeclarations: [declaration] });
+  packs.registerPackFE(registration);
+  const accepted = packs.step('memo')!;
+  expect(accepted.fe!.nodeConfig.icon).toBe(component);
+  expect(accepted.fe!.components!.form).toBe(component);
+  expect(accepted.fe!.layout!.getHeight).toBe(getHeight);
+  node.defaults.tags.push('Caller mutation');
+  config.connectionRules.inputs = 99;
+  registration.steps[0].fe.components.form = { render: vi.fn() };
+  registration.steps.length = 0;
+  expect(accepted.node!.defaults!.tags).toEqual(['draft']);
+  expect(accepted.fe!.nodeConfig.connectionRules.inputs).toBe(1);
+  expect(accepted.fe!.components!.form).toBe(component);
+  expect(Reflect.set(accepted.fe!.layout!, 'hasInput', false)).toBe(false);
+  expect(() => packs.replacePackFE({ id: 'native', steps: [{ type: 'memo', node: { label: 'Changed' } }] }))
+    .toThrow('steps.memo.node');
+  expect(packs.step('memo')).toBe(accepted);
+  expect(render).not.toHaveBeenCalled();
+  expect(getHeight).not.toHaveBeenCalled();
+});

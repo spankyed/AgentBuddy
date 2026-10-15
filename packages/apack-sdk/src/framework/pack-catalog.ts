@@ -1,3 +1,4 @@
+import type { StepEntry } from '../build/manifest.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 import type { PackDataDeclarations } from './data-declaration.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
@@ -10,6 +11,7 @@ import type { FrontendDeclaration } from './frontend-declaration.ts';
 export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
   id: string;
   lifecycle?: PackLifecycleDeclaration;
+  steps?: Record<string, StepEntry>;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;
   features?: Record<string, { description: string; entities?: Record<string, string | null>; settings?: SettingsDefinition; plugin?: PluginDeclaration; references?: ReferenceDeclarations }>;

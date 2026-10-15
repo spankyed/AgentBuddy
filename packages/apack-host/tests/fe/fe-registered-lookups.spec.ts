@@ -64,7 +64,7 @@ describe("a pack's frontend", () => {
     expect(stepRegistry.all().map((s) => s.type)).toEqual(['note']);
     expect(artifactRegistry.all()).toEqual([cardView]);
     expect(blockRegistry.all()).toEqual([choice]);
-    // Its components load when it registers
+    // Its components are accepted bindings
     expect(stepRegistry.getComponent('note')).toBe('NoteNode');
     expect(stepRegistry.getFormComponent('note')).toBe('NoteForm');
     expect(artifactRegistry.getComponent('card-view')).toBe('CardView');
@@ -86,28 +86,29 @@ describe("a pack's frontend", () => {
     expect(getDslTypes().has('memo')).toBe(false);
   });
 
-  it("merges its step's frontend facet into the definition another registration gave the type", () => {
-    const build = { type: 'note', kind: 'step' } as StepDefinition;
-    add('build-pack', { steps: [build] });
+  it('refuses another pack supplying a facet of the same step wire', () => {
+    const original: StepDefinition = { type: 'note', kind: 'step', node: { label: 'Original' } };
+    add('first-pack', { steps: [original] });
+    expect(() => add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: Welcome } }))
+      .toThrow(/Step "note".*first-pack.*notebook-pack/);
+    expect(stepRegistry.get('note')?.node?.label).toBe('Original');
+    expect(stepRegistry.getFE('note')).toBeUndefined();
+    expect(appExtension('welcome')).toBeUndefined();
+    remove('first-pack');
     add('notebook-pack', { steps: [noteStepFE] });
-    expect(stepRegistry.get('note')).toMatchObject({ type: 'note', kind: 'step', node: { label: 'Note' } });
     expect(stepRegistry.getFE('note')).toBeDefined();
   });
 
-  // Its counterpart: the merged type, the slot and the DSL name are each held by two packs, and the one
-  // that stays keeps what it contributed when the other unregisters
-  it("leaves the other pack's contributions in place when one of two unregisters", () => {
-    const build = { type: 'note', kind: 'step' } as StepDefinition;
+  it('keeps unrelated slot and DSL contributions when another step owner unregisters', () => {
+    const first: StepDefinition = { type: 'first', node: { label: 'First' } };
     const otherWelcome = { name: 'OtherWelcome' };
-    add('build-pack', { steps: [build], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
+    add('first-pack', { steps: [first], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
     add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { other: true } as never } });
     expect(stepRegistry.get('note')?.fe).toBeDefined();
     expect(appExtension('welcome')).toBe(otherWelcome);
-
     remove('notebook-pack');
-
-    expect(stepRegistry.get('note'), "the remaining pack's step went with the one that left").toBeDefined();
-    expect(stepRegistry.get('note')?.fe).toBeUndefined();
+    expect(stepRegistry.get('first')?.node?.label).toBe('First');
+    expect(stepRegistry.get('note')).toBeUndefined();
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
   });

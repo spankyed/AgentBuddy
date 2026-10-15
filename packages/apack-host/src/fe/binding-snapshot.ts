@@ -1,9 +1,11 @@
+import { captureStepBinding } from '../packs/step-bindings.ts';
 import type { PackFERegistration } from '@apackdev/sdk/fe';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 
 /** Own binding membership before validation; retain executable component/extension/callback objects. */
 export function captureFrontendBindings(registration: PackFERegistration): PackFERegistration {
   const captured = { ...registration };
+  if (Array.isArray(captured.steps)) captured.steps = captured.steps.map(captureStepBinding);
   if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, plugin]) => {
     if (!isPlainObject(plugin)) return [id, plugin];
     const value = { ...plugin };

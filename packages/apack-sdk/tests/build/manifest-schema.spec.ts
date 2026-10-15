@@ -413,3 +413,21 @@ describe('commands', () => {
 function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
   return result.diagnostics.map(issue => issue.message);
 }
+
+it('preserves opaque JSON default keys across authored and native declaration decoding', async () => {
+  const { ManifestSchema } = await import('../../src/build/manifest-schema.ts');
+  const defaults = JSON.parse('{"__proto__":{"retained":true},"constructor":"value","nested":{"value":1}}');
+  const settings = { schema: { type: 'object' }, defaults };
+  const source = { id: 'data-pack', name: 'Data', version: '1.0.0', extensions: {
+    settings: { preferences: settings }, steps: { memo: { node: { label: 'Memo', defaults } } },
+  } };
+  const parsed = ManifestSchema.parse(source);
+  expect(Object.hasOwn(parsed.extensions!.steps!.memo.node.defaults!, '__proto__')).toBe(true);
+  expect(Object.hasOwn(parsed.extensions!.settings!.preferences.defaults, '__proto__')).toBe(true);
+  expect(parsed.extensions!.steps!.memo.node.defaults).toEqual(defaults);
+  expect(parsed.extensions!.steps!.memo.node.defaults).not.toBe(defaults);
+  const native = _NativePackDeclarationSchema.parse({ id: 'native', settings: { preferences: settings },
+    steps: source.extensions.steps });
+  expect(native.steps!.memo.node.defaults).toEqual(defaults);
+  expect(native.settings!.preferences.defaults).toEqual(defaults);
+});

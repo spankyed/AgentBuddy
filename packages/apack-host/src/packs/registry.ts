@@ -1,6 +1,7 @@
+import { captureStepBinding } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { backendBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { backendBindingProblem, backendStepBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
  *
@@ -20,7 +21,6 @@ import type { HostServices, SettingsService } from '@apackdev/sdk/services';
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { _mergeStepDefinitions, type StepDefinition } from '@apackdev/sdk/steps';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
@@ -28,7 +28,7 @@ import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
-import { createOwnedStore, createDesignationStore } from './extensions.ts';
+import { createOwnedStore, createOwnedStepStore, createDesignationStore } from './extensions.ts';
 import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 import { readAppPackSources } from './app-sources.ts';
@@ -314,7 +314,7 @@ type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>, commandOrder?: ReadonlyMap<string, number>) {
   const tables = {
     designations: createDesignationStore(),
-    steps: createOwnedStore<StepDefinition>(_mergeStepDefinitions),
+    steps: createOwnedStepStore(),
     artifacts: createOwnedStore<ArtifactDefinition>(),
     blocks: createOwnedStore<BlockDefinition>(),
     contentWriters: createContentWriterStore(),
@@ -517,6 +517,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (origin && (origin.id !== registration.id || (origin.manifest && origin.manifest.id !== registration.id))) {
       throw new Error(`Pack "${registration.id}" runtime identity does not match its accepted origin "${origin.id}"`);
     }
+    const stepBindings = Array.isArray(registration.steps) ? registration.steps.map(captureStepBinding) : registration.steps;
+    const checkedRegistration = { ...registration, steps: stepBindings };
     checkFeatureIds(registration.id, Object.keys(registration.features ?? {}));
     if (!origin) {
       const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
@@ -526,6 +528,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       }
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
       if (lifecycleProblem) throw new Error(`Native pack "${registration.id}" runtime ${lifecycleProblem} does not match its admitted declarations`);
+      const stepProblem = backendStepBindingProblem(declaration.steps, stepBindings);
+      if (stepProblem) throw new Error(`Native pack "${registration.id}" runtime ${stepProblem} does not match its admitted declarations`);
       const runtimeFeatures = registration.features === undefined ? {} : registration.features;
       const settingsOf = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
         Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]));
@@ -554,7 +558,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, origin.manifest.extensions?.settings ?? {})) {
         throw new Error(`Pack "${registration.id}" runtime settings do not match its accepted declarations`);
       }
-      const problem = checkBinding(origin.manifest, registration);
+      const problem = checkBinding(origin.manifest, checkedRegistration);
       if (problem) throw new Error(problem);
     }
 
@@ -569,7 +573,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     const candidate = new Map(admitted);
-    candidate.set(registration.id, admitContributions(registration));
+    candidate.set(registration.id, admitContributions(checkedRegistration));
     const nextTables = buildContributionTables(candidate.values(), tables.commands.order());
     let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
     try {

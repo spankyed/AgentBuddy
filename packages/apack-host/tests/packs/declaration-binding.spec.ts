@@ -72,3 +72,64 @@ it('refuses undeclared services before registration, catalog publication or auth
   expect(registry.getRegisteredServices()).not.toHaveProperty('ghost');
   expect(registry.settingsCatalog()).toBe(catalog);
 });
+
+it('checks native step data and runtime slots before granting settings or invoking functions', async () => {
+  const { createPackRegistry } = await import('../../src/packs/registry.ts');
+  const { vi } = await import('vitest');
+  const handler = vi.fn();
+  const bindSettings = vi.fn();
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', steps: {
+    memo: { node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler: 'native.ts#run', waits: true } },
+  } }] });
+  const step = { type: 'memo', node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler, waits: true as const } };
+  const candidates = [
+    { steps: [] },
+    { steps: [step, step] },
+    { steps: [{ ...step, node: { label: 'Changed' } }] },
+    { steps: [{ ...step, runtime: { handler } }] },
+    { steps: [{ ...step, runtime: { waits: true as const } }] },
+  ];
+  for (const candidate of candidates) {
+    expect(() => registry.registerPack({ id: 'native', ...candidate, bindSettings })).toThrow('does not match its admitted declarations');
+    expect(registry.step('memo')).toBeUndefined();
+  }
+  expect(bindSettings).not.toHaveBeenCalled();
+  expect(handler).not.toHaveBeenCalled();
+  registry.registerPack({ id: 'native', steps: [step] });
+  const accepted = registry.step('memo')!;
+  expect(accepted.runtime!.handler).toBe(handler);
+  step.node.defaults.tags.push('Caller mutation');
+  Reflect.set(step.runtime, 'waits', false);
+  expect(accepted.node!.defaults!.tags).toEqual(['draft']);
+  expect(accepted.runtime!.waits).toBe(true);
+  expect(handler).not.toHaveBeenCalled();
+});
+
+it('checks declared trigger registration slots without invoking their implementation', async () => {
+  const { createPackRegistry } = await import('../../src/packs/registry.ts');
+  const { vi } = await import('vitest');
+  const register = vi.fn();
+  const trigger = { trackField: 'event', compile: () => ({}), decompile: () => ({}) };
+  const node = { label: 'Trigger' };
+  for (const declared of [false, true]) {
+    const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', steps: { signal: {
+      kind: 'trigger', node, trigger: { facet: 'native.ts#trigger', ...(declared && { register: 'native.ts#register' }) },
+    } } }] });
+    const bound = { type: 'signal', kind: 'trigger' as const, node, trigger: { ...trigger, ...(!declared && { register }) } };
+    expect(() => registry.registerPack({ id: 'native', steps: [bound] })).toThrow('trigger.register');
+    registry.registerPack({ id: 'native', steps: [{ ...bound, trigger: { ...trigger, ...(declared && { register }) } }] });
+    expect(register).not.toHaveBeenCalled();
+  }
+});
+
+it('does not normalize non-JSON runtime node data into a matching declaration', async () => {
+  const { createPackRegistry } = await import('../../src/packs/registry.ts');
+  class NotJson { value = 1; }
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', steps: {
+    memo: { node: { label: 'Memo', defaults: { object: { value: 1 } } } },
+  } }] });
+  expect(() => registry.registerPack({ id: 'native', steps: [{ type: 'memo',
+    node: { label: 'Memo', defaults: { object: new NotJson() } },
+  }] })).toThrow('JSON data');
+  expect(registry.step('memo')).toBeUndefined();
+});

@@ -319,3 +319,56 @@ it('keeps reference metadata immutable and independent of native, installed and 
   catalog.replace([]);
   expect(catalog.references().map(entry => entry.origin)).toEqual(['native', 'source']);
 });
+
+it('projects native, disabled installed and unbuilt source steps without loading declared code', () => {
+  const catalog = createContributionCatalog(app);
+  const step = { node: { label: 'Memo', defaults: JSON.parse('{"__proto__":{"retained":true},"tags":["draft"]}') },
+    build: 'unavailable.ts#build', types: 'unavailable-types.ts',
+    fe: { nodeConfig: { icon: 'Box', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } },
+      components: { form: { entry: 'unavailable.vue', load: 'lazy' as const } },
+      layout: { hasInput: true, getHeight: 'unavailable.ts#getHeight' } },
+  };
+  catalog.setNative([{ id: 'native', steps: { memo: step } }]);
+  const installed = source('installed', false);
+  installed.snapshot.manifest.extensions!.steps = { memo: structuredClone(step) };
+  installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  catalog.replace([installed]);
+  const manifest: PackManifest = { id: 'author', name: 'Author', version: '1.0.0', extensions: { steps: { memo: structuredClone(step) } } };
+  catalog.setSources([{ dir: '/unavailable/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
+  const entries = catalog.steps();
+  expect(entries).toMatchObject([
+    { packId: 'native', type: 'memo', origin: 'native', enabled: true, declaration: step },
+    { packId: 'installed', type: 'memo', origin: 'installed', enabled: false, declaration: step },
+    { packId: 'author', type: 'memo', origin: 'source', declaration: step },
+  ]);
+  expect(entries[0]).not.toHaveProperty('declarationRevision');
+  expect(entries[0]).not.toHaveProperty('buildRevision');
+  expect(entries[1].declarationRevision).toBe(installed.snapshot.declarationRevision);
+  expect(entries[2]).not.toHaveProperty('enabled');
+  expect(entries[2]).not.toHaveProperty('buildRevision');
+  step.node.defaults.tags.push('Caller mutation');
+  expect(entries[0].declaration.node.defaults!.tags).toEqual(['draft']);
+  expect(Reflect.set(entries[0].declaration.fe!.nodeConfig.connectionRules, 'inputs', 99)).toBe(false);
+  expect(Object.hasOwn(entries[1].declaration.node.defaults!, '__proto__')).toBe(true);
+  expect(Object.hasOwn(entries[2].declaration.node.defaults!, '__proto__')).toBe(true);
+  const previous = catalog.getSnapshot();
+  expect(() => catalog.setNative([{ id: 'native', steps: { memo: { node: { label: ' ' } } } }])).toThrow('Node label');
+  expect(catalog.getSnapshot()).toBe(previous);
+});
+
+it('rejects non-JSON native declaration data before cloning, without executing accessors', () => {
+  const catalog = createContributionCatalog(app);
+  catalog.setNative([{ id: 'accepted' }]);
+  const before = catalog.getSnapshot();
+  class NotJson { value = 1; }
+  const readSteps = vi.fn(() => ({ memo: { node: { label: 'Memo' } } }));
+  const candidates = [
+    { id: 'native', steps: { memo: { node: { label: 'Memo', defaults: { invalid: new NotJson() } } } } },
+    { id: 'native', get steps() { return readSteps(); } },
+  ];
+  for (const candidate of candidates) {
+    expect(() => catalog.setNative([candidate])).toThrow('Invalid native declarations');
+    expect(catalog.getSnapshot()).toBe(before);
+  }
+  expect(readSteps).not.toHaveBeenCalled();
+});

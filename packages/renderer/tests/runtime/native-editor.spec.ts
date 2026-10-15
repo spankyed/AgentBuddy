@@ -21,7 +21,7 @@ it('renders stored references with only the native host registered and refuses a
   const registry = createFePackRegistry({ nativeDeclarations: [hostDeclaration] });
   registry.registerPackFE(hostFrontend);
   startFeTestRuntime({ packs: registry, catalog: {
-    status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], subscribe: () => () => {},
+    status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], steps: () => [], subscribe: () => () => {},
   } });
   expect(registry.hasPackFE('default-setup')).toBe(false);
   const root = document.createElement('div'); document.body.appendChild(root);
@@ -50,7 +50,7 @@ async function openEditor(content = 'Draft') {
     return () => { unsubscribed(); stop(); };
   });
   startFeTestRuntime({ packs: registry, catalog: {
-    status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], subscribe: () => () => {},
+    status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], steps: () => [], subscribe: () => () => {},
   } });
   const root = document.createElement('div'); document.body.appendChild(root);
   const updates = vi.fn(); const subDocuments = vi.fn();

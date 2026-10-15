@@ -156,3 +156,35 @@ describe('window declaration catalog', () => {
     expect(reader.status()).toBe('disposed'); expect(reader.getSnapshot()).toBeUndefined();
   });
 });
+
+it('uses the common step projection and retains current immutable steps across stale frames', () => {
+  const { reader, catalog, sessions, wire } = fixture();
+  const step = { node: { label: 'Initial', defaults: { tags: ['draft'] } },
+    fe: { nodeConfig: { icon: 'Box', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } } },
+  };
+  catalog.setNative([{ id: 'native', steps: { memo: step } }]);
+  const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', extensions: { steps: { memo: step } } };
+  catalog.replace([{ dir: '/unavailable/installed', enabled: false, snapshot: {
+    format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest),
+    types: { entities: {}, relKinds: {} }, facades: {},
+  } }]);
+  const source = { ...manifest, id: 'source' };
+  catalog.setSources([{ dir: '/unavailable/source', manifest: source, declarationRevision: _declarationRevision(source) }]);
+  reader.connect();
+  const old = wire(); sessions[0].receive(old);
+  const entries = reader.catalog.steps();
+  expect(entries).toEqual(catalog.steps());
+  expect(reader.catalog.steps()).toBe(entries);
+  expect(Reflect.set(entries[0].declaration.node.defaults!.tags as string[], '0', 'Changed')).toBe(false);
+  catalog.setNative([{ id: 'native', steps: { memo: { ...step, node: { label: 'Current' } } } }]);
+  const next = wire(); sessions[0].receive(next);
+  expect(reader.catalog.steps()[0].declaration.node.label).toBe('Current');
+  sessions[0].receive(old);
+  expect(reader.catalog.steps()[0].declaration.node.label).toBe('Current');
+  (next.snapshot.native[0].steps!.memo.node as { label: string }).label = 'Caller mutation';
+  expect(reader.catalog.steps()[0].declaration.node.label).toBe('Current');
+  reader.disconnect();
+  expect(reader.catalog.status()).toBe('disconnected');
+  reader.dispose();
+  expect(reader.catalog.steps()).toEqual([]);
+});

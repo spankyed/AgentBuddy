@@ -160,7 +160,9 @@ This is the in-memory runtime that `@apackdev/testing/harness` drives (see `pack
 - `resetTestData` (installs a fresh engine, carrying over the registered repositories, so nothing is shared with the test before), `entityIds`, `dropAttribute`, `takeSystemErrors` (the recorded `SYSTEM_ERROR` events), `addTestSecret`, and `fakeInference` (`fake-inference.ts`). `testRootEvents` has no bus actor: a test of `broadcastToPlugin` listens with `onPluginSend`, and `@apackdev/testing`'s `startApp` delivers them.
 
 `nativePackDeclarationFixture(registration)` extracts declaration data from an authored native test
-fixture before its runtime stand-ins register. It is a test composition helper, never a production
+fixture before its runtime stand-ins register, including explicit step node data and executable slot targets.
+A step fixture supplies its node declaration; the helper does not invent missing defaults. It is a test
+composition helper, never a production
 discovery path. Host composition admits independent declarations before constructing runtime bindings.
 
 ## A pack on disk (`src/testing/pack-fixture.ts`, `@apackdev/sdk/testing/pack-fixture`)

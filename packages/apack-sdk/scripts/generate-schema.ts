@@ -12,10 +12,15 @@ const jsonSchema = zodToJsonSchema(ManifestSchema, {
 const properties = (jsonSchema as { properties: Record<string, Record<string, unknown>> }).properties;
 // Editors validate the inline value schema with the same draft the runtime compiler accepts.
 const extensions = properties.extensions.properties as Record<string, Record<string, unknown>>;
-const settingsDefinition = extensions.settings.additionalProperties as { properties: { schema: Record<string, unknown> } };
+const settingsDefinition = extensions.settings.additionalProperties as { properties: { schema: Record<string, unknown>; defaults: Record<string, unknown> } };
 Object.assign(settingsDefinition.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
 const feature = properties.features.additionalProperties as { properties: { settings: typeof settingsDefinition; entities: Record<string, unknown> } };
 Object.assign(feature.properties.settings.properties.schema, { $ref: 'http://json-schema.org/draft-07/schema#' });
+// Defaults are opaque JSON objects: runtime validation clones them without Zod record decoding.
+const step = extensions.steps.additionalProperties as { properties: { node: { properties: { defaults: Record<string, unknown> } } } };
+for (const defaults of [settingsDefinition.properties.defaults, feature.properties.settings.properties.defaults, step.properties.node.properties.defaults]) {
+  Object.assign(defaults, { type: 'object', additionalProperties: {} });
+}
 const data = properties.data.properties as { entities: Record<string, unknown>; relations: Record<string, unknown> };
 for (const entities of [data.entities, feature.properties.entities]) {
   Object.assign(entities, { propertyNames: { minLength: 1, not: { enum: Object.keys(SDK_ENTITIES) } } });

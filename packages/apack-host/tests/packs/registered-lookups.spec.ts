@@ -55,6 +55,7 @@ const noteStep: StepDefinition = {
 const tickTrigger: StepDefinition = {
   type: 'tick',
   kind: 'trigger',
+  node: { label: 'Tick' },
   trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
 };
 
@@ -70,7 +71,8 @@ describe('steps', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {
     add({ id: 'note-pack', steps: [noteStep, tickTrigger] });
 
-    expect(stepRegistry.get('note')).toBe(noteStep);
+    expect(stepRegistry.get('note')).toEqual(noteStep);
+    expect(stepRegistry.get('note')?.build).toBe(noteStep.build);
     expect(stepRegistry.has('tick')).toBe(true);
     expect(stepRegistry.getBuild('note')?.getLabel({}, 0)).toBe('Note');
     expect(stepRegistry.isTrigger('tick')).toBe(true);
@@ -205,40 +207,43 @@ describe('appliers', () => {
 
 // Captured keys own removal; disposing a pack must not re-read authored getters.
 describe('captured contribution addresses', () => {
-  it('reads a definition address once, preserves its identity, and removes every contribution', () => {
+  it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
+    const { createPackRegistry } = await import('../../src/packs/registry.ts');
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', steps: { stuck: { node: { label: 'Stuck' } } } }] });
     const readType = vi.fn(() => {
       if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
       return 'stuck';
     });
-    const step: StepDefinition = { get type() { return readType(); }, kind: 'step' };
-    registry.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
-    expect(stepRegistry.get('stuck')).toBe(step);
-    expect(registry.steps()[0]).toBe(step);
-    add({ id: 'another-pack' });
-    expect(stepRegistry.get('stuck')).toBe(step);
-    registry.unregisterPack('captured-address');
+    const step: StepDefinition = { get type() { return readType(); }, kind: 'step', node: { label: 'Stuck' } };
+    isolated.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
+    const accepted = isolated.step('stuck');
+    expect(accepted?.node?.label).toBe('Stuck');
+    step.node!.label = 'Caller mutation';
+    isolated.catalog.setNative([...isolated.catalog.getSnapshot().native, { id: 'another-pack' }]);
+    isolated.registerPack({ id: 'another-pack' });
+    expect(isolated.step('stuck')).toBe(accepted);
+    expect(isolated.step('stuck')?.node?.label).toBe('Stuck');
+    isolated.unregisterPack('captured-address');
     expect(readType).toHaveBeenCalledOnce();
-    expect(registry.getPackRegistration('captured-address')).toBeNull();
-    expect(stepRegistry.get('stuck')).toBeUndefined();
-    expect(getPackCommands()).toEqual([]);
-    expect(() => registry.unregisterPack('captured-address')).toThrow('is not registered');
+    expect(isolated.getPackRegistration('captured-address')).toBeNull();
+    expect(isolated.step('stuck')).toBeUndefined();
+    expect(isolated.commands()).toEqual([]);
+    expect(() => isolated.unregisterPack('captured-address')).toThrow('is not registered');
   });
 });
 
-// A refused candidate leaves accepted lookups unchanged. Facets from different packs merge; removing
-// one owner must retain every facet belonging to the others.
-describe('a type two packs contribute facets of', () => {
-  it("keeps the facets of the pack that stays when the other unregisters", () => {
-    add({ id: 'build-pack', steps: [{ type: 'shared', kind: 'step', build: build('Shared') }] });
-    add({ id: 'fe-pack', steps: [{ type: 'shared', kind: 'step', fe: { nodeConfig: { label: 'Shared' } } as never }] });
-    expect(stepRegistry.get('shared')?.build).toBeDefined();
-    expect(stepRegistry.get('shared')?.fe).toBeDefined();
-
-    remove('fe-pack');
-
-    expect(stepRegistry.get('shared'), "the remaining pack's step went with the one that left").toBeDefined();
-    expect(stepRegistry.get('shared')?.build).toBeDefined();
-    expect(stepRegistry.get('shared')?.fe).toBeUndefined();
+// A refused candidate leaves accepted lookups and ownership unchanged.
+describe('step wire ownership', () => {
+  it('refuses another active owner and allows reuse after the owner unregisters', () => {
+    const original = { type: 'shared', kind: 'step' as const, node: { label: 'Shared' }, build: build('Shared') };
+    add({ id: 'first-pack', steps: [original] });
+    expect(() => add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] }))
+      .toThrow(/Step "shared".*first-pack.*second-pack/);
+    expect(stepRegistry.get('shared')?.node?.label).toBe('Shared');
+    expect(stepRegistry.get('shared')?.build).toBe(original.build);
+    remove('first-pack');
+    add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] });
+    expect(stepRegistry.get('shared')?.node?.label).toBe('Second');
   });
 
   it('is gone once the last pack contributing it unregisters', () => {
@@ -256,8 +261,8 @@ describe('two packs naming the same feature', () => {
   const withPlugin = (id: string, featureId: string, receives: string[]) => ({ id, features: { [featureId]: { plugin: { receives } } } });
 
   it('both register, each addressing its own plugin', () => {
-    add(withPlugin('first-pack', 'memos', ['FIRST_EVENT']));
-    add({ ...withPlugin('second-pack', 'memos', ['SECOND_EVENT']), steps: [noteStep] });
+    add({ ...withPlugin('first-pack', 'memos', ['FIRST_EVENT']), steps: [noteStep] });
+    add(withPlugin('second-pack', 'memos', ['SECOND_EVENT']));
 
     const map = registry.getPluginEventValidationMap();
     expect(map.get('first-pack/memos')).toEqual(receives('FIRST_EVENT'));

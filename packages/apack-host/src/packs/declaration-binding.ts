@@ -1,6 +1,6 @@
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
-import type { PackManifest } from '@apackdev/sdk/build';
+import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
@@ -77,29 +77,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     if (block.be !== undefined && (!block.be || typeof block.be !== 'object' || Array.isArray(block.be))) return problem(`blocks.${type}.be`);
   }
 
-  const steps = namedBindings(registration.steps, 'type', Object.keys(manifest.extensions?.steps ?? {}));
-  if (!steps) return problem('steps');
-  for (const [type, declaration] of Object.entries(manifest.extensions?.steps ?? {})) {
-    const step = steps.get(type)!;
-    if ((step.kind === undefined ? 'step' : step.kind) !== (declaration.kind ?? 'step')) return problem(`steps.${type}.kind`);
-    if (step.fe !== undefined) return problem(`steps.${type}.fe`);
-    if (!isDeepStrictEqual(step.node, declaration.node)) return problem(`steps.${type}.node`);
-    for (const facet of ['build', 'trigger'] as const) {
-      if ((step[facet] !== undefined) !== (declaration[facet] !== undefined)) return problem(`steps.${type}.${facet}`);
-      if (step[facet] !== undefined && (!step[facet] || typeof step[facet] !== 'object' || Array.isArray(step[facet]))) return problem(`steps.${type}.${facet}`);
-    }
-    const runtime = declaration.runtime;
-    const hasRuntime = Boolean(runtime?.handler || runtime?.isAsync || runtime?.waits || runtime?.spawnsSubflow);
-    if ((step.runtime !== undefined) !== hasRuntime) return problem(`steps.${type}.runtime`);
-    if (hasRuntime) {
-      if (!isPlainObject(step.runtime)) return problem(`steps.${type}.runtime`);
-      if ((step.runtime.handler !== undefined) !== (runtime?.handler !== undefined)
-        || (step.runtime.handler !== undefined && typeof step.runtime.handler !== 'function')) return problem(`steps.${type}.runtime.handler`);
-      for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
-        if ((step.runtime[flag] === undefined ? false : step.runtime[flag]) !== (runtime?.[flag] ?? false)) return problem(`steps.${type}.runtime.${flag}`);
-      }
-    }
-  }
+  const stepProblem = backendStepBindingProblem(manifest.extensions?.steps, registration.steps);
+  if (stepProblem) return problem(stepProblem);
 
   const migrations = registration.migrations === undefined ? {} : registration.migrations;
   if (!isPlainObject(migrations) || Object.keys(migrations).some(line => line !== 'app' && line !== 'pack')) return problem('migrations');
@@ -112,4 +91,36 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   }
   const lifecycleProblem = lifecycleBindingProblem(manifest.lifecycle, registration.lifecycle);
   if (lifecycleProblem) return problem(lifecycleProblem);
+}
+
+/** Compare declared step data and executable slot membership without invoking any facet. */
+export function backendStepBindingProblem(declarations: Record<string, StepEntry> | undefined, actual: unknown): string | undefined {
+  const steps = namedBindings(actual, 'type', Object.keys(declarations ?? {}));
+  if (!steps) return 'steps';
+  for (const [type, declaration] of Object.entries(declarations ?? {})) {
+    const step = steps.get(type)!;
+    if ((step.kind === undefined ? 'step' : step.kind) !== (declaration.kind ?? 'step')) return `steps.${type}.kind`;
+    if (step.fe !== undefined) return `steps.${type}.fe`;
+    if (!isDeepStrictEqual(step.node, declaration.node)) return `steps.${type}.node`;
+    for (const facet of ['build', 'trigger'] as const) {
+      if ((step[facet] !== undefined) !== (declaration[facet] !== undefined)) return `steps.${type}.${facet}`;
+      if (step[facet] !== undefined && (!step[facet] || typeof step[facet] !== 'object' || Array.isArray(step[facet]))) return `steps.${type}.${facet}`;
+    }
+    if (step.trigger !== undefined) {
+      const trigger = step.trigger as Record<string, unknown>;
+      if ((trigger.register !== undefined) !== (declaration.trigger?.register !== undefined)
+        || (trigger.register !== undefined && typeof trigger.register !== 'function')) return `steps.${type}.trigger.register`;
+    }
+    const runtime = declaration.runtime;
+    const hasRuntime = Boolean(runtime?.handler || runtime?.isAsync || runtime?.waits || runtime?.spawnsSubflow);
+    if ((step.runtime !== undefined) !== hasRuntime) return `steps.${type}.runtime`;
+    if (hasRuntime) {
+      if (!isPlainObject(step.runtime)) return `steps.${type}.runtime`;
+      if ((step.runtime.handler !== undefined) !== (runtime?.handler !== undefined)
+        || (step.runtime.handler !== undefined && typeof step.runtime.handler !== 'function')) return `steps.${type}.runtime.handler`;
+      for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
+        if ((step.runtime[flag] === undefined ? false : step.runtime[flag]) !== (runtime?.[flag] ?? false)) return `steps.${type}.runtime.${flag}`;
+      }
+    }
+  }
 }

@@ -2596,3 +2596,15 @@ remains required before checkpoint 3, alongside full trigger/build metadata and 
 workstreams. This ordering exposes the dependency on the rest of the native frontend grammar instead of
 hiding it behind optional validation. There are no compatibility aliases, inferred production declarations,
 new activation modes or changes to deferred isolation/storage requirements.
+
+The 2B.1 parity test additionally reproduces Zod record decoding dropping an own `__proto__` key from
+opaque JSON defaults. Native admission retained the original data while source/snapshot decoding lost
+that key. Validate and clone JSON default objects without record decoding for both node and settings
+defaults, retaining the existing `Record<string, unknown>` types. Keep the generated JSON Schema's object
+shape explicit and test all three declaration origins; this is data preservation, not format conversion.
+
+The final native admission review also reproduced structured cloning normalizing a class-valued default
+before schema validation. Validate native declaration JSON purity before any copy: reject accessors without
+invoking them, foreign prototypes and other non-JSON values, preserving the prior catalog on refusal.
+Check the separately declared trigger registration slot in the shared backend step validator too; full
+trigger/build metadata migration remains required and is not replaced by this slot-membership check.

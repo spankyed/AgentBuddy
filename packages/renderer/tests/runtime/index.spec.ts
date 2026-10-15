@@ -39,7 +39,8 @@ const settingsAddress = resolveName('default-setup/settings');
 it("gives the SDK's frontend lookups the window's registered pack frontends", () => {
   const mentions = { extensions: {} };
   const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
-  const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
+  const icon = vi.fn();
+  const note = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } };
   fePacks.registerPackFE({
     id: 'fe-host-pack',
     features: { notebookMain: { plugin: { label: 'Notebook' } as never, designation: 'notebook' } },
@@ -51,7 +52,10 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
     bindRendererHost(() => application as never);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
-    expect(stepRegistry.get('note')).toBe(note);
+    expect(stepRegistry.get('note')).toEqual(note);
+    expect(stepRegistry.getFE('note')?.nodeConfig.icon).toBe(icon);
+    note.node.label = 'Caller mutation';
+    expect(stepRegistry.getNode('note')?.label).toBe('Note');
     expect(getDesignated('notebook')).toBe('fe-host-pack/notebookMain');
   } finally {
     fePacks.unregisterPackFE('fe-host-pack');

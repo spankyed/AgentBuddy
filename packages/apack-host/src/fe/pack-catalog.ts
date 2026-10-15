@@ -1,5 +1,6 @@
+import { stepCatalogEntries } from '../packs/catalog-steps.ts';
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
-import type { PackCatalogView, ReferenceCatalogEntry, FrontendCatalogEntry } from '@apackdev/sdk/framework';
+import type { PackCatalogView, ReferenceCatalogEntry, FrontendCatalogEntry, StepCatalogEntry } from '@apackdev/sdk/framework';
 import { referenceCatalogEntries } from '../packs/catalog-references.ts';
 import { frontendCatalogEntries } from '../packs/catalog-frontend.ts';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
@@ -69,16 +70,17 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
     tell();
   }
 
-  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[]; frontend: readonly FrontendCatalogEntry[] } | undefined;
+  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[]; frontend: readonly FrontendCatalogEntry[]; steps: readonly StepCatalogEntry[] } | undefined;
   const projection = () => {
     const snapshot = frame?.snapshot;
     if (!snapshot) return undefined;
-    if (projected?.snapshot !== snapshot) projected = { snapshot, references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot) };
+    if (projected?.snapshot !== snapshot) projected = { snapshot, references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot) };
     return projected;
   };
   const catalog: PackCatalogView = {
     status: () => status, problem: () => problem,
     references: () => projection()?.references ?? [], frontend: () => projection()?.frontend ?? [],
+    steps: () => projection()?.steps ?? [],
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
 

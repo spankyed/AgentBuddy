@@ -1,3 +1,4 @@
+import type { StepEntry } from '../build/manifest.ts';
 import type { FeatureRef } from '../ids/refs.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import type { FrontendDeclaration } from './frontend-declaration.ts';
@@ -24,11 +25,23 @@ export interface FrontendCatalogEntry {
   readonly enabled?: boolean;
 }
 
+/** Step wire identity belongs to its declaring pack; runtime readiness is a separate concern. */
+export interface StepCatalogEntry {
+  readonly type: string;
+  readonly packId: string;
+  readonly origin: 'native' | 'installed' | 'source';
+  readonly declaration: DeclarationData<StepEntry>;
+  readonly declarationRevision?: string;
+  readonly buildRevision?: string;
+  readonly enabled?: boolean;
+}
+
 /** Typed projections of the common declaration inventory; reading never activates a pack. */
 export interface PackCatalogView {
   status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
   problem(): string | undefined;
   references(): readonly ReferenceCatalogEntry[];
   frontend(): readonly FrontendCatalogEntry[];
+  steps(): readonly StepCatalogEntry[];
   subscribe(listener: () => void): () => void;
 }

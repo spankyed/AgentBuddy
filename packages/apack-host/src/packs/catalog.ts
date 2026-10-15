@@ -1,3 +1,4 @@
+import { stepCatalogEntries } from './catalog-steps.ts';
 import { referenceCatalogEntries } from './catalog-references.ts';
 import { frontendCatalogEntries } from './catalog-frontend.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
@@ -7,7 +8,7 @@ import { appSettingsDefinition } from '../features/settings/be/app-definition.ts
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
 import { parseSnapshot, ManifestSchema, _NativePackDeclarationSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, _settingsJsonProblems, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -183,6 +184,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     },
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
+    steps: () => stepCatalogEntries(current),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
     help: (): HelpCatalog => structuredClone(help) as HelpCatalog,
@@ -211,11 +213,14 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       publish({ appPackSources: sources, appPackSourceProblems: input.problems });
     },
     setNative(declarations: readonly NativePackDeclaration[]): void {
-      for (const declaration of declarations) {
+      const jsonProblems = _settingsJsonProblems(declarations);
+      if (jsonProblems.length) throw new Error(`Invalid native declarations: ${jsonProblems.map(problem => `${problem.path.join('.')}: declarations must contain finite, acyclic JSON data properties`).join('; ')}`);
+      const accepted = immutable(declarations);
+      for (const declaration of accepted) {
         const result = _NativePackDeclarationSchema.safeParse(declaration);
         if (!result.success) throw new Error(`Invalid native declarations: ${result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
       }
-      publish({ native: declarations });
+      publish({ native: accepted });
     },
     packSettings: (packId: string): CatalogData<Record<string, SettingsDefinition>> =>
       hasOwn(settings.packs, packId) ? settings.packs[packId] : emptySettings,

@@ -199,6 +199,8 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     lifecycle?: PackLifecycleDeclaration;
     // (undocumented)
     settings?: Record<string, SettingsDefinition>;
+    // (undocumented)
+    steps?: Record<string, StepEntry>;
 }
 
 // @public
@@ -214,6 +216,8 @@ export interface PackCatalogView {
     references(): readonly ReferenceCatalogEntry[];
     // (undocumented)
     status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
+    // (undocumented)
+    steps(): readonly StepCatalogEntry[];
     // (undocumented)
     subscribe(listener: () => void): () => void;
 }
@@ -516,6 +520,24 @@ export type SettingsSchema = Record<string, unknown>;
 export interface SettingsValidator {
     // (undocumented)
     validate(value: unknown): SettingsProblem[];
+}
+
+// @public
+export interface StepCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<StepEntry>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
 }
 
 // @public
