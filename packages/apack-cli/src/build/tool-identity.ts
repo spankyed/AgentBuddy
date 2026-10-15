@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { packInputFiles, packInputsHash } from './pack-inputs.ts';
+import { packInputFiles, packInputsHash } from '@apackdev/host/build/pack-inputs';
 
 function packageRoot(entry: string): string {
   let root = path.dirname(entry);

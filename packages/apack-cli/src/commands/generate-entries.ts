@@ -7,7 +7,7 @@ import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sd
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest } from '../utils';
 import { resolveDeps, type ResolvedDeps } from './generate';
-import { packInputsHash } from '../build/pack-inputs.ts';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { captureCompilationInputs, type CompilationInputs } from '../build/compilation-inputs.ts';
 import { assertDependencyInputsCurrent, dependencyInputsHash } from '../build/dependency-inputs.ts';
 

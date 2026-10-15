@@ -22,7 +22,7 @@ import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime
 import { buildReads } from '../build/build-reads';
 import { BUILD_INPUTS_IPC_ENV, reportBuildWatchInputs } from '../build/build-watch-inputs.ts';
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
-import { packInputsHash } from '../build/pack-inputs.ts';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
 import { runPackBuild } from '../build/build-process.ts';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';

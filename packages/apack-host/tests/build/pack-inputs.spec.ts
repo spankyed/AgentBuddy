@@ -43,6 +43,30 @@ describe('pack input identity', () => {
     fs.symlinkSync(root, path.join(root, 'loop'), 'dir');
     expect(() => packInputsHash(root)).toThrow('Cyclic source directory');
   });
+
+  it('compares bytes and membership independently of filesystem timestamps', () => {
+    const root = pack('entry.ts', 'before');
+    const file = path.join(root, 'entry.ts');
+    const { atime, mtime } = fs.statSync(file);
+    const original = packInputsHash(root);
+    fs.utimesSync(file, atime, new Date(mtime.getTime() + 60_000));
+    expect(packInputsHash(root)).toBe(original);
+
+    fs.writeFileSync(file, 'after!');
+    fs.utimesSync(file, atime, mtime);
+    expect(packInputsHash(root)).not.toBe(original);
+    fs.writeFileSync(file, 'before');
+    expect(packInputsHash(root)).toBe(original);
+
+    const added = path.join(root, 'schema.json');
+    fs.writeFileSync(added, '{}');
+    fs.utimesSync(added, atime, mtime);
+    expect(packInputsHash(root)).not.toBe(original);
+    fs.rmSync(added);
+    expect(packInputsHash(root)).toBe(original);
+    fs.renameSync(file, path.join(root, 'renamed.ts'));
+    expect(packInputsHash(root)).not.toBe(original);
+  });
 });
 
 

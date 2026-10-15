@@ -49,6 +49,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // loaded pack's runtime code.
   ['@apackdev/host/build/shared-deps', 'build-time only'],
   ['@apackdev/host/build/discover', 'build-time only'],
+  ['@apackdev/host/build/pack-inputs', 'source-build tooling: authored input identity and watch targets, never pack runtime code'],
   ['@apackdev/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
   ['@apackdev/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
   ['@apackdev/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],

@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { Page } from 'playwright-core';
 import { createAppDriver } from '@apackdev/testing';
 import { defineDriveConfig, definePackE2EConfig } from '@apackdev/testing/playwright';
-import { packInputsHash } from '../../src/build/pack-inputs.ts';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 
 const roots: string[] = [];
 afterEach(() => {

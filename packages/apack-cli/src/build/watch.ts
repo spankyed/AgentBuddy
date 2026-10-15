@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { runPackBuild } from './build-process.ts';
 import { readValidManifest } from '../utils.ts';
-import { isPackInputPath, packInputWatchTargets, packInputsHash } from './pack-inputs.ts';
+import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
 import { compilerWatchPaths, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
 import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';

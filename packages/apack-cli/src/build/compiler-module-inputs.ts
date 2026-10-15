@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import { readPackCompilerConfiguration, type CompilerInputObserver } from './compiler-configuration.ts';
-import { isPackInputPath, packInputFiles } from './pack-inputs.ts';
+import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
