@@ -5231,3 +5231,38 @@ accepted editor-contribution replacement in the required editor-lifecycle checks
 coverage does not prove it. Remaining contribution/content/asset discovery, navigation, frontend
 boundaries, all three Phase 6 workstreams, the reconciled requirement audit and final committed-source
 strict `--all` remain required. Nothing is archived by this checkpoint.
+
+
+### Shared input ownership candidate and validation hold (2026-10-15)
+
+The uncommitted candidate moves `pack-inputs.ts` unchanged from CLI into
+`@apackdev/host/build/pack-inputs`, migrates every caller, moves its tests and accounts for the new
+host export as tooling-only in the runtime bridge inventory. No compatibility wrapper or second scanner.
+This is a layer prerequisite, not a source receipt or a replacement for `staleBuildOutput`.
+The seven generated EARS/content baselines remain byte-identical.
+
+Focused checks pass 34 CLI cases and 13 host cases (the latter includes the five input cases).
+The first strict run (`2026-10-15T20-52-01Z-96286`) failed integration timing/watcher assertions during
+another worktree's chain; its diagnostic retry passed all 741 cases in 311.29s. A subsequent strict run
+caught the omitted tooling-only bridge inventory entry, now fixed. The next two strict runs still
+failed timing/watcher assertions; the latest (`2026-10-15T21-27-51Z-90806`) failed three of 741 cases
+in 451.34s. A separate single-worker run passes all 48 cases in the eight previously failing files in
+405.14s, with unchanged assertions and deadlines. These are not a passing strict checkpoint; source
+is held uncommitted. `--cores 2` changes chain scheduling, not Vitest's configured worker cap. The other
+worktree is not a sufficient explanation: the latest run had no competing chain steps or observed
+other Vitest process. Do not repeat the full gate without addressing the measured cost or another
+specific diagnosed cause.
+
+Real isolated build profiling identifies package-input hashing as 7.513s of sampled CPU across three
+builds (8.718s cold, 4.442s warm, 5.471s skip-generation wall time). The TypeScript module-input scope
+accounts for another 2.815s. An observer audit of one minimal pack's current package scope visits
+14,316 unique files totaling 229,646,040 bytes; its owners include release-only Octokit types, LMDB,
+Prettier and jsdom as well as actual compiler packages. This is evidence of an overly broad conservative
+scope, not permission to drop package/type/asset or resolution coverage. Complete the required actual
+compiler/input-closure audit and coherent capture/publication design; preserve current same-version
+and undeclared-package invalidation behavior. No global timestamp cache or timeout relaxation.
+
+Evidence: `/private/tmp/apack-shared-inputs-{host,cli,boundary,strict,budgeted-strict,fixed-strict,
+final-strict,isolated-failures,profile,profile-scopes}.log`; CPU profiles and reproducible temporary
+probe scripts are under `/private/tmp/apack-shared-inputs-profile/`. Source remains a candidate until
+required strict validation passes; every later phase and all three Phase 6 workstreams remain active.

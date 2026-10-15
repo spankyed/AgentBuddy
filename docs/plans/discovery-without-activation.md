@@ -2991,3 +2991,29 @@ Producer/consumer audit to carry into the next checkpoint:
   still require neither authored source nor executable compiler activation.
 
 All required compiler/input/frozen-publication, other contribution kinds and later phases remain active.
+
+
+#### Shared authored input ownership
+
+Before adding a produced source receipt, move the existing traversal and hash implementation into
+`@apackdev/host/build/pack-inputs`. The host is already shared by CLI producers, source-build consumers
+and testing; a compiler-independent reader must not import CLI internals. Migrate every CLI caller and
+move the behavior tests with the implementation. Keep the same authored exclusions, linked traversal
+and deterministic content identity; no wrapper or second scanner. Exercise timestamp-only edits,
+same-mtime byte changes and file membership so this shared primitive has the required source semantics.
+This establishes layer ownership only: complete compiler/input capture, coherent execution, the produced
+receipt and all freshness-reader migrations remain required before replacing the mtime gate.
+
+
+Input-scope profiling before publication (2026-10-15): the shared-layer move remains an uncommitted
+candidate while strict integration validation fails timing/watcher assertions. All 48 cases from the
+eight failing files pass with one worker; a whole diagnostic integration run also passes, but subsequent
+strict runs still fail. Do not attribute all of this to the other worktree or keep retrying the full
+suite. The goal records exact runs and failure evidence. A real three-build CPU profile attributes
+7.513s to npm input hashing and 2.815s to TypeScript module input discovery. One minimal pack's current
+npm scope visits 14,316 files / 229,646,040 bytes, including Octokit release types, LMDB and test tooling.
+Use this evidence in the required exact compiler/scope-cost audit. Preserve actual compilation and
+package-resolution coverage while removing irrelevant work; no timestamp/global cache, reduced
+assertions or larger deadlines as a substitute. `chain --cores` is scheduling admission, not a lower
+Vitest worker cap. Complete compiler capture/publication and the shared receipt before switching
+freshness readers; the other contribution kinds and later goal phases remain required.
