@@ -1988,3 +1988,21 @@ Worker lifetime does not freeze bytes during compilation. External watch subscri
 dynamic inputs, exact compiler consumers and coherent frozen reads/publication remain required,
 with measured costs. Then complete manual-build/drive freshness and every unfinished contribution/
 native/static-content and downstream phase requirement.
+
+### External TypeScript watch outcome (2026-10-14)
+
+`b956785fe` subscribes to fresh inherited configuration and TypeScript resolution probes, including
+missing paths and physical aliases. Existing subscriptions survive failed builds; creating only the
+missing external target can recover publication. Authored root watches are shared, duplicate byte/
+topology frames are skipped, and package-root compression bounds native recursive subscriptions
+without recursively watching filesystem ancestors. Linux retains selected leaf watches.
+
+`ba3d8df85` aligns declaration bundling with inherited aliases and baseUrl resolution while preserving
+genuine package/Node imports, fixing the full-build refusal the watcher fixture exposed. The goal
+records actual facade/event updates, refusal retention, mutation checks, platform topology, measured
+subscription cost and full/committed-source strict evidence.
+
+Resolved type/configuration subscriptions are implemented. Runtime/Vue/dynamic and dependency input
+closure, exact compiler consumers and coherent frozen execution remain required before freshness
+certification. Then finish manual-build/drive behavior and all remaining contribution/native/static
+content and downstream goal phases.

@@ -620,3 +620,16 @@ evidence. Publication scenarios are split by concern with unchanged budgets and 
 Continue external watch/input and compiler-consumer coverage, immutable/coherent execution and
 publication, scope costs and manual-build/drive freshness. All remaining discovery, native/static
 content, navigation, frontend boundaries and Phase 6 workstreams retain their acceptance requirements.
+
+### External compiler watch and declaration consumption outcome (2026-10-14)
+
+`ba3d8df85` fixes facade consumption of authored aliases/baseUrl modules without flattening genuine
+package or Node imports. `b956785fe` watches fresh compiler configuration/resolution paths, including
+missing targets and physical aliases, preserves repair subscriptions on failure and shares bounded
+watch scopes. Configuration/source byte identity now has one compiler projection rather than two
+separate hash passes. The owning goal records actual authoring/recovery, mutation, cost and strict
+evidence; EARS/content parity is unchanged.
+
+Next complete exact compiler consumers and runtime/Vue/dynamic/dependency inputs, coherent frozen
+execution/publication and scope cost, then manual-build/drive freshness. Every unfinished discovery,
+native/static-content, navigation, frontend boundary and Phase 6 requirement remains in the goal.

@@ -4247,3 +4247,57 @@ remain required, then manual-build/drive freshness. Continue every remaining dis
 content requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Native
 shutdown observations still need their separate final lifecycle audit. Final committed-source strict
 --all and the complete requirement audit remain due; no unfinished work is archived.
+
+### External compiler subscriptions and authored declaration aliases (2026-10-14)
+
+Source `ba3d8df85` fixes a real compiler-reader mismatch: metadata generation resolves inherited
+TypeScript aliases, but facade bundling previously left every bare identifier external. Declaration
+bundling now resolves authored aliases and baseUrl modules with the common configuration reader,
+while genuine package identity and native Node imports remain external. Exact/wildcard aliases,
+catch-all mappings, external parent configuration and real Vue/Node imports have declaration checks.
+The generic classifier mutation fails both cases; type-only input modules are not executed.
+
+Source `b956785fe` adds fresh compiler resolution subscriptions, including absent file/directory
+probes, inherited config, physical symlink targets and missing-target recovery. Authored-root events
+share the existing watcher. External scopes retain old and partial paths through failure; successful
+builds replace them. Parent guards observe atomic replacement, and directory membership differs
+from ordinary attribute changes. Byte/topology comparisons suppress duplicate notifications while
+retargeting remains meaningful. Changes observed across a build queue another attempt. Configuration
+bytes now belong to the same module input projection; the redundant configuration-only hash and
+reader pass are removed.
+
+The first full-build fixture exposed the private-alias facade defect rather than a watcher problem;
+fixing that consumer was required before accepting the watcher. The actual regression replaces an
+outside declaration atomically, changes only its parent configuration to a missing path, verifies
+refusal retains accepted output, then creates only the outside target and observes updated generated
+events and facade types. The authored config remains byte-identical. Removing outside subscriptions
+fails that workflow. Existing flow/helper freshness, host reload, linked-manifest retargeting, refusal
+and DSL cases continue to pass. Twenty-three focused cases, fourteen integration cases and CLI
+typechecking pass. Evidence: `/private/tmp/apack-external-watch-unit-final.log`,
+`/private/tmp/apack-external-watch-typecheck-final.log`,
+`/private/tmp/apack-external-watch-integration-compressed.log`,
+`/private/tmp/apack-declaration-catchall-fixed.log`,
+`/private/tmp/apack-declaration-alias-mutation.log`,
+`/private/tmp/apack-external-watch-subscription-mutation-final.log`. Source restores exactly.
+
+The initial shipped-pack traversal proposed 754 directory subscriptions. Group bounded package and
+node_modules roots on native recursive platforms and include physical workspace roots; use selected
+nonrecursive leaves on Linux. Filesystem ancestors remain nonrecursive replacement guards. The
+measured native result is 12 subscriptions, five recursive, with about 2.1s traversal, not a speed
+guarantee: `/private/tmp/apack-external-watch-cost-final.log`. Platform topology and dangling-link
+probe recovery have focused coverage.
+
+Required strict passes all 30 gates in 839.6s (one cached), including full authoring/watcher/typing
+integration, real app, smoke and packaged authoring/app paths: `/private/tmp/apack-external-watch-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T02-08-14Z-47397`. Committed-source strict passes
+in 1.1s (29 cached): `/private/tmp/apack-external-watch-committed-warm.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T02-23-17Z-81873`. EARS and six compiled content
+files remain byte-identical. No public SDK API/schema/format/release changes or compatibility code.
+The unrelated issue draft remains outside these commits.
+
+This covers resolved TypeScript/configuration watch paths, not every runtime input or immutable
+execution. Continue exact compiler-consumer/version alignment, Vue/runtime/dynamic and dependency
+input closure, coherent frozen execution/publication and scope cost; then manual-build/drive freshness.
+Retain all unfinished discovery/native/static-content, navigation, frontend boundaries and all three
+Phase 6 workstreams, plus final lifecycle observations, committed-source strict --all and the full
+requirement audit. No unfinished plan is archived.
