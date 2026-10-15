@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
+import type { Component } from 'vue';
+import type { Editor } from '@tiptap/core';
 import { test as base, expect } from '@apackdev/testing';
 
 // A separate worker boots with a real disabled-pack record. No runtime facade, form or setting is mocked.
@@ -47,6 +49,33 @@ test('host preferences and shortcuts work with default-setup disabled', async ({
   expect(values.app.hotkeys.switchPluginUp.key).toBe('9');
   await appPage.keyboard.press('Control+Alt+9');
   await expect.poll(async () => (await app.getContext()).activePluginId).not.toBe('host/settings');
+});
+
+test('the host-only editor preserves saved references without activating default-setup', async ({ app, appPage }) => {
+  expect((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+  const mounted = await appPage.evaluateHandle(async () => {
+    const { createApp } = await import('vue');
+    const componentPath = '@apackdev/ui/components/tiptap/TiptapEditor';
+    const { default: TiptapEditor }: { default: Component } = await import(componentPath);
+    const root = document.createElement('div'); root.id = 'native-reference-editor'; document.body.appendChild(root);
+    const component = createApp(TiptapEditor, { mode: 'viewer', modelValue: '[Saved memo](apack-ref://memo/Memo-cold)' });
+    const exposed = component.mount(root) as unknown as { editor: Editor | undefined };
+    return { component, root, exposed };
+  });
+  try {
+    await expect(appPage.locator('#native-reference-editor .reference-pill')).toHaveText('Saved memo');
+    const result = await mounted.evaluate(({ exposed }) => {
+      const editor = exposed.editor!;
+      return { html: editor.getHTML(), document: editor.getJSON(),
+        markdown: (editor.storage as unknown as { markdown: { getMarkdown(): string } }).markdown.getMarkdown() };
+    });
+    expect(result.html).toContain('apack-ref://memo/Memo-cold');
+    expect(result.markdown).toBe('[Saved memo](apack-ref://memo/Memo-cold)');
+    expect(result.document.content?.[0].content?.[0]).toMatchObject({ type: 'reference', attrs: { refType: 'memo', refId: 'Memo-cold' } });
+  } finally {
+    await mounted.evaluate(({ component, root }) => { component.unmount(); root.remove(); });
+    await mounted.dispose();
+  }
 });
 
 test('shortcut drafts follow another window and preserve the global flag', async ({ app, appPage, electronApp }) => {

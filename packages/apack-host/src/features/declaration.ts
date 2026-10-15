@@ -16,6 +16,9 @@ export const hostPluginDeclarations = {
 
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
+  tiptapPlugins: { references: { extensions: {
+    reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
+  } } },
   features: {
     [hostFeatureIds.application]: { description: 'Manage sidebar visibility and the last active plugin.' },
     [hostFeatureIds.help]: { description: 'Browse help articles from installed packs.' },

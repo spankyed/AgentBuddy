@@ -547,6 +547,12 @@ there is no registration module or aggregate array export. Binding admission che
 names and executable shapes without calling components or predicates. Conflicting active extension
 names are refused with both owners. Catalog metadata remains available for disabled packs.
 
+The app's native frontend owns the `reference` node used by saved `apack-ref://` links. It is present
+without default-setup or a reference provider. Default-setup adds `referenceSuggestion`, its picker
+popups and command behavior; disabling it removes those tools while preserving stored references.
+Packs cannot claim the native node name. Reference type/category metadata and eligible navigation
+bindings still determine presentation and click behavior independently of parsing.
+
 ### App extensions
 
 `extensions.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. Slot names have one active pack owner; conflicting registrations are refused.

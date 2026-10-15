@@ -133,6 +133,10 @@ The app runs each feature at `<packId>/<featureId>` and derives everything else 
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 
+The native host frontend registers the `reference` document node from `@apackdev/ui` before external
+pack frontends load. Its declaration is part of the common native catalog. Parsing saved references
+therefore does not require default-setup; that pack owns only its suggestion extension and popup UI.
+
 ### Frontend entry (`PackFERegistration`)
 
 Your `__generated__/pack-entry-fe.ts` default-exports:

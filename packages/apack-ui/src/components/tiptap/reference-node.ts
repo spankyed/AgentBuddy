@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import { referenceSuggestionPlugin } from './reference-suggestion-plugin.ts'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { MarkdownSerializerState } from '@tiptap/pm/markdown'
 import { formatReferenceHref, parseReferenceHref, getReferenceTypeDeclaration, getReferenceTypeBinding, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
 
 function createIconSvg(type: string): SVGSVGElement {
@@ -135,16 +136,10 @@ export const ReferenceNode = Node.create({
     }
   },
 
-  addProseMirrorPlugins() {
-    return [
-      referenceSuggestionPlugin(this.editor),
-    ]
-  },
-
   addStorage() {
     return {
       markdown: {
-        serialize(state: any, node: any) {
+        serialize(state: MarkdownSerializerState, node: ProseMirrorNode) {
           if (typeof node.attrs.refType !== 'string' || !node.attrs.refType || typeof node.attrs.refId !== 'string' || !node.attrs.refId) {
             state.text(node.attrs.label)
             return

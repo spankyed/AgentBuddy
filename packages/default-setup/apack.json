@@ -1981,7 +1981,7 @@
     "tiptapPlugins": {
       "suggestions": {
         "extensions": {
-          "reference": "src/extensions/tiptap/reference-node.ts#ReferenceNode",
+          "referenceSuggestion": "src/extensions/tiptap/reference-extension.ts#ReferenceSuggestion",
           "commandSuggestion": "src/extensions/tiptap/command-extension.ts#CommandSuggestion",
           "commandViewerDecoration": "src/extensions/tiptap/command-viewer-decoration.ts#CommandViewerDecoration"
         },

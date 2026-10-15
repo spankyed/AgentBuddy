@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { resolveName } from '@apackdev/sdk/ids';
 import type { SettingsDefinition } from '@apackdev/sdk/framework';
+import { hostDeclaration } from '../../src/features/declaration.ts';
 import { createContributionCatalog, readInstalledContributionCatalog } from '../../src/packs/catalog.ts';
 import { PACK_LAYOUT, readPackBuild } from '../../src/packs/layout.ts';
 import { sealPack } from './runtime/build-fixture.ts';
@@ -18,6 +19,16 @@ function source(id: string, enabled = true) {
 }
 
 describe('contribution catalog data', () => {
+  it('discovers the native reference node without loading a UI implementation', () => {
+    const catalog = createContributionCatalog(app);
+    catalog.setNative([hostDeclaration]);
+    expect(catalog.frontend()).toMatchObject([{ packId: 'host', origin: 'native', enabled: true,
+      declaration: { tiptapPlugins: { references: { extensions: {
+        reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
+      } } } } }]);
+    expect(catalog.getSnapshot().packs).toEqual([]);
+  });
+
   it('reads help and plugins from a disabled sealed build without executing its poisoned runtime', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');

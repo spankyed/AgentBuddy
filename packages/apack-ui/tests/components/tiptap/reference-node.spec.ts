@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
-import { ReferenceNode } from '../../../src/extensions/tiptap/reference-node.ts';
+import { ReferenceNode } from '../../../src/components/tiptap/reference-node.ts';
 
 import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
 import { resolveName } from '@apackdev/sdk/ids';
