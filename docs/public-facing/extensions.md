@@ -30,7 +30,11 @@ Declare initial values once in `apack.json`:
             "enabled": true
           }
         },
-        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild"
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        }
       }
     }
   }
@@ -51,7 +55,7 @@ Creates:
 
 ```
 src/extensions/steps/my-step/
-  build.ts      # myStepStepBuild: its StepBuildFacet (no FE or runtime imports)
+  build.ts      # Named compiler callbacks; no FE or runtime imports
   layout.ts     # optional calculated layout function exports
   types.ts      # DSL and compiled node types
   form.vue      # Step configuration form
@@ -86,20 +90,20 @@ import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@ap
 import { EARS } from '@apackdev/sdk';
 import type { DSLMyStepNode } from './types.ts';
 
-export const myStepStepBuild: StepBuildFacet = {
-  compile(node, nodeId, ts, ctx): StepCompileResult {
+export const compile: StepBuildFacet['compile'] = (node, nodeId, ts, ctx): StepCompileResult => {
     const step = node as unknown as DSLMyStepNode;
     return {
-      entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
-      relations: [],
+        entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
+        relations: [],
     };
-  },
-  validate(step, path, ctx): StepValidationError[] {
+};
+
+export const validate: StepBuildFacet['validate'] = (step, path, ctx): StepValidationError[] => {
     return [];
-  },
-  getLabel(step, index) {
+};
+
+export const getLabel: StepBuildFacet['getLabel'] = (step, index) => {
     return typeof step.label === 'string' ? step.label : `My Step ${index}`;
-  },
 };
 ```
 
@@ -165,9 +169,9 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 | `validateTrack?(track)` | `{ valid, errors }` before compiling |
 | `validate?(node)` | `{ valid, errors }` for a compiled node on persist |
 
-`register` is declared beside the facet rather than inside it, for the same reason a step's handler is:
-`trigger.facet` names the eager half, which `build.ts` exports, and `trigger.register` names the function
-whose module is loaded when the trigger is first registered.
+`trigger` declares track metadata inline and each callback as a `"path#export"` reference. Compiler
+callbacks are checked and loaded for compilation. `trigger.register` stays lazy: its module is loaded
+when the trigger is first registered at runtime. Static discovery imports none of these modules.
 
 ### Frontend declaration
 
@@ -262,7 +266,11 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
   "extensions": {
     "steps": {
       "my-step": {
-        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        },
         "fe": {
           "nodeConfig": {
             "icon": "Box",
@@ -296,7 +304,9 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
       "my-trigger": {
         "kind": "trigger",
         "trigger": {
-          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "trackField": "myTrigger",
+          "compile": "src/extensions/steps/my-trigger/build.ts#compile",
+          "decompile": "src/extensions/steps/my-trigger/build.ts#decompile",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
         "fe": {
@@ -330,8 +340,8 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
 | Field | What it is |
 |---|---|
 | `kind` | `step` (the default) or `trigger` |
-| `build` | `"path#exportName"` of its `StepBuildFacet`. A trigger declares `trigger` instead |
-| `trigger` | For a trigger: `{ facet, register? }` — its `TriggerFacet`, and the function that starts it |
+| `build` | An object declaring compile/validate/getLabel references, optional decompile/branches references and inline relation metadata. A trigger declares `trigger` instead |
+| `trigger` | Track metadata (`trackField`, optional `persistent`/`queryFields`) and compile/decompile references, with optional validation/register references |
 | `node` | Inline labels and initial JSON node fields |
 | `fe` | Inline frontend declaration (above) |
 | `types` | Explicit module declaring node and DSL types |
@@ -359,7 +369,7 @@ from neighboring files or the directory of another facet.
 | `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the declared `types` module; `generate-entries` fails when there is none |
 | `{ helpers: "src/helpers.ts" }` | Re-exports the custom helpers from that module |
 
-A `kind: 'trigger'` entry whose declared facet module contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
+A `kind: 'trigger'` entry declaring `trigger.trackField: '<name>'` (other than `event`) gets a camelCase helper named after that field, returning a track. Codegen reads the manifest, without scanning implementation source.
 
 The helper is named after `type` in camelCase, with `-` and `_` separating words (`keep_alive` → `keepAlive`, `my-step` → `myStep`). The scaffolded `types.ts` names its DSL interface `DSL<Type>Node` (`DSLMyStepNode`), which `primaryField` reads.
 

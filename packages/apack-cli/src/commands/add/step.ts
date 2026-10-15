@@ -39,12 +39,6 @@ export async function addStep(args: string[], root: string) {
   const pascal = toPascalCase(type);
   const stepDir = path.join(root, 'src', 'extensions', 'steps', type);
 
-  // A trigger is not a step with a flag set: it owns a DSL track rather than a node in one, so its
-  // build-time facet is a `TriggerFacet` and comes from its own template. Pointing its manifest entry at
-  // the step template's `StepBuildFacet` is a pack that does not typecheck.
-  const facetFile = isTrigger ? 'trigger' : 'build';
-  const facetExport = isTrigger ? `${camel}TriggerBuild` : `${camel}StepBuild`;
-
   const created: string[] = [];
   // Each branch names its templates literally, which is how `scaffold-templates.spec.ts` sees that a
   // template under `templates/` has a caller at all — a computed path is invisible to it. The two differ in
@@ -56,7 +50,7 @@ export async function addStep(args: string[], root: string) {
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ]
     : [
-      [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, CAMEL: camel, PASCAL: pascal, LABEL: toLabel(type) })],
+      [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, PASCAL: pascal, LABEL: toLabel(type) })],
       [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ];
@@ -71,8 +65,10 @@ export async function addStep(args: string[], root: string) {
       ...(isTrigger && { defaults: { source: 'change me' } }),
     },
     ...(isTrigger
-      ? { trigger: { facet: `${dir}/${facetFile}.ts#${facetExport}` } }
-      : { build: `${dir}/${facetFile}.ts#${facetExport}` }),
+      ? { trigger: { trackField: camel, persistent: false, compile: `${dir}/trigger.ts#compile`,
+        decompile: `${dir}/trigger.ts#decompile`, validate: `${dir}/trigger.ts#validate` } }
+      : { build: { compile: `${dir}/build.ts#compile`, validate: `${dir}/build.ts#validate`,
+        getLabel: `${dir}/build.ts#getLabel` } }),
     types: `${dir}/types.ts`,
     fe: {
       colorKey: isTrigger ? 'blue' : 'indigo',

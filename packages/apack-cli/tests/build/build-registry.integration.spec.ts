@@ -40,21 +40,15 @@ function pack(stepInFlow: string): string {
     // Declared here, which is what makes the generated module below the pack's own steps
     extensions: {
       steps: {
-        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { facet: 'src/steps/listener/build.ts#listenerTrigger' } },
-        note: { node: { label: 'Note' }, build: 'src/steps/note/build.ts#noteBuild' },
+        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { trackField: "event", compile: 'src/steps/listener/build.ts#compile', decompile: 'src/steps/listener/build.ts#decompile' } },
+        note: { node: { label: 'Note' }, build: { compile: 'src/steps/note/build.ts#compile', validate: 'src/steps/note/build.ts#validate', getLabel: 'src/steps/note/build.ts#getLabel' } },
       },
     },
     content: { sources: { flows: 'src/content/flows' } },
   }));
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
-  write('src/steps/listener/build.ts', `
-export const listenerNode = { label: 'Listener' };
-export const listenerTrigger = { trackField: 'event', compile: () => ({}), decompile: () => ({}) };
-`);
-  write('src/steps/note/build.ts', `
-export const noteNode = { label: 'Note' };
-export const noteBuild = { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' };
-`);
+  write('src/steps/listener/build.ts', "export const listenerNode = { label: 'Listener' };\nexport const compile = () => ({});\nexport const decompile = () => ({});\n");
+  write('src/steps/note/build.ts', "export const noteNode = { label: 'Note' };\nexport const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => 'Note';\n");
   write('src/content/flows/main.ts', `export default { Main: [{ event: 'flow.entry', exits: [[{ type: '${stepInFlow}' }]] }] };\n`);
   return root;
 }

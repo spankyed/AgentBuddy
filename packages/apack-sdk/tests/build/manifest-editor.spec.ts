@@ -55,6 +55,14 @@ describe('shipped manifest schema in a JSON editor', () => {
     expect(feature.find(item => item.label === 'entities')!.documentation).toContain('untyped');
   });
 
+  it('offers static build and trigger data alongside explicit callable references', async () => {
+    const build = await complete('{ "extensions": { "steps": { "memo": { "build": { | } } } } }');
+    expect(build.map(item => item.label)).toEqual(expect.arrayContaining(['compile', 'validate', 'getLabel', 'decompile', 'branches', 'relation']));
+    const trigger = await complete('{ "extensions": { "steps": { "pulse": { "kind": "trigger", "trigger": { | } } } } }');
+    expect(trigger.map(item => item.label)).toEqual(expect.arrayContaining(['trackField', 'persistent', 'queryFields', 'compile', 'decompile', 'validate', 'register']));
+    expect(trigger.find(item => item.label === 'trackField')!.documentation).toContain('generated flow helper');
+  });
+
   it('completes policy values and component loading modes', async () => {
     const policy = await complete('{ "features": { "memos": { "settings": { "access": | } } } }');
     expect(policy.map(item => item.label)).toEqual(expect.arrayContaining(['"shared"', '"owner"']));

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
-import { pulseTriggerBuild } from '../src/extensions/steps/pulse/trigger.ts';
+import { validate as validatePulse } from '../src/extensions/steps/pulse/trigger.ts';
 
 describe("a pack's declared steps", () => {
   it('reach the backend registration with the facets the backend reads', () => {
@@ -33,7 +33,7 @@ describe("a pack's declared steps", () => {
   it("gives a trigger defaults that satisfy the trigger's own validator", () => {
     const fresh = stepRegistry.createNodeDefaults('pulse');
 
-    expect(pulseTriggerBuild.validate!(fresh)).toEqual({ valid: true, errors: [] });
+    expect(validatePulse(fresh)).toEqual({ valid: true, errors: [] });
   });
 });
 

@@ -20,13 +20,13 @@ it('refreshes flow modules loaded through ordinary imports on the next watched b
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'watched-flow', name: 'Watched flow', features: {},
       extensions: { steps: {
-        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { facet: 'src/listener.ts#trigger' } },
-        note: { node: { label: 'Note' }, build: 'src/note.ts#build' },
+        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { trackField: "event", compile: 'src/listener.ts#compile', decompile: 'src/listener.ts#decompile' } },
+        note: { node: { label: 'Note' }, build: { compile: 'src/note.ts#compile', validate: 'src/note.ts#validate', getLabel: 'src/note.ts#getLabel' } },
       } },
       content: { sources: { flows: 'src/content/flows' } },
     }, files: {
-      'src/listener.ts': "export const node = { label: 'Listener' }; export const trigger = { trackField: 'event', compile: () => ({}), decompile: () => ({}) };",
-      'src/note.ts': "export const node = { label: 'Note' }; export const build = { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' };",
+      'src/listener.ts': "export const node = { label: 'Listener' };\nexport const compile = () => ({});\nexport const decompile = () => ({});\n",
+      'src/note.ts': "export const node = { label: 'Note' };\nexport const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => 'Note';\n",
       'src/content/flows/main.ts': declaration('First'),
     } });
     watcher = await startPackBuildWatcher(root, {

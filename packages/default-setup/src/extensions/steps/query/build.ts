@@ -1,8 +1,8 @@
-import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { isModelId } from '@apackdev/sdk/models';
 
-function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
+export function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
     entity: {
       id: nodeId,
@@ -20,7 +20,7 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
   };
 }
 
-function validate(s: Record<string, unknown>, path: string, _ctx: StepValidationContext): StepValidationError[] {
+export function validate(s: Record<string, unknown>, path: string, _ctx: StepValidationContext): StepValidationError[] {
   const errors: StepValidationError[] = [];
   if (!s.prompt || typeof s.prompt !== 'string') {
     errors.push({ path, message: 'Query step must have a "prompt" string' });
@@ -35,12 +35,12 @@ function validate(s: Record<string, unknown>, path: string, _ctx: StepValidation
   return errors;
 }
 
-function getLabel(step: Record<string, unknown>, index: number): string {
+export function getLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
   return `Query ${index}`;
 }
 
-function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+export function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
   const dsl: Record<string, unknown> = { type: 'query', prompt: node.prompt };
   if (node.label) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
@@ -49,6 +49,3 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (node.model) dsl.model = node.model;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const queryStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };

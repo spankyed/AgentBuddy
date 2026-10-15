@@ -533,7 +533,7 @@ export function shouldClassify(run: {
   readonly ranAlone: boolean;
   /**
    * A wedged step is not re-run: its deadline is a declared class (`step-timeouts.ts`), so the retry spends
-   * that whole class again — five minutes for a `suite` step — to reach a message `classifyLine` can already
+   * that whole class again — ten minutes for a `suite` step — to reach a message `classifyLine` can already
    * write from what the first run proved.
    */
   readonly timedOut: boolean;

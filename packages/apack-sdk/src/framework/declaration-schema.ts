@@ -177,9 +177,29 @@ const StepRuntimeSchema = z.object({
   }
 });
 
-/** A trigger's facet: its eager half by reference, and the `register` it only needs while running */
+const StepBuildSchema = z.object({
+  compile: ExportTargetSchema.describe('Exported function that compiles a DSL step into an entity and relations.'),
+  validate: ExportTargetSchema.describe('Exported function that validates a DSL step before compilation.'),
+  getLabel: ExportTargetSchema.describe('Exported function that computes the label of a compiled step.'),
+  decompile: ExportTargetSchema.describe('Exported function that restores a DSL step from a stored node.').optional(),
+  branches: ExportTargetSchema.describe('Exported function that lists nested DSL branches.').optional(),
+  relation: z.object({
+    field: z.string().regex(/\S/).describe('Node field containing the related entity ID.'),
+    targetEntity: z.string().regex(/\S/).describe('Entity wire name targeted by the instance_of relation.'),
+  }).strict().describe('Static relation metadata, available without loading compiler callbacks.').optional(),
+}).strict();
+
+/** Trigger data is independent of compiler callbacks and lazy runtime registration. */
 const StepTriggerSchema = z.object({
-  facet: ExportTargetSchema.describe('"path#exportName" of the TriggerFacet: how a track compiles, decompiles and validates.'),
+  trackField: z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be a field identifier')
+    .refine(value => !RESERVED_FEATURE_IDS.has(value), 'Must not be a reserved identifier')
+    .describe('DSL track field owned by this trigger; also names its generated flow helper.'),
+  persistent: z.boolean().describe('Whether the flow stays alive after all tracks drain.').optional(),
+  queryFields: z.array(z.string().regex(/\S/)).describe('Additional node fields required when querying this trigger.').optional(),
+  compile: ExportTargetSchema.describe('Exported function that compiles a DSL track into a trigger node.'),
+  decompile: ExportTargetSchema.describe('Exported function that restores DSL track fields from a trigger node.'),
+  validateTrack: ExportTargetSchema.describe('Exported function that validates a DSL track before compilation.').optional(),
+  validate: ExportTargetSchema.describe('Exported function that validates a trigger node before persistence.').optional(),
   register: ExportTargetSchema.describe('"path#exportName" of the function that starts the trigger. Loaded when it is first registered.').optional(),
 }).strict();
 
@@ -191,8 +211,8 @@ export const StepEntrySchema = z.object({
     defaultLabel: z.string().describe('Palette label when different from the node label.').optional(),
     defaults: JsonObjectSchema.describe('Initial JSON node fields; these must satisfy the step or trigger validation.').optional(),
   }).strict().describe('Node labels and initial values, available without importing step code. Both generated registrations carry this data.'),
-  build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
-  trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),
+  build: StepBuildSchema.describe('Compiler callbacks and static relation metadata. A trigger declares `trigger` instead.').optional(),
+  trigger: StepTriggerSchema.describe('Trigger metadata, compiler callbacks and optional lazy registration.').optional(),
   fe: z.lazy(() => StepFrontendSchema).describe('Static editor presentation and explicit component/layout bindings.').optional(),
   types: ModulePathSchema.describe('Type-only module declaring this step’s node and DSL types. No conventional file is inferred.').optional(),
   runtime: StepRuntimeSchema.describe('What the brain runs, and the flags it reads before running it.').optional(),

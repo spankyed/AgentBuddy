@@ -1614,7 +1614,16 @@
           "label": "Action",
           "defaultLabel": "Do action"
         },
-        "build": "src/extensions/steps/action/build.ts#actionStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/action/build.ts#compile",
+          "validate": "src/extensions/steps/action/build.ts#validate",
+          "getLabel": "src/extensions/steps/action/build.ts#getLabel",
+          "decompile": "src/extensions/steps/action/build.ts#decompile",
+          "relation": {
+            "field": "actionId",
+            "targetEntity": "Action"
+          }
+        },
         "fe": {
           "components": {
             "form": {
@@ -1651,7 +1660,16 @@
             "maxTokens": 1000
           }
         },
-        "build": "src/extensions/steps/llm/build.ts#llmStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/llm/build.ts#compile",
+          "validate": "src/extensions/steps/llm/build.ts#validate",
+          "getLabel": "src/extensions/steps/llm/build.ts#getLabel",
+          "decompile": "src/extensions/steps/llm/build.ts#decompile",
+          "relation": {
+            "field": "promptTemplateId",
+            "targetEntity": "Prompt"
+          }
+        },
         "fe": {
           "components": {
             "form": {
@@ -1688,7 +1706,12 @@
             "scope": "local"
           }
         },
-        "build": "src/extensions/steps/fire/build.ts#fireStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/fire/build.ts#compile",
+          "validate": "src/extensions/steps/fire/build.ts#validate",
+          "getLabel": "src/extensions/steps/fire/build.ts#getLabel",
+          "decompile": "src/extensions/steps/fire/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1727,7 +1750,12 @@
             "propagateCtx": true
           }
         },
-        "build": "src/extensions/steps/subflow/build.ts#flowStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/subflow/build.ts#compile",
+          "validate": "src/extensions/steps/subflow/build.ts#validate",
+          "getLabel": "src/extensions/steps/subflow/build.ts#getLabel",
+          "decompile": "src/extensions/steps/subflow/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1759,7 +1787,12 @@
           "label": "Query",
           "defaultLabel": "Query"
         },
-        "build": "src/extensions/steps/query/build.ts#queryStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/query/build.ts#compile",
+          "validate": "src/extensions/steps/query/build.ts#validate",
+          "getLabel": "src/extensions/steps/query/build.ts#getLabel",
+          "decompile": "src/extensions/steps/query/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1795,7 +1828,12 @@
             "inferLabel": true
           }
         },
-        "build": "src/extensions/steps/create/build.ts#createStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/create/build.ts#compile",
+          "validate": "src/extensions/steps/create/build.ts#validate",
+          "getLabel": "src/extensions/steps/create/build.ts#getLabel",
+          "decompile": "src/extensions/steps/create/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1831,7 +1869,12 @@
             "onMissing": "fail"
           }
         },
-        "build": "src/extensions/steps/update/build.ts#updateStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/update/build.ts#compile",
+          "validate": "src/extensions/steps/update/build.ts#validate",
+          "getLabel": "src/extensions/steps/update/build.ts#getLabel",
+          "decompile": "src/extensions/steps/update/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1867,7 +1910,12 @@
             "outputType": "json"
           }
         },
-        "build": "src/extensions/steps/transform/build.ts#transformStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/transform/build.ts#compile",
+          "validate": "src/extensions/steps/transform/build.ts#validate",
+          "getLabel": "src/extensions/steps/transform/build.ts#getLabel",
+          "decompile": "src/extensions/steps/transform/build.ts#decompile"
+        },
         "fe": {
           "components": {
             "form": {
@@ -1900,7 +1948,12 @@
           "label": "Keep alive",
           "defaultLabel": "Keep alive"
         },
-        "build": "src/extensions/steps/keep-alive/build.ts#keepAliveStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/keep-alive/build.ts#compile",
+          "validate": "src/extensions/steps/keep-alive/build.ts#validate",
+          "getLabel": "src/extensions/steps/keep-alive/build.ts#getLabel",
+          "decompile": "src/extensions/steps/keep-alive/build.ts#decompile"
+        },
         "fe": {
           "colorKey": "emerald",
           "nodeConfig": {
@@ -1925,7 +1978,12 @@
           "label": "Kill",
           "defaultLabel": "Kill flow"
         },
-        "build": "src/extensions/steps/kill/build.ts#killStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/kill/build.ts#compile",
+          "validate": "src/extensions/steps/kill/build.ts#validate",
+          "getLabel": "src/extensions/steps/kill/build.ts#getLabel",
+          "decompile": "src/extensions/steps/kill/build.ts#decompile"
+        },
         "fe": {
           "colorKey": "red",
           "nodeConfig": {
@@ -1959,7 +2017,13 @@
             ]
           }
         },
-        "build": "src/extensions/steps/switch/build.ts#switchStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/switch/build.ts#compile",
+          "validate": "src/extensions/steps/switch/build.ts#validate",
+          "getLabel": "src/extensions/steps/switch/build.ts#getLabel",
+          "decompile": "src/extensions/steps/switch/build.ts#decompile",
+          "branches": "src/extensions/steps/switch/build.ts#branches"
+        },
         "fe": {
           "components": {
             "node": {
@@ -2006,7 +2070,15 @@
           }
         },
         "trigger": {
-          "facet": "src/extensions/steps/schedule/build.ts#scheduleTriggerBuild",
+          "trackField": "schedule",
+          "compile": "src/extensions/steps/schedule/build.ts#compile",
+          "decompile": "src/extensions/steps/schedule/build.ts#decompile",
+          "persistent": true,
+          "queryFields": [
+            "cronExpression"
+          ],
+          "validateTrack": "src/extensions/steps/schedule/build.ts#validateTrack",
+          "validate": "src/extensions/steps/schedule/build.ts#validate",
           "register": "src/extensions/steps/schedule/runtime.ts#register"
         },
         "fe": {
@@ -2039,7 +2111,14 @@
           }
         },
         "trigger": {
-          "facet": "src/extensions/steps/listener/build.ts#listenerTriggerBuild"
+          "trackField": "event",
+          "compile": "src/extensions/steps/listener/build.ts#compile",
+          "decompile": "src/extensions/steps/listener/build.ts#decompile",
+          "persistent": false,
+          "queryFields": [
+            "eventType",
+            "scope"
+          ]
         },
         "fe": {
           "components": {

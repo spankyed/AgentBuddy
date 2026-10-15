@@ -1,6 +1,5 @@
 // The LLM step's DSL surface is provisional — see the note on DSLLLMNode in ./types.ts before building
 // on it: the helper has no call site in this repo, so its shape has never been exercised by an author.
-import type { StepBuildFacet } from '@apackdev/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
@@ -77,6 +76,3 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (node.systemPrompt) dsl.systemPrompt = node.systemPrompt;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const llmStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'promptTemplateId', targetEntity: 'Prompt' } };

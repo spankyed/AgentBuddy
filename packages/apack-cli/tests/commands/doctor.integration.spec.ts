@@ -67,12 +67,12 @@ it('pack doctor fails for missing source files and accepts warnings alone', asyn
 
 it('checks step function paths independently of migration declarations', async () => {
   fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ id: 'steps', name: 'Steps', version: '1.0.0',
-    extensions: { steps: { example: { node: { label: 'Example' }, build: 'src/step.ts#build' } } },
+    extensions: { steps: { example: { node: { label: 'Example' }, build: { compile: 'src/step.ts#compile', validate: 'src/step.ts#validate', getLabel: 'src/step.ts#getLabel' } } } },
   }));
   process.chdir(root);
   await expect(packDoctor([])).rejects.toThrow('health check failed');
   fs.mkdirSync(path.join(root, 'src'));
-  fs.writeFileSync(path.join(root, 'src/step.ts'), 'export const build = {};');
+  fs.writeFileSync(path.join(root, 'src/step.ts'), "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
   await packDoctor([]);
 });
 

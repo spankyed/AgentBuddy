@@ -323,7 +323,7 @@ it('keeps reference metadata immutable and independent of native, installed and 
 it('projects native, disabled installed and unbuilt source steps without loading declared code', () => {
   const catalog = createContributionCatalog(app);
   const step = { node: { label: 'Memo', defaults: JSON.parse('{"__proto__":{"retained":true},"tags":["draft"]}') },
-    build: 'unavailable.ts#build', types: 'unavailable-types.ts',
+    build: { compile: 'unavailable.ts#compile', validate: 'unavailable.ts#validate', getLabel: 'unavailable.ts#getLabel' }, types: 'unavailable-types.ts',
     fe: { nodeConfig: { icon: 'Box', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } },
       components: { form: { entry: 'unavailable.vue', load: 'lazy' as const } },
       layout: { hasInput: true, getHeight: 'unavailable.ts#getHeight' } },

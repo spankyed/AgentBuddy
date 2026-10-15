@@ -83,7 +83,7 @@ describe('pack doctor static validation', () => {
 
   it.each(['doctor', 'validate'])('pack %s reports missing declared files even with unresolved dependencies', (command) => {
     const dir = fixture({ dependencies: { unavailable: 'file:./missing-dependency' },
-      extensions: { steps: { example: { node: { label: 'Example' }, build: 'src/missing#build' } } },
+      extensions: { steps: { example: { node: { label: 'Example' }, build: { compile: 'src/missing#compile', validate: 'src/missing#validate', getLabel: 'src/missing#getLabel' } } } },
       migrations: { pack: { '1.0.0': { description: 'Initialize', up: 'src/missing#up' } } },
     });
     const result = run(process.execPath, [CLI, 'pack', command], dir);

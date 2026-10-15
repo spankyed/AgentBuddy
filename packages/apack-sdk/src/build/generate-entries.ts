@@ -1,3 +1,4 @@
+import { _stepBackendParts } from '../framework/step-backend-declaration.ts';
 import { dataLiteral, propertyKey } from './code-literals.ts';
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 import { resolveTypeModule } from './type-module.ts';
@@ -677,10 +678,24 @@ export async function generatePackFiles(
   /** What one facet contributes to a step's literal: the imports it needs and the `name: expr` member */
   interface FacetEmission { imports: string[]; member: string }
 
-  /** A facet that is just its module's export, imported and named */
-  function importedFacet(step: StepDeclaration, facet: StepFacetName, target: string): FacetEmission {
-    const { import: line, expr } = stepFacet(`Step "${step.type}": ${facet}`, target, facetLocal(step.type, facet));
-    return { imports: [line], member: `${facet}: ${expr}` };
+  function stepBackend(step: StepDeclaration, facet: 'build' | 'trigger', target: FacetTarget): FacetEmission | null {
+    const parts = _stepBackendParts(step.entry)[facet];
+    if (!parts) return null;
+    const imports: string[] = [];
+    const members = Object.entries(parts.data).map(([key, value]) => `${propertyKey(key, key)}: ${dataLiteral(value)}`);
+    for (const [name, reference] of Object.entries(parts.callbacks)) {
+      if (!reference || (name === 'register' && target !== 'backend')) continue;
+      const label = `Step "${step.type}": ${facet}.${name}`;
+      const { value } = valueExport(label, reference);
+      if (value !== 'function') throw new Error(`${label}: expected an exported function`);
+      if (name === 'register') members.push(`register: ${lazyCall(label, reference, 'node, ctx')}`);
+      else {
+        const binding = stepFacet(label, reference, facetLocal(step.type, `${facet}_${name}`));
+        imports.push(binding.import);
+        members.push(`${name}: ${binding.expr}`);
+      }
+    }
+    return { imports, member: `${facet}: { ${members.join(', ')} }` };
   }
 
   /** Shared component binding grammar for feature plugins and step presentation. */
@@ -749,20 +764,10 @@ export async function generatePackFiles(
    */
   const FACET_EMITTERS: Record<StepFacetName, (step: StepDeclaration, target: FacetTarget) => FacetEmission | null> = {
     node: (step) => ({ imports: [], member: `node: JSON.parse(${dataLiteral(JSON.stringify(step.entry.node))})` }),
-    build: (step) => (step.entry.build ? importedFacet(step, 'build', step.entry.build) : null),
+    build: (step, target) => stepBackend(step, 'build', target),
     fe: (step) => stepFrontend(step),
 
-    trigger: (step, target) => {
-      const trigger = step.entry.trigger;
-      if (!trigger) return null;
-      const facet = stepFacet(`Step "${step.type}": trigger.facet`, trigger.facet, facetLocal(step.type, 'trigger'));
-      // `register` starts the trigger, so only the app needs it: a dependent pack's build compiles and
-      // validates a flow and never runs one. It is lazily imported for the same reason a handler is.
-      const register = target === 'backend' && trigger.register
-        ? `, register: ${lazyCall(`Step "${step.type}": trigger.register`, trigger.register, 'node, ctx')}`
-        : '';
-      return { imports: [facet.import], member: register ? `trigger: { ...${facet.expr}${register} }` : `trigger: ${facet.expr}` };
-    },
+    trigger: (step, target) => stepBackend(step, 'trigger', target),
 
     runtime: (step) => {
       const runtime = step.entry.runtime;
@@ -2021,13 +2026,8 @@ export type { ImportMode } from '@apackdev/sdk/utils';
 
   function emitTriggerTrackBuilder(step: StepDeclaration): { name: string; helper: string } | null {
     if (step.kind !== 'trigger') return null;
-    // `trackField` is a member of the TriggerFacet, so it is read from the module the manifest names for it
-    // rather than guessed at by filename
-    const facet = step.entry.trigger?.facet;
-    const file = facet && sourceFileOf(_parseModuleReference(facet, 'Step facet').source);
-    const match = file ? readFileSync(file, 'utf-8').match(/trackField:\s*['"](\w+)['"]/) : null;
-    if (!match) return null;
-    const trackField = match[1];
+    const trackField = step.entry.trigger?.trackField;
+    if (!trackField) return null;
     if (trackField === 'event') return null;
     const name = toCamelCase(trackField);
     return {

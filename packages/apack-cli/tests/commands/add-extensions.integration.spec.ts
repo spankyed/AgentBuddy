@@ -116,7 +116,7 @@ describe('apack pack add step in a pack without steps', () => {
       ping: {
         kind: 'step',
         node: { label: 'Ping', defaultLabel: 'Ping' },
-        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
+        build: { compile: 'src/extensions/steps/ping/build.ts#compile', validate: 'src/extensions/steps/ping/build.ts#validate', getLabel: 'src/extensions/steps/ping/build.ts#getLabel' },
         types: 'src/extensions/steps/ping/types.ts',
         fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
           connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
@@ -126,10 +126,7 @@ describe('apack pack add step in a pack without steps', () => {
     expect(fs.existsSync(path.join(bare, 'src/extensions/steps/ping/build.ts'))).toBe(true);
   });
 
-  // A trigger is not a step with a flag: its facet is a TriggerFacet, from its own template. While both
-  // kinds pointed at the step template's StepBuildFacet, `--trigger` scaffolded a pack that did not compile
-  // and no test here asked it to.
-  it('declares a trigger against its own facet, and the pack typechecks', async () => {
+  it('scaffolds a hyphenated trigger with declared track metadata and checked callbacks', async () => {
     // Its own scaffolded pack rather than the shared one: `init` is what writes the tsconfig `typecheckPack`
     // needs, and a trigger added to the shared pack would join the `NodeEntity` union another case pins
     const cwd = process.cwd();
@@ -142,22 +139,23 @@ describe('apack pack add step in a pack without steps', () => {
     const triggerPack = path.join(tmp, 'trigger-pack');
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(triggerPack, 'node_modules'), 'dir');
 
-    await addStep(['heartbeat', '--trigger'], triggerPack);
+    await addStep(['heart-beat', '--trigger'], triggerPack);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(triggerPack, 'apack.json'), 'utf-8'));
-    expect(manifest.extensions.steps.heartbeat).toEqual({
+    expect(manifest.extensions.steps['heart-beat']).toEqual({
       kind: 'trigger',
-      node: { label: 'Heartbeat', defaultLabel: 'On heartbeat', defaults: { source: 'change me' } },
-      trigger: { facet: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerBuild' },
-      types: 'src/extensions/steps/heartbeat/types.ts',
+      node: { label: 'Heart Beat', defaultLabel: 'On heart-beat', defaults: { source: 'change me' } },
+      trigger: { trackField: 'heartBeat', persistent: false, validate: 'src/extensions/steps/heart-beat/trigger.ts#validate', compile: 'src/extensions/steps/heart-beat/trigger.ts#compile', decompile: 'src/extensions/steps/heart-beat/trigger.ts#decompile' },
+      types: 'src/extensions/steps/heart-beat/types.ts',
         fe: { colorKey: 'blue', nodeConfig: { icon: 'Radio',
           connectionRules: { inputs: 0, outputs: -1 }, category: 'trigger', isImplemented: true },
-          components: { form: { entry: 'src/extensions/steps/heartbeat/form.vue', load: 'lazy' } } },
+          components: { form: { entry: 'src/extensions/steps/heart-beat/form.vue', load: 'lazy' } } },
     });
-    // Its own template, so no StepBuildFacet is written for it
-    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/trigger.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/build.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heart-beat/trigger.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heart-beat/build.ts'))).toBe(false);
 
+    expect(fs.readFileSync(path.join(triggerPack, 'src/__generated__/flow-helpers.ts'), 'utf8'))
+      .toContain('export function heartBeat(heartBeat: string');
     const tsc = await typecheckPack(triggerPack);
     expect(tsc.code, tsc.output).toBe(0);
   });

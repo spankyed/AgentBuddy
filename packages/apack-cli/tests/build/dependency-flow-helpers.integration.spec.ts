@@ -42,9 +42,9 @@ const baseManifest: PackManifest = {
     steps: {
       // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
       // for a custom helper, its `helpers.ts` are read from
-      pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } },
-      choose: { node: { label: 'Choose' }, build: 'src/steps/choose/build.ts#chooseStepBuild', types: 'src/steps/choose/types.ts', dsl: { helpers: 'src/steps/choose/helpers.ts' } },
-      tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
+      pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } },
+      choose: { node: { label: 'Choose' }, build: { compile: 'src/steps/choose/build.ts#compile', validate: 'src/steps/choose/build.ts#validate', getLabel: 'src/steps/choose/build.ts#getLabel' }, types: 'src/steps/choose/types.ts', dsl: { helpers: 'src/steps/choose/helpers.ts' } },
+      tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { trackField: 'every', compile: 'src/steps/tick/build.ts#compile', decompile: 'src/steps/tick/build.ts#decompile' } },
     },
   },
 };
@@ -79,9 +79,9 @@ beforeAll(async () => {
       "import type { DSLChooseOption } from './types.ts';",
       "export function choose(options: DSLChooseOption[]): DSLStepNode { return { type: 'choose', options }; }",
     ].join('\n'),
-    'src/steps/pour/build.ts': 'export const pourStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
-    'src/steps/choose/build.ts': 'export const chooseStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
-    'src/steps/tick/build.ts': "export const tickTriggerBuild = { trackField: 'every' };\n",
+    'src/steps/pour/build.ts': "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n",
+    'src/steps/choose/build.ts': "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n",
+    'src/steps/tick/build.ts': "export function compile() { return {}; } export function decompile() { return {}; }\n",
   });
   for (const [file, content] of Object.entries(await generatePackFiles(baseManifest, { packRoot: base }))) {
     fs.mkdirSync(path.dirname(path.join(base, file)), { recursive: true });

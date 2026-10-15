@@ -263,22 +263,22 @@ describe('generated registrations', () => {
 
 describe('generated step registrations', () => {
   const stepPack = () => {
-    write('src/steps/llm/build.ts', 'export const llmStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const llmStepNode = { label: \'LLM\' };\n');
+    write('src/steps/llm/build.ts', "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n\nexport const llmStepNode = { label: 'LLM' };\n");
     write('src/steps/llm/runtime.ts', 'export function handler() {}\n');
-    write('src/steps/cron/build.ts', 'export const cronTrigger = { trackField: \'schedule\', compile: () => ({}), decompile: () => ({}) };\nexport const cronTriggerNode = { label: \'Cron\' };\n');
+    write('src/steps/cron/build.ts', "export const compile = () => ({});\nexport const decompile = () => ({});\n\nexport const cronTriggerNode = { label: 'Cron' };\n");
     write('src/steps/cron/runtime.ts', 'export function register() {}\n');
     return {
       steps: {
         llm: {
           node: { label: 'LLM' },
-          build: 'src/steps/llm/build.ts#llmStepBuild',
+          build: { compile: 'src/steps/llm/build.ts#compile', validate: 'src/steps/llm/build.ts#validate', getLabel: 'src/steps/llm/build.ts#getLabel' },
           fe: { colorKey: 'indigo', nodeConfig: { icon: 'Sparkles', category: 'ai' as const, connectionRules: { inputs: 1, outputs: 1 } } },
           runtime: { handler: 'src/steps/llm/runtime.ts#handler', isAsync: true },
         },
         cron: {
           kind: 'trigger',
           node: { label: 'Cron' },
-          trigger: { facet: 'src/steps/cron/build.ts#cronTrigger', register: 'src/steps/cron/runtime.ts#register' },
+          trigger: { trackField: "schedule", compile: 'src/steps/cron/build.ts#compile', decompile: 'src/steps/cron/build.ts#decompile', register: 'src/steps/cron/runtime.ts#register' },
           fe: { colorKey: 'cyan', nodeConfig: { icon: 'Clock', category: 'trigger' as const, connectionRules: { inputs: 0, outputs: -1 } } },
         },
       },
@@ -291,13 +291,13 @@ describe('generated step registrations', () => {
     const files = await generate(stepPack());
 
     const be = files['src/__generated__/pack-entry.ts'];
-    expect(be).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
-    expect(be).toContain("{ type: 'llm', node: JSON.parse(\"{\\\"label\\\":\\\"LLM\\\"}\"), build: __step_llm_build, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
-    expect(be).toContain("{ type: 'cron', kind: 'trigger', node: JSON.parse(\"{\\\"label\\\":\\\"Cron\\\"}\"), trigger: { ...__step_cron_trigger, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
+    expect(be).toContain("import { compile as __step_llm_build_compile } from '../steps/llm/build.ts';");
+    expect(be).toContain("{ type: 'llm', node: JSON.parse(\"{\\\"label\\\":\\\"LLM\\\"}\"), build: { compile: __step_llm_build_compile, validate: __step_llm_build_validate, getLabel: __step_llm_build_getLabel }, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
+    expect(be).toContain("{ type: 'cron', kind: 'trigger', node: JSON.parse(\"{\\\"label\\\":\\\"Cron\\\"}\"), trigger: { trackField: \"schedule\", compile: __step_cron_trigger_compile, decompile: __step_cron_trigger_decompile, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
     expect(be).not.toContain('llmStepFE');
 
     const build = files['src/__generated__/steps-build.ts'];
-    expect(build).toContain("  { type: 'llm', build: __step_llm_build },\n  { type: 'cron', kind: 'trigger', trigger: __step_cron_trigger },");
+    expect(build).toContain("  { type: 'llm', build: { compile: __step_llm_build_compile, validate: __step_llm_build_validate, getLabel: __step_llm_build_getLabel } },\n  { type: 'cron', kind: 'trigger', trigger: { trackField: \"schedule\", compile: __step_cron_trigger_compile, decompile: __step_cron_trigger_decompile } },");
     expect(build).not.toContain('runtime');
     expect(build).not.toContain('StepFE');
     // A dependent's build compiles and validates flows; it never creates a node, so it needs no node facet
@@ -329,8 +329,8 @@ describe('generated step registrations', () => {
   it('name the same build facet in the backend entry and the module dependents load', async () => {
     const files = await generate(stepPack());
     for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/steps-build.ts']) {
-      expect(files[file], file).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
-      expect(files[file], file).toContain("import { cronTrigger as __step_cron_trigger } from '../steps/cron/build.ts';");
+      expect(files[file], file).toContain("import { compile as __step_llm_build_compile } from '../steps/llm/build.ts';");
+      expect(files[file], file).toContain("import { compile as __step_cron_trigger_compile } from '../steps/cron/build.ts';");
     }
   });
 
@@ -341,9 +341,9 @@ describe('generated step registrations', () => {
   });
 
   it("carry a runtime of flags alone for a step whose behaviour is one", async () => {
-    write('src/steps/sub/build.ts', 'export const subStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const subStepNode = { label: \'Subflow\' };\n');
-    const files = await generate({ steps: { subflow: { node: { label: 'Subflow' }, build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
-    expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', node: JSON.parse(\"{\\\"label\\\":\\\"Subflow\\\"}\"), build: __step_subflow_build, runtime: { spawnsSubflow: true } },");
+    write('src/steps/sub/build.ts', "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n\nexport const subStepNode = { label: 'Subflow' };\n");
+    const files = await generate({ steps: { subflow: { node: { label: 'Subflow' }, build: { compile: 'src/steps/sub/build.ts#compile', validate: 'src/steps/sub/build.ts#validate', getLabel: 'src/steps/sub/build.ts#getLabel' }, runtime: { spawnsSubflow: true } } } });
+    expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', node: JSON.parse(\"{\\\"label\\\":\\\"Subflow\\\"}\"), build: { compile: __step_subflow_build_compile, validate: __step_subflow_build_validate, getLabel: __step_subflow_build_getLabel }, runtime: { spawnsSubflow: true } },");
   });
 
   /**
@@ -353,28 +353,28 @@ describe('generated step registrations', () => {
    * still running. `default-setup/tests/extensions/steps/kill/step.spec.ts` is what fails when it regresses.
    */
   it('import a sync handler with the entry rather than on first run', async () => {
-    write('src/steps/kill/build.ts', 'export const killStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const killStepNode = { label: \'Kill\' };\n');
+    write('src/steps/kill/build.ts', "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n\nexport const killStepNode = { label: 'Kill' };\n");
     write('src/steps/kill/runtime.ts', 'export function handler() {}\n');
-    const files = await generate({ steps: { kill: { node: { label: 'Kill' }, build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
+    const files = await generate({ steps: { kill: { node: { label: 'Kill' }, build: { compile: 'src/steps/kill/build.ts#compile', validate: 'src/steps/kill/build.ts#validate', getLabel: 'src/steps/kill/build.ts#getLabel' }, runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
     const be = files['src/__generated__/pack-entry.ts'];
 
     expect(be).toContain("import { handler as __step_kill_handler } from '../steps/kill/runtime.ts';");
-    expect(be).toContain("{ type: 'kill', node: JSON.parse(\"{\\\"label\\\":\\\"Kill\\\"}\"), build: __step_kill_build, runtime: { handler: __step_kill_handler } },");
+    expect(be).toContain("{ type: 'kill', node: JSON.parse(\"{\\\"label\\\":\\\"Kill\\\"}\"), build: { compile: __step_kill_build_compile, validate: __step_kill_build_validate, getLabel: __step_kill_build_getLabel }, runtime: { handler: __step_kill_handler } },");
     expect(be).not.toContain('await import');
   });
 
   it('fail naming the step and the export for a facet the module does not export', async () => {
     write('src/steps/llm/build.ts', 'export const other = {};\nexport const llmStepNode = { label: \'LLM\' };\n');
-    await expect(generate({ steps: { llm: { node: { label: 'LLM' }, build: 'src/steps/llm/build.ts#llmStepBuild' } } })).rejects.toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
+    await expect(generate({ steps: { llm: { node: { label: 'LLM' }, build: { compile: 'src/steps/llm/build.ts#compile', validate: 'src/steps/llm/build.ts#validate', getLabel: 'src/steps/llm/build.ts#getLabel' } } } })).rejects.toThrow('Step "llm": build.compile: src/steps/llm/build.ts doesn\'t export "compile"');
   });
 
   it('keeps types and helpers explicit when presentation and build modules live elsewhere', async () => {
-    write('src/compiler/build.ts', 'export const build = {};');
+    write('src/compiler/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
     write('src/views/Form.vue', '<template><div /></template>');
     write('src/model/declared.ts', "export interface SplitNode extends NodeBase { type: 'split' }");
     write('src/dsl/helpers.ts', 'export const choose = () => ({});');
     const files = await generate({ steps: { split: {
-      node: { label: 'Split' }, build: 'src/compiler/build.ts#build', types: 'src/model/declared.ts',
+      node: { label: 'Split' }, build: { compile: 'src/compiler/build.ts#compile', validate: 'src/compiler/build.ts#validate', getLabel: 'src/compiler/build.ts#getLabel' }, types: 'src/model/declared.ts',
       dsl: { helpers: 'src/dsl/helpers.ts' },
       fe: { nodeConfig: { icon: 'Split', category: 'logic', connectionRules: { inputs: 1, outputs: -1 } },
         components: { form: { entry: 'src/views/Form.vue', load: 'lazy' } } },
@@ -561,4 +561,18 @@ it('includes a shared declared type module once and refuses missing explicit typ
     .rejects.toThrow('no helpers module found');
   await expect(generate({ steps: { first: { node: { label: 'First' }, dsl: { primaryField: 'title' } } } }))
     .rejects.toThrow('requires a declared types module');
+});
+
+
+it.each(['compile', 'validate', 'getLabel'] as const)('refuses non-callable build %s exports without executing the module', async name => {
+  write('src/compiler.ts', `throw new Error('Must not activate');
+export const compile = () => ({ entity: {}, relations: [] });
+export const validate = () => [];
+export const getLabel = () => 'Memo';
+export const notCallable = {};
+`);
+  const build = { compile: 'src/compiler.ts#compile', validate: 'src/compiler.ts#validate', getLabel: 'src/compiler.ts#getLabel',
+    [name]: 'src/compiler.ts#notCallable' };
+  await expect(generate({ steps: { memo: { node: { label: 'Memo' }, build } } }))
+    .rejects.toThrow(`Step "memo": build.${name}: expected an exported function`);
 });

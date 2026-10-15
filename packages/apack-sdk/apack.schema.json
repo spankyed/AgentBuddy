@@ -825,17 +825,102 @@
                 "description": "Node labels and initial values, available without importing step code. Both generated registrations carry this data."
               },
               "build": {
-                "type": "string",
-                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                "description": "\"path#exportName\" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead."
+                "type": "object",
+                "properties": {
+                  "compile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that compiles a DSL step into an entity and relations."
+                  },
+                  "validate": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a DSL step before compilation."
+                  },
+                  "getLabel": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that computes the label of a compiled step."
+                  },
+                  "decompile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that restores a DSL step from a stored node."
+                  },
+                  "branches": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that lists nested DSL branches."
+                  },
+                  "relation": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "pattern": "\\S",
+                        "description": "Node field containing the related entity ID."
+                      },
+                      "targetEntity": {
+                        "type": "string",
+                        "pattern": "\\S",
+                        "description": "Entity wire name targeted by the instance_of relation."
+                      }
+                    },
+                    "required": [
+                      "field",
+                      "targetEntity"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Static relation metadata, available without loading compiler callbacks."
+                  }
+                },
+                "required": [
+                  "compile",
+                  "validate",
+                  "getLabel"
+                ],
+                "additionalProperties": false,
+                "description": "Compiler callbacks and static relation metadata. A trigger declares `trigger` instead."
               },
               "trigger": {
                 "type": "object",
                 "properties": {
-                  "facet": {
+                  "trackField": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_$][\\w$]*$",
+                    "description": "DSL track field owned by this trigger; also names its generated flow helper."
+                  },
+                  "persistent": {
+                    "type": "boolean",
+                    "description": "Whether the flow stays alive after all tracks drain."
+                  },
+                  "queryFields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "description": "Additional node fields required when querying this trigger."
+                  },
+                  "compile": {
                     "type": "string",
                     "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                    "description": "\"path#exportName\" of the TriggerFacet: how a track compiles, decompiles and validates."
+                    "description": "Exported function that compiles a DSL track into a trigger node."
+                  },
+                  "decompile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that restores DSL track fields from a trigger node."
+                  },
+                  "validateTrack": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a DSL track before compilation."
+                  },
+                  "validate": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a trigger node before persistence."
                   },
                   "register": {
                     "type": "string",
@@ -844,10 +929,12 @@
                   }
                 },
                 "required": [
-                  "facet"
+                  "trackField",
+                  "compile",
+                  "decompile"
                 ],
                 "additionalProperties": false,
-                "description": "For a trigger: its TriggerFacet and the function that starts it."
+                "description": "Trigger metadata, compiler callbacks and optional lazy registration."
               },
               "fe": {
                 "type": "object",

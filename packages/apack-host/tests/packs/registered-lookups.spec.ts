@@ -56,7 +56,7 @@ const tickTrigger: StepDefinition = {
   type: 'tick',
   kind: 'trigger',
   node: { label: 'Tick' },
-  trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
+  trigger: { trackField: 'every', compile: () => ({}), decompile: () => ({}) },
 };
 
 describe('steps', () => {

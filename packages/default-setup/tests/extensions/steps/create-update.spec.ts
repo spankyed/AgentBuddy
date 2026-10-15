@@ -4,8 +4,8 @@ import { importFlows, startApp } from '@apackdev/testing/harness'
 import { startTestRuntime } from '@apackdev/sdk/testing'
 import { create, on, update } from '#generated/flow-helpers.ts'
 import { createEntityWithDefaults, findAll, findById, type EARS } from '#generated/ears.ts'
-import { createStepBuild } from '#extensions/steps/create/build.ts'
-import { updateStepBuild } from '#extensions/steps/update/build.ts'
+import * as createCompiler from '#extensions/steps/create/build.ts'
+import * as updateCompiler from '#extensions/steps/update/build.ts'
 
 const startBrain = () => startApp({ systems: ['brain'] })
 const result = (step: { nodeAttributes: Record<string, unknown> }) => step.nodeAttributes.result as Record<string, unknown>
@@ -125,25 +125,25 @@ describe('update step', () => {
 
 describe('create and update build', () => {
   const compileCtx = { actions: new Map(), prompts: new Map(), flows: new Map() }
-  const roundTrip = (build: typeof createStepBuild, dsl: Record<string, unknown>) =>
-    build.decompile!(build.compile(dsl, 'Node-1', 1, compileCtx).entity, { actionMap: new Map(), promptMap: new Map(), flowMap: new Map() })
+  const roundTrip = (build: Pick<typeof createCompiler, 'compile' | 'decompile'>, dsl: Record<string, unknown>) =>
+    build.decompile(build.compile(dsl, 'Node-1', 1, compileCtx).entity, { actionMap: new Map(), promptMap: new Map(), flowMap: new Map() })
 
   it("round-trips update's target, fields, onMissing and entity", () => {
     const dsl = update('$.lastStep.result.id', { label: 'change', map: { content: '$.event.data.payload' }, params: { favorite: true }, onMissing: 'create', entity: 'Note' })
-    expect(updateStepBuild.compile(dsl, 'Node-1', 1, compileCtx).entity).toMatchObject({ target: '$.lastStep.result.id' })
-    expect(roundTrip(updateStepBuild, dsl)).toEqual(dsl)
+    expect(updateCompiler.compile(dsl, 'Node-1', 1, compileCtx).entity).toMatchObject({ target: '$.lastStep.result.id' })
+    expect(roundTrip(updateCompiler, dsl)).toEqual(dsl)
   })
 
   it("round-trips create's entity, fields and inferLabel", () => {
     const dsl = create('Note', { label: 'add', map: { title: '$.event.data.payload' }, params: { content: 'body' }, inferLabel: false })
-    expect(roundTrip(createStepBuild, dsl)).toEqual(dsl)
+    expect(roundTrip(createCompiler, dsl)).toEqual(dsl)
   })
 
   it("rejects update's onMissing create without an entity type", () => {
     const ctx = { actions: new Set<string>(), prompts: new Set<string>(), flowNames: new Set<string>(), nodeLabels: new Set<string>(), path: 'p' }
-    expect(updateStepBuild.validate(update('$.lastStep.result.id', { onMissing: 'create' }), 'p', ctx)).toEqual([
+    expect(updateCompiler.validate(update('$.lastStep.result.id', { onMissing: 'create' }), 'p', ctx)).toEqual([
       { path: 'p.entity', message: '"onMissing: \'create\'" needs "entity", the entity type to create' },
     ])
-    expect(updateStepBuild.validate(update('Note-1', { onMissing: 'create', entity: 'Note' }), 'p', ctx)).toEqual([])
+    expect(updateCompiler.validate(update('Note-1', { onMissing: 'create', entity: 'Note' }), 'p', ctx)).toEqual([])
   })
 })

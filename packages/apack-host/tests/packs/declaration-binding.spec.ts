@@ -113,7 +113,7 @@ it('checks declared trigger registration slots without invoking their implementa
   const node = { label: 'Trigger' };
   for (const declared of [false, true]) {
     const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', steps: { signal: {
-      kind: 'trigger', node, trigger: { facet: 'native.ts#trigger', ...(declared && { register: 'native.ts#register' }) },
+      kind: 'trigger', node, trigger: { trackField: "event", compile: 'native.ts#compile', decompile: 'native.ts#decompile', ...(declared && { register: 'native.ts#register' }) },
     } } }] });
     const bound = { type: 'signal', kind: 'trigger' as const, node, trigger: { ...trigger, ...(!declared && { register }) } };
     expect(() => registry.registerPack({ id: 'native', steps: [bound] })).toThrow('trigger.register');
@@ -131,5 +131,41 @@ it('does not normalize non-JSON runtime node data into a matching declaration', 
   expect(() => registry.registerPack({ id: 'native', steps: [{ type: 'memo',
     node: { label: 'Memo', defaults: { object: new NotJson() } },
   }] })).toThrow('JSON data');
+  expect(registry.step('memo')).toBeUndefined();
+});
+
+
+it.each(['trackField', 'persistent', 'queryFields', 'compile', 'decompile', 'validate', 'register', 'extra'])(
+  'refuses changed or undeclared trigger %s before publishing a native runtime', async field => {
+    const { createPackRegistry } = await import('../../src/packs/registry.ts');
+    const { vi } = await import('vitest');
+    const compile = vi.fn(() => ({}));
+    const decompile = vi.fn(() => ({}));
+    const validate = vi.fn(() => ({ valid: true, errors: [] }));
+    const declaration = { kind: 'trigger' as const, node: { label: 'Pulse' }, trigger: {
+      trackField: 'every', persistent: true, queryFields: ['interval'], compile: 'pulse.ts#compile',
+      decompile: 'pulse.ts#decompile', validate: 'pulse.ts#validate',
+    } };
+    const registry = createPackRegistry({ nativeDeclarations: [{ id: 'author', steps: { pulse: declaration } }] });
+    const trigger = { trackField: 'every', persistent: true, queryFields: ['interval'], compile, decompile, validate };
+    const changed = { ...trigger, [field]: ({ trackField: 'other', persistent: false, queryFields: ['foreign'],
+      compile: undefined, decompile: {}, validate: undefined, register: vi.fn(), extra: true } as Record<string, unknown>)[field] };
+    expect(() => registry.registerPack({ id: 'author', steps: [{ type: 'pulse', kind: 'trigger', node: declaration.node, trigger: changed }] }))
+      .toThrow(`trigger.${field}`);
+    expect(registry.step('pulse')).toBeUndefined();
+    registry.registerPack({ id: 'author', steps: [{ type: 'pulse', kind: 'trigger', node: declaration.node, trigger }] });
+    expect(registry.step('pulse')!.trigger!.trackField).toBe('every');
+    expect(compile).not.toHaveBeenCalled(); expect(validate).not.toHaveBeenCalled();
+    registry.unregisterPack('author');
+  },
+);
+
+it.each(['relation', 'decompile', 'branches'])('refuses undeclared build %s instead of silently changing compiler capabilities', async field => {
+  const { createPackRegistry } = await import('../../src/packs/registry.ts');
+  const declaration = { node: { label: 'Memo' }, build: { compile: 'memo.ts#compile', validate: 'memo.ts#validate', getLabel: 'memo.ts#getLabel' } };
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'author', steps: { memo: declaration } }] });
+  const build = { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Memo' };
+  const changed = { ...build, [field]: field === 'relation' ? { field: 'memoId', targetEntity: 'Memo' } : () => ({}) };
+  expect(() => registry.registerPack({ id: 'author', steps: [{ type: 'memo', node: declaration.node, build: changed }] })).toThrow(`build.${field}`);
   expect(registry.step('memo')).toBeUndefined();
 });

@@ -532,6 +532,39 @@ export interface SettingsValidator {
     validate(value: unknown): SettingsProblem[];
 }
 
+// @internal
+export function _stepBackendParts(entry: DeclarationData<Pick<StepEntry, 'build' | 'trigger'>>): {
+    trigger?: {
+        data: {
+            queryFields?: readonly string[] | undefined;
+            persistent?: boolean | undefined;
+            trackField: string;
+        };
+        callbacks: {
+            compile: string;
+            decompile: string;
+            validate?: string | undefined;
+            validateTrack?: string | undefined;
+            register?: string | undefined;
+        };
+    } | undefined;
+    build?: {
+        data: {
+            relation?: {
+                readonly field: string;
+                readonly targetEntity: string;
+            } | undefined;
+        };
+        callbacks: {
+            compile: string;
+            validate: string;
+            getLabel: string;
+            decompile?: string | undefined;
+            branches?: string | undefined;
+        };
+    } | undefined;
+};
+
 // @public
 export interface StepCatalogEntry {
     // (undocumented)

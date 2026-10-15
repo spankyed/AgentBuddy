@@ -89,9 +89,9 @@ describe('generated entity shapes', () => {
 
   it("reads Node rows as the step node types of the pack and its dependencies, NodeBase when none define any", async () => {
     write('src/steps/ping/types.ts', "import type { NodeBase } from '@apackdev/sdk';\nexport interface PingNode extends NodeBase { nodeType: 'ping' }\n");
-    write('src/steps/ping/build.ts', 'export const pingStepBuild = {};\n');
+    write('src/steps/ping/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
     const withSteps = (await generate(
-      { steps: { ping: { node: { label: 'Ping' }, build: 'src/steps/ping/build.ts#pingStepBuild', types: 'src/steps/ping/types.ts' } } },
+      { steps: { ping: { node: { label: 'Ping' }, build: { compile: 'src/steps/ping/build.ts#compile', validate: 'src/steps/ping/build.ts#validate', getLabel: 'src/steps/ping/build.ts#getLabel' }, types: 'src/steps/ping/types.ts' } } },
       { 'base-pack': dependency({}) },
     ))['src/__generated__/ears.ts'];
     expect(withSteps).toContain("import type { NodeEntity } from './types.ts';");

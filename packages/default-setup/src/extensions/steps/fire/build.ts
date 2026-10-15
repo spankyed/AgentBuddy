@@ -1,10 +1,10 @@
-import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord } from '@apackdev/sdk/steps';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 import { validateFields } from '../create/build.ts';
 
-function compile(
+export function compile(
   node: Record<string, unknown>,
   nodeId: string,
   ts: number,
@@ -28,7 +28,7 @@ function compile(
   };
 }
 
-function validate(
+export function validate(
   s: Record<string, unknown>,
   path: string,
   _ctx: StepValidationContext,
@@ -43,12 +43,12 @@ function validate(
   return [...errors, ...validateFields(s, path)];
 }
 
-function getLabel(step: Record<string, unknown>, index: number): string {
+export function getLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
   return (step.event as string) || `Fire ${index}`;
 }
 
-function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+export function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
   const dsl: Record<string, unknown> = { type: 'fire', event: node.eventType };
   if (node.label && node.label !== node.eventType) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
@@ -59,6 +59,3 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (map) dsl.map = map;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const fireStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };

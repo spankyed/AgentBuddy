@@ -27,7 +27,7 @@ describe('buildPackConfigFromManifest step definitions', () => {
     // for a step no manifest declares is not read at all
     const manifest: PackManifest = {
       id: 'demo', name: 'Demo', version: '1.0.0',
-      extensions: { steps: { collide_step: { node: { label: 'Collide' }, build: 'src/steps/collide/build.ts#collideBuild' } } },
+      extensions: { steps: { collide_step: { node: { label: 'Collide' }, build: { compile: 'src/steps/collide/build.ts#compile', validate: 'src/steps/collide/build.ts#validate', getLabel: 'src/steps/collide/build.ts#getLabel' } } } },
     };
 
     const config = await buildPackConfigFromManifest(manifest, tmp, { dependencyStepModules: [dependency] });

@@ -143,7 +143,11 @@
             "note": "stamped"
           }
         },
-        "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/stamp/build.ts#compile",
+          "validate": "src/extensions/steps/stamp/build.ts#validate",
+          "getLabel": "src/extensions/steps/stamp/build.ts#getLabel"
+        },
         "fe": {
           "colorKey": "purple",
           "nodeConfig": {
@@ -174,7 +178,14 @@
           }
         },
         "trigger": {
-          "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
+          "trackField": "pulse",
+          "compile": "src/extensions/steps/pulse/trigger.ts#compile",
+          "decompile": "src/extensions/steps/pulse/trigger.ts#decompile",
+          "persistent": true,
+          "queryFields": [
+            "interval"
+          ],
+          "validate": "src/extensions/steps/pulse/trigger.ts#validate"
         },
         "fe": {
           "colorKey": "blue",

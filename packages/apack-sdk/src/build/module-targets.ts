@@ -1,3 +1,4 @@
+import { _stepBackendParts } from '../framework/step-backend-declaration.ts';
 import { _packEntities } from '../framework/data-declaration.ts';
 import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import { _referenceTargets } from '../framework/reference-declaration.ts';
@@ -49,10 +50,10 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   for (const [name, target] of Object.entries(manifest.extensions?.services ?? {})) add(['extensions', 'services', name], target);
   for (const [name, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
     const prefix = ['extensions', 'steps', name];
-    for (const [field, target] of [
-      ['build', entry.build], ['trigger.facet', entry.trigger?.facet],
-      ['trigger.register', entry.trigger?.register], ['runtime.handler', entry.runtime?.handler],
-    ] as const) add([...prefix, ...field.split('.')], target);
+    for (const [facet, parts] of Object.entries(_stepBackendParts(entry))) {
+      for (const [name, target] of Object.entries(parts.callbacks)) add([...prefix, facet, name], target);
+    }
+    add([...prefix, 'runtime', 'handler'], entry.runtime?.handler);
     add([...prefix, 'types'], entry.types, 'types', 'module', `Step "${name}": types`);
     if (entry.dsl?.helpers !== undefined) targets.push({ path: [...prefix, 'dsl', 'helpers'], target: entry.dsl.helpers,
       kind: 'script', reference: 'module', label: `Step "${name}": dsl.helpers` });

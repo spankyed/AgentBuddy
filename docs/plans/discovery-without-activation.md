@@ -2807,3 +2807,63 @@ Next finish full trigger/build metadata, then remaining contribution/content/ass
 binding/freshness rules. Compiler closure/frozen publication, source watch/manual-build/drive freshness,
 native/editor lifecycle and the goal's navigation, frontend boundaries and three Phase 6 workstreams
 remain required. This reader checkpoint does not complete discovery or authorize archiving the plan.
+
+### Complete backend facet declarations, checkpoint 3C design (2026-10-15)
+
+The remaining step gap is in `build` and `trigger`: object-export references hide relation metadata,
+trigger track fields/persistence/query fields and optional callback membership. Flow helper codegen
+currently regex-scans the trigger implementation for `trackField`; a valid aliased/computed implementation
+can silently lose its helper. Discovery cannot use that source scan, particularly in installed builds.
+
+Keep both semantic groups, but declare their data and callable references directly:
+
+```json
+{
+  "build": {
+    "compile": "src/steps/action/build.ts#compile",
+    "validate": "src/steps/action/build.ts#validate",
+    "getLabel": "src/steps/action/build.ts#getLabel",
+    "decompile": "src/steps/action/build.ts#decompile",
+    "relation": { "field": "actionId", "targetEntity": "Action" }
+  },
+  "trigger": {
+    "trackField": "schedule",
+    "persistent": true,
+    "queryFields": ["cronExpression"],
+    "compile": "src/steps/schedule/build.ts#compile",
+    "decompile": "src/steps/schedule/build.ts#decompile",
+    "validateTrack": "src/steps/schedule/build.ts#validateTrack",
+    "validate": "src/steps/schedule/build.ts#validate",
+    "register": "src/steps/schedule/register.ts#register"
+  }
+}
+```
+
+These illustrate alternative step/trigger entries, not one entry containing both. Build compile,
+validate and getLabel remain required when build is present; decompile/branches are optional. Trigger
+trackField, compile and decompile are required; persistence/query fields and validation/register are
+optional. Preserve callback signatures, semantics and actual registration order. Register stays lazy
+and backend-only; compiler callbacks stay out of frontend bundles. Native runtime definitions retain
+the same semantic groups and use their separately admitted declarations.
+
+Use one projection of each declared group's data and callbacks for source targets, generation and
+binding validation. Build checks every callback export as a function; generated typings check signatures.
+Host admission compares data and exact callable membership before publication, including native packs.
+Flow helpers read declared trackField directly. No source scans, duplicate capability booleans, runtime
+metadata fallbacks, aliases or old object-facet reads. Preserve unrelated module objects and their
+meaningful metadata rather than imposing blanket export flattening.
+
+Migrate authored packs, native fixtures, scaffolds, all readers, public docs and schema/API reports in
+this checkpoint. Prove optional callback refusals, track-field helpers independent of implementation
+source spelling, source-free/offline CLI declarations and actual external authoring/runtime behavior.
+Preserve all generated EARS/content baselines. Mutation-check guards and run strict checkpoint validation
+before committing. Remaining contribution kinds, compiler/freshness and later goal phases stay required.
+
+
+Checkpoint 3C reader audit: graph edge classification and relation-field selection are declarative
+editing policy, so they read catalog data even when a provider is unavailable. Brain trigger queries,
+flow persistence/completion and callback dispatch describe or execute a running flow; retain their
+accepted active facets rather than substituting current catalog revisions into an execution lifetime.
+Node updates still require the final write-boundary review: creation is guarded, while updates currently
+read active validation separately. Account for that behavior in the goal's final bug/completeness audit;
+do not mistake discovery data for permission to execute or silently skip required validation.

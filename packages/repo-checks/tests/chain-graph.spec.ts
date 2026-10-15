@@ -368,7 +368,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * and whether a step is on the right kind was carried by prose. The comment above says so from the other
    * side: `packages:ensure` and `build:default-setup` sat on `quick` while being bundles, and were found *"by reading
    * the table, not by this"* — caught at 93% and 87% by proximity to a bound rather than by kind. The
-   * opposite direction was unwatched outright: one compiler declared `suite` gets 300s to die rather than
+   * opposite direction was unwatched outright: one compiler declared `suite` gets 600s to die rather than
    * 60s, and nothing would have said a word.
    *
    * The three facts are gathered here and the criterion is `rungForKind`'s, beside the ladder it formalizes.
@@ -406,7 +406,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
     it('declares the rung its work implies', () => {
       expect(misdeclared(CHAIN_STEPS), 'a rung is chosen by kind of work (`step-timeouts.ts`), so one of '
         + 'these is a step bounded as something it is not — a bundle on `quick` dies too early, one compiler '
-        + 'on `suite` takes five minutes to die').toEqual([]);
+        + 'on `suite` takes ten minutes to die').toEqual([]);
     });
 
     it('asks it of every step, so the rule passes over nothing', () => {
@@ -513,15 +513,15 @@ describe('every spawn an orchestrator makes is bounded', () => {
     const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
 
     it('states the rope it got, which is its deadline over what it costs healthy', () => {
-      // 300s for a 13s step is 23x, and that is the number a kill proves a lower bound on
+      // 600s for a 13s step is 46x, and that is the number a kill proves a lower bound on
       expect(timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE }))
-        .toContain('That is 23x the 13s it costs healthy here');
+        .toContain('That is 46x the 13s it costs healthy here');
     });
 
     it('calls it wedged on the machine the costs were measured on', () => {
       const why = timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE });
       expect(why).toContain('so it is wedged rather than slow');
-      expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('300s (suite)');
+      expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('600s (suite)');
     });
 
     /**

@@ -1,3 +1,4 @@
+import { type DeclarationData, _stepBackendParts } from '@apackdev/sdk/framework';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
@@ -94,7 +95,7 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
 }
 
 /** Compare declared step data and executable slot membership without invoking any facet. */
-export function backendStepBindingProblem(declarations: Record<string, StepEntry> | undefined, actual: unknown): string | undefined {
+export function backendStepBindingProblem(declarations: DeclarationData<Record<string, StepEntry>> | undefined, actual: unknown): string | undefined {
   const steps = namedBindings(actual, 'type', Object.keys(declarations ?? {}));
   if (!steps) return 'steps';
   for (const [type, declaration] of Object.entries(declarations ?? {})) {
@@ -102,14 +103,22 @@ export function backendStepBindingProblem(declarations: Record<string, StepEntry
     if ((step.kind === undefined ? 'step' : step.kind) !== (declaration.kind ?? 'step')) return `steps.${type}.kind`;
     if (step.fe !== undefined) return `steps.${type}.fe`;
     if (!isDeepStrictEqual(step.node, declaration.node)) return `steps.${type}.node`;
+    const parts = _stepBackendParts(declaration);
     for (const facet of ['build', 'trigger'] as const) {
-      if ((step[facet] !== undefined) !== (declaration[facet] !== undefined)) return `steps.${type}.${facet}`;
-      if (step[facet] !== undefined && (!step[facet] || typeof step[facet] !== 'object' || Array.isArray(step[facet]))) return `steps.${type}.${facet}`;
-    }
-    if (step.trigger !== undefined) {
-      const trigger = step.trigger as Record<string, unknown>;
-      if ((trigger.register !== undefined) !== (declaration.trigger?.register !== undefined)
-        || (trigger.register !== undefined && typeof trigger.register !== 'function')) return `steps.${type}.trigger.register`;
+      const expected = parts[facet];
+      const actual = step[facet];
+      if ((actual !== undefined) !== (expected !== undefined)) return `steps.${type}.${facet}`;
+      if (!expected) continue;
+      if (!isPlainObject(actual)) return `steps.${type}.${facet}`;
+      const declaredKeys = [...Object.keys(expected.data), ...Object.keys(expected.callbacks)];
+      for (const [name, value] of Object.entries(expected.data)) {
+        if (!isDeepStrictEqual(actual[name], value)) return `steps.${type}.${facet}.${name}`;
+      }
+      for (const name of Object.keys(expected.callbacks)) {
+        if (typeof actual[name] !== 'function') return `steps.${type}.${facet}.${name}`;
+      }
+      const extra = Object.keys(actual).find(name => !declaredKeys.includes(name));
+      if (extra !== undefined) return `steps.${type}.${facet}.${extra}`;
     }
     const runtime = declaration.runtime;
     const hasRuntime = Boolean(runtime?.handler || runtime?.isAsync || runtime?.waits || runtime?.spawnsSubflow);

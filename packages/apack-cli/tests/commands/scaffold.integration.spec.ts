@@ -236,7 +236,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
       ping: {
         kind: 'step',
         node: { label: 'Ping', defaultLabel: 'Ping' },
-        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
+        build: { compile: 'src/extensions/steps/ping/build.ts#compile', validate: 'src/extensions/steps/ping/build.ts#validate', getLabel: 'src/extensions/steps/ping/build.ts#getLabel' },
         types: 'src/extensions/steps/ping/types.ts',
         fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
           connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },

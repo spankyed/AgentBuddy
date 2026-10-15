@@ -1,10 +1,10 @@
-import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 
-function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
+export function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
     entity: {
       id: nodeId,
@@ -32,7 +32,7 @@ export function validateFields(s: Record<string, unknown>, path: string): StepVa
   return errors;
 }
 
-function validate(s: Record<string, unknown>, path: string, _ctx: StepValidationContext): StepValidationError[] {
+export function validate(s: Record<string, unknown>, path: string, _ctx: StepValidationContext): StepValidationError[] {
   const errors: StepValidationError[] = [];
   if (!s.entity || typeof s.entity !== 'string') {
     errors.push({ path, message: 'Create step must have an "entity" string (entity type)' });
@@ -43,12 +43,12 @@ function validate(s: Record<string, unknown>, path: string, _ctx: StepValidation
   return [...errors, ...validateFields(s, path)];
 }
 
-function getLabel(step: Record<string, unknown>, index: number): string {
+export function getLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
   return `Create ${step.entity || index}`;
 }
 
-function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+export function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
   const dsl: Record<string, unknown> = { type: 'create', entity: node.entityTypeTarget };
   if (node.label) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
@@ -59,6 +59,3 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
   if (typeof node.inferLabel === 'boolean') dsl.inferLabel = node.inferLabel;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const createStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };

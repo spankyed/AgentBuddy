@@ -235,3 +235,31 @@ it.each(['retire', 'replace'] as const)('refuses writes when trigger validation 
     expect(flowRepository.flowNodes(flow.id)).toEqual([]);
   } finally { testPacks.steps.set('listener', listener); }
 });
+
+
+it('retains declared trigger connection rules after its provider is unavailable', () => {
+  const flow = flowRepository.createFlow();
+  const listener = flowRepository.createNode(flow.id, { nodeType: 'listener' });
+  const action = flowRepository.createNode(flow.id, { nodeType: 'action' });
+  const provider = testPacks.steps.get('listener')!;
+  try {
+    testPacks.steps.delete('listener');
+    expect(() => flowRepository.createEdge(action.id, listener.id)).toThrow('Trigger nodes cannot receive incoming connections');
+    expect(flowRepository.flowEdges(flow.id)).toEqual([]);
+  } finally { testPacks.steps.set('listener', provider); }
+});
+
+
+it('keeps declared relation fields available when updating a node without its compiler provider', () => {
+  const first = actionRepository.create({ label: 'First', actionFn: 'return 1' });
+  const next = actionRepository.create({ label: 'Next', actionFn: 'return 2' });
+  const flow = flowRepository.createFlow();
+  const node = flowRepository.createNode(flow.id, { nodeType: 'action', actionId: first.id });
+  const provider = testPacks.steps.get('action')!;
+  try {
+    testPacks.steps.delete('action');
+    flowRepository.updateNode(node.id, { actionId: next.id });
+    expect(flowRepository.getNodeActionId(node.id)).toBe(next.id);
+    expect(flowRepository.node(node.id)?.actionId).toBe(next.id);
+  } finally { testPacks.steps.set('action', provider); }
+});

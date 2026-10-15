@@ -11,20 +11,15 @@ afterEach(() => {
 });
 
 describe('generated trigger track builders', () => {
-  /**
-   * `trackField` is a member of the TriggerFacet rather than a manifest field, so the builder's name comes
-   * out of the module the entry names — not out of whatever file in the step's folder happens to mention
-   * one. The folder here holds a second module that does, which is what says which of the two was read.
-   */
-  it("read trackField from the module the entry names, not from another file beside it", async () => {
+  it('reads trackField from declarations without scanning implementation spelling or neighboring modules', async () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'track-helpers-'));
     const stepDir = path.join(tmp, 'src', 'extensions', 'steps', 'tick');
     fs.mkdirSync(stepDir, { recursive: true });
-    fs.writeFileSync(path.join(stepDir, 'build.ts'), "export const tickTrigger = { trackField: 'every' };\n");
+    fs.writeFileSync(path.join(stepDir, 'build.ts'), "export function compile() { return {}; } export function decompile() { return {}; }\n");
     fs.writeFileSync(path.join(stepDir, 'unrelated.ts'), "export const other = { trackField: 'whenever' };\n");
     const manifest: PackManifest = {
       id: 'ticks', name: 'Ticks', version: '1.0.0',
-      extensions: { steps: { tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } } },
+      extensions: { steps: { tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { trackField: 'every', compile: 'src/extensions/steps/tick/build.ts#compile', decompile: 'src/extensions/steps/tick/build.ts#decompile' } } } },
     };
 
     const files = await generatePackFiles(manifest, { packRoot: tmp });

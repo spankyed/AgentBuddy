@@ -304,8 +304,8 @@ describe('generated flow helpers', () => {
 
   it("types a step helper's options with the step's DSL node fields", async () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string; size?: 'small' | 'large'; [key: string]: unknown }\n");
-    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
-    const files = await generate({ steps: { pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } });
+    write('src/steps/pour/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
+    const files = await generate({ steps: { pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } });
 
     expect(files['src/__generated__/flow-helpers.ts']).toContain(
       "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
@@ -314,13 +314,13 @@ describe('generated flow helpers', () => {
 
   it('names helpers in camelCase, splitting step types and track fields on - and _', async () => {
     write('src/steps/pour-cup/types.ts', "export interface DSLPourCupNode { type: 'pour-cup'; cup: string; [key: string]: unknown }\n");
-    for (const dir of ['pour-cup', 'keep-alive', 'stop-now']) write(`src/steps/${dir}/build.ts`, 'export const stepBuild = {};\n');
-    write('src/steps/every-day/build.ts', "export const everyDay = { trackField: 'every_day' };\n");
+    for (const dir of ['pour-cup', 'keep-alive', 'stop-now']) write(`src/steps/${dir}/build.ts`, "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
+    write('src/steps/every-day/build.ts', "export function compile() { return {}; } export function decompile() { return {}; }\n");
     const files = await generate({ steps: {
-      'pour-cup': { node: { label: 'Pour cup' }, build: 'src/steps/pour-cup/build.ts#stepBuild', types: 'src/steps/pour-cup/types.ts', dsl: { primaryField: 'cup' } },
-      keep_alive: { node: { label: 'Keep alive' }, build: 'src/steps/keep-alive/build.ts#stepBuild', dsl: {} },
-      'stop-now': { node: { label: 'Stop' }, build: 'src/steps/stop-now/build.ts#stepBuild', dsl: { defaultLabel: 'Stop' } },
-      'every-day': { node: { label: 'Every day' }, kind: 'trigger', trigger: { facet: 'src/steps/every-day/build.ts#everyDay' } },
+      'pour-cup': { node: { label: 'Pour cup' }, build: { compile: 'src/steps/pour-cup/build.ts#compile', validate: 'src/steps/pour-cup/build.ts#validate', getLabel: 'src/steps/pour-cup/build.ts#getLabel' }, types: 'src/steps/pour-cup/types.ts', dsl: { primaryField: 'cup' } },
+      keep_alive: { node: { label: 'Keep alive' }, build: { compile: 'src/steps/keep-alive/build.ts#compile', validate: 'src/steps/keep-alive/build.ts#validate', getLabel: 'src/steps/keep-alive/build.ts#getLabel' }, dsl: {} },
+      'stop-now': { node: { label: 'Stop' }, build: { compile: 'src/steps/stop-now/build.ts#compile', validate: 'src/steps/stop-now/build.ts#validate', getLabel: 'src/steps/stop-now/build.ts#getLabel' }, dsl: { defaultLabel: 'Stop' } },
+      'every-day': { node: { label: 'Every day' }, kind: 'trigger', trigger: { trackField: 'every_day', compile: 'src/steps/every-day/build.ts#compile', decompile: 'src/steps/every-day/build.ts#decompile' } },
     } });
     const flowHelpers = files['src/__generated__/flow-helpers.ts'];
 
@@ -335,9 +335,9 @@ describe('generated flow helpers', () => {
 
   it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", async () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string }\n");
-    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
+    write('src/steps/pour/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
     const files = await generate(
-      { steps: { pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } },
+      { steps: { pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } },
       {
         'base-pack': { ...dependency({}), flowHelpers: helpers(['branch', 'entry', 'on', 'pour', 'schedule'], 'base-pack') },
         'other-pack': { ...dependency({ id: 'other-pack' }), flowHelpers: helpers(['branch', 'every'], 'other-pack') },

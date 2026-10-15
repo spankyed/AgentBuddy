@@ -8,7 +8,7 @@
 // hosted runner — 130-170s against 168s, which is a flake that reads as a code failure.
 //
 // A class carries no machine. It states the kind of work and is chosen for the slowest plausible box, which
-// is the whole of what portability needs here: a wedge found at five minutes rather than at 84 seconds is
+// is the whole of what portability needs here: a wedge found at ten minutes rather than at 84 seconds is
 // the same wedge found.
 //
 // **Declared by kind, and never derived by thresholding a cost.** That shortcut re-couples the killer to the
@@ -103,15 +103,9 @@ export interface Rung {
  * `declaredShare` reads each rung's own, so the asymmetry below is arithmetic rather than a sentence a reader
  * has to trust.
  *
- * **The headroom runs opposite to the stretching, which is worth knowing before changing a value.** `suite`
- * holds the members that scale worst and has the least room; `scenario` is "mostly waiting" and has the most.
- * That is an artefact of taking Bazel's ladder whole rather than a conclusion anyone reached, and the reason
- * it is left alone is that nothing is out of range — `declaredShare` is what notices if that changes. Two
- * steps were out of range until 2026-10-03: `packages:ensure` and `build:default-setup` sat at 93% and 87% four times
- * slower while declared `quick`, because a step that *builds* is a bundle and not one compiler.
- *
- * The values are Bazel's own ladder minus its `short`, which nothing here wants: its `moderate` is 300s and
- * its `long` 900s. A rung whose membership would be "whatever is left over" is the rung not to add.
+ * A suite has a 600s aggregate budget: the complete integration pool outgrew 300s while its tests were
+ * still passing. Both the pool runner and its parent use this limit; individual test deadlines are separate.
+ * `scenario` retains a 900s budget for install-based workflows.
  */
 /**
  * Which rung a step's *kind of work* puts it on — the criterion the three rows above state, as something a
@@ -144,7 +138,7 @@ export const TIMEOUT_MS = {
       + 'so enabling `.github/workflows/ci.yml`\'s commented-out triggers measures this row',
   },
   suite: {
-    ms: 300_000,
+    ms: 600_000,
     stretches: SLOWER_MACHINE,
     // **One member measured, every member charged.** The figure is end-to-end on `test:unit:host`, whose
     // pool takes the whole box. A member that caps its own width loses fewer workers and so stretches less:

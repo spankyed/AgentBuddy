@@ -204,7 +204,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       });
       publish({ appPackSources: sources, appPackSourceProblems: input.problems });
     },
-    setNative(declarations: readonly NativePackDeclaration[]): void {
+    setNative(declarations: readonly CatalogData<NativePackDeclaration>[]): void {
       const jsonProblems = _settingsJsonProblems(declarations);
       if (jsonProblems.length) throw new Error(`Invalid native declarations: ${jsonProblems.map(problem => `${problem.path.join('.')}: declarations must contain finite, acyclic JSON data properties`).join('; ')}`);
       const accepted = immutable(declarations);

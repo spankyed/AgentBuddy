@@ -10,7 +10,7 @@ import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-ent
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 import { stepRegistry } from '../steps/registry.ts';
 import type { TriggerFacet } from '../steps/types.ts';
-import { getStepBinding } from '../steps/catalog.ts';
+import { getStepBinding, getStepDeclaration } from '../steps/catalog.ts';
 import { createLogger } from '../logger/logger.ts';
 
 const logger = createLogger('flows-repository');
@@ -59,7 +59,7 @@ const handleInfo = (handles?: Handles): Handles | undefined =>
 function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.EntityId): void {
   const isTrigger = (id: EARS.EntityId) => {
     const nodeType = qx(id).pickOne(['nodeType'])?.nodeType;
-    return typeof nodeType === 'string' && stepRegistry.isTrigger(nodeType);
+    return typeof nodeType === 'string' && getStepDeclaration(nodeType)?.declaration.kind === 'trigger';
   };
   if (isTrigger(targetId)) {
     throw new RepositoryError('Trigger nodes cannot receive incoming connections', RepositoryErrorCode.VALIDATION_ERROR);
@@ -89,7 +89,7 @@ function validateNode(node: FlowNode, trigger: TriggerFacet | undefined): void {
 }
 
 /** The field a step names its related entity by (`actionId`), from its build facet */
-const relationField = (nodeType: string): string | undefined => stepRegistry.getBuild(nodeType)?.relation?.field;
+const relationField = (nodeType: string): string | undefined => getStepDeclaration(nodeType)?.declaration.build?.relation?.field;
 
 /** A node's input split into its related entity's id (when the input names one) and its own fields */
 function splitRelation(input: FlowNodeInput, field: string | undefined): { related: Record<string, unknown>; fields: FlowNodeInput } {

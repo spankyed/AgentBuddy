@@ -50,12 +50,14 @@ const index = { version: 1, packId: manifest.id, entries: [
 describe('read-only pack inspection', () => {
   it('reads node defaults and step bindings from an installed build without authored modules', async () => {
     const steps = { memo: { node: { label: 'Memo', defaultLabel: 'Write a memo', defaults: { tags: ['draft'], pinned: false } },
-      build: 'src/unavailable.ts#build', fe: { nodeConfig: { icon: 'File', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/unavailable.vue' }, layout: { getHeight: 'src/unavailable.ts#getHeight' } } } };
+      build: { compile: 'src/unavailable.ts#compile', validate: 'src/unavailable.ts#validate', getLabel: 'src/unavailable.ts#getLabel', relation: { field: 'memoId', targetEntity: 'Memo' } }, fe: { nodeConfig: { icon: 'File', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/unavailable.vue' }, layout: { getHeight: 'src/unavailable.ts#getHeight' } } }, pulse: { kind: 'trigger' as const, node: { label: 'Pulse' },
+      trigger: { trackField: 'every', persistent: true, queryFields: ['interval'], compile: 'src/unavailable.ts#compilePulse',
+        decompile: 'src/unavailable.ts#decompilePulse', validate: 'src/unavailable.ts#validatePulse' } } };
     const declaration: PackManifest = { ...manifest, extensions: { steps } };
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
     writeBuild(root, declaration, index);
     const report = await inspectPack(root);
-    expect(report.declared.steps).toEqual([{ type: 'memo', ...steps.memo }]);
+    expect(report.declared.steps).toEqual([{ type: 'memo', ...steps.memo }, { type: 'pulse', ...steps.pulse }]);
     expect(report.build.status).toBe('verified');
     expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
     expect(fetch).not.toHaveBeenCalled();

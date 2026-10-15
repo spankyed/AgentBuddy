@@ -306,7 +306,11 @@ Flow step types are declared under `extensions.steps`, keyed by type.
           "label": "My Step",
           "defaultLabel": "Run my step"
         },
-        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        },
         "fe": {
           "nodeConfig": {
             "icon": "Box",
@@ -343,7 +347,9 @@ Flow step types are declared under `extensions.steps`, keyed by type.
           }
         },
         "trigger": {
-          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "trackField": "myTrigger",
+          "compile": "src/extensions/steps/my-trigger/build.ts#compile",
+          "decompile": "src/extensions/steps/my-trigger/build.ts#decompile",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
         "fe": {
@@ -385,8 +391,8 @@ facet directories; build, layout, form and type modules may live in different di
 |---|---|---|
 | `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger. `step` is the default |
 | `node` | `{ label, defaultLabel?, defaults? }` | Required inline data: canvas label, optional palette label and initial JSON fields; readable without importing modules |
-| `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
-| `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
+| `build` | `{ compile, validate, getLabel, decompile?, branches?, relation? }` | Callback references and inline relation metadata. A trigger declares `trigger` instead |
+| `trigger` | `{ trackField, compile, decompile, persistent?, queryFields?, validateTrack?, validate?, register? }` | Track metadata and callback references. Only register is loaded lazily at runtime |
 | `fe` | `StepFrontendDeclaration` | Inline presentation, component targets and layout function references; see [frontend declaration](extensions.md#frontend-declaration) |
 | `types` | `string` | Explicit pack-root-relative module declaring the step’s node and DSL types |
 | `runtime` | `{ handler?, sync?, isAsync?, waits?, spawnsSubflow? }` | What the brain runs, and the flags it reads before running it. `handler` is loaded on the step's first run unless `sync`; see [Steps](extensions.md#runtime-facet) |
@@ -692,7 +698,11 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
   "extensions": {
     "steps": {
       "bookmark-check": {
-        "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
+        "build": {
+          "compile": "src/extensions/steps/bookmark-check/build.ts#compile",
+          "validate": "src/extensions/steps/bookmark-check/build.ts#validate",
+          "getLabel": "src/extensions/steps/bookmark-check/build.ts#getLabel"
+        },
         "fe": {
           "nodeConfig": {
             "icon": "Box",

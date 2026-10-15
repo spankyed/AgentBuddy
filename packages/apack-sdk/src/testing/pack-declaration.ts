@@ -19,8 +19,20 @@ export function nativePackDeclarationFixture(fixture: PackRegistration): NativeP
       if (node === undefined) throw new Error(`Native step fixture "${fixture.id}/${step.type}" needs declared node data`);
       return [step.type, {
         node, ...(step.kind !== undefined && { kind: step.kind }),
-        ...(step.build && { build: `${prefix}Build` }),
-        ...(step.trigger && { trigger: { facet: `${prefix}Trigger`, ...(step.trigger.register && { register: `${prefix}Register` }) } }),
+        ...(step.build && { build: {
+          compile: `${prefix}Compile`, validate: `${prefix}Validate`, getLabel: `${prefix}GetLabel`,
+          ...(step.build.decompile && { decompile: `${prefix}Decompile` }),
+          ...(step.build.branches && { branches: `${prefix}Branches` }),
+          ...(step.build.relation !== undefined && { relation: step.build.relation }),
+        } }),
+        ...(step.trigger && { trigger: {
+          trackField: step.trigger.trackField, compile: `${prefix}Compile`, decompile: `${prefix}Decompile`,
+          ...(step.trigger.persistent !== undefined && { persistent: step.trigger.persistent }),
+          ...(step.trigger.queryFields !== undefined && { queryFields: step.trigger.queryFields }),
+          ...(step.trigger.validateTrack && { validateTrack: `${prefix}ValidateTrack` }),
+          ...(step.trigger.validate && { validate: `${prefix}Validate` }),
+          ...(step.trigger.register && { register: `${prefix}Register` }),
+        } }),
         ...(runtime && { runtime: {
           ...(runtime.handler && { handler: `${prefix}Handler` }),
           ...(runtime.isAsync && { isAsync: true }), ...(runtime.waits && { waits: true }),

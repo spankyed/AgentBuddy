@@ -1,4 +1,3 @@
-import type { StepBuildFacet } from '@apackdev/sdk/steps';
 import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@apackdev/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@apackdev/sdk/utils';
 import { EARS } from '@apackdev/sdk';
@@ -177,6 +176,3 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
   }
   return result;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };

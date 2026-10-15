@@ -57,7 +57,7 @@ function fixture(): PackManifest {
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
   write('src/defs/action.ts', 'export interface NoteDTO { text: string }');
-  write('src/extensions/steps/tick/build.ts', "export const tickTrigger = { trackField: 'every' };\n");
+  write('src/extensions/steps/tick/build.ts', "export function compile() { return {}; } export function decompile() { return {}; }\n");
   return {
     id: 'demo-pack',
     name: 'Demo',
@@ -71,7 +71,7 @@ function fixture(): PackManifest {
       },
     },
     extensions: {
-      steps: { tick: { node: { label: 'Tick' }, types: 'src/extensions/steps/tick/types.ts', kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      steps: { tick: { node: { label: 'Tick' }, types: 'src/extensions/steps/tick/types.ts', kind: 'trigger', trigger: { trackField: 'every', compile: 'src/extensions/steps/tick/build.ts#compile', decompile: 'src/extensions/steps/tick/build.ts#decompile' } } },
       dsl: { action: { entry: 'src/defs/action.ts', prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
     },
   };

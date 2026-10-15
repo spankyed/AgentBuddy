@@ -47,8 +47,8 @@ describe('validatePackSources', () => {
       migrations: { app: { '1.0.0': { description: 'Initialize', up: 'src/hooks#up' } }, pack: { '1.0.0': { description: 'Initialize', up: 'src/hooks#up' } } },
       extensions: {
         services: { queries: 'src/hooks#queries' },
-        steps: { test: { node: { label: 'Example' }, build: 'src/hooks#build', fe: { nodeConfig: { icon: 'Box', category: 'logic', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/view.vue' }, layout: { getHeight: 'src/hooks#getHeight' } }, runtime: { handler: 'src/hooks#handler' } },
-          signal: { kind: 'trigger', node: { label: 'Example' }, trigger: { facet: 'src/hooks#facet', register: 'src/hooks#register' } } },
+        steps: { test: { node: { label: 'Example' }, build: { compile: 'src/hooks#compile', validate: 'src/hooks#validate', getLabel: 'src/hooks#getLabel' }, fe: { nodeConfig: { icon: 'Box', category: 'logic', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/view.vue' }, layout: { getHeight: 'src/hooks#getHeight' } }, runtime: { handler: 'src/hooks#handler' } },
+          signal: { kind: 'trigger', node: { label: 'Example' }, trigger: { trackField: "event", compile: 'src/hooks#compile', decompile: 'src/hooks#decompile', register: 'src/hooks#register' } } },
         blocks: { text: { be: 'src/hooks#block', fe: 'src/view.vue' } },
         artifacts: { text: { icon: 'File', fe: 'src/view.vue' } },
         dsl: { test: { entry: 'src/types', targets: ['monaco'] } },
@@ -67,9 +67,9 @@ describe('validatePackSources', () => {
     expect(report.status).toBe('invalid');
     expect(report.diagnostics.map(issue => issue.path)).toEqual([
       ['extensions', 'services', 'queries'],
-      ['extensions', 'steps', 'test', 'build'],
+      ...['compile', 'validate', 'getLabel'].map(name => ['extensions', 'steps', 'test', 'build', name]),
       ['extensions', 'steps', 'test', 'runtime', 'handler'], ['extensions', 'steps', 'test', 'fe', 'components', 'form'], ['extensions', 'steps', 'test', 'fe', 'layout', 'getHeight'],
-      ['extensions', 'steps', 'signal', 'trigger', 'facet'], ['extensions', 'steps', 'signal', 'trigger', 'register'],
+      ...['compile', 'decompile'].map(name => ['extensions', 'steps', 'signal', 'trigger', name]), ['extensions', 'steps', 'signal', 'trigger', 'register'],
       ['extensions', 'blocks', 'text', 'be'], ['extensions', 'blocks', 'text', 'fe'], ['extensions', 'artifacts', 'text', 'fe'],
       ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'tiptapPlugins', 'editor', 'extensions', 'example'],
       ['extensions', 'tiptapPlugins', 'editor', 'popups', 'extra'], ['extensions', 'tiptapPlugins', 'editor', 'isSuggestionActive'],
