@@ -4200,3 +4200,50 @@ Frozen/coherent execution and publication, measured scope cost, and manual-build
 remain required before certifying full freshness. Then resume every unfinished discovery/native/static
 content requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Final strict
 --all on committed source and the complete requirement audit remain due; nothing is archived.
+
+### Fresh watched builds and read-only explorer restoration (2026-10-14)
+
+Source `01eec3309` makes the watcher coordinate a fresh CLI process for each complete staged build.
+Linked packages are checked before spawning, export conditions are preserved without the reserved
+source condition for pack code, and child failure cannot trigger installation/reload. Closing still
+awaits the active build. Readiness, coalescing, verified publication and host reload ordering remain
+intact; there is no new public command or bypass flag.
+
+The audit corrected an assumption: custom compiler `tsImport` already refreshes transitive modules,
+and that initial regression passes. Ordinary flow imports do cache by filename: the real watcher
+published the old flow name after an edit. Fresh processes fix that failure; restoring in-process
+builds reproduces it. Custom-helper edits and refusal retention also pass. Evidence:
+`/private/tmp/apack-watch-flow-regression.log`, `/private/tmp/apack-watch-inprocess-mutation.log`,
+`/private/tmp/apack-watch-worker-integration-reviewed.log`. Five debounce/close tests and CLI
+typechecking pass. The existing combined publication test exceeded 60s in strict validation; split
+its rebuild/refusal and linked-manifest workflows without dropping assertions or increasing budgets.
+The SDK runtime remains file-scoped with per-scenario data reset and pack teardown. Both scenarios
+pass standalone and in the full integration pool.
+
+Source `82bca6529` fixes the actual settings revision +1 cause found in real app acceptance. The
+Code explorer's CODE_CONNECTED handler previously echoed the received directory as a new user
+selection, writing settings during restore/reconnect. Hydrate local state and request file listing
+instead; explicit user selection still sends the directory command. A shared context factory resets
+the tree, including null-directory reconnection, with fresh collections per actor. No writer, schema,
+wire contract or refusal assertion was changed. Three focused cases pass; restoring the selection
+command fails one. Evidence: `/private/tmp/apack-explorer-restore-{regression,fixed,mutation}.log`.
+
+The first strict run's publication timeout and second run's settings revision failure are diagnostic
+evidence, not acceptance: `/private/tmp/apack-watch-worker-strict.log` and
+`/private/tmp/apack-watch-worker-reviewed-strict.log`. Accepted required strict passes all 30 gates
+in 785.9s (13 cached), including the unchanged refused-write revision assertion, all 24 main fixture
+app cases, replacement/restart checks, smoke and packaged authoring/app checks:
+`/private/tmp/apack-watch-worker-explorer-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T00-55-08Z-4455`. Committed-source strict passes
+in 1.4s (29 cached): `/private/tmp/apack-watch-worker-committed-warm.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T01-10-52Z-36565`. EARS and six compiled content
+files are byte-identical to baseline. No public API/schema/release metadata or compatibility changes.
+The unrelated issue draft remains staged and excluded; use explicit-path commits.
+
+Fresh worker lifetime resolves reuse of a previous watched build's executable modules; it is not
+proof of immutable reads during a build. External watch subscriptions, Vue/runtime/dynamic inputs,
+distinct compiler-version/options consumers, coherent frozen execution/publication and scope cost
+remain required, then manual-build/drive freshness. Continue every remaining discovery/native/static
+content requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Native
+shutdown observations still need their separate final lifecycle audit. Final committed-source strict
+--all and the complete requirement audit remain due; no unfinished work is archived.

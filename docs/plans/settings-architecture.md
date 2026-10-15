@@ -1186,3 +1186,14 @@ UI assertion; only the bundled worker's native teardown times out. Evidence:
 `2026-10-13T06-20-27Z-47998` in the same runs directory. Its unchanged standalone rerun passes. Neither
 that pass nor resource cleanup resolves the independently reproduced native hidden-window quit loop.
 All other discovery, navigation/boundary and supported-API work remains required.
+
+### Explorer restoration intent correction (2026-10-14)
+
+`82bca6529` closes the settings revision +1 observed during refused-write acceptance. Real app logs
+showed Code's connected-directory notification echoed as SET_BASE_DIRECTORY during the refusal
+window. Frontend restoration now hydrates the directory and lists files instead of issuing a user
+selection. Explicit selection remains a command; the writer's default-equal override and revision
+semantics are unchanged. Empty-directory reconnection clears stale explorer state. Three focused
+cases, a restore-write mutation and the unchanged real-app revision assertion pass. The owning goal
+records accepted full and committed-source strict evidence with watcher checkpoint `01eec3309`.
+This corrects preference intent; native hidden-window shutdown observations remain a separate audit.

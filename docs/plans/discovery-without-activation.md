@@ -1970,6 +1970,21 @@ metadata regression, focused checks, byte-omission mutation, costs and full/warm
 
 Do not equate this with full executable closure. Next audit distinct compiler-version/options readers,
 Vue/dynamic/runtime inputs, external watch subscriptions and already-loaded compiler identity; the
-watcher still rebuilds in-process. Complete coherent frozen execution/publication and scope-cost work,
+watcher now uses fresh CLI processes (see the following outcome). Complete coherent frozen execution/publication and scope-cost work,
 then manual-build/drive freshness. All remaining contribution/native/static-content discovery and
 later goal phases remain required. No plan is closed or archived by this checkpoint.
+
+### Fresh watcher execution outcome (2026-10-14)
+
+`01eec3309` removes executable module-cache reuse between watched builds by spawning the normal
+CLI build in a fresh process. The regression distinguishes custom tsImport (already fresh) from
+ordinary flow imports (previously stale). Linked packages are checked before child startup; readiness,
+staged verified publication, failure retention and reload ordering are preserved. Real source/manifest
+replacement, linked data retargeting, invalid edits and host reload checks pass. The goal records
+regression/mutation and accepted strict evidence, including the independent reconnect fix
+`82bca6529` found in real app settings acceptance.
+
+Worker lifetime does not freeze bytes during compilation. External watch subscriptions, Vue/runtime/
+dynamic inputs, exact compiler consumers and coherent frozen reads/publication remain required,
+with measured costs. Then complete manual-build/drive freshness and every unfinished contribution/
+native/static-content and downstream phase requirement.

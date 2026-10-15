@@ -608,3 +608,15 @@ Next finish that execution/reader audit and loaded-code versus disk identity, co
 publication and measured scope cost, then manual-build/drive freshness. Preserve all remaining
 discovery/native/static-content work, navigation, frontend boundaries and all Phase 6 workstreams.
 Final committed-source strict --all and full completion audit remain required.
+
+### Fresh watcher and reconnect outcome (2026-10-14)
+
+`01eec3309` gives each watched build fresh executable module caches; an actual ordinary-flow-import
+regression and its in-process mutation prove the need. `82bca6529` removes a restore-to-selection
+echo that wrote preferences during Code reconnect. The real app now passes the unchanged refused-
+write revision assertion. The execution goal owns source, focused/mutation, strict and committed-source
+evidence. Publication scenarios are split by concern with unchanged budgets and assertions.
+
+Continue external watch/input and compiler-consumer coverage, immutable/coherent execution and
+publication, scope costs and manual-build/drive freshness. All remaining discovery, native/static
+content, navigation, frontend boundaries and Phase 6 workstreams retain their acceptance requirements.
