@@ -595,3 +595,16 @@ and complete frozen execution/publication, with measured scope cost. Configurati
 does not prove those inputs covered. Then manual runtime build/drive freshness and all remaining
 discovery/native/static-content/navigation/frontend/API/provenance/replacement requirements. The
 full goal, every Phase 6 workstream and final committed-source strict --all remain active.
+
+### External TypeScript input outcome (2026-10-14)
+
+`f8c17e99c` follows fresh resolved TypeScript source/metadata beyond declared package roots, with
+external/transitive/ambient/undeclared resolution regressions and generated-output exclusion. The
+owning goal records actual generation before/after evidence, focused/mutation checks, scope timings
+and strict validation on committed source. This advances external type-input coverage; it does not
+certify runtime, Vue/dynamic imports, distinct compiler readers or external watch coverage.
+
+Next finish that execution/reader audit and loaded-code versus disk identity, coherent frozen
+publication and measured scope cost, then manual-build/drive freshness. Preserve all remaining
+discovery/native/static-content work, navigation, frontend boundaries and all Phase 6 workstreams.
+Final committed-source strict --all and full completion audit remain required.

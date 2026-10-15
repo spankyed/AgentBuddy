@@ -1958,3 +1958,18 @@ exact renderer restoration, guard mutation and full/warm strict evidence. This p
 descriptor publication behavior; it does not establish implementation/import-graph coverage, dependent
 executable key scope or the drive launcher’s separate freshness nudge. Complete those required checks
 and the remaining discovery kinds/later phases before closing this plan.
+
+### Resolved TypeScript input outcome (2026-10-14)
+
+`f8c17e99c` covers fresh resolved TypeScript inputs outside authored/package-declared scopes, including
+transitive external declarations, undeclared packages and ambient type roots. Exact source/resolution
+metadata bytes enter the common compilation key and publication revalidation. Generated files are
+excluded even through imports. Missing targets becoming available change identity; discovery scanning
+imports no executable modules. The goal records the pre-fix real-generation failure, passing external
+metadata regression, focused checks, byte-omission mutation, costs and full/warm strict evidence.
+
+Do not equate this with full executable closure. Next audit distinct compiler-version/options readers,
+Vue/dynamic/runtime inputs, external watch subscriptions and already-loaded compiler identity; the
+watcher still rebuilds in-process. Complete coherent frozen execution/publication and scope-cost work,
+then manual-build/drive freshness. All remaining contribution/native/static-content discovery and
+later goal phases remain required. No plan is closed or archived by this checkpoint.

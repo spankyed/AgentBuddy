@@ -4159,3 +4159,44 @@ All 31 frontend-loader tests pass; required strict validation passes all 30 gate
 (15 cached): `/private/tmp/apack-artifact-terminology-followup-strict.log`,
 `node_modules/.cache/apack-chain/runs/2026-10-14T23-55-19Z-83799`. The unrelated issue draft remains
 untouched. The complete goal and every unfinished requirement remain active.
+
+### Resolved external TypeScript input checkpoint (2026-10-14)
+
+Source `f8c17e99c` adds a fresh TypeScript input traversal to the shared compilation key. It starts
+from authored script modules under the current compiler configuration, follows resolved imports and
+ambient types, and records exact source and resolution-metadata bytes with pack-relative filenames.
+This includes external path-mapped/transitive declarations, undeclared installed packages and ambient
+type roots; unresolved targets appearing or resolved targets disappearing change the next key. No
+module executes. Generated output is unavailable to the traversal, including imports into it, so
+regeneration does not change its own input identity. Existing publication revalidation consumes the
+same traversal.
+
+The real generation regression failed before this implementation: changing outside declaration bytes
+with constant configuration/versions did not invalidate the generated entry. It now passes and emits
+the updated outgoing event. Eight focused cases and CLI typechecking pass. Omitting both source-byte
+capture paths fails three focused cases; omitting only the explicit program-source collection is an
+equivalent mutation because the compiler host still records its reads, not a missing behavioral check.
+All mutations restore exact source bytes. Evidence:
+`/private/tmp/apack-external-module-regression.log`, `/private/tmp/apack-external-module-fixed.log`,
+`/private/tmp/apack-module-inputs-focused.log`, `/private/tmp/apack-module-inputs-typecheck.log`,
+`/private/tmp/apack-module-inputs-byte-mutation.log`. Two fresh shipped-pack traversals cost 1.583s and
+1.106s with identical hashes; these are observations, not a performance guarantee:
+`/private/tmp/apack-module-inputs-cost.log`.
+
+Required strict validation passes all 30 gates in 772.9s (one cached), including real external app,
+watcher/authoring/generation integrations, runtime build, smoke and packaged authoring/app checks:
+`/private/tmp/apack-module-inputs-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T00-04-07Z-10889`. Committed-source strict passes in
+1.1s (29 cached): `/private/tmp/apack-module-inputs-committed-warm.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T00-17-49Z-42842`. EARS and six compiled content files
+remain byte-identical to baseline. No schema/public API/format/release changes or compatibility code.
+The unrelated issue draft remains untouched.
+
+This proves the resolved TypeScript scope, not complete executable/compiler closure. Audit distinct
+compiler-version/option consumers and imports embedded in Vue or dynamically loaded source, runtime
+files selected alongside type declarations, and external watch subscriptions. The watcher currently
+calls build in-process: current disk hashing does not prove already-loaded implementation freshness.
+Frozen/coherent execution and publication, measured scope cost, and manual-build/drive freshness
+remain required before certifying full freshness. Then resume every unfinished discovery/native/static
+content requirement, navigation, frontend boundaries and all three Phase 6 workstreams. Final strict
+--all on committed source and the complete requirement audit remain due; nothing is archived.
