@@ -14,16 +14,9 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, rungForKind, stepTimeoutMs, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
-  it('caps integration feedback at 60 seconds without changing other suite deadlines', () => {
-    expect(stepTimeoutMs('test:integration', 'suite')).toBe(60_000);
-    expect(stepTimeoutMs('test:unit:host', 'suite')).toBe(TIMEOUT_MS.suite.ms);
-    expect(timedOutBecause({ what: 'test:integration', timeout: 'suite', measuredOn: thisMachine() }))
-      .toContain('60s feedback deadline');
-  });
-
   it('orders every step after the steps it depends on', () => {
     const order = orderedSteps().map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);

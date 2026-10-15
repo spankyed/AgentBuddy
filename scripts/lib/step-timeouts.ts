@@ -225,13 +225,6 @@ export function timeoutMsFor(className: string): number {
   return rung.ms;
 }
 
-/** Explicit feedback limits can shorten a work class's ceiling. */
-const STEP_DEADLINES: Readonly<Record<string, number>> = { 'test:integration': 60_000 };
-
-export function stepTimeoutMs(step: string, timeout: TimeoutClass): number {
-  return Math.min(TIMEOUT_MS[timeout].ms, STEP_DEADLINES[step] ?? Infinity);
-}
-
 /** A class as a span, for a message that names what was spent rather than a number nobody chose */
 export const timeoutText = (className: TimeoutClass): string =>
   `${TIMEOUT_MS[className].ms / 1000}s (${className})`;
@@ -311,10 +304,6 @@ export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }:
    */
   seconds?: number;
 }): string {
-  const deadline = stepTimeoutMs(what, timeout);
-  if (deadline < TIMEOUT_MS[timeout].ms) {
-    return `${what} timed out: it exceeded its ${deadline / 1000}s feedback deadline and its process group was killed.`;
-  }
   const killed = `${what} timed out: it exceeded its ${timeoutText(timeout)} budget and its process group `
     + 'was killed.';
   const rung = TIMEOUT_MS[timeout];

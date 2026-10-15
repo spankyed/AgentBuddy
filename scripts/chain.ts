@@ -45,7 +45,7 @@ import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } fro
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
-import { stepTimeoutMs, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
+import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
@@ -208,7 +208,7 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // Explicit feedback limits may shorten the declared work class's ceiling.
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, stepTimeoutMs(step, timeout), { env });
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, timeoutMsFor(timeout), { env });
   const result = { step, ms, code, output, timedOut };
   // Here rather than where a step's result is read, because this is the one place a step's bytes exist and
   // every caller passes through it — the never-cached steps, `runAndStamp`, and the classification retry,

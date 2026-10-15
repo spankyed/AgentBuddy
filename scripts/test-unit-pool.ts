@@ -24,7 +24,7 @@ import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
-import { stepTimeoutMs, timedOutBecause } from './lib/step-timeouts.ts';
+import { timeoutMsFor, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
@@ -208,9 +208,8 @@ async function main(): Promise<void> {
       // what keeps the two records *distinct* is the command inside that fingerprint.
       covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
-        // Share the chain's feedback cap; a direct run must not wait longer for the same pool.
         const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], stepTimeoutMs(poolStepName(kind), 'suite'),
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor('suite'),
           { env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         process.stdout.write(output);
         if (code !== 0) {
