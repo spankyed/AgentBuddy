@@ -202,7 +202,7 @@ the successful rerun held source inputs unchanged.
 
 ### Implemented authored-file scopes and publication stability
 
-Codegen and reusable bundle phases share `build/pack-inputs.ts`. Module sources are tracked throughout
+Codegen and reusable bundle phases share `@apackdev/host/build/pack-inputs`. Module sources are tracked throughout
 the pack, rather than only under `src/`; codegen also hashes captured manifest data, declared help and
 the SDK source tree. Bundle scopes include generated entries and all asset extensions, including files
 outside `src/`. Root build/dependency working trees are excluded; an authored nested `src/dist` is not.
@@ -3017,3 +3017,56 @@ package-resolution coverage while removing irrelevant work; no timestamp/global 
 assertions or larger deadlines as a substitute. `chain --cores` is scheduling admission, not a lower
 Vitest worker cap. Complete compiler capture/publication and the shared receipt before switching
 freshness readers; the other contribution kinds and later goal phases remain required.
+
+
+Validation correction before accepting the shared-input move: a prototype deriving compiler package
+requests from a fresh esbuild graph was measured, then discarded. Its small improvement did not justify
+new selection logic that still needed implicit metadata/read coverage. Keep the conservative input policy
+while completing the required coherent source/compiler design. Do not mistake this rejected prototype
+for a landed closure or receipt.
+
+The inspected validation defect is separate: `chain --cores` sized scheduler weights without forwarding
+that budget to Vitest. The pool still used the whole machine's configured worker count. Forward the
+existing budget through the private chain handoff, derive pool limits from `coresFor`, pass both pool
+maximums and minimums explicitly, and include actual worker configuration in both cache layers and
+measurement guidance. Standalone pool configuration remains its own default. Verify with Vitest's actual
+argument parser, malformed handoff cases, cache identity changes and a real strict run observing worker
+counts. Preserve all input coverage, tests, assertions and deadlines. This fixes budget enforcement;
+exact compiler capture, input closure, coherent publication and source-freshness consumers remain required.
+
+
+#### Shared authored scope outcome — checkpoint 3F
+
+`882d2a50b` moves the authored traversal, content hash and link watches unchanged into host build
+utilities, migrates every CLI caller and moves its behavior tests. The same-mtime case uses equal-sized
+changed bytes. The tooling-only export is explicitly excluded from the pack runtime bridge. No second
+scanner or compatibility wrapper. All seven generated EARS/content baselines remain unchanged.
+
+The validation prerequisite lands separately in `2f8b6f4ba`: the existing chain budget reaches actual
+Vitest worker limits, including minimums, and both cache layers and measurement guidance retain the
+actual configuration. It caps existing widths rather than treating the budget as a hypothetical machine.
+A source mutation removing worker flags is caught; 196 focused pipeline checks pass. The final strict
+run passes all 741 integration cases with three actual workers in 496.85s; the whole chain passes in
+712.9s (22/30 cached). Committed source passes strict again in 1.1s (29/30 cached). The goal records paths
+and earlier failures. No input coverage, assertions, test/hook/watcher deadlines or aggregate deadlines
+were reduced or relaxed.
+
+The preceding validation hold is resolved. Keep the measured scan-cost problem open: the conservative
+scope remains intact. The rejected static-graph prototype also revealed that general CLI utilities pull
+app-release code into today's compiler graph, so excluding Octokit merely as “release-only” would omit
+an actual current import. Implicit shared-package metadata reads also need coverage before narrowing
+package scopes. The prototype is absent from committed source.
+
+The next implementation checkpoint must deliver the complete source/compiler input and publication
+contract before changing freshness readers. It must account for capture before compiler loading,
+long-lived compilers, options/dependencies, outside inputs, missing/resolution candidates and namespaces,
+coherent execution, atomic input/output association and passive source consumers. Installed/offline
+inspection still verifies output without authored source or executable compiler activation. Existing
+integrity and private phase caches remain separate proofs; neither is the missing whole-build source
+receipt. Every later contribution kind and goal phase remains required.
+
+A local APFS probe (`/private/tmp/apack-filesystem-generation-probe.log`) observed a transient replacement
+read returning different bytes, followed by exact original inode/bytes/mtime restoration; ctime changed
+for both a file and a symlink. This only informs research into active-build guards. It does not establish
+a portable frozen view or justify a timestamp cache or timestamp-based source freshness. Any selected
+coherence design still needs its own actual compiler/publication proof.

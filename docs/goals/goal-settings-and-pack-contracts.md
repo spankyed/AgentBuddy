@@ -5266,3 +5266,50 @@ Evidence: `/private/tmp/apack-shared-inputs-{host,cli,boundary,strict,budgeted-s
 final-strict,isolated-failures,profile,profile-scopes}.log`; CPU profiles and reproducible temporary
 probe scripts are under `/private/tmp/apack-shared-inputs-profile/`. Source remains a candidate until
 required strict validation passes; every later phase and all three Phase 6 workstreams remain active.
+
+
+### Shared authored scope and bounded validation — checkpoint 3F (2026-10-15)
+
+Source checkpoints `2f8b6f4ba` (worker budgets) and `882d2a50b` (shared authored input ownership) resolve
+the preceding validation hold. The existing input implementation moves byte-identically into host;
+all callers and tests migrate together, with the new tooling-only export accounted for at the runtime
+bridge. Timestamp-only changes preserve identity; equal-sized, same-mtime edits and membership changes
+do not. Seven generated EARS/content baselines remain byte-identical. Public SDK APIs, schema, facade
+reports and release metadata are unchanged.
+
+The worker fix carries the existing `--cores` cap to Vitest's actual thread/fork limits and minimums,
+through private process handoff. Both cache layers and measurement guidance include the actual worker
+configuration. Standalone pool defaults remain configured by Vitest. A budget above the machine does
+not raise an individual pool's configured width. Removing the worker flags is caught by two regression
+assertions; restored source passes 196 focused checks. Evidence:
+`/private/tmp/apack-worker-budget-{mutation,restored}.log` and
+`/private/tmp/apack-worker-cap-final.log`.
+
+Validation evidence, preserving earlier failures rather than replacing their record:
+
+- The first bounded-worker run (`2026-10-15T22-00-34Z-19299`) reports 26 completed integration files with
+  no failing test cases before the 600s aggregate deadline ends it. It is not a pass. Cap semantics were
+  then corrected to cap existing widths, rather than derive widths for a hypothetical smaller machine.
+- Strict `npm run chain -- --strict --cores 3 --no-classify` passes in 712.9s, 22/30 cached, run
+  `2026-10-15T22-17-32Z-40198`. The affected host pool passes 413 files / 4,965 cases; default-setup passes
+  115 files / 851 cases with two skips; integration passes all 58 files / 741 cases in 496.85s.
+  `/private/tmp/apack-shared-inputs-cap-strict.log`.
+- The same command on committed source passes in 1.1s, 29/30 cached, run
+  `2026-10-15T22-30-09Z-69716`. `/private/tmp/apack-shared-inputs-committed-strict.log`.
+- Live process inspection confirms explicit worker flags; no assertion, test/hook/watcher deadline,
+  aggregate timeout, source-input scope or phase guard was weakened. The unrelated staged issue is
+  preserved. No production data, release operation or remote Git operation.
+
+The compiler-package graph prototype was measured and discarded: small gains did not justify its
+remaining implicit-read gaps. Static inspection also corrects the earlier “release-only” wording:
+Octokit is currently imported indirectly by compiler utilities through app-selection code. It cannot
+simply be excluded. The original conservative package-input policy remains; source freshness and exact
+compiler capture are unfinished, not completed by a worker-count change.
+
+Continue the full input/actual-compiler/coherent-publication design and implementation, then migrate
+archive, prebuilt testing, default-fork preparation and drive to its common passive authority. Preserve
+manual builds, unchanged deterministic output caching, source-free installed inspection and deliberately
+stale drive behavior. The local filesystem-generation probe is research evidence only, not an accepted
+replacement for frozen/coherent execution. Remaining contribution/content/asset discovery, native/editor
+lifecycle, navigation, frontend boundaries, all three Phase 6 workstreams, reconciled requirement audit
+and final committed-source strict `--all` remain required. Nothing is archived by this checkpoint.
