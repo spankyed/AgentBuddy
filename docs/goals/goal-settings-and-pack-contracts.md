@@ -4301,3 +4301,48 @@ input closure, coherent frozen execution/publication and scope cost; then manual
 Retain all unfinished discovery/native/static-content, navigation, frontend boundaries and all three
 Phase 6 workstreams, plus final lifecycle observations, committed-source strict --all and the full
 requirement audit. No unfinished plan is archived.
+
+### Compiler-discovered package runtime inputs (2026-10-14)
+
+Source `61d882b7d` fixes a reproduced frontend cache defect: an undeclared npm import can resolve
+through an unchanged `.d.ts` while its JavaScript helper changes. The previous second build reused
+the frontend containing the old value (`/private/tmp/apack-undeclared-runtime-baseline.log`).
+Compiler input reading now returns canonical package owners alongside the type/configuration hash.
+Those owners join the existing byte/dependency graph, including transitive dependencies, without
+executing package entries. Consuming roots remain separately scoped; an ancestor library cannot
+accidentally hash the consuming pack's output. Scoped workspace links have ownership coverage.
+
+The watcher consumes that same graph, observing runtime files, directory membership and missing
+transitive dependency candidates. Its signature includes package bytes rather than only declarations.
+Actual frontend builds and automatic watching both replace BEFORE with AFTERX after changing only
+an undeclared package's JavaScript helper. Existing event-type generation, async mutation refusal,
+external missing-target repair and installed runtime publication continue to pass. Focused validation:
+34 unit cases, seven real-build integration cases and CLI typechecking. Logs:
+`/private/tmp/apack-imported-packages-unit-final.log`,
+`/private/tmp/apack-imported-packages-integration-optimized.log`,
+`/private/tmp/apack-imported-packages-typecheck.log`.
+
+The first strict run timed out in two watcher scenarios; it is not acceptance evidence
+(`/private/tmp/apack-imported-packages-strict.log`). The fix removes repeated package-root resolution,
+directory probes and ancestor guards within each subscription calculation, and uses keyed lookup for
+ordinary file changes. No cross-build byte cache or timeout increase. Subscription setup falls from
+about 2.3s to 0.28s in the isolated measurement. The shipped-pack observation is 46,912 paths,
+18 subscriptions (six recursive), about 4.8s input traversal plus 0.28s subscription calculation:
+`/private/tmp/apack-imported-packages-{cost-breakdown,watch-cost-final}.log`. These are observations,
+not a performance guarantee; full-byte graph scanning remains material.
+
+Required strict passes all 30 gates in 803.2s (one cached), including the full watcher integration
+suite, real app, smoke and packaged authoring/app paths:
+`/private/tmp/apack-imported-packages-reviewed-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T03-00-50Z-19156`.
+Committed-source strict passes in 1.7s (29 cached):
+`/private/tmp/apack-imported-packages-committed-warm.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T03-14-38Z-54000`.
+EARS and six compiled content files remain byte-identical. No public SDK API/schema, build format,
+release metadata or compatibility changes. The unrelated issue draft is excluded.
+
+This closes the runtime-byte gap for compiler-discovered npm owners, not all executable inputs.
+Continue Vue/script/style/asset and dynamic input coverage, exact compiler consumers, coherent frozen
+execution/publication and scope cost, then manual-build/drive freshness. Retain all remaining
+discovery/native/static-content, navigation, frontend boundaries, all three Phase 6 workstreams,
+lifecycle observations and final committed-source strict --all plus requirement audit. Nothing is archived.

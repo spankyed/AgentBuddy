@@ -633,3 +633,15 @@ evidence; EARS/content parity is unchanged.
 Next complete exact compiler consumers and runtime/Vue/dynamic/dependency inputs, coherent frozen
 execution/publication and scope cost, then manual-build/drive freshness. Every unfinished discovery,
 native/static-content, navigation, frontend boundary and Phase 6 requirement remains in the goal.
+
+### Compiler-discovered runtime package outcome (2026-10-14)
+
+`61d882b7d` adds compiler-discovered npm owners to the existing dependency byte graph and watcher.
+Real builds previously reused stale frontend JavaScript behind unchanged declarations; both explicit
+build and automatic-watch regressions now update it. The goal records ownership, refusal/repair,
+performance correction and full/committed-source strict evidence. Generated EARS/content are unchanged.
+
+This completes that specific undeclared-package byte gap. Vue/script/style/asset and dynamic inputs,
+exact compiler consumers, coherent frozen execution/publication, measured cost and manual-build/drive
+freshness remain required. All unfinished discovery/native/static-content, navigation, frontend
+boundaries, Phase 6 API consumption/provenance/replacement and final audit requirements remain active.

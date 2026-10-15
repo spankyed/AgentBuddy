@@ -2006,3 +2006,22 @@ Resolved type/configuration subscriptions are implemented. Runtime/Vue/dynamic a
 closure, exact compiler consumers and coherent frozen execution remain required before freshness
 certification. Then finish manual-build/drive behavior and all remaining contribution/native/static
 content and downstream goal phases.
+
+### Compiler-discovered runtime package outcome (2026-10-14)
+
+`61d882b7d` closes a concrete cached-frontend gap: unchanged npm declarations previously hid changes
+to an undeclared imported package's JavaScript. The common compiler projection now exposes package
+owners; the existing byte/dependency graph includes those owners and their transitive dependencies.
+Watch signatures and subscriptions use the same graph, including runtime files, directory membership
+and absent dependency candidates. Package entries are never executed for discovery. Consumer roots
+remain excluded from library byte scopes, including when nested beneath a discovered owner.
+
+Actual build and watcher regressions prove a JavaScript-helper-only edit updates the frontend.
+The goal records the failing baseline, scoped-link/ownership checks, async refusal and repair coverage,
+strict timeout diagnosis, subscription optimization, measured scope/cost, and passing strict checks on
+committed source. No input coverage or test budgets were dropped to obtain that result.
+
+Vue/script/style/asset and dynamic inputs, exact compiler consumers and coherent frozen execution
+remain required. Pre/post byte verification does not freeze compiler reads. Continue manual-build/
+drive freshness and every remaining supported contribution, native/static-content and downstream
+phase after those source-build requirements; this checkpoint does not complete discovery.
