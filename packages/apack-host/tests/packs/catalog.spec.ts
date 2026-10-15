@@ -372,3 +372,19 @@ it('rejects non-JSON native declaration data before cloning, without executing a
   }
   expect(readSteps).not.toHaveBeenCalled();
 });
+
+it('preserves own entity names and declaration identity across native, source and installed catalog inputs', () => {
+  const entities = Object.fromEntries([['__proto__', null]]);
+  const manifest: PackManifest = { id: 'owned', name: 'Owned', version: '1.0.0', data: { entities } };
+  const revision = _declarationRevision(manifest);
+  const catalog = createContributionCatalog(app);
+  catalog.setSources([{ dir: '/source/owned', manifest, declarationRevision: revision }]);
+  expect(Object.keys(catalog.getSnapshot().sourcePacks[0].manifest.data!.entities!)).toEqual(['__proto__']);
+  catalog.setSources([]);
+  catalog.setNative([{ id: manifest.id, data: { entities } }]);
+  expect(Object.keys(catalog.getSnapshot().native[0].data!.entities!)).toEqual(['__proto__']);
+  catalog.setNative([]);
+  catalog.replace([{ dir: '/installed/owned', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
+    declarationRevision: revision, manifest, types: { entities: Object.fromEntries([['__proto__', '__proto__']]), relKinds: {} }, facades: {} } }]);
+  expect(Object.keys(catalog.get('owned')!.snapshot.manifest.data!.entities!)).toEqual(['__proto__']);
+});

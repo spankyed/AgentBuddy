@@ -374,3 +374,29 @@ it('generates owner-writable and dependency-readonly handles for both settings o
   `);
   expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
 });
+
+it('preserves prototype-like entity wires in generated registrations and typed/untyped EARS', async () => {
+  write('src/shape.ts', 'throw new Error("shape modules must never execute");\nexport interface EntityShape { title: string }\n');
+  const fields = { data: { entities: Object.fromEntries([['__proto__', 'src/shape.ts#EntityShape'], ['Untyped', null]]) } };
+  const files = await generatePackFiles(manifest(fields), { packRoot: root });
+  write('src/probe.ts', `import { EARS, type EntityShape } from './__generated__/ears.ts';
+    import { registration } from './__generated__/pack-entry.ts';
+    function check(typed: EntityShape<'__proto__'>, untyped: EntityShape<'Untyped'>) {
+      const title: string = typed.title;
+      // @ts-expect-error a declared string field is not a number
+      const bad: number = typed.title;
+      const extra: unknown = untyped.extra;
+      // @ts-expect-error untyped entities do not acquire typed fields
+      const invented: string = untyped.extra;
+    }
+    const wire: EARS.Entity.__proto__ = EARS.Entity.__proto__;
+    if (wire !== '__proto__' || !Object.hasOwn(EARS.Entity, '__proto__')) throw new Error('EARS wire lost');
+    if (registration.ears?.entities?.['__proto__'] !== wire || !Object.hasOwn(registration.ears.entities, '__proto__')) throw new Error('Registration wire lost');
+    if (Object.getPrototypeOf(registration.ears.entities) !== Object.prototype) throw new Error('Prototype changed');
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*', '@apackdev/ears'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});

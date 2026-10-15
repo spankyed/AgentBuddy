@@ -1,3 +1,4 @@
+import { declarationRecord } from './declaration-record.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from './data-declaration.ts';
@@ -60,7 +61,7 @@ const ModulePathSchema = z.string().regex(_MODULE_PATH_PATTERN, 'Must name a mod
 /** A named export of a pack source file. */
 const ExportTargetSchema = z.string().regex(_MODULE_REFERENCE_PATTERN, 'Must be "path#exportName"');
 
-const EntitiesSchema = z.record(z.string().min(1), ExportTargetSchema.nullable())
+const EntitiesSchema = declarationRecord(z.string().min(1), ExportTargetSchema.nullable())
   .describe('Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities.');
 const RelationsSchema = z.array(z.string().regex(_RELATION_WIRE_PATTERN, 'Must be a snake_case relation wire name'))
   .superRefine((relations, ctx) => {
@@ -81,7 +82,7 @@ const JsonObjectSchema = z.custom<Record<string, unknown>>(value => value !== nu
   }).transform(value => structuredClone(value));
 
 const SettingsDefinitionShape = {
-  schema: z.record(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
+  schema: declarationRecord(z.unknown()).describe('JSON Schema draft-07 for the effective settings object; references stay within this schema.'),
   defaults: JsonObjectSchema.describe('Complete explicit baseline values, validated without coercion or schema default population.'),
   title: z.string().min(1).describe("Display title for this preference group; falls back to its group ID or feature label.").optional(),
   description: z.string().describe("Explanatory text shown above this group's custom settings form.").optional(),
@@ -130,8 +131,8 @@ function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.R
 /** @internal Host composition admits shared declaration data independently of executable bindings. */
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
-  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
-  settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
+  dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
+  settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
@@ -140,7 +141,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
-  features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
+  features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, plugin: true, references: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
@@ -209,7 +210,7 @@ export const DslEntrySchema = z.object({
   entry: ModulePathSchema.describe('Path to the DSL type definition module.'),
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
   prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
-  globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
+  globals: declarationRecord(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
   inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apackdev/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
@@ -246,7 +247,7 @@ export const ContentFormatSchema = z.object({
   identity: z.array(z.string()).min(1)
     .describe('Fields matched to find an existing entity ("parent" = the tree parent). Ignored for entity types whose owning pack registers a content writer with "find".').optional(),
   tree: ContentTreeSpecSchema.describe('Walk subdirectories as parent entities.').optional(),
-  fields: z.record(z.string(), ContentFieldSpecSchema).describe('Item fields for markdown-tree: field name → where its value comes from.').optional(),
+  fields: declarationRecord(z.string(), ContentFieldSpecSchema).describe('Item fields for markdown-tree: field name → where its value comes from.').optional(),
   media: z.string().regex(MEDIA_PATH, 'Must be a relative directory under the entry\'s path, without "." or ".." segments')
     .describe('A directory under a source\'s path copied with the content; media/<file> links become media://<id>/<file>.').optional(),
 }).strict().superRefine((format, ctx) => {
@@ -292,7 +293,7 @@ const SPECIALTY_FIELDS = new Set(['path', 'onUserEdit']);
 // Content keys name files and folders in the compiled output (<key>.content.json, media/<key>) and generated identifiers
 const CONTENT_KEY_SCHEMA = z.string().regex(CONTENT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
 
-const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), ContentSourceSchema])).superRefine((sources, ctx) => {
+const ContentSourcesSchema = declarationRecord(CONTENT_KEY_SCHEMA, z.union([z.string(), ContentSourceSchema])).superRefine((sources, ctx) => {
   for (const [key, entry] of Object.entries(sources)) {
     if (SPECIALTY_CONTENT_KEYS.includes(key)) {
       if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => !SPECIALTY_FIELDS.has(field)))) {
@@ -318,7 +319,7 @@ const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), C
  * It is not an `extensions.artifacts` entry, which is a viewer type the app registers. Nothing of a
  * dataset is registered or reachable from another pack: the declaring pack compiles it and reads it.
  */
-const ContentDatasetsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).superRefine((datasets, ctx) => {
+const ContentDatasetsSchema = declarationRecord(CONTENT_KEY_SCHEMA, ContentSourceSchema).superRefine((datasets, ctx) => {
   for (const [key, entry] of Object.entries(datasets)) {
     if (!entry.path || !entry.format || entry.applier) {
       ctx.addIssue({ code: 'custom', path: [key], message: `Dataset "${key}" must be { "path", "format" }: it is compiled and never written, so it takes no applier` });
@@ -396,17 +397,17 @@ const StepFrontendShape = {
 } satisfies Record<keyof StepFrontendDeclaration, z.ZodTypeAny>;
 const StepFrontendSchema: z.ZodType<StepFrontendDeclaration> = z.object(StepFrontendShape).strict();
 const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
-  types: z.record(ReferenceNameSchema, z.object({
+  types: declarationRecord(ReferenceNameSchema, z.object({
     category: ReferenceNameSchema.describe('Category ID grouping this reference type in the picker.'),
     icon: IconSchema.describe('Lucide icon export name or a declared component module for this reference type.'),
     svgElements: z.array(z.union([
       z.tuple([z.literal('path'), z.object({ d: z.string().describe('SVG path geometry.') }).strict()]),
-      z.tuple([z.literal('rect'), z.record(z.string())]),
-      z.tuple([z.literal('circle'), z.record(z.string())]),
+      z.tuple([z.literal('rect'), declarationRecord(z.string())]),
+      z.tuple([z.literal('circle'), declarationRecord(z.string())]),
     ])).describe('Static SVG geometry for rendering this reference in serialized editor content.'),
     navigate: ExportTargetSchema.describe('Named navigation callback export invoked when this reference is opened.'),
   }).strict()).describe('Reference type IDs with static presentation and declared navigation bindings.'),
-  categories: z.record(ReferenceNameSchema, z.object({
+  categories: declarationRecord(ReferenceNameSchema, z.object({
     label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')
       .describe('Visible category label in the reference picker.'),
     icon: IconSchema.describe('Lucide icon export name or a declared component module for this category.'),
@@ -420,7 +421,7 @@ const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
   state: ModuleTargetSchema.describe('Machine module, by default export or path#exportName.'),
   icon: z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema])
     .describe('Lucide icon export name or component module displayed in shell navigation.').optional(),
-  canvas: z.union([ComponentTargetSchema, z.object({ routes: z.record(z.string().min(1)
+  canvas: z.union([ComponentTargetSchema, z.object({ routes: declarationRecord(z.string().min(1)
     .refine(route => !['__proto__', 'constructor', 'prototype'].includes(route), 'Reserved route name'), ComponentTargetSchema)
     .refine(routes => Object.keys(routes).length > 0, 'Must declare at least one route')
     .describe('Canvas components keyed by the route names published by this plugin.') }).strict()])
@@ -468,7 +469,7 @@ const EXTENSION_TYPE_SCHEMA = z.string()
 
 /**
  * One message block: what it is, and where the code that draws it lives. `fe` is a path because a `.vue`
- * file's component is its default export, the way `fe.appExtensions` names one.
+ * file's component is its default export, the way `extensions.appExtensions` names one.
  */
 export const BlockEntrySchema = z.object({
   kind: z.enum(['display', 'input']).describe('Whether the chat renders it as content or as something the user acts on. Display is the default.').optional(),
@@ -493,9 +494,9 @@ export const ContentConfigSchema = z.object({
     .describe('Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
   datasets: ContentDatasetsSchema
     .describe('Compiled datasets the pack reads back itself, never written to the database. Each names a format declaring no entity.').optional(),
-  formats: z.record(CONTENT_KEY_SCHEMA, ContentFormatSchema)
+  formats: declarationRecord(CONTENT_KEY_SCHEMA, ContentFormatSchema)
     .describe('Named formats that turn a source into items. A content source names one; a dependent pack names one of these as "<this pack id>:<name>".').optional(),
-  writers: z.record(z.string(), ExportTargetSchema)
+  writers: declarationRecord(z.string(), ExportTargetSchema)
     .describe('How one entity type this pack declares is found, created, updated and removed when content is written as it ("path#exportName" of a ContentWriter object). Any pack writing that entity type goes through them.').optional(),
 }).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
 
@@ -505,7 +506,7 @@ export const LifecycleConfigSchema = z.object({
 } satisfies Record<keyof PackLifecycleDeclaration, z.ZodTypeAny>).strict().describe('Explicit lifecycle function targets, discoverable without loading their modules.');
 
 
-const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
+const ServicesSchema = declarationRecord(IdentifierSchema, ExportTargetSchema);
 
 /**
  * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
@@ -539,7 +540,7 @@ export const FeatureEntrySchema = z.object({
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
-  repositories: z.record(IdentifierSchema, ExportTargetSchema)
+  repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
   references: ReferencesSchema.describe('Reference identities and presentation, with explicit navigation and reactive item-provider exports.').optional(),
 }).strict();
@@ -557,14 +558,14 @@ const BuildConfigSchema = z.object({
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
 const TiptapPluginSchema = z.object({
-  extensions: z.record(IdentifierSchema, ExportTargetSchema).describe('Tiptap extension name to its exported extension object ("path#exportName"). Each key must match the exported object\'s Tiptap name.').optional(),
-  popups: z.record(IdentifierSchema, ModulePathSchema).describe('Popup IDs local to this group, mapped to pack-root-relative Vue component modules.').optional(),
+  extensions: declarationRecord(IdentifierSchema, ExportTargetSchema).describe('Tiptap extension name to its exported extension object ("path#exportName"). Each key must match the exported object\'s Tiptap name.').optional(),
+  popups: declarationRecord(IdentifierSchema, ModulePathSchema).describe('Popup IDs local to this group, mapped to pack-root-relative Vue component modules.').optional(),
   isSuggestionActive: ExportTargetSchema.describe('Exported predicate ("path#exportName") reporting whether this group has an active suggestion for the current editor state.').optional(),
 } satisfies Record<keyof TiptapPluginDeclaration, z.ZodTypeAny>).strict();
 
 const FrontendConfigSchema = z.object({
-  tiptapPlugins: z.record(IdentifierSchema, TiptapPluginSchema).describe('Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code.').optional(),
-  appExtensions: z.record(IdentifierSchema, ModulePathSchema).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
+  tiptapPlugins: declarationRecord(IdentifierSchema, TiptapPluginSchema).describe('Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code.').optional(),
+  appExtensions: declarationRecord(IdentifierSchema, ModulePathSchema).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
 } satisfies Record<keyof FrontendDeclaration, z.ZodTypeAny>).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 
 /**
@@ -580,8 +581,8 @@ function extensionPoint<T extends z.ZodTypeAny>(
   entry: T,
   what: string,
   key: z.ZodString = EXTENSION_TYPE_SCHEMA,
-): z.ZodOptional<z.ZodRecord<z.ZodString, T>> {
-  return z.record(key, entry)
+) {
+  return declarationRecord(key, entry)
     .describe(`${what} The type is the key, so a pack cannot declare one twice.`)
     .optional();
 }
@@ -592,7 +593,7 @@ function extensionPoint<T extends z.ZodTypeAny>(
  * reach; a setting that only changes what `apack pack build` produces is `build`, not one of these.
  */
 const ExtensionsSchema = z.object({
-  settings: z.record(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
+  settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN, 'A settings group must start with a lowercase letter and contain only letters and digits'), SettingsDefinitionSchema)
     .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
   help: z.object({ path: z.string().min(1).describe('Pack-root-relative directory of Markdown help articles compiled during the pack build.') }).strict()
     .describe('Markdown help articles compiled into the snapshot for inspection without loading pack code.').optional(),
@@ -606,7 +607,7 @@ const ExtensionsSchema = z.object({
   ),
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
-  dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
+  dsl: declarationRecord(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   ...FrontendConfigSchema.shape,
 }).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
 
@@ -647,9 +648,9 @@ export const MigrationDeclarationSchema = z.object({
 }).strict();
 
 export const MigrationsSchema = z.object({
-  app: z.record(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
+  app: declarationRecord(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
     .describe('Migrations on apack\'s version line, keyed by the release each targets. For data whose shape follows the app rather than this pack.').optional(),
-  pack: z.record(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
+  pack: declarationRecord(MIGRATION_TARGET_SCHEMA, MigrationDeclarationSchema)
     .describe('Migrations on this pack\'s own version line, keyed by the version each targets, compared against `version` in this manifest.').optional(),
 }).strict().describe('Migrations this pack runs, under the version line each targets. The key is the version; the declaration owns its description and names the executable up function.');
 
@@ -688,11 +689,11 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   description: z.string().describe('Short description of the pack\'s purpose.').optional(),
   hostVersion: PackRangeSchema.describe('Nonempty npm semver range for compatible host versions (e.g. ">=0.3.0").').optional(),
   license: z.string().describe('SPDX license identifier.').optional(),
-  dependencies: z.record(z.string().regex(PACK_ID_PATTERN), PackDependencySchema)
+  dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackDependencySchema)
     .describe('Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range].').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   data: DataSchema.optional(),
-  features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
+  features: declarationRecord(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   extensions: ExtensionsSchema.optional(),
   lifecycle: LifecycleConfigSchema.optional(),

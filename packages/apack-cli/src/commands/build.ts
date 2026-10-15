@@ -206,8 +206,8 @@ async function buildIntoStaging(args: string[], root: string) {
   // is what an unshaped entity does anyway.
   const depTypeManifests = [...depSnapshots.values()].map((snap) => snap.types);
   const types: PackTypeManifest = {
-    entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), _packEntityTypes(manifest)),
-    relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), _packRelationTypes(manifest)),
+    entities: Object.fromEntries([...depTypeManifests.flatMap(t => Object.entries(t.entities ?? {})), ...Object.entries(_packEntityTypes(manifest))]),
+    relKinds: Object.fromEntries([...depTypeManifests.flatMap(t => Object.entries(t.relKinds ?? {})), ...Object.entries(_packRelationTypes(manifest))]),
   };
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const facades: Record<string, string> = {};

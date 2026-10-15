@@ -130,7 +130,7 @@ describe('dependency type-data reader', () => {
     else data.format = format;
     const result = parseDependencySnapshot(data);
     expect(result.status).toBe('valid');
-    expect(result.snapshot).toBe(data);
+    expect(result.snapshot).toEqual(data);
     expect(result.snapshot?.format).toBe(format);
     expect(Object.hasOwn(result.snapshot!, 'format')).toBe(format !== undefined);
     expect(result.diagnostics.length).toBe(format === PACK_SNAPSHOT_FORMAT ? 0 : 1);

@@ -1,11 +1,16 @@
+import { declarationRecordGrammar } from '../src/framework/declaration-record.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { zodToJsonSchema, parseDef, ignoreOverride } from 'zod-to-json-schema';
 import { ManifestSchema } from '../src/framework/declaration-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../src/types/sdk-entities.ts';
 
 const jsonSchema = zodToJsonSchema(ManifestSchema, {
   $refStrategy: 'none',
+  override(def, refs) {
+    const grammar = declarationRecordGrammar(def);
+    return grammar ? parseDef({ ...grammar._def, description: def.description }, refs) : ignoreOverride;
+  },
 });
 
 // The schema's refinements aren't JSON Schema: state the SDK's reserved names here, so editors flag them too

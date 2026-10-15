@@ -233,15 +233,11 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
         branchEntity?: string | undefined;
         relKind?: string | undefined;
     }>>;
-    fields: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        from: z.ZodString;
-        default: z.ZodOptional<z.ZodUnknown>;
-        type: z.ZodOptional<z.ZodLiteral<"string">>;
-    }, "strict", z.ZodTypeAny, {
+    fields: z.ZodOptional<z.ZodType<Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         from: string;
         type?: "string" | undefined;
         default?: unknown;
@@ -392,7 +388,7 @@ export const DslEntrySchema: z.ZodObject<{
     entry: z.ZodString;
     targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
     prefix: z.ZodOptional<z.ZodString>;
-    globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    globals: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, "strict", z.ZodTypeAny, {
     entry: string;
@@ -462,10 +458,10 @@ export const FEATURE_ID_PATTERN: RegExp;
 // @public (undocumented)
 export const FeatureEntrySchema: z.ZodObject<{
     description: z.ZodString;
-    entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+    entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
-        schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        schema: z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>;
         defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
         title: z.ZodOptional<z.ZodString>;
         description: z.ZodOptional<z.ZodString>;
@@ -518,8 +514,8 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>;
-    services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-    repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+    repositories: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
 }, "strict", z.ZodTypeAny, {
     description: string;
@@ -645,10 +641,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     description: z.ZodOptional<z.ZodString>;
     hostVersion: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     license: z.ZodOptional<z.ZodString>;
-    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodString, string, string>>>;
+    dependencies: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     data: z.ZodOptional<z.ZodObject<{
-        entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+        entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
         relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
         entities?: Record<string, string | null> | undefined;
@@ -657,68 +653,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         entities?: Record<string, string | null> | undefined;
         relations?: string[] | undefined;
     }>>;
-    features: z.ZodOptional<z.ZodRecord<z.ZodEffects<z.ZodString, string, string>, z.ZodObject<{
-        description: z.ZodString;
-        entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
-        designation: z.ZodOptional<z.ZodString>;
-        settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
-            schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-            defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
-            title: z.ZodOptional<z.ZodString>;
-            description: z.ZodOptional<z.ZodString>;
-            form: z.ZodOptional<z.ZodString>;
-            access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
-        }, "strict", z.ZodTypeAny, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }>, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }, unknown>>;
-        types: z.ZodOptional<z.ZodString>;
-        system: z.ZodOptional<z.ZodObject<{
-            entry: z.ZodString;
-            contract: z.ZodOptional<z.ZodString>;
-            events: z.ZodOptional<z.ZodObject<{
-                incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            }, "strict", z.ZodTypeAny, {
-                incoming?: string[] | undefined;
-            }, {
-                incoming?: string[] | undefined;
-            }>>;
-        }, "strict", z.ZodTypeAny, {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        }, {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        }>>;
-        plugin: z.ZodOptional<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>;
-        services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
-    }, "strict", z.ZodTypeAny, {
+    features: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         services?: Record<string, string> | undefined;
@@ -742,7 +677,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
         references?: ReferenceDeclarations | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         services?: Record<string, string> | undefined;
@@ -761,49 +696,24 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         references?: ReferenceDeclarations | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
-        tiptapPlugins: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            extensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-            popups: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-            isSuggestionActive: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
+        tiptapPlugins: z.ZodOptional<z.ZodType<Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             extensions?: Record<string, string> | undefined;
             popups?: Record<string, string> | undefined;
             isSuggestionActive?: string | undefined;
         }>>>;
-        appExtensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        settings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
-            schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-            defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
-            title: z.ZodOptional<z.ZodString>;
-            description: z.ZodOptional<z.ZodString>;
-            form: z.ZodOptional<z.ZodString>;
-            access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
-        }, "strict", z.ZodTypeAny, {
+        appExtensions: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+        settings: z.ZodOptional<z.ZodType<Record<string, {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
             form?: string | undefined;
             title?: string | undefined;
             description?: string | undefined;
             access?: "owner" | "shared" | undefined;
-        }, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }>, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }, unknown>>>;
+        }>, z.ZodTypeDef, Record<string, unknown>>>;
         help: z.ZodOptional<z.ZodObject<{
             path: z.ZodString;
         }, "strict", z.ZodTypeAny, {
@@ -811,79 +721,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }, {
             path: string;
         }>>;
-        steps: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
-            kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
-            node: z.ZodObject<{
-                label: z.ZodString;
-                defaultLabel: z.ZodOptional<z.ZodString>;
-                defaults: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>>;
-            }, "strict", z.ZodTypeAny, {
-                label: string;
-                defaults?: Record<string, unknown> | undefined;
-                defaultLabel?: string | undefined;
-            }, {
-                label: string;
-                defaults?: Record<string, unknown> | undefined;
-                defaultLabel?: string | undefined;
-            }>;
-            build: z.ZodOptional<z.ZodString>;
-            trigger: z.ZodOptional<z.ZodObject<{
-                facet: z.ZodString;
-                register: z.ZodOptional<z.ZodString>;
-            }, "strict", z.ZodTypeAny, {
-                facet: string;
-                register?: string | undefined;
-            }, {
-                facet: string;
-                register?: string | undefined;
-            }>>;
-            fe: z.ZodOptional<z.ZodLazy<z.ZodType<StepFrontendDeclaration, z.ZodTypeDef, StepFrontendDeclaration>>>;
-            types: z.ZodOptional<z.ZodString>;
-            runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
-                handler: z.ZodOptional<z.ZodString>;
-                sync: z.ZodOptional<z.ZodLiteral<true>>;
-                isAsync: z.ZodOptional<z.ZodLiteral<true>>;
-                waits: z.ZodOptional<z.ZodLiteral<true>>;
-                spawnsSubflow: z.ZodOptional<z.ZodLiteral<true>>;
-            }, "strict", z.ZodTypeAny, {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            }, {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            }>, {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            }, {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            }>>;
-            dsl: z.ZodOptional<z.ZodObject<{
-                primaryField: z.ZodOptional<z.ZodString>;
-                defaultLabel: z.ZodOptional<z.ZodString>;
-                helpers: z.ZodOptional<z.ZodString>;
-            }, "strict", z.ZodTypeAny, {
-                defaultLabel?: string | undefined;
-                primaryField?: string | undefined;
-                helpers?: string | undefined;
-            }, {
-                defaultLabel?: string | undefined;
-                primaryField?: string | undefined;
-                helpers?: string | undefined;
-            }>>;
-        }, "strict", z.ZodTypeAny, {
+        steps: z.ZodOptional<z.ZodType<Record<string, {
             node: {
                 label: string;
                 defaults?: Record<string, unknown> | undefined;
@@ -909,59 +747,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
-        }, {
-            node: {
-                label: string;
-                defaults?: Record<string, unknown> | undefined;
-                defaultLabel?: string | undefined;
-            };
-            types?: string | undefined;
-            trigger?: {
-                facet: string;
-                register?: string | undefined;
-            } | undefined;
-            kind?: "step" | "trigger" | undefined;
-            build?: string | undefined;
-            fe?: StepFrontendDeclaration | undefined;
-            runtime?: {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            } | undefined;
-            dsl?: {
-                defaultLabel?: string | undefined;
-                primaryField?: string | undefined;
-                helpers?: string | undefined;
-            } | undefined;
-        }>, {
-            node: {
-                label: string;
-                defaults?: Record<string, unknown> | undefined;
-                defaultLabel?: string | undefined;
-            };
-            types?: string | undefined;
-            trigger?: {
-                facet: string;
-                register?: string | undefined;
-            } | undefined;
-            kind?: "step" | "trigger" | undefined;
-            build?: string | undefined;
-            fe?: StepFrontendDeclaration | undefined;
-            runtime?: {
-                isAsync?: true | undefined;
-                handler?: string | undefined;
-                sync?: true | undefined;
-                waits?: true | undefined;
-                spawnsSubflow?: true | undefined;
-            } | undefined;
-            dsl?: {
-                defaultLabel?: string | undefined;
-                primaryField?: string | undefined;
-                helpers?: string | undefined;
-            } | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             node: {
                 label: string;
                 defaults?: Record<string, unknown> | undefined;
@@ -988,50 +774,35 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 helpers?: string | undefined;
             } | undefined;
         }>>>;
-        artifacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            icon: z.ZodString;
-            fe: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
+        artifacts: z.ZodOptional<z.ZodType<Record<string, {
             icon: string;
             fe?: string | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             icon: string;
             fe?: string | undefined;
         }>>>;
-        blocks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            kind: z.ZodOptional<z.ZodEnum<["display", "input"]>>;
-            fe: z.ZodOptional<z.ZodString>;
-            be: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
+        blocks: z.ZodOptional<z.ZodType<Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
             be?: string | undefined;
         }>>>;
-        commands: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            placeholder: z.ZodString;
-        }, "strict", z.ZodTypeAny, {
+        commands: z.ZodOptional<z.ZodType<Record<string, {
             placeholder: string;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             placeholder: string;
         }>>>;
-        services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        dsl: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            entry: z.ZodString;
-            targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
-            prefix: z.ZodOptional<z.ZodString>;
-            globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-            inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-        }, "strict", z.ZodTypeAny, {
+        services: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+        dsl: z.ZodOptional<z.ZodType<Record<string, {
             entry: string;
             targets: "monaco"[];
             prefix?: string | undefined;
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             entry: string;
             targets: "monaco"[];
             prefix?: string | undefined;
@@ -1173,22 +944,17 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         onShutdown?: string | undefined;
     }>>;
     content: z.ZodOptional<z.ZodObject<{
-        sources: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
-            path: z.ZodOptional<z.ZodString>;
-            format: z.ZodOptional<z.ZodString>;
-            applier: z.ZodOptional<z.ZodString>;
-            onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
-        }, "strict", z.ZodTypeAny, {
+        sources: z.ZodOptional<z.ZodEffects<z.ZodType<Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
-        }>]>>, Record<string, string | {
+        }>>, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1199,17 +965,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
-        datasets: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodObject<{
-            path: z.ZodOptional<z.ZodString>;
-            format: z.ZodOptional<z.ZodString>;
-            applier: z.ZodOptional<z.ZodString>;
-            onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
-        }, "strict", z.ZodTypeAny, {
+        datasets: z.ZodOptional<z.ZodEffects<z.ZodType<Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1225,39 +986,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
-        formats: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
-            format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
-            compiler: z.ZodOptional<z.ZodString>;
-            entity: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>;
-            identity: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            tree: z.ZodOptional<z.ZodObject<{
-                branch: z.ZodOptional<z.ZodString>;
-                branchEntity: z.ZodOptional<z.ZodString>;
-                relKind: z.ZodOptional<z.ZodString>;
-            }, "strict", z.ZodTypeAny, {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            }, {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            }>>;
-            fields: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-                from: z.ZodString;
-                default: z.ZodOptional<z.ZodUnknown>;
-                type: z.ZodOptional<z.ZodLiteral<"string">>;
-            }, "strict", z.ZodTypeAny, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }>>>;
-            media: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
+        formats: z.ZodOptional<z.ZodType<Record<string, {
             format?: "json" | "markdown-tree" | undefined;
             fields?: Record<string, {
                 from: string;
@@ -1273,39 +1002,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 relKind?: string | undefined;
             } | undefined;
             media?: string | undefined;
-        }, {
-            format?: "json" | "markdown-tree" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            entity?: string | string[] | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }>, {
-            format?: "json" | "markdown-tree" | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            entity?: string | string[] | undefined;
-            compiler?: string | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            media?: string | undefined;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             format?: "json" | "markdown-tree" | undefined;
             fields?: Record<string, {
                 from: string;
@@ -1322,7 +1019,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             media?: string | undefined;
         }>>>;
-        writers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        writers: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     }, "strict", z.ZodTypeAny, {
         sources?: Record<string, string | {
             path?: string | undefined;
@@ -1387,23 +1084,17 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         writers?: Record<string, string> | undefined;
     }>>;
     migrations: z.ZodOptional<z.ZodObject<{
-        app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            description: z.ZodString;
-            up: z.ZodString;
-        }, "strict", z.ZodTypeAny, {
+        app: z.ZodOptional<z.ZodType<Record<string, {
             description: string;
             up: string;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             description: string;
             up: string;
         }>>>;
-        pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            description: z.ZodString;
-            up: z.ZodString;
-        }, "strict", z.ZodTypeAny, {
+        pack: z.ZodOptional<z.ZodType<Record<string, {
             description: string;
             up: string;
-        }, {
+        }>, z.ZodTypeDef, Record<string, {
             description: string;
             up: string;
         }>>>;
@@ -2264,23 +1955,17 @@ export type MigrationLine = keyof typeof MigrationsSchema.shape;
 
 // @public (undocumented)
 export const MigrationsSchema: z.ZodObject<{
-    app: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        description: z.ZodString;
-        up: z.ZodString;
-    }, "strict", z.ZodTypeAny, {
+    app: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
         up: string;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         description: string;
         up: string;
     }>>>;
-    pack: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        description: z.ZodString;
-        up: z.ZodString;
-    }, "strict", z.ZodTypeAny, {
+    pack: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
         up: string;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         description: string;
         up: string;
     }>>>;
@@ -2307,38 +1992,17 @@ export const MigrationsSchema: z.ZodObject<{
 // @internal
 export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     id: z.ZodString;
-    dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodString, string, string>>>;
-    settings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
-        schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-        defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
-        title: z.ZodOptional<z.ZodString>;
-        description: z.ZodOptional<z.ZodString>;
-        form: z.ZodOptional<z.ZodString>;
-        access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
-    }, "strict", z.ZodTypeAny, {
+    dependencies: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+    settings: z.ZodOptional<z.ZodType<Record<string, {
         schema: Record<string, unknown>;
         defaults: Record<string, unknown>;
         form?: string | undefined;
         title?: string | undefined;
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
-    }, {
-        schema: Record<string, unknown>;
-        defaults: Record<string, unknown>;
-        form?: string | undefined;
-        title?: string | undefined;
-        description?: string | undefined;
-        access?: "owner" | "shared" | undefined;
-    }>, {
-        schema: Record<string, unknown>;
-        defaults: Record<string, unknown>;
-        form?: string | undefined;
-        title?: string | undefined;
-        description?: string | undefined;
-        access?: "owner" | "shared" | undefined;
-    }, unknown>>>;
+    }>, z.ZodTypeDef, Record<string, unknown>>>;
     data: z.ZodOptional<z.ZodObject<{
-        entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+        entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
         relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
     }, "strict", z.ZodTypeAny, {
         entities?: Record<string, string | null> | undefined;
@@ -2357,79 +2021,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     }>>>;
-    steps: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
-        kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
-        node: z.ZodObject<{
-            label: z.ZodString;
-            defaultLabel: z.ZodOptional<z.ZodString>;
-            defaults: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>>;
-        }, "strict", z.ZodTypeAny, {
-            label: string;
-            defaults?: Record<string, unknown> | undefined;
-            defaultLabel?: string | undefined;
-        }, {
-            label: string;
-            defaults?: Record<string, unknown> | undefined;
-            defaultLabel?: string | undefined;
-        }>;
-        build: z.ZodOptional<z.ZodString>;
-        trigger: z.ZodOptional<z.ZodObject<{
-            facet: z.ZodString;
-            register: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
-            facet: string;
-            register?: string | undefined;
-        }, {
-            facet: string;
-            register?: string | undefined;
-        }>>;
-        fe: z.ZodOptional<z.ZodLazy<z.ZodType<StepFrontendDeclaration, z.ZodTypeDef, StepFrontendDeclaration>>>;
-        types: z.ZodOptional<z.ZodString>;
-        runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
-            handler: z.ZodOptional<z.ZodString>;
-            sync: z.ZodOptional<z.ZodLiteral<true>>;
-            isAsync: z.ZodOptional<z.ZodLiteral<true>>;
-            waits: z.ZodOptional<z.ZodLiteral<true>>;
-            spawnsSubflow: z.ZodOptional<z.ZodLiteral<true>>;
-        }, "strict", z.ZodTypeAny, {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        }, {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        }>, {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        }, {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        }>>;
-        dsl: z.ZodOptional<z.ZodObject<{
-            primaryField: z.ZodOptional<z.ZodString>;
-            defaultLabel: z.ZodOptional<z.ZodString>;
-            helpers: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
-            defaultLabel?: string | undefined;
-            primaryField?: string | undefined;
-            helpers?: string | undefined;
-        }, {
-            defaultLabel?: string | undefined;
-            primaryField?: string | undefined;
-            helpers?: string | undefined;
-        }>>;
-    }, "strict", z.ZodTypeAny, {
+    steps: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         node: {
             label: string;
             defaults?: Record<string, unknown> | undefined;
@@ -2455,59 +2047,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
-    }, {
-        node: {
-            label: string;
-            defaults?: Record<string, unknown> | undefined;
-            defaultLabel?: string | undefined;
-        };
-        types?: string | undefined;
-        trigger?: {
-            facet: string;
-            register?: string | undefined;
-        } | undefined;
-        kind?: "step" | "trigger" | undefined;
-        build?: string | undefined;
-        fe?: StepFrontendDeclaration | undefined;
-        runtime?: {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        } | undefined;
-        dsl?: {
-            defaultLabel?: string | undefined;
-            primaryField?: string | undefined;
-            helpers?: string | undefined;
-        } | undefined;
-    }>, {
-        node: {
-            label: string;
-            defaults?: Record<string, unknown> | undefined;
-            defaultLabel?: string | undefined;
-        };
-        types?: string | undefined;
-        trigger?: {
-            facet: string;
-            register?: string | undefined;
-        } | undefined;
-        kind?: "step" | "trigger" | undefined;
-        build?: string | undefined;
-        fe?: StepFrontendDeclaration | undefined;
-        runtime?: {
-            isAsync?: true | undefined;
-            handler?: string | undefined;
-            sync?: true | undefined;
-            waits?: true | undefined;
-            spawnsSubflow?: true | undefined;
-        } | undefined;
-        dsl?: {
-            defaultLabel?: string | undefined;
-            primaryField?: string | undefined;
-            helpers?: string | undefined;
-        } | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         node: {
             label: string;
             defaults?: Record<string, unknown> | undefined;
@@ -2534,124 +2074,46 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }>>>>;
-    artifacts: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        icon: z.ZodString;
-        fe: z.ZodOptional<z.ZodString>;
-    }, "strict", z.ZodTypeAny, {
+    artifacts: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         icon: string;
         fe?: string | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         icon: string;
         fe?: string | undefined;
     }>>>>;
-    blocks: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        kind: z.ZodOptional<z.ZodEnum<["display", "input"]>>;
-        fe: z.ZodOptional<z.ZodString>;
-        be: z.ZodOptional<z.ZodString>;
-    }, "strict", z.ZodTypeAny, {
+    blocks: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
     }>>>>;
-    dsl: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        entry: z.ZodString;
-        targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
-        prefix: z.ZodOptional<z.ZodString>;
-        globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strict", z.ZodTypeAny, {
+    dsl: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         entry: string;
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         entry: string;
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }>>>>;
-    tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-        extensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        popups: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        isSuggestionActive: z.ZodOptional<z.ZodString>;
-    }, "strict", z.ZodTypeAny, {
+    tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
         isSuggestionActive?: string | undefined;
     }>>>>;
-    appExtensions: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>>;
-    features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodLazy<z.ZodObject<Pick<{
-        description: z.ZodString;
-        entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
-        designation: z.ZodOptional<z.ZodString>;
-        settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
-            schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-            defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
-            title: z.ZodOptional<z.ZodString>;
-            description: z.ZodOptional<z.ZodString>;
-            form: z.ZodOptional<z.ZodString>;
-            access: z.ZodOptional<z.ZodEnum<["shared", "owner"]>>;
-        }, "strict", z.ZodTypeAny, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }>, {
-            schema: Record<string, unknown>;
-            defaults: Record<string, unknown>;
-            form?: string | undefined;
-            title?: string | undefined;
-            description?: string | undefined;
-            access?: "owner" | "shared" | undefined;
-        }, unknown>>;
-        types: z.ZodOptional<z.ZodString>;
-        system: z.ZodOptional<z.ZodObject<{
-            entry: z.ZodString;
-            contract: z.ZodOptional<z.ZodString>;
-            events: z.ZodOptional<z.ZodObject<{
-                incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            }, "strict", z.ZodTypeAny, {
-                incoming?: string[] | undefined;
-            }, {
-                incoming?: string[] | undefined;
-            }>>;
-        }, "strict", z.ZodTypeAny, {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        }, {
-            entry: string;
-            contract?: string | undefined;
-            events?: {
-                incoming?: string[] | undefined;
-            } | undefined;
-        }>>;
-        plugin: z.ZodOptional<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>;
-        services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
-    }, "entities" | "description" | "designation" | "settings" | "plugin" | "references">, "strict", z.ZodTypeAny, {
+    appExtensions: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>>;
+    features: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         designation?: string | undefined;
@@ -2665,14 +2127,14 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
-    }, {
+    }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
-    }>>>>;
+    }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
     data?: {

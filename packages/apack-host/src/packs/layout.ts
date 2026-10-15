@@ -266,7 +266,7 @@ function checkedSnapshot(raw: unknown, manifest: unknown): PackSnapshot {
   if (mismatch) throw new Error(snapshotFormatProblem(mismatch, PACK_SNAPSHOT_FORMAT));
   const result = parseSnapshot(raw);
   if (!result.snapshot) throw new Error(result.diagnostics.map(issue => issue.message).join('; '));
-  if (JSON.stringify(manifest) !== JSON.stringify(result.snapshot.manifest)) {
+  if (!isDeepStrictEqual(manifest, result.snapshot.manifest)) {
     throw new Error('its manifest does not match its built declarations; rebuild and install the complete pack');
   }
   return result.snapshot;
