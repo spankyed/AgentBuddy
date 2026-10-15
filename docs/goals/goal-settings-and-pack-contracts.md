@@ -206,7 +206,7 @@ writing outcomes were not optional. Preserve all 17 reconciled decisions and the
 with explicit replacements/exclusions recorded there. M1–M6 source checkpoints are committed and audited below. Their remaining cross-phase requirements
 continue in Phase 3; preserve the consolidated grammar while expanding other consumers. The required
 [own-key preservation correction](../plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
-reopens a specific M1 acceptance condition and must precede the next discovery-reader switch.
+closed the reopened M1 preservation condition in `29f0cc556`, before the next discovery-reader switch.
 
 **Done when:** every required consolidation row has source/validation evidence; generated EARS and
 typed/untyped behavior are preserved; unchanged authored content keeps compiled identity and ordinary
@@ -4954,3 +4954,36 @@ prove generated typed/untyped EARS, ownership and offline behavior. This is requ
 All remaining discovery/compiler/freshness/scope-cost, native lifecycle, cold editor readiness, navigation,
 frontend boundaries and all three Phase 6 workstreams remain required, followed by the complete 17-decision/
 phase audit and committed-source strict `--all`. Neither discovery nor the goal is complete.
+
+
+### Declaration dictionary preservation checkpoint (2026-10-15)
+
+Source `29f0cc556` closes the required own-key correction in manifest consolidation. The shared decoder
+preserves every accepted own key and its parsed value, including `__proto__`, with matching key/value
+validation, nested diagnostic paths and JSON Schema grammar. Authored/native schemas and snapshot
+readers use it; snapshots return parsed data rather than the old raw-data workaround. Generated JS and
+EARS define own data properties, preserving wire literal types, typed fields and untyped unknowns.
+CLI compiled type inventories retain those keys too. Manifest agreement now ignores object-field order
+while still refusing changed declarations. Existing relation and route grammar is unchanged.
+
+Evidence:
+
+- 85 focused decoder/schema/snapshot/catalog/CLI inspection checks passed, including the resumed
+  frontend-member inspection test; 89 layout checks and 10 generated compiler/runtime checks passed.
+- A real external pack builds and stages, loses its authored source, remains inspectable without
+  activation, then loads with the same entity/service identities. Its shape module throws if executed.
+- Three deliberate mutations of decoding, JavaScript emission and EARS runtime export are caught;
+  exact source restored. Logs: `/private/tmp/apack-own-record-mutation-{record,literal,ears}.log`.
+- SDK API reports regenerated and reviewed: record input/output types remain precise; the generated
+  JSON Schema is byte-identical. All seven baseline EARS/content files and the default facade are unchanged.
+- Strict `npm run chain -- --strict --cores 1` passes all 30 steps in 867.3s, run
+  `2026-10-15T15-54-03Z-54510`, `/private/tmp/apack-own-record-strict.log`: host 400 files/4,758 tests,
+  pack 846 passed/2 skipped, integration 58 files/740 tests; real external and packaged app checks pass.
+- Committed-source strict passes again in 1.0s (29/30 cached), run `2026-10-15T16-08-58Z-90491`,
+  `/private/tmp/apack-own-record-committed-strict.log`. Unrelated staged issue work remains uncommitted.
+
+Next is checkpoint 3's live palette/style/default/layout readers and permanent-cache removal. Full
+trigger/build metadata, remaining contribution kinds/content/assets, exact compiler identity/input closure,
+frozen execution/publication and manual-build/drive freshness, native/editor lifecycle, entity navigation,
+frontend boundaries, all three Phase 6 workstreams and the complete requirement audit remain required.
+This checkpoint completes neither discovery nor the goal; final strict `--all` on committed source remains.

@@ -2686,10 +2686,10 @@ execution requirements elsewhere in this plan remain required.
 
 The concurrent read-only own-key audit in
 [manifest consolidation](manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
-reproduces `__proto__` entity declarations disappearing during schema decoding. Correct that required
-preservation gap after the 2B.2 admission checkpoint and before checkpoint 3 switches live readers.
-It is required work, alongside the complete remaining discovery/compiler/navigation/boundary/Phase 6
-scope; the opaque-default repair alone does not close all keyed declarations.
+reproduced `__proto__` entity declarations disappearing during schema decoding. Source `29f0cc556`
+closes that preservation gap across authored/native parsing, snapshots, generated bindings and real
+source-free installed inspection/loading. The linked outcome and owning goal record its evidence.
+The complete remaining discovery/compiler/navigation/boundary/Phase 6 scope stays required.
 
 
 #### Mandatory admission outcome (2026-10-15)
@@ -2704,7 +2704,7 @@ reproductions and ten guard mutations pass; strict and committed-source strict p
 source, counts and runs. Public frontend testing has its own host entry, avoiding private test imports
 and backend build tooling in the renderer.
 
-Next finish the required keyed-declaration preservation correction linked above before switching live
-readers in checkpoint 3. Then remove active-only caches and finish the full remaining kind/content/asset,
+The keyed-declaration correction is now committed in `29f0cc556`. Next switch live readers in
+checkpoint 3 and remove active-only caches, then finish the full remaining kind/content/asset,
 compiler/freshness/scope-cost, native/editor, navigation, boundary and Phase 6 work. 2B.2 does not replace
 those acceptance criteria or final committed-source strict `--all` validation.

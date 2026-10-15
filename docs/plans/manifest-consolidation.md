@@ -329,7 +329,8 @@ A read-only audit of current source reproduced an unfinished M1 acceptance condi
 Object.fromEntries([['__proto__', null]]) } })` succeeds but returns no entity keys. Evidence:
 `/private/tmp/apack-declaration-key-audit.log`. Zod record decoding drops this own key; the previous
 opaque-default fix does not cover keyed declarations. Native admission retains raw owned JSON whereas
-source/snapshot decoding can erase it, so those origins disagree.
+source catalog decoding can erase it, so those origins disagree. The snapshot reader previously
+returned raw data after validation to avoid this decoder loss; it did not normalize through parsed output.
 
 Correct keyed declaration decoding before the next discovery-reader switch. Preserve every accepted
 key and its parsed value, including ordinary prototype-like names; do not hide the loss by banning a
@@ -339,3 +340,21 @@ patches, aliases, conversion or a second authored inventory. Prove valid and inv
 cross-owner collisions, generated typed/untyped EARS and source-free installed discovery. The complete
 17-decision scope and original M1–M6 requirements remain active; this reopens a specific preservation
 condition rather than treating the existing consolidation commits as proof of all inputs.
+
+
+#### Preservation outcome (2026-10-15)
+
+Source `29f0cc556` closes this correction. One dictionary decoder validates entries and preserves own
+keys and parsed values across authored/native schemas and snapshots; JSON Schema tooling renders its
+original record grammar. Snapshot readers now return parsed data. Generated JavaScript defines the
+special key as an own data property; generated EARS preserves its literal type and runtime value.
+Compiled type inventories use entry construction, and manifest agreement compares values rather than
+object-field order. Existing relation-wire and route-name restrictions remain intact.
+
+The source-free external test builds and stages a real pack, removes authored source, inspects it without
+activation, then loads its backend and verifies the entity and service bindings. Compiler probes preserve
+typed fields and untyped unknowns without executing shape modules. Collision, invalid-value, diagnostic-
+path and schema-equivalence checks pass. Three deliberate regressions are caught. Reviewed SDK API
+reports and unchanged schema, seven baseline EARS/content files and facade all pass strict validation.
+The owning goal records counts and run identities. This closes the preservation correction only; the
+remaining discovery and complete goal requirements are unchanged.
