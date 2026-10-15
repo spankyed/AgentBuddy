@@ -2550,3 +2550,49 @@ catalog/window inventory with source/installed ownership, captured metadata, eli
 semantics. Close unchecked native frontend admission before consumers depend on this projection. Then
 execute checkpoint 3's live readers/cache removal. Full trigger/build metadata and every other remaining
 goal workstream stay required; no phase is complete or archived here.
+
+
+### Native step/catalog admission audit and execution order (2026-10-15)
+
+At `cda9fa00e`, native declarations have no steps; frontend native checking consequently cannot compare
+step metadata. Backend native admission checks data/settings/lifecycle but ignores steps. Both runtime
+indexes use the generic last-wins/facet-folding owned store, allowing another pack to supply part of the
+same step wire. Captured step tuples still retain the caller's mutable node/presentation objects. The
+window catalog already owns immutable frames and caches projections per committed snapshot.
+
+Use the existing `StepEntry` schema/type for native `steps` as for authored `extensions.steps`; no second
+shape, executable inference or fake native build. Add a `StepCatalogEntry` per `(packId, type)` with the
+complete declared value, origin and the same enablement/declaration/build identity rules as reference
+entries. Native composition has no installed build identity. Disabled installed and unbuilt source
+entries remain discoverable. The common projection and window reader must agree without imports.
+Different inactive owners may declare the same wire: discovery reports both; execution never silently
+folds one owner's data into another's implementation. Refuse conflicting active runtime owners before
+publishing a candidate, including replacement. Copy node/default/presentation/slot/layout data at
+admission while preserving executable component/function identities; later caller mutations cannot
+alter accepted metadata or collection membership. Reuse backend step-binding validation for native
+composition, including exact node data and facet/handler/flag membership.
+
+Complete checkpoint 2B through these dependent source checkpoints, with no palette migration between:
+
+1. **2B.1 — Native step data and common projection:** shared native step grammar, backend/native frontend
+   step comparisons where declarations are admitted, source/installed/native catalog and window projection,
+   captured step data and active owner collision checks. Migrate authored native fixtures rather than add
+   missing-data defaults to production. Prove declaration-only discovery, disabled/unbuilt entries, stale
+   window frames, callback nonexecution, atomic refusals and exact preserved typing/content.
+2. **2B.2 — Complete frontend admission authority:** close the existing unknown-native-owner bypass.
+   Audit all frontend registration fields before changing its API: native declarations also cannot yet
+   represent artifact/block/DSL contributions or feature designations, while native test composition
+   exercises them. Give supported native fields the existing shared declaration grammar before enforcing
+   complete admission; do not drop those fields, exempt test owners, accept undeclared bindings, or invent
+   installed identities for native tests. Pass accepted declarations explicitly or admit them independently
+   before binding, retaining pre-settings validation and stale prepared-candidate rejection. Migrate the
+   public test-shell composition and native fixture helpers with the production API. Preserve the
+   supported installed loader path and remove redundant unchecked paths. Add accepted owner/revision
+   binding information needed to match catalog entries to executable components in checkpoint 3.
+
+Each checkpoint includes focused/mutation checks, reviewed schema/API/docs and strict validation before
+committing. 2B.1 alone does not close native frontend admission or authorize switching consumers. 2B.2
+remains required before checkpoint 3, alongside full trigger/build metadata and all other outstanding goal
+workstreams. This ordering exposes the dependency on the rest of the native frontend grammar instead of
+hiding it behind optional validation. There are no compatibility aliases, inferred production declarations,
+new activation modes or changes to deferred isolation/storage requirements.
