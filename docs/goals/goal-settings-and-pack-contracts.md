@@ -4552,3 +4552,35 @@ asserts those actual lifetime conditions with two-second bounds. The discarded p
 is absent. This completes the post-refresh process boundary, not immutable compiler/source reads.
 Long-lived frontend identity, coherent frozen execution/publication, remaining input closure,
 manual-build/drive freshness, the aggregate strict gate and all other goal scope remain required.
+
+
+### Explicit editor contribution checkpoint (2026-10-15)
+
+Source `e40d157f9` declares editor groups and app slots directly under `extensions.tiptapPlugins`
+and `extensions.appExtensions`. This replaces the earlier proposed frontend wrapper at the user's
+request: a contribution kind's placement does not claim exclusive ownership of frontend behavior.
+Native declarations carry the same fields directly. Each editor group names extension objects,
+popup components and its optional suggestion predicate; generated bindings import checked exports.
+Schema checks refuse duplicate extension claims within a pack, and active binding admission refuses
+cross-pack collisions transactionally. Captured membership cannot be changed through caller-owned
+maps. Catalog/window projections and CLI inspection expose native/source/installed identities without
+executing modules or requiring authored source files; disabled declarations remain visible.
+
+Validation: 251 focused declaration/codegen/catalog/renderer tests pass in 6.22s
+(`/private/tmp/apack-editor-final-unit.log`); 22 default-pack reference editor tests pass in 3.00s
+(`/private/tmp/apack-editor-default-tests.log`). A real external-pack build with Tiptap objects,
+Vue popups/app extensions and a typed predicate passes, then its copied output is inspected after
+removing authored source (`/private/tmp/apack-editor-external-final.log`, 9.36s). Default-setup builds;
+all seven baseline generated EARS/content files remain byte-identical. Public API/schema reports
+were regenerated and reviewed; strict validation passes API/schema/export checks, all typechecks,
+lint/specifier/tier checks, runtime build, smoke, external-pack contract and packaged authoring.
+
+The strict checkpoint is **not fully green**: the aggregate integration pool was killed at its
+existing 60s deadline, with no assertion failure in its captured output. Evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-15T09-09-11Z-19925`,
+`/private/tmp/apack-editor-strict-retry.log`. The earlier strict attempt found two missing catalog
+methods in default-pack test mocks; those fixtures are fixed and the pack typecheck now passes.
+The aggregate gate and final committed-source strict `--all` remain required. This checkpoint does
+not complete intrinsic editor-schema ownership, native editor composition, live editor/palette
+migration, remaining contribution discovery/source freshness, navigation, boundaries or Phase 6.
+No scope is excluded or archived.
