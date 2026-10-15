@@ -4485,3 +4485,17 @@ and changed-file correctness lint pass (`/private/tmp/apack-empty-glob-unit.log`
 worker/dynamic input closure, compiler identity, coherent frozen publication and every larger goal
 requirement remain open. The aggregate strict gate and final committed-source strict `--all` remain
 required; focused evidence does not establish phase completion. No scope is excluded or archived.
+
+### Worker compiler inputs checkpoint (2026-10-15)
+
+Source `53550379d` includes Vite's separate worker compiler graphs in both diagnostic reads and live
+subscriptions. Reports accumulate worker and main inputs per compilation, retaining worker files in
+the final accepted scope. Nested workers receive fresh reporting/glob plugins from the same factory.
+Both URL and `?worker` entries missed dependency-only changes before this fix:
+`/private/tmp/apack-worker-input-baseline.log`. Eight targeted cases pass in 38.54s, including prior
+glob regressions, nested workers, an empty nested-worker glob, and real CLI error retention/repair:
+`/private/tmp/apack-worker-input-verified.log`. All 105 focused build/watcher checks pass in 2.21s
+(`/private/tmp/apack-worker-input-unit.log`); CLI typechecking and changed-file correctness lint pass
+(`/private/tmp/apack-worker-input-types.log`, `/private/tmp/apack-worker-input-lint.log`). This is
+focused checkpoint evidence; the aggregate strict gate, remaining dynamic/compiler/frozen-publication
+work and every larger goal requirement remain open. No exclusions or archival.

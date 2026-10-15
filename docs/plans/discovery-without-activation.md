@@ -2067,9 +2067,8 @@ requested a 60s feedback cap shared by the chain and direct integration runner; 
 whole-suite retries to diagnose a local failure or silently treat the cap as an assertion failure.
 Resolve the bulk gate before final committed-source strict --all and completion.
 
-Next prove initially empty external import.meta.glob roots and worker/dynamic graphs, exact
-compiler-consumer alignment and coherent frozen execution/publication. getWatchFiles() does not
-expose Vite's glob matcher metadata. Retain manual-build/drive freshness and every remaining
+The following checkpoints cover static empty-glob forms and worker compiler inputs. Continue dynamic
+graphs, exact compiler-consumer alignment and coherent frozen execution/publication. Retain manual-build/drive freshness and every remaining
 contribution/native/static-content, navigation, frontend boundary and Phase 6 requirement. Nothing
 is archived or excluded by this checkpoint.
 
@@ -2087,3 +2086,16 @@ expected CSS in 20.7s under the 60s bound. Link identity remains signed when tar
 to the authored tree, so output exclusion does not hide topology changes. The goal owns the evidence.
 This completes reported-directory link coverage, not arbitrary glob/worker/dynamic input closure,
 frozen execution or the outstanding bulk strict gate. All other goal scope remains required.
+
+### Frontend globs and worker compiler inputs (2026-10-15)
+
+`49f2647f3` adds membership subscriptions for static external `import.meta.glob` declarations,
+including arrays, exclusions, literal `base` and root-entry subpath imports. `53550379d` installs
+input-reporting plugins in Vite's separate worker builds, including nested workers. Each report
+accumulates the compilation's files, so the main bundle's final report cannot discard worker inputs;
+diagnostic records and live subscriptions share that set. Worker globs use the same directory observer.
+Actual Vite tests cover dependency-only changes, nested worker glob additions and changed output.
+A real CLI test retains the accepted revision after worker compilation fails and publishes its repair.
+The goal records baseline failures and focused validation. Arbitrarily computed glob options,
+remaining dynamic graphs, exact compiler identity, coherent frozen execution/publication,
+manual-build/drive freshness and the aggregate strict gate remain required. No broader phase is closed.
