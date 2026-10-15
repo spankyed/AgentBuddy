@@ -79,6 +79,11 @@ after trigger validation and before writing. Missing or replaced providers refus
 persisting a node. `stepRegistry.getRuntime`, `getBuild` and `getTrigger` read active providers for
 execution, compilation and retirement; they do not establish eligibility for new work.
 
+Updating a node keeps its type fixed and reads its declared relation and validation policy. A declared
+trigger validator requires a matching eligible backend, checked again after validation before any write.
+Missing, stale or replaced providers refuse the update. Edits with no declared validator can proceed
+without activating a backend; an unknown declaration cannot establish an editing policy.
+
 Frontend code uses `getStepDeclarations`, `getStepDeclaration` and `getStepBinding` from
 `@apackdev/sdk/fe`. Frontend metadata comes from the catalog; executable views additionally require the
 current frontend binding. Backend and frontend implementations have separate lifetimes.

@@ -2875,3 +2875,21 @@ committed-source evidence. Backend callback membership and data now use the decl
 flow track helpers read metadata directly. Authored/native admission, scaffolds and offline inspection
 are migrated. All seven EARS/content baselines are unchanged. Node-update write eligibility is next;
 remaining kinds, compiler/freshness contracts and later goal phases remain required.
+
+
+### Node-update write boundary, checkpoint 3D design (2026-10-15)
+
+`updateNode` currently looks up a raw trigger independently of its declaration and skips validation
+when that runtime is absent. It can also change `nodeType` while validating with the old type. Make
+node type immutable through this operation (same-type full-node updates remain valid). Select the
+current declaration and its relation field once; refuse unknown declarations rather than guess their
+relation/validation policy. When the declaration includes a node validator, require a matching eligible
+backend and recheck its generation/declaration after validation before any row or relation write.
+Share that final check with creation. Edits with no declared validator retain their existing ability
+to work without an active provider. Running-flow execution lifetimes are unaffected.
+
+Prove this against actual registry admission/unload/replacement and changed declarations, not only
+mutable test maps. Invalid validation, missing/stale providers, provider replacement/retirement during
+validation and attempted type changes must leave both the node and its relations unchanged. Same-type
+updates must still validate successfully. Preserve source-free relation editing without compiler
+activation. Mutation-check the write guards; run required strict validation before committing.

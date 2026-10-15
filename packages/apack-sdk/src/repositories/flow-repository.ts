@@ -9,8 +9,7 @@ import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 import { stepRegistry } from '../steps/registry.ts';
-import type { TriggerFacet } from '../steps/types.ts';
-import { getStepBinding, getStepDeclaration } from '../steps/catalog.ts';
+import { getStepBinding, getStepDeclaration, type StepBackendBinding } from '../steps/catalog.ts';
 import { createLogger } from '../logger/logger.ts';
 
 const logger = createLogger('flows-repository');
@@ -80,11 +79,27 @@ function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, han
   }
 }
 
-/** A trigger node's own validation, run before it's stored */
-function validateNode(node: FlowNode, trigger: TriggerFacet | undefined): void {
-  const result = trigger?.validate?.(node);
+function requireStepBinding(nodeType: string): StepBackendBinding {
+  const accepted = getStepBinding(nodeType);
+  if (!accepted) throw new RepositoryError(
+    `Step "${nodeType}" has no active backend matching its current declarations`, RepositoryErrorCode.VALIDATION_ERROR,
+  );
+  return accepted;
+}
+
+/** Validate with the accepted provider, then recheck eligibility before any row or relation write. */
+function validateNode(node: FlowNode, accepted: StepBackendBinding): void {
+  const nodeType = accepted.binding.type;
+  const result = accepted.binding.trigger?.validate?.(node);
   if (result && !result.valid) {
     throw new RepositoryError(`Invalid ${node.nodeType} node: ${result.errors.join(', ')}`, RepositoryErrorCode.VALIDATION_ERROR);
+  }
+  if (node.nodeType !== nodeType) {
+    throw new RepositoryError('A node\'s type cannot be changed', RepositoryErrorCode.VALIDATION_ERROR);
+  }
+  const current = getStepBinding(nodeType);
+  if (!current || current.runtimeRevision !== accepted.runtimeRevision || current.packId !== accepted.packId) {
+    throw new RepositoryError(`Step "${nodeType}" backend changed while validating the node`, RepositoryErrorCode.VALIDATION_ERROR);
   }
 }
 
@@ -242,10 +257,7 @@ export const flowRepository = {
   createNode: (flowId: EARS.EntityId, input: FlowNodeInput): FlowNode => {
     const ts = getTimestamp();
     const nodeType = input.nodeType || NODE_DEFAULTS.TYPE;
-    const accepted = getStepBinding(nodeType);
-    if (!accepted) throw new RepositoryError(
-      `Step "${nodeType}" has no active backend matching its current declarations`, RepositoryErrorCode.VALIDATION_ERROR,
-    );
+    const accepted = requireStepBinding(nodeType);
     const defaults = stepRegistry.createNodeDefaults(nodeType) as Partial<NodeBase>;
     const field = accepted.binding.build?.relation?.field;
     const { related, fields } = splitRelation(input, field);
@@ -259,11 +271,7 @@ export const flowRepository = {
       createdAt: ts,
       updatedAt: ts,
     };
-    validateNode(row as FlowNode, accepted.binding.trigger);
-    const current = getStepBinding(nodeType);
-    if (!current || current.runtimeRevision !== accepted.runtimeRevision || current.packId !== accepted.packId) {
-      throw new RepositoryError(`Step "${nodeType}" backend changed while validating the node`, RepositoryErrorCode.VALIDATION_ERROR);
-    }
+    validateNode(row as FlowNode, accepted);
 
     const nodeId = untypedTx(EARS.Entity.Node).batchPut(row).id();
     untypedTx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
@@ -277,12 +285,19 @@ export const flowRepository = {
     const ts = getTimestamp();
     const [current] = qx(nodeId).pickAll() as unknown as FlowNode[];
     if (!current) throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
+    if (updates.nodeType !== undefined && updates.nodeType !== current.nodeType) {
+      throw new RepositoryError('A node\'s type cannot be changed', RepositoryErrorCode.VALIDATION_ERROR);
+    }
+    const owner = getStepDeclaration(current.nodeType);
+    if (!owner) throw new RepositoryError(`Step "${current.nodeType}" has no declaration for editing`, RepositoryErrorCode.VALIDATION_ERROR);
 
-    const { related, fields } = splitRelation(updates, relationField(current.nodeType));
+    const field = owner.declaration.build?.relation?.field;
+    const { related, fields } = splitRelation(updates, field);
     const changed = filterSystemFields(fields);
-    validateNode({ ...current, ...changed, updatedAt: ts } as FlowNode, stepRegistry.getTrigger(current.nodeType));
+    if (owner.declaration.trigger?.validate) {
+      validateNode({ ...current, ...changed, updatedAt: ts } as FlowNode, requireStepBinding(current.nodeType));
+    }
 
-    const field = relationField(current.nodeType);
     if (field && field in related) {
       const relatedId = related[field];
       untypedTx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
