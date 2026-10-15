@@ -5181,3 +5181,53 @@ identity, atomic input/output publication, content-based source consumers, times
 same-mtime-change checks, real cached-chain/app preparation, and source-free installed discovery.
 Complete the remaining exact compiler/closure/frozen-publication audit before choosing its produced
 shape. This audit does not declare those requirements implemented or narrow any remaining goal phase.
+
+
+### Generated run output and authored scope — checkpoint 3E
+
+Source `ecbb2c6af` moves default pack E2E logs/screenshots into `.apack/tests` and driving
+logs/screenshots/reports into `.apack/drive`. Authored scripts/configuration remain in place. Existing
+input traversal/watch policy already excludes `.apack`, so generated runs no longer change that
+scope. Helpers, CLI driving/one-shot paths, init-tests ignore scaffolding, fixture output declarations,
+root/fixture ignores and public guidance agree. Explicit output overrides remain supported.
+
+Evidence and review:
+
+- Seven Playwright-helper cases and 38 CLI checks pass, including a public-helper filesystem test:
+  screenshots, reports and runner logs preserve the authored hash; an authored edit changes it. Existing
+  linked-input checks pass. Two deliberate compiled-helper mutations restoring test/drive output inside
+  authored paths fail that check. Restored package bytes pass. Logs:
+  `/private/tmp/apack-run-output-{focused-restored,mutation-tests,mutation-drive,types}.log`.
+- A real external-pack app scenario writes a PNG and report, verifies persisted bytes/PNG format and
+  expected private paths. Its focused run passes. Both fixture authored hashes remain unchanged after
+  the full app suite, with real app logs under `.apack/tests`; external-pack PNG/report output also exists.
+  Evidence: `/private/tmp/apack-run-output-real-app.log`,
+  `/private/tmp/apack-run-output-final-input-proof.log` and captured before-run hashes in
+  `/private/tmp/apack-run-output-before-final-app.json`.
+- First full strict passes all 30 steps in 1034.4s, run `2026-10-15T20-01-22Z-4089`. Affected host pool:
+  259 files/3,360 tests; shipped pack: 851 passed/two skipped; integration: 58 files/741 tests. Added the
+  actual PNG/report scenario afterward rather than treating suites that took no screenshots as proof.
+- The expanded app run found a focus-sensitive bundled-editor smoke failure (`…typ` instead of `…typed`).
+  Eight instrumented runs pass without editor replacement; they do not establish the original failure's
+  cause. A deterministic focus interruption reproduces the same truncation with the global keyboard
+  sequence, while targeted locator input passes. The smoke test now uses `editor.fill`, preserving its
+  text/error assertions and timeout. No editor component changes were made from an unproven diagnosis.
+  Logs: `/private/tmp/apack-bundled-editor-{trace,focus-global-keys,focus-locator-fill}.log`.
+  This does not complete keyboard behavior during contribution replacement; that remains required below.
+- Final strict `npm run chain -- --strict --cores 1` passes all 30 steps in 310.6s (21 cached), run
+  `2026-10-15T20-34-48Z-71715`, `/private/tmp/apack-run-output-passing-strict.log`. The affected integration
+  subset passes nine files/375 tests; all 26 external-pack app scenarios, bundled UI and fork scenarios
+  pass. Smoke and packaged authoring remain passing. All seven EARS/content baselines are byte-identical;
+  schema, API reports, public signatures and facade are unchanged.
+- Committed-source strict passes in 1.4s (29 cached), run `2026-10-15T20-42-02Z-87763`,
+  `/private/tmp/apack-run-output-committed-strict.log`. Previous generated fixture logs/screenshots were
+  preserved under `/private/tmp/apack-run-output-before-3e-4oo5dv65`. Unrelated staged issue work remains
+  outside these commits; concurrent work continues in its separate worktree.
+
+Next finish the inspected input-identity/publication design and implementation, then replace mtime
+freshness consumers. The private output namespace is a prerequisite, not a complete source receipt,
+exact loaded-compiler identity, input closure or frozen-publication solution. Keep actual typing during
+accepted editor-contribution replacement in the required editor-lifecycle checks; locator-fill smoke
+coverage does not prove it. Remaining contribution/content/asset discovery, navigation, frontend
+boundaries, all three Phase 6 workstreams, the reconciled requirement audit and final committed-source
+strict `--all` remain required. Nothing is archived by this checkpoint.

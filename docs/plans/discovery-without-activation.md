@@ -2961,3 +2961,33 @@ Prove real helper-created output is excluded from `packInputsHash` and actual au
 invalidate it, including linked sources. Test Playwright configuration and CLI scaffold/drive paths;
 then run required strict validation. This prerequisite does not complete the receipt, exact compiler
 identity, external-input closure, frozen publication or source-freshness consumer migrations above.
+
+
+The authored/run-output prerequisite lands in `ecbb2c6af` (3E). Public helpers, scaffolds and CLI
+outputs use the private work directory; actual screenshot/report IO and before/after full-app hashes
+prove the default namespace does not invalidate authored inputs. The goal records restored mutations,
+initial/full and final strict checks plus committed-source evidence. This closes output placement,
+not the input receipt or compiler/frozen-publication contracts above.
+
+The bundled-UI smoke uses targeted locator input for its render/model-edit purpose after a deterministic
+focus interruption reproduced truncation from global key events. Eight traced successes showed no
+editor replacement, which does not establish the original failure's cause. Keep a separate required
+live-editor case that types across an actual accepted contribution replacement and verifies content,
+focus, selection and pending marks. Do not treat locator-fill smoke as keyboard/recomposition evidence.
+
+Producer/consumer audit to carry into the next checkpoint:
+
+- `captureCompilationInputs` rehashes live implementation/package/compiler-module bytes and checks again
+  before publication. `build-worker.ts` statically imports the compiler before that capture. Matching
+  live filesystem hashes alone do not prove which bytes already-loaded code executed; account for actual
+  compiler loading and long-lived frontend compiler lifetime before claiming exact execution identity.
+- `packInputsHash` covers arbitrary authored paths, while `readCompilerModuleInputs` adds configuration,
+  Vue scripts, outside imports and discovered npm scopes. Source-frame membership, options, dependency
+  origin/content, directory additions and unresolved/resolution candidates need one coherent account.
+  Do not freeze a partial observed-file list and silently miss later additions or newly winning paths.
+- Existing integrity proves output membership/bytes; private phase caches are not the successful whole
+  build's source record. Settle the shared produced data contract and layer placement, publish it with
+  its output and migrate archive/prebuilt/default-fork/drive consumers together. Installed/offline reads
+  still require neither authored source nor executable compiler activation.
+
+All required compiler/input/frozen-publication, other contribution kinds and later phases remain active.
