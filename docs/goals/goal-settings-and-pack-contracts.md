@@ -4860,3 +4860,42 @@ checkpoint 3's live palette/style/default/layout readers and permanent-cache rem
 metadata, remaining kinds/assets, exact compiler/frozen-execution/freshness and scope-cost work, native
 lifecycle, cold editor readiness, navigation, frontend boundaries and all Phase 6 workstreams remain
 required. This is not phase/goal completion or final committed-source strict `--all` validation.
+
+
+### Browser-safe native declaration foundation (2026-10-15)
+
+Source `92b2804ae` advances required discovery checkpoint **2B.2**. The canonical authored/native Zod
+schema and pure dependency/check-policy parsers now live in SDK framework; build tools retain their
+purpose-specific public exports from that same implementation. Native artifacts, blocks, DSL definitions
+and feature designations share authored constituent schemas. The small framework native-declaration
+checker enforces JSON purity before decoding/copying; catalog and native frontend admission use it.
+Frontend comparison accepts immutable declaration data. Native registration tests exercise all added
+fields, reject changed DSL globals transactionally, and refuse declarative getters without invoking them.
+The browser-bundled public checker executes without Node build tooling or authored pack module imports.
+
+Evidence:
+
+- Focused schema/framework/frontend checks: 1,095 tests; final guard/link recheck: 54 tests. Three
+  mutations independently defeat native grammar, frontend contribution projection and JSON-purity checks;
+  each fails the intended assertions, with exact source restored. Logs:
+  `/private/tmp/apack-native-grammar-{focused-final,guard-recheck,mutation-*}.log`.
+- Initial strict validation caught test-fixture literal widening/optional access, fixed with the actual
+  `PackFERegistration` contract. The next gate found a moved-source link in the separately staged issue.
+  Only its working-tree link target was corrected; its staged content is unchanged and it is excluded
+  from this checkpoint. No compatibility file was retained to satisfy the link.
+- Final `npm run chain -- --strict --cores 1` passes in 610.5s (21/30 cached from the preceding runs):
+  `node_modules/.cache/apack-chain/runs/2026-10-15T13-59-34Z-62601`,
+  `/private/tmp/apack-native-browser-grammar-final-strict.log`. Host: 396 files/4,725 tests; integration:
+  57 files/739 tests; shipped pack: 846 tests, existing one file/two tests skipped. External contract,
+  replacement/restart app, smoke, packaged authoring/app, API/schema/package checks pass. All seven
+  baseline EARS/content files and the shipped facade report remain unchanged. No deadline changes.
+- Committed-source strict passes in 1.0s (29/30 cached):
+  `node_modules/.cache/apack-chain/runs/2026-10-15T14-10-09Z-94686`,
+  `/private/tmp/apack-native-browser-grammar-committed-strict.log`. Reviewed schema diff changes only its
+  source-location comment; public API reports contain the intended native fields and checker.
+
+Continue **2B.2** with mandatory native/loaded declaration authority, complete metadata capture and
+provisional-settings cleanup, real fixture/shell migration, and accepted owner/revision binding data.
+The unknown-owner frontend bypass is still required unfinished work. Finish this before checkpoint 3's
+live consumers/cache removal. Every other phase and the final committed-source strict `--all` audit
+remain required; this foundation checkpoint completes neither 2B.2 nor the goal.

@@ -2655,3 +2655,18 @@ a component object must not be guessed to be a route map. Validate in the loader
 and make registry preparation retire provisional host settings on every failure, including declaration or
 capture refusal. Tests must mutate each accepted container and prove both retained lookup behavior and
 candidate cleanup. This closes the gap rather than merely adding a required argument to unchecked state.
+
+
+#### Browser-safe foundation outcome (2026-10-15)
+
+`92b2804ae` implements the shared grammar/checker foundation above. Native artifacts, blocks, DSL and
+feature designations use authored schemas; native catalog/frontend checks share the browser-safe checker.
+A public-framework browser bundle contains neither build tooling nor authored pack modules and executes
+its admission checks. JSON purity precedes copying, including the native registry constructor. Public
+reports are reviewed; authored schema semantics, EARS/content and facade output are unchanged. Three
+mutations, focused checks, strict and committed-source strict pass; the goal records runs and counts.
+
+Next implement the rest of 2B.2 as one coherent admission change: mandatory native/loaded authority,
+complete declaration-directed container capture, failure cleanup, valid native fixtures/public shell,
+and accepted binding owner/revision data. Do not switch palette readers while optional native-owner
+checking still permits unknown registrations. All other discovery and goal acceptance criteria remain.

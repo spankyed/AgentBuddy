@@ -704,3 +704,14 @@ Complete native frontend grammar and mandatory admission authority (2B.2), then 
 removal (3). The existing unknown-native-owner frontend bypass is required unfinished work, not a waiver.
 Every other discovery/freshness/compiler-scope, navigation, boundary and Phase 6 requirement remains active;
 final committed-source strict `--all` and the completion audit are still required.
+
+
+### Shared native declaration grammar checkpoint (2026-10-15)
+
+`92b2804ae` supplies discovery 2B.2's browser-safe authored/native grammar foundation, native artifact/
+block/DSL/designation data and shared JSON-purity checker. Runtime native comparison uses those fields;
+public reports and source links are updated. Focused/mutation checks and strict validation pass, including
+real authoring/app checks; generated EARS/content/facade identity is preserved. The owning goal records
+source and evidence. Mandatory frontend admission authority, complete capture/cleanup, fixture/shell
+migration and binding owner/revision data remain required before live readers. All remaining phases and
+final committed-source strict `--all` stay in scope.
