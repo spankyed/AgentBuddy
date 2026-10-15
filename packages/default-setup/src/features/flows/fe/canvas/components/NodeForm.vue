@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity } from '#generated/types.ts'
-import { stepRegistry } from '@apackdev/sdk/steps'
+import { getStepBinding, useStepDeclarations } from '@apackdev/sdk/fe'
 
 import BaseForm from '@apackdev/ui/components/BaseForm'
 import NodeTypeMenu from './NodeTypeMenu.vue'
@@ -46,6 +46,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const declarations = useStepDeclarations()
 
 const emit = defineEmits<{
   'close': []
@@ -67,7 +68,8 @@ function handleReindexBranches(data: { type: 'inserted' | 'removed'; index: numb
 }
 
 function getFormComponent(nodeType: string) {
-  return stepRegistry.getFormComponent(nodeType) || BaseForm;
+  return declarations.value.some(entry => entry.type === nodeType)
+    ? getStepBinding(nodeType)?.binding.fe?.components?.form ?? BaseForm : BaseForm;
 }
 
 // Next step functionality

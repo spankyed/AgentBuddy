@@ -29,6 +29,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { boundedSpawn } from '../../../scripts/lib/bounded-spawn.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from '../../../scripts/lib/spec-durations-reporter.ts';
+import { durationsOf } from '../../../scripts/lib/spec-durations.ts';
 import { TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { CONFIG_BY_HALF, halfOfPath, specFiles, type Half } from '../../../scripts/lib/spec-halves.ts';
@@ -196,8 +197,7 @@ describe('the durations reporter agrees with the console it replaced', () => {
   /**
    * And it names the project in both shapes, which vitest itself does in only one.
    *
-   * `TestProject.name` is "the name of the project or **an empty string if not set**", and no config here
-   * sets `test.name`. Under the root config vitest fills it from each project's `package.json`; for a
+   * `TestProject.name` is "the name of the project or **an empty string if not set**", and standalone projects may leave it unnamed. Under the root config vitest fills it from each project's `package.json`; for a
    * standalone run of one package's own config — the pack pool's shape — it is empty. Observed before the
    * fallback existed: the pack pool refused its own run because `@app/default-setup` "never reported". The
    * fallback reads the same `package.json` vitest would, so the two shapes answer alike and there is one
@@ -217,4 +217,30 @@ describe('the durations reporter agrees with the console it replaced', () => {
     expect(new Set(invoked), 'a pool invokes vitest some way these shapes do not cover')
       .toEqual(new Set(Object.keys(SHAPES).map((shape) => SHAPES[shape as Shape]().command)));
   });
+});
+
+
+it('attributes qualified subprojects to their confirmed workspace without hiding unrelated names', async () => {
+  const root = path.join(temp, 'workspace-projects'); fs.mkdirSync(root);
+  const workspace = '@fixture/multiple-projects';
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: workspace, type: 'module' }));
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+  for (const name of ['backend', 'frontend', 'foreign']) fs.writeFileSync(path.join(root, `${name}.spec.ts`),
+    `import { it } from 'vitest'; it('runs', () => {});`);
+  fs.writeFileSync(path.join(root, 'vitest.config.ts'), `export default { test: { projects: [
+    { test: { name: '${workspace}:backend', include: ['backend.spec.ts'] } },
+    { test: { name: '${workspace}:frontend', include: ['frontend.spec.ts'] } },
+    { test: { name: 'foreign:frontend', include: ['foreign.spec.ts'] } },
+  ] } };`);
+  const out = path.join(root, 'durations.json');
+  await boundedSpawn(process.execPath, [path.join(REPO_ROOT, 'node_modules/vitest/vitest.mjs'), 'run',
+    '--config', path.join(root, 'vitest.config.ts'),
+    `--reporter=${path.join(REPO_ROOT, 'scripts/lib/spec-durations-reporter.ts')}`], TIMEOUT_MS.quick.ms,
+    { cwd: root, env: { ...process.env, [SPEC_DURATIONS_FILE]: out } });
+  const report = readReportedRun(out)!;
+  expect([...report.projects].sort()).toEqual([workspace, 'foreign:frontend'].sort());
+  expect(report.modules.filter(module => module.project === workspace).map(module => module.file).sort())
+    .toEqual(['backend.spec.ts', 'frontend.spec.ts']);
+  expect(report.modules.find(module => module.file === 'foreign.spec.ts')?.project).toBe('foreign:frontend');
+  expect(() => durationsOf(report, [{ workspace, dir: 'fixture', kind: 'pack' }])).toThrow('none of the');
 });

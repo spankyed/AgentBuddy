@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { testPacks } from '@apackdev/sdk/testing'
+import { nativeFrontendDeclarationFixture, startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing'
+import type { StepCatalogEntry } from '@apackdev/sdk/framework'
+import type { StepFrontendBinding } from '@apackdev/sdk/fe'
 import { type StepDefinition } from '@apackdev/sdk/steps'
 import { NODE_DIMENSIONS, getDescriptor } from '@apackdev/ui/components/node-dimensions'
 import type { LayoutNodeData } from '@apackdev/ui/components/node-dimensions'
@@ -12,14 +14,16 @@ import {
 
 const SWITCH_DIMS = NODE_DIMENSIONS.switch
 
-// The steps these lay out: in the test runtime's stand-in for the registered packs, which the test fills
-const register = (step: StepDefinition) => testPacks.steps.set(step.type, step)
+// Layout reads declarations independently of the active callback bindings.
+const steps = new Map<string, StepDefinition>()
+const register = (step: StepDefinition) => steps.set(step.type, step)
 
 beforeAll(() => {
   register({
     type: 'switch',
+    node: { label: 'Switch' },
     fe: {
-      nodeConfig: { label: 'Switch', connectionRules: { inputs: 1, outputs: -1 } },
+      nodeConfig: { icon: {}, category: 'logic', connectionRules: { inputs: 1, outputs: -1 } },
       layout: {
         getHeight: (node) => {
           const branchCount = (node.conditions as any[])?.length ?? 0;
@@ -41,12 +45,13 @@ beforeAll(() => {
         hasInput: true,
       },
     },
-  } as any);
+  });
 
   register({
     type: 'fire',
+    node: { label: 'Fire' },
     fe: {
-      nodeConfig: { label: 'Fire', connectionRules: { inputs: 1, outputs: 0 } },
+      nodeConfig: { icon: {}, category: 'data', connectionRules: { inputs: 1, outputs: 0 } },
       layout: {
         getPorts: (node: any) => [
           { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
@@ -54,20 +59,30 @@ beforeAll(() => {
         hasInput: true,
       },
     },
-  } as any);
+  });
 
   register({
     type: 'listener',
+    node: { label: 'Listener' },
     kind: 'trigger',
     fe: {
-      nodeConfig: { label: 'Listener', connectionRules: { inputs: 0, outputs: -1 } },
+      nodeConfig: { icon: {}, category: 'trigger', connectionRules: { inputs: 0, outputs: -1 } },
     },
-  } as any);
+  });
+  const declaration = nativeFrontendDeclarationFixture({ id: 'layout-test', steps: [...steps.values()] })
+  const entries: StepCatalogEntry[] = Object.entries(declaration.steps ?? {}).map(([type, step]) => ({
+    type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
+  }))
+  const bindings = new Map<string, StepFrontendBinding>(entries.map(entry => [entry.type, {
+    packId: declaration.id, declaration: entry.declaration, binding: steps.get(entry.type)!,
+  }]))
+  startFeTestRuntime({
+    catalog: { status: () => 'ready', problem: () => undefined, steps: () => entries, references: () => [], frontend: () => [], subscribe: () => () => {} },
+    packs: { stepBindings: () => bindings } as never,
+  })
 });
 
-afterAll(() => {
-  testPacks.steps.clear();
-});
+afterAll(stopFeTestRuntime);
 
 // --- parseHandleIndex ---
 

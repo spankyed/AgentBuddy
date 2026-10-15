@@ -49,6 +49,7 @@
   "devDependencies": {
     "@apackdev/testing": "*",
     "@types/node": "^25.5.0",
+    "@vitejs/plugin-vue": "^6.0.5",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",

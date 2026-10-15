@@ -118,11 +118,13 @@ import { Maximize, Pencil } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import AddHandle from '../nodes/AddHandle.vue'
-import { nodeTypes } from '../nodes/index.ts'
+import { useNodeTypes } from '../nodes/index.ts'
 import { useNodeViewport } from '../useNodeViewport.ts'
 
 import type { LayoutDirection } from '#features/flows/fe/canvas/layout-utils.ts'
-import { isTriggerNode } from '@apackdev/ui/components/node-styles'
+import { useNodeStyles } from '@apackdev/ui/components/node-styles'
+
+const { isTriggerNode } = useNodeStyles()
 
 provide('BaseNodeAddHandle', AddHandle)
 
@@ -139,6 +141,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const nodeTypes = useNodeTypes()
 const { centerNodeInView } = useNodeViewport()
 
 // Build a set of connected source handles: "nodeId" or "nodeId:handleId"

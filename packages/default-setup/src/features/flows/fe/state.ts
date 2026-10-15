@@ -16,7 +16,7 @@ import type { FlowsContext, FlowsInboxEvent } from './contract.ts'
 import type { OutgoingFlowsEvents } from '#features/flows/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { getNodeConfig, isTriggerNode } from '@apackdev/ui/components/node-styles'
-import { stepRegistry } from '@apackdev/sdk/steps'
+import { getStepDeclaration } from '@apackdev/sdk/fe'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource } from './canvas/layout-utils.ts'
 import { computeMaxBottom, type LayoutNodeData } from '@apackdev/ui/components/node-dimensions'
 import type { FlowEntity, EARS } from '@apackdev/sdk'
@@ -82,7 +82,7 @@ const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
  * stored one did not.
  */
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
-  const defaults = stepRegistry.getNode(nodeData.nodeType)?.defaults;
+  const defaults = getStepDeclaration(nodeData.nodeType)?.declaration.node.defaults;
   if (defaults) Object.assign(nodeData, structuredClone(defaults));
 }
 
@@ -680,7 +680,7 @@ const flowsState = setup({
             const nextIndex = existingExits.length > 0 ? Math.max(...existingExits) + 1 : 0
             sourceHandle = `exit-${nextIndex}`
           } else if (selectedNode?.nodeType) {
-            const prefix = stepRegistry.get(selectedNode.nodeType)?.fe?.handlePrefix;
+            const prefix = getStepDeclaration(selectedNode.nodeType)?.declaration.fe?.handlePrefix;
             if (prefix) {
               sourceHandle = `${prefix}-${nextHandleIndex(context.graph.edges, context.selectedNodeId!, prefix)}`;
             }
@@ -767,7 +767,7 @@ const flowsState = setup({
       let resolvedSourceHandle = ev.sourceHandle
       if (!resolvedSourceHandle) {
         const sourceNode = context.graph.nodes.find(n => n.id === ev.sourceNodeId)
-        const handlePrefix = sourceNode?.nodeType ? stepRegistry.get(sourceNode.nodeType)?.fe?.handlePrefix : undefined;
+        const handlePrefix = sourceNode?.nodeType ? getStepDeclaration(sourceNode.nodeType)?.declaration.fe?.handlePrefix : undefined;
         if (handlePrefix) {
           resolvedSourceHandle = `${handlePrefix}-${nextHandleIndex(context.graph.edges, ev.sourceNodeId, handlePrefix)}`;
         } else if (isTriggerNode(sourceNode?.nodeType)) {

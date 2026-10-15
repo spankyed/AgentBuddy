@@ -1,5 +1,8 @@
+import { computed } from 'vue'
 import type { Component } from 'vue'
-import { stepRegistry } from '@apackdev/sdk/steps'
+import { Box } from 'lucide-vue-next'
+import { getStepDeclarations, getStepDeclaration, getStepBinding, useStepDeclarations } from '@apackdev/sdk/fe'
+import type { StepCatalogEntry } from '@apackdev/sdk/framework'
 
 export interface NodeConfig {
   type: string
@@ -8,6 +11,7 @@ export interface NodeConfig {
   icon: Component
   /** Resolved from the step's `colorKey`, not declared beside it */
   color: string
+  colorKey?: string
   connectionRules: {
     inputs: number    // -1 means unlimited
     outputs: number   // -1 means unlimited
@@ -124,231 +128,201 @@ const STATUS_STYLE_CLASSES = {
 
 type ColorKey = keyof typeof NODE_STYLE_CLASSES.gradient
 
-const STATIC_COLOR_MAP: Record<string, ColorKey> = {
-  event: 'blue',
+/** Declared presentation survives disabled or unavailable implementations. */
+function buildNodeConfigs(entries: readonly StepCatalogEntry[]): Record<string, NodeConfig> {
+  return Object.fromEntries(entries.flatMap(({ type, declaration }) => {
+    if (!declaration.fe) return [];
+    const { node, fe } = declaration;
+    const ready = getStepBinding(type);
+    const colorKey = fe.colorKey && Object.hasOwn(NODE_STYLE_CLASSES.iconText, fe.colorKey) ? fe.colorKey as ColorKey : 'neutral';
+    return [[type, {
+      ...fe.nodeConfig,
+      label: node.label,
+      ...(node.defaultLabel !== undefined && { defaultLabel: node.defaultLabel }),
+      type,
+      icon: (ready?.binding.fe?.nodeConfig.icon as Component | undefined) ?? Box,
+      colorKey,
+      color: NODE_STYLE_CLASSES.iconText[colorKey],
+      isDisabled: fe.nodeConfig.isDisabled === true || !ready,
+      ...(declaration.kind === 'trigger' && { connectionRules: { inputs: 0, outputs: -1 } }),
+    }]];
+  }));
 }
 
-/**
- * One config per step the canvas can draw, from the two facets that describe it: `node` says how it is
- * labelled (both processes read that one) and `fe` how it is drawn. A step needs both to be drawable — one
- * with no `fe` has no icon, and one with no `node` has no label.
- */
-function buildNodeConfigs(): Record<string, NodeConfig> {
-  const configs: Record<string, NodeConfig> = {}
-
-  for (const step of stepRegistry.all()) {
-    if (!step.fe || !step.node) continue
-    configs[step.type] = {
-      ...step.fe.nodeConfig,
-      label: step.node.label,
-      ...(step.node.defaultLabel !== undefined && { defaultLabel: step.node.defaultLabel }),
-      type: step.type,
-      icon: step.fe.nodeConfig.icon as Component,
-      // The one colour anything reads, resolved from the token rather than declared beside it. A step
-      // naming a token this palette does not hold gets the neutral one, as `getNodeIconTextColor` always
-      // did for a step with no config at all
-      color: NODE_STYLE_CLASSES.iconText[(step.fe.colorKey ?? 'neutral') as ColorKey] ?? NODE_STYLE_CLASSES.iconText.neutral,
-      ...(step.kind === 'trigger' && {
-        connectionRules: { inputs: 0, outputs: -1 },
-      }),
-    }
+function createNodeStyles(getConfigs: () => Record<string, NodeConfig>) {
+  const resolveNodeType = (nodeType: string, options?: NodeStyleOptions): string => {
+    return options?.isEvent ? 'event' : nodeType
   }
 
-  return configs
-}
-
-function buildColorMap(): Record<string, ColorKey> {
-  const map: Record<string, ColorKey> = { ...STATIC_COLOR_MAP }
-
-  for (const step of stepRegistry.all()) {
-    if (step.fe?.colorKey) {
-      map[step.type] = step.fe.colorKey as ColorKey
-    }
+  const getNodeColorKey = (nodeType: string): ColorKey => {
+    const key = getNodeConfig(nodeType)?.colorKey ?? (nodeType === 'event' ? 'blue' : 'neutral')
+    return Object.hasOwn(NODE_STYLE_CLASSES.gradient, key) ? key as ColorKey : 'neutral'
   }
 
-  return map
-}
+  const getNodeClasses = (nodeType: string, options?: NodeStyleOptions): string => {
+    const baseClasses = 'px-3 py-2 rounded-lg border backdrop-blur-sm transition-all duration-200'
+    const effectiveType = resolveNodeType(nodeType, options)
+    const colorKey = getNodeColorKey(effectiveType)
 
-let _nodeConfigs: Record<string, NodeConfig> | undefined
-let _colorMap: Record<string, ColorKey> | undefined
+    return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
+  }
 
-function getConfigs(): Record<string, NodeConfig> {
-  if (!_nodeConfigs) _nodeConfigs = buildNodeConfigs()
-  return _nodeConfigs
-}
+  const getNodeDividerClass = (nodeType: string, options?: NodeStyleOptions): string => {
+    const effectiveType = resolveNodeType(nodeType, options)
+    const colorKey = getNodeColorKey(effectiveType)
 
-function getColorMap(): Record<string, ColorKey> {
-  if (!_colorMap) _colorMap = buildColorMap()
-  return _colorMap
-}
+    const dividerMap: Record<string, string> = {
+      purple: 'border-purple-500/40',
+      blue: 'border-blue-500/40',
+      amber: 'border-amber-500/40',
+      cyan: 'border-cyan-500/40',
+      orange: 'border-orange-500/40',
+      emerald: 'border-emerald-500/40',
+      indigo: 'border-indigo-500/40',
+      neutral: 'border-neutral-500/45',
+      red: 'border-red-500/40',
+      yellow: 'border-yellow-500/40'
+    }
 
-export const nodeConfigs: Record<string, NodeConfig | undefined> = new Proxy({} as any, {
-  get(_target, prop) {
-    return getConfigs()[prop as string]
-  },
-  ownKeys() {
-    return Object.keys(getConfigs())
-  },
-  getOwnPropertyDescriptor(_target, prop) {
+    return dividerMap[colorKey] || dividerMap.neutral
+  }
+
+  const getNodeIconTextColor = (nodeType: string, options?: NodeStyleOptions): string => {
+    const effectiveType = resolveNodeType(nodeType, options)
+    const config = getNodeConfig(effectiveType)
+
+    if (effectiveType === 'event') {
+      return 'text-blue-400'
+    }
+
+    return config?.color || 'text-neutral-400'
+  }
+
+  const getNodeStatusClasses = (
+    status: NodeStatus | string,
+    variant: StatusVariant = 'simple'
+  ): string | { outer: string; inner: string } => {
+    if (variant === 'simple') {
+      return STATUS_STYLE_CLASSES.simple[status as NodeStatus] || STATUS_STYLE_CLASSES.simple.default
+    }
+
+    const detailedStatus = STATUS_STYLE_CLASSES.detailed[status as NodeStatus] || STATUS_STYLE_CLASSES.detailed.default
+    return detailedStatus
+  }
+
+
+  const getNodeConfig = (nodeType: string): NodeConfig | undefined => {
     const configs = getConfigs()
-    if (prop in configs) {
-      return { configurable: true, enumerable: true, value: configs[prop as string] }
+    return Object.hasOwn(configs, nodeType) ? configs[nodeType] : undefined
+  }
+
+  const isTriggerNode = (nodeType: string | undefined): boolean => {
+    if (!nodeType) return false
+    const config = getNodeConfig(nodeType)
+    return config !== undefined && getStepDeclaration(nodeType)?.declaration.kind === 'trigger'
+  }
+
+  const getPaletteItems = () => {
+    return Object.values(getConfigs())
+      .filter((config): config is NodeConfig => Boolean(config) && config.isImplemented === true)
+      .map(({ type, label, icon, isImplemented, isDisabled }) => ({ type, label, icon, isImplemented, isDisabled }))
+  }
+
+  const getConnectableNodeTypes = () => {
+    return getPaletteItems().filter(item => {
+      if (!item.isImplemented || item.isDisabled) return false
+      const config = getNodeConfig(item.type)
+      return config && config.connectionRules.inputs !== 0
+    })
+  }
+
+  const getPaletteItemClasses = (type: string): string => {
+    const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98]'
+    const colorKey = getNodeColorKey(type)
+
+    return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
+  }
+
+  const getInspectionItemClasses = (type: string): string => {
+    const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200'
+    const colorKey = getNodeColorKey(type)
+
+    return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
+  }
+
+  const getPaletteIconClasses = (type: string): string => {
+    const colorKey = getNodeColorKey(type)
+    const solidClass = NODE_STYLE_CLASSES.solid[colorKey]
+    const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
+    const hoverRingClass = colorKey === 'neutral'
+      ? 'group-hover:ring-neutral-400/50'
+      : `group-hover:ring-${colorKey}-400/50`
+
+    return `${solidClass} ${ringClass} ${hoverRingClass}`
+  }
+
+  const getPaletteIconComponentClasses = (type: string): string => {
+    const colorKey = getNodeColorKey(type)
+
+    const textColorMap: Record<string, string> = {
+      purple: 'text-purple-300/70 group-hover:text-purple-300/90',
+      blue: 'text-blue-300/70 group-hover:text-blue-300/90',
+      amber: 'text-amber-300/70 group-hover:text-amber-300/90',
+      cyan: 'text-cyan-300/70 group-hover:text-cyan-300/90',
+      orange: 'text-orange-300/70 group-hover:text-orange-300/90',
+      emerald: 'text-emerald-300/70 group-hover:text-emerald-300/90',
+      indigo: 'text-indigo-300/70 group-hover:text-indigo-300/90',
+      neutral: 'text-neutral-400 group-hover:text-neutral-300',
+      red: 'text-red-300/70 group-hover:text-red-300/90',
+      yellow: 'text-yellow-300/70 group-hover:text-yellow-300/90'
     }
-    return undefined
-  },
-  has(_target, prop) {
-    return prop in getConfigs()
-  },
-})
 
-const resolveNodeType = (nodeType: string, options?: NodeStyleOptions): string => {
-  return options?.isEvent ? 'event' : nodeType
-}
-
-const getNodeColorKey = (nodeType: string): ColorKey => {
-  return getColorMap()[nodeType] || 'neutral'
-}
-
-export const getNodeClasses = (nodeType: string, options?: NodeStyleOptions): string => {
-  const baseClasses = 'px-3 py-2 rounded-lg border backdrop-blur-sm transition-all duration-200'
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-
-  return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
-}
-
-export const getNodeDividerClass = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-
-  const dividerMap: Record<string, string> = {
-    purple: 'border-purple-500/40',
-    blue: 'border-blue-500/40',
-    amber: 'border-amber-500/40',
-    cyan: 'border-cyan-500/40',
-    orange: 'border-orange-500/40',
-    emerald: 'border-emerald-500/40',
-    indigo: 'border-indigo-500/40',
-    neutral: 'border-neutral-500/45',
-    red: 'border-red-500/40',
-    yellow: 'border-yellow-500/40'
+    return textColorMap[colorKey] || textColorMap.neutral
   }
 
-  return dividerMap[colorKey] || dividerMap.neutral
-}
-
-export const getNodeIconTextColor = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const config = getNodeConfig(effectiveType)
-
-  if (effectiveType === 'event') {
-    return 'text-blue-400'
+  const getPaletteGlowClasses = (type: string): string => {
+    const colorKey = getNodeColorKey(type)
+    return NODE_STYLE_CLASSES.glow[colorKey]
   }
 
-  return config?.color || 'text-neutral-400'
-}
+  const getPaletteGradientClasses = (type: string): string => {
+    const colorKey = getNodeColorKey(type)
 
-export const getNodeStatusClasses = (
-  status: NodeStatus | string,
-  variant: StatusVariant = 'simple'
-): string | { outer: string; inner: string } => {
-  if (variant === 'simple') {
-    return STATUS_STYLE_CLASSES.simple[status as NodeStatus] || STATUS_STYLE_CLASSES.simple.default
+    const gradientMap: Record<string, string> = {
+      purple: 'from-purple-400 to-purple-600',
+      blue: 'from-blue-400 to-blue-600',
+      amber: 'from-amber-400 to-amber-600',
+      cyan: 'from-cyan-400 to-cyan-600',
+      orange: 'from-orange-400 to-orange-600',
+      emerald: 'from-emerald-400 to-emerald-600',
+      indigo: 'from-indigo-400 to-indigo-600',
+      neutral: 'from-neutral-400 to-neutral-600',
+      red: 'from-red-400 to-red-600',
+      yellow: 'from-yellow-400 to-yellow-600'
+    }
+
+    return gradientMap[colorKey] || gradientMap.neutral
   }
 
-  const detailedStatus = STATUS_STYLE_CLASSES.detailed[status as NodeStatus] || STATUS_STYLE_CLASSES.detailed.default
-  return detailedStatus
-}
-
-
-export const getNodeConfig = (nodeType: string): NodeConfig | undefined => {
-  return getConfigs()[nodeType]
-}
-
-export const isTriggerNode = (nodeType: string | undefined): boolean => {
-  if (!nodeType) return false
-  const config = getNodeConfig(nodeType)
-  return config?.connectionRules.inputs === 0 && config?.connectionRules.outputs === -1
-}
-
-export const getPaletteItems = () => {
-  return Object.values(getConfigs())
-    .filter((config): config is NodeConfig => Boolean(config) && config.isImplemented === true)
-    .map(({ type, label, icon, isImplemented, isDisabled }) => ({ type, label, icon, isImplemented, isDisabled }))
-}
-
-export const getConnectableNodeTypes = () => {
-  return getPaletteItems().filter(item => {
-    if (!item.isImplemented || item.isDisabled) return false
-    const config = getNodeConfig(item.type)
-    return config && config.connectionRules.inputs !== 0
-  })
-}
-
-export const getPaletteItemClasses = (type: string): string => {
-  const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98]'
-  const colorKey = getNodeColorKey(type)
-
-  return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
-}
-
-export const getInspectionItemClasses = (type: string): string => {
-  const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200'
-  const colorKey = getNodeColorKey(type)
-
-  return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
-}
-
-export const getPaletteIconClasses = (type: string): string => {
-  const colorKey = getNodeColorKey(type)
-  const solidClass = NODE_STYLE_CLASSES.solid[colorKey]
-  const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
-  const hoverRingClass = colorKey === 'neutral'
-    ? 'group-hover:ring-neutral-400/50'
-    : `group-hover:ring-${colorKey}-400/50`
-
-  return `${solidClass} ${ringClass} ${hoverRingClass}`
-}
-
-export const getPaletteIconComponentClasses = (type: string): string => {
-  const colorKey = getNodeColorKey(type)
-
-  const textColorMap: Record<string, string> = {
-    purple: 'text-purple-300/70 group-hover:text-purple-300/90',
-    blue: 'text-blue-300/70 group-hover:text-blue-300/90',
-    amber: 'text-amber-300/70 group-hover:text-amber-300/90',
-    cyan: 'text-cyan-300/70 group-hover:text-cyan-300/90',
-    orange: 'text-orange-300/70 group-hover:text-orange-300/90',
-    emerald: 'text-emerald-300/70 group-hover:text-emerald-300/90',
-    indigo: 'text-indigo-300/70 group-hover:text-indigo-300/90',
-    neutral: 'text-neutral-400 group-hover:text-neutral-300',
-    red: 'text-red-300/70 group-hover:text-red-300/90',
-    yellow: 'text-yellow-300/70 group-hover:text-yellow-300/90'
+  return {
+    getNodeConfigs: getConfigs,
+    getNodeClasses, getNodeDividerClass, getNodeIconTextColor, getNodeStatusClasses,
+    getNodeConfig, isTriggerNode, getPaletteItems, getConnectableNodeTypes,
+    getPaletteItemClasses, getInspectionItemClasses, getPaletteIconClasses,
+    getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses,
   }
-
-  return textColorMap[colorKey] || textColorMap.neutral
 }
 
-export const getPaletteGlowClasses = (type: string): string => {
-  const colorKey = getNodeColorKey(type)
-  return NODE_STYLE_CLASSES.glow[colorKey]
-}
+export const {
+  getNodeConfigs, getNodeClasses, getNodeDividerClass, getNodeIconTextColor, getNodeStatusClasses,
+    getNodeConfig, isTriggerNode, getPaletteItems, getConnectableNodeTypes,
+    getPaletteItemClasses, getInspectionItemClasses, getPaletteIconClasses,
+    getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses,
+} = createNodeStyles(() => buildNodeConfigs(getStepDeclarations()))
 
-export const getPaletteGradientClasses = (type: string): string => {
-  const colorKey = getNodeColorKey(type)
-
-  const gradientMap: Record<string, string> = {
-    purple: 'from-purple-400 to-purple-600',
-    blue: 'from-blue-400 to-blue-600',
-    amber: 'from-amber-400 to-amber-600',
-    cyan: 'from-cyan-400 to-cyan-600',
-    orange: 'from-orange-400 to-orange-600',
-    emerald: 'from-emerald-400 to-emerald-600',
-    indigo: 'from-indigo-400 to-indigo-600',
-    neutral: 'from-neutral-400 to-neutral-600',
-    red: 'from-red-400 to-red-600',
-    yellow: 'from-yellow-400 to-yellow-600'
-  }
-
-  return gradientMap[colorKey] || gradientMap.neutral
+/** Reactive node presentation owned by the calling component's effect scope. */
+export function useNodeStyles() {
+  const declarations = useStepDeclarations()
+  const configs = computed(() => buildNodeConfigs(declarations.value))
+  return createNodeStyles(() => configs.value)
 }

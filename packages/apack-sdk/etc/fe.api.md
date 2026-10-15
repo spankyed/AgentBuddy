@@ -204,6 +204,15 @@ export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
 export function getNextAvailableColor(tabGroups: TabGroup[], isPinned?: boolean): TabGroupColor;
 
 // @public
+export function getStepBinding(type: string): StepFrontendBinding | undefined;
+
+// @public
+export function getStepDeclaration(type: string): StepCatalogEntry | undefined;
+
+// @public
+export function getStepDeclarations(): readonly StepCatalogEntry[];
+
+// @public
 export function getStepFrontendBindings(): ReadonlyMap<string, StepFrontendBinding>;
 
 // @public (undocumented)
@@ -522,6 +531,9 @@ export interface NavHistory<T> {
 
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
+
+// @public
+export function onStepsChanged(listener: () => void): () => void;
 
 // @public
 export function openHelp(target?: HelpTarget): void;
@@ -928,6 +940,9 @@ export function useSettingsStatus(): Readonly<Ref<ReturnType<SettingsPort['statu
 
 // @public
 export function useShell(): Shell;
+
+// @public
+export function useStepDeclarations(): ComputedRef<readonly StepCatalogEntry[]>;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

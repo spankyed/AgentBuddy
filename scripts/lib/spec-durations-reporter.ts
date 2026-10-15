@@ -113,26 +113,17 @@ export interface ReportedRun {
 /** The states in which a module actually executed; everything else carries no duration worth reading */
 const RAN = new Set(['passed', 'failed']);
 
-/**
- * What to call a project, which vitest answers for only some runs.
- *
- * `TestProject.name` is documented as "the name of the project or **an empty string if not set**", and no
- * config in this repo sets `test.name`. Under the root config vitest fills it from each project's
- * `package.json`, so a pooled run is named; a standalone run of one package's own config — which is
- * exactly how the pack pool invokes `npm test -w <workspace>` — reports the empty string. Observed: the
- * pack pool refused its own run because `@app/default-setup` "never reported".
- *
- * So the fallback reads the same thing vitest would have: `name` from the `package.json` at the project's
- * root. That keeps one notion of a project's identity — the workspace name, which is what `UNIT_SUITES`
- * holds and what `--project` matches — rather than a second one that happens to agree under one invocation.
- */
-function projectName(name: string, root: string): string {
-  if (name !== '') return name;
+/** Attribute named subprojects only to the workspace whose package.json confirms their prefix. */
+function workspaceName(name: string, root: string): string {
+  if (name !== '' && !name.includes(':')) return name;
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8')) as { name?: string };
-    return manifest.name ?? '';
+    const workspace = manifest.name;
+    const prefix = `${workspace}:`;
+    return name === '' ? workspace ?? ''
+      : workspace && name.startsWith(prefix) && name.length > prefix.length ? workspace : name;
   } catch {
-    return '';
+    return name;
   }
 }
 
@@ -141,7 +132,7 @@ export default class SpecDurationsReporter implements Reporter {
 
   [STARTED](specifications: Specifications): void {
     for (const specification of specifications) {
-      this.#started.add(projectName(specification.project.name, specification.project.config.root));
+      this.#started.add(workspaceName(specification.project.name, specification.project.config.root));
     }
   }
 
@@ -151,7 +142,7 @@ export default class SpecDurationsReporter implements Reporter {
     const reported: ReportedModule[] = modules.map((module) => {
       const diagnostic = module.diagnostic();
       return ({
-      project: projectName(module.project.name, module.project.config.root),
+      project: workspaceName(module.project.name, module.project.config.root),
       file: path.relative(module.project.config.root, module.moduleId),
       ms: diagnostic.duration,
       overheadMs: diagnostic.collectDuration + diagnostic.setupDuration

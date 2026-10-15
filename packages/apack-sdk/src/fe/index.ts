@@ -59,3 +59,4 @@ export {
 export { defineHandlers, type Handlers } from '../framework/define-system.ts'
 
 export { getStepFrontendBindings, type StepFrontendBinding } from './step-bindings.ts';
+export { getStepDeclarations, getStepDeclaration, getStepBinding, onStepsChanged, useStepDeclarations } from './step-reader.ts';

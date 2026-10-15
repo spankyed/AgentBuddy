@@ -1,5 +1,5 @@
 import type { ElkPort } from 'elkjs/lib/elk.bundled.js'
-import { stepRegistry } from '@apackdev/sdk/steps'
+import { getStepDeclaration, getStepBinding } from '@apackdev/sdk/fe'
 
 export const NODE_DIMENSIONS = {
   default: { width: 200, height: 50 },
@@ -74,44 +74,22 @@ const triggerDescriptor: NodeLayoutDescriptor = {
   hasInput: false,
 }
 
-const builtInTriggerDescriptors = new Map<string, NodeLayoutDescriptor>([
-  ['listener', triggerDescriptor],
-])
-
+/** Static flags remain available; callbacks require the same currently eligible binding. */
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor {
-  if (!nodeType) return defaultDescriptor;
-  const builtIn = builtInTriggerDescriptors.get(nodeType);
-  if (builtIn) return builtIn;
-  if (stepRegistry.isTrigger(nodeType)) {
-    const layout = stepRegistry.getFE(nodeType)?.layout;
-    if (layout) {
-      return {
-        getHeight: layout.getHeight
-          ? (node, ctx) => layout.getHeight!(node as any, ctx)
-          : triggerDescriptor.getHeight,
-        getPorts: layout.getPorts
-          ? (node, ctx) => layout.getPorts!(node as any, ctx) as ElkPort[]
-          : triggerDescriptor.getPorts,
-        hasInput: false,
-        usesExitCount: layout.usesExitCount ?? triggerDescriptor.usesExitCount,
-      };
-    }
-    return triggerDescriptor;
+  if (!nodeType) return defaultDescriptor
+  const declaration = getStepDeclaration(nodeType)?.declaration
+  const base = declaration?.kind === 'trigger' ? triggerDescriptor : defaultDescriptor
+  const layout = declaration?.fe?.layout
+  const accepted = getStepBinding(nodeType)
+  const currentLayout = () => accepted && getStepBinding(nodeType) === accepted ? accepted.binding.fe?.layout : undefined
+  return {
+    getHeight: (node, context) => currentLayout()?.getHeight?.(node as unknown as Record<string, unknown>, context)
+      ?? base.getHeight(node, context),
+    getPorts: (node, context) => currentLayout()?.getPorts?.(node as unknown as Record<string, unknown>, context)
+      ?? base.getPorts(node, context),
+    hasInput: layout?.hasInput ?? base.hasInput,
+    usesExitCount: layout?.usesExitCount ?? base.usesExitCount,
   }
-  const layout = stepRegistry.getFE(nodeType)?.layout;
-  if (layout) {
-    return {
-      getHeight: layout.getHeight
-        ? (node, ctx) => layout.getHeight!(node as any, ctx)
-        : defaultDescriptor.getHeight,
-      getPorts: layout.getPorts
-        ? (node, ctx) => layout.getPorts!(node as any, ctx) as ElkPort[]
-        : defaultDescriptor.getPorts,
-      hasInput: layout.hasInput ?? true,
-      usesExitCount: layout.usesExitCount,
-    };
-  }
-  return defaultDescriptor;
 }
 
 export function computeExitCount(

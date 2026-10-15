@@ -2708,3 +2708,37 @@ The keyed-declaration correction is now committed in `29f0cc556`. Next switch li
 checkpoint 3 and remove active-only caches, then finish the full remaining kind/content/asset,
 compiler/freshness/scope-cost, native/editor, navigation, boundary and Phase 6 work. 2B.2 does not replace
 those acceptance criteria or final committed-source strict `--all` validation.
+
+
+### Live step reader implementation (2026-10-15)
+
+Checkpoint 3 reads declared node/presentation/layout data from the common catalog. A unique native or
+installed owner takes precedence over authoring-source previews; ambiguous runtime owners yield no
+selected contribution. Metadata remains readable when disabled or disconnected. Executable frontend
+bindings require a ready catalog, enabled runtime owner, matching pack/type and accepted declaration
+and build identities. Native entries have no fabricated stamps and must match captured declaration data.
+Reading or subscribing never loads a component, evaluates layout or starts a provider.
+
+The SDK owns these selection/readiness rules. A scoped reactive step reader observes catalog and
+frontend publications independently and releases both subscriptions. UI node-style helpers keep their
+imperative reads fresh; a scoped composable supplies the same helpers to Vue consumers with reactive
+catalog tracking. Remove permanent node/color caches and the nodeConfigs proxy rather than add an
+invalidation protocol. Palette/menu defaults are computed, and open nodes/forms refresh on publication.
+Retain unavailable metadata with disabled creation and a host fallback icon/component; custom code
+requires current eligible bindings. Static layout flags come from declarations, callable layout from the
+eligible binding. Do not remove actual backend/runtime execution lookups in this frontend reader change.
+
+Prove native/source/installed parity, duplicate owners, source-preview precedence, every readiness and
+identity refusal, source-free/poisoned executable metadata, replacement/unload/re-enable, and scoped
+subscription cleanup. Exercise mounted consumers, real external authoring and app paths; preserve
+ordinary node creation, EARS types and compiled-content baselines. Backend creation defaults and full
+trigger/build metadata remain explicit subsequent work if not completed in the same checkpoint; this
+sequence does not reduce the existing checkpoint 3 or full goal acceptance criteria.
+
+
+Mounted pack-component checks belong to the pack's suite. Its frontend project compiles Vue in jsdom
+without the backend harness; ordinary specs keep Node and SFC stubs. Both resolve published packages.
+Use workspace-qualified project names (`<workspace>:backend` / `:frontend`); the duration reporter
+attributes those only when the root package.json confirms ownership. Unrelated names retain their
+refusal, and collection/input guards remain intact. Do not place these specs in the renderer or broaden
+its dependency inputs to accommodate private pack-source imports.

@@ -195,6 +195,28 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 | `isImplemented` | `boolean` | Palette items not implemented are disabled |
 | `isDisabled` | `boolean` | Disables the palette item |
 
+### Reading step declarations and frontend bindings
+
+`getStepDeclarations()` and `getStepDeclaration(type)` from `@apackdev/sdk/fe` return catalog entries:
+owner, origin, enablement, identities and declaration data. They read no executable pack modules.
+A unique installed/native owner takes precedence over authoring previews; ambiguous owners are not
+selected. Disabled or disconnected declarations remain readable.
+
+`getStepBinding(type)` returns the current eligible frontend binding, or `undefined`. It requires a ready
+catalog, enabled runtime owner and matching accepted declaration/build identities. Native bindings also
+match their captured declaration data without invented version stamps. This read never starts a pack.
+`getStepFrontendBindings()` is the lower-level inventory of admitted frontends; admission alone does not
+establish current catalog readiness.
+
+In Vue, call `useStepDeclarations()` inside setup or an effect scope. Its computed list refreshes for
+both declaration and frontend changes, including readiness changes with unchanged metadata. Disposal
+releases both subscriptions. Imperative observers can use `onStepsChanged(callback)` and call its disposer.
+
+For flow UI, `useNodeStyles()` from `@apackdev/ui/components/node-styles` supplies reactive node/palette
+helpers in the same scope. The standalone helper exports read current data on each call. Unavailable
+steps retain presentation and a fallback icon, with creation disabled. Custom components and calculated
+layouts require an eligible binding; static layout flags remain readable without one.
+
 ### Types (types.ts)
 
 ```typescript
