@@ -7,9 +7,9 @@ import type { EARS } from '@apackdev/ears';
 
 // The action runs on the harness's services: a real thread and messages in the in-memory database,
 // with the CLI and the chat, threads, settings and artifact services it drives mocked
-async function createServices(viewSessionResult: unknown[] | Error = [], sendBlockMessage = vi.fn()) {
+async function createServices(nativeError?: Error, sendBlockMessage = vi.fn()) {
   const { id: threadId } = repository.threadCommands.create({ topic: 'Revert', instructions: '', tags: ['claude-code'] });
-  repository.threadCommands.update(threadId, { context: { claudeCode: { sessionId: 'session-1', cwd: '/project', isRunning: true } } });
+  repository.threadCommands.update(threadId, { context: { claudeCode: { sessionId: 'session-1', cwd: '/project', isRunning: false } } });
   repository.chatCommands.addMessage({ threadId, sender: 'user', text: 'hello' });
   const assistant = repository.chatCommands.addMessage({ threadId, sender: 'assistant', text: 'hi', context: { cliUuid: 'uuid-1' } });
 
@@ -17,9 +17,8 @@ async function createServices(viewSessionResult: unknown[] | Error = [], sendBlo
     claudeCode: {
       getHandle: vi.fn(() => undefined),
       clearHandle: vi.fn(),
-      viewSession: vi.fn(async () => {
-        if (viewSessionResult instanceof Error) throw viewSessionResult;
-        return viewSessionResult;
+      validateResumeTarget: vi.fn(async () => {
+        if (nativeError) throw nativeError;
       }),
     } as never,
   });
@@ -31,44 +30,43 @@ async function createServices(viewSessionResult: unknown[] | Error = [], sendBlo
 }
 
 describe('CC: Handle Revert', () => {
-  it('reverts with valid cliUuid when viewSession confirms it', async () => {
-    const { threadId, messageId } = await createServices([
-      { type: 'assistant', uuid: 'uuid-1' },
-    ]);
-
-    const result = await handleRevert({ threadId, messageId }, services);
-
-    expect(result).toMatchObject({
-      success: true,
-      cliUuid: 'uuid-1',
-    });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
+  it('persists the boundary accepted by native resume', async () => {
+    const {threadId,messageId}=await createServices();
+    const result=await handleRevert({threadId,messageId},services);
+    expect(result).toMatchObject({success:true,cliUuid:'uuid-1'});
+    expect(services.cli.claudeCode.validateResumeTarget).toHaveBeenCalledWith({sessionId:'session-1',messageUuid:'uuid-1',cwd:'/project'});
+    expect(repository.threadQueries.byId(threadId)?.context?.claudeCode).toMatchObject({sessionId:'session-1',revertTo:{cliUuid:'uuid-1'}});
+  });
+  it('preserves native session state when the boundary is rejected instead of starting fresh',async()=>{
+    const {threadId,messageId}=await createServices(new Error('No message found'));
+    const before=repository.threadQueries.byId(threadId)?.context;
+    expect((await handleRevert({threadId,messageId},services)).success).toBe(false);
+    expect(repository.threadQueries.byId(threadId)?.context).toMatchObject({...before,claudeCode:{...before?.claudeCode,historyError:'No message found'}});
+    expect(services.cli.claudeCode.clearHandle).not.toHaveBeenCalled();
+  });
+  it('rejects a source changed during validation instead of overwriting its newer state',async()=>{
+    const {threadId,messageId}=await createServices();
+    let release!:()=>void;
+    vi.mocked(services.cli.claudeCode.validateResumeTarget).mockImplementation(()=>new Promise<void>(resolve=>{release=resolve;}));
+    const pending=handleRevert({threadId,messageId},services);
+    repository.threadCommands.update(threadId,{context:{claudeCode:{sessionId:'new-session',cwd:'/project'}}});
+    release();
+    expect((await pending).success).toBe(false);
+    expect(repository.threadQueries.byId(threadId)?.context?.claudeCode?.sessionId).toBe('new-session');
+  });
+  it('starts fresh only when the selected remaining prefix has no native assistant',async()=>{
+    const {threadId,messageId}=await createServices();
+    repository.chatCommands.softDeleteMessagesAfter({threadId,messageId});
+    expect(await handleRevert({threadId,messageId},services)).toMatchObject({success:true,cliUuid:undefined});
+    expect(services.cli.claudeCode.validateResumeTarget).not.toHaveBeenCalled();
+    expect(repository.threadQueries.byId(threadId)?.context?.claudeCode?.sessionId).toBeUndefined();
+  });
+  it('preserves an active turn instead of killing it during downstream validation',async()=>{
+    const {threadId,messageId}=await createServices();
+    repository.threadCommands.update(threadId,{context:{claudeCode:{sessionId:'session-1',cwd:'/project',isRunning:true}}});
+    expect((await handleRevert({threadId,messageId},services)).success).toBe(false);
+    expect(services.cli.claudeCode.validateResumeTarget).not.toHaveBeenCalled();
+    expect(services.cli.claudeCode.clearHandle).not.toHaveBeenCalled();
   });
 
-  it('clears cliUuid when viewSession shows UUID not in session (post-compaction)', async () => {
-    const { threadId, messageId } = await createServices([]);
-
-    const result = await handleRevert({ threadId, messageId }, services);
-
-    expect(result).toMatchObject({
-      success: true,
-      cliUuid: undefined,
-    });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
-  });
-
-  it('clears cliUuid when viewSession throws', async () => {
-    const { threadId, messageId } = await createServices(new Error('JSONL not found'));
-
-    const result = await handleRevert({ threadId, messageId }, services);
-
-    expect(result).toMatchObject({
-      success: true,
-      cliUuid: undefined,
-    });
-    expect(services.logger.warn).toHaveBeenCalledWith(
-      '[revert] could not validate cliUuid against session JSONL',
-      expect.objectContaining({ cliUuid: 'uuid-1' }),
-    );
-  });
 });
