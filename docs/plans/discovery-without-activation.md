@@ -2099,3 +2099,11 @@ A real CLI test retains the accepted revision after worker compilation fails and
 The goal records baseline failures and focused validation. Arbitrarily computed glob options,
 remaining dynamic graphs, exact compiler identity, coherent frozen execution/publication,
 manual-build/drive freshness and the aggregate strict gate remain required. No broader phase is closed.
+
+`a6be184da` additionally observes the fixed relative directory prefix of variable import templates,
+which Vite expands after user plugins. A previously empty import graph now observes matching-file
+additions/removals, including filename prefixes; explicit `@vite-ignore` imports remain runtime-owned.
+This is conservative subscription coverage, not a replacement for Vite's expansion or proof of frozen
+reads. The goal records the failing baseline, seven passing compiler cases, nested-worker regression,
+105 focused checks and type/lint evidence. Computed glob options, exact compiler identity, coherent
+execution/publication, manual-build/drive freshness and the full strict gate remain open.

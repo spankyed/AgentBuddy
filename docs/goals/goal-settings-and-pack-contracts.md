@@ -4499,3 +4499,18 @@ glob regressions, nested workers, an empty nested-worker glob, and real CLI erro
 (`/private/tmp/apack-worker-input-types.log`, `/private/tmp/apack-worker-input-lint.log`). This is
 focused checkpoint evidence; the aggregate strict gate, remaining dynamic/compiler/frozen-publication
 work and every larger goal requirement remain open. No exclusions or archival.
+
+### Variable import membership checkpoint (2026-10-15)
+
+Source `a6be184da` observes fixed relative directory prefixes of variable import templates. Vite
+expands those templates after user plugins, so observing authored `import.meta.glob` alone missed
+initially empty variable-import graphs. The observer conservatively tracks membership; Vite still
+owns expansion and diagnostics. Explicit `@vite-ignore` runtime imports are excluded.
+The matching-file reproducer fails before the fix (`/private/tmp/apack-variable-import-baseline.log`).
+Seven actual Vite cases pass in 6.78s, proving additions/removals, filename prefixes, ignored imports
+and existing glob forms (`/private/tmp/apack-variable-import-final.log`). Nested-worker glob coverage
+also passes (`/private/tmp/apack-variable-import-verified.log`). All 105 focused checks pass in 2.30s;
+CLI typechecking and changed-file correctness lint pass (`/private/tmp/apack-variable-import-{unit,types,lint}.log`).
+This does not establish arbitrary runtime import closure or frozen compilation. Computed glob
+options, exact compiler-consumer identity, coherent execution/publication, manual-build/drive
+freshness, the unresolved aggregate strict gate and all remaining goal phases stay required.
