@@ -70,7 +70,7 @@ export interface FePackRegistryView extends PackExtensionsView {
     referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
     referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
     // (undocumented)
-    tiptapPlugins(): TiptapPlugin[];
+    tiptapPlugins(): TiptapPluginBinding[];
 }
 
 // @public

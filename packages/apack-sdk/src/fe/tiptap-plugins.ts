@@ -17,11 +17,22 @@ export interface TiptapPlugin {
   readonly isSuggestionActive?: (state: EditorState) => boolean
 }
 
+/** One accepted editor group; declarations and unavailable groups belong to the catalog. */
+export interface TiptapPluginBinding {
+  readonly packId: string
+  readonly groupId: string
+  readonly binding: TiptapPlugin
+}
+
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlockItems')
 
 // The tiptap plugins the renderer's registered pack frontends contribute
 export const tiptapPluginRegistry = {
-  getAll(): TiptapPlugin[] {
+  getAll(): TiptapPluginBinding[] {
     return boundFeHost().packs.tiptapPlugins();
+  },
+  /** Observe committed frontend changes; reread bindings and compare their identities. */
+  onChanged(listener: () => void): () => void {
+    return boundFeHost().packs.onChanged(listener);
   },
 };

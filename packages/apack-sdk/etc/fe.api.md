@@ -846,9 +846,20 @@ export interface TiptapPlugin {
     readonly popups?: Readonly<Record<string, Component>>;
 }
 
+// @public
+export interface TiptapPluginBinding {
+    // (undocumented)
+    readonly binding: TiptapPlugin;
+    // (undocumented)
+    readonly groupId: string;
+    // (undocumented)
+    readonly packId: string;
+}
+
 // @public (undocumented)
 export const tiptapPluginRegistry: {
-    getAll(): TiptapPlugin[];
+    getAll(): TiptapPluginBinding[];
+    onChanged(listener: () => void): () => void;
 };
 
 // @public (undocumented)

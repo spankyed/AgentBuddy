@@ -69,7 +69,7 @@ describe("a pack's frontend", () => {
     expect(stepRegistry.getFormComponent('note')).toBe('NoteForm');
     expect(artifactRegistry.getComponent('card-view')).toBe('CardView');
     expect(blockRegistry.getComponent('choice')).toBe('Choice');
-    expect(tiptapPluginRegistry.getAll()).toContainEqual(mentions);
+    expect(tiptapPluginRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
 
@@ -81,7 +81,7 @@ describe("a pack's frontend", () => {
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(artifactRegistry.all()).toEqual([]);
     expect(blockRegistry.has('choice')).toBe(false);
-    expect(tiptapPluginRegistry.getAll()).not.toContainEqual(mentions);
+    expect(tiptapPluginRegistry.getAll()).not.toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBeUndefined();
     expect(getDslTypes().has('memo')).toBe(false);
   });
@@ -158,7 +158,32 @@ describe('tiptap plugin groups', () => {
     add('first-pack', { tiptapPlugins: { mentions } });
     add('second-pack', { tiptapPlugins: { slashes } });
 
-    expect(tiptapPluginRegistry.getAll()).toEqual([mentions, slashes]);
+    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }, { packId: 'second-pack', groupId: 'slashes', binding: slashes }]);
+  });
+
+  it('exposes immutable ownership and observes only committed changes until unsubscribed', () => {
+    add('first-pack', { tiptapPlugins: { mentions } });
+    const incumbent = tiptapPluginRegistry.getAll()[0];
+    expect(Object.isFrozen(incumbent)).toBe(true);
+    let changes = 0;
+    const stop = tiptapPluginRegistry.onChanged(() => { changes++; });
+    try {
+      const candidate = registry.preparePackFE({ id: 'first-pack', tiptapPlugins: { mentions } }, undefined, true);
+      expect(changes).toBe(0);
+      candidate.dispose();
+      expect(changes).toBe(0);
+      expect(() => registry.registerPackFE({ id: 'first-pack' })).toThrow('already registered');
+      expect(changes).toBe(0);
+      add('unrelated-pack', {});
+      expect(changes).toBe(1);
+      expect(tiptapPluginRegistry.getAll()[0].binding).toBe(incumbent.binding);
+      registry.replacePackFE({ id: 'first-pack', tiptapPlugins: { renamed: mentions } });
+      expect(changes).toBe(2);
+      expect(tiptapPluginRegistry.getAll()[0]).toMatchObject({ packId: 'first-pack', groupId: 'renamed' });
+      stop();
+      remove('unrelated-pack');
+      expect(changes).toBe(2);
+    } finally { stop(); }
   });
 
   it('loses every one of a pack when it unregisters, not just the first', () => {
@@ -174,9 +199,9 @@ describe('tiptap plugin groups', () => {
   it('cannot be added to or emptied by a reader', () => {
     add('first-pack', { tiptapPlugins: { mentions } });
 
-    tiptapPluginRegistry.getAll().push(slashes);
+    tiptapPluginRegistry.getAll().push({ packId: 'reader', groupId: 'slashes', binding: slashes });
     tiptapPluginRegistry.getAll().length = 0;
 
-    expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
+    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'first-pack', groupId: 'mentions', binding: mentions }]);
   });
 });

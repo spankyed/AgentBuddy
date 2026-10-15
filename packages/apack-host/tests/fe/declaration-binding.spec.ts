@@ -153,11 +153,11 @@ it('owns editor names transactionally across native packs and retains accepted b
   expect(() => registry.registerPackFE({ id: 'second', tiptapPlugins: { tools: { extensions: { example: second } } } }))
     .toThrow(/first\/tools.*second\/tools/);
   expect(registry.tiptapPlugins()).toHaveLength(1);
-  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(first);
+  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
   const replacement = Extension.create({ name: 'wrong' });
   expect(() => registry.preparePackFE({ id: 'first', tiptapPlugins: { tools: { extensions: { example: replacement } } } }, undefined, true))
     .toThrow('tiptapPlugins.tools.extensions.example');
-  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(first);
+  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
 });
 
 it('captures editor membership while preserving executable extension objects', () => {
@@ -170,7 +170,7 @@ it('captures editor membership while preserving executable extension objects', (
   registry.registerPackFE({ id: 'editor', tiptapPlugins: { tools } });
   extensions.example = Extension.create({ name: 'replacement' });
   tools.extensions = { example: Extension.create({ name: 'another' }) };
-  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(extension);
-  expect(Object.isFrozen(registry.tiptapPlugins()[0].extensions)).toBe(true);
+  expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(extension);
+  expect(Object.isFrozen(registry.tiptapPlugins()[0].binding.extensions)).toBe(true);
   expect(Object.isFrozen(extension)).toBe(false);
 });

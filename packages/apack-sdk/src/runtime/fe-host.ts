@@ -7,7 +7,7 @@ import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { HostShell } from '../fe/shell.ts';
-import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
+import type { TiptapPluginBinding } from '../fe/tiptap-plugins.ts';
 import type { DslTypeConfig } from '../fe/dsl-types.ts';
 import type { PackExtensionsView } from './packs-view.ts';
 
@@ -28,7 +28,7 @@ export interface FePackRegistryView extends PackExtensionsView {
   plugins(): Plugin[];
   /** The first registered default plugin */
   defaultPlugin(): Plugin | undefined;
-  tiptapPlugins(): TiptapPlugin[];
+  tiptapPlugins(): TiptapPluginBinding[];
   /** Accepted executable reference bindings; declarations have a separate catalog lifetime. */
   referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
   referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;

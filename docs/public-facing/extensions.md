@@ -547,6 +547,12 @@ there is no registration module or aggregate array export. Binding admission che
 names and executable shapes without calling components or predicates. Conflicting active extension
 names are refused with both owners. Catalog metadata remains available for disabled packs.
 
+`tiptapPluginRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
+registration order. Each row is immutable and its binding holds captured extension/popup membership.
+The returned list is detached. `onChanged(listener)` observes committed frontend changes and returns
+an unsubscribe function; reread the projection to distinguish relevant editor changes from unrelated
+pack changes. Discovery and unavailable groups remain in the catalog, separate from these bindings.
+
 The app's native frontend owns the `reference` node used by saved `apack-ref://` links. It is present
 without default-setup or a reference provider. Default-setup adds `referenceSuggestion`, its picker
 popups and command behavior; disabling it removes those tools while preserving stored references.

@@ -1,7 +1,7 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
@@ -161,7 +161,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const appExtensions = createOwnedStore<SettingsForm>();
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
-  const tiptapPlugins: TiptapPlugin[] = [];
+  const tiptapPlugins: TiptapPluginBinding[] = [];
   const editorOwners = new Map<string, string>();
   const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
   const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
@@ -198,7 +198,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
         if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
         editorOwners.set(name, owner);
       }
-      tiptapPlugins.push(plugin);
+      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
     }
   }
   return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };

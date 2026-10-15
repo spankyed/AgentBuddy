@@ -50,7 +50,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
   try {
     bindRendererHost(() => application as never);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
-    expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
+    expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
     expect(stepRegistry.get('note')).toBe(note);
     expect(getDesignated('notebook')).toBe('fe-host-pack/notebookMain');
   } finally {
