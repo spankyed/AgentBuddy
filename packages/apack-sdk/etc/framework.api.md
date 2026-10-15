@@ -71,6 +71,30 @@ export type DiffResult<T> = null | {
 // @public
 export function formatReferenceHref(target: ReferenceTarget): string;
 
+// @public (undocumented)
+export interface FrontendCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<FrontendDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+}
+
+// @public
+export interface FrontendDeclaration {
+    // (undocumented)
+    appExtensions?: Record<string, string>;
+    // (undocumented)
+    tiptapPlugins?: Record<string, TiptapPluginDeclaration>;
+}
+
 // @public
 export function getPackCommands(): PackCommand[];
 
@@ -158,7 +182,7 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
-export interface NativePackDeclaration extends PackDataDeclarations {
+export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
     // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
@@ -182,6 +206,8 @@ export function onPackCatalogChanged(listener: () => void): () => void;
 
 // @public
 export interface PackCatalogView {
+    // (undocumented)
+    frontend(): readonly FrontendCatalogEntry[];
     // (undocumented)
     problem(): string | undefined;
     // (undocumented)
@@ -594,6 +620,16 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
         context: ContractContext<C>;
         events: MachineEvents<C>;
     };
+}
+
+// @public
+export interface TiptapPluginDeclaration {
+    // (undocumented)
+    extensions?: Record<string, string>;
+    // (undocumented)
+    isSuggestionActive?: string;
+    // (undocumented)
+    popups?: Record<string, string>;
 }
 
 // (No @packageDocumentation comment for this package)

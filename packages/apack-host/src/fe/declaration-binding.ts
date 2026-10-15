@@ -1,6 +1,6 @@
 import type { PackManifest } from '@apackdev/sdk/build';
 import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations } from '@apackdev/sdk/framework';
-import type { PackFERegistration, PackFEFeature, PluginDefinition } from '@apackdev/sdk/fe';
+import type { PackFERegistration, PackFEFeature, PluginDefinition, TiptapPlugin } from '@apackdev/sdk/fe';
 import { isPlainObject, hasOwn } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys } from '../packs/binding-shape.ts';
 
@@ -12,6 +12,7 @@ const REGISTRATION_KEYS = {
 const FEATURE_KEYS = { plugin: true, settingsForm: true, designation: true, default: true, references: true } satisfies Record<keyof PackFEFeature, true>;
 const PLUGIN_KEYS = { label: true, state: true, icon: true, canvas: true, panel: true, chat: true,
   isPinned: true, hotkeys: true, options: true, fallbackPanel: true } satisfies Record<keyof PluginDefinition, true>;
+const TIPTAP_KEYS = { extensions: true, popups: true, isSuggestionActive: true } satisfies Record<keyof TiptapPlugin, true>;
 const optionalKeys = (actual: unknown, keys: string[]) => sameKeys(actual === undefined ? {} : actual, keys);
 const isComponent = (value: unknown) => typeof value === 'function' || isPlainObject(value);
 
@@ -136,7 +137,7 @@ export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'exte
     if ((block.fe !== undefined) !== !!entry.fe || (entry.fe && (!isPlainObject(block.fe) || !isComponent(block.fe.component)))) return problem(`blocks.${type}.fe`);
     if (block.be !== undefined) return problem(`blocks.${type}.be`);
   }
-  if (!optionalKeys(registration.appExtensions, Object.keys(extensions?.fe?.appExtensions ?? {}))) return problem('appExtensions');
+  if (!optionalKeys(registration.appExtensions, Object.keys(extensions?.appExtensions ?? {}))) return problem('appExtensions');
   if (registration.appExtensions !== undefined && Object.values(registration.appExtensions as Record<string, unknown>).some(component => !isComponent(component))) return problem('appExtensions');
   const dsl = Object.fromEntries(Object.entries(extensions?.dsl ?? {}).filter(([, entry]) => entry.targets.includes('monaco') && entry.globals));
   if (!optionalKeys(registration.dslTypes, Object.keys(dsl))) return problem('dslTypes');
@@ -148,8 +149,22 @@ export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'exte
       if ((binding.globals as Record<string, unknown>)[key] !== value) return problem(`dslTypes.${id}.globals.${key}`);
     }
   }
-  const tiptap = registration.tiptapPlugins;
-  if (extensions?.fe?.tiptapPlugins) {
-    if (!Array.isArray(tiptap) || tiptap.some(binding => !isPlainObject(binding))) return problem('tiptapPlugins');
-  } else if (tiptap !== undefined && (!Array.isArray(tiptap) || tiptap.length)) return problem('tiptapPlugins');
+  const declaredEditors = extensions?.tiptapPlugins ?? {};
+  if (!optionalKeys(registration.tiptapPlugins, Object.keys(declaredEditors))) return problem('tiptapPlugins');
+  for (const [id, declaration] of Object.entries(declaredEditors)) {
+    const plugin = (registration.tiptapPlugins as Record<string, unknown>)[id];
+    const at = `tiptapPlugins.${id}`;
+    if (!isPlainObject(plugin) || Object.keys(plugin).some(key => !hasOwn(TIPTAP_KEYS, key))) return problem(at);
+    if (!optionalKeys(plugin.extensions, Object.keys(declaration.extensions ?? {}))) return problem(`${at}.extensions`);
+    for (const [name, binding] of Object.entries((plugin.extensions ?? {}) as Record<string, unknown>)) {
+      if (!binding || typeof binding !== 'object' || !('name' in binding) || binding.name !== name
+        || !('type' in binding) || typeof binding.type !== 'string' || !['node', 'mark', 'extension'].includes(binding.type)
+        || !('config' in binding) || !isPlainObject(binding.config)
+        || !('configure' in binding) || typeof binding.configure !== 'function') return problem(`${at}.extensions.${name}`);
+    }
+    if (!optionalKeys(plugin.popups, Object.keys(declaration.popups ?? {}))
+      || Object.values((plugin.popups ?? {}) as Record<string, unknown>).some(component => !isComponent(component))) return problem(`${at}.popups`);
+    if ((plugin.isSuggestionActive !== undefined) !== !!declaration.isSuggestionActive
+      || (declaration.isSuggestionActive && typeof plugin.isSuggestionActive !== 'function')) return problem(`${at}.isSuggestionActive`);
+  }
 }

@@ -1957,12 +1957,6 @@
         }
       }
     },
-    "fe": {
-      "tiptapPlugins": "src/extensions/tiptap/index.ts",
-      "appExtensions": {
-        "welcome": "src/extensions/app/Welcome.vue"
-      }
-    },
     "settings": {
       "assistant": {
         "title": "Assistant",
@@ -1983,6 +1977,23 @@
         },
         "form": "src/extensions/settings/assistant.vue"
       }
+    },
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": {
+          "reference": "src/extensions/tiptap/reference-node.ts#ReferenceNode",
+          "commandSuggestion": "src/extensions/tiptap/command-extension.ts#CommandSuggestion",
+          "commandViewerDecoration": "src/extensions/tiptap/command-viewer-decoration.ts#CommandViewerDecoration"
+        },
+        "popups": {
+          "references": "src/extensions/tiptap/ReferenceSuggestionPopup.vue",
+          "commands": "src/extensions/tiptap/CommandSuggestionPopup.vue"
+        },
+        "isSuggestionActive": "src/extensions/tiptap/active-suggestions.ts#isSuggestionActive"
+      }
+    },
+    "appExtensions": {
+      "welcome": "src/extensions/app/Welcome.vue"
     }
   },
   "content": {

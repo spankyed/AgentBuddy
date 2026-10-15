@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMachine } from 'xstate';
+import { Extension } from '@tiptap/core';
 import { ManifestSchema, type PackManifest } from '@apackdev/sdk/build';
 import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 import { frontendBindingProblem } from '../../src/fe/declaration-binding.ts';
@@ -8,29 +9,37 @@ function fixture() {
   const component = { render: vi.fn() };
   const loadComponents = vi.fn();
   const bindSettings = vi.fn();
+  const editorExtension = Extension.create({ name: 'example' });
+  const configure = vi.spyOn(editorExtension, 'configure');
+  const isSuggestionActive = vi.fn(() => false);
   const manifest: PackManifest = { id: 'notes-pack', name: 'Notes', version: '1.0.0',
     features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
       backend: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts' } }, form: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
       steps: { note: { node: 'src/node.ts#node', fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: 'src/trigger.ts#node' } },
       artifacts: { text: { icon: 'File', fe: 'src/text.vue' } }, blocks: { note: { kind: 'input', fe: 'src/block.vue' } },
-      fe: { appExtensions: { toolbar: 'src/toolbar.vue' }, tiptapPlugins: 'src/editor.ts' },
+      appExtensions: { toolbar: 'src/toolbar.vue' }, tiptapPlugins: { tools: {
+        extensions: { example: 'src/editor.ts#Example' }, popups: { suggestions: 'src/editor.vue' },
+        isSuggestionActive: 'src/editor.ts#isSuggestionActive' } } ,
       dsl: { notes: { prefix: 'n', entry: 'src/schema.ts', targets: ['monaco'], globals: { foo: 'Foo' } } } } };
   expect(ManifestSchema.safeParse(manifest).success).toBe(true);
   const registration = { id: manifest.id, bindSettings,
     features: { notes: { plugin: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
     settingsForms: { preferences: component }, steps: [{ type: 'note', node: {}, fe: { loadComponents } }, { type: 'trigger', kind: 'trigger', node: {} }],
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
-    appExtensions: { toolbar: component }, tiptapPlugins: [{ extensions: [] }],
+    appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
+      popups: { suggestions: component }, isSuggestionActive } },
     dslTypes: { notes: { prefix: 'n', schema: 'declare interface Foo {}', globals: { foo: 'Foo' } } },
   };
-  return { manifest, registration, component, loadComponents, bindSettings };
+  return { manifest, registration, component, loadComponents, bindSettings, configure, isSuggestionActive };
 }
 
 describe('frontend declaration binding', () => {
   it('accepts the frontend facet without executing component or settings factories', () => {
-    const { manifest, registration, component, loadComponents, bindSettings } = fixture();
+    const { manifest, registration, component, loadComponents, bindSettings, configure, isSuggestionActive } = fixture();
     expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
+    expect(configure).not.toHaveBeenCalled();
+    expect(isSuggestionActive).not.toHaveBeenCalled();
     expect(component.render).not.toHaveBeenCalled();
     expect(loadComponents).not.toHaveBeenCalled();
     expect(bindSettings).not.toHaveBeenCalled();
@@ -61,6 +70,12 @@ describe('frontend declaration binding', () => {
     ['foreign DSL', (r: Record<string, unknown>) => { r.dslTypes = {}; }, 'dslTypes'],
     ['changed DSL globals', (r: Record<string, unknown>) => { r.dslTypes = { notes: { prefix: 'n', schema: '', globals: { foo: 'Wrong' } } }; }, 'globals.foo'],
     ['missing editor binding', (r: Record<string, unknown>) => { r.tiptapPlugins = undefined; }, 'tiptapPlugins'],
+    ['foreign editor group', (r: Record<string, unknown>) => { r.tiptapPlugins = { other: {} }; }, 'tiptapPlugins'],
+    ['missing editor extension', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = {}; }, 'tiptapPlugins.tools.extensions'],
+    ['wrong editor name', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = { example: Extension.create({ name: 'wrong' }) }; }, 'tiptapPlugins.tools.extensions.example'],
+    ['invalid editor value', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = { example: { name: 'example' } }; }, 'tiptapPlugins.tools.extensions.example'],
+    ['missing popup', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.popups = {}; }, 'tiptapPlugins.tools.popups'],
+    ['invalid suggestion predicate', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.isSuggestionActive = {}; }, 'tiptapPlugins.tools.isSuggestionActive'],
     ['invalid settings factory', (r: Record<string, unknown>) => { r.bindSettings = {}; }, 'bindSettings'],
     ['unsupported registration field', (r: Record<string, unknown>) => { r.commands = []; }, 'registration fields'],
   ] as const)('refuses %s', (_name, mutate, expected) => {
@@ -77,7 +92,7 @@ describe('frontend declaration binding', () => {
   });
 
   it('refuses editor bindings a manifest never declared', () => {
-    expect(frontendBindingProblem({ id: 'empty' }, { tiptapPlugins: [{}] })).toContain('tiptapPlugins');
+    expect(frontendBindingProblem({ id: 'empty' }, { tiptapPlugins: { undeclared: {} } })).toContain('tiptapPlugins');
   });
 });
 
@@ -127,4 +142,35 @@ it('refuses a native replacement before granting resources and retains the accep
   expect(bindSettings).not.toHaveBeenCalled();
   expect(registry.getRegisteredPlugins()).toEqual([accepted]);
   expect(component.render).not.toHaveBeenCalled();
+});
+
+it('owns editor names transactionally across native packs and retains accepted bindings on refusal', () => {
+  const frontend = { tiptapPlugins: { tools: { extensions: { example: 'native/editor.ts#Example' } } } };
+  const registry = createFePackRegistry({ nativeDeclarations: [{ id: 'first', ...frontend }, { id: 'second', ...frontend }] });
+  const first = Extension.create({ name: 'example' });
+  const second = Extension.create({ name: 'example' });
+  registry.registerPackFE({ id: 'first', tiptapPlugins: { tools: { extensions: { example: first } } } });
+  expect(() => registry.registerPackFE({ id: 'second', tiptapPlugins: { tools: { extensions: { example: second } } } }))
+    .toThrow(/first\/tools.*second\/tools/);
+  expect(registry.tiptapPlugins()).toHaveLength(1);
+  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(first);
+  const replacement = Extension.create({ name: 'wrong' });
+  expect(() => registry.preparePackFE({ id: 'first', tiptapPlugins: { tools: { extensions: { example: replacement } } } }, undefined, true))
+    .toThrow('tiptapPlugins.tools.extensions.example');
+  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(first);
+});
+
+it('captures editor membership while preserving executable extension objects', () => {
+  const registry = createFePackRegistry({ nativeDeclarations: [{ id: 'editor', tiptapPlugins: {
+    tools: { extensions: { example: 'native/editor.ts#Example' } },
+  } }] });
+  const extension = Extension.create({ name: 'example' });
+  const extensions = { example: extension };
+  const tools = { extensions };
+  registry.registerPackFE({ id: 'editor', tiptapPlugins: { tools } });
+  extensions.example = Extension.create({ name: 'replacement' });
+  tools.extensions = { example: Extension.create({ name: 'another' }) };
+  expect(registry.tiptapPlugins()[0].extensions!.example).toBe(extension);
+  expect(Object.isFrozen(registry.tiptapPlugins()[0].extensions)).toBe(true);
+  expect(Object.isFrozen(extension)).toBe(false);
 });

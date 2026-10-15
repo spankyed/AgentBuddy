@@ -1742,7 +1742,8 @@ freshness and no unnecessary content reapplication through manifest-only changes
 
 The facade checkpoint must use `facades`, `PACK_TYPES_FACADE` and cache `facades/`, with named
 missing/incapable dependency refusal and unchanged capability-based acceptance. DSL defs remain defs.
-The public frontend container becomes `extensions.frontend` as those contributions become declarative;
+Editor and app contributions are declared directly as `extensions.tiptapPlugins` and
+`extensions.appExtensions`, alongside other contributions; there is no frontend container;
 `hostVersion` remains the single-host compatibility range. All native/source/install readers, fixtures,
 templates, schema/reports and public docs migrate together. Intrinsic editor-schema ownership, every
 remaining kind, navigation/readiness, boundaries and all Phase 6 streams remain active.
@@ -2147,15 +2148,19 @@ Replace the opaque frontend registration-module target with explicit plugin grou
 ```json
 {
   "extensions": {
-    "frontend": {
-      "tiptapPlugins": {
-        "suggestions": {
-          "extensions": { "reference": "src/editor/reference.ts#ReferenceNode" },
-          "popups": { "references": "src/editor/ReferencePopup.vue" },
-          "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
-        }
-      },
-      "appExtensions": { "toolbar": "src/Toolbar.vue" }
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": {
+          "reference": "src/editor/reference.ts#ReferenceNode"
+        },
+        "popups": {
+          "references": "src/editor/ReferencePopup.vue"
+        },
+        "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
+      }
+    },
+    "appExtensions": {
+      "toolbar": "src/Toolbar.vue"
     }
   }
 }

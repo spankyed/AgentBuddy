@@ -1,6 +1,7 @@
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
-import type { PackCatalogView, ReferenceCatalogEntry } from '@apackdev/sdk/framework';
+import type { PackCatalogView, ReferenceCatalogEntry, FrontendCatalogEntry } from '@apackdev/sdk/framework';
 import { referenceCatalogEntries } from '../packs/catalog-references.ts';
+import { frontendCatalogEntries } from '../packs/catalog-frontend.ts';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -68,17 +69,16 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
     tell();
   }
 
-  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[] } | undefined;
-  const references = (): readonly ReferenceCatalogEntry[] => {
+  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[]; frontend: readonly FrontendCatalogEntry[] } | undefined;
+  const projection = () => {
     const snapshot = frame?.snapshot;
-    if (!snapshot) return [];
-    if (projected?.snapshot === snapshot) return projected.references;
-    const entries = referenceCatalogEntries(snapshot);
-    projected = { snapshot, references: entries };
-    return entries;
+    if (!snapshot) return undefined;
+    if (projected?.snapshot !== snapshot) projected = { snapshot, references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot) };
+    return projected;
   };
   const catalog: PackCatalogView = {
-    status: () => status, problem: () => problem, references,
+    status: () => status, problem: () => problem,
+    references: () => projection()?.references ?? [], frontend: () => projection()?.frontend ?? [],
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
 

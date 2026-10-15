@@ -40,7 +40,7 @@ const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
 const noteStepFE = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: {}, loadComponents: () => ({ node: 'NoteNode', form: 'NoteForm' }) } } as unknown as StepDefinition;
 const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
 const choice = { type: 'choice', fe: { component: 'Choice' } };
-const mentions: TiptapPlugin = { extensions: [] };
+const mentions: TiptapPlugin = { extensions: {} };
 const Welcome = { name: 'Welcome' };
 const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
 
@@ -51,7 +51,7 @@ describe("a pack's frontend", () => {
       steps: [noteStepFE],
       artifacts: [cardView],
       blocks: [choice],
-      tiptapPlugins: [mentions],
+      tiptapPlugins: { mentions },
       appExtensions: { welcome: Welcome },
       dslTypes: { memo: memoDsl },
     });
@@ -69,7 +69,7 @@ describe("a pack's frontend", () => {
     expect(stepRegistry.getFormComponent('note')).toBe('NoteForm');
     expect(artifactRegistry.getComponent('card-view')).toBe('CardView');
     expect(blockRegistry.getComponent('choice')).toBe('Choice');
-    expect(tiptapPluginRegistry.getAll()).toContain(mentions);
+    expect(tiptapPluginRegistry.getAll()).toContainEqual(mentions);
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
 
@@ -81,7 +81,7 @@ describe("a pack's frontend", () => {
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(artifactRegistry.all()).toEqual([]);
     expect(blockRegistry.has('choice')).toBe(false);
-    expect(tiptapPluginRegistry.getAll()).not.toContain(mentions);
+    expect(tiptapPluginRegistry.getAll()).not.toContainEqual(mentions);
     expect(appExtension('welcome')).toBeUndefined();
     expect(getDslTypes().has('memo')).toBe(false);
   });
@@ -149,24 +149,20 @@ describe("a pack's frontend", () => {
   });
 });
 
-/**
- * Tiptap plugins are the one frontend contribution with no key: `TiptapPlugin` has no name, so two of them
- * are told apart only by which pack contributed each. Nothing covered this — these plugins appeared here
- * only as one line of a wider case — and the list is what the editor resolves extension order by.
- */
-describe('tiptap plugins, which have no key', () => {
-  const mentions: TiptapPlugin = { extensions: [] };
-  const slashes: TiptapPlugin = { extensions: [] };
+// Pack and group insertion order determines the order presented to the editor.
+describe('tiptap plugin groups', () => {
+  const mentions: TiptapPlugin = { extensions: {} };
+  const slashes: TiptapPlugin = { extensions: {} };
 
   it('are listed in registration order, which the editor resolves extensions by', () => {
-    add('first-pack', { tiptapPlugins: [mentions] });
-    add('second-pack', { tiptapPlugins: [slashes] });
+    add('first-pack', { tiptapPlugins: { mentions } });
+    add('second-pack', { tiptapPlugins: { slashes } });
 
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions, slashes]);
   });
 
   it('loses every one of a pack when it unregisters, not just the first', () => {
-    add('many-pack', { tiptapPlugins: [mentions, slashes] });
+    add('many-pack', { tiptapPlugins: { mentions, slashes } });
 
     unregister('many-pack');
 
@@ -176,7 +172,7 @@ describe('tiptap plugins, which have no key', () => {
   // The read hands out a copy, as the backend's command store does, so a reader cannot edit what every
   // other reader sees. It used to hand out the live array by reference.
   it('cannot be added to or emptied by a reader', () => {
-    add('first-pack', { tiptapPlugins: [mentions] });
+    add('first-pack', { tiptapPlugins: { mentions } });
 
     tiptapPluginRegistry.getAll().push(slashes);
     tiptapPluginRegistry.getAll().length = 0;

@@ -14,6 +14,7 @@ import type { SettingsDefinition } from '../framework/settings-definition.ts';
 import type { PackMigrations } from '../framework/pack-registration.ts';
 import type { ReferenceDeclarations } from '../framework/reference-declaration.ts';
 import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
+import type { FrontendDeclaration, TiptapPluginDeclaration } from '../framework/frontend-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
 
@@ -106,6 +107,18 @@ function checkDefaultPluginClaims(features: Record<string, { plugin?: { default?
   }
 }
 
+function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.RefinementCtx, prefix: string[]): void {
+  const owners = new Map<string, string>();
+  for (const [id, plugin] of Object.entries(frontend?.tiptapPlugins ?? {})) {
+    for (const name of Object.keys(plugin.extensions ?? {})) {
+      const previous = owners.get(name);
+      if (previous !== undefined) ctx.addIssue({ code: 'custom', path: [...prefix, 'tiptapPlugins', id, 'extensions', name],
+        message: `Tiptap extension "${name}" declared by both groups "${previous}" and "${id}"` });
+      owners.set(name, id);
+    }
+  }
+}
+
 /** @internal Host composition admits the same settings data without external-pack entry paths. */
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
@@ -113,6 +126,8 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   settings: z.record(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
+  tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
+  appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
     description: FeatureDescriptionSchema,
     entities: EntitiesSchema.optional(),
@@ -121,6 +136,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
     references: z.lazy(() => ReferencesSchema).optional(),
   }).strict()).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);
 }));
@@ -510,10 +526,16 @@ const BuildConfigSchema = z.object({
   bundleUi: z.boolean().describe('Bundle a copy of @apackdev/ui into the pack instead of using the host app\'s. All of @apackdev/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
-const FEConfigSchema = z.object({
-  tiptapPlugins: ModulePathSchema.describe('Path to tiptap plugin registration module.').optional(),
+const TiptapPluginSchema = z.object({
+  extensions: z.record(IdentifierSchema, ExportTargetSchema).describe('Tiptap extension name to its exported extension object ("path#exportName"). Each key must match the exported object\'s Tiptap name.').optional(),
+  popups: z.record(IdentifierSchema, ModulePathSchema).describe('Popup IDs local to this group, mapped to pack-root-relative Vue component modules.').optional(),
+  isSuggestionActive: ExportTargetSchema.describe('Exported predicate ("path#exportName") reporting whether this group has an active suggestion for the current editor state.').optional(),
+} satisfies Record<keyof TiptapPluginDeclaration, z.ZodTypeAny>).strict();
+
+const FrontendConfigSchema = z.object({
+  tiptapPlugins: z.record(IdentifierSchema, TiptapPluginSchema).describe('Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code.').optional(),
   appExtensions: z.record(IdentifierSchema, ModulePathSchema).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
-}).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
+} satisfies Record<keyof FrontendDeclaration, z.ZodTypeAny>).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 
 /**
  * An extension point keyed by the type it contributes: the key grammar and the clause every one of them
@@ -555,7 +577,7 @@ const ExtensionsSchema = z.object({
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
-  fe: FEConfigSchema.optional(),
+  ...FrontendConfigSchema.shape,
 }).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions.');
 
 
@@ -649,6 +671,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   build: BuildConfigSchema.optional(),
   checks: PackChecksSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
+  checkFrontendClaims(manifest.extensions, ctx, ['extensions']);
   checkReferenceClaims(manifest.features, ctx);
   checkDefaultPluginClaims(manifest.features, ctx);
 

@@ -2887,7 +2887,8 @@ identity/no syntax-only reapplication, all loosely typed/native/source/install r
 agreement, schema descriptions/assistance and complete public docs. Flow/action relationships, actual
 CLI inventory and capability-based facade acceptance remain explicit completion obligations.
 
-The public frontend container is selected as `extensions.frontend` for its declarative migration;
+Editor and app contributions use direct `extensions.tiptapPlugins` and `extensions.appExtensions`;
+the frontend wrapper is removed because other contribution kinds also serve the frontend;
 `hostVersion` stays the one-host compatibility range. Explicit keyed existence, richer binding data,
 settings/help redesign and host-established provenance remain; obsolete `provides`, inferred existence,
 partition/volatile additions, compatibility and version bumps are not restored. Lazy activation and
@@ -3478,7 +3479,7 @@ Generated EARS and all six compiled content files remain byte-identical. Unrelat
 M6 is complete across writer, metadata validation, editor assistance and public build checkpoints.
 The consolidation plan records a current decision-by-decision acceptance audit for all 17 original
 decisions and both naming questions. It explicitly retains unfinished full contribution discovery,
-`extensions.frontend`, facade naming/capabilities, static content dependency graph and useful CLI
+direct editor/app declarations under `extensions`, facade naming/capabilities, static content dependency graph and useful CLI
 inventories. Resume Phase 3 on those contracts, then entity navigation, frontend boundaries and all
 three Phase 6 workstreams. No plan is archived; no full-goal completion or final `--all` is claimed.
 

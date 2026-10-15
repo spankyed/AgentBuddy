@@ -761,6 +761,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         references?: ReferenceDeclarations | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
+        tiptapPlugins: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            extensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            popups: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            isSuggestionActive: z.ZodOptional<z.ZodString>;
+        }, "strict", z.ZodTypeAny, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }>>>;
+        appExtensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         settings: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
             schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
             defaults: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -991,16 +1005,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }>>>;
-        fe: z.ZodOptional<z.ZodObject<{
-            tiptapPlugins: z.ZodOptional<z.ZodString>;
-            appExtensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        }, "strict", z.ZodTypeAny, {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        }, {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        }>>;
     }, "strict", z.ZodTypeAny, {
         services?: Record<string, string> | undefined;
         settings?: Record<string, {
@@ -1036,10 +1040,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1059,6 +1059,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     }, {
         services?: Record<string, string> | undefined;
         settings?: Record<string, unknown> | undefined;
@@ -1087,10 +1093,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1110,6 +1112,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     }>>;
     lifecycle: z.ZodOptional<z.ZodObject<{
         onInit: z.ZodOptional<z.ZodString>;
@@ -1470,10 +1478,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1493,6 +1497,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     } | undefined;
     lifecycle?: {
         onInit?: string | undefined;
@@ -1607,10 +1617,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1630,6 +1636,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     } | undefined;
     lifecycle?: {
         onInit?: string | undefined;
@@ -1758,10 +1770,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1781,6 +1789,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     } | undefined;
     lifecycle?: {
         onInit?: string | undefined;
@@ -1895,10 +1909,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -1918,6 +1928,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     } | undefined;
     lifecycle?: {
         onInit?: string | undefined;
@@ -2046,10 +2062,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
             } | undefined;
         }> | undefined;
-        fe?: {
-            tiptapPlugins?: string | undefined;
-            appExtensions?: Record<string, string> | undefined;
-        } | undefined;
         dsl?: Record<string, {
             entry: string;
             targets: "monaco"[];
@@ -2069,6 +2081,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         commands?: Record<string, {
             placeholder: string;
         }> | undefined;
+        tiptapPlugins?: Record<string, {
+            extensions?: Record<string, string> | undefined;
+            popups?: Record<string, string> | undefined;
+            isSuggestionActive?: string | undefined;
+        }> | undefined;
+        appExtensions?: Record<string, string> | undefined;
     } | undefined;
     lifecycle?: {
         onInit?: string | undefined;
@@ -2271,6 +2289,20 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     }>>>;
+    tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        extensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        popups: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        isSuggestionActive: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }>>>>;
+    appExtensions: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>>;
     features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         description: z.ZodString;
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
@@ -2354,6 +2386,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    tiptapPlugins?: Record<string, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }> | undefined;
+    appExtensions?: Record<string, string> | undefined;
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
@@ -2373,6 +2411,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         references?: ReferenceDeclarations | undefined;
     }> | undefined;
     settings?: Record<string, unknown> | undefined;
+    tiptapPlugins?: Record<string, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }> | undefined;
+    appExtensions?: Record<string, string> | undefined;
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
@@ -2406,6 +2450,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    tiptapPlugins?: Record<string, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }> | undefined;
+    appExtensions?: Record<string, string> | undefined;
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
@@ -2425,6 +2475,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         references?: ReferenceDeclarations | undefined;
     }> | undefined;
     settings?: Record<string, unknown> | undefined;
+    tiptapPlugins?: Record<string, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }> | undefined;
+    appExtensions?: Record<string, string> | undefined;
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
@@ -2458,6 +2514,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         description?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    tiptapPlugins?: Record<string, {
+        extensions?: Record<string, string> | undefined;
+        popups?: Record<string, string> | undefined;
+        isSuggestionActive?: string | undefined;
+    }> | undefined;
+    appExtensions?: Record<string, string> | undefined;
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
@@ -2718,6 +2780,7 @@ export const PROVENANCE_KINDS: {
     readonly referenceTypes: (m: ProvenanceManifest) => string[];
     readonly referenceCategories: (m: ProvenanceManifest) => string[];
     readonly commands: (m: ProvenanceManifest) => string[];
+    readonly tiptapExtensions: (m: ProvenanceManifest) => string[];
     readonly plugins: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };
 
@@ -2729,6 +2792,7 @@ export interface ProvenanceManifest extends PackDataDeclarations {
     // (undocumented)
     extensions?: {
         commands?: Readonly<Record<string, unknown>>;
+        tiptapPlugins?: FrontendDeclaration['tiptapPlugins'];
     };
     // (undocumented)
     features?: Record<string, {

@@ -48,6 +48,23 @@ const index = { version: 1, packId: manifest.id, entries: [
 ] };
 
 describe('read-only pack inspection', () => {
+  it('lists frontend member identities without requiring authored modules or activating the build', async () => {
+    const declaration: PackManifest = { ...manifest, extensions: {
+      appExtensions: { welcome: 'src/unavailable.vue' }, tiptapPlugins: { suggestions: {
+        extensions: { mention: 'src/unavailable.ts#Mention' }, popups: { mention: 'src/unavailable.vue' },
+        isSuggestionActive: 'src/unavailable.ts#isSuggestionActive',
+      } },
+    } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
+    writeBuild(root, declaration, index);
+    const report = await inspectPack(root);
+    expect(report.declared).toMatchObject({ appExtensions: ['welcome'], tiptapPlugins: [
+      { id: 'suggestions', extensions: ['mention'], popups: ['mention'], isSuggestionActive: true },
+    ] });
+    expect(report.build.status).toBe('verified');
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('shows actual compiled identities and counts without importing modules or counting source files', async () => {
     writeBuild(root, manifest, index);
     fs.mkdirSync(path.join(root, 'content'));

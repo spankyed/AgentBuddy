@@ -2,7 +2,7 @@
 // unloading takes back. The two things only a window can do — import a module and add a stylesheet — arrive as
 // `PackFrontendIO`, so the rules hold wherever this runs and the browser's part stays the renderer's.
 import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
-import { captureFrontendReferences } from '../../../fe/reference-bindings.ts';
+import { captureFrontendBindings } from '../../../fe/binding-snapshot.ts';
 import { frontendBindingProblem } from '../../../fe/declaration-binding.ts';
 import { _packDeclarationProblem } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
@@ -159,7 +159,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         const entry = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
         checkCurrent();
         if (!entry) throw new Error(`Pack "${pack.id}" has no frontend registration`);
-        const registration = captureFrontendReferences(entry);
+        const registration = captureFrontendBindings(entry);
         const problem = _packDeclarationProblem(pack, registration) ?? frontendBindingProblem(pack.manifest, registration);
         if (problem) throw new Error(problem);
         if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);

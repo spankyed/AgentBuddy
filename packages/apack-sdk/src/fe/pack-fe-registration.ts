@@ -36,7 +36,7 @@ export interface PackFERegistration {
   /** Pack settings group id → its declared custom form. */
   settingsForms?: Record<string, Component>;
   steps?: StepDefinition[];
-  tiptapPlugins?: TiptapPlugin[];
+  tiptapPlugins?: Record<string, TiptapPlugin>;
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];

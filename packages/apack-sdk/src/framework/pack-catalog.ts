@@ -4,9 +4,10 @@ import { boundHost } from '../runtime/host-runtime.ts';
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import type { PluginDeclaration } from './plugin-declaration.ts';
+import type { FrontendDeclaration } from './frontend-declaration.ts';
 
 /** Native composition data, admitted independently of its executable bindings. */
-export interface NativePackDeclaration extends PackDataDeclarations {
+export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
   id: string;
   lifecycle?: PackLifecycleDeclaration;
   dependencies?: Record<string, string>;

@@ -12,9 +12,9 @@ export interface BlockItem {
 }
 
 export interface TiptapPlugin {
-  extensions?: AnyExtension[]
-  popups?: Component[]
-  isSuggestionActive?: (state: EditorState) => boolean
+  readonly extensions?: Readonly<Record<string, AnyExtension>>
+  readonly popups?: Readonly<Record<string, Component>>
+  readonly isSuggestionActive?: (state: EditorState) => boolean
 }
 
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlockItems')

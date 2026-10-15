@@ -556,7 +556,7 @@ export interface PackFERegistration {
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
-    tiptapPlugins?: TiptapPlugin[];
+    tiptapPlugins?: Record<string, TiptapPlugin>;
 }
 
 // @public (undocumented)
@@ -839,11 +839,11 @@ export const targetIs: (input: {
 // @public (undocumented)
 export interface TiptapPlugin {
     // (undocumented)
-    extensions?: AnyExtension[];
+    readonly extensions?: Readonly<Record<string, AnyExtension>>;
     // (undocumented)
-    isSuggestionActive?: (state: EditorState) => boolean;
+    readonly isSuggestionActive?: (state: EditorState) => boolean;
     // (undocumented)
-    popups?: Component[];
+    readonly popups?: Readonly<Record<string, Component>>;
 }
 
 // @public (undocumented)

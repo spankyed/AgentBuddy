@@ -37,7 +37,7 @@ describe('parseManifest', () => {
       { extensions: { settings: { extra: { ...settings, form: 'src/module#value' } } } },
       { extensions: { blocks: { extra: { fe: 'src/module#value' } } } },
       { extensions: { artifacts: { extra: { icon: 'File', fe: 'src/module#value' } } } },
-      { extensions: { fe: { tiptapPlugins: 'src/module#value', appExtensions: { extra: 'src/module#value' } } } },
+      { extensions: { tiptapPlugins: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
       { extensions: { dsl: { extra: { entry: 'src/module#value', targets: ['monaco'] } } } },
       { content: { formats: { extra: { compiler: 'src/module#value' } } } },
       { content: { sources: { extra: { applier: 'src/module#value' } } } },
@@ -55,6 +55,20 @@ describe('parseManifest', () => {
         .toEqual(['features', 'memos', owner, 'contract']);
       expect(parseManifest({ ...pack, features: { memos: { ...feature, [owner]: { ...declaration, contract: 'src/types#Contract' } } } }).status).toBe('valid');
     }
+  });
+
+  it('names both editor groups claiming one Tiptap extension for native and external packs', () => {
+    const plugin = { extensions: { mention: 'src/editor.ts#Mention' } };
+    const contributions = { tiptapPlugins: { first: plugin, second: plugin } };
+    const external = parseManifest({ id: 'editor', name: 'Editor', version: '1.0.0', extensions: contributions });
+    expect(external.status).toBe('invalid');
+    expect(external.diagnostics[0].path).toEqual(['extensions', 'tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(external.diagnostics[0].message).toContain('"first" and "second"');
+    const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
+    expect(native.success).toBe(false);
+    if (native.success) throw new Error('Duplicate native editor extension accepted');
+    expect(native.error.issues[0].path).toEqual(['tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(native.error.issues[0].message).toContain('"first" and "second"');
   });
 
   it('requires a nonblank feature purpose without changing authored text', () => {
@@ -167,8 +181,8 @@ describe('parseManifest', () => {
 
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    expect(messagesOf(parseManifest({ ...pack, extensions: { fe: { appExtensions: { 'my-ext': 'x.vue' } } } }))).toEqual([expect.stringContaining('Must be an identifier')]);
-    expect(messagesOf(parseManifest({ ...pack, extensions: { fe: { appExtensions: { welcome: 'x.vue' } } } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: {  appExtensions: { 'my-ext': 'x.vue' }  } }))).toEqual([expect.stringContaining('Must be an identifier')]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: {  appExtensions: { welcome: 'x.vue' }  } }))).toEqual([]);
   });
 });
 

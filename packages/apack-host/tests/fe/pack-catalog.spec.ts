@@ -33,8 +33,9 @@ describe('window declaration catalog', () => {
     const { reader, catalog, sessions, wire } = fixture();
     const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
       categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
-    catalog.setNative([{ id: 'native-pack', features: { memos: { description: 'Feature declaration fixture.', references } } }]);
-    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', features: { memos: { description: 'Feature declaration fixture.', references } } };
+    const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'never.ts#Mention' } } } };
+    catalog.setNative([{ id: 'native-pack', ...frontend, features: { memos: { description: 'Feature declaration fixture.', references } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend }, features: { memos: { description: 'Feature declaration fixture.', references } } };
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
@@ -43,6 +44,16 @@ describe('window declaration catalog', () => {
     } }]);
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();
+    const editorEntries = reader.catalog.frontend();
+    expect(editorEntries).toMatchObject([
+      { packId: 'native-pack', origin: 'native', enabled: true, declaration: frontend },
+      { packId: 'installed-pack', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },
+      { packId: 'source-pack', origin: 'source', declarationRevision: _declarationRevision(manifest) },
+    ]);
+    expect(editorEntries[0]).not.toHaveProperty('buildRevision');
+    expect(editorEntries[2]).not.toHaveProperty('enabled');
+    expect(reader.catalog.frontend()).toBe(editorEntries);
+    expect(Reflect.set(editorEntries[0].declaration.tiptapPlugins!.suggestions.extensions!, 'mention', 'changed')).toBe(false);
     expect(entries).toMatchObject([
       { featureRef: 'native-pack/memos', origin: 'native', enabled: true },
       { featureRef: 'installed-pack/memos', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },

@@ -377,7 +377,7 @@ describe('the snapshot format', () => {
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
-    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, help: true, services: true, settings: true, steps: true,
+    artifacts: true, blocks: true, commands: true, dsl: true, appExtensions: true, tiptapPlugins: true, help: true, services: true, settings: true, steps: true,
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
@@ -441,7 +441,7 @@ describe('the snapshot format', () => {
       fields: ['declarationRevision', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: ['$schema', 'build', 'checks', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
-        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'settings', 'steps'],
+        extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'tiptapPlugins'],
         feature: ['description', 'designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
@@ -456,7 +456,7 @@ describe('the snapshot format', () => {
         system: ['machine', 'receives'],
         plugin: ['defaultVisible', 'receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds'],
+      provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds', 'tiptapExtensions'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });

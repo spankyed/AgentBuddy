@@ -519,17 +519,37 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### Tiptap plugins
 
-`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apackdev/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
+`extensions.tiptapPlugins` declares named editor groups. Each group names its extensions,
+popups and optional suggestion predicate without importing executable code:
 
-| Field | Description |
-|---|---|
-| `extensions?` | Tiptap extensions added to the editor |
-| `popups?` | Components rendered with the editor (suggestion popups) |
-| `isSuggestionActive?(state)` | Return `true` while a popup is open, so Escape goes to the popup |
+```json
+{
+  "extensions": {
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": {
+          "mention": "src/editor/mention.ts#Mention"
+        },
+        "popups": {
+          "mentions": "src/editor/MentionPopup.vue"
+        },
+        "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
+      }
+    }
+  }
+}
+```
+
+Extension keys must match the exported Tiptap objects' names. Popup IDs belong to their group.
+The predicate receives an editor state and returns `true` while suggestions should handle Escape.
+Codegen imports each target and assembles keyed `TiptapPlugin` bindings (`@apackdev/sdk/fe`);
+there is no registration module or aggregate array export. Binding admission checks exact group/member
+names and executable shapes without calling components or predicates. Conflicting active extension
+names are refused with both owners. Catalog metadata remains available for disabled packs.
 
 ### App extensions
 
-`extensions.fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
+`extensions.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. Slot names have one active pack owner; conflicting registrations are refused.
 
 ### PackFERegistration
 
@@ -539,10 +559,10 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 |---|---|
 | `features` | Each feature with a `plugin`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `plugin` sets `default`. The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
-| `tiptapPlugins` | `extensions.fe.tiptapPlugins` |
-| `appExtensions` | `extensions.fe.appExtensions` |
+| `tiptapPlugins` | `extensions.tiptapPlugins` |
+| `appExtensions` | `extensions.appExtensions` |
 | `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features.<id>.references` (`ReferenceTypeConfig`s from `@apackdev/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features.<id>.references` declares reference identities and presentation for any pack. Catalog metadata is independent of activation; item providers and navigation bind when the frontend is accepted.

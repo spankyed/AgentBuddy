@@ -14,10 +14,11 @@ export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog
 
 export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclaration, type ReferenceCategoryDeclaration, type ReferenceSvgElement } from './reference-declaration.ts';
 
-export type { PackCatalogView, ReferenceCatalogEntry, DeclarationData } from './catalog-view.ts';
+export type { PackCatalogView, ReferenceCatalogEntry, FrontendCatalogEntry, DeclarationData } from './catalog-view.ts';
 
 export { formatReferenceHref, parseReferenceHref, type ReferenceTarget } from './reference-link.ts';
 
 export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations, type _PackEntityDeclaration } from './data-declaration.ts';
 
 export { LIFECYCLE_HOOK_NAMES, type PackLifecycleDeclaration } from './lifecycle-declaration.ts';
+export type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';

@@ -85,7 +85,7 @@ the settings plan, as that goal already specifies.
 | Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. M4 target/layout and native/frontend default-claim checks completed in `11bdc7faa`; first-registered cross-pack policy is documented and tested. Full discovery/navigation remains required |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
 | Build/check configuration and sidecars | Preserve build options; M5 inline allowances implemented in `24bd9f116`, with one policy/schema, no sidecar reader and unknown/non-switchable refusals. M5 format cleanup completed in `9374189e5`: no authored version key, exact build stamps, retained facade-capability acceptance. M6 writing/order implemented in `4bd88f6c9`; schema/editor/docs coverage remains required |
-| `extensions.fe` and `hostVersion` questions | Settled in consolidation: public `extensions.frontend` during its declarative migration; keep `hostVersion` for one host range. No blanket fe/be rename |
+| `extensions.fe` and `hostVersion` questions | Settled in consolidation: direct `extensions.tiptapPlugins` and `extensions.appExtensions` during their declarative migration (no frontend wrapper); keep `hostVersion` for one host range. No blanket fe/be rename |
 | Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, complete cached build types with no separate extracted facade inventory, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
 | Format/version assumptions | Required M5 removes `$manifestVersion` and audits exact layout-stamp acceptance; preserve current snapshot/layout constants and release metadata, separately from facade capability acceptance |
 
@@ -341,7 +341,7 @@ accounts for all original decisions and both naming questions, separating implem
 from required remaining discovery work. The execution goal records source commits and strict evidence.
 
 Next is full discovery: remaining contribution kinds/native declarations/freshness, the selected
-frontend container, facade naming/capability checks, static content edges and meaningful CLI inventory.
+direct editor/app contributions, facade naming/capability checks, static content edges and meaningful CLI inventory.
 Then navigation and frontend boundaries, followed by API consumption, dependency provenance and shipped
 replacement as separate required workstreams. Lazy activation/security isolation/storage remain deferred.
 Nothing is archived and final committed-source strict `--all` remains due.

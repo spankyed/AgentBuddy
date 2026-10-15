@@ -143,7 +143,7 @@ export default {
   // Keyed by feature id, as the backend entry's `features`: each plugin, the role it plays, and the default claim
   features?: Record<string, { plugin: PluginDefinition; designation?: string; default?: true }>;
   steps?: StepDefinition[];
-  tiptapPlugins?: TiptapPlugin[];
+  tiptapPlugins?: Record<string, TiptapPlugin>;
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];

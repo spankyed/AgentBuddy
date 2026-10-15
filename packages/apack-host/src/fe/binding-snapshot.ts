@@ -1,9 +1,16 @@
 import type { PackFERegistration } from '@apackdev/sdk/fe';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 
-/** Capture reference metadata before validation; retain executable components and callbacks. */
-export function captureFrontendReferences(registration: PackFERegistration): PackFERegistration {
+/** Own binding membership before validation; retain executable component/extension/callback objects. */
+export function captureFrontendBindings(registration: PackFERegistration): PackFERegistration {
   const captured = { ...registration };
+  if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, plugin]) => {
+    if (!isPlainObject(plugin)) return [id, plugin];
+    const value = { ...plugin };
+    if (isPlainObject(value.extensions)) value.extensions = Object.freeze({ ...value.extensions });
+    if (isPlainObject(value.popups)) value.popups = Object.freeze({ ...value.popups });
+    return [id, Object.freeze(value)];
+  }));
   if (!isPlainObject(captured.features)) return captured;
   captured.features = Object.fromEntries(Object.entries(captured.features).map(([id, feature]) => {
     if (!isPlainObject(feature)) return [id, feature];

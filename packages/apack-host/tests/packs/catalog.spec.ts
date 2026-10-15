@@ -22,8 +22,10 @@ describe('contribution catalog data', () => {
     const packsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-help-discovery-'));
     const dir = path.join(packsDir, 'help-pack');
     try {
+      const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
+        popups: { mention: 'src/unavailable.vue' }, isSuggestionActive: 'src/unavailable.ts#isActive' } } };
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
-        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' } } };
+        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         manifest, types: { entities: {}, relKinds: {} }, facades: {},
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
@@ -45,6 +47,8 @@ describe('contribution catalog data', () => {
       }).toThrow();
       expect(catalog.help().articles).toEqual([{ ...snapshot.help[0], packId: 'help-pack', packName: 'Help' }]);
       expect(catalog.get('help-pack')?.enabled).toBe(false);
+      expect(catalog.frontend()).toMatchObject([{ packId: 'help-pack', origin: 'installed', enabled: false,
+        declarationRevision: snapshot.declarationRevision, buildRevision: accepted.revision, declaration: frontend }]);
       expect(catalog.plugins()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
       expect(fs.existsSync(marker)).toBe(false);
       catalog.help().articles[0].body = 'Mutated reader';

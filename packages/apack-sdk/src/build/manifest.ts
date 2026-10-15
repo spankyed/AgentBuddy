@@ -153,6 +153,7 @@ export const PROVENANCE_KINDS = {
   referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
   referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
   commands: (m: ProvenanceManifest) => Object.keys(m.extensions?.commands ?? {}),
+  tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.tiptapPlugins ?? {}).flatMap(plugin => Object.keys(plugin.extensions ?? {})),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
 } as const;
@@ -164,7 +165,7 @@ export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, strin
 
 /** The parts of a manifest `PROVENANCE_KINDS` reads; a `PackManifest` satisfies it */
 export interface ProvenanceManifest extends PackDataDeclarations {
-  extensions?: { commands?: Readonly<Record<string, unknown>> };
+  extensions?: { commands?: Readonly<Record<string, unknown>>; tiptapPlugins?: import('../framework/frontend-declaration.ts').FrontendDeclaration['tiptapPlugins'] };
   features?: Record<string, { entities?: Record<string, string | null>; plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 

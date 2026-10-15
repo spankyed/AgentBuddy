@@ -76,7 +76,7 @@ export function write(file: string, content: string): void {
 }
 
 /** The contribution keys a manifest holds under `extensions`, which a case here may write flat */
-const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services'] as const;
+const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'tiptapPlugins', 'appExtensions', 'services'] as const;
 
 /**
  * A manifest for a case, over the minimum, with two conveniences the cases below are the reason for.

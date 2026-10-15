@@ -1,4 +1,5 @@
 import { referenceCatalogEntries } from './catalog-references.ts';
+import { frontendCatalogEntries } from './catalog-frontend.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
 import { readInstalledPackBuilds } from './discovery.ts';
 import { packBuildRevision, shippedPackRevision, type PackIntegrity } from './layout.ts';
@@ -181,6 +182,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       ]);
     },
     references: () => referenceCatalogEntries(current),
+    frontend: () => frontendCatalogEntries(current),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
     help: (): HelpCatalog => structuredClone(help) as HelpCatalog,

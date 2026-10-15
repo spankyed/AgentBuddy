@@ -41,8 +41,8 @@ import { useSubDocumentTracking } from './composables/useSubDocumentTracking.ts'
 import { createKeyboardHandler } from './composables/createEditorKeyboard.ts'
 
 const tiptapPlugins = tiptapPluginRegistry.getAll()
-const injectedExtensions = tiptapPlugins.flatMap(p => p.extensions ?? [])
-const pluginPopups = tiptapPlugins.flatMap(p => p.popups ?? [])
+const injectedExtensions = tiptapPlugins.flatMap(p => Object.values(p.extensions ?? {}))
+const pluginPopups = tiptapPlugins.flatMap(p => Object.values(p.popups ?? {}))
 const isSuggestionActive = (view: import('@tiptap/pm/view').EditorView) =>
   tiptapPlugins.some(p => p.isSuggestionActive?.(view.state))
 

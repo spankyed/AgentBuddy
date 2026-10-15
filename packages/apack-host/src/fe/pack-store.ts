@@ -13,7 +13,7 @@ import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { NativePackDeclaration } from '@apackdev/sdk/framework';
-import { captureFrontendReferences } from './reference-bindings.ts';
+import { captureFrontendBindings } from './binding-snapshot.ts';
 import { frontendBindingProblem } from './declaration-binding.ts';
 
 /** Supplied by the host loader, separate from a module's authored registration. */
@@ -103,7 +103,7 @@ interface FrontendContributions {
   steps: Array<DefinitionEntry<StepDefinition>>;
   artifacts: Array<DefinitionEntry<ArtifactDefinition>>;
   blocks: Array<DefinitionEntry<BlockDefinition>>;
-  tiptapPlugins: TiptapPlugin[];
+  tiptapPlugins: Array<[string, TiptapPlugin]>;
   appExtensions: Array<readonly [string, SettingsForm]>;
   dslTypes: Array<readonly [string, DslTypeConfig]>;
   references: OwnedReferenceBindings[];
@@ -146,7 +146,7 @@ function capture(registration: PackFERegistration, identity?: FrontendIdentity):
     steps: (reg.steps ?? []).map(value => [value.type, value]),
     artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
     blocks: (reg.blocks ?? []).map(value => [value.type, value]),
-    tiptapPlugins: [...(reg.tiptapPlugins ?? [])],
+    tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
     appExtensions: Object.entries(reg.appExtensions ?? {}), dslTypes: Object.entries(reg.dslTypes ?? {}),
   };
 }
@@ -162,6 +162,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPlugin[] = [];
+  const editorOwners = new Map<string, string>();
   const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
   const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
   const referenceOwners = { types: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
@@ -190,7 +191,15 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
     for (const [key, value] of pack.dslTypes) dslTypes.set(key, value, pack.id);
-    tiptapPlugins.push(...pack.tiptapPlugins);
+    for (const [id, plugin] of pack.tiptapPlugins) {
+      const owner = `${pack.id}/${id}`;
+      for (const name of Object.keys(plugin.extensions ?? {})) {
+        const previous = editorOwners.get(name);
+        if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
+        editorOwners.set(name, owner);
+      }
+      tiptapPlugins.push(plugin);
+    }
   }
   return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
@@ -263,11 +272,11 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     });
   }
   function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false, identity?: FrontendIdentity): PreparedFrontend {
-    registration = captureFrontendReferences(registration);
+    registration = captureFrontendBindings(registration);
     const declaration = native.get(registration.id);
     if (declaration) {
       const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
-        extensions: { settings: declaration.settings } }, registration);
+        extensions: { settings: declaration.settings, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
       if (problem) throw new Error(problem);
     }
     const binding = createFrontendSettingsBinding(settings);

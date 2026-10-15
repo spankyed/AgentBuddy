@@ -52,7 +52,8 @@ describe('validatePackSources', () => {
         blocks: { text: { be: 'src/hooks#block', fe: 'src/view.vue' } },
         artifacts: { text: { icon: 'File', fe: 'src/view.vue' } },
         dsl: { test: { entry: 'src/types', targets: ['monaco'] } },
-        fe: { tiptapPlugins: 'src/hooks', appExtensions: { extra: 'src/view.vue' } },
+        tiptapPlugins: { editor: { extensions: { example: 'src/hooks#Example' },
+          popups: { extra: 'src/view.vue' }, isSuggestionActive: 'src/hooks#isActive' } }, appExtensions: { extra: 'src/view.vue' },
       },
       content: { writers: { Test: 'src/hooks#writer' }, formats: { custom: { compiler: 'src/hooks' } }, sources: { custom: { applier: 'src/hooks' } } },
     };
@@ -70,7 +71,9 @@ describe('validatePackSources', () => {
       ['extensions', 'steps', 'test', 'runtime', 'handler'], ['extensions', 'steps', 'test', 'fe'],
       ['extensions', 'steps', 'signal', 'node'], ['extensions', 'steps', 'signal', 'trigger', 'facet'], ['extensions', 'steps', 'signal', 'trigger', 'register'],
       ['extensions', 'blocks', 'text', 'be'], ['extensions', 'blocks', 'text', 'fe'], ['extensions', 'artifacts', 'text', 'fe'],
-      ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'fe', 'tiptapPlugins'], ['extensions', 'fe', 'appExtensions', 'extra'],
+      ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'tiptapPlugins', 'editor', 'extensions', 'example'],
+      ['extensions', 'tiptapPlugins', 'editor', 'popups', 'extra'], ['extensions', 'tiptapPlugins', 'editor', 'isSuggestionActive'],
+      ['extensions', 'appExtensions', 'extra'],
       ['lifecycle', 'onInit'], ['migrations', 'app', '1.0.0', 'up'], ['migrations', 'pack', '1.0.0', 'up'],
       ['content', 'writers', 'Test'], ['content', 'formats', 'custom', 'compiler'], ['content', 'sources', 'custom', 'applier'],
     ]);

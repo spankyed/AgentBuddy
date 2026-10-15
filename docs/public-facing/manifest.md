@@ -22,12 +22,12 @@ including symlinks. A path and a selected export have different meanings:
 
 | Declaration | Syntax | Meaning |
 |---|---|---|
-| Systems, settings forms, block/artifact views, DSL type modules, frontend app extensions, tiptap modules, content compilers/appliers and feature type barrels | `src/module.ts` | Whole module, with the export convention described by that field; no `#export` selector |
-| Services, repositories, step facets, lifecycle hooks, migrations, content writers, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
+| Systems, settings forms, block/artifact views, DSL type modules, frontend app extensions/popups, content compilers/appliers and feature type barrels | `src/module.ts` | Whole module, with the export convention described by that field; no `#export` selector |
+| Services, repositories, step facets, lifecycle hooks, migrations, content writers, Tiptap extension objects/predicates, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
 | Plugin machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
 
 Schema validation, source checks and codegen use these same distinctions. Whole-module readers check
-their conventional runtime exports (`default`, `apply` or `tiptapPlugins`) without activation; type
+their conventional runtime exports (`default` or `apply`) without activation; type
 barrels remain type-only and Vue component exports are checked by the frontend build. JavaScript
 exports are inspected too, including CommonJS default-import semantics. Missing modules or required
 exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
@@ -450,25 +450,36 @@ available in the installed snapshot even when the pack is disabled or cannot act
 A pack may declare both lines. They run at different moments, so a single change split across them gets an
 order you probably did not intend — keep one change on one line.
 
-## Frontend configuration
+## Editor and app extensions
+
+Declare these contributions directly under `extensions`, alongside artifacts, help and other kinds:
 
 ```json
 {
   "extensions": {
-    "fe": {
-      "tiptapPlugins": "src/extensions/tiptap/index.ts",
-      "appExtensions": {
-        "welcome": "src/extensions/app/Welcome.vue"
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": { "mention": "src/editor/mention.ts#Mention" },
+        "popups": { "mentions": "src/editor/MentionPopup.vue" },
+        "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
       }
-    }
+    },
+    "appExtensions": { "welcome": "src/extensions/app/Welcome.vue" }
   }
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `tiptapPlugins` | `string` | Tiptap plugin registration module |
-| `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
+| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
+| `appExtensions` | `Record<string, string>` | Named app extensions: slot name (an identifier) → Vue component path |
+
+Within each Tiptap group, `extensions` maps the actual Tiptap name to its exported extension object
+(`path#export`); `popups` maps local popup IDs to Vue modules; `isSuggestionActive` names a function
+export. All paths are pack-root-relative. Discovery reads these declarations without importing their
+modules. Build checks exports and runtime admission checks exact member identities and executable
+shapes. Conflicting active extension names are refused with both owners.
+See [Tiptap plugins](extensions.md#tiptap-plugins) for the binding contract.
 
 Carrying your own copy of `@apackdev/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.

@@ -38,10 +38,12 @@ A landed result still needs its applicable regression checks in the final requir
 
 ## Resolve the two naming questions
 
-- **`extensions.fe` → `extensions.frontend`: selected.** `FEConfigSchema` still groups editor/app
-  contributions under `fe`. Spell out the public container as those kinds become declarative in the
-  discovery checkpoint. Keep `fe`/`be` directory conventions, established facet keys and useful API names;
-  this is not a blanket abbreviation ban. All readers/schema/examples change together, with no alias.
+- **Direct editor/app contributions: selected.** Declare `extensions.tiptapPlugins` and
+  `extensions.appExtensions` alongside the other contribution kinds. The user replaced the proposed
+  `extensions.frontend` wrapper: artifacts/help and other extensions also serve the frontend, so that
+  grouping adds nesting without an ownership or capability boundary. Keep `fe`/`be` directories,
+  established facet keys and useful projection APIs. Change all readers/schema/examples together;
+  no wrapper, alias or dual read.
 - **Keep `hostVersion`: selected.** This field constrains one host's semver range, whereas package
   toolchain engines and declared API/provider dependencies are different contracts. Current schema,
   compatibility diagnostics and naming use the host concept consistently. Do not add an `engines`
@@ -123,7 +125,7 @@ These are completion obligations, not optional later improvements.
 6. **M6 — canonical writing and schema/docs coverage.** One stable writer across init/add/edit paths;
    complete descriptions and editor assistance for the final supported contract. Test preservation of
    meaningful record/array order and document native/installed/shipped build differences.
-7. **Resume full discovery and remaining phases.** Include the selected frontend container, facade
+7. **Resume full discovery and remaining phases.** Include the direct editor/app contribution declarations, facade
    naming, content dependency graph, CLI inventory, intrinsic editor-schema ownership, every remaining
    kind/native/freshness check, entity navigation, boundaries and all three Phase 6 workstreams.
 
@@ -290,7 +292,7 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 6: designation | Role/id distinction and duplicate-role checks in `validateFeatures`; real scaffold uses notebook for notes. Implemented replacement preserved. | Final whole-goal registration/collision review remains. |
 | 7: feature layout/types | Explicit feature `types`, shared CLI layout, checked export inventory and real add/doctor/build/typecheck/archive path. Implemented. | Keep helper conventions separate from inferred contribution existence. |
 | 8: declaration existence | Explicit keyed system/plugin/settings/reference declarations replace provides/booleans; checked bindings refuse mismatch. Better replacement implemented for migrated kinds. | Required full kind coverage and removal of runtime discovery glue in Phase 3. |
-| 9: extensions | Settings/help placement and host settings ownership are implemented; ordinary strict schema errors have no historical-key inventory. | Required remaining extension declarations/bindings and frontend container move in Phase 3. |
+| 9: extensions | Settings/help placement and host settings ownership are implemented; ordinary strict schema errors have no historical-key inventory. | Required remaining extension declarations/bindings and direct editor/app declaration move in Phase 3. |
 | 10: content/lifecycle | `ContentConfigSchema` and explicit `LifecycleConfigSchema`; native/installed hook binding checks preserve execution order and unchanged content. Implemented. | Static content dependency graph remains required in discovery. |
 | 11: schema/docs | Complete field-help traversal plus actual editor completion/hover/range diagnostics; generated schema/API checks and public build guide. Implemented M6. | Regenerate and review documentation/reports for later contract changes. |
 | 12: default selection | Shared authored/native uniqueness and atomic frontend admission, replacement priority/removal promotion tests. Implemented. | Preserve policy through remaining frontend migration. |
@@ -299,11 +301,11 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 15: naming/release discipline | Completed naming baseline retained; current version/range parser and build documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
 | 16: no compatibility | Current source search finds no entityShapes/settingsSections/typesEntry/boot-key/sidecar readers or moved-key hint inventory; strict current validation and migrated fixtures remain. Implemented rule, continuously enforced. | Every later contract move migrates all callers/readers outright. |
 | 17: checks/build | `checks.allow` shares SDK policy with CLI rules; sidecar removed; real CLI allowance/refusal coverage and existing build options preserved. Implemented. | Maintain scaffold/schema/guidance agreement. |
-| Naming: extensions.fe | Resolved to extensions.frontend; current code still uses fe. Required unfinished work, not an exclusion. | Migrate during remaining editor/frontend contribution discovery, including schema, consumers, fixtures and docs; no alias. |
+| Naming: extensions.fe | Resolved to direct extensions.tiptapPlugins and extensions.appExtensions, with no frontend wrapper. Required work, not an exclusion. | Migrate during remaining editor/frontend contribution discovery, including schema, consumers, fixtures and docs; no alias. |
 | Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and build stamps. Implemented. | Keep one field, with no engines wrapper. |
 
 Original phases 1/3/4/5/6/7 now have their M1–M6 source checkpoints and validation evidence. Phase 2's
-remaining contribution kinds, the selected frontend container, facade naming/capability checks, static
+remaining contribution kinds, the direct editor/app contribution declarations, facade naming/capability checks, static
 content edges and meaningful CLI inventories continue in full discovery. These are unfinished required
 work, not exclusions justified by a smaller discovery prerequisite. Do not archive this plan while its
 additional consolidated requirements remain unfinished. Final strict `--all` on committed source and

@@ -37,14 +37,14 @@ afterEach(() => {
 const settingsAddress = resolveName('default-setup/settings');
 
 it("gives the SDK's frontend lookups the window's registered pack frontends", () => {
-  const mentions = { extensions: [] };
+  const mentions = { extensions: {} };
   const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
   const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
   fePacks.registerPackFE({
     id: 'fe-host-pack',
     features: { notebookMain: { plugin: { label: 'Notebook' } as never, designation: 'notebook' } },
     steps: [note as never],
-    tiptapPlugins: [mentions],
+    tiptapPlugins: { mentions },
     dslTypes: { memo: memoDsl },
   });
   try {

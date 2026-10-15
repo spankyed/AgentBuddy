@@ -1034,28 +1034,56 @@
           },
           "description": "DSL type definitions for Monaco editor intellisense."
         },
-        "fe": {
+        "tiptapPlugins": {
           "type": "object",
-          "properties": {
-            "tiptapPlugins": {
-              "type": "string",
-              "pattern": "^[^#]+$",
-              "description": "Path to tiptap plugin registration module."
-            },
-            "appExtensions": {
-              "type": "object",
-              "additionalProperties": {
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "extensions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_$][\\w$]*$"
+                },
+                "description": "Tiptap extension name to its exported extension object (\"path#exportName\"). Each key must match the exported object's Tiptap name."
+              },
+              "popups": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[^#]+$"
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_$][\\w$]*$"
+                },
+                "description": "Popup IDs local to this group, mapped to pack-root-relative Vue component modules."
+              },
+              "isSuggestionActive": {
                 "type": "string",
-                "pattern": "^[^#]+$"
-              },
-              "propertyNames": {
-                "pattern": "^[A-Za-z_$][\\w$]*$"
-              },
-              "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
-            }
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "Exported predicate (\"path#exportName\") reporting whether this group has an active suggestion for the current editor state."
+              }
+            },
+            "additionalProperties": false
           },
-          "additionalProperties": false,
-          "description": "Frontend contributions: what the pack adds to the app's own UI."
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code."
+        },
+        "appExtensions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+$"
+          },
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
         }
       },
       "additionalProperties": false,

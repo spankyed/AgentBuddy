@@ -67,7 +67,7 @@ describe('_mergeProvenance', () => {
     const manifest = {
       data: { entities: { Note: null }, relations: ['tagged'] },
 
-      extensions: { commands: { note: { placeholder: 'x' } } },
+      extensions: { commands: { note: { placeholder: 'x' } },  tiptapPlugins: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
       features: { memos: { plugin: {}, references: {
         types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#openMemo' } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
@@ -77,6 +77,7 @@ describe('_mergeProvenance', () => {
       ['entities', { Note: 'base-pack' }],
       ['relKinds', { TAGGED: 'base-pack' }],
       ['commands', { note: 'base-pack' }],
+      ['tiptapExtensions', { mention: 'base-pack' }],
       ['referenceTypes', { memo: 'base-pack' }],
       ['referenceCategories', { memos: 'base-pack' }],
       // A feature without a plugin owns no plugin id: nothing could be sent there

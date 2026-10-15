@@ -1072,7 +1072,7 @@ ${contractCheck}`;
       return `    '${f.id}': { ${parts.join(', ')} },\n`;
     }).join('');
 
-    const fe = manifest.extensions?.fe ?? {};
+    const frontend = manifest.extensions ?? {};
 
     const blocks = blockDefinitionsFE();
     const artifacts = artifactDefinitionsFE();
@@ -1080,11 +1080,30 @@ ${contractCheck}`;
 
     const extraImports: string[] = [];
     if (features.some(feature => feature.references)) extraImports.push("import { FEATURE_REFERENCES } from './references.ts';");
-    if (fe.tiptapPlugins) {
-      extraImports.push(`import { tiptapPlugins } from '${toImportPath(root, fe.tiptapPlugins)}';`);
-    }
+    let nextEditorBinding = 0;
+    const editorBinding = (label: string, target: string, callable = false) => {
+      const { source, exportName, value } = valueExport(label, target);
+      const expected = callable ? 'function' : 'object';
+      if (value !== expected) throw new Error(`${label}: expected an ${callable ? 'exported function' : 'exported extension object'}`);
+      const local = `__editor_${nextEditorBinding++}`;
+      extraImports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
+      return local;
+    };
+    const editorPlugins = Object.entries(frontend.tiptapPlugins ?? {}).map(([id, plugin]) => {
+      const label = `extensions.tiptapPlugins.${id}`;
+      const parts: string[] = [];
+      if (plugin.extensions) parts.push(`extensions: { ${Object.entries(plugin.extensions).map(([name, target]) =>
+        `${JSON.stringify(name)}: ${editorBinding(`${label}.extensions.${name}`, target)}`).join(', ')} }`);
+      if (plugin.popups) parts.push(`popups: { ${Object.entries(plugin.popups).map(([name, target]) => {
+        const local = `__editor_${nextEditorBinding++}`;
+        extraImports.push(`import ${local} from '${toImportPath(root, componentFile(`${label}.popups.${name}`, target))}';`);
+        return `${JSON.stringify(name)}: ${local}`;
+      }).join(', ')} }`);
+      if (plugin.isSuggestionActive) parts.push(`isSuggestionActive: ${editorBinding(`${label}.isSuggestionActive`, plugin.isSuggestionActive, true)}`);
+      return `${JSON.stringify(id)}: { ${parts.join(', ')} }`;
+    });
     extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);
-    const appExt = Object.entries(fe.appExtensions ?? {});
+    const appExt = Object.entries(frontend.appExtensions ?? {});
     for (const [key, extPath] of appExt) {
       extraImports.push(`import __appExtension_${key} from '${toImportPath(root, extPath)}';`);
     }
@@ -1092,7 +1111,7 @@ ${contractCheck}`;
     const regProps: string[] = [];
     if (groupForms.length) regProps.push(`  settingsForms: { ${groupForms.map(([id]) => `'${id}': __settingsGroup_${id}`).join(', ')} },`);
     if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
-    if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
+    if (editorPlugins.length) regProps.push(`  tiptapPlugins: { ${editorPlugins.join(', ')} },`);
     if (appExt.length) {
       const extObj = appExt.map(([key]) => `${key}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);
