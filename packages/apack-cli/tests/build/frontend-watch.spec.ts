@@ -124,6 +124,23 @@ it('observes a missing stylesheet repaired by creating a symlink', async () => {
   expect(before.current()).toBe(false);
 });
 
+it.each(['nested', 'reported'])('observes a %s directory link retargeted into authored source', async kind => {
+  const { temporary, watcher, firstChange, write } = fixture();
+  const outside = path.dirname(write('outside/page.html', '<div />'));
+  const authored = path.dirname(write('pack/templates/page.html', '<article />'));
+  const directory = path.join(temporary, 'content');
+  if (kind === 'nested') fs.mkdirSync(directory);
+  const link = kind === 'nested' ? path.join(directory, 'linked') : directory;
+  fs.symlinkSync(outside, link, 'dir');
+  await watcher.observe({ files: [], directories: [directory], successful: true });
+  const before = watcher.snapshot();
+  const replacement = path.join(temporary, 'replacement');
+  fs.symlinkSync(authored, replacement, 'dir');
+  fs.renameSync(replacement, link);
+  await _byDeadline(firstChange, 'a content link retargeted into authored source');
+  expect(before.current()).toBe(false);
+});
+
 it('rebuilds when a compiler-reported content directory link is retargeted', async () => {
   const { temporary, watcher, firstChange, write } = fixture();
   const original = path.dirname(write('sources/original/page.html', '<div />'));

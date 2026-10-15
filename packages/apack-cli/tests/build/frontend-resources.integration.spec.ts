@@ -140,6 +140,9 @@ it('watches initially empty external Tailwind content through nested directory l
   fs.mkdirSync(content);
   fs.mkdirSync(sources);
   fs.symlinkSync(sources, path.join(content, 'linked'), 'dir');
+  const authored = path.join(pack, 'templates');
+  fs.mkdirSync(authored);
+  fs.writeFileSync(path.join(authored, 'page.html'), '<div class="text-indigo-500" />');
   fs.writeFileSync(path.join(pack, 'tailwind.config.js'), `export default { content: [${JSON.stringify(`${content}/**/*.html`)}] };`);
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   let watcher: { close(): Promise<void> } | undefined;
@@ -148,10 +151,21 @@ it('watches initially empty external Tailwind content through nested directory l
     watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(root!, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(output(pack, '.css')).not.toContain('.text-orange-500');
+    expect(output(pack, '.css')).not.toContain('.text-indigo-500');
     fs.mkdirSync(path.join(sources, 'nested'));
     fs.writeFileSync(path.join(sources, 'nested/page.html'), '<div class="text-orange-500" />');
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(output(pack, '.css')).toContain('.text-orange-500');
+    const count = publications;
+    const replacement = path.join(root!, 'replacement');
+    fs.symlinkSync(authored, replacement, 'dir');
+    fs.renameSync(replacement, path.join(content, 'linked'));
+    await vi.waitFor(() => {
+      expect(publications).toBeGreaterThan(count);
+      expect(output(pack, '.css')).toContain('.text-indigo-500');
+    }, { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(output(pack, '.css')).not.toContain('.text-orange-500');
   } finally { await watcher?.close(); }
 });

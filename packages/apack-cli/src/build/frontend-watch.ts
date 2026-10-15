@@ -47,17 +47,17 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
     const visited = new Set<string>();
     const visit = (directory: string) => {
       const physical = physicalWatchPath(directory);
+      hash.update(JSON.stringify([directory, physical]));
       if (excluded(physical) || visited.has(physical)) return;
       visited.add(physical);
-      hash.update(JSON.stringify([directory, physical]));
       for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
         const file = path.join(directory, entry.name);
         if (excluded(file)) continue;
         if (entry.isSymbolicLink()) {
           const target = physicalWatchPath(file);
+          hash.update(JSON.stringify([file, fs.readlinkSync(file), target]));
           if (excluded(target)) continue;
           links.add(target);
-          hash.update(JSON.stringify([file, fs.readlinkSync(file), target]));
           if (fs.statSync(file, { throwIfNoEntry: false })?.isDirectory()) visit(target);
           continue;
         }
@@ -85,9 +85,11 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
     const hash = signature(selected, contentDirectories);
     return { hash, current: () => signature(selected, contentDirectories) === hash };
   };
+  const contentLink = (file: string) => [...directories, ...linkedInputs].some(root => inside(root, file))
+    && (fs.lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink() ?? false);
   const ignored = (file: string) => {
     if (excluded(file)) return true;
-    try { if (excluded(physicalWatchPath(file))) return true; }
+    try { if (excluded(physicalWatchPath(file)) && !contentLink(file)) return true; }
     catch { /* Broken links remain observable so their repair can trigger a build. */ }
     return ![...files].some(input => file === input || inside(file, input))
       && ![...directories, ...linkedInputs].some(root => inside(root, file) || inside(file, root))
@@ -95,14 +97,11 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
   };
   const notify = (file: string) => {
     if (closed || ignored(file)) return;
-    let directoryLink = false;
-    try {
-      directoryLink = [...directories, ...linkedInputs].some(root => inside(root, file))
-        && (fs.lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink() ?? false);
-    }
+    let trackedLink = false;
+    try { trackedLink = contentLink(file); }
     catch { /* An unreadable path still invalidates unknown namespace inputs. */ }
     // Link topology is in the directory signature; target metadata alone need not change inputs.
-    if (!files.has(file) && !directoryLink) namespace++;
+    if (!files.has(file) && !trackedLink) namespace++;
     const hash = signature(files, directories);
     if (hash === notified) return;
     notified = hash;
