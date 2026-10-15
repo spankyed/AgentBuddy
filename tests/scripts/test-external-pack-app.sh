@@ -15,6 +15,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APACK="$ROOT/node_modules/.bin/apack"
 export APACK_HOST="$ROOT"
 source "$ROOT/tests/scripts/lib/fixture-packs.sh"
+"$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/prepare-default-pack-fork.ts" --check
 
 for PACK in "${FIXTURE_PACKS[@]}"; do
   cd "$PACK"

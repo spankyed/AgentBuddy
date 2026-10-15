@@ -654,6 +654,7 @@ const FIXTURE_PACKS = fs.readdirSync(path.join(REPO_ROOT, 'tests', 'packs'), { w
   .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(REPO_ROOT, 'tests', 'packs', entry.name, 'apack.json')))
   .map((entry) => entry.name)
   .sort();
+const DEFAULT_FORK_OUTPUT = 'node_modules/.cache/apack-fixtures/default-fork';
 const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/dist`, `tests/packs/${name}/src/__generated__`]);
 
 /**
@@ -1097,12 +1098,12 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default
   // admission, because that is the schedule the drift report compares against. Raising the lane default from
   // two to three moved this one and nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: FIXTURE_OUTPUTS,
+  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: [...FIXTURE_OUTPUTS, DEFAULT_FORK_OUTPUT],
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
-      'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+      'tests/scripts/lib', 'tests/scripts/prepare-default-pack-fork.ts', ...PACK_SOURCES, ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   ...TYPECHECK_STEPS,
@@ -1142,7 +1143,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // name rather than by path, so nothing that reads a step's text can see the edge
     keepsOnFailure: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
-      'tests/scripts/test-default-pack-fork.ts', 'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
+      'tests/scripts/test-default-pack-fork.ts', 'tests/scripts/prepare-default-pack-fork.ts', DEFAULT_FORK_OUTPUT, 'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a

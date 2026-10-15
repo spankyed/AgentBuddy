@@ -25,3 +25,5 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
   # `apack pack test --contract` is a no-op with a message when a pack has no vitest config.
   "$APACK" pack test --contract
 done
+
+"$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/prepare-default-pack-fork.ts"

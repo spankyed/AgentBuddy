@@ -1,51 +1,25 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
 import { test, expect } from '@apackdev/testing';
 
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
-const cli = path.join(root, 'node_modules', '.bin', 'apack');
-let temporary: string;
 let archive: string;
 
 const bootCheck = process.env.APACK_FORK_BOOT_CHECK;
 const restarting = !!bootCheck;
 
-test.beforeAll(async () => {
+test.beforeAll(() => {
   if (restarting) return;
-  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-fork-acceptance-'));
-  const fork = path.join(temporary, 'fork');
-  fs.cpSync(path.join(root, 'packages', 'default-setup'), fork, { recursive: true,
-    filter: file => !['node_modules', 'dist', '.apack', '.git'].includes(path.basename(file)) && !file.endsWith('.tsbuildinfo'),
-  });
-  // The established external-authoring fixture borrows its toolchain; source/output stay private.
-  fs.symlinkSync(path.join(root, 'node_modules'), path.join(fork, 'node_modules'), 'dir');
-  const manifest = JSON.parse(fs.readFileSync(path.join(fork, 'apack.json'), 'utf8'));
-  manifest.name = 'Acceptance fork';
-  manifest.features.notes.plugin.label = 'Fork Notes';
-  fs.writeFileSync(path.join(fork, 'apack.json'), JSON.stringify(manifest, null, 2));
-  const canvas = path.join(fork, 'src', 'features', 'notes', 'fe', 'canvas.vue');
-  const original = fs.readFileSync(canvas, 'utf8');
-  expect(original).toContain('<template>');
-  fs.writeFileSync(canvas, original.replace('<template>', '<template>\n  <div data-testid="fork-component">Fork component</div>'));
-  const config = path.join(fork, 'tsconfig.json');
-  fs.writeFileSync(config, fs.readFileSync(config, 'utf8').replace(
-    '../../node_modules/.cache/tsbuildinfo/default-setup.tsbuildinfo', '.apack/typecheck.tsbuildinfo'));
-  const run = promisify(execFile);
-  const options = { cwd: fork, env: { ...process.env, APACK_HOST: root }, maxBuffer: 16 * 1024 * 1024 };
-  await run(process.execPath, [cli, 'pack', 'build'], options);
-  await run(process.execPath, [cli, 'pack', 'archive', '--out', temporary], options);
-  archive = path.join(temporary, `${manifest.id}-${manifest.version}.tgz`);
+  const prepared = path.join(root, 'node_modules/.cache/apack-fixtures/default-fork');
+  const file = path.join(prepared, 'fork.json');
+  expect(fs.existsSync(file), 'Run npm run test:external-pack:contract to prepare the default fork').toBe(true);
+  archive = path.join(prepared, JSON.parse(fs.readFileSync(file, 'utf8')).archive);
   expect(fs.existsSync(archive)).toBe(true);
   expect(fs.existsSync(`${archive}.sha256`)).toBe(true);
 });
-
-test.afterAll(() => { if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); });
 
 if (!restarting) test('an externally built default fork refreshes both windows and survives actual dev reload', async ({ app, appPage, electronApp }) => {
   await app.navigate('host/settings');

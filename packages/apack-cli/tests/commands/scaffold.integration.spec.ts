@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { callCli, typecheckPack } from '../_support/pack-builds';
@@ -25,6 +25,9 @@ let tmp: string;
 let pack: string;
 /** What `init` printed: it names scripts, so it is held to the same rule as the files it wrote */
 let initOutput: string;
+
+// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
+afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
   try {
