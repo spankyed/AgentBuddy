@@ -388,7 +388,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
 4. **A log file, always**: the same output goes to `app-<workerIndex>.log` in Playwright's `outputDir` —
-   `tests/results/` under `apack pack test`, `drive/results/` under `npm run dev:drive --`. Playwright wipes that
+   `.apack/tests/results/` under `apack pack test`, `.apack/drive/results/` under `npm run dev:drive --`. Playwright wipes that
    directory at the start of every run, so it is always the last run and never an archive. It is what a
    fixture failure now names, in place of asking for a re-run under `DEBUG_E2E`; the app's own
    electron-log files live in the data dir, which an ephemeral drive session deletes on the way out.
@@ -430,7 +430,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 | `getState()` | Returns `snapshot.value` (e.g. `{ running: 'connected' }`) |
 | `getContext()` | Returns `{ activePluginId, pluginIds }` |
 | `sendEvent(event)` | Send any event object to `applicationState` |
-| `report(name, value)` | Write `drive/results/{name}.json` and print one `[drive:report] {name} {json}` line, for a driving run whose answer is meant to be read by a program rather than watched. Returns the path |
+| `report(name, value)` | Write `.apack/drive/results/{name}.json` and print one `[drive:report] {name} {json}` line, for a driving run whose answer is meant to be read by a program rather than watched. Returns the path |
 | `waitForState(check, ms?)` | Wait for dot-separated state path (e.g. `'running.connected'`), default 10s |
 | `waitForPlugin(pluginId, ms?)` | Wait for a plugin to appear in the plugin list, default 30s |
 
@@ -454,9 +454,9 @@ Screenshot output location depends on context:
 | Context | Screenshot directory |
 |---------|---------------------|
 | `screenshotDir` option passed | The specified directory |
-| `E2E_SCREENSHOT_DIR` is set | That directory — how `npm run dev:drive --` keeps its output in `drive/screenshots/` rather than under `tests/`, since the option cannot reach the `test` a script imports |
-| `PACK_DIR` is set | `{PACK_DIR}/tests/screenshots/` |
-| Default | `{cwd}/tests/screenshots/` |
+| `E2E_SCREENSHOT_DIR` is set | That directory — how `npm run dev:drive --` keeps its output in `.apack/drive/screenshots/` rather than under `tests/`, since the option cannot reach the `test` a script imports |
+| `PACK_DIR` is set | `{PACK_DIR}/.apack/tests/screenshots/` |
+| Default | `{cwd}/.apack/tests/screenshots/` |
 
 ## Environment variables
 
@@ -470,8 +470,8 @@ Screenshot output location depends on context:
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped build, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `npm run dev:drive --` for a profile. **`apack pack test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
-| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `npm run dev:drive --` to `drive/screenshots/`, and stripped by `apack pack test` for the same reason. |
-| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `apack pack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
+| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `npm run dev:drive --` to `.apack/drive/screenshots/`, and stripped by `apack pack test` for the same reason. |
+| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`.apack/drive/results/`). Set by this repo's `drive` scripts and stripped by `apack pack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`apack-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `APACK_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@apackdev/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |

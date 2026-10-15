@@ -45,7 +45,7 @@ development or production data, and every session starts clean. `--profile <name
 between sessions: `npm run dev:drive -- --profile probe`.
 
 **For an answer you want to read rather than watch**, `app.report(name, value)` writes
-`drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the
+`.apack/drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the
 run does not have to grep for a prefix the script invented:
 
 ```ts

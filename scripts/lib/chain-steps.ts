@@ -661,7 +661,7 @@ const FIXTURE_OUTPUTS = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/di
  * What running a fixture pack's own Playwright suite leaves behind. Nothing reads it, and it changes every
  * run, so a step that declares `tests/packs` has to say it reads around this or it can never cache.
  */
-const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/tests/results`, `tests/packs/${name}/tests/screenshots`]);
+const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name}/.apack/tests`, `tests/packs/${name}/.apack/drive`]);
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through

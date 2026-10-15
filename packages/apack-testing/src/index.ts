@@ -20,7 +20,7 @@ export interface AppDriver {
   screenshot: (name: string) => Promise<Buffer>;
   /**
    * An answer a driving run is meant to be *read* for, rather than watched: written to
-   * `drive/results/<name>.json` and printed as one `[drive:report] <name> <json>` line.
+   * `.apack/drive/results/<name>.json` and printed as one `[drive:report] <name> <json>` line.
    *
    * **A driving script's output is otherwise `console.log` inside Playwright's reporter**, so whoever runs
    * it — usually an agent — invents a prefix and greps for it. Standardising the prefix and the file is the
@@ -39,13 +39,9 @@ export interface CreateTestOptions extends TestHostOptions {
 
 function resolveScreenshotDir(override?: string): string {
   if (override) return path.resolve(override);
-  // A caller that is not a test says where its own output goes. The fallbacks below assume the caller is
-  // a suite — written when it always was — so `npm run dev:drive --` landed its screenshots under `tests/`,
-  // which is the one place the command exists to keep driving out of. Same reason `E2E_DATA_DIR` exists:
-  // the `screenshotDir` option cannot reach the `test` every script imports, built here with no options
+  // Driving selects its own output through the environment; ordinary tests use the pack's work directory.
   if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
-  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'tests', 'screenshots');
-  return path.join(process.cwd(), 'tests', 'screenshots');
+  return path.resolve(process.env.PACK_DIR || process.cwd(), '.apack', 'tests', 'screenshots');
 }
 
 /**
@@ -55,8 +51,7 @@ function resolveScreenshotDir(override?: string): string {
  */
 function resolveReportDir(): string {
   if (process.env.E2E_REPORT_DIR) return path.resolve(process.env.E2E_REPORT_DIR);
-  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'drive', 'results');
-  return path.join(process.cwd(), 'drive', 'results');
+  return path.resolve(process.env.PACK_DIR || process.cwd(), '.apack', 'drive', 'results');
 }
 
 /** The apack CLI bin that builds the pack under test. */
@@ -344,7 +339,7 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
   
     screenshot: async (name) => {
       // Made on first use, not at fixture setup: every run of every spec used to leave an empty
-      // `tests/screenshots/` behind, including suites that screenshot nothing
+      // `.apack/tests/screenshots/` behind, including suites that screenshot nothing
       fs.mkdirSync(screenshotDir, { recursive: true });
       const filePath = path.join(screenshotDir, `${name}.png`);
       return page.screenshot({ path: filePath });

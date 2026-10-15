@@ -102,7 +102,7 @@ same way. With no app running it exits 3 and says so; \`--spawn\` starts one and
 A script drives a built app of its own — \`apack pack dev\` serves a pack's frontend with HMR.
 
 \`app.report(name, value)\` is for an answer you want to read rather than watch: it writes
-\`drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
+\`.apack/drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
 
 Add \`--profile <name>\` to keep the app's data between sessions, or \`--fresh --rm\` to start clean and
 leave nothing behind. With neither, the app gets a fresh data dir that is thrown away afterwards, so a
@@ -296,7 +296,7 @@ interface OneShotOutput {
 async function answerAttached(
   live: AttachableApp, root: string, ask: AskName, argument: string | undefined, state: 'attached' | 'spawned',
 ): Promise<OneShotOutput> {
-  const screenshotDir = path.join(root, DRIVE_DIR, 'screenshots');
+  const screenshotDir = path.join(root, '.apack', DRIVE_DIR, 'screenshots');
   const notes: string[] = [];
   // Prose only where something was left behind — a process still running, or a write to the user's data.
   // An attach that changed nothing says nothing, because the fields already said it
@@ -504,10 +504,9 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
     // The fixture makes a throwaway dir unless it is given one; a profile is the caller's to keep
     if (profile) env.E2E_DATA_DIR = profile.dir;
     // Beside the scripts that take them, not under `tests/` — driving output is not test output
-    env.E2E_SCREENSHOT_DIR = path.join(root, DRIVE_DIR, 'screenshots');
-    // Beside the screenshots, for the same reason. The CLI did not set this before, so `app.report` in a
-    // pack's driving script fell through to its `PACK_DIR/drive/results` guess
-    env.E2E_REPORT_DIR = path.join(root, DRIVE_DIR, 'results');
+    env.E2E_SCREENSHOT_DIR = path.join(root, '.apack', DRIVE_DIR, 'screenshots');
+    // Reports and screenshots share the run's private output scope.
+    env.E2E_REPORT_DIR = path.join(root, '.apack', DRIVE_DIR, 'results');
 
     // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
     // the default action and killed this process where it stood, so the teardown below never ran and an

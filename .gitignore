@@ -8,6 +8,7 @@ packages/*/publish/
 .data
 .DS_Store
 .claude
+.apack/
 
 # Stale tsc output in source dirs (preload has no outDir)
 packages/preload/src/**/*.js

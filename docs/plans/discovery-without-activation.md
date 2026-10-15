@@ -2945,3 +2945,19 @@ Fold this correction into the required compiler/input-closure and publication wo
 This is the next required source-freshness work before expanding more discovery readers. Do not
 replace the outstanding exact compiler/input/frozen-publication scope with a patch to timestamp
 comparison. All remaining contribution kinds and later goal phases stay required.
+
+
+#### Authored scope prerequisite: keep run output under `.apack`
+
+Current `packInputFiles` hashes arbitrary authored paths and excludes the pack's `.apack` work directory.
+The testing helpers instead write Playwright results, screenshots and driving reports into `tests/` and
+`drive/`, so persisting the current authored hash would make a test stale its own source frame. Keep one
+input policy: default generated pack-run output belongs under `.apack/tests` and `.apack/drive`, while
+scripts/configuration remain authored. Move helper defaults, CLI driving outputs, scaffolds, fixture
+output declarations and public guidance together; preserve explicit user output overrides. No aliases
+or fallback reads of previous output directories. Root app E2E configuration remains separately owned.
+
+Prove real helper-created output is excluded from `packInputsHash` and actual authored changes still
+invalidate it, including linked sources. Test Playwright configuration and CLI scaffold/drive paths;
+then run required strict validation. This prerequisite does not complete the receipt, exact compiler
+identity, external-input closure, frozen publication or source-freshness consumer migrations above.

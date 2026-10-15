@@ -12,9 +12,7 @@ test('renders and edits with its bundled @apackdev/ui editor', async ({ appPage,
 
   const editor = appPage.getByTestId('scribbles-editor').locator('.ProseMirror');
   await expect(editor).toContainText('Bundled editor', { timeout: 10_000 });
-  await editor.click();
-  await appPage.keyboard.press('End');
-  await appPage.keyboard.type(' typed');
+  await editor.fill('Bundled editor typed');
   await expect(appPage.getByTestId('scribbles-text')).toContainText('Bundled editor typed');
   // Two ProseMirror copies fail here ("Adding different instances of a keyed plugin", instanceof checks)
   expect(errors).toEqual([]);

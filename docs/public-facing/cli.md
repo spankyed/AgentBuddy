@@ -265,7 +265,7 @@ operation failed — a `4xx` means nothing ran at all.
 | `/viewport` | GET | — | the size the app is rendering into |
 | `/set-viewport` | POST | `{ width, height }` | changes it |
 | `/set-setting` | POST | `{ target, path, value }` | writes one setting |
-| `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
+| `/screenshot` | POST | `{ name }` | writes `.apack/drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
 | `/drops` | POST | — | sends the bus dropped, and clears them |
@@ -330,7 +330,7 @@ the app holds the write lock.
 operation was not, which is the common case while driving. A malformed request, a missing token or an
 unknown verb answers `4xx`, because nothing ran.
 
-The app's own output is in `drive/results/app-0.log` for the whole session, so there is nothing to stream.
+The app's own output is in `.apack/drive/results/app-0.log` for the whole session, so there is nothing to stream.
 
 ##### One question
 
@@ -494,7 +494,7 @@ Build status distinguishes unbuilt, verified, invalid and stale declarations. Co
 
 #### `apack pack init-tests`
 
-Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
+Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), a `.gitignore` entry for `.apack/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
 #### `apack pack test [--host <path>] [--prebuilt] [playwright args...]`
 

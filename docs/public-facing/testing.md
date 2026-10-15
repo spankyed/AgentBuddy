@@ -7,6 +7,11 @@ A pack has two kinds of tests:
 
 This page covers unit tests.
 
+Pack E2E results and screenshots default to `.apack/tests/`; driving logs, reports and screenshots use
+`.apack/drive/`. Keep custom generated output under `.apack/` too: this work directory is excluded from
+authored build inputs, so running a test does not invalidate the pack's source identity. Explicit
+Playwright output options and screenshot/report overrides still choose their own destinations.
+
 ## Setup
 
 `apack pack init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
