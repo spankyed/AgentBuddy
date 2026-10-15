@@ -402,11 +402,12 @@ export interface BundleFEOptions {
 /** Current compiler watch files include stylesheet and asset dependencies as well as modules.
  * Diagnostics and live worker subscriptions consume the same observations before publication.
  */
-function inputReportPlugin(options: BundleFEOptions, directories: Set<string>, version: string): VitePlugin {
+function inputReportPlugin(options: BundleFEOptions, directories: Set<string>, version: string, observedFiles: Set<string>): VitePlugin {
   return {
     name: 'report-build-inputs',
     async buildEnd(error) {
-      const files = this.getWatchFiles();
+      for (const file of this.getWatchFiles()) observedFiles.add(file);
+      const files = [...observedFiles];
       options.recordReads?.({ bundler: 'vite', version, files });
       if (options.onInputs) await options.onInputs({ files: [...new Set(files.filter(file => !file.includes('\0'))
         .map(file => path.resolve(options.packDir, fs.existsSync(file) ? file : file.replace(/[?#].*$/, ''))))],
@@ -547,6 +548,12 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   // are real paths (a pack under a symlinked dir, like macOS's /var, has others)
   const entryFile = fs.realpathSync(path.resolve(packDir, entryPoint));
   const directories = new Set<string>();
+  // Workers compile in separate Rollup builds. The final report must retain their inputs too.
+  const observedFiles = new Set<string>();
+  const inputPlugins = () => [
+    ...((recordReads || options.onInputs) ? [inputReportPlugin(options, directories, vite.version, observedFiles)] : []),
+    ...(options.onInputs ? [globWatchPlugin(packDir, directories)] : []),
+  ];
   if (options.onInputs) postcssPlugins.push({
     postcssPlugin: 'apack-watch-inputs',
     OnceExit(_root: unknown, { result }: { result: { opts: { from?: string }; messages: Record<string, unknown>[] } }) {
@@ -588,11 +595,11 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         ...(definitionsDir ? [stagedDslDefinitionsPlugin(packDir, definitionsDir)] : []),
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
-        ...((recordReads || options.onInputs) ? [inputReportPlugin(options, directories, vite.version)] : []),
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
-        ...(options.onInputs ? [globWatchPlugin(packDir, directories)] : []),
+        ...inputPlugins(),
       ],
+      worker: { plugins: inputPlugins },
       css: {
         postcss: { plugins: postcssPlugins },
       },
