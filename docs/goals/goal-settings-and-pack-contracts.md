@@ -4470,3 +4470,18 @@ execution/publication and manual-build/drive freshness. Retain every remaining d
 static-content, navigation, frontend boundary, Phase 6 and lifecycle requirement. The aggregate strict
 gate remains unresolved; final committed-source strict --all and the full requirement audit are still
 required. Nothing is archived or excluded.
+
+### Empty external frontend globs checkpoint (2026-10-15)
+
+Source `49f2647f3` subscribes directory membership for initially empty external `import.meta.glob`
+inputs. Syntax-tree inspection runs after Vue/TS transformation and before Vite expansion; module
+subpaths use Vite's resolver. Existing frontend subscriptions handle physical directory links.
+The reproducer failed before the fix (`/private/tmp/apack-empty-glob-baseline.log`). Four actual Vite
+compilation/watcher cases now pass in 4.33s, verifying additions and removals for relative globs,
+arrays/exclusions, literal `base`, and a package-root subpath glob through an external link:
+`/private/tmp/apack-empty-glob-verified.log`. All 105 focused build/watcher checks, CLI typechecking
+and changed-file correctness lint pass (`/private/tmp/apack-empty-glob-unit.log`,
+`/private/tmp/apack-empty-glob-types.log`). This covers these static glob forms; computed options,
+worker/dynamic input closure, compiler identity, coherent frozen publication and every larger goal
+requirement remain open. The aggregate strict gate and final committed-source strict `--all` remain
+required; focused evidence does not establish phase completion. No scope is excluded or archived.
