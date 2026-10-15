@@ -4514,3 +4514,20 @@ CLI typechecking and changed-file correctness lint pass (`/private/tmp/apack-var
 This does not establish arbitrary runtime import closure or frozen compilation. Computed glob
 options, exact compiler-consumer identity, coherent execution/publication, manual-build/drive
 freshness, the unresolved aggregate strict gate and all remaining goal phases stay required.
+
+### Development startup compiler checkpoint (2026-10-15)
+
+Source `f74617e5f` routes `pack dev`'s initial build through the same fresh-process runner used by
+watched builds. Previously, refreshing linked packages could leave the supervisor's already-loaded
+compiler code executing against new on-disk fingerprints. The startup child is aborted on supervisor
+shutdown; unobserved builds explicitly disable inherited private input reporting. Watchers retain
+observed reports through the runner's options object. Public CLI flags and release behavior are unchanged.
+Two real-process cases pass in 12.52s, proving startup bypasses the supervisor compiler and cancellation
+terminates a waiting child (`/private/tmp/apack-dev-fresh-compiler-integration.log`). Substituting the
+in-process build makes the startup regression fail (`/private/tmp/apack-dev-fresh-compiler-mutant.log`);
+the exact source was restored. Nineteen startup/ownership checks pass; CLI typechecking and changed-file
+correctness lint pass (`/private/tmp/apack-dev-fresh-compiler-{unit,types,lint}.log`). The existing real
+worker refusal/repair watcher still passes in 25.17s (`/private/tmp/apack-dev-fresh-compiler-watch.log`).
+This closes the initial development-build cache boundary only. Direct-command bootstrap identity,
+long-lived frontend compiler identity, coherent frozen reads/publication, remaining dynamic inputs,
+manual-build/drive freshness, the aggregate strict gate and every other goal requirement remain open.

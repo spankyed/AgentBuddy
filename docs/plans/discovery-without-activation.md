@@ -2107,3 +2107,10 @@ This is conservative subscription coverage, not a replacement for Vite's expansi
 reads. The goal records the failing baseline, seven passing compiler cases, nested-worker regression,
 105 focused checks and type/lint evidence. Computed glob options, exact compiler identity, coherent
 execution/publication, manual-build/drive freshness and the full strict gate remain open.
+
+`f74617e5f` also routes the initial `pack dev` build through a fresh CLI process after refreshing linked
+packages, removing its in-process compiler-cache boundary. Supervisor teardown aborts the initial
+child; private input reporting is enabled only for observed builds. Actual startup, cancellation and
+watcher refusal/repair checks pass, and a mutation back to in-process compilation fails the regression.
+This does not prove direct-command bootstrap identity, long-lived frontend compiler identity or frozen
+reads/publication. Those remain part of the full compiler-consumer and freshness acceptance gate.
