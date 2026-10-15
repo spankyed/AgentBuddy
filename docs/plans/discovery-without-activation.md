@@ -2139,3 +2139,42 @@ The goal owns the logs. The lifetime test observes process exit plus ended outpu
 Node reproduction showed parent-initiated IPC disconnect can omit `close` even when both streams
 end. No process-group machinery is needed. Frozen reads, long-lived frontend compiler identity,
 remaining input closure, manual-build/drive freshness and the aggregate strict gate remain open.
+
+### Frontend editor declaration checkpoint
+
+Replace the opaque frontend registration-module target with explicit plugin groups:
+
+```json
+{
+  "extensions": {
+    "frontend": {
+      "tiptapPlugins": {
+        "suggestions": {
+          "extensions": { "reference": "src/editor/reference.ts#ReferenceNode" },
+          "popups": { "references": "src/editor/ReferencePopup.vue" },
+          "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
+        }
+      },
+      "appExtensions": { "toolbar": "src/Toolbar.vue" }
+    }
+  }
+}
+```
+
+Plugin and popup keys are local to their pack/group; extension keys preserve actual Tiptap names.
+Keep meaningful plugin grouping. Registration carries matching keyed bindings; generated imports name
+each declared export. Validate missing/extra groups and members, extension-name mismatch and predicate/
+component shapes without executing them. Reject extension-name collisions transactionally, naming
+both pack/group owners. No conventional aggregate export or anonymous arrays remain.
+
+Use the same frontend data contract for native declarations, installed snapshots and authoring data.
+Project it through the common catalog/window view and CLI inspection without importing executable
+modules; retain origin, enablement and accepted identities. Migrate schema/module-target validation,
+codegen, every reader, native/test fixtures, default-setup, public docs and API/schema reports together.
+Prove poisoned/unavailable executable modules do not affect discovery, binding refusals preserve the
+incumbent, and real external-pack/default-pack compilation agrees with declared members.
+
+This checkpoint does not complete editor ownership: host-owned intrinsic document parsing, native
+editor composition and live editor/palette migration remain required. Preserve the reference wire
+identity and behavior; do not invent features or treat mutable runtime results as static inventory.
+All other discovery/source-freshness, navigation, boundaries and Phase 6 work stays in the goal.
