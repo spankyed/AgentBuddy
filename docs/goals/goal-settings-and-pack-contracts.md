@@ -4987,3 +4987,48 @@ trigger/build metadata, remaining contribution kinds/content/assets, exact compi
 frozen execution/publication and manual-build/drive freshness, native/editor lifecycle, entity navigation,
 frontend boundaries, all three Phase 6 workstreams and the complete requirement audit remain required.
 This checkpoint completes neither discovery nor the goal; final strict `--all` on committed source remains.
+
+
+### Live frontend step readers checkpoint (2026-10-15)
+
+Source `76df2f0e5` completes discovery reader **3A**, not all of checkpoint 3. SDK readers select a
+unique runtime owner ahead of source previews, retain unavailable declarations and require current
+owner/data/identity agreement for execution. Native bindings compare captured data without invented
+stamps. Scoped readers observe independent catalog/frontend publications and release both listeners.
+
+UI helpers share one implementation for fresh imperative reads and scoped reactive consumers. Palettes,
+menus, node/form maps, frontend creation defaults and brain presentation use declarations. Permanent
+node/color caches and contribution proxies are removed. Unavailable creation is disabled, presentation
+uses a fallback icon/component and static layout flags remain available. Retained descriptors recheck
+binding identity before invoking callbacks, including after replacement.
+
+Evidence and corrections:
+
+- 22 SDK reader checks, five mounted pack Vue consumer checks and 29 pack layout checks pass. Five
+  deliberate readiness/data/publication/layout/snapshot mutations were caught; source restored.
+- Mounted tests initially lived in the renderer; placement/input guards rejected that. They now live with
+  their pack source. Node/backend and Vue/jsdom projects inherit the shared helper, isolation and timeouts;
+  the config guard documents the helper's genuine single-environment limitation. The existing Vue compiler
+  is declared as a development dependency, with no unrelated dependency upgrades.
+- Workspace-qualified subprojects are attributed only when the root manifest confirms ownership.
+  All 11 reporter integration checks pass, including a real multi-project fixture and foreign-name refusal.
+  Fixed its readonly-array sorting error before final validation; configuration/placement/input/timeout
+  checks pass all 68 cases. One known-invalid validation attempt was deliberately stopped for this correction.
+- The actual app test originally bypassed the UI's reply-address wrapper with a raw actor send. Using the
+  New Flow button fixes setup; the installed Stamp/Pulse palette stays mounted across disable/re-enable,
+  retains metadata and disables/re-enables creation. The focused test and all 25 external fixture app tests pass.
+- Reviewed SDK/UI API reports; schema, facade and seven baseline EARS/content files remain unchanged.
+  Accepted full host pool: 410 files/4,903 tests; pack: 851 passed/2 skipped; integration: 58 files/741 tests.
+- Final strict `npm run chain -- --strict --cores 1` passes all 30 steps in 338.3s (18 cached), run
+  `2026-10-15T17-06-09Z-45689`, `/private/tmp/apack-live-step-passing-strict.log`; the changed integration
+  subset passes 9 files/375 tests. External/app, smoke and packaged authoring paths pass. Earlier full-pool
+  evidence is `2026-10-15T16-55-30Z-15725`; its lone app setup failure is corrected above.
+- Committed-source strict passes again in 1.1s (29/30 cached), run `2026-10-15T17-13-14Z-62147`,
+  `/private/tmp/apack-live-step-committed-strict.log`. Unrelated staged issue work remains uncommitted.
+
+Next is required **3B**: backend catalog defaults/provider ownership and the now test-only frontend
+step lookup cleanup. Full trigger/build metadata, remaining contribution/content/asset discovery,
+compiler identity/input closure/frozen publication and manual-build/drive freshness, native/editor
+lifecycle, entity navigation, frontend boundaries and all three Phase 6 workstreams remain required.
+Finish the complete original-requirement/phase audit and final committed-source strict `--all` before
+completion. This checkpoint closes neither discovery nor the goal; nothing is archived.

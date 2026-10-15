@@ -2731,9 +2731,8 @@ eligible binding. Do not remove actual backend/runtime execution lookups in this
 Prove native/source/installed parity, duplicate owners, source-preview precedence, every readiness and
 identity refusal, source-free/poisoned executable metadata, replacement/unload/re-enable, and scoped
 subscription cleanup. Exercise mounted consumers, real external authoring and app paths; preserve
-ordinary node creation, EARS types and compiled-content baselines. Backend creation defaults and full
-trigger/build metadata remain explicit subsequent work if not completed in the same checkpoint; this
-sequence does not reduce the existing checkpoint 3 or full goal acceptance criteria.
+ordinary node creation, EARS types and compiled-content baselines. Backend creation defaults, obsolete frontend step lookup removal and full trigger/build metadata remain
+required subsequent work. This frontend checkpoint is 3A, not completion of checkpoint 3 or the goal.
 
 
 Mounted pack-component checks belong to the pack's suite. Its frontend project compiles Vue in jsdom
@@ -2742,3 +2741,25 @@ Use workspace-qualified project names (`<workspace>:backend` / `:frontend`); the
 attributes those only when the root package.json confirms ownership. Unrelated names retain their
 refusal, and collection/input guards remain intact. Do not place these specs in the renderer or broaden
 its dependency inputs to accommodate private pack-source imports.
+
+
+#### Live frontend step reader outcome (2026-10-15)
+
+Source `76df2f0e5` completes frontend reader checkpoint **3A**. SDK selection returns one unambiguous
+runtime owner ahead of source previews. Disabled/disconnected metadata remains readable; bindings
+require matching owner, declared data and accepted identities. Native data equality has no fabricated
+stamps. The scoped reader observes both publication sources and releases both subscriptions.
+
+Node styles, palettes, menus, node/form selection, frontend creation defaults and brain presentation now
+use declarations and eligible bindings. Permanent node/color caches and both contribution proxies are
+removed. Static layout flags survive unavailable code; retained descriptors cannot invoke retired or
+replaced callbacks. Ordinary EARS/content baselines and facade are unchanged. Mounted pack-owned
+Vue checks, full backend/frontend pack tests, five guard mutations, real installed step disable/re-enable,
+API reports and strict/committed-source strict all pass; the owning goal records counts and runs.
+
+Next complete **3B**: audit/migrate backend creation defaults through committed declarations and actual
+provider eligibility, and retire the now test-only frontend `stepRegistry.getFE/getComponent/getFormComponent`
+methods through the checked frontend API. Audit the remaining shared active-registry paths before
+removing them; preserve genuine runtime/compiler execution. Full trigger/build metadata, remaining
+contribution kinds/content/assets, exact compiler/input/frozen-publication and freshness work, native/editor
+lifecycle, navigation, boundaries and all Phase 6 workstreams stay required. No phase or goal is archived.
