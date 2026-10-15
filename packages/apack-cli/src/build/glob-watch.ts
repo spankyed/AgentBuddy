@@ -2,25 +2,38 @@ import path from 'node:path';
 import ts from 'typescript';
 import type { Plugin } from 'vite';
 
-/** Vite reports matched modules, but an empty glob also depends on directory membership. */
+/** Empty globs and variable imports also depend on directory membership. */
 export function globWatchPlugin(root: string, directories: Set<string>): Plugin {
   return {
     name: 'apack-glob-inputs',
     async transform(code, id) {
-      if (!code.includes('import.meta.glob') || id.includes('\0')) return;
+      if (id.includes('\0') || (!code.includes('import.meta.glob') && !/\bimport\s*[(/]/.test(code))) return;
       // Runs after Vue and Vite's TS transform, before Vite expands glob expressions.
       const source = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
       const calls: ts.CallExpression[] = [];
       const visit = (node: ts.Node) => {
-        if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
-          && node.expression.name.text === 'glob' && ts.isMetaProperty(node.expression.expression)
-          && node.expression.expression.keywordToken === ts.SyntaxKind.ImportKeyword) calls.push(node);
+        if (ts.isCallExpression(node)) {
+          const expression = node.expression;
+          const glob = ts.isPropertyAccessExpression(expression) && expression.name.text === 'glob'
+            && ts.isMetaProperty(expression.expression) && expression.expression.keywordToken === ts.SyntaxKind.ImportKeyword;
+          const dynamic = expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0]
+            && ts.isTemplateExpression(node.arguments[0]) && !/\/\*\s*@vite-ignore\s*\*\//.test(node.getText(source));
+          if (glob || dynamic) calls.push(node);
+        }
         ts.forEachChild(node, visit);
       };
       visit(source);
+      const importer = path.dirname(id.replace(/[?#].*$/, ''));
       for (const call of calls) {
         const argument = call.arguments[0];
         if (!argument) continue; // Vite owns syntax diagnostics.
+        if (ts.isTemplateExpression(argument)) {
+          // Vite expands these after user plugins run. Observe the fixed prefix conservatively;
+          // Vite still owns expansion, supported expressions and their diagnostics.
+          const prefix = argument.head.text;
+          if (/^\.{1,2}\//.test(prefix)) directories.add(path.dirname(path.resolve(importer, `${prefix}_`)));
+          continue;
+        }
         const patterns = ts.isArrayLiteralExpression(argument) ? argument.elements : [argument];
         const options = call.arguments[1];
         const base = options && ts.isObjectLiteralExpression(options) ? options.properties.find(
@@ -29,7 +42,6 @@ export function globWatchPlugin(root: string, directories: Set<string>): Plugin 
         ) : undefined;
         const baseValue = base && ts.isPropertyAssignment(base) && ts.isStringLiteralLike(base.initializer)
           ? base.initializer.text : undefined;
-        const importer = path.dirname(id.replace(/[?#].*$/, ''));
         const relativeRoot = baseValue ? (baseValue.startsWith('/')
           ? path.join(root, baseValue) : path.resolve(importer, baseValue)) : importer;
         for (const pattern of patterns) {

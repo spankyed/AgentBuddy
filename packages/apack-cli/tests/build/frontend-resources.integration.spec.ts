@@ -29,6 +29,8 @@ it.each([
   ['import.meta.glob([`../../pages/**/*.js`, "!../../pages/excluded/**"], { eager: true })', 'pages'],
   ['import.meta.glob("./**/*.js", { eager: true, base: "../../pages" })', 'pages'],
   ['import.meta.glob("#pages/**/*.js", { eager: true })', 'pages'],
+  ['name => import(`../../pages/nested/${name}.js`)', 'pages'],
+  ['name => import(`../../pages/nested/new${name}.js`)', 'pages'],
 ])('watches an initially empty external glob: %s', async (expression, location) => {
   const { pack } = consumer();
   const packageFile = path.join(pack, 'package.json');
@@ -43,8 +45,12 @@ it.each([
   const changed = vi.fn();
   const watcher = createFrontendWatcher(pack, undefined, changed);
   let reported: readonly string[] = [];
-  const compile = () => bundlePackFE({ packDir: pack, entryPoint, outputDir: path.join(pack, 'dist/runtime'),
-    onInputs: inputs => { reported = inputs.directories; return watcher.observe(inputs).then(() => {}); } });
+  const compile = () => {
+    const outputDir = path.join(pack, 'dist/runtime');
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    return bundlePackFE({ packDir: pack, entryPoint, outputDir,
+      onInputs: inputs => { reported = inputs.directories; return watcher.observe(inputs).then(() => {}); } });
+  };
   try {
     const first = await compile();
     expect(first.success, first.error).toBe(true);
@@ -65,6 +71,17 @@ it.each([
     expect(third.success, third.error).toBe(true);
     expect(output(pack, '.js')).not.toContain('NEW_GLOB_PAGE');
   } finally { await watcher.close(); }
+});
+
+it('leaves explicitly ignored variable imports outside compiler subscriptions', async () => {
+  const { pack } = consumer();
+  const entryPoint = path.join(pack, 'src/canvas.vue');
+  fs.writeFileSync(entryPoint, '<script setup>const load = name => import(/* @vite-ignore */ `../../pages/${name}.js`);</script><template><div>{{ load }}</div></template>');
+  let directories: readonly string[] = [];
+  const result = await bundlePackFE({ packDir: pack, entryPoint, outputDir: path.join(pack, 'dist/runtime'),
+    onInputs: async inputs => { directories = inputs.directories; } });
+  expect(result.success, result.error).toBe(true);
+  expect(directories).toEqual([]);
 });
 
 it('rebuilds Vue styles after only an external stylesheet changes', async () => {
