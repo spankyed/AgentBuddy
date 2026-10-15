@@ -2316,3 +2316,30 @@ Prove install/replace/remove/re-enable against an already-created editor, stable
 pending edits, selection, provider/pop-up disposal, unavailable content and unchanged native reference
 parsing. Include a real external contribution path. This work remains part of Phase 3, together with
 all other discovery/freshness and downstream goal requirements; it is not an exclusion or completion.
+
+
+### Accepted editor binding identity checkpoint (2026-10-15)
+
+Source `45e8465ad` preserves `{ packId, groupId, binding }` in the accepted editor registry, including
+native groups, and exposes committed-change subscription through `tiptapPluginRegistry.onChanged`.
+Rows are immutable, returned lists are detached, and unrelated registrations retain incumbent
+binding objects. Consumers use `.binding`; declarations/unavailable groups remain in the catalog.
+No alias or second registry. This implements step 1 of the editor lifetime design above; the editor
+still takes its initial snapshot, so live recomposition and retirement are **not** complete.
+
+Fifty-five focused ownership/transaction/native renderer tests pass in 1.93s
+(`/private/tmp/apack-editor-binding-tests.log`). A lost-notification mutation fails the subscription
+regression; exact source is restored and all ten lookup tests pass
+(`/private/tmp/apack-editor-binding-{mutant,restored}.log`). The rebuilt Electron host-only editor
+preserves saved references through the new binding projection
+(`/private/tmp/apack-editor-binding-electron.log`, 10.5s). Affected direct typechecks pass, public
+frontend/runtime API reports are regenerated and reviewed, and all seven baseline generated EARS/
+compiled-content files remain byte-identical.
+
+Strict checkpoint: `node_modules/.cache/apack-chain/runs/2026-10-15T09-29-51Z-38416`,
+`/private/tmp/apack-editor-binding-strict.log`. All type/API/schema/export/facade/lint/specifier/tier
+checks and pack/runtime builds pass; smoke, external-pack contract and packaged-authoring checks
+pass. The aggregate integration pool is killed at its existing 60s limit, with no completed assertion
+failure in its captured output. This remains a failed full checkpoint gate; it is not waived or a
+phase-completion claim. Final committed-source strict `--all`, editor recomposition/unavailable
+content handling, every remaining discovery/freshness kind and all downstream phases stay required.
