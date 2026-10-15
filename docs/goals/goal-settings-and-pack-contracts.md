@@ -4711,3 +4711,45 @@ reference table and consolidation ledger for direct editor/app extension declara
 This closes the validation checkpoint only. All remaining discovery/freshness, cold editor/provider,
 navigation, frontend boundaries and three Phase 6 workstreams remain required; final strict `--all` on
 committed source and the whole-goal requirement audit remain outstanding. Nothing is archived or waived.
+
+
+### Inline step node data checkpoint (2026-10-15)
+
+Design `4d523f514`; source `324816421`. `extensions.steps.<type>.node` now declares labels and JSON
+initial values inline. Codegen emits data into both registrations; backend/frontend admission compares
+it exactly. The 15 authored default/external step-node exports are removed, scaffolds write the same
+grammar, and module-target readers no longer interpret node data as code. Metadata-only steps have no
+invented directory; typed DSL helpers still require a real declared code directory. CLI inspection
+includes node data and declared bindings without authored modules or runtime activation. Public schema,
+API report and authoring docs are regenerated/reviewed. No release metadata or format constant changed:
+format 1 is the existing unreleased contract under its once-per-release rule.
+
+Node creation also clones nested defaults, fixing cross-node mutation of the declared baseline. The
+LLM initial model remains unchanged; switch defaults express the absent predicate by omission. Actual
+repository creation, trigger validation and model behavior pass 54 default-pack harness tests
+(`/private/tmp/apack-inline-node-runtime.log`). All seven baseline generated EARS/compiled-content files
+remain byte-identical after the strict rebuild. No EARS shape/type widening or compatibility path.
+
+Evidence: 346 focused schema/codegen/binding/inspection tests pass
+(`/private/tmp/apack-node-verified-focused.log`); real scaffold, external build and doctor checks pass,
+with the corrected doctor file's 14 tests passing (`/private/tmp/apack-inline-node-doctor-restored.log`).
+Removing either node-data comparison or default cloning fails its regression; exact source is restored
+(`/private/tmp/apack-inline-node-{backend,frontend,defaults}-mutant.log`). A TypeScript-AST audit identifies
+and fixes the remaining incomplete step fixtures; affected fixtures now use checked PackManifest types
+rather than casts. Earlier failed runs are not green evidence. The dependency helper's three integration
+cases and four trigger/generated-module checks pass after their fixture corrections.
+
+Strict `npm run chain -- --strict --cores 1` passes at run `2026-10-15T11-26-38Z-92924`, 553.2s,
+`/private/tmp/apack-inline-node-validated-strict.log`. Integration: 57 files / 739 tests. The host pool's
+changed projects pass (the preceding successful wider host run covered 395 files / 4,709 tests);
+default-pack 114 files / 845 tests pass (existing 1 file / 2 tests skipped). Required type/API/schema/
+export/facade/lint/specifier/tier, runtime build, smoke, packaged authoring and real external app checks
+pass or reuse unchanged successful inputs. App checks include two-window fork replacement, reload and
+normal fork/removal/restoration boots. Serial step admission avoids the previously measured build/pool
+contention; no timeout was increased. Committed-source default strict passes again in 1.1s (29/30 cached),
+run `2026-10-15T11-36-39Z-23354`, `/private/tmp/apack-inline-node-committed-strict.log`.
+
+This closes step-discovery checkpoint 1 only. Native step declarations, frontend/palette/layout metadata
+and live catalog readers remain required in checkpoints 2–3. Every other discovery/freshness, editor/
+provider, navigation, failure-boundary and all three Phase 6 requirements remain active. Final strict
+`--all` on committed source and the requirement-by-requirement completion audit remain outstanding.

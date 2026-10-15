@@ -2462,3 +2462,20 @@ CLI inspection with poisoned modules, real scaffold/external/default builds and 
 Regenerate reviewed schema/API reports, run focused and strict checkpoint checks, commit and record
 source evidence before continuing. This sequence leaves the full goal and native/static assets,
 source execution/freshness, navigation, boundaries and all Phase 6 requirements intact.
+
+
+### Inline step node data outcome (2026-10-15)
+
+`324816421` completes step checkpoint 1 above: node labels/defaults are inline manifest data, both generated
+bindings carry it and reject differing data, authored node exports are removed, and scaffolds, module
+readers, CLI inspection, schema/API reports and public docs agree. Metadata-only nodes do not trigger a
+pack-root types/helpers search. Nested defaults are copied on creation; actual repository/trigger/model
+checks pass, with all seven baseline EARS/content files unchanged. Guard mutations fail and exact source
+is restored. Strict serial-step validation and committed-source default strict validation pass; the owning
+goal records commands, runs and counts, including the earlier invalid-fixture failures and their fixes.
+
+Continue with the planned native/installed frontend step declaration and checked-binding checkpoint,
+then migrate palette/style/default/layout discovery readers and remove permanent active-only caches.
+Calculated layout and actual compiler/runtime/provider calls stay executable. This does not close step
+or full discovery, source execution/freshness, native lifecycle, editor readiness, navigation, boundaries
+or any Phase 6 workstream. Nothing is archived or excluded.

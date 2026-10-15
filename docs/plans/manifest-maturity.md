@@ -73,7 +73,7 @@ the settings plan, as that goal already specifies.
 
 | Item | Decision and destination |
 |---|---|
-| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor |
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; native/frontend step metadata, live readers and remaining kinds/assets stay required |
 | Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 still owns final documentation/schema coverage |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | M1 implemented in `2fff8bb76`: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
