@@ -1,0 +1,89 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { expect, it, vi } from 'vitest';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { readPackBuild } from '@apackdev/host/packs';
+import { startPackBuildWatcher } from '../../src/build/watch.ts';
+
+it('refreshes flow modules loaded through ordinary imports on the next watched build', async () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-flows-'));
+  const root = path.join(temporary, 'pack');
+  const flow = path.join(root, 'src/content/flows/main.ts');
+  const output = () => fs.readFileSync(path.join(root, 'dist/runtime/content/flows.content.json'), 'utf8');
+  const declaration = (name: string) => `export default { ${name}: [{ event: 'flow.entry', exits: [[{ type: 'note' }]] }] };`;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let watcher: { close(): Promise<void> } | undefined;
+  let publications = 0;
+  try {
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      id: 'watched-flow', name: 'Watched flow', features: {},
+      extensions: { steps: {
+        listener: { kind: 'trigger', node: 'src/listener.ts#node', trigger: { facet: 'src/listener.ts#trigger' } },
+        note: { node: 'src/note.ts#node', build: 'src/note.ts#build' },
+      } },
+      content: { sources: { flows: 'src/content/flows' } },
+    }, files: {
+      'src/listener.ts': "export const node = { label: 'Listener' }; export const trigger = { trackField: 'event', compile: () => ({}), decompile: () => ({}) };",
+      'src/note.ts': "export const node = { label: 'Note' }; export const build = { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' };",
+      'src/content/flows/main.ts': declaration('First'),
+    } });
+    watcher = await startPackBuildWatcher(root, {
+      place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
+      onBuilt: async () => { publications++; },
+    });
+    expect(output()).toContain('First');
+    fs.writeFileSync(flow, declaration('Other'));
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(output()).toContain('Other');
+    expect(output()).not.toContain('First');
+  } finally {
+    await watcher?.close();
+    errors.mockRestore();
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+it('recompiles changed transitive content modules and retains the accepted build on failure', async () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-modules-'));
+  const root = path.join(temporary, 'pack');
+  const helper = path.join(root, 'src/value.ts');
+  const output = path.join(root, 'dist/runtime/content/tags.content.json');
+  const value = () => JSON.parse(fs.readFileSync(output, 'utf8')).records[0].label;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let watcher: { close(): Promise<void> } | undefined;
+  let publications = 0;
+  try {
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      id: 'watched-content', name: 'Watched content', features: {},
+      content: { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } },
+        sources: { tags: { path: 'src/data.ts', format: 'tags' } } },
+    }, files: {
+      'src/compiler.ts': "import { label } from './value.ts'; export default function compile() { return [{ entity: 'Relation', label }]; }",
+      'src/value.ts': "export const label = 'first';",
+      'src/data.ts': 'export default [];',
+    } });
+    watcher = await startPackBuildWatcher(root, {
+      place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
+      onBuilt: async () => { publications++; },
+    });
+    expect(value()).toBe('first');
+    fs.writeFileSync(helper, "export const label = 'other';");
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(value()).toBe('other');
+    const accepted = readPackBuild(path.join(root, 'dist')).revision;
+    const count = publications;
+    fs.writeFileSync(helper, 'export const label = ;');
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
+    expect(publications).toBe(count);
+    expect(readPackBuild(path.join(root, 'dist')).revision).toBe(accepted);
+    expect(value()).toBe('other');
+  } finally {
+    await watcher?.close();
+    errors.mockRestore();
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});

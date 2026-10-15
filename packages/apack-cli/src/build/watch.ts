@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { build } from '../commands/build.ts';
+import { runPackBuild } from './build-process.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets } from './pack-inputs.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
@@ -71,7 +71,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   const publish = async () => {
     refreshLinks();
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
-    await build([], root);
+    await runPackBuild(root);
   };
   const runs = coalescingRunner(async () => {
     if (closed) return;

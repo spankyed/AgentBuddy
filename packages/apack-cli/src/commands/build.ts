@@ -63,8 +63,9 @@ export function buildStagingDir(root: string): string {
  * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
  * `apack pack test` and `apack pack dev` do (the doors are listed in packages/apack-testing/CLAUDE.md).
  *
- * It sits here rather than in `build()` because `apack pack dev` calls that on every file change, and the
- * check reads every source of all five packages: once per command is right, once per keystroke is not.
+ * It sits here rather than in the internal `build()` so command entry checks linked packages before
+ * compiling against them. The watcher also checks before spawning each fresh CLI process, so a child
+ * loads the current compiler bundle rather than one the freshness check just replaced.
  *
  * `npm run dev` depends on this one. The dev launcher builds the pack the app ships with `apack
  * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back

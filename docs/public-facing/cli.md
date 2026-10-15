@@ -153,7 +153,8 @@ Bundle and gate failures are reported and exit with code 1. `--release` minifies
 modules outside `src/`, JSON schemas, assets and help. Generated, build, dependency and Git trees are
 excluded. Linked authored data is watched through atomic replacement and retargeting; executable
 module references still must remain physically inside the pack. It publishes through the same staged
-build before requesting development-host reload;
+build in a fresh CLI process before requesting development-host reload, so changed flow, step and
+compiler modules cannot reuse the previous build's module cache;
 invalid edits retain the previous verified build. Saves during a build schedule another run.
 `--watch` cannot be combined with other build flags. This builds the complete build and can take
 longer than rebundling only the runtime. `apack pack dev` uses this watcher and installs each successful
