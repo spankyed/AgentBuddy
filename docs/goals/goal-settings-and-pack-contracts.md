@@ -4346,3 +4346,56 @@ Continue Vue/script/style/asset and dynamic input coverage, exact compiler consu
 execution/publication and scope cost, then manual-build/drive freshness. Retain all remaining
 discovery/native/static-content, navigation, frontend boundaries, all three Phase 6 workstreams,
 lifecycle observations and final committed-source strict --all plus requirement audit. Nothing is archived.
+
+### Vue script input checkpoint (2026-10-15)
+
+Source `94ab5f834` fixes another reproduced frontend cache gap: an undeclared dependency imported only
+by Vue script setup changed its JavaScript, but the second build retained BEFORE rather than AFTERX.
+Baseline: `/private/tmp/apack-vue-inputs-baseline.log`. The existing SFC parser now exposes script
+language and external source metadata. The common compiler input projection follows each script block
+through an in-memory, same-directory root; it writes no virtual files and executes no component code.
+Inline JavaScript/TypeScript/TSX, both script blocks and external script sources have input checks.
+
+Symlinked component imports resolve from the physical component directory. A focused regression
+failed before this correction (`/private/tmp/apack-vue-inputs-link-baseline.log`). Logical and physical
+pack roots both exclude generated output; canonical file identities preserve checkout independence,
+with a failing relative-import baseline at `/private/tmp/apack-vue-inputs-location-baseline.log`.
+Actual builds prove inline scripts, external scripts and a linked nested component update their
+frontend after only outside input bytes change. Automatic watching proves the Vue-only npm import
+updates too. Manifest entry modules still must stay inside their pack: the initial linked fixture
+violated that boundary and was corrected to import the link from a pack-local canvas, without
+weakening the declaration validator.
+
+Focused checks pass 65 fast cases, four compiler integration cases, six existing watcher/DSL cases
+and CLI typechecking. All eight package-input build/watch cases pass in the accepted strict run below;
+the corrected linked case also passes alone. Focused logs:
+`/private/tmp/apack-vue-inputs-unit-final.log`,
+`/private/tmp/apack-vue-inputs-{linked-final,compiler-integration,affected-integrations,typecheck-final}.log`.
+The initial strict run exposed real compiler/build cases in the 15s unit suite. Move those four cases
+to the existing compiler integration suite, retaining every assertion; keep pure condition parsing
+in the fast suite. No timeout values were changed. A later strict run hit integration and watcher
+deadlines; orphaned Vitest workers and memory pressure were observed afterward. Those workers exited
+before attempted termination, so no process was killed. Unchanged isolated cases and the subsequent
+full integration run pass. The two failed strict logs are diagnostic, not acceptance evidence:
+`/private/tmp/apack-vue-inputs-{strict,reviewed-strict}.log`.
+
+Cost remains material: shipped-pack input traversal measured 11.3s, then 9.3s on recheck; subscription
+setup about 0.28s over 48,435 paths, 18 subscriptions and six recursive scopes. The uncached shipped
+pack build took 66.4s versus 42.2s in the previous accepted checkpoint. These are observations under
+the recorded run conditions, not a performance guarantee or proof of a single cause:
+`/private/tmp/apack-vue-inputs-{cost,cost-rechecked}.log`.
+
+Required strict passes all 30 gates in 581.9s (23 cached), including 51 integration files, runtime,
+real app, smoke and packaged authoring/app checks: `/private/tmp/apack-vue-inputs-accepted-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T03-49-34Z-78251`.
+Committed-source strict passes in 286.9s (22 cached), rerunning integration in 249s:
+`/private/tmp/apack-vue-inputs-committed-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-15T04-00-13Z-5198`.
+EARS and six compiled content files remain byte-identical. No public SDK API/schema, build-format,
+release metadata or compatibility changes; the unrelated issue draft remains excluded.
+
+This completes Vue script import traversal, not all Vue or executable input closure. Continue style,
+template/asset and dynamic/runtime inputs, exact compiler consumers, coherent frozen execution and
+publication, scope cost and manual-build/drive freshness. All unfinished discovery/native/static-content,
+navigation, frontend boundaries, Phase 6 API consumption/provenance/replacement, lifecycle observations
+and final committed-source strict --all plus requirement audit remain required. Nothing is archived.

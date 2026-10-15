@@ -2025,3 +2025,22 @@ Vue/script/style/asset and dynamic inputs, exact compiler consumers and coherent
 remain required. Pre/post byte verification does not freeze compiler reads. Continue manual-build/
 drive freshness and every remaining supported contribution, native/static-content and downstream
 phase after those source-build requirements; this checkpoint does not complete discovery.
+
+### Vue script import outcome (2026-10-15)
+
+`94ab5f834` extends the common compiler input projection to Vue scripts using the existing SFC parser.
+Inline blocks, script setup and external script sources resolve through in-memory script roots without
+execution or filesystem output. Physical component context handles linked imports; both authored-root
+spellings exclude generated output, and canonical paths keep input identity independent of checkout
+location. Pack-local manifest entry validation is preserved.
+
+Actual cached frontend builds update after only inline/external script dependencies or a linked nested
+component's outside helper change. Automatic watching covers a Vue-only undeclared npm import.
+The owning goal records failing baselines, focused checks, compiler-suite placement corrections,
+strict failures, measured cost and accepted strict validation on committed source. EARS/content are
+unchanged; test assertions and timeout values are preserved.
+
+Styles, template assets and other runtime/dynamic inputs still need their own consumer audit. This
+script projection is neither a Vue component typechecker nor an immutable execution environment.
+Retain exact compiler-consumer alignment, frozen execution/publication, scope cost, manual-build/drive
+freshness and every remaining contribution/native/static-content and downstream goal requirement.

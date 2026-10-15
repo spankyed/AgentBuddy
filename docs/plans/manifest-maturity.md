@@ -645,3 +645,16 @@ This completes that specific undeclared-package byte gap. Vue/script/style/asset
 exact compiler consumers, coherent frozen execution/publication, measured cost and manual-build/drive
 freshness remain required. All unfinished discovery/native/static-content, navigation, frontend
 boundaries, Phase 6 API consumption/provenance/replacement and final audit requirements remain active.
+
+### Vue script input outcome (2026-10-15)
+
+`94ab5f834` fixes stale frontend reuse for Vue-only imports, covering inline/external scripts and linked
+nested components through the common compiler projection. It preserves pack-local manifest entries,
+generated-output exclusion, checkout-independent identities and activation-free input reading. The
+goal records actual before/after builds and watching, compiler-suite correction, cost, strict failures
+and accepted strict verification on committed source; EARS/content parity is unchanged.
+
+Continue style/template/asset and dynamic/runtime input closure, exact compiler consumers, coherent
+frozen execution/publication, scope cost and manual-build/drive freshness. All remaining discovery,
+native/static-content, navigation, frontend boundaries, Phase 6 API consumption/provenance/replacement
+and final completion audit remain active. This completes script traversal only.
