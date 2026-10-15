@@ -57,3 +57,5 @@ export {
  * system's is bound by its contract's `outgoing`.
  */
 export { defineHandlers, type Handlers } from '../framework/define-system.ts'
+
+export { getStepFrontendBindings, type StepFrontendBinding } from './step-bindings.ts';

@@ -5,8 +5,8 @@ import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@apackdev/host/fe';
 import type { Message } from '@apackdev/sdk/events';
 import { resolveName } from '@apackdev/sdk/ids';
-import type { HostShell, PluginDefinition } from '@apackdev/sdk/fe';
-import { startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
+import type { HostShell, PluginDefinition, PackFERegistration } from '@apackdev/sdk/fe';
+import { nativeFrontendDeclarationFixture, startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apackdev/sdk/runtime';
 
 /** One of the pack's plugins, as a test registers it: its state machine, and whatever else of its definition it needs */
@@ -54,6 +54,7 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     plugins: () => frontend.plugins(),
     defaultPlugin: () => frontend.defaultPlugin(),
     tiptapPlugins: () => frontend.tiptapPlugins(),
+    stepBindings: () => frontend.stepBindings(),
     referenceTypes: () => frontend.referenceTypes(),
     referenceCategories: () => frontend.referenceCategories(),
     appExtension: (slot) => frontend.appExtension(slot),
@@ -110,14 +111,15 @@ export async function startShell(packId: string, options: StartShellOptions, bac
   if (!ids.includes(defaultPlugin)) throw new Error(`defaultPlugin "${defaultPlugin}" isn't one of the plugins: ${ids.join(', ')}`);
 
   const packs = createFePackRegistry();
-  packs.registerPackFE({
+  const registration: PackFERegistration = {
     id: packId,
     features: Object.fromEntries(ids.map((id) => [id, {
-      plugin: { label: id, icon: 'Zap', canvas: {}, ...options.plugins[id] } as PluginDefinition,
+      plugin: { label: id, icon: {}, canvas: {}, ...options.plugins[id] },
       ...(options.designations?.[id] && { designation: options.designations[id] }),
       ...(id === defaultPlugin && { default: true as const }),
     }])),
-  });
+  };
+  packs.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
 
   const stops: Array<() => void> = [];
   // What the systems send while the shell is starting (a plugin asking for its data as it's spawned is answered at

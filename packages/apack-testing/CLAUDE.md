@@ -153,6 +153,11 @@ the layout a pack author has, and in a checkout that layout is only as current a
 
 ## Unit test harness (`@apackdev/testing/harness`)
 
+The shell composes native frontend fixture declarations before registering its plugins through the real
+host admission API. Supply real machines and component stand-ins; string components or casts concealing
+incomplete plugins do not satisfy the frontend contract. The SDK native fixture helper supplies only
+module-target placeholders for declaration data, never executable fallbacks in the production registry.
+
 A pack's unit tests run its code without the app: content, repositories and content writers against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@apackdev/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `apack pack init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `contentRuntime` and `registration`, an example content test); `apack pack add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`Message` from `@apackdev/sdk/events`, never `@apackdev/host`). Pack-facing guide: `docs/public-facing/testing.md`.
 
 - **`setupPackTests({ contentRuntime, registration?, appliers?, packDir? })`** — from a vitest setup file. `packDir` defaults to the nearest `apack.json` at or above the injected vitest project root (else the working directory).

@@ -1,3 +1,4 @@
+import { nativeFrontendDeclarationFixture } from '@apackdev/sdk/testing';
 // The window's shell reads the panel sizes the user set from localStorage: a saved value it can't read leaves the
 // window on the defaults, rather than failing the shell and the window with it.
 import { afterEach, expect, it, vi } from 'vitest';
@@ -19,10 +20,11 @@ const { createAppShell } = await import('@/runtime/shell');
 const { fePacks } = await import('@/runtime/packs');
 const { HOST } = await import('@apackdev/host/fe');
 
-fePacks.registerPackFE({
+const registration = {
   id: 'memo-pack',
-  features: { memos: { plugin: { label: 'Memos', icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as never, default: true } },
-});
+  features: { memos: { plugin: { label: 'Memos', icon: {}, state: setup({}).createMachine({}), canvas: {} }, default: true as const } },
+};
+fePacks.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
 
 const PANEL_SIZES_KEY = 'apack-panel-sizes';
 

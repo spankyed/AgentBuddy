@@ -1,15 +1,17 @@
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { effectScope } from 'vue';
 import { _createFeSettings, type PackFERegistration } from '@apackdev/sdk/fe';
 import { fakeSettings } from '@apackdev/sdk/testing';
-import { createFePackRegistry, createPackFrontends, createShellMachine } from '../../../../src/fe/index.ts';
+import { createPackFrontends, createShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin, settle } from './fakes.ts';
 
 it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loader and generated settings to a cached module after %s', async mode => {
-  const packs = createFePackRegistry();
+  const packs = createNativeFrontendTestRegistry();
   const { id: _hostId, ...hostPlugin } = plugin('host/notes');
-  packs.registerPackFE({ id: 'host', features: { notes: { plugin: hostPlugin } } });
+  hostPlugin.icon = {};
+  packs.registerFixture({ id: 'host', features: { notes: { plugin: hostPlugin } } });
   const generated = _createFeSettings();
   const { id: _pluginId, ...definition } = plugin('ext/own');
   definition.icon = { render: vi.fn() };

@@ -19,6 +19,7 @@ const noFrontends: FePackRegistryView = {
   plugins: () => [],
   defaultPlugin: () => undefined,
   tiptapPlugins: () => [],
+  stepBindings: () => new Map(),
   referenceTypes: () => new Map(),
   referenceCategories: () => new Map(),
   appExtension: () => undefined,

@@ -35,3 +35,5 @@ export { compileSettingsCatalog } from '../features/settings/validation.ts';
 
 export { createWindowPackCatalog, type WindowPackCatalogIO } from './pack-catalog.ts';
 export type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
+
+export type { FrontendAdmission } from './frontend-admission.ts';

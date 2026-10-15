@@ -1,26 +1,19 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort, StepFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import type { StepDefinition } from '@apackdev/sdk/steps';
 import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
-import { _nativePackDeclarationProblem, type NativePackDeclaration } from '@apackdev/sdk/framework';
+import { captureFrontendAdmission, frontendIdentityProblem, type FrontendAdmission, type AcceptedFrontendAdmission } from './frontend-admission.ts';
 import { captureFrontendBindings } from './binding-snapshot.ts';
 import { frontendBindingProblem } from './declaration-binding.ts';
-
-/** Supplied by the host loader, separate from a module's authored registration. */
-export interface FrontendIdentity {
-  runtimeRevision: string;
-  buildRevision?: string;
-}
 
 type OwnedReferenceBindings = {
   types: Record<string, ReferenceBinding<ReferenceTypeConfig>>;
@@ -40,11 +33,11 @@ export interface FrontendSettingsBinding {
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
-  registerPackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  registerPackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
   /** Prepare a fresh or replacement frontend without publishing it; disposal cancels only this candidate. */
-  preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean, identity?: FrontendIdentity): PreparedFrontend;
+  preparePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean): PreparedFrontend;
   /** Replace an existing owner; failure preserves its accepted resources. */
-  replacePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  replacePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
   hasPackFE(packId: string): boolean;
   prepareUnregisterPackFE(packId: string): PreparedFrontend;
   /** Unregisters a pack's frontend; returns the plugins it had added */
@@ -80,7 +73,7 @@ function addressed(registration: PackFERegistration): AddressedRegistration {
     ...registration,
     features: Object.fromEntries(features),
     addressed: features.flatMap(([featureId, feature]) => feature.plugin
-      ? [{ plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin, default: feature.default }]
+      ? [{ plugin: Object.freeze({ ...feature.plugin, id: resolveName(featureId, registration.id) }) as Plugin, default: feature.default }]
       : []),
     roles: Object.fromEntries(roles),
   };
@@ -100,7 +93,7 @@ interface FrontendContributions {
   addressed: AddressedRegistration['addressed'];
   roles: Record<string, FeatureRef>;
   forms: Array<readonly [string, SettingsForm]>;
-  steps: Array<DefinitionEntry<StepDefinition>>;
+  steps: Array<DefinitionEntry<StepFrontendBinding>>;
   artifacts: Array<DefinitionEntry<ArtifactDefinition>>;
   blocks: Array<DefinitionEntry<BlockDefinition>>;
   tiptapPlugins: Array<[string, TiptapPlugin]>;
@@ -116,10 +109,13 @@ function captureReferenceType(type: ReferenceTypeConfig): ReferenceTypeConfig {
   return Object.freeze({ ...type, svgElements: Object.freeze(svgElements) });
 }
 
-function capture(registration: PackFERegistration, identity?: FrontendIdentity): FrontendContributions {
+function capture(registration: PackFERegistration, identity: AcceptedFrontendAdmission): FrontendContributions {
   const reg = addressed({ ...registration });
-  const runtimeRevision = identity?.runtimeRevision;
-  const buildRevision = identity?.buildRevision;
+  const revisions = {
+    ...(identity.declarationRevision !== undefined && { declarationRevision: identity.declarationRevision }),
+    ...(identity.runtimeRevision !== undefined && { runtimeRevision: identity.runtimeRevision }),
+    ...(identity.buildRevision !== undefined && { buildRevision: identity.buildRevision }),
+  };
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
@@ -132,10 +128,7 @@ function capture(registration: PackFERegistration, identity?: FrontendIdentity):
     references: Object.entries(reg.features ?? {}).flatMap(([id, feature]) => {
       const references = feature.references;
       if (!references) return [];
-      const owner = { featureRef: resolveName(id, reg.id),
-        ...(reg.declarationRevision !== undefined ? { declarationRevision: reg.declarationRevision } : {}),
-        ...(runtimeRevision !== undefined ? { runtimeRevision } : {}),
-        ...(buildRevision !== undefined ? { buildRevision } : {}) };
+      const owner = { featureRef: resolveName(id, reg.id), ...revisions };
       return [{
         types: Object.fromEntries(Object.entries(references.types).map(([name, type]) => [name,
           Object.freeze({ ...owner, binding: captureReferenceType(type) })])),
@@ -143,7 +136,8 @@ function capture(registration: PackFERegistration, identity?: FrontendIdentity):
           Object.freeze({ ...owner, binding: Object.freeze({ ...category }) })])),
       }];
     }),
-    steps: (reg.steps ?? []).map(value => [value.type, value]),
+    steps: (reg.steps ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.steps![value.type]!, binding: value })]),
     artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
     blocks: (reg.blocks ?? []).map(value => [value.type, value]),
     tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
@@ -156,6 +150,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   let defaultPlugin: Plugin | undefined;
   const designations = createDesignationStore();
   const steps = createOwnedStepStore();
+  const stepBindings = new Map<string, StepFrontendBinding>();
   const artifacts = createOwnedStore<ArtifactDefinition>();
   const blocks = createOwnedStore<BlockDefinition>();
   const appExtensions = createOwnedStore<SettingsForm>();
@@ -186,7 +181,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     plugins.push(...pack.addressed.map(({ plugin }) => plugin));
     defaultPlugin ??= pack.addressed.find(feature => feature.default)?.plugin;
     for (const [key, value] of pack.forms) forms.set(key, value);
-    for (const [key, value] of pack.steps) steps.set(key, value, pack.id);
+    for (const [key, value] of pack.steps) { steps.set(key, value.binding, pack.id); stepBindings.set(key, value); }
     for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
     for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
@@ -201,17 +196,11 @@ function buildTables(packs: Iterable<FrontendContributions>) {
       tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
     }
   }
-  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { plugins, defaultPlugin, designations, steps, stepBindings, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
-export function createFePackRegistry(options: { nativeDeclarations?: readonly NativePackDeclaration[] } = {}): FePackRegistry {
-  const native = new Map((options.nativeDeclarations ?? []).map(declaration => {
-    const problem = _nativePackDeclarationProblem(declaration);
-    if (problem) throw new Error(`Invalid native declarations: ${problem}`);
-    return [declaration.id, structuredClone(declaration)];
-  }));
-  if (native.size !== (options.nativeDeclarations ?? []).length) throw new Error('Duplicate native frontend declaration owner');
+export function createFePackRegistry(): FePackRegistry {
   const logger = createLogger('pack-frontends');
   let accepted = new Map<string, FrontendContributions>();
   let tables = buildTables(accepted.values());
@@ -275,21 +264,18 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
       return prepareChange(id, next, buildTables(next.values()), undefined, []);
     });
   }
-  function preparePackFE(registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false, identity?: FrontendIdentity): PreparedFrontend {
-    registration = captureFrontendBindings(registration);
-    const declaration = native.get(registration.id);
-    if (declaration) {
-      const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
-        extensions: { settings: declaration.settings, steps: declaration.steps, artifacts: declaration.artifacts, blocks: declaration.blocks, dsl: declaration.dsl, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
-      if (problem) throw new Error(problem);
-    }
+  function preparePackFE(authority: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
     const binding = createFrontendSettingsBinding(settings);
     try {
       return mutate(() => {
+        const admission = captureFrontendAdmission(authority);
+        registration = captureFrontendBindings(registration, admission.declarations);
+        const problem = frontendIdentityProblem(admission, registration) ?? frontendBindingProblem(admission.declarations, registration);
+        if (problem) throw new Error(problem);
         const { id, ...definition } = registration;
         if (accepted.has(id) !== replacing) throw new Error(replacing
           ? `Pack "${id}" frontend is not registered` : `Pack "${id}" frontend is already registered`);
-        const candidate = capture({ ...definition, id }, identity);
+        const candidate = capture({ ...definition, id }, admission);
         const next = new Map(accepted);
         next.set(id, candidate);
         const projected = buildTables(next.values());
@@ -301,8 +287,8 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
       throw error;
     }
   }
-  const accept = (registration: PackFERegistration, settings: FrontendSettingsBinding | undefined, replacing: boolean) => {
-    const prepared = preparePackFE(registration, settings, replacing);
+  const accept = (admission: FrontendAdmission, registration: PackFERegistration, settings: FrontendSettingsBinding | undefined, replacing: boolean) => {
+    const prepared = preparePackFE(admission, registration, settings, replacing);
     try { return prepared.commit(); } finally { prepared.dispose(); }
   };
   function unregisterPackFE(id: string): Plugin[] {
@@ -317,8 +303,8 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     preparePackFE,
     prepareUnregisterPackFE,
     hasPackFE: id => accepted.has(id),
-    registerPackFE: (registration, settings) => accept(registration, settings, false),
-    replacePackFE: (registration, settings) => accept(registration, settings, true),
+    registerPackFE: (admission, registration, settings) => accept(admission, registration, settings, false),
+    replacePackFE: (admission, registration, settings) => accept(admission, registration, settings, true),
     unregisterPackFE,
     getRegisteredPlugins: () => [...tables.plugins],
     getAppExtension: key => tables.appExtensions.get(key),
@@ -326,6 +312,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     designation: key => tables.designations.get(key),
     step: key => tables.steps.get(key), steps: () => tables.steps.all(),
+    stepBindings: () => new Map(tables.stepBindings),
     artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
     block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
     plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,

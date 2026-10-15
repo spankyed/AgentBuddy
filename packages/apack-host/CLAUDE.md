@@ -200,6 +200,14 @@ frontend admission authority is the next required discovery checkpoint, before p
 
 ## Packs frontend (`features/packs/fe/`)
 
+Frontend registry writes require `FrontendAdmission`: either native declarations or the accepted backend
+`LoadedPackEntry`. Delivery through a dev server does not change that authority. Capture metadata,
+component-slot maps and declaration-directed routes before checking; preserve executable identities.
+Retire provisional settings on declaration/capture refusal too. `stepBindings()` retains accepted owner,
+declaration and host revisions independently of catalog lifetime. Native test operations compose explicit
+declarations (`createNativeFrontendTestRegistry` from `@apackdev/host/fe/testing`, with
+`nativeFrontendDeclarationFixture` from `@apackdev/sdk/testing`); production never infers them.
+
 The host `packs` feature's frontend, beside the system that answers it (`features/packs/be/system.ts`), for the
 reason that system isn't in the API: installing, updating and loading packs is what the app does, and a window only
 renders it. The renderer pairs these with the Packs view's components (`packages/renderer/src/packs/plugin.ts`),

@@ -4,7 +4,7 @@
 import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
 import { captureFrontendBindings } from '../../../fe/binding-snapshot.ts';
 import { frontendBindingProblem } from '../../../fe/declaration-binding.ts';
-import { _packDeclarationProblem } from '@apackdev/sdk/framework';
+import { _packDeclarationProblem, _settingsJsonProblems } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
 import type { FePackRegistry, FrontendSettingsBinding, PreparedFrontend } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
@@ -103,7 +103,8 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
   const attempts = new Map<string, object>();
   const acceptedStyles = new Map<string, PackFrontendStyle>();
   return {
-    async load(pack: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
+    async load(input: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
+      const pack = { ...input };
       const attempt = {};
       let style: PackFrontendStyle | undefined;
       let prepared: PreparedFrontend | undefined;
@@ -123,6 +124,10 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
       signal?.addEventListener('abort', cancel, { once: true });
       try {
         checkCurrent();
+        if (pack.manifest) {
+          if (_settingsJsonProblems(pack.manifest).length) throw new Error(`Pack "${pack.id}" declarations must contain JSON data properties`);
+          pack.manifest = structuredClone(pack.manifest);
+        }
         // Served from source, the pack's styles come through its own module graph with the rest of it
         const source = io.devFrontends?.[pack.id];
         const fromSource = !!source || !!pack.developmentBaseUrl;
@@ -159,7 +164,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         const entry = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
         checkCurrent();
         if (!entry) throw new Error(`Pack "${pack.id}" has no frontend registration`);
-        const registration = captureFrontendBindings(entry);
+        const registration = captureFrontendBindings(entry, pack.manifest);
         const problem = _packDeclarationProblem(pack, registration) ?? frontendBindingProblem(pack.manifest, registration);
         if (problem) throw new Error(problem);
         if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);
@@ -169,8 +174,7 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
         try { checkCurrent(); }
         catch (error) { settings?.dispose(); throw error; }
         // The prepared registry owns provisional authority; publication and CSS share one host commit.
-        prepared = packs.preparePackFE(registration, settings, packs.hasPackFE(pack.id),
-          { runtimeRevision: pack.runtimeRevision, buildRevision: pack.buildRevision });
+        prepared = packs.preparePackFE({ kind: 'loaded', pack }, registration, settings, packs.hasPackFE(pack.id));
         checkCurrent();
         return prepared.commit(() => { checkCurrent(); commitStyles(); });
       } catch (error) {

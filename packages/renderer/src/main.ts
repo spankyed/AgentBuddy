@@ -1,3 +1,4 @@
+import { hostDeclaration } from '@apackdev/host/fe';
 import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';
@@ -52,7 +53,7 @@ runFrontendMigrations(localStorage, __APP_VERSION__);
 
 // The only frontend registered before the shell starts. Every *pack's* frontend — the one the app ships
 // among them — is loaded by the shell once the bus says which packs are running, through one path.
-fePacks.registerPackFE(hostFrontend);
+fePacks.registerPackFE({ kind: 'native', declaration: hostDeclaration }, hostFrontend);
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
 // bound before the application actor is created, since creating it builds its plugins' state, and before any

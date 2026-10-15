@@ -144,6 +144,9 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @public
+export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
+
+// @public
 export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration;
 
 // @public

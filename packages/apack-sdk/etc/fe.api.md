@@ -203,6 +203,9 @@ export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
 // @public (undocumented)
 export function getNextAvailableColor(tabGroups: TabGroup[], isPinned?: boolean): TabGroupColor;
 
+// @public
+export function getStepFrontendBindings(): ReadonlyMap<string, StepFrontendBinding>;
+
 // @public (undocumented)
 export function goBack<T>(history: NavHistory<T>): {
     history: NavHistory<T>;
@@ -807,6 +810,19 @@ export function staticBreadcrumbList(crumbs: Array<{
         info?: unknown;
     }[];
 };
+
+// @public
+export interface StepFrontendBinding {
+    // (undocumented)
+    readonly binding: StepDefinition;
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<StepEntry>;
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly packId: string;
+    readonly runtimeRevision?: string;
+}
 
 // @public (undocumented)
 export interface TabGroup {

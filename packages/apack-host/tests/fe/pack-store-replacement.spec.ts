@@ -1,8 +1,9 @@
+import { createMachine } from 'xstate';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { describe, expect, it, vi } from 'vitest';
 import type { PackFERegistration, SettingsPort } from '@apackdev/sdk/fe';
 import type { StepDefinition } from '@apackdev/sdk/steps';
 import { fakeSettings } from '@apackdev/sdk/testing';
-import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 
 const target = { kind: 'feature', featureRef: 'owner/code' } as const;
 const formTarget = { kind: 'pack', packId: 'owner', groupId: 'preferences' } as const;
@@ -18,20 +19,20 @@ function binding() {
 
 const registration = (name: string, hook?: PackFERegistration['bindSettings']): PackFERegistration => ({
   id: 'owner', bindSettings: hook,
-  features: { code: { designation: 'editor', plugin: { label: name } as never } },
+  features: { code: { designation: 'editor', plugin: { label: name, state: createMachine({}) } } },
   settingsForms: { preferences: { name } }, appExtensions: { toolbar: { name } },
 });
 
 describe('prepared frontend replacement', () => {
   it('keeps published lookups and incumbent authority when the candidate binding throws', async () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const previous = packs.settingsForm(formTarget);
     const notified = vi.fn();
     packs.onChanged(notified);
     const next = binding();
-    expect(() => packs.replacePackFE(registration('New', port => { next.hook(port); throw new Error('refused'); }), next.transport)).toThrow('refused');
+    expect(() => packs.replaceFixture(registration('New', port => { next.hook(port); throw new Error('refused'); }), next.transport)).toThrow('refused');
     expect(packs.settingsForm(formTarget)).toBe(previous);
     expect(packs.getRegisteredPlugins()[0].label).toBe('Old');
     expect(old.dispose).not.toHaveBeenCalled();
@@ -44,13 +45,13 @@ describe('prepared frontend replacement', () => {
   });
 
   it('refuses an ownership collision without touching incumbent resources or authored facets', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const next = binding();
     const step: StepDefinition = { type: 'taken', node: { label: 'Taken' } };
-    packs.registerPackFE({ id: 'neighbour', features: { occupied: { designation: 'reserved' } } });
-    expect(() => packs.replacePackFE({ ...registration('New', next.hook), features: { code: { designation: 'reserved' } }, steps: [step] }, next.transport)).toThrow(/Designation collision/);
+    packs.registerFixture({ id: 'neighbour', features: { occupied: { designation: 'reserved' } } });
+    expect(() => packs.replaceFixture({ ...registration('New', next.hook), features: { code: { designation: 'reserved' } }, steps: [step] }, next.transport)).toThrow(/Designation collision/);
     expect(next.hook).not.toHaveBeenCalled();
     expect(old.cleanup).not.toHaveBeenCalled();
     expect(old.port.get(target)).toEqual({ limit: 1 });
@@ -59,9 +60,9 @@ describe('prepared frontend replacement', () => {
   });
 
   it('publishes a successful replacement before retirement, and observers see only active new authority', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const next = binding();
     const observed = vi.fn(() => {
       expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'New' });
@@ -69,7 +70,7 @@ describe('prepared frontend replacement', () => {
       expect(next.port.get(target)).toEqual({ limit: 1 });
     });
     const stop = packs.onChanged(observed);
-    packs.replacePackFE(registration('New', next.hook), next.transport);
+    packs.replaceFixture(registration('New', next.hook), next.transport);
     expect(observed).toHaveBeenCalledOnce();
     expect(old.cleanup).toHaveBeenCalledOnce();
     expect(old.dispose).toHaveBeenCalledOnce();
@@ -80,11 +81,11 @@ describe('prepared frontend replacement', () => {
   });
 
   it('stages pending authority without changing published forms, then disposes only the candidate', async () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const next = binding();
-    const candidate = packs.preparePackFE(registration('New', next.hook), next.transport, true);
+    const candidate = packs.prepareFixture(registration('New', next.hook), next.transport, true);
     expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'Old' });
     expect(next.port.status()).toBe('loading');
     expect(() => next.port.get(target)).toThrow('before host acceptance');
@@ -99,11 +100,11 @@ describe('prepared frontend replacement', () => {
   });
 
   it('refuses stale prepared publication after another registry change', () => {
-    const packs = createFePackRegistry();
-    packs.registerPackFE(registration('Old'));
+    const packs = createNativeFrontendTestRegistry();
+    packs.registerFixture(registration('Old'));
     const next = binding();
-    const candidate = packs.preparePackFE(registration('New', next.hook), next.transport, true);
-    packs.registerPackFE({ id: 'other' });
+    const candidate = packs.prepareFixture(registration('New', next.hook), next.transport, true);
+    packs.registerFixture({ id: 'other' });
     expect(() => candidate.commit()).toThrow('changed while');
     expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'Old' });
     expect(next.dispose).toHaveBeenCalledOnce();
@@ -113,10 +114,10 @@ describe('prepared frontend replacement', () => {
   });
 
   it('never publishes a failed prepared host resource commit', () => {
-    const packs = createFePackRegistry();
-    packs.registerPackFE(registration('Old'));
+    const packs = createNativeFrontendTestRegistry();
+    packs.registerFixture(registration('Old'));
     const next = binding();
-    const candidate = packs.preparePackFE(registration('New', next.hook), next.transport, true);
+    const candidate = packs.prepareFixture(registration('New', next.hook), next.transport, true);
     expect(() => candidate.commit(() => { throw new Error('style commit refused'); })).toThrow('style commit refused');
     expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'Old' });
     expect(next.dispose).toHaveBeenCalledOnce();
@@ -125,11 +126,11 @@ describe('prepared frontend replacement', () => {
   });
 
   it('blocks reentrant admission while preparing executable bindings', () => {
-    const packs = createFePackRegistry();
-    packs.registerPackFE(registration('Old'));
+    const packs = createNativeFrontendTestRegistry();
+    packs.registerFixture(registration('Old'));
     const next = binding();
-    expect(() => packs.replacePackFE(registration('New', () => {
-      packs.registerPackFE({ id: 'nested' });
+    expect(() => packs.replaceFixture(registration('New', () => {
+      packs.registerFixture({ id: 'nested' });
       return { activate() {}, dispose() {} };
     }), next.transport)).toThrow('already in progress');
     expect(packs.hasPackFE('nested')).toBe(false);
@@ -137,15 +138,15 @@ describe('prepared frontend replacement', () => {
   });
 
   it('revokes retained ports and subscriptions even when generated cleanup does nothing', async () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
     const stop = vi.fn();
     let deliver!: () => void;
     old.source.subscribe = listener => { deliver = listener; return stop; };
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const listener = vi.fn();
     old.port.subscribe(listener);
-    packs.replacePackFE(registration('New'));
+    packs.replaceFixture(registration('New'));
     deliver();
     expect(listener).not.toHaveBeenCalled();
     expect(stop).toHaveBeenCalledOnce();
@@ -153,20 +154,20 @@ describe('prepared frontend replacement', () => {
   });
 
   it('contains retirement failures after publication', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
     old.cleanup.mockImplementation(() => { throw new Error('cleanup refused'); });
     old.dispose.mockImplementation(() => { throw new Error('transport refused'); });
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
-    expect(() => packs.replacePackFE(registration('New'))).not.toThrow();
+    packs.registerFixture(registration('Old', old.hook), old.transport);
+    expect(() => packs.replaceFixture(registration('New'))).not.toThrow();
     expect(packs.settingsForm(formTarget)).toMatchObject({ name: 'New' });
     expect(old.port.status()).toBe('disposed');
   });
 
   it('refuses duplicate roles within one owner before binding or loading components', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const next = binding();
-    expect(() => packs.registerPackFE({ id: 'owner', bindSettings: next.hook,
+    expect(() => packs.registerFixture({ id: 'owner', bindSettings: next.hook,
       features: { first: { designation: 'editor' }, second: { designation: 'editor' } },
     }, next.transport)).toThrow('declares designation "editor" twice');
     expect(next.hook).not.toHaveBeenCalled();
@@ -175,12 +176,13 @@ describe('prepared frontend replacement', () => {
   });
 
   it('captures feature membership and role values once', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const id = vi.fn(() => 'owner');
     const role = vi.fn(() => 'editor');
     const features = vi.fn(() => ({ code: { get designation() { return role(); } } }));
-    packs.registerPackFE({ get id() { return id(); }, get features() { return features(); } });
-    packs.registerPackFE({ id: 'other' });
+    packs.registerPackFE({ kind: 'native', declaration: { id: 'owner', features: { code: { description: 'Fixture.', designation: 'editor' } } } },
+      { get id() { return id(); }, get features() { return features(); } });
+    packs.registerFixture({ id: 'other' });
     packs.unregisterPackFE('owner');
     expect(id).toHaveBeenCalledOnce();
     expect(features).toHaveBeenCalledOnce();
@@ -189,9 +191,9 @@ describe('prepared frontend replacement', () => {
   });
 
   it('prepares removal without revoking incumbent authority until publication', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const old = binding();
-    packs.registerPackFE(registration('Old', old.hook), old.transport);
+    packs.registerFixture(registration('Old', old.hook), old.transport);
     const candidate = packs.prepareUnregisterPackFE('owner');
     expect(packs.hasPackFE('owner')).toBe(true);
     expect(old.port.get(target)).toEqual({ limit: 1 });
@@ -207,12 +209,12 @@ describe('prepared frontend replacement', () => {
   });
 
   it('never rereads authored collection membership during another commit or removal', () => {
-    const packs = createFePackRegistry();
+    const packs = createNativeFrontendTestRegistry();
     const type = vi.fn(() => 'captured');
-    const steps = [{ get type() { return type(); } }] as StepDefinition[];
-    packs.registerPackFE({ id: 'owner', steps });
+    const steps: StepDefinition[] = [{ get type() { return type(); }, node: { label: 'Captured' } }];
+    packs.registerPackFE({ kind: 'native', declaration: { id: 'owner', steps: { captured: { node: { label: 'Captured' } } } } }, { id: 'owner', steps });
     steps.length = 0;
-    packs.registerPackFE({ id: 'other' });
+    packs.registerFixture({ id: 'other' });
     expect(type).toHaveBeenCalledOnce();
     expect(packs.step('captured')).toBeDefined();
     packs.unregisterPackFE('owner');
@@ -220,15 +222,14 @@ describe('prepared frontend replacement', () => {
   });
 });
 
-
 it('preserves the incumbent when candidate activation throws before host resource publication', () => {
-  const packs = createFePackRegistry();
+  const packs = createNativeFrontendTestRegistry();
   const old = binding();
-  packs.registerPackFE(registration('Old', old.hook), old.transport);
+  packs.registerFixture(registration('Old', old.hook), old.transport);
   const next = binding();
   const dispose = vi.fn();
   const beforePublish = vi.fn();
-  const candidate = packs.preparePackFE(registration('New', port => {
+  const candidate = packs.prepareFixture(registration('New', port => {
     next.hook(port);
     return { activate() { throw new Error('activation refused'); }, dispose };
   }), next.transport, true);

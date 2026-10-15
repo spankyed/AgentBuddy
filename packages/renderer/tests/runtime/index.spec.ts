@@ -1,3 +1,6 @@
+import type { StepDefinition } from '@apackdev/sdk/steps';
+import { createMachine } from 'xstate';
+import { nativeFrontendDeclarationFixture } from '@apackdev/sdk/testing';
 // The renderer's frontend binding: SDK frontend code reaches the API client and the application actor only through it
 import { afterEach, expect, it, vi } from 'vitest';
 
@@ -14,7 +17,7 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
 const { resolveName } = await import('@apackdev/sdk/ids');
-const { secretsClient, untypedOpenPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
+const { secretsClient, untypedOpenPlugin, getStepFrontendBindings, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
 const { stepRegistry } = await import('@apackdev/sdk/steps');
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
 const { unbindFeHost } = await import('@apackdev/sdk/runtime/internals');
@@ -40,20 +43,22 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
   const mentions = { extensions: {} };
   const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
   const icon = vi.fn();
-  const note = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } };
-  fePacks.registerPackFE({
+  const note = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } } satisfies StepDefinition;
+  const registration = {
     id: 'fe-host-pack',
-    features: { notebookMain: { plugin: { label: 'Notebook' } as never, designation: 'notebook' } },
-    steps: [note as never],
+    features: { notebookMain: { plugin: { label: 'Notebook', state: createMachine({}) }, designation: 'notebook' } },
+    steps: [note],
     tiptapPlugins: { mentions },
     dslTypes: { memo: memoDsl },
-  });
+  };
+  fePacks.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
   try {
     bindRendererHost(() => application as never);
-    expect(getDslTypes().get('memo')).toBe(memoDsl);
+    expect(getDslTypes().get('memo')).toEqual(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
     expect(stepRegistry.get('note')).toEqual(note);
     expect(stepRegistry.getFE('note')?.nodeConfig.icon).toBe(icon);
+    expect(getStepFrontendBindings().get('note')).toMatchObject({ packId: 'fe-host-pack', declaration: { node: { label: 'Note' } } });
     note.node.label = 'Caller mutation';
     expect(stepRegistry.getNode('note')?.label).toBe('Note');
     expect(getDesignated('notebook')).toBe('fe-host-pack/notebookMain');

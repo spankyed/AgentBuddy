@@ -1,3 +1,4 @@
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, onUnmounted, ref, shallowRef, type App } from 'vue';
 import type { SettingsSnapshot } from '@apackdev/sdk/types';
@@ -15,6 +16,7 @@ import { fePacks } from '@/runtime/packs';
 import { _createFeSettings } from '@apackdev/sdk/fe';
 import { fakeSettings } from '@apackdev/sdk/testing';
 import PacksTab from '@/views/settings/canvas/tabs/PacksTab.vue';
+const fixtures = createNativeFrontendTestRegistry([], fePacks);
 
 const definition = { title: 'Preferences', schema: { type: 'object' }, defaults: { name: 'Default' } };
 const snapshot = shallowRef<SettingsSnapshot>({
@@ -52,7 +54,7 @@ it('keeps inactive declarations editable in JSON and reacts to form registration
   expect(send.mock.calls.map(([event]) => event)).toEqual([
     { type: 'TAB.SELECT', tab: 'general' }, { type: 'GENERAL_NAV.SELECT', item: 'json' },
   ]);
-  fePacks.registerPackFE({ id: 'first', settingsForms: { preferences: form } });
+  fixtures.registerFixture({ id: 'first', settingsForms: { preferences: form } });
   await nextTick();
   expect(el.querySelector('[data-form]')?.textContent).toBe('First');
   fePacks.unregisterPackFE('first'); await nextTick();
@@ -61,8 +63,8 @@ it('keeps inactive declarations editable in JSON and reacts to form registration
 });
 
 it('uses the selected qualified owner even when a form emits a different target', async () => {
-  fePacks.registerPackFE({ id: 'first', settingsForms: { preferences: form } });
-  fePacks.registerPackFE({ id: 'second', settingsForms: { preferences: form } });
+  fixtures.registerFixture({ id: 'first', settingsForms: { preferences: form } });
+  fixtures.registerFixture({ id: 'second', settingsForms: { preferences: form } });
   const el = render();
   [...el.querySelectorAll('button')].find(button => button.textContent?.includes('second/preferences'))!.click();
   await nextTick();
@@ -73,7 +75,6 @@ it('uses the selected qualified owner even when a form emits a different target'
     path: ['name'], value: 'Edited', condition: undefined,
   });
 });
-
 
 it('remounts a cached custom form for its binding lifetime and preserves it on unrelated publication', async () => {
   const generated = _createFeSettings();
@@ -89,14 +90,14 @@ it('remounts a cached custom form for its binding lifetime and preserves it on u
   const first = fakeSettings({ packs: { first: { preferences: { name: 'Original binding' } } } });
   const second = fakeSettings({ packs: { first: { preferences: { name: 'New binding' } } } });
   const registration = { id: 'first', settingsForms: { preferences: CachedForm }, bindSettings: generated.bindSettings };
-  fePacks.registerPackFE(registration, { port: first, dispose() {} });
+  fixtures.registerFixture(registration, { port: first, dispose() {} });
   const element = render();
   expect(element.textContent).toContain('Original binding');
-  fePacks.registerPackFE({ id: 'second', settingsForms: { preferences: form } });
+  fixtures.registerFixture({ id: 'second', settingsForms: { preferences: form } });
   await nextTick();
   expect(mounted).toHaveBeenCalledOnce();
   expect(disposed).not.toHaveBeenCalled();
-  fePacks.replacePackFE(registration, { port: second, dispose() {} });
+  fixtures.replaceFixture(registration, { port: second, dispose() {} });
   await nextTick();
   expect(element.textContent).toContain('New binding');
   expect(mounted).toHaveBeenCalledTimes(2);

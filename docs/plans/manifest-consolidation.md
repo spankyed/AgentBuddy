@@ -320,3 +320,22 @@ that capability-based dependency admission already existed: those installed-depe
 exact-format refusal. The discovery plan owns the required capability reader/export checks next,
 separately from runtime/install format policy. This corrects the evidence; it does not exclude or
 defer the requested outcome. The execution goal records focused, mutation and strict results.
+
+
+### Required own-key preservation correction (2026-10-15)
+
+A read-only audit of current source reproduced an unfinished M1 acceptance condition:
+`ManifestSchema.parse({ id: 'probe', name: 'Probe', version: '1.0.0', data: { entities:
+Object.fromEntries([['__proto__', null]]) } })` succeeds but returns no entity keys. Evidence:
+`/private/tmp/apack-declaration-key-audit.log`. Zod record decoding drops this own key; the previous
+opaque-default fix does not cover keyed declarations. Native admission retains raw owned JSON whereas
+source/snapshot decoding can erase it, so those origins disagree.
+
+Correct keyed declaration decoding before the next discovery-reader switch. Preserve every accepted
+key and its parsed value, including ordinary prototype-like names; do not hide the loss by banning a
+currently valid wire name. Audit all keyed declaration records, not just entities. Use one shared record
+contract with accurate value/key validation, paths and JSON Schema assistance; avoid vendor parser
+patches, aliases, conversion or a second authored inventory. Prove valid and invalid own-key values,
+cross-owner collisions, generated typed/untyped EARS and source-free installed discovery. The complete
+17-decision scope and original M1–M6 requirements remain active; this reopens a specific preservation
+condition rather than treating the existing consolidation commits as proof of all inputs.

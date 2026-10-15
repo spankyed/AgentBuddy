@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, onUnmounted, reactive, type App } from 'vue';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { createFePackRegistry, hostDeclaration } from '@apackdev/host/fe';
+import { hostDeclaration } from '@apackdev/host/fe';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 import { Extension, Mark, Node } from '@tiptap/core';
@@ -18,8 +19,8 @@ let app: App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; stopFeTestRuntime(); document.body.replaceChildren(); vi.restoreAllMocks(); });
 
 it('renders stored references with only the native host registered and refuses a competing owner', async () => {
-  const registry = createFePackRegistry({ nativeDeclarations: [hostDeclaration] });
-  registry.registerPackFE(hostFrontend);
+  const registry = createNativeFrontendTestRegistry([hostDeclaration]);
+  registry.registerFixture(hostFrontend);
   startFeTestRuntime({ packs: registry, catalog: {
     status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], steps: () => [], subscribe: () => () => {},
   } });
@@ -33,7 +34,7 @@ it('renders stored references with only the native host registered and refuses a
   expect(markdown()).toBe('[Saved memo](apack-ref://memo/Memo-saved)');
   expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({ type: 'reference', attrs: { refType: 'memo', refId: 'Memo-saved' } });
   expect(editor.getHTML()).toContain('apack-ref://memo/Memo-saved');
-  expect(() => registry.registerPackFE({ id: 'competing-pack', tiptapPlugins: {
+  expect(() => registry.registerFixture({ id: 'competing-pack', tiptapPlugins: {
     suggestions: { extensions: { reference: ReferenceNode } },
   } })).toThrow(/host\/references.*competing-pack\/suggestions/);
   expect(registry.hasPackFE('competing-pack')).toBe(false);
@@ -41,8 +42,8 @@ it('renders stored references with only the native host registered and refuses a
 });
 
 async function openEditor(content = 'Draft') {
-  const registry = createFePackRegistry({ nativeDeclarations: [hostDeclaration] });
-  registry.registerPackFE(hostFrontend);
+  const registry = createNativeFrontendTestRegistry([hostDeclaration]);
+  registry.registerFixture(hostFrontend);
   const subscribe = registry.onChanged;
   const unsubscribed = vi.fn();
   vi.spyOn(registry, 'onChanged').mockImplementation(listener => {
@@ -75,7 +76,7 @@ it('adopts changed extensions in an open editor without losing pending edits or 
   const document = first.getJSON(); const selection = first.state.selection.toJSON();
   const updateCount = updates.mock.calls.length;
   expect(undoDepth(first.state)).toBeGreaterThan(0);
-  registry.registerPackFE({ id: 'unrelated' });
+  registry.registerFixture({ id: 'unrelated' });
   await nextTick();
   expect(exposed().editor).toBe(first);
   expect(undoDepth(first.state)).toBeGreaterThan(0);
@@ -83,7 +84,7 @@ it('adopts changed extensions in an open editor without losing pending edits or 
   const disposed = vi.fn(); const popupDisposed = vi.fn(); const predicate = vi.fn(() => true);
   const Popup = defineComponent({ setup() { onUnmounted(popupDisposed); return () => h('span', { 'data-popup': '' }, 'Live popup'); } });
   const Tools = Extension.create({ name: 'liveTools', onDestroy: disposed });
-  registry.registerPackFE({ id: 'tools', tiptapPlugins: { tools: {
+  registry.registerFixture({ id: 'tools', tiptapPlugins: { tools: {
     extensions: { liveTools: Tools }, popups: { example: Popup }, isSuggestionActive: predicate,
   } } });
   await vi.waitFor(() => expect(root.querySelector('[data-popup]')).not.toBeNull());
@@ -114,14 +115,14 @@ it('retains unavailable document data, restores it on re-enable and accepts an e
   const Token = Node.create({ name: 'externalToken', inline: true, group: 'inline', atom: true,
     addAttributes: () => ({ id: { default: null } }), renderHTML: ({ node }) => ['span', { 'data-token': node.attrs.id }, 'Token'] });
   const registration = { id: 'tokens', tiptapPlugins: { tokens: { extensions: { externalToken: Token } } } };
-  registry.registerPackFE(registration);
+  registry.registerFixture(registration);
   await vi.waitFor(() => expect(exposed().editor?.schema.nodes.externalToken).toBeDefined());
   exposed().editor!.commands.insertContent({ type: 'externalToken', attrs: { id: 'saved-token' } });
   const document = exposed().editor!.getJSON(); const count = updates.mock.calls.length;
   registry.unregisterPackFE('tokens');
   await vi.waitFor(() => expect(root.querySelector('[role=status]')?.textContent).toContain('unavailable editor contribution'));
   expect(exposed().editor).toBeUndefined(); expect(updates).toHaveBeenCalledTimes(count);
-  registry.registerPackFE(registration);
+  registry.registerFixture(registration);
   await vi.waitFor(() => expect(exposed().editor?.schema.nodes.externalToken).toBeDefined());
   expect(exposed().editor!.getJSON()).toEqual(document); expect(updates).toHaveBeenCalledTimes(count);
   registry.unregisterPackFE('tokens');
@@ -140,11 +141,11 @@ it('updates popup and predicate bindings without resetting document history', as
   const disposed = vi.fn(); const oldPredicate = vi.fn(() => true); const nextPredicate = vi.fn(() => true);
   const Popup = defineComponent({ setup() { onUnmounted(disposed); return () => h('span', { 'data-popup': '' }, 'First'); } });
   const NextPopup = defineComponent({ setup: () => () => h('span', { 'data-popup': '' }, 'Second') });
-  registry.registerPackFE({ id: 'popups', tiptapPlugins: { suggestions: { popups: { example: Popup }, isSuggestionActive: oldPredicate } } });
+  registry.registerFixture({ id: 'popups', tiptapPlugins: { suggestions: { popups: { example: Popup }, isSuggestionActive: oldPredicate } } });
   await vi.waitFor(() => expect(root.querySelector('[data-popup]')?.textContent).toBe('First'));
   editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   expect(oldPredicate).toHaveBeenCalled(); oldPredicate.mockClear();
-  registry.replacePackFE({ id: 'popups', tiptapPlugins: { suggestions: { popups: { example: NextPopup }, isSuggestionActive: nextPredicate } } });
+  registry.replaceFixture({ id: 'popups', tiptapPlugins: { suggestions: { popups: { example: NextPopup }, isSuggestionActive: nextPredicate } } });
   await vi.waitFor(() => expect(root.querySelector('[data-popup]')?.textContent).toBe('Second'));
   expect(exposed().editor).toBe(editor); expect(disposed).toHaveBeenCalledTimes(1);
   expect(undoDepth(editor.state)).toBe(history); expect(editor.state.selection.toJSON()).toEqual(selection);
@@ -158,8 +159,8 @@ it('publishes only the latest contribution generation during rapid replacement a
   const created = vi.fn(); const stopped = vi.fn();
   const First = Extension.create({ name: 'firstTools', onBeforeCreate: created });
   const Latest = Extension.create({ name: 'latestTools', onBeforeCreate: created, onDestroy: stopped });
-  registry.registerPackFE({ id: 'rapid', tiptapPlugins: { tools: { extensions: { firstTools: First } } } });
-  registry.replacePackFE({ id: 'rapid', tiptapPlugins: { tools: { extensions: { latestTools: Latest } } } });
+  registry.registerFixture({ id: 'rapid', tiptapPlugins: { tools: { extensions: { firstTools: First } } } });
+  registry.replaceFixture({ id: 'rapid', tiptapPlugins: { tools: { extensions: { latestTools: Latest } } } });
   await vi.waitFor(() => expect(exposed().editor?.extensionManager.extensions.some(extension => extension.name === 'latestTools')).toBe(true));
   expect(initial.isDestroyed).toBe(true); expect(created).toHaveBeenCalledTimes(1);
   const accepted = exposed().editor!;
@@ -168,7 +169,7 @@ it('publishes only the latest contribution generation during rapid replacement a
   await nextTick();
   expect(accepted.isDestroyed).toBe(true); expect(stopped).toHaveBeenCalledTimes(1);
   expect(unsubscribed).toHaveBeenCalledTimes(1);
-  registry.registerPackFE({ id: 'after-unmount', tiptapPlugins: { tools: { extensions: { firstTools: First } } } });
+  registry.registerFixture({ id: 'after-unmount', tiptapPlugins: { tools: { extensions: { firstTools: First } } } });
   await nextTick(); expect(created).toHaveBeenCalledTimes(1);
 });
 
@@ -177,14 +178,14 @@ it('refuses an attribute-dropping schema replacement and restores the original d
   const Token = Node.create({ name: 'externalToken', inline: true, group: 'inline', atom: true,
     addAttributes: () => ({ identity: { default: null } }), renderHTML: () => ['span', {}, 'Token'] });
   const register = (token: typeof Token) => ({ id: 'tokens', tiptapPlugins: { tokens: { extensions: { externalToken: token } } } });
-  registry.registerPackFE(register(Token));
+  registry.registerFixture(register(Token));
   await vi.waitFor(() => expect(exposed().editor?.schema.nodes.externalToken).toBeDefined());
   exposed().editor!.commands.insertContent({ type: 'externalToken', attrs: { identity: 'keep-this-id' } });
   const document = exposed().editor!.getJSON(); const count = updates.mock.calls.length;
-  registry.replacePackFE(register(Token.extend({ addAttributes: () => ({}) })));
+  registry.replaceFixture(register(Token.extend({ addAttributes: () => ({}) })));
   await vi.waitFor(() => expect(root.querySelector('[role=status]')).not.toBeNull());
   expect(exposed().editor).toBeUndefined(); expect(updates).toHaveBeenCalledTimes(count);
-  registry.replacePackFE(register(Token));
+  registry.replaceFixture(register(Token));
   await vi.waitFor(() => expect(exposed().editor).toBeDefined());
   expect(exposed().editor!.getJSON()).toEqual(document); expect(updates).toHaveBeenCalledTimes(count);
 });
@@ -193,10 +194,10 @@ it('retires an extension when its qualified group changes even if its object is 
   const { registry, exposed } = await openEditor();
   const retired = vi.fn();
   const Tools = Extension.create({ name: 'groupTools', onDestroy: retired });
-  registry.registerPackFE({ id: 'tools', tiptapPlugins: { first: { extensions: { groupTools: Tools } } } });
+  registry.registerFixture({ id: 'tools', tiptapPlugins: { first: { extensions: { groupTools: Tools } } } });
   await vi.waitFor(() => expect(exposed().editor?.extensionManager.extensions.some(extension => extension.name === 'groupTools')).toBe(true));
   const original = exposed().editor!; const document = original.getJSON();
-  registry.replacePackFE({ id: 'tools', tiptapPlugins: { second: { extensions: { groupTools: Tools } } } });
+  registry.replaceFixture({ id: 'tools', tiptapPlugins: { second: { extensions: { groupTools: Tools } } } });
   await vi.waitFor(() => expect(exposed().editor).toBeDefined());
   expect(exposed().editor).not.toBe(original); expect(retired).toHaveBeenCalledTimes(1);
   expect(exposed().editor!.getJSON()).toEqual(document);
@@ -205,7 +206,7 @@ it('retires an extension when its qualified group changes even if its object is 
 it('finishes editor retirement after a throwing extension cleanup and keeps the pane usable', async () => {
   const { registry, root, exposed } = await openEditor();
   const Broken = Extension.create({ name: 'brokenCleanup', onDestroy() { throw new Error('Extension cleanup failed'); } });
-  registry.registerPackFE({ id: 'broken', tiptapPlugins: { tools: { extensions: { brokenCleanup: Broken } } } });
+  registry.registerFixture({ id: 'broken', tiptapPlugins: { tools: { extensions: { brokenCleanup: Broken } } } });
   await vi.waitFor(() => expect(exposed().editor?.extensionManager.extensions.some(extension => extension.name === 'brokenCleanup')).toBe(true));
   const original = exposed().editor!; const document = original.getJSON();
   registry.unregisterPackFE('broken');
@@ -220,15 +221,15 @@ it('preserves pending formatting attributes and refuses a replacement that would
   const Format = Mark.create({ name: 'externalFormat', addAttributes: () => ({ identity: { default: null } }),
     renderHTML: () => ['span', {}, 0] });
   const register = (format: typeof Format) => ({ id: 'format', tiptapPlugins: { format: { extensions: { externalFormat: format } } } });
-  registry.registerPackFE(register(Format));
+  registry.registerFixture(register(Format));
   await vi.waitFor(() => expect(exposed().editor?.schema.marks.externalFormat).toBeDefined());
   exposed().editor!.commands.setTextSelection(2);
   exposed().editor!.commands.setMark('externalFormat', { identity: 'pending-style' });
   const document = exposed().editor!.getJSON(); const count = updates.mock.calls.length;
-  registry.replacePackFE(register(Format.extend({ addAttributes: () => ({}) })));
+  registry.replaceFixture(register(Format.extend({ addAttributes: () => ({}) })));
   await vi.waitFor(() => expect(root.querySelector('[role=status]')).not.toBeNull());
   expect(exposed().editor).toBeUndefined(); expect(updates).toHaveBeenCalledTimes(count);
-  registry.replacePackFE(register(Format));
+  registry.replaceFixture(register(Format));
   await vi.waitFor(() => expect(exposed().editor).toBeDefined());
   expect(exposed().editor!.getJSON()).toEqual(document);
   expect(exposed().editor!.state.storedMarks?.map(mark => mark.toJSON())).toEqual([

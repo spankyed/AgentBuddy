@@ -1,3 +1,5 @@
+import { createMachine } from 'xstate';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { writeInstalledPackFixture } from './build-fixture.ts';
 import { sealBuild } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
@@ -5,12 +7,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Plugin, PluginDefinition } from '@apackdev/sdk/fe';
+import type { PluginDefinition } from '@apackdev/sdk/fe';
 
 import { resetTestData } from '@apackdev/sdk/testing';
 import { registry } from './test-host.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
-import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
+
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
@@ -401,10 +403,10 @@ describe('registry source and update tracking', () => {
 
 describe('FE pack deregistration', () => {
   it('unregisterPackFE removes extensions and returns removed plugins', async () => {
-    const { registerPackFE, unregisterPackFE } = createFePackRegistry();
+    const { registerFixture, unregisterPackFE } = createNativeFrontendTestRegistry();
 
-    const testPlugin = { label: 'Test' } as unknown as PluginDefinition;
-    registerPackFE({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
+    const testPlugin = { label: 'Test', state: createMachine({}) } satisfies PluginDefinition;
+    registerFixture({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
@@ -417,11 +419,10 @@ describe('FE pack deregistration', () => {
 
   // A shipped pack's registration carries its id like any other, so it comes out the same way
   it('takes a shipped pack\'s frontend back out like any other pack\'s', async () => {
-    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const shipped = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
-
-    registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
-    expect(getRegisteredPlugins()).toEqual([shipped]);
+    const { registerFixture, unregisterPackFE, getRegisteredPlugins } = createNativeFrontendTestRegistry();
+    registerFixture({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in', state: createMachine({}) } } } });
+    const shipped = getRegisteredPlugins()[0];
+    expect(shipped).toMatchObject({ label: 'Built-in', id: 'default-setup/main' });
 
     expect(unregisterPackFE('default-setup')).toEqual([shipped]);
     expect(getRegisteredPlugins()).toEqual([]);
@@ -429,7 +430,7 @@ describe('FE pack deregistration', () => {
 
   // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {
-    const { unregisterPackFE } = createFePackRegistry();
+    const { unregisterPackFE } = createNativeFrontendTestRegistry();
 
     const removed = unregisterPackFE('nonexistent-pack');
     expect(removed).toHaveLength(0);

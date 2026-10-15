@@ -69,6 +69,7 @@ export interface FePackRegistryView extends PackExtensionsView {
     // (undocumented)
     referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
     referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
+    stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
     // (undocumented)
     tiptapPlugins(): TiptapPluginBinding[];
 }

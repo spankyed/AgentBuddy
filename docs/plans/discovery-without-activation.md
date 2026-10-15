@@ -2670,3 +2670,23 @@ Next implement the rest of 2B.2 as one coherent admission change: mandatory nati
 complete declaration-directed container capture, failure cleanup, valid native fixtures/public shell,
 and accepted binding owner/revision data. Do not switch palette readers while optional native-owner
 checking still permits unknown registrations. All other discovery and goal acceptance criteria remain.
+
+
+#### Required admission identity correction (2026-10-15)
+
+The 2B.2 audit reproduced the loader retaining its caller's mutable `LoadedPackEntry` across module
+and stylesheet awaits. Changing only runtime/build identities while delivery was pending let old code
+claim the new identities; changing declaration metadata instead refused the originally valid binding.
+Pin the entry's scalar fields and own its JSON declaration data before asynchronous delivery. Retain
+attempt/cancellation handling around this capture; invalid candidates must supersede older attempts
+without retiring accepted resources. Source delivery remains independent of declaration authority.
+This closes the frontend admission race; complete compiler input/implementation identity and frozen
+execution requirements elsewhere in this plan remain required.
+
+
+The concurrent read-only own-key audit in
+[manifest consolidation](manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
+reproduces `__proto__` entity declarations disappearing during schema decoding. Correct that required
+preservation gap after the 2B.2 admission checkpoint and before checkpoint 3 switches live readers.
+It is required work, alongside the complete remaining discovery/compiler/navigation/boundary/Phase 6
+scope; the opaque-default repair alone does not close all keyed declarations.

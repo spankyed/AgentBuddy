@@ -1,9 +1,10 @@
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { describe, expect, it, vi } from 'vitest';
 import type { PackFERegistration } from '@apackdev/sdk/fe';
 import { createMachine } from 'xstate';
 import { Extension } from '@tiptap/core';
 import { ManifestSchema, type PackManifest } from '@apackdev/sdk/build';
-import { createFePackRegistry } from '../../src/fe/pack-store.ts';
+
 import { frontendBindingProblem } from '../../src/fe/declaration-binding.ts';
 
 function fixture() {
@@ -99,7 +100,6 @@ describe('frontend declaration binding', () => {
   });
 });
 
-
 it('checks declared presentation and panes without resolving a component or predicate', () => {
   const { manifest, registration, component } = fixture();
   const declaration = manifest.features!.notes.plugin!;
@@ -131,16 +131,15 @@ it('checks declared presentation and panes without resolving a component or pred
   expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
 });
 
-
 it('refuses a native replacement before granting resources and retains the accepted plugin', () => {
   const component = { render: vi.fn() };
   const native = { id: 'native', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Native view', state: 'native/state', canvas: 'native/canvas' } } } };
-  const registry = createFePackRegistry({ nativeDeclarations: [native] });
+  const registry = createNativeFrontendTestRegistry([native]);
   const registration = { id: 'native', features: { view: { plugin: { label: 'Native view', state: createMachine({}), canvas: component } } } };
-  const [accepted] = registry.registerPackFE(registration);
+  const [accepted] = registry.registerFixture(registration);
   native.features.view.plugin.label = 'Mutated caller';
   const bindSettings = vi.fn();
-  expect(() => registry.replacePackFE({ ...registration, bindSettings,
+  expect(() => registry.replaceFixture({ ...registration, bindSettings,
     features: { view: { plugin: { ...registration.features.view.plugin, label: 'Changed binding' } } } })).toThrow('plugin.label');
   expect(bindSettings).not.toHaveBeenCalled();
   expect(registry.getRegisteredPlugins()).toEqual([accepted]);
@@ -149,28 +148,28 @@ it('refuses a native replacement before granting resources and retains the accep
 
 it('owns editor names transactionally across native packs and retains accepted bindings on refusal', () => {
   const frontend = { tiptapPlugins: { tools: { extensions: { example: 'native/editor.ts#Example' } } } };
-  const registry = createFePackRegistry({ nativeDeclarations: [{ id: 'first', ...frontend }, { id: 'second', ...frontend }] });
+  const registry = createNativeFrontendTestRegistry([{ id: 'first', ...frontend }, { id: 'second', ...frontend }]);
   const first = Extension.create({ name: 'example' });
   const second = Extension.create({ name: 'example' });
-  registry.registerPackFE({ id: 'first', tiptapPlugins: { tools: { extensions: { example: first } } } });
-  expect(() => registry.registerPackFE({ id: 'second', tiptapPlugins: { tools: { extensions: { example: second } } } }))
+  registry.registerFixture({ id: 'first', tiptapPlugins: { tools: { extensions: { example: first } } } });
+  expect(() => registry.registerFixture({ id: 'second', tiptapPlugins: { tools: { extensions: { example: second } } } }))
     .toThrow(/first\/tools.*second\/tools/);
   expect(registry.tiptapPlugins()).toHaveLength(1);
   expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
   const replacement = Extension.create({ name: 'wrong' });
-  expect(() => registry.preparePackFE({ id: 'first', tiptapPlugins: { tools: { extensions: { example: replacement } } } }, undefined, true))
+  expect(() => registry.prepareFixture({ id: 'first', tiptapPlugins: { tools: { extensions: { example: replacement } } } }, undefined, true))
     .toThrow('tiptapPlugins.tools.extensions.example');
   expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(first);
 });
 
 it('captures editor membership while preserving executable extension objects', () => {
-  const registry = createFePackRegistry({ nativeDeclarations: [{ id: 'editor', tiptapPlugins: {
+  const registry = createNativeFrontendTestRegistry([{ id: 'editor', tiptapPlugins: {
     tools: { extensions: { example: 'native/editor.ts#Example' } },
-  } }] });
+  } }]);
   const extension = Extension.create({ name: 'example' });
   const extensions = { example: extension };
   const tools = { extensions };
-  registry.registerPackFE({ id: 'editor', tiptapPlugins: { tools } });
+  registry.registerFixture({ id: 'editor', tiptapPlugins: { tools } });
   extensions.example = Extension.create({ name: 'replacement' });
   tools.extensions = { example: Extension.create({ name: 'another' }) };
   expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(extension);
@@ -216,8 +215,8 @@ it('checks admitted native steps and owns their data while preserving executable
     colorKey: 'blue', nodeConfig: { ...config, icon: 'Box' }, components: { form: 'native.vue' },
     layout: { hasInput: true, getHeight: 'native.ts#getHeight' },
   } } } };
-  const packs = createFePackRegistry({ nativeDeclarations: [declaration] });
-  packs.registerPackFE(registration);
+  const packs = createNativeFrontendTestRegistry([declaration]);
+  packs.registerFixture(registration);
   const accepted = packs.step('memo')!;
   expect(accepted.fe!.nodeConfig.icon).toBe(component);
   expect(accepted.fe!.components!.form).toBe(component);
@@ -230,28 +229,27 @@ it('checks admitted native steps and owns their data while preserving executable
   expect(accepted.fe!.nodeConfig.connectionRules.inputs).toBe(1);
   expect(accepted.fe!.components!.form).toBe(component);
   expect(Reflect.set(accepted.fe!.layout!, 'hasInput', false)).toBe(false);
-  expect(() => packs.replacePackFE({ id: 'native', steps: [{ type: 'memo', node: { label: 'Changed' } }] }))
+  expect(() => packs.replaceFixture({ id: 'native', steps: [{ type: 'memo', node: { label: 'Changed' } }] }))
     .toThrow('steps.memo.node');
   expect(packs.step('memo')).toBe(accepted);
   expect(render).not.toHaveBeenCalled();
   expect(getHeight).not.toHaveBeenCalled();
 });
 
-
 it('admits declared native artifacts, blocks, DSL globals and feature designations', () => {
   const { manifest, registration, component } = fixture();
-  const packs = createFePackRegistry({ nativeDeclarations: [{
+  const packs = createNativeFrontendTestRegistry([{
     id: manifest.id,
     features: { notes: manifest.features!.notes, form: manifest.features!.form },
     ...manifest.extensions,
-  }] });
+  }]);
   const bindings = { ...registration, bindSettings: undefined };
-  packs.registerPackFE(bindings);
+  packs.registerFixture(bindings);
   expect(packs.designation('notes')).toBe('notes-pack/notes');
   expect(packs.artifact('text')?.fe?.component).toBe(component);
   expect(packs.block('note')?.fe?.component).toBe(component);
   expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
-  expect(() => packs.replacePackFE({ ...bindings, dslTypes: { notes: {
+  expect(() => packs.replaceFixture({ ...bindings, dslTypes: { notes: {
     prefix: 'n', schema: '', globals: { foo: 'Wrong' },
   } } })).toThrow('dslTypes.notes.globals.foo');
   expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
@@ -261,6 +259,7 @@ it('checks native declaration data before copying it or reading declarative acce
   const declaration = { id: 'native' };
   const read = vi.fn(() => ({}));
   Object.defineProperty(declaration, 'blocks', { get: read, enumerable: true });
-  expect(() => createFePackRegistry({ nativeDeclarations: [declaration] })).toThrow('JSON data properties');
+  const packs = createNativeFrontendTestRegistry();
+  expect(() => packs.registerPackFE({ kind: 'native', declaration }, { id: 'native' })).toThrow('JSON data properties');
   expect(read).not.toHaveBeenCalled();
 });

@@ -117,3 +117,5 @@ export function dropAttribute(id: EARS.EntityId, kind: string): void {
 
 /** The subject a check asserted over, confirmed to be there — see its own doc comment for the rule */
 export { population } from './population.ts';
+
+export { nativeFrontendDeclarationFixture } from './frontend-declaration.ts';
