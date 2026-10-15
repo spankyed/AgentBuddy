@@ -89,6 +89,7 @@ export const DIAGNOSTIC_RUN_ENV = 'APACK_DIAGNOSTIC_RUN';
  * and anything else running a pool is by definition running it some other way.
  */
 export const CHAIN_RUN_ENV = 'APACK_CHAIN_RUN';
+export const CHAIN_CORES_ENV = 'APACK_CHAIN_CORES';
 
 /**
  * Under what conditions a pool run happened, as one declaration with the type derived from it.
@@ -142,6 +143,26 @@ const projectArgs = (suites: readonly UnitSuite[]): string[] =>
 const REPORTER = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-durations-reporter.ts');
 const reporterArgs = (): string[] => ['--reporter=default', `--reporter=${REPORTER}`];
 
+/** A budget caps the configured pool width; it never raises it above this machine's default. */
+export const poolWorkerLimit = (pool: Pool, budget?: number): number =>
+  Math.min(budget ?? Infinity, coresFor(poolStepName(pool)));
+
+/** The chain's admitted budget also bounds the worker processes its pools start. */
+export function poolWorkers(pool: Pool, env: NodeJS.ProcessEnv = process.env): number | undefined {
+  const value = env[CHAIN_CORES_ENV];
+  if (value === undefined) return undefined;
+  const cores = Number(value);
+  if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(cores)) throw new Error(`Invalid ${CHAIN_CORES_ENV}: ${value}`);
+  return poolWorkerLimit(pool, cores);
+}
+
+function workerArgs(workers?: number): string[] {
+  return workers === undefined ? [] : [
+    `--poolOptions.threads.maxThreads=${workers}`, '--poolOptions.threads.minThreads=1',
+    `--poolOptions.forks.maxForks=${workers}`, '--poolOptions.forks.minForks=1',
+  ];
+}
+
 /**
  * The three pools: which half each one runs, which suites belong to it, and how it runs them.
  *
@@ -163,20 +184,20 @@ export const POOLS = {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
     // with-source supplies the @apackdev/source condition the host suites resolve under
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...reporterArgs()] }],
+    run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
   },
   pack: {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'pack'),
     // `--` so npm forwards the reporter flags to vitest rather than reading them itself
-    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace, '--', ...reporterArgs()] })),
+    run: (stale: readonly UnitSuite[], workers?: number) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace, '--', ...workerArgs(workers), ...reporterArgs()] })),
   },
   integration: {
     half: 'integration' as Half,
     suites: () => INTEGRATION_SUITES,
     // The root integration config declares the condition itself, and carries the worker cap that makes this
     // pool faster at half the cores than at all of them
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...reporterArgs()] }],
+    run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
   },
 } as const;
 
@@ -185,6 +206,8 @@ export type Pool = keyof typeof POOLS;
 /** The three pools by the chain step each one is, so a step name can be asked which pool it is */
 const POOL_BY_STEP: ReadonlyMap<string, Pool> =
   new Map((Object.keys(POOLS) as Pool[]).map((pool) => [poolStepName(pool), pool]));
+
+export const poolForStep = (step: string): Pool | undefined => POOL_BY_STEP.get(step);
 
 /**
  * The one command that measures a step on its own, for a report telling a reader how to check a reading.
@@ -215,11 +238,11 @@ const POOL_BY_STEP: ReadonlyMap<string, Pool> =
  *
  * Every other step runs its work unconditionally, so its npm script is the measurement.
  */
-export function measureCommandFor(stepName: string): string {
+export function measureCommandFor(stepName: string, budget?: number): string {
   const pool = POOL_BY_STEP.get(stepName);
   if (pool === undefined) return `npm run ${stepName}`;
   const reporters = new Set(reporterArgs());
-  return POOLS[pool].run(POOLS[pool].suites())
+  return POOLS[pool].run(POOLS[pool].suites(), budget === undefined ? undefined : poolWorkerLimit(pool, budget))
     .map(({ command, args }) => {
       const kept = args.filter((arg) => !reporters.has(arg));
       // npm's `--` forwards the flags after it; with the reporters gone it forwards nothing and reads as a
@@ -301,10 +324,10 @@ export function prunePoolStamps(): void {
  * would not do it — `unitStaleReason` consults the fingerprint and nothing else, so a record found under
  * one name with the other's preimage comes back *fresh*, which is the defect the half was added to fix.
  */
-export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance): BuildUnit => ({
+export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance, workers?: number): BuildUnit => ({
   inputs: suiteInputs(suite, POOLS[pool].half).map((input) => path.join(REPO_ROOT, input)),
   outputs: [],
-  command: `${POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && ')} [${provenance}]`,
+  command: `${POOLS[pool].run([suite], workers).map(({ command, args }) => [command, ...args].join(' ')).join(' && ')} [${provenance}]`,
 });
 
 /**

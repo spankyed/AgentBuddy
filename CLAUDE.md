@@ -545,7 +545,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              the cold chain's, since `--all` plans every step
                          #   --all      every step regardless of its stamp
                          #   --cores N  how much of the machine to spend; this machine's cores by default,
-                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts)
+                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts). The
+                         #              budget also caps Vitest workers; pool cache keys include that cap
                          #   --e2e      run the E2E suite with the chain, ordered after test:smoke
                          #   --no-classify  do not re-run a step that failed while the machine was busy
                          #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
