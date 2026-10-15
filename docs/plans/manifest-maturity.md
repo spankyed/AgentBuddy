@@ -669,3 +669,10 @@ checks. Aggregate strict integration validation remains unresolved and is requir
 this source checkpoint is not phase acceptance. Continue the remaining input/frozen-execution and
 manual-build/drive work, every remaining discovery/native/static-content requirement, navigation,
 frontend boundaries and all three Phase 6 workstreams. Nothing is archived or excluded.
+
+### Nested content-directory link checkpoint (2026-10-15)
+
+`7ad1f0396` and `01aaa18ab` close reported content-directory link watching, including initially empty/dangling targets,
+cycle bounds and authored-output exclusions without hiding authored-source retargeting. The goal records failing baselines, focused/type checks
+and an actual Tailwind CLI rebuild. Glob/worker/dynamic closure, frozen execution, bulk strict validation
+and all remaining discovery/navigation/frontend/Phase 6 work remain required; this is not phase completion.

@@ -2067,9 +2067,23 @@ requested a 60s feedback cap shared by the chain and direct integration runner; 
 whole-suite retries to diagnose a local failure or silently treat the cap as an assertion failure.
 Resolve the bulk gate before final committed-source strict --all and completion.
 
-Next prove nested directory symlinks, initially empty external import.meta.glob roots and worker/
-dynamic graphs, exact compiler-consumer alignment and coherent frozen execution/publication.
-The current directory watcher does not follow nested directory symlinks; getWatchFiles() does not
+Next prove initially empty external import.meta.glob roots and worker/dynamic graphs, exact
+compiler-consumer alignment and coherent frozen execution/publication. getWatchFiles() does not
 expose Vite's glob matcher metadata. Retain manual-build/drive freshness and every remaining
 contribution/native/static-content, navigation, frontend boundary and Phase 6 requirement. Nothing
 is archived or excluded by this checkpoint.
+
+### Nested content-directory links (2026-10-15)
+
+`7ad1f0396` and `01aaa18ab` observe physical targets beneath reported content directories, including initially empty
+and dangling nested links. The same traversal signs directory membership and collects subscriptions;
+canonical ownership excludes authored outputs and visited physical roots bound cycles. Unchanged
+tracked-link metadata does not invalidate the namespace; creating an unreported stylesheet symlink
+still triggers missing-target repair. Watching remains independent of diagnostic read records.
+
+A failing baseline, 105 passing focused cases, CLI typechecking and an actual Tailwind CLI
+rebuild prove this slice; target additions and retargeting into authored templates both publish the
+expected CSS in 20.7s under the 60s bound. Link identity remains signed when target contents belong
+to the authored tree, so output exclusion does not hide topology changes. The goal owns the evidence.
+This completes reported-directory link coverage, not arbitrary glob/worker/dynamic input closure,
+frozen execution or the outstanding bulk strict gate. All other goal scope remains required.

@@ -4442,3 +4442,31 @@ static-content, navigation, frontend boundaries, all three Phase 6 workstreams, 
 and final committed-source strict --all plus the full requirement audit. EARS and six compiled content
 files remain byte-identical; no release metadata, public API/schema or compatibility changes. Nothing
 is archived, and the unrelated staged issue remains excluded from this work's commits.
+
+### Nested frontend content links checkpoint (2026-10-15)
+
+Sources `7ad1f0396` and `01aaa18ab` fix a reproduced missed rebuild when an initially empty nested content-directory
+link gains files. One traversal signs membership and subscribes physical targets, including dangling
+links; canonical ownership excludes authored outputs, and visited roots bound cycles. Generic missing
+stylesheet repair via a newly created symlink remains observable. Notifications reflect changed input
+snapshots rather than assuming the originating filesystem event identifies the changed input. Link
+identity is signed before excluding authored target contents; external-only retargeting into authored
+templates rebuilds without a source edit masking the event. That boundary has a failing regression at
+`/private/tmp/apack-content-link-owned-retarget-baseline.log`.
+
+Baseline: `/private/tmp/apack-nested-directory-link-baseline.log`. Final focused checks pass 21 cases
+(12 frontend and nine compiler watcher cases): `/private/tmp/apack-nested-directory-links-final-unit.log`.
+The final five focused suites pass 105 checks in 2.20s:
+`/private/tmp/apack-content-link-owned-retarget-unit.log`. CLI typechecking passes:
+`/private/tmp/apack-content-link-owned-retarget-types.log`. An actual CLI watcher
+compiles initially absent Tailwind classes after only a nested physical target gains HTML; output and
+publication assertions pass; it also replaces the content link with an authored-template target,
+publishes the new classes and removes the prior classes in 20.7s total under the 60s bound:
+`/private/tmp/apack-content-link-owned-retarget-integration.log`. No public API/schema, release metadata,
+format or compatibility changes. The unrelated staged issue is excluded.
+
+Continue external glob/worker/dynamic input closure, exact compiler consumers, coherent frozen
+execution/publication and manual-build/drive freshness. Retain every remaining discovery/native/
+static-content, navigation, frontend boundary, Phase 6 and lifecycle requirement. The aggregate strict
+gate remains unresolved; final committed-source strict --all and the full requirement audit are still
+required. Nothing is archived or excluded.
