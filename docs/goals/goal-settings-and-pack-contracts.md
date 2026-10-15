@@ -4681,3 +4681,33 @@ This closes the selected open-editor update checkpoint, not the whole editor/dis
 checks do not prove arbitrary cold custom-node documents without their implementations; retain that
 provider/readiness audit with remaining static DSL/Monaco/palette discovery and consumer migration.
 Every remaining source freshness, navigation, frontend boundary and Phase 6 requirement stays active.
+
+
+### Validation fixture and reporting checkpoint (2026-10-15)
+
+Source `21110749b` moves real default-fork compilation/archive production into contract preparation,
+with shipped-build provenance checked before app consumption and explicit chain input/output edges.
+The app hook no longer compiles or deletes a still-running compiler's inputs. All 19 frontend watcher
+cases and 58 assertions remain, split into glob, worker and resource files with shared cleanup.
+The two long synchronous scaffold suites now yield between cases using the existing Vitest policy.
+No test/hook deadline changes or production behavior changes in this checkpoint.
+
+The first strict run (`2026-10-15T10-27-56Z-94568`) passes contract preparation and actual app checks:
+24 external fixture tests, packaged fixture checks, replacement in two windows, live reload and normal
+fork/removal/restoration boots. Integration still hits its 300s bound under concurrent load. The isolated
+run completes all 57 files / 739 tests in 287s but fails on Vitest's task-update RPC timeout; this is a
+failed run, not green evidence. The subsequent scaffold yield fix clears that reporting failure.
+
+Strict run `2026-10-15T10-39-17Z-22498` passes in 369.9s: integration 57 files / 739 tests, host 404 files /
+4,824 tests, default-pack 114 files / 845 tests (existing 1 file / 2 tests skipped), type/API/schema/export/
+facade/lint/specifier/tier checks and required app/build checks (unchanged checks cached).
+Logs: `/private/tmp/apack-validation-reporting-strict.log` and its chain run directory. Committed-source
+strict validation passes again at `21110749b` in 1.1s (29/30 cached), run
+`2026-10-15T10-45-50Z-51149`, `/private/tmp/apack-validation-placement-committed.log`.
+
+The exact CLI inspection suite also passes all 10 tests, including missing authored modules and poisoned
+runtime discovery (`/private/tmp/apack-info-discovery-recheck.log`). `b0e60d2d3` repairs the stale manifest
+reference table and consolidation ledger for direct editor/app extension declarations.
+This closes the validation checkpoint only. All remaining discovery/freshness, cold editor/provider,
+navigation, frontend boundaries and three Phase 6 workstreams remain required; final strict `--all` on
+committed source and the whole-goal requirement audit remain outstanding. Nothing is archived or waived.

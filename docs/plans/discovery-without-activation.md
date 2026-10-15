@@ -2412,3 +2412,15 @@ prepared archive and keeps the 60s hook/test policy; normal boot/reload/replacem
 No fake archive, bypassed compile, new success stamp or package-manager cache protocol. Retain bounded
 producer cleanup, and leave release/version metadata and unrelated work untouched. Prove the full
 integration and external app paths after these structural fixes, then resume required discovery work.
+
+
+### Validation placement outcome (2026-10-15)
+
+`21110749b` implements the fixture/watcher separation above. All 19 watcher cases and 58 assertions are
+preserved; contract preparation builds the real fork archive, and app runners check its shipped-build
+provenance. Replacement, reload and normal fork/removal/restoration boot checks pass. The isolated pool
+then completed all 57 files / 739 tests but exposed a task-update RPC timeout: the two long synchronous
+scaffold suites needed the existing between-case event-loop yield policy. Adding those hooks clears it.
+The final strict checkpoint passes, and strict validation on committed source passes with unchanged
+successful checks cached. The owning goal records exact runs and counts. This is not final `--all` or
+completion of discovery; all outstanding consumer, source-freshness and later-phase requirements remain.
