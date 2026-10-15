@@ -2608,3 +2608,30 @@ before schema validation. Validate native declaration JSON purity before any cop
 invoking them, foreign prototypes and other non-JSON values, preserving the prior catalog on refusal.
 Check the separately declared trigger registration slot in the shared backend step validator too; full
 trigger/build metadata migration remains required and is not replaced by this slot-membership check.
+
+
+### Native step checkpoint 2B.1 outcome (2026-10-15)
+
+`fdd967ec5` implements the native step grammar and common catalog/window projection above. Data capture,
+active ownership and backend/native frontend step comparisons are covered. JSON defaults preserve own
+keys across all origins; native and binding data are checked before copying, and declared trigger
+registration slots are checked without invocation. Native fixture composition supplies existing node data,
+never a production default. Eight mutations fail as intended; all seven baseline EARS/content files and
+facade types are unchanged. Strict and committed-source strict validation pass; the owning goal records
+counts, reproductions, source commits and runs.
+
+Continue **2B.2** before palette migration. All supported native frontend fields need declarations before
+complete enforcement: artifact/block/DSL contributions and feature designations remain absent alongside
+the unknown-native-owner bypass. Make accepted declaration authority mandatory for binding operations;
+use one explicit tagged native-declaration or backend-loaded-pack input, rather than optional checking or
+a special test-owner exemption. Native test composition may build that input before registration through
+clearly named fixture operations; its object must still satisfy the production registry interface when
+passed to the loader/shell. Provide valid machine/component fixtures, not casts hiding invalid bindings.
+
+Share browser-safe declaration schemas before enforcing native frontend semantics; do not import the
+Node build pipeline into the renderer or duplicate its grammar. Keep declaration origin separate from
+frontend delivery: a verified installed declaration may be served through the checkout's dev frontend
+map. Do not infer its authority/origin from that delivery choice. Preserve validation before settings
+access, capture-before-check semantics, stale prepared-candidate checks and accepted owner/revision data
+needed to match catalog rows to executable components. All other goal work and deferred-work decisions
+remain intact; 2B.1 does not close 2B or discovery.

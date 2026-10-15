@@ -73,7 +73,7 @@ the settings plan, as that goal already specifies.
 
 | Item | Decision and destination |
 |---|---|
-| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step admission/catalog projections, live readers and remaining kinds/assets stay required |
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; complete frontend admission authority, live readers and remaining kinds/assets stay required |
 | Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 still owns final documentation/schema coverage |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | M1 implemented in `2fff8bb76`: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
@@ -690,3 +690,17 @@ Required next: native step declaration/admission and common catalog/window parit
 palette/style/default/layout readers and cache removal (3). All other discovery/static-content, frozen
 execution/freshness, navigation, boundaries and Phase 6 requirements remain active. This checkpoint does
 not complete discovery or replace the final committed-source strict `--all` requirement.
+
+
+### Native step/catalog foundation checkpoint (2026-10-15)
+
+`fdd967ec5` completes discovery checkpoint 2B.1: shared native step grammar, native/disabled-installed/
+unbuilt-source catalog/window projection, active wire ownership, captured metadata and backend/native
+step slot checks. Reproduced JSON-key loss and pre-validation class normalization are fixed without
+changing declared types or output identities. Strict and committed-source strict checks pass; the owning
+goal records the source, eight mutations, preserved EARS/content/facade output and real app/authoring runs.
+
+Complete native frontend grammar and mandatory admission authority (2B.2), then live step readers/cache
+removal (3). The existing unknown-native-owner frontend bypass is required unfinished work, not a waiver.
+Every other discovery/freshness/compiler-scope, navigation, boundary and Phase 6 requirement remains active;
+final committed-source strict `--all` and the completion audit are still required.

@@ -4803,3 +4803,60 @@ composition path. Only then migrate palette/style/default/layout readers and ret
 caches in checkpoint 3. Full trigger/build metadata, remaining contribution kinds/assets, exact compiler/
 frozen execution/freshness, cold editor readiness, native lifecycle, navigation, frontend boundaries and
 all three Phase 6 workstreams remain required. This is not phase/goal completion or the final strict `--all`.
+
+
+### Native step/catalog foundation checkpoint (2026-10-15)
+
+Source `fdd967ec5` completes **2B.1** in the
+[discovery plan](../plans/discovery-without-activation.md#native-stepcatalog-admission-audit-and-execution-order-2026-10-15).
+Native `steps` use the authored `StepEntry` schema/type. `StepCatalogEntry` and `PackCatalogView.steps()`
+share one native/installed/source projection, retaining disabled and unbuilt declarations without code
+loading or manufactured build identities. Window projections stay stable per committed frame and ignore
+stale frames. Different inactive owners remain visible; two active packs cannot share a step wire.
+
+Backend native step admission now shares the installed checker: exact node data, facet/handler/flag
+membership and the separately declared trigger registration slot. Both runtime registries capture step
+node/default/presentation/component-slot/layout data before checking/publishing it, preserving executable
+component/function identities. Later caller mutations cannot change accepted data or membership. Native
+JSON and runtime node/connection data are validated before copying, so cloning cannot normalize invalid
+classes or execute declarative accessors. Identity getters in executable bindings are read once; the
+production-registry test preserves that invariant without deriving declarations from those getters.
+Unused definition-store wrappers are removed; unrelated shared slot/DSL behavior remains intact.
+
+A reproduced schema bug also dropped own `__proto__` keys from opaque JSON defaults. Node and settings
+defaults now validate and clone JSON without record decoding; inferred `Record<string, unknown>` types
+and generated JSON Schema object semantics are preserved. Native fixture composition declares existing
+step data/slots explicitly and refuses missing node data, with authored fixtures migrated. No EARS types,
+shapes, wire names, content identities or release metadata change; no compatibility path is introduced.
+
+Evidence:
+
+- Focused host/schema/settings/catalog checks pass (1,139 tests), followed by native purity/slot/runtime
+  checks (1,031 tests and final 91-test guard recheck). Class normalization was independently reproduced:
+  the schema refused a class while the catalog accepted its clone; JSON-key regression failed before its
+  fix. Logs: `/private/tmp/apack-native-step-{json-baseline,json-fixed,data-capture-baseline}.log`.
+- Eight mutations of native admission, active ownership, node/presentation capture, window projection,
+  native JSON-before-copy, trigger registration membership and runtime JSON-before-copy fail the intended
+  assertions; exact source restored. Logs: `/private/tmp/apack-native-step-mutation-*.log`.
+- The initial full host run caught one old renderer assertion requiring mutable step-object identity;
+  the corrected test proves owned node data and retained executable icon identity. Initial complete strict
+  validation passes in 862.7s: `node_modules/.cache/apack-chain/runs/2026-10-15T13-04-19Z-79123`,
+  `/private/tmp/apack-native-step-foundation-strict.log`, including 395 host files/4,717 tests.
+- Final `npm run chain -- --strict --cores 1` after the additional guards passes in 811.0s (one unchanged
+  step reused): `node_modules/.cache/apack-chain/runs/2026-10-15T13-25-59Z-16224`,
+  `/private/tmp/apack-native-step-foundation-validated-strict.log`. Changed host subset: 299 files/3,571
+  tests; integration: 57 files/739 tests, including facade/completion checks; default pack: 846 tests,
+  existing one file/two tests skipped. Real external contract, Electron replacement/restart, smoke,
+  packaged authoring/app, API/schema/package checks pass. All seven baseline EARS/content files and
+  the default-pack facade report remain unchanged. No test/hook deadline changes.
+- Committed-source `npm run chain -- --strict` passes in 1.0s (29/30 cached):
+  `node_modules/.cache/apack-chain/runs/2026-10-15T13-40-49Z-51256`,
+  `/private/tmp/apack-native-step-committed-strict.log`. Unrelated staged issue work is untouched.
+
+Required next is **2B.2**: complete native frontend declaration grammar/admission authority and accepted
+owner/revision binding information. The pre-existing unknown-native-owner frontend bypass remains
+unfinished, explicitly owned by that checkpoint; it is not an approved exception. Finish it before
+checkpoint 3's live palette/style/default/layout readers and permanent-cache removal. Full trigger/build
+metadata, remaining kinds/assets, exact compiler/frozen-execution/freshness and scope-cost work, native
+lifecycle, cold editor readiness, navigation, frontend boundaries and all Phase 6 workstreams remain
+required. This is not phase/goal completion or final committed-source strict `--all` validation.
