@@ -2424,3 +2424,41 @@ scaffold suites needed the existing between-case event-loop yield policy. Adding
 The final strict checkpoint passes, and strict validation on committed source passes with unchanged
 successful checks cached. The owning goal records exact runs and counts. This is not final `--all` or
 completion of discovery; all outstanding consumer, source-freshness and later-phase requirements remain.
+
+
+### Step discovery: declaration and reader sequence (2026-10-15)
+
+Current code keeps `StepEntry.node` as an exported `StepNodeFacet` target. Codegen imports it into both
+registrations; backend binding checks only its presence/object shape. Palette labels/defaults therefore
+require executable module imports despite being data. `StepFEFacet` also hides category, icon target,
+connection rules, colors and layout flags beside executable components/layout callbacks. UI
+`node-styles.ts` caches active-registry projections indefinitely. Native declarations do not yet cover
+steps. This is required work, not a reason to treat the existing module paths as complete discovery.
+
+Implement these dependent checkpoints:
+
+1. Inline `extensions.steps.<type>.node` as `{ label, defaultLabel?, defaults? }`. Generate the same
+   data into both bindings and compare it exactly before admission. Migrate every authored pack,
+   scaffold/template, source reader, fixture and public/schema/API contract; remove the redundant node
+   exports outright. The StepDefinition runtime node data contract remains. Inspect useful node data
+   without authored modules or activation. A metadata-only step has no executable directory; do not
+   invent a module path to find optional conventional types/helpers. Explicit executable facet paths
+   continue to locate those files where applicable. No aliases or source-format conversion.
+2. Declare the frontend's static step metadata and component/layout bindings, sharing checked schemas
+   with native declarations. Keep calculated layout callbacks executable and expose their availability,
+   not predicted results. Preserve component loading metadata and module-reference semantics. Complete
+   common catalog/window projections and native/installed binding membership before switching readers.
+3. Replace palette/style/default and static layout discovery reads with committed catalog data;
+   executable node/form/layout evaluation still requires accepted bindings/readiness. Remove active-
+   registry discovery unions and permanent derived caches. Prove disabled/unavailable declarations,
+   replacement/unload/re-enable, ownership conflicts, native parity and real external authoring.
+
+For checkpoint 1, preserve every default exactly as JSON data: the current LLM model string is a pack
+node default; omit the switch default's `predicate: undefined` because the durable JSON contract means
+absence. Verify the resulting creation behavior. Do not change generated EARS types or compiled content
+identities. Keep the model runtime fallback separately where execution uses it. Required checks include
+schema/codegen/static-target coverage, backend/frontend mismatch refusal retaining incumbent bindings,
+CLI inspection with poisoned modules, real scaffold/external/default builds and app node defaults.
+Regenerate reviewed schema/API reports, run focused and strict checkpoint checks, commit and record
+source evidence before continuing. This sequence leaves the full goal and native/static assets,
+source execution/freshness, navigation, boundaries and all Phase 6 requirements intact.
