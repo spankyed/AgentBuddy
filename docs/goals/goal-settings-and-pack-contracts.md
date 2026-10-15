@@ -4149,3 +4149,13 @@ certifying freshness, then manual-build/drive launch behavior. Retain every rema
 native/static-content discovery requirement, navigation, frontend boundary and all three Phase 6
 workstreams; final committed-source strict --all and the full completion audit remain due. Nothing
 is archived from this checkpoint.
+
+### Remaining artifact vocabulary cleanup (2026-10-14)
+
+Source `bd2f45867` corrects overlooked frontend-loader comments/test messages, distribution-plan
+package terminology and build/release labels. Actual app artifact contributions, third-party API names,
+archived history and historical log paths retain their meanings. No executable behavior changed.
+All 31 frontend-loader tests pass; required strict validation passes all 30 gates in 354.0s
+(15 cached): `/private/tmp/apack-artifact-terminology-followup-strict.log`,
+`node_modules/.cache/apack-chain/runs/2026-10-14T23-55-19Z-83799`. The unrelated issue draft remains
+untouched. The complete goal and every unfinished requirement remain active.
