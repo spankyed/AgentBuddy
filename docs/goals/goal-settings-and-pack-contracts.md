@@ -5032,3 +5032,49 @@ compiler identity/input closure/frozen publication and manual-build/drive freshn
 lifecycle, entity navigation, frontend boundaries and all three Phase 6 workstreams remain required.
 Finish the complete original-requirement/phase audit and final committed-source strict `--all` before
 completion. This checkpoint closes neither discovery nor the goal; nothing is archived.
+
+
+### Backend step metadata and write eligibility — checkpoint 3B
+
+Source `71fad4013` completes discovery reader **3B**. Backend defaults and labels read committed
+catalog declarations without activating providers. New node creation requires an enabled accepted
+backend matching the selected owner, declaration data/revision and optional build revision. Its actual
+runtime generation is rechecked after trigger validation and before writes. Active runtime/build
+lookups retain their separate execution and retirement lifetime.
+
+The host owns accepted origin/declaration snapshots and relation/query-field data before callbacks or
+caller mutation. Native and source execution use actual admission generations without fabricated
+installed receipts. Backend step lookups bind only to the backend host; obsolete frontend step ports,
+facet helpers, harness merging and duplicate binding indexes are removed. Test stand-ins declare
+metadata explicitly. Public extension guidance and three SDK API reports match this contract.
+
+Validation and corrections:
+
+- The CLI offline-info test passes with flattened extension keys and no authored modules or activation.
+  Four actual-registry tests cover unload, atomic replacement/refusal, source identity and owned data.
+  Fourteen SDK binding checks cover unavailable, stale, foreign and ambiguous owners. Repository tests
+  prove unavailable providers and retirement/replacement during validation cannot write a node.
+- Two deliberate guard mutations were caught: changed declaration data authorized a provider, and
+  removing the post-validation generation check allowed writes after retirement/replacement. Restored
+  source passes. Evidence: `/private/tmp/apack-step-mutation-{identity,write-boundary}.log`.
+- Full host pool: 403 files/4,801 tests. Pack pool: 851 passed/two skipped. Full integration: 58 files/
+  741 tests in run `2026-10-15T17-54-49Z-78244`. That attempt's sole remaining failure was app test
+  setup: the canvas deliberately ignores palette clicks during its list-to-view transition. The test
+  retries the UI action within the same five-second assertion limit; no production timeout changes.
+- The focused installed-app scenario passes, then all 25 external fixture app tests, bundled fixture,
+  replacement scenarios, smoke and packaged authoring pass. Creation requires a permanent backend ID
+  with declared defaults, rather than an optimistic temporary node. Seven EARS/content baseline files
+  and the generated facade remain unchanged. Reviewed all three API report diffs.
+- Final strict `npm run chain -- --strict --cores 1` passes all 30 steps in 374.6s (18 cached), run
+  `2026-10-15T18-05-11Z-9023`, `/private/tmp/apack-step-chain-passing.log`. The changed integration
+  subset passes nine files/375 tests. Earlier fixture/origin-identity assumptions and CLI frontend
+  call sites were corrected before this accepted run.
+- Committed-source strict passes again in 1.1s (29 cached), run `2026-10-15T18-11-45Z-25483`,
+  `/private/tmp/apack-step-committed-strict.log`. Unrelated staged issue work remains untouched.
+
+Next audit and finish full trigger/build metadata before expanding the remaining contribution readers.
+Remaining contribution/content/asset discovery, compiler identities/input closure/frozen publication,
+manual-build/drive freshness, native/editor lifecycle, entity navigation, frontend boundaries and all
+three Phase 6 workstreams remain required. Finish the reconciled original-requirement/phase audit and
+final committed-source strict `--all` before completion. This checkpoint closes neither discovery nor
+the goal; no unfinished work is archived.

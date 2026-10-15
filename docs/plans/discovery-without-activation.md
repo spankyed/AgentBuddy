@@ -2788,3 +2788,22 @@ than deriving declarations from execution maps. Prove no provider invocation dur
 unload, replaced/disabled/foreign owners refuse creation without writes, valid source/native/installed
 paths work, and normal defaults/validation/relations remain intact. Keep the full remaining discovery,
 compiler, navigation, boundary and Phase 6 scope active.
+
+
+### Backend step reader outcome, checkpoint 3B (2026-10-15)
+
+Implemented in `71fad4013`: backend metadata/defaults use the catalog, while new writes require a
+current accepted backend generation. Raw execution/retirement keeps its own lifetime. Backend and
+frontend ports are separate; each registry stores accepted binding rows once, with exclusive ownership.
+Accepted origin/declaration/relation/query-field data is captured before callers can mutate it. Test
+stand-ins author metadata explicitly. The installed fixture proves backend-confirmed defaults and
+continues to follow disable/re-enable.
+
+Strict validation passes all 30 steps, run `2026-10-15T18-05-11Z-9023`; committed-source strict passes
+again, run `2026-10-15T18-11-45Z-25483`. Full counts, corrected fixture assumptions, guard mutations and
+logs are recorded in the owning goal's checkpoint 3B entry. Seven EARS/content baselines stay identical.
+
+Next finish full trigger/build metadata, then remaining contribution/content/asset readers and their
+binding/freshness rules. Compiler closure/frozen publication, source watch/manual-build/drive freshness,
+native/editor lifecycle and the goal's navigation, frontend boundaries and three Phase 6 workstreams
+remain required. This reader checkpoint does not complete discovery or authorize archiving the plan.
