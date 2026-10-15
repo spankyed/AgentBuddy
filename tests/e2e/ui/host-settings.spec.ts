@@ -78,6 +78,52 @@ test('the host-only editor preserves saved references without activating default
   }
 });
 
+test('an open editor follows installed pack activation without losing its draft', async ({ app, appPage }) => {
+  expect((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+  const mounted = await appPage.evaluateHandle(async () => {
+    const { createApp } = await import('vue');
+    const componentPath = '@apackdev/ui/components/tiptap/TiptapEditor';
+    const { default: TiptapEditor }: { default: Component } = await import(componentPath);
+    const root = document.createElement('div'); root.id = 'live-contribution-editor'; document.body.appendChild(root);
+    const updates: string[] = [];
+    const component = createApp(TiptapEditor, { mode: 'editor', modelValue: '/not-a-command [Saved memo](apack-ref://memo/Memo-live)',
+      'onUpdate:modelValue': (value: string) => { updates.push(value); } });
+    const exposed = component.mount(root) as unknown as { editor: Editor | undefined };
+    return { component, root, exposed, updates };
+  });
+  const toggle = () => appPage.evaluate(async () => {
+    const { untypedSendToSystem } = await import('@apackdev/sdk/events');
+    untypedSendToSystem('host/packs', { type: 'TOGGLE_PACK_ENABLED', packId: 'default-setup' });
+  });
+  try {
+    await expect(appPage.locator('#live-contribution-editor .reference-pill')).toHaveText('Saved memo');
+    const initial = await mounted.evaluate(({ exposed, updates }) => {
+      const editor = exposed.editor!;
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.insertContent(' pending draft');
+      return { document: editor.getJSON(), selection: editor.state.selection.toJSON(), count: updates.length };
+    });
+    await toggle();
+    await expect.poll(() => mounted.evaluate(({ exposed }) => exposed.editor?.extensionManager.extensions
+      .some(extension => extension.name === 'commandSuggestion') ?? false)).toBe(true);
+    expect(await mounted.evaluate(({ exposed, updates }) => ({ document: exposed.editor!.getJSON(),
+      selection: exposed.editor!.state.selection.toJSON(), count: updates.length }))).toEqual(initial);
+    await toggle();
+    await expect.poll(() => mounted.evaluate(({ exposed }) => !!exposed.editor && !exposed.editor.extensionManager.extensions
+      .some(extension => extension.name === 'commandSuggestion'))).toBe(true);
+    expect(await mounted.evaluate(({ exposed, updates }) => ({ document: exposed.editor!.getJSON(),
+      selection: exposed.editor!.state.selection.toJSON(), count: updates.length }))).toEqual(initial);
+    await expect(appPage.locator('#live-contribution-editor .reference-pill')).toHaveText('Saved memo');
+  } finally {
+    await mounted.evaluate(({ component, root }) => { component.unmount(); root.remove(); });
+    await mounted.dispose();
+    if ((await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))) {
+      await toggle();
+      await expect.poll(async () => (await app.getContext()).pluginIds.some(id => id.startsWith('default-setup/'))).toBe(false);
+    }
+  }
+});
+
 test('shortcut drafts follow another window and preserve the global flag', async ({ app, appPage, electronApp }) => {
   await app.navigate('host/settings');
   await appPage.getByRole('button', { name: 'General', exact: true }).click();

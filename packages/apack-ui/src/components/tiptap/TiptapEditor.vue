@@ -12,12 +12,13 @@
       </template>
       <TiptapBubbleMenu v-if="cfg.textBubbleMenu" :editor="editor" />
     </template>
-    <editor-content :editor="editor" :class="editorClass" />
+    <p v-if="problem" role="status">{{ problem }}</p>
+    <editor-content v-else :editor="editor" :class="editorClass" />
     <template v-if="editor">
       <component
-        v-for="(popup, i) in pluginPopups"
-        :key="i"
-        :is="popup"
+        v-for="popup in pluginPopups"
+        :key="`${generation}/${popup.id}`"
+        :is="popup.component"
         :editor="editor"
         :variant="variant"
       />
@@ -26,12 +27,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { computed, ref, watch } from 'vue'
+import { EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions.ts'
 import { getEditorConfig } from './editor-config.ts'
-import { tiptapPluginRegistry } from '@apackdev/sdk/fe'
+import { useContributedEditor } from './internal/use-contributed-editor.ts'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -39,12 +40,6 @@ import { createImageHandlers } from './composables/createImageHandlers.ts'
 import { createEditorClickHandler, createViewerClickHandler } from './composables/createEditorClickHandler.ts'
 import { useSubDocumentTracking } from './composables/useSubDocumentTracking.ts'
 import { createKeyboardHandler } from './composables/createEditorKeyboard.ts'
-
-const tiptapPlugins = tiptapPluginRegistry.getAll()
-const injectedExtensions = tiptapPlugins.flatMap(p => Object.values(p.binding.extensions ?? {}))
-const pluginPopups = tiptapPlugins.flatMap(p => Object.values(p.binding.popups ?? {}))
-const isSuggestionActive = (view: import('@tiptap/pm/view').EditorView) =>
-  tiptapPlugins.some(p => p.binding.isSuggestionActive?.(view.state))
 
 const props = withDefaults(defineProps<{
   mode: TiptapMode
@@ -140,7 +135,7 @@ function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: i
 // `<h2>` characters in their streaming bubble. Pass the markdown string
 // straight through and let the override handle the single parse.
 function resetContent(content: string, resetSelection = false) {
-  if (!editor.value) return
+  if (!editor.value) { resetDocument(); return }
   suppressNodeDeletionEvents.value = true
   editor.value.chain().setMeta('addToHistory', false).setContent(content).run()
   if (resetSelection) selectStart(editor.value)
@@ -164,7 +159,7 @@ const handleKeyDown = createKeyboardHandler({
   getEditor: () => editor.value,
   getInHistoryMode: () => props.inHistoryMode,
   getPauseAvailable: () => props.pauseAvailable,
-  isSuggestionActive,
+  isSuggestionActive: view => groups.value.some(group => group.binding.isSuggestionActive?.(view.state)),
   emit: {
     submit: () => emit('submit'),
     focusTitle: () => emit('focusTitle'),
@@ -176,12 +171,12 @@ const handleKeyDown = createKeyboardHandler({
   },
 })
 
-const editor = useEditor({
+const { editor, groups, generation, problem, resetDocument } = useContributedEditor(bindings => ({
   extensions: createExtensions({
     mode: props.mode,
     variant: props.variant,
     placeholder: props.placeholder,
-    injectedExtensions,
+    injectedExtensions: bindings.flatMap(group => Object.values(group.binding.extensions ?? {})),
   }),
   content: props.modelValue,
   editable: cfg.editable && !props.disabled,
@@ -202,15 +197,18 @@ const editor = useEditor({
     emit('update:modelValue', md)
   },
   ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
-})
+}))
+
+const pluginPopups = computed(() => groups.value.flatMap(group => Object.entries(group.binding.popups ?? {})
+  .map(([id, component]) => ({ id: `${group.packId}/${group.groupId}/${id}`, component }))))
 
 // Sync modelValue changes from parent into the editor.
 // In viewer mode the editor is read-only — skip the getMarkdown() round-trip
 // comparison which can silently skip legitimate updates when the serializer
 // normalizes whitespace differently from the source markdown.
 watch(() => props.modelValue, (newVal) => {
-  if (!editor.value) return
   if (emittedValues.delete(newVal)) return
+  if (!editor.value) { resetDocument(); return }
   if (!cfg.editable) { resetContent(newVal); return }
   if (newVal !== getMarkdown()) resetContent(newVal)
 })

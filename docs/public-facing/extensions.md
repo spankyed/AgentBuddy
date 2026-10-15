@@ -553,6 +553,13 @@ The returned list is detached. `onChanged(listener)` observes committed frontend
 an unsubscribe function; reread the projection to distinguish relevant editor changes from unrelated
 pack changes. Discovery and unavailable groups remain in the catalog, separate from these bindings.
 
+Open editors follow accepted contribution changes. Popup/predicate-only updates preserve the editor
+and undo history. Extension changes replace its executable editor after retiring the previous popups;
+pending document data, selection and focus survive when the new schema represents them exactly.
+Undo history resets on that replacement. An unavailable or incompatible schema suspends the editor
+without saving altered content; restoring a compatible pack restores the pending document. Switching
+to another document explicitly discards that suspended editor state.
+
 The app's native frontend owns the `reference` node used by saved `apack-ref://` links. It is present
 without default-setup or a reference provider. Default-setup adds `referenceSuggestion`, its picker
 popups and command behavior; disabling it removes those tools while preserving stored references.
