@@ -2901,22 +2901,47 @@ when execution is unavailable; node type stays fixed. Known declarations without
 relation/field edits without an active provider. The watch-publication fixture now owns setup/cleanup in
 Vitest hooks; a forced test timeout proves the next test remains isolated without raising timeout limits.
 
-### Required producer-cache/output-receipt correction (2026-10-15)
+### Required content-based source freshness correction (2026-10-15)
 
-The 3D validation sequence exposes a concrete source-freshness gap. A concurrent edit/build followed by
-restoring source left `build:default-setup` cached while `staleBuildOutput(defaultSetup)` correctly refused
-its output at app-test preparation. A manual pack rebuild repairs the output, but does not fix the cache
-contract. Evidence: run `2026-10-15T19-40-18Z-57807`,
-`/private/tmp/apack-node-update-stable-strict.log`; restored-source build log
-`/private/tmp/apack-node-update-restored-pack-build.log`. `scripts/chain.ts` skips from its declared-input
-stamp; `PACK_OUTPUTS` are excluded from that producer's own input fingerprint.
+The 3D validation sequence exposed disagreement between the chain and app preparation after source
+restoration. Run `2026-10-15T19-40-18Z-57807` reports the shipped build cached, then
+`staleBuildOutput(defaultSetup)` refuses `query.ts`. A manual rebuild repairs the disagreement.
+Evidence: `/private/tmp/apack-node-update-stable-strict.log` and
+`/private/tmp/apack-node-update-restored-pack-build.log`.
 
-Reproduce with a cached successful source A, an independent pack build from changed source B, then
-restore A and run the chain. Before skipping the producer, its cache decision must establish that existing
-output still belongs to current source/compiler inputs. Reuse the producer's existing output-receipt and
-freshness authority; do not create another authored inventory, duplicate closure scanner or hash proxy.
-Prove ordinary manual builds, source restoration, changed/missing output, unchanged deterministic output,
-and cached downstream consumers agree. App preparation must continue refusing genuinely stale builds;
-it must not become a fallback conversion/rebuild path. Audit the shared protocol and other producer
-callers before choosing the correction. This is the next required source-freshness checkpoint before
-expanding more discovery readers, not an exclusion from the remaining compiler/freshness scope.
+**Current-code audit corrects the initial diagnosis.** The chain already compares both input identity
+and every output digest: `unitStaleReason` in `packages-built.ts:815` calls `outputDigests`. It must not
+gain another output-hash mechanism. The inconsistent reader is `packs/layout.ts` `staleBuildOutput`:
+it compares the newest source mtime with the oldest built entry/snapshot mtime. Restoring unchanged
+bytes can therefore refuse a content-current build. The initial producer-cache diagnosis in the 3D
+evidence was provisional and wrong; no producer-cache defect is established by that failure alone.
+
+The existing integrity receipt proves published output bytes. It does **not** record complete authored
+source/compiler inputs. `build.ts` captures `packInputsHash` and `captureCompilationInputs` for its
+publication checks; the snapshot does not persist them as a whole-build source-freshness contract.
+Private phase-cache records cover particular reused phases, not this missing contract. Do not pretend
+an existing complete source receipt is available, or read a private phase cache as the build's authority.
+
+Fold this correction into the required compiler/input-closure and publication work:
+
+1. Complete the existing source/compiler/dependency input-identity audit before settling the produced
+   receipt. Reuse shared input traversal and captured compilation knowledge; no second authored
+   inventory, directory guess or reader-specific scanner. Account for external linked inputs, build
+   options, actual compiler execution identity and coherent frozen publication, not only pack-root bytes.
+2. Publish the successful build's input identity with its owned output, atomically after all validation.
+   Decide the common data contract and layer placement from the existing producer/consumer graph;
+   the host must not import CLI internals. Failed builds retain the incumbent input/output association.
+3. Replace `staleBuildOutput`'s mtime gate and the pack side of drive-preflight's mtime guidance with
+   that common current-input/output authority. Audit archive, prebuilt testing, default-fork preparation,
+   direct/manual builds, watch and drive. Define which supplied compilation context each source consumer
+   compares; installed/offline discovery must still verify builds without authored files or a compiler.
+4. Prove a timestamp-only touch and edit followed by exact byte restoration remain current; actual
+   same-mtime byte edits, added/removed or linked inputs and relevant tool/dependency/option changes
+   invalidate current-source reuse. Changed/missing output still refuses through existing verification.
+   Include an actual cached-chain plus app-preparation reproduction, not only an isolated hash test.
+5. Preserve unchanged deterministic output caching, explicit deliberately stale drive behavior and
+   read-only inspection. No fallback conversion or consumer-triggered build/staging on discovery paths.
+
+This is the next required source-freshness work before expanding more discovery readers. Do not
+replace the outstanding exact compiler/input/frozen-publication scope with a patch to timestamp
+comparison. All remaining contribution kinds and later goal phases stay required.

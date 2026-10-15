@@ -5152,7 +5152,8 @@ Evidence and corrections:
 - Integration passes all 58 files/741 tests in 311s, run `2026-10-15T19-30-40Z-29547`. Concurrent source
   edits then made app validation refuse a stale shipped build; the user stashed those edits. Rebuilding
   the shipped pack from restored source resolves that operational mismatch. Unrelated work is preserved.
-  This exposes a required producer-cache/freshness case recorded in the discovery plan below.
+  This exposes a required freshness disagreement recorded in the discovery plan. The subsequent
+  current-code audit below corrects its initial producer-cache diagnosis.
 - Final strict `npm run chain -- --strict --cores 1` passes all 30 steps in 251.3s (25 cached), run
   `2026-10-15T19-41-55Z-58481`, `/private/tmp/apack-node-update-final-strict.log`. External-pack app,
   smoke and packaged authoring pass. All seven generated EARS/content baselines remain byte-identical
@@ -5160,8 +5161,23 @@ Evidence and corrections:
 - Committed-source strict passes again in 1.3s (29 cached), run `2026-10-15T19-46-26Z-64922`,
   `/private/tmp/apack-node-update-committed-strict.log`. The staged scope-loss issue remains uncommitted.
 
-Next audit and fix the demonstrated producer-cache/output-receipt mismatch within the required source
-freshness work, then resume remaining contribution/content/asset readers. Compiler identity/input closure,
+Next finish content-based source freshness within the required compiler/input/publication work,
+then resume remaining contribution/content/asset readers. Compiler identity/input closure,
 frozen publication, manual-build/drive freshness, native/editor lifecycle, entity navigation, frontend
 boundaries and all three Phase 6 workstreams remain required. Complete the reconciled requirement/phase
 audit and final strict `--all` on committed source before completion; this checkpoint archives nothing.
+
+
+#### Source-freshness audit correction after 3D
+
+Inspection proves the chain already checks output digests (`unitStaleReason`/`outputDigests`). The
+observed refusal comes from `staleBuildOutput`'s mtime comparison, which can disagree with content
+identity after unchanged source is restored. The initial producer-cache diagnosis is withdrawn; no
+new output-hash layer is warranted. Existing integrity verifies outputs, while complete source/compiler
+input identity is not yet persisted in the snapshot. Private phase caches are not that contract.
+
+The discovery plan now owns the precise required correction and acceptance: shared complete input
+identity, atomic input/output publication, content-based source consumers, timestamp/restoration and
+same-mtime-change checks, real cached-chain/app preparation, and source-free installed discovery.
+Complete the remaining exact compiler/closure/frozen-publication audit before choosing its produced
+shape. This audit does not declare those requirements implemented or narrow any remaining goal phase.
