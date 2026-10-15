@@ -2394,3 +2394,21 @@ remain 60s. This is a correction to which operation the limit governs, not a new
 measured-cost multiplier. Run existing timeout/graph checks, then the real strict chain; investigate
 any actual assertion failure or stall instead of increasing limits again. This supersedes the earlier
 pool-wide cap instruction after the observed interference; no required validation is waived.
+
+### Validation work placement corrections
+
+Deadline source `b910bc66e` removes the aggregate-only override; all 89 graph/timeout checks pass.
+The strict run (`2026-10-15T10-02-14Z-56915`) and an isolated integration run now expose actual work
+placement defects instead of the 60s aggregate cutoff. The isolated run passes 54/55 files before its
+300s ceiling: `frontend-resources.integration.spec.ts` combines 19 serial glob, worker and asset
+scenarios in one worker. Split it by those existing concerns, sharing fixture cleanup/output readers
+and preserving every test body, assertion, input variant and per-test bound. Do not increase deadlines.
+
+The app gate also exposes `default-pack-fork.spec.ts` building all of default-setup in `beforeAll`.
+Its 60s hook expires under load and `afterAll` deletes the still-compiling source directory. Move the
+fork's source mutation, real external build and archive production into the existing contract-preparation
+stage. Declare its source inputs and generated output handoff in the chain. The app test reads that
+prepared archive and keeps the 60s hook/test policy; normal boot/reload/replacement acceptance remains.
+No fake archive, bypassed compile, new success stamp or package-manager cache protocol. Retain bounded
+producer cleanup, and leave release/version metadata and unrelated work untouched. Prove the full
+integration and external app paths after these structural fixes, then resume required discovery work.
