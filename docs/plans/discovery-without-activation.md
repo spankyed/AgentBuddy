@@ -2279,3 +2279,40 @@ by that interrupted gate. This is not a green full chain or phase completion. Th
 final committed-source strict `--all`, live editor recomposition, remaining discovery/source freshness,
 entity navigation, frontend boundaries and all Phase 6 workstreams remain required. Nothing is
 excluded or archived.
+
+### Accepted editor binding identity and lifetime
+
+The current editor takes `tiptapPluginRegistry.getAll()` once during setup. Popup membership and
+Escape predicates therefore retain an unloaded pack, and an editor created before a pack arrives
+never adopts it. The registry also discards pack/group identity when projecting its accepted bindings.
+The catalog supplies declared membership, but cannot stand in for accepted executable bindings.
+
+Installed Tiptap source confirms `Editor.setOptions()` only updates options/view props and state;
+it does not rebuild the extension manager or schema. `registerPlugin()` reconfigures ProseMirror
+plugins, not node/mark definitions. Do not use either API as an alleged general schema replacement.
+
+Implement in coherent checkpoints:
+
+1. Preserve `packId`, `groupId` and the captured `binding` in the registry's accepted editor projection.
+   Return immutable rows and a detached list, preserving pack/group order and incumbent binding object
+   identity across unrelated commits. Expose committed-change subscription through the existing SDK
+   registry. Refused/disposed candidates publish nothing; disposal unsubscribes. Native bindings use
+   this same contract. This is runtime availability, distinct from the declaration catalog.
+2. Recompose the actual editor only when its accepted extension membership/objects change; metadata
+   changes alone must not reset it. Key popup lifetimes by qualified contribution identity and editor
+   generation, and read predicates from the current accepted generation. Dispose old popup/provider
+   and editor resources before exposing replacements.
+3. Preserve pending document content and selection/focus when the replacement schema can represent
+   them. Verify schema round-trips rather than silently dropping unknown nodes/attributes/marks.
+   If required content has no usable provider, retain the original document and present an unavailable
+   editor until it can be represented safely. Do not keep unloaded executable callbacks alive or emit
+   normalized/damaged content as a save. Cover parent content/entity changes while unavailable.
+4. Treat undo/plugin state explicitly: arbitrary opaque plugin state is not transferable across schema
+   replacement. Preserve history for updates that do not replace the editor; reset it on actual schema/
+   extension replacement and document that boundary. Do not access private Tiptap managers or mutate
+   ProseMirror history internals to suggest stronger preservation than the libraries support.
+
+Prove install/replace/remove/re-enable against an already-created editor, stable unrelated updates,
+pending edits, selection, provider/pop-up disposal, unavailable content and unchanged native reference
+parsing. Include a real external contribution path. This work remains part of Phase 3, together with
+all other discovery/freshness and downstream goal requirements; it is not an exclusion or completion.
