@@ -55,6 +55,15 @@ export interface FieldMapping {
 }
 
 // @public
+export function getStepBinding(type: string): StepBackendBinding | undefined;
+
+// @public (undocumented)
+export function getStepDeclaration(type: string): StepCatalogEntry | undefined;
+
+// @public
+export function getStepDeclarations(): readonly StepCatalogEntry[];
+
+// @public
 export function isTruncated(result: unknown): result is TruncatedResult;
 
 // @public
@@ -89,6 +98,22 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
 };
+
+// @public
+export interface StepBackendBinding {
+    // (undocumented)
+    readonly binding: StepDefinition;
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<StepEntry>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly runtimeRevision: string;
+}
 
 // @public (undocumented)
 export interface StepBranch {

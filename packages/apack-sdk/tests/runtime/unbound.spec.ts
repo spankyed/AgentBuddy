@@ -84,9 +84,6 @@ describe('with no app bound', () => {
     const lookups: Array<[string, () => unknown]> = [
       ['getDesignated', () => getDesignated('brain')],
       ['hasDesignation', () => hasDesignation('brain')],
-      ['stepRegistry.get', () => stepRegistry.get('action')],
-      ['stepRegistry.all', () => stepRegistry.all()],
-      ['stepRegistry.triggers', () => stepRegistry.triggers()],
       ['artifactRegistry.get', () => artifactRegistry.get('code')],
       ['artifactRegistry.all', () => artifactRegistry.all()],
       ['blockRegistry.get', () => blockRegistry.get('choice')],
@@ -96,6 +93,9 @@ describe('with no app bound', () => {
       expect(use, name).toThrow(/bindHost\(runtime\).*\(the renderer with bindFeHost\(runtime\)\)/);
     }
     const backendLookups: Array<[string, () => unknown]> = [
+      ['stepRegistry.get', () => stepRegistry.get('action')],
+      ['stepRegistry.all', () => stepRegistry.all()],
+      ['stepRegistry.triggers', () => stepRegistry.triggers()],
       ['_contentWriterRegistry.get', () => _contentWriterRegistry.get('Memo')],
       ['importCompiledContent', () => importCompiledContent({ compiledDir: contentDir })],
       ['registeredContentKeys', () => registeredContentKeys('memo-pack')],

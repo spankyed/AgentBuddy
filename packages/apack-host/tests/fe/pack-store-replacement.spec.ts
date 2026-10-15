@@ -216,9 +216,9 @@ describe('prepared frontend replacement', () => {
     steps.length = 0;
     packs.registerFixture({ id: 'other' });
     expect(type).toHaveBeenCalledOnce();
-    expect(packs.step('captured')).toBeDefined();
+    expect(packs.stepBindings().get('captured')).toBeDefined();
     packs.unregisterPackFE('owner');
-    expect(packs.step('captured')).toBeUndefined();
+    expect(packs.stepBindings().get('captured')).toBeUndefined();
   });
 });
 

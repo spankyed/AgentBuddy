@@ -17,7 +17,6 @@ describe("a pack's declared steps", () => {
     expect(stepRegistry.isTrigger('pulse')).toBe(true);
 
     // The frontend facet is the renderer's and is registered there, not here
-    expect(stepRegistry.getFE('stamp')).toBeUndefined();
   });
 
   it('start a new node with the label and fields their node facet declares', () => {

@@ -12,6 +12,15 @@ test('an open flow palette follows external step disable and re-enable', async (
   const pulse = palette.getByRole('button', { name: 'Pulse', exact: true });
   await expect(stamp).toBeEnabled(); await expect(pulse).toBeEnabled();
   await expect(stamp).toHaveAttribute('draggable', 'true');
+  // The canvas ignores palette clicks during its list-to-view transition.
+  await expect(async () => {
+    await stamp.click();
+    expect(await appPage.evaluate(() => (window as any).applicationState.system
+      .get('default-setup/flows').getSnapshot().context.graph.nodes
+      .some((node: { id: string; nodeType?: string; note?: string }) =>
+        !node.id.startsWith('temp-') && node.nodeType === 'stamp' && node.note === 'stamped')))
+      .toBe(true);
+  }).toPass({ timeout: 5_000 });
   const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
   let disabled = false;

@@ -190,6 +190,7 @@ export interface TestPacks {
     readonly help: Map<string, HelpArticle[]>;
     readonly plugins: Set<string>;
     readonly services: Map<string, unknown>;
+    readonly stepDeclarations: Map<string, StepCatalogEntry>;
     readonly steps: Map<string, StepDefinition>;
     readonly systems: Set<string>;
 }

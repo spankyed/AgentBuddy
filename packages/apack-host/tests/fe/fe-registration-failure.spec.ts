@@ -36,7 +36,7 @@ describe('a frontend registration that throws partway', () => {
     expect(() => registry.registerFixture(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost'), designation: 'occupied' } }, artifacts: [{ type: 'ghost-view', fe: { icon: {} } }], steps: [step('ghost-step')] }))).toThrow(/Designation collision/);
 
     expect(registry.getRegisteredPlugins().map((p) => p.id), 'its plugin stayed in the list').toEqual(['neighbour-pack/neighbour']);
-    expect(registry.step('ghost-step'), 'its step stayed registered').toBeUndefined();
+    expect(registry.stepBindings().get('ghost-step'), 'its step stayed registered').toBeUndefined();
     expect(registry.artifact('ghost-view'), 'its artifact stayed registered').toBeUndefined();
     expect(registry.unregisterPackFE('partial-pack'), 'it was recorded as registered').toEqual([]);
   });

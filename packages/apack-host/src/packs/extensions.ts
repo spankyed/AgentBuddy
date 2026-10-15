@@ -47,12 +47,12 @@ export function createOwnedStore<V>(fold: (existing: V, next: V) => V = (_, next
 }
 
 /** One active pack owns a step wire; executable facets never fold across owners. */
-export function createOwnedStepStore() {
-  const store = createOwnedStore<StepDefinition>();
+export function createOwnedStepStore<V = StepDefinition>() {
+  const store = createOwnedStore<V>();
   const owners = new Map<string, string>();
   return {
     ...store,
-    set(type: string, value: StepDefinition, owner: string): void {
+    set(type: string, value: V, owner: string): void {
       const previous = owners.get(type);
       if (previous !== undefined) throw new Error(`Step "${type}" is already owned by pack "${previous}"; pack "${owner}" cannot register it again`);
       owners.set(type, owner);

@@ -1,3 +1,4 @@
+import { captureData } from './captured-data.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { referenceCatalogEntries } from './catalog-references.ts';
 import { frontendCatalogEntries } from './catalog-frontend.ts';
@@ -78,16 +79,7 @@ export interface PackCatalogFrame {
 
 /** Own immutable data; neither input mutation nor a reader can change a committed catalog. */
 function immutable<T>(data: T): CatalogData<T> {
-  const copy = structuredClone(data);
-  const seen = new Set<object>();
-  function freeze(value: unknown): void {
-    if (!value || typeof value !== 'object' || seen.has(value)) return;
-    seen.add(value);
-    Object.values(value).forEach(freeze);
-    Object.freeze(value);
-  }
-  freeze(copy);
-  return copy as CatalogData<T>;
+  return captureData(data) as CatalogData<T>;
 }
 
 /** One declaration catalog; settings are a projection, not another store of contributed defaults. */

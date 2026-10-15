@@ -149,8 +149,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const plugins: Plugin[] = [];
   let defaultPlugin: Plugin | undefined;
   const designations = createDesignationStore();
-  const steps = createOwnedStepStore();
-  const stepBindings = new Map<string, StepFrontendBinding>();
+  const steps = createOwnedStepStore<StepFrontendBinding>();
   const artifacts = createOwnedStore<ArtifactDefinition>();
   const blocks = createOwnedStore<BlockDefinition>();
   const appExtensions = createOwnedStore<SettingsForm>();
@@ -181,7 +180,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     plugins.push(...pack.addressed.map(({ plugin }) => plugin));
     defaultPlugin ??= pack.addressed.find(feature => feature.default)?.plugin;
     for (const [key, value] of pack.forms) forms.set(key, value);
-    for (const [key, value] of pack.steps) { steps.set(key, value.binding, pack.id); stepBindings.set(key, value); }
+    for (const [key, value] of pack.steps) { steps.set(key, value, pack.id); }
     for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
     for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
@@ -196,7 +195,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
       tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
     }
   }
-  return { plugins, defaultPlugin, designations, steps, stepBindings, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -311,8 +310,7 @@ export function createFePackRegistry(): FePackRegistry {
     settingsForm: target => tables.forms.get(formKey(target)),
     onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     designation: key => tables.designations.get(key),
-    step: key => tables.steps.get(key), steps: () => tables.steps.all(),
-    stepBindings: () => new Map(tables.stepBindings),
+    stepBindings: () => new Map(tables.steps.entries()),
     artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
     block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
     plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,

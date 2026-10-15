@@ -61,6 +61,24 @@ It writes the manifest entry under `extensions.steps` naming those two facets, a
 `runtime.ts` and name it in the entry to give the step something to run. A type the manifest already
 declares is refused.
 
+### Reading step declarations and implementations
+
+Backend code reads `getStepDeclaration(type)` or `getStepDeclarations()` from
+`@apackdev/sdk/steps` for labels, defaults and declared capabilities. These reads do not load pack
+modules and remain available when a pack is disabled or its implementation is unavailable.
+`stepRegistry.createNodeDefaults(type)` copies the declared defaults, so editing a node cannot mutate
+the catalog.
+
+Creating a node through `flowRepository` requires `getStepBinding(type)` to identify an enabled,
+accepted backend matching the current declaration and build. The repository checks that binding again
+after trigger validation and before writing. Missing or replaced providers refuse creation without
+persisting a node. `stepRegistry.getRuntime`, `getBuild` and `getTrigger` read active providers for
+execution, compilation and retirement; they do not establish eligibility for new work.
+
+Frontend code uses `getStepDeclarations`, `getStepDeclaration` and `getStepBinding` from
+`@apackdev/sdk/fe`. Frontend metadata comes from the catalog; executable views additionally require the
+current frontend binding. Backend and frontend implementations have separate lifetimes.
+
 ### Build facet (build.ts)
 
 ```typescript

@@ -9,6 +9,8 @@ import { EARS } from '../types/entities.ts';
 import { ROOT_FLOW_ROLE, type FlowEntity, type NodeBase } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 import { stepRegistry } from '../steps/registry.ts';
+import type { TriggerFacet } from '../steps/types.ts';
+import { getStepBinding } from '../steps/catalog.ts';
 import { createLogger } from '../logger/logger.ts';
 
 const logger = createLogger('flows-repository');
@@ -79,8 +81,8 @@ function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, han
 }
 
 /** A trigger node's own validation, run before it's stored */
-function validateNode(node: FlowNode): void {
-  const result = stepRegistry.getTrigger(node.nodeType)?.validate?.(node);
+function validateNode(node: FlowNode, trigger: TriggerFacet | undefined): void {
+  const result = trigger?.validate?.(node);
   if (result && !result.valid) {
     throw new RepositoryError(`Invalid ${node.nodeType} node: ${result.errors.join(', ')}`, RepositoryErrorCode.VALIDATION_ERROR);
   }
@@ -90,8 +92,7 @@ function validateNode(node: FlowNode): void {
 const relationField = (nodeType: string): string | undefined => stepRegistry.getBuild(nodeType)?.relation?.field;
 
 /** A node's input split into its related entity's id (when the input names one) and its own fields */
-function splitRelation(nodeType: string, input: FlowNodeInput): { related: Record<string, unknown>; fields: FlowNodeInput } {
-  const field = relationField(nodeType);
+function splitRelation(input: FlowNodeInput, field: string | undefined): { related: Record<string, unknown>; fields: FlowNodeInput } {
   if (!field || !(field in input)) return { related: {}, fields: input };
   const { [field]: relatedId, ...fields } = input;
   return { related: { [field]: relatedId }, fields };
@@ -241,8 +242,13 @@ export const flowRepository = {
   createNode: (flowId: EARS.EntityId, input: FlowNodeInput): FlowNode => {
     const ts = getTimestamp();
     const nodeType = input.nodeType || NODE_DEFAULTS.TYPE;
+    const accepted = getStepBinding(nodeType);
+    if (!accepted) throw new RepositoryError(
+      `Step "${nodeType}" has no active backend matching its current declarations`, RepositoryErrorCode.VALIDATION_ERROR,
+    );
     const defaults = stepRegistry.createNodeDefaults(nodeType) as Partial<NodeBase>;
-    const { related, fields } = splitRelation(nodeType, input);
+    const field = accepted.binding.build?.relation?.field;
+    const { related, fields } = splitRelation(input, field);
     const row = {
       ...defaults,
       ...fields,
@@ -253,11 +259,14 @@ export const flowRepository = {
       createdAt: ts,
       updatedAt: ts,
     };
-    validateNode(row as FlowNode);
+    validateNode(row as FlowNode, accepted.binding.trigger);
+    const current = getStepBinding(nodeType);
+    if (!current || current.runtimeRevision !== accepted.runtimeRevision || current.packId !== accepted.packId) {
+      throw new RepositoryError(`Step "${nodeType}" backend changed while validating the node`, RepositoryErrorCode.VALIDATION_ERROR);
+    }
 
     const nodeId = untypedTx(EARS.Entity.Node).batchPut(row).id();
     untypedTx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
-    const field = relationField(nodeType);
     const relatedId = field && related[field];
     if (relatedId) untypedTx(nodeId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
     return { id: nodeId, ...row } as FlowNode;
@@ -269,9 +278,9 @@ export const flowRepository = {
     const [current] = qx(nodeId).pickAll() as unknown as FlowNode[];
     if (!current) throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
 
-    const { related, fields } = splitRelation(current.nodeType, updates);
+    const { related, fields } = splitRelation(updates, relationField(current.nodeType));
     const changed = filterSystemFields(fields);
-    validateNode({ ...current, ...changed, updatedAt: ts } as FlowNode);
+    validateNode({ ...current, ...changed, updatedAt: ts } as FlowNode, stepRegistry.getTrigger(current.nodeType));
 
     const field = relationField(current.nodeType);
     if (field && field in related) {

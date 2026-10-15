@@ -272,7 +272,6 @@ describe('step registry integration', () => {
 
     expect(stepRegistry.getNode('listener')?.label).toBe('Listener');
     expect(stepRegistry.getNode('schedule')?.defaults).toEqual({ cronExpression: '0 * * * *' });
-    expect(stepRegistry.getFE('schedule')).toBeUndefined();
   });
 
   it('compile/decompile roundtrip for listener', () => {

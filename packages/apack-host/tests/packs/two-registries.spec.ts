@@ -59,7 +59,7 @@ describe('two registries in one process', () => {
 
   it("hold their own loaded packs, not one list between them", () => {
     const origin = { declarationRevision: 'fixture-revision', id: 'memo-pack', name: 'Memo', version: '1.0.0', dir: '/packs/memo-pack' };
-    bound.registerPack(pack('origin-pack', 'origins', 'origin_step', 'originService', 'origins'), { ...origin, id: 'origin-pack' });
+    bound.registerPack({ id: 'origin-pack' }, { ...origin, id: 'origin-pack' });
 
     expect(bound.loadedPacks().map((o) => o.id)).toContain('origin-pack');
     expect(other.loadedPacks()).toEqual([]);

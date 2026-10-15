@@ -1,4 +1,8 @@
-import { captureStepBinding } from './step-bindings.ts';
+import { captureData } from './captured-data.ts';
+import type { StepBackendBinding } from '@apackdev/sdk/steps';
+import type { DeclarationData } from '@apackdev/sdk/framework';
+import type { StepEntry } from '@apackdev/sdk/build';
+import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { backendBindingProblem, backendStepBindingProblem, contentBindingProblem } from './declaration-binding.ts';
@@ -293,14 +297,22 @@ export interface PackRegistry extends PackRegistryView {
 }
 
 /** Capture ownership and collection membership once; executable values retain their identity. */
-function admitContributions(registration: PackRegistration) {
+function admitContributions(registration: PackRegistration, declarations: DeclarationData<Record<string, StepEntry>> | undefined, origin?: PackOrigin) {
+  const runtimeRevision = randomUUID();
+  const steps = (registration.steps ?? []).map(binding => {
+    if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
+    return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision,
+      declaration: captureStepDeclaration(declarations[binding.type]), binding,
+      ...(origin && { declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision }),
+    })] as const;
+  });
   return {
     id: registration.id,
-    runtimeRevision: randomUUID(),
+    runtimeRevision,
+    steps,
     designations: designationsOf(registration),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
-    steps: (registration.steps ?? []).map(value => [value.type, value] as const),
     artifacts: (registration.artifacts ?? []).map(value => [value.type, value] as const),
     blocks: (registration.blocks ?? []).map(value => [value.type, value] as const),
     contentWriters: Object.entries(registration.contentWriters ?? {}),
@@ -314,7 +326,7 @@ type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>, commandOrder?: ReadonlyMap<string, number>) {
   const tables = {
     designations: createDesignationStore(),
-    steps: createOwnedStepStore(),
+    steps: createOwnedStepStore<StepBackendBinding>(),
     artifacts: createOwnedStore<ArtifactDefinition>(),
     blocks: createOwnedStore<BlockDefinition>(),
     contentWriters: createContentWriterStore(),
@@ -511,6 +523,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
   function registerContributions(registration: PackRegistration, origin: PackOrigin | undefined,
     checkBinding: typeof backendBindingProblem, replacing = false, replacement?: PackReplacementOptions): string[] {
+    if (origin) origin = Object.freeze({ ...origin,
+      ...(origin.manifest && { manifest: captureData(origin.manifest) }),
+      ...(origin.buildFiles && { buildFiles: Object.freeze({ ...origin.buildFiles }) }),
+    });
     if (registrations.has(registration.id) && !replacing) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
@@ -573,7 +589,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     const candidate = new Map(admitted);
-    candidate.set(registration.id, admitContributions(checkedRegistration));
+    const declarations = origin ? origin.manifest?.extensions?.steps
+      : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.steps;
+    candidate.set(registration.id, admitContributions(checkedRegistration, declarations, origin));
     const nextTables = buildContributionTables(candidate.values(), tables.commands.order());
     let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
     try {
@@ -750,8 +768,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
     // The SDK's lookups (PackRegistryView)
     designation: key => tables.designations.get(key),
-    step: key => tables.steps.get(key),
-    steps: () => tables.steps.all(),
+    stepDeclarations: catalog.steps,
+    stepBindings: () => new Map(tables.steps.entries()),
+    step: key => tables.steps.get(key)?.binding,
+    steps: () => tables.steps.all().map(row => row.binding),
     artifact: key => tables.artifacts.get(key),
     artifacts: () => tables.artifacts.all(),
     block: key => tables.blocks.get(key),

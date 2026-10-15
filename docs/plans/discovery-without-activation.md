@@ -2763,3 +2763,28 @@ methods through the checked frontend API. Audit the remaining shared active-regi
 removing them; preserve genuine runtime/compiler execution. Full trigger/build metadata, remaining
 contribution kinds/content/assets, exact compiler/input/frozen-publication and freshness work, native/editor
 lifecycle, navigation, boundaries and all Phase 6 workstreams stay required. No phase or goal is archived.
+
+
+### Backend step reader design, checkpoint 3B (2026-10-15)
+
+Expose declaration rows and captured accepted backend bindings as separate read-only ports on the
+backend registry. Share pure owner selection with the frontend. Defaults and node labels read only
+committed declarations, including unavailable providers; reading them activates nothing. New node
+creation requires a matching active backend owner before relation handling, trigger validation or writes.
+Capture declaration data and accepted identities during admission, before user binding callbacks, and
+retain those rows through existing atomic replacement/retirement. Do not reconstruct accepted metadata
+from changed origin objects or disk.
+
+Source execution in the harness is intentional: it has an accepted declaration revision and actual
+runtime generation, without an installed build receipt. Compiled dependency declarations can likewise
+lack a build receipt in this harness. Match optional build identities exactly; do not invent installed
+stamps. Native bindings use their actual runtime generation and captured declarations, with no installed
+version/build metadata. Unavailable/foreign/stale bindings cannot authorize a new write.
+
+Make `stepRegistry` backend-only, remove unused frontend facet/component methods and migrate their
+tests to frontend binding APIs. Preserve actual active runtime/build lookups for in-flight work and
+compiler execution; they are not metadata discovery. Test stand-ins declare metadata explicitly rather
+than deriving declarations from execution maps. Prove no provider invocation during reads, data survives
+unload, replaced/disabled/foreign owners refuse creation without writes, valid source/native/installed
+paths work, and normal defaults/validation/relations remain intact. Keep the full remaining discovery,
+compiler, navigation, boundary and Phase 6 scope active.

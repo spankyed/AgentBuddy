@@ -113,9 +113,6 @@ export interface PackExtensionsView {
     // (undocumented)
     blocks(): BlockDefinition[];
     designation(role: string): FeatureRef | undefined;
-    // (undocumented)
-    step(type: string): StepDefinition | undefined;
-    steps(): StepDefinition[];
 }
 
 // @public
@@ -132,6 +129,11 @@ export interface PackRegistryView extends PackExtensionsView {
     pluginIds(): readonly FeatureRef[];
     // (undocumented)
     settingsCatalog(): SettingsCatalog;
+    // (undocumented)
+    step(type: string): StepDefinition | undefined;
+    stepBindings(): ReadonlyMap<string, StepBackendBinding>;
+    stepDeclarations(): readonly StepCatalogEntry[];
+    steps(): StepDefinition[];
     systemIds(): readonly FeatureRef[];
 }
 

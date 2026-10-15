@@ -43,10 +43,10 @@ export interface TestShell {
 const running = new Set<TestShell>();
 
 /**
- * `frontend`, with the lookups it shares with the backend (roles, steps, artifacts, blocks) answered by `backend`
+ * `frontend`, with the lookups it shares with the backend (roles, artifacts, blocks) answered by `backend`
  * first. The SDK reads those through a bound frontend host whenever one is bound, which in the renderer is right; in
- * a test that also runs the pack's systems, it would hide from them every role and step the pack registered, the
- * brain and the `llm` step included. The frontend's own come second, for a role only a plugin in this test plays.
+ * a test that also runs the pack's systems, it would hide their shared contributions. Backend steps use the
+ * backend host directly. The frontend comes second, for a role only a plugin in this test plays.
  */
 function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView): FePackRegistryView {
   return {
@@ -60,8 +60,6 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     appExtension: (slot) => frontend.appExtension(slot),
     dslTypes: () => frontend.dslTypes(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
-    step: (type) => backend.step(type) ?? frontend.step(type),
-    steps: () => byType(backend.steps(), frontend.steps()),
     artifact: (type) => backend.artifact(type) ?? frontend.artifact(type),
     artifacts: () => byType(backend.artifacts(), frontend.artifacts()),
     block: (type) => backend.block(type) ?? frontend.block(type),
@@ -95,7 +93,7 @@ export function stopRunningShells(): void {
  * Starts the app shell with `options.plugins` registered as `packId`'s and binds the frontend host to it, so
  * `openPlugin`, `untypedOpenPlugin` and `useShell()` reach it. Its client is the harness's bus: what the shell and
  * `sendToSystem` send reaches a test app's systems, and what those systems send plugins reaches the plugins' actors.
- * Lookups the backend shares with it (roles, steps, artifacts, blocks) read `backend` first. Resolves once the shell
+ * Lookups the backend shares with it (roles, artifacts, blocks) read `backend` first. Resolves once the shell
  * is connected and has read the (empty) loaded packs, as a window is once the app is up.
  */
 export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView): Promise<TestShell> {

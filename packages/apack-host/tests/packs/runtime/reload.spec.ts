@@ -334,6 +334,7 @@ describe('reloading a pack', () => {
     const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision: 'fixture-revision',
       dir: path.join(resolveAppEnvironment().packsDir, PACK_ID) };
     isolated.registerPack(old, origin);
+    const acceptedOrigin = isolated.packOrigin(PACK_ID);
     const acceptedRuntime = isolated.getPackRuntime(PACK_ID);
     const heard = vi.fn();
     handle.onChange(heard);
@@ -341,7 +342,7 @@ describe('reloading a pack', () => {
       writeRebuild(runtime("bindSettings() { throw new Error('late binding refused'); },"));
       await expect(reloadPackById(isolated, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
       expect(isolated.getPackRegistration(PACK_ID)).toBe(old);
-      expect(isolated.packOrigin(PACK_ID)).toBe(origin);
+      expect(isolated.packOrigin(PACK_ID)).toBe(acceptedOrigin);
       expect(isolated.getPackRuntime(PACK_ID)).toEqual(acceptedRuntime);
       expect(handle.get()).toEqual({ retained: true });
       for (const notify of listeners) notify();

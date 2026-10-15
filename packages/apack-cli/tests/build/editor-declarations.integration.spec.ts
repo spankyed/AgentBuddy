@@ -81,11 +81,11 @@ export const getHeight: NonNullable<StepLayoutDescriptor['getHeight']> = node =>
   const { manifest, declarationRevision } = built.snapshot;
   await frontends.load({ id: manifest.id, name: manifest.name, version: manifest.version,
     manifest, declarationRevision, buildRevision: built.revision, runtimeRevision: 'accepted-runtime', feEntry: 'runtime/fe.js' });
-  expect(packs.step('memo')?.fe?.colorKey).toBe('blue');
+  expect(packs.stepBindings().get('memo')?.binding.fe?.colorKey).toBe('blue');
   expect(registration.steps[0].fe.layout.getHeight({ label: 'Memo' }, {})).toBe(64);
   expect(registration.steps[0].fe.components.form.__asyncLoader).toBeTypeOf('function');
   expect((await registration.steps[0].fe.components.form.__asyncLoader()).render).toBeTypeOf('function');
   frontends.unload(manifest.id);
-  expect(packs.step('memo')).toBeUndefined();
+  expect(packs.stepBindings().get('memo')).toBeUndefined();
   expect(fs.existsSync(path.join(installed, 'src'))).toBe(false);
 });

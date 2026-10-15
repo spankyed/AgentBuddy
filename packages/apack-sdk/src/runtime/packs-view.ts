@@ -3,6 +3,8 @@
 // FeHostRuntime.packs (FePackRegistryView, fe-host.ts) in the renderer.
 import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import type { StepBackendBinding } from '../steps/catalog.ts';
+import type { StepCatalogEntry } from '../framework/catalog-view.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
@@ -23,9 +25,6 @@ import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 export interface PackExtensionsView {
   /** The id of the system (backend) or plugin (frontend) that plays a role */
   designation(role: string): FeatureRef | undefined;
-  step(type: string): StepDefinition | undefined;
-  /** Every registered step definition, in registration order */
-  steps(): StepDefinition[];
   artifact(type: string): ArtifactDefinition | undefined;
   artifacts(): ArtifactDefinition[];
   block(type: string): BlockDefinition | undefined;
@@ -34,6 +33,13 @@ export interface PackExtensionsView {
 
 /** The registered packs, read-only: what the SDK looks up in them in a backend process */
 export interface PackRegistryView extends PackExtensionsView {
+  step(type: string): StepDefinition | undefined;
+  /** Every registered step definition, in registration order */
+  steps(): StepDefinition[];
+  /** Committed declarations, independent of backend activation. */
+  stepDeclarations(): readonly StepCatalogEntry[];
+  /** Accepted backend bindings; current declaration eligibility is checked separately. */
+  stepBindings(): ReadonlyMap<string, StepBackendBinding>;
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
   /** The refs of every registered system, the host's included */

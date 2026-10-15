@@ -72,7 +72,7 @@ describe('steps', () => {
     add({ id: 'note-pack', steps: [noteStep, tickTrigger] });
 
     expect(stepRegistry.get('note')).toEqual(noteStep);
-    expect(stepRegistry.get('note')?.build).toBe(noteStep.build);
+    expect(stepRegistry.get('note')?.build?.compile).toBe(noteStep.build?.compile);
     expect(stepRegistry.has('tick')).toBe(true);
     expect(stepRegistry.getBuild('note')?.getLabel({}, 0)).toBe('Note');
     expect(stepRegistry.isTrigger('tick')).toBe(true);
@@ -240,7 +240,7 @@ describe('step wire ownership', () => {
     expect(() => add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] }))
       .toThrow(/Step "shared".*first-pack.*second-pack/);
     expect(stepRegistry.get('shared')?.node?.label).toBe('Shared');
-    expect(stepRegistry.get('shared')?.build).toBe(original.build);
+    expect(stepRegistry.get('shared')?.build?.compile).toBe(original.build?.compile);
     remove('first-pack');
     add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] });
     expect(stepRegistry.get('shared')?.node?.label).toBe('Second');

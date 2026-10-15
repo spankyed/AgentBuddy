@@ -4,9 +4,9 @@ import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
-import { getDslTypes, tiptapPluginRegistry } from '@apackdev/sdk/fe';
+import { getDslTypes, tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
 import { bindFeHost } from '@apackdev/sdk/runtime';
-import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
@@ -61,14 +61,14 @@ describe("a pack's frontend", () => {
     // Registered at the feature's address, which also answers the role
     expect(plugins()).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');
-    expect(stepRegistry.getNode('note')?.label).toBe('Note');
-    expect(stepRegistry.getFE('note')).toBeDefined();
-    expect(stepRegistry.all().map((s) => s.type)).toEqual(['note']);
+    expect(getStepFrontendBindings().get('note')?.binding.node?.label).toBe('Note');
+    expect(getStepFrontendBindings().get('note')?.binding.fe).toBeDefined();
+    expect([...getStepFrontendBindings().keys()]).toEqual(['note']);
     expect(artifactRegistry.all()).toEqual([cardView]);
     expect(blockRegistry.all()).toEqual([choice]);
     // Its components are accepted bindings
-    expect(stepRegistry.getComponent('note')).toBe(NoteNode);
-    expect(stepRegistry.getFormComponent('note')).toBe(NoteForm);
+    expect(getStepFrontendBindings().get('note')?.binding.fe?.components?.node).toBe(NoteNode);
+    expect(getStepFrontendBindings().get('note')?.binding.fe?.components?.form).toBe(NoteForm);
     expect(artifactRegistry.getComponent('card-view')).toBe(CardView);
     expect(blockRegistry.getComponent('choice')).toBe(Choice);
     expect(tiptapPluginRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
@@ -78,8 +78,8 @@ describe("a pack's frontend", () => {
     expect(remove('notebook-pack')).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(plugins()).toEqual([]);
     expect(hasDesignation('notebook')).toBe(false);
-    expect(stepRegistry.get('note')).toBeUndefined();
-    expect(stepRegistry.all()).toEqual([]);
+    expect(getStepFrontendBindings().get('note')?.binding).toBeUndefined();
+    expect([...getStepFrontendBindings().values()].map(entry => entry.binding)).toEqual([]);
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(artifactRegistry.all()).toEqual([]);
     expect(blockRegistry.has('choice')).toBe(false);
@@ -93,12 +93,12 @@ describe("a pack's frontend", () => {
     add('first-pack', { steps: [original] });
     expect(() => add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: Welcome } }))
       .toThrow(/Step "note".*first-pack.*notebook-pack/);
-    expect(stepRegistry.get('note')?.node?.label).toBe('Original');
-    expect(stepRegistry.getFE('note')).toBeUndefined();
+    expect(getStepFrontendBindings().get('note')?.binding?.node?.label).toBe('Original');
+    expect(getStepFrontendBindings().get('note')?.binding.fe).toBeUndefined();
     expect(appExtension('welcome')).toBeUndefined();
     remove('first-pack');
     add('notebook-pack', { steps: [noteStepFE] });
-    expect(stepRegistry.getFE('note')).toBeDefined();
+    expect(getStepFrontendBindings().get('note')?.binding.fe).toBeDefined();
   });
 
   it('keeps unrelated slot and DSL contributions when another step owner unregisters', () => {
@@ -106,11 +106,11 @@ describe("a pack's frontend", () => {
     const otherWelcome = { name: 'OtherWelcome' };
     add('first-pack', { steps: [first], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
     add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { prefix: 'other:', schema: 'declare const other: string', globals: {} } } });
-    expect(stepRegistry.get('note')?.fe).toBeDefined();
+    expect(getStepFrontendBindings().get('note')?.binding?.fe).toBeDefined();
     expect(appExtension('welcome')).toBe(otherWelcome);
     remove('notebook-pack');
-    expect(stepRegistry.get('first')?.node?.label).toBe('First');
-    expect(stepRegistry.get('note')).toBeUndefined();
+    expect(getStepFrontendBindings().get('first')?.binding?.node?.label).toBe('First');
+    expect(getStepFrontendBindings().get('note')?.binding).toBeUndefined();
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toEqual(memoDsl);
   });

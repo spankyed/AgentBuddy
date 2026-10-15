@@ -1,4 +1,7 @@
+import { captureData } from './captured-data.ts';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
+import type { DeclarationData } from '@apackdev/sdk/framework';
+import type { StepEntry } from '@apackdev/sdk/build';
 import type { StepDefinition } from '@apackdev/sdk/steps';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 
@@ -7,6 +10,12 @@ export function captureStepBinding(step: StepDefinition): StepDefinition {
   if (!isPlainObject(step)) return step;
   const captured = { ...step };
   if (isPlainObject(captured.node)) captured.node = immutableData(captured.node, `Step "${captured.type}": node`);
+  if (isPlainObject(captured.build)) captured.build = Object.freeze({ ...captured.build,
+    ...(captured.build.relation && { relation: immutableData(captured.build.relation, `Step "${captured.type}": relation`) }),
+  });
+  if (isPlainObject(captured.trigger)) captured.trigger = Object.freeze({ ...captured.trigger,
+    ...(captured.trigger.queryFields && { queryFields: immutableData(captured.trigger.queryFields, `Step "${captured.type}": queryFields`) }),
+  });
   if (isPlainObject(captured.runtime)) captured.runtime = Object.freeze({ ...captured.runtime });
   if (isPlainObject(captured.fe)) {
     const fe = { ...captured.fe };
@@ -24,12 +33,10 @@ export function captureStepBinding(step: StepDefinition): StepDefinition {
 
 function immutableData<T>(data: T, label: string): T {
   if (_settingsJsonProblems(data).length) throw new Error(`${label} must contain finite, acyclic JSON data properties`);
-  const copy = structuredClone(data);
-  function freeze(value: unknown): void {
-    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return;
-    Object.freeze(value);
-    Object.values(value).forEach(freeze);
-  }
-  freeze(copy);
-  return copy;
+  return captureData(data);
+}
+
+/** Own the exact accepted data before caller-owned origins or catalogs can change. */
+export function captureStepDeclaration(declaration: DeclarationData<StepEntry>): DeclarationData<StepEntry> {
+  return immutableData(declaration, 'Step declaration');
 }

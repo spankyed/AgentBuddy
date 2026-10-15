@@ -217,7 +217,7 @@ it('checks admitted native steps and owns their data while preserving executable
   } } } };
   const packs = createNativeFrontendTestRegistry([declaration]);
   packs.registerFixture(registration);
-  const accepted = packs.step('memo')!;
+  const accepted = packs.stepBindings().get('memo')!.binding;
   expect(accepted.fe!.nodeConfig.icon).toBe(component);
   expect(accepted.fe!.components!.form).toBe(component);
   expect(accepted.fe!.layout!.getHeight).toBe(getHeight);
@@ -231,7 +231,7 @@ it('checks admitted native steps and owns their data while preserving executable
   expect(Reflect.set(accepted.fe!.layout!, 'hasInput', false)).toBe(false);
   expect(() => packs.replaceFixture({ id: 'native', steps: [{ type: 'memo', node: { label: 'Changed' } }] }))
     .toThrow('steps.memo.node');
-  expect(packs.step('memo')).toBe(accepted);
+  expect(packs.stepBindings().get('memo')?.binding).toBe(accepted);
   expect(render).not.toHaveBeenCalled();
   expect(getHeight).not.toHaveBeenCalled();
 });

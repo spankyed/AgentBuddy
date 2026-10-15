@@ -10,8 +10,6 @@ import type { SettingsPort } from '../fe/settings.ts';
 const noFrontends: FePackRegistryView = {
   onChanged: () => () => {},
   designation: () => undefined,
-  step: () => undefined,
-  steps: () => [],
   artifact: () => undefined,
   artifacts: () => [],
   block: () => undefined,

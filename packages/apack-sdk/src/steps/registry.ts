@@ -1,9 +1,9 @@
-// The registered packs' step definitions, looked up by type. The app registers them (a pack's registration's
-// `steps`, and the frontend facets its frontend registers); this reads the bound registry on every call.
-import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, StepNodeFacet, TriggerFacet } from './types.ts';
-import { _boundPackExtensions } from '../runtime/packs-view.ts';
+// Active backend implementations. Declaration reads and frontend bindings have separate APIs.
+import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepNodeFacet, TriggerFacet } from './types.ts';
+import { boundHost } from '../runtime/host-runtime.ts';
+import { getStepDeclaration } from './catalog.ts';
 
-const step = (type: string): StepDefinition | undefined => _boundPackExtensions().step(type);
+const step = (type: string): StepDefinition | undefined => boundHost().packs.step(type);
 
 /** The registered step definitions and their facets, by type */
 interface StepRegistry {
@@ -11,9 +11,6 @@ interface StepRegistry {
   getBuild(type: string): StepBuildFacet | undefined;
   getRuntime(type: string): StepRuntimeFacet | undefined;
   getNode(type: string): StepNodeFacet | undefined;
-  getFE(type: string): StepFEFacet | undefined;
-  getComponent(type: string): unknown | undefined;
-  getFormComponent(type: string): unknown | undefined;
   has(type: string): boolean;
   isTrigger(type: string): boolean;
   getTrigger(type: string): TriggerFacet | undefined;
@@ -37,19 +34,7 @@ export const stepRegistry: StepRegistry = {
   },
 
   getNode(type: string): StepNodeFacet | undefined {
-    return step(type)?.node;
-  },
-
-  getFE(type: string): StepFEFacet | undefined {
-    return step(type)?.fe;
-  },
-
-  getComponent(type: string): unknown | undefined {
-    return step(type)?.fe?.components?.node;
-  },
-
-  getFormComponent(type: string): unknown | undefined {
-    return step(type)?.fe?.components?.form;
+    return getStepDeclaration(type)?.declaration.node;
   },
 
   has(type: string): boolean {
@@ -65,24 +50,20 @@ export const stepRegistry: StepRegistry = {
   },
 
   triggers(): StepDefinition[] {
-    return _boundPackExtensions().steps().filter(s => s.kind === 'trigger');
+    return boundHost().packs.steps().filter(s => s.kind === 'trigger');
   },
 
   types(): string[] {
-    return _boundPackExtensions().steps().map(s => s.type);
+    return boundHost().packs.steps().map(s => s.type);
   },
 
   all(): StepDefinition[] {
-    return _boundPackExtensions().steps();
+    return boundHost().packs.steps();
   },
 
-  /**
-   * What a new node of this type starts with. Reads the `node` facet, which both registrations carry —
-   * this runs on the backend (`flowRepository.createNode`) and in the renderer (the node it draws before
-   * the backend answers), and the two agreeing is what keeps the drawn node and the stored one the same.
-   */
+  /** Initial JSON fields from declarations, available even without an active provider. */
   createNodeDefaults(nodeType: string): Record<string, unknown> {
-    const node = step(nodeType)?.node;
+    const node = getStepDeclaration(nodeType)?.declaration.node;
     if (!node) return { nodeType };
     return { nodeType, label: node.label, ...structuredClone(node.defaults) };
   },
