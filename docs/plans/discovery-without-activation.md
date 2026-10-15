@@ -2893,3 +2893,30 @@ mutable test maps. Invalid validation, missing/stale providers, provider replace
 validation and attempted type changes must leave both the node and its relations unchanged. Same-type
 updates must still validate successfully. Preserve source-free relation editing without compiler
 activation. Mutation-check the write guards; run required strict validation before committing.
+
+
+Checkpoint 3D lands in `f7d63434c`; the goal records actual-registry, mutation, strict and committed-source
+evidence. Creation and updates share their accepted-provider recheck. Declared validation cannot disappear
+when execution is unavailable; node type stays fixed. Known declarations without validation still permit
+relation/field edits without an active provider. The watch-publication fixture now owns setup/cleanup in
+Vitest hooks; a forced test timeout proves the next test remains isolated without raising timeout limits.
+
+### Required producer-cache/output-receipt correction (2026-10-15)
+
+The 3D validation sequence exposes a concrete source-freshness gap. A concurrent edit/build followed by
+restoring source left `build:default-setup` cached while `staleBuildOutput(defaultSetup)` correctly refused
+its output at app-test preparation. A manual pack rebuild repairs the output, but does not fix the cache
+contract. Evidence: run `2026-10-15T19-40-18Z-57807`,
+`/private/tmp/apack-node-update-stable-strict.log`; restored-source build log
+`/private/tmp/apack-node-update-restored-pack-build.log`. `scripts/chain.ts` skips from its declared-input
+stamp; `PACK_OUTPUTS` are excluded from that producer's own input fingerprint.
+
+Reproduce with a cached successful source A, an independent pack build from changed source B, then
+restore A and run the chain. Before skipping the producer, its cache decision must establish that existing
+output still belongs to current source/compiler inputs. Reuse the producer's existing output-receipt and
+freshness authority; do not create another authored inventory, duplicate closure scanner or hash proxy.
+Prove ordinary manual builds, source restoration, changed/missing output, unchanged deterministic output,
+and cached downstream consumers agree. App preparation must continue refusing genuinely stale builds;
+it must not become a fallback conversion/rebuild path. Audit the shared protocol and other producer
+callers before choosing the correction. This is the next required source-freshness checkpoint before
+expanding more discovery readers, not an exclusion from the remaining compiler/freshness scope.

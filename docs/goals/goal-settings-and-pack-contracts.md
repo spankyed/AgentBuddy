@@ -5122,3 +5122,46 @@ Remaining contribution/content/asset discovery, compiler identity/input closure/
 manual-build/drive freshness, native/editor lifecycle, entity navigation, frontend boundaries and all
 three Phase 6 workstreams remain required. Complete the reconciled original-requirement/phase audit
 and final strict `--all` on committed source before completion. Nothing is archived by this checkpoint.
+
+
+### Node-update write eligibility — checkpoint 3D
+
+Source `f7d63434c` closes the update-path validation gap. Node type is immutable, including attempted
+changes inside a validator. Updates select a declaration/relation policy once and require an eligible
+backend when that declaration includes a node validator. Creation and updates share the post-validation
+owner/generation check before writes. Missing or changed declarations refuse editing; callbacks are never
+silently skipped. Known declarations without a validator retain field/relation editing without activating
+a provider. The flows system delegates its production updates to this SDK method; active running-flow
+lookups retain their separate lifetime. Public extension guidance matches the policy.
+
+Evidence and corrections:
+
+- Actual registry admission/unload/replacement/declaration changes pass 18 host checks, including invalid
+  updates, rejected type changes, full-node updates with unchanged type and relation edits after provider
+  unload. The 17 SDK repository checks pass too. All 4,832 tests in the full 403-file host pool pass;
+  shipped pack: 851 passed/two skipped.
+- Four deliberate mutations are caught: removing required update validation, removing the generation
+  recheck, allowing input type changes, and allowing a validator to change node type. Source restored.
+  Logs: `/private/tmp/apack-node-update-mutation-{validation,generation,type,validator-type}.log`.
+- The first strict run found an existing watch test exceeding its combined setup/body deadline and late
+  cleanup unregistering the next test's pack. Watch setup now belongs to `beforeEach`, whose returned
+  cleanup Vitest awaits before starting the next test, including after timeout. All 21 assertion lines
+  are preserved; configured test/hook limits remain 60s. Both focused watch cases pass. A deliberate
+  one-millisecond first-test timeout leaves the second test passing, proving cleanup isolation; source
+  restored. Evidence: `/private/tmp/apack-watch-timeout-isolation.log`.
+- Integration passes all 58 files/741 tests in 311s, run `2026-10-15T19-30-40Z-29547`. Concurrent source
+  edits then made app validation refuse a stale shipped build; the user stashed those edits. Rebuilding
+  the shipped pack from restored source resolves that operational mismatch. Unrelated work is preserved.
+  This exposes a required producer-cache/freshness case recorded in the discovery plan below.
+- Final strict `npm run chain -- --strict --cores 1` passes all 30 steps in 251.3s (25 cached), run
+  `2026-10-15T19-41-55Z-58481`, `/private/tmp/apack-node-update-final-strict.log`. External-pack app,
+  smoke and packaged authoring pass. All seven generated EARS/content baselines remain byte-identical
+  after the restored-source rebuild. Public signatures, schemas, API reports and facade are unchanged.
+- Committed-source strict passes again in 1.3s (29 cached), run `2026-10-15T19-46-26Z-64922`,
+  `/private/tmp/apack-node-update-committed-strict.log`. The staged scope-loss issue remains uncommitted.
+
+Next audit and fix the demonstrated producer-cache/output-receipt mismatch within the required source
+freshness work, then resume remaining contribution/content/asset readers. Compiler identity/input closure,
+frozen publication, manual-build/drive freshness, native/editor lifecycle, entity navigation, frontend
+boundaries and all three Phase 6 workstreams remain required. Complete the reconciled requirement/phase
+audit and final strict `--all` on committed source before completion; this checkpoint archives nothing.
