@@ -14,9 +14,16 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import { ASSUMED_RUNGS, declaredShare, rungForKind, stepTimeoutMs, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
+  it('caps integration feedback at 60 seconds without changing other suite deadlines', () => {
+    expect(stepTimeoutMs('test:integration', 'suite')).toBe(60_000);
+    expect(stepTimeoutMs('test:unit:host', 'suite')).toBe(TIMEOUT_MS.suite.ms);
+    expect(timedOutBecause({ what: 'test:integration', timeout: 'suite', measuredOn: thisMachine() }))
+      .toContain('60s feedback deadline');
+  });
+
   it('orders every step after the steps it depends on', () => {
     const order = orderedSteps().map((s) => s.name);
     expect(order).toHaveLength(CHAIN_STEPS.length);
@@ -546,7 +553,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
       // than an assumption — the same arm, a different claim, and getting those two the same way round is the
       // point of carrying the provenance on the rung
       const why = timedOutBecause({
-        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
+        what: 'test:unit:host', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
       });
       expect(why).toContain('where its row records');
       expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
@@ -635,7 +642,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
     it('asks a measured rung\'s reader to record nothing, having nothing outstanding', () => {
       const why = timedOutBecause({
-        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
+        what: 'test:unit:host', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
       });
       expect(why).not.toContain('this run is the evidence');
       expect(why, 'the finding, and no edit to make').toContain('That number is the finding.');

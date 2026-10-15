@@ -22,9 +22,9 @@ import type { UnitSuite } from './lib/unit-suites.ts';
 import { holdPoolLock, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { POOL_SECONDS } from './lib/chain-steps.ts';
+import { POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
-import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
+import { stepTimeoutMs, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
@@ -208,12 +208,9 @@ async function main(): Promise<void> {
       // what keeps the two records *distinct* is the command inside that fingerprint.
       covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
-        // `suite`, the same class the chain gives this pool as a step — a pool fans out across workers, so
-        // it is the rung that stretches most on a smaller box. The *deadline* is never `POOL_SECONDS`, which
-        // is this machine's measurement and so would be this machine's deadline (`step-timeouts.ts`); the
-        // message below reads that cost, which is a different use of it and the one it is for.
+        // Share the chain's feedback cap; a direct run must not wait longer for the same pool.
         const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite.ms,
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], stepTimeoutMs(poolStepName(kind), 'suite'),
           { env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         process.stdout.write(output);
         if (code !== 0) {
@@ -222,7 +219,7 @@ async function main(): Promise<void> {
           // computing a rope from a number about other work
           throw new Error(timedOut
             ? timedOutBecause({
-              what: `${kind} pool`,
+              what: poolStepName(kind),
               timeout: 'suite',
               measuredOn: MEASURED_ON,
               ...covered.length === suites.length ? { seconds: POOL_SECONDS[kind] } : {},

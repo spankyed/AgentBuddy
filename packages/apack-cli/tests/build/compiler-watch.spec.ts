@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { compilerWatchMatches, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths } from '../../src/build/compiler-watch.ts';
+import { createCompilerWatchMatcher, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths } from '../../src/build/compiler-watch.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -39,7 +39,7 @@ it('collects absent resolution candidates and observes their first existing pare
   const inputs = compilerWatchPaths(pack);
   expect([...inputs.paths.keys()].some(file => file.startsWith(path.join(root, 'future')))).toBe(true);
   const targets = compilerWatchTargets(inputs.paths);
-  expect(compilerWatchMatches(targets.get(root)!.paths, path.join(root, 'future'), 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(targets.get(root)!.paths)(path.join(root, 'future'), 'rename')).toBe(true);
   fs.mkdirSync(path.join(root, 'future'));
   fs.writeFileSync(path.join(root, 'future/contract.d.ts'), 'export type Contract = string;');
   expect(compilerWatchPaths(pack).signature).not.toBe(inputs.signature);
@@ -60,27 +60,31 @@ it('distinguishes file bytes, directory replacement and type-directory membershi
   const inputs = new Map([
     ['/shared/contract.d.ts', 'file'], ['/shared/types', 'entries'], ['/shared', 'directory'],
   ] as const);
-  expect(compilerWatchMatches(inputs, '/shared/contract.d.ts', 'change')).toBe(true);
-  expect(compilerWatchMatches(inputs, '/shared', 'rename')).toBe(true);
-  expect(compilerWatchMatches(inputs, '/shared', 'change')).toBe(false);
-  expect(compilerWatchMatches(inputs, '/shared/types/new-package', 'rename')).toBe(true);
-  expect(compilerWatchMatches(inputs, '/shared/types/unrelated/nested', 'change')).toBe(false);
-  expect(compilerWatchMatches(inputs, '/shared/unrelated', 'change')).toBe(false);
+  const matches = createCompilerWatchMatcher(inputs);
+  expect(matches('/shared/contract.d.ts', 'change')).toBe(true);
+  expect(matches('/shared', 'rename')).toBe(true);
+  expect(matches('/shared', 'change')).toBe(false);
+  expect(matches('/shared/types/new-package', 'rename')).toBe(true);
+  expect(matches('/shared/types/unrelated/nested', 'change')).toBe(false);
+  expect(matches('/shared/types/unrelated/nested', 'rename')).toBe(false);
+  expect(matches('/shared/unrelated', 'change')).toBe(false);
+  expect(matches('/shared/unrelated', 'rename')).toBe(false);
+  expect(matches('/share', 'rename')).toBe(false);
 });
 
 it('watches the parent of an existing anchor and tolerates missing ancestors beneath a file', () => {
   const { root } = fixture();
   const file = path.join(root, 'contract.d.ts/future/contract.d.ts');
   const targets = compilerWatchTargets(new Map([[file, 'file']]));
-  expect(compilerWatchMatches(targets.get(root)!.paths, path.join(root, 'contract.d.ts'), 'rename')).toBe(true);
-  expect(compilerWatchMatches(targets.get(path.dirname(root))!.paths, root, 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(targets.get(root)!.paths)(path.join(root, 'contract.d.ts'), 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(targets.get(path.dirname(root))!.paths)(root, 'rename')).toBe(true);
 });
 
 it('keeps stronger subscriptions when a failed traversal only probes a previous input as a directory', () => {
   const merged = mergeCompilerWatchPaths(new Map([['/shared/types', 'entries'], ['/shared/config.json', 'file']]),
     new Map([['/shared/types', 'directory'], ['/shared/config.json', 'directory']]));
-  expect(compilerWatchMatches(merged, '/shared/types/new-package', 'rename')).toBe(true);
-  expect(compilerWatchMatches(merged, '/shared/config.json', 'change')).toBe(true);
+  expect(createCompilerWatchMatcher(merged)('/shared/types/new-package', 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(merged)('/shared/config.json', 'change')).toBe(true);
 });
 
 it('tracks physical targets behind dangling directory links so creation can recover resolution', () => {
@@ -125,14 +129,14 @@ it('watches package runtime bytes, directory membership and missing transitive d
   fs.writeFileSync(runtime, 'before');
   const before = compilerWatchPaths(pack);
   expect(before.complete).toBe(true);
-  expect(compilerWatchMatches(before.paths, runtime, 'change')).toBe(true);
-  expect(compilerWatchMatches(before.paths, path.join(library, 'new-file.js'), 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(before.paths)(runtime, 'change')).toBe(true);
+  expect(createCompilerWatchMatcher(before.paths)(path.join(library, 'new-file.js'), 'rename')).toBe(true);
   fs.writeFileSync(runtime, 'after');
   expect(compilerWatchPaths(pack).signature).not.toBe(before.signature);
   fs.writeFileSync(runtime, 'before');
   expect(compilerWatchPaths(pack).signature).toBe(before.signature);
   const helper = path.join(fs.realpathSync(root), 'node_modules/helper');
-  expect(compilerWatchMatches(before.paths, helper, 'rename')).toBe(true);
+  expect(createCompilerWatchMatcher(before.paths)(helper, 'rename')).toBe(true);
   fs.mkdirSync(helper);
   fs.writeFileSync(path.join(helper, 'package.json'), '{"name":"helper"}');
   fs.writeFileSync(path.join(helper, 'index.js'), 'helper');

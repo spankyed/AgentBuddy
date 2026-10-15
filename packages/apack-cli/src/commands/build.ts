@@ -15,11 +15,12 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
-import { apackScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
+import { apackScope, dslInputsHash, typesInputsHash, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
+import { BUILD_INPUTS_IPC_ENV, reportBuildWatchInputs } from '../build/build-watch-inputs.ts';
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
 import { packInputsHash } from '../build/pack-inputs.ts';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
@@ -371,33 +372,16 @@ async function buildIntoStaging(args: string[], root: string) {
   const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
     const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-    const scope = apackScope(root);
-    // No hash without the whole scope, and so no stamp either: recording one would let the next build that
-    // also cannot resolve them match it and reuse a bundle compiled against who knows what
     const definitionsDir = path.join(outputDir, DEFS_DIR);
-    const feHash = 'missing' in scope ? null : feInputsHash(root, { release, definitionsDir }, scope.dirs, dependencyFiles, compilation);
-    // Reused rather than skipped: the staged tree is renamed over `dist`, so the files have to be here
-    // either way. `--skip-fe` is the other thing, and omits them on purpose
-    const problem = feHash === null
-      ? `can't resolve ${(scope as { missing: readonly string[] }).missing.join(', ')} to hash against`
-      : reuseProblem(stamps.fe, distDir, feHash) ?? (reads && !reads.carry('fe') ? 'no reads recorded to carry' : null);
-    if (problem === null) {
-      takeForward(distDir, outputDir, stamps.fe!.files);
-      nextStamps.fe = stamps.fe!;
-      console.log(`  fe: unchanged, reused (${stamps.fe!.files.length} files)`);
-    } else {
-      const before = new Set(filesUnder(feOutputDir));
-      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, definitionsDir, release, recordReads: reads?.forPhase('fe') });
-      if (feResult.success) {
-        const written = filesUnder(feOutputDir).filter((file) => !before.has(file));
-        if (feHash !== null) nextStamps.fe = { hash: feHash, files: written.map((file) => path.join(PACK_LAYOUT.runtimeDir, file)) };
-        console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
-        if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {
-          console.log(`  fe styles: dist/${PACK_LAYOUT.feStyles}`);
-        }
-      } else {
-        fail(`FE bundle failed: ${feResult.error}`);
+    const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, definitionsDir, release,
+      recordReads: reads?.forPhase('fe'), onInputs: process.env[BUILD_INPUTS_IPC_ENV] === '1' ? reportBuildWatchInputs : undefined });
+    if (feResult.success) {
+      console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
+      if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {
+        console.log(`  fe styles: dist/${PACK_LAYOUT.feStyles}`);
       }
+    } else {
+      fail(`FE bundle failed: ${feResult.error}`);
     }
   }
 

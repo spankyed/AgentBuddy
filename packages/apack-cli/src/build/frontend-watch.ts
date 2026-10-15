@@ -1,0 +1,163 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { watch, type FSWatcher } from 'chokidar';
+import type { BuildWatchInputs } from './build-watch-inputs.ts';
+import { physicalWatchPath } from './watch-paths.ts';
+
+type Subscription = FSWatcher | fs.FSWatcher;
+
+const inside = (root: string, file: string) => {
+  const relative = path.relative(root, file);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+};
+
+export interface FrontendInputSnapshot {
+  readonly hash: string;
+  current(): boolean;
+}
+
+/** Compiler observations drive ready subscriptions, never output reuse. */
+export function createFrontendWatcher(root: string, dataDirectory: string | undefined, changed: (file: string) => void) {
+  const authored = [...new Set([path.resolve(root), fs.realpathSync(root)])];
+  const data = dataDirectory ? [...new Set([path.resolve(dataDirectory), physicalWatchPath(path.resolve(dataDirectory))])] : [];
+  const files = new Set<string>();
+  const directories = new Set<string>();
+  const active = new Set<Subscription>();
+  let current: Subscription[] = [];
+  let namespace = 0;
+  let closed = false;
+  let closeTask: Promise<void> | undefined;
+  let notified: string | undefined;
+  let signalClose!: () => void;
+  const closing = new Promise<void>(resolve => { signalClose = resolve; });
+  const excluded = (file: string) => authored.some(root => inside(root, file));
+  const normalize = (paths: readonly string[]) => {
+    const selected = new Set<string>();
+    const physical = new Map<string, string>();
+    for (const file of paths) {
+      for (const name of [file, physicalWatchPath(file, physical)]) if (!excluded(name)) selected.add(name);
+    }
+    return selected;
+  };
+  const signature = (selected: ReadonlySet<string>, contentDirectories: ReadonlySet<string>) => {
+    const hash = createHash('sha256').update(String(namespace));
+    for (const file of [...selected].sort()) {
+      hash.update(JSON.stringify(file));
+      try { hash.update(fs.realpathSync.native(file)).update(fs.readFileSync(file)); }
+      catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
+    }
+    const visit = (directory: string) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+        const file = path.join(directory, entry.name);
+        if (excluded(file)) continue;
+        hash.update(JSON.stringify([file, entry.isDirectory(), entry.isSymbolicLink() ? fs.readlinkSync(file) : null]));
+        if (entry.isDirectory()) visit(file);
+      }
+    };
+    for (const directory of [...contentDirectories].sort()) {
+      hash.update(JSON.stringify(directory));
+      try { visit(directory); } catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
+    }
+    return hash.digest('hex');
+  };
+  const snapshot = (selected = new Set(files)): FrontendInputSnapshot => {
+    const contentDirectories = new Set(directories);
+    const hash = signature(selected, contentDirectories);
+    return { hash, current: () => signature(selected, contentDirectories) === hash };
+  };
+  const ignored = (file: string) => excluded(file) || (![...files].some(input => file === input || inside(file, input))
+    && ![...directories].some(root => inside(root, file) || inside(file, root))
+    && (data.some(root => inside(root, file)) || file.split(/[\\/]/).includes('.git')));
+  const notify = (file: string) => {
+    if (closed || ignored(file)) return;
+    if (!files.has(file)) namespace++;
+    const hash = signature(files, directories);
+    if (hash === notified) return;
+    notified = hash;
+    changed(file);
+  };
+  const stop = async (watchers: readonly Subscription[]) => {
+    watchers.forEach(watcher => active.delete(watcher));
+    await Promise.all(watchers.map(watcher => watcher.close()));
+  };
+  async function subscribe() {
+    if (closed) return;
+    const anchors = [...new Set([...files].map(file => path.dirname(file)).concat([...directories]))].map(existingDirectory);
+    const roots = [...new Set(anchors.map(directory => physicalWatchPath(directory)))].sort((a, b) => a.length - b.length);
+    const selected = roots.filter((candidate, index) => !roots.slice(0, index).some(parent => inside(parent, candidate)));
+    const guards = new Set<string>();
+    for (const directory of anchors) {
+      if (path.dirname(directory) === directory) throw new Error(`Frontend resources require a bounded source directory: ${directory}`);
+      for (let child = directory; path.dirname(child) !== child; child = path.dirname(child)) guards.add(child);
+    }
+    const next: Subscription[] = [];
+    const ready: Promise<void>[] = [];
+    if (selected.length) {
+      const watcher = watch(selected, { ignoreInitial: true, followSymlinks: false, disableGlobbing: true, atomic: true, ignored });
+      active.add(watcher); next.push(watcher);
+      let initialized = false;
+      watcher.on('all', (_event, file) => { if (initialized && active.has(watcher)) notify(path.resolve(file)); });
+      ready.push(new Promise<void>((resolve, reject) => {
+        watcher.once('ready', () => { initialized = true; resolve(); });
+        watcher.on('error', error => {
+          if (!active.has(watcher)) return;
+          if (!initialized) reject(error);
+          else { console.error(`[watch] Frontend subscription failed: ${error.message}`); namespace++; notify(selected[0]!); }
+        });
+      }));
+    }
+    try {
+      for (const child of guards) {
+        const identity = fs.statSync(child);
+        const parent = path.dirname(child);
+        const guard = fs.watch(parent, (kind, file) => {
+          if (closed || !active.has(guard) || kind !== 'rename' || (file && path.resolve(parent, file) !== child)) return;
+          let stat: fs.Stats | undefined;
+          try { stat = fs.statSync(child, { throwIfNoEntry: false }); } catch { notify(child); return; }
+          if (!stat || stat.ino !== identity.ino || stat.dev !== identity.dev) notify(child);
+        });
+        active.add(guard); next.push(guard);
+      }
+      await Promise.race([Promise.all(ready), closing]);
+      if (closed) { await stop(next); return; }
+      const previous = current;
+      current = next;
+      await stop(previous);
+      notified = signature(files, directories);
+    } catch (error) { await stop(next); throw error; }
+  }
+  return {
+    snapshot: () => snapshot(),
+    async observe(inputs: BuildWatchInputs): Promise<FrontendInputSnapshot> {
+      if (closed) return snapshot();
+      const selected = normalize(inputs.files);
+      selected.forEach(file => files.add(file));
+      normalize(inputs.directories).forEach(directory => directories.add(directory));
+      const before = snapshot(selected);
+      await subscribe();
+      return before;
+    },
+    async accept(inputs: BuildWatchInputs): Promise<void> {
+      if (closed) return;
+      files.clear(); normalize(inputs.files).forEach(file => files.add(file));
+      directories.clear();
+      normalize(inputs.directories).forEach(directory => directories.add(directory));
+      await subscribe();
+    },
+    close(): Promise<void> {
+      if (!closeTask) { closed = true; signalClose(); closeTask = stop([...active]); }
+      return closeTask;
+    },
+  };
+}
+
+function existingDirectory(file: string): string {
+  while (true) {
+    try { if (fs.statSync(file, { throwIfNoEntry: false })?.isDirectory()) return file; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error; }
+    const parent = path.dirname(file);
+    if (parent === file) throw new Error(`No existing frontend input directory: ${file}`);
+    file = parent;
+  }
+}

@@ -1,5 +1,5 @@
 /**
- * Content-keyed reuse of frontend bundles, facade types and DSL definitions.
+ * Content-keyed reuse of facade types and DSL definitions.
  *
  * Keys cover authored pack files, generated entries, the phase's additional inputs, tools and options.
  * Diagnostic build-read records do not define this scope: additions must invalidate reuse even when
@@ -22,9 +22,8 @@ export interface PhaseStamp {
   /** What the phase read, and the options that change what it writes */
   readonly hash: string;
   /**
-   * What it wrote, relative to `dist`. **Recorded rather than fixed**, because a phase's output set
-   * follows the pack: the frontend bundle emits a chunk per lazy import, so a hard-coded list would be
-   * wrong for every pack but the one it was written against.
+   * What it wrote, relative to `dist`. The output set follows the pack's declarations, so membership
+   * belongs to the recorded phase rather than a fixed inventory.
    */
   readonly files: readonly string[];
 }
@@ -125,12 +124,6 @@ function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
   }
 }
 
-/** Hash the same DSL definitions the bundle resolves, whether staged or already published. */
-export function feInputsHash(root: string, options: { readonly release: boolean; readonly definitionsDir?: string }, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
-  return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release,
-    dirs: [options.definitionsDir ?? path.join(root, 'dist', 'defs'), ...apackDirs], dependencies, compilation });
-}
-
 /** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
 export function typesInputsHash(root: string, dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
   return phaseInputsHash(root, { bundler: 'types-bundler.ts', dependencies, compilation });
@@ -147,13 +140,11 @@ export function dslInputsHash(root: string, apackDirs: readonly string[], depend
  */
 function phaseInputsHash(root: string, o: {
   readonly bundler: string;
-  readonly release?: boolean;
   readonly dirs?: readonly string[];
   readonly dependencies: ReadonlyMap<string, ResolvedDepFiles>;
   readonly compilation: CompilationInputs;
 }): string {
   const hash = createHash('sha256');
-  if (o.release !== undefined) hash.update(`release:${o.release}`);
   hash.update(o.bundler);
   hash.update(o.compilation.hash);
   hash.update(packInputsHash(root, { generated: true }));

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { packageInputsHash } from './package-inputs.ts';
+import { physicalWatchPath } from './watch-paths.ts';
 import type { CompilerInputKind, CompilerInputObserver } from './compiler-configuration.ts';
 
 export type CompilerWatchPaths = ReadonlyMap<string, CompilerInputKind>;
@@ -31,24 +32,8 @@ function isDirectory(file: string): boolean {
 export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; complete: boolean; signature: string } {
   const paths = new Map<string, CompilerInputKind>();
   const physical = new Map<string, string>();
-  const physicalPath = (file: string): string => {
-    const known = physical.get(file);
-    if (known) return known;
-    let resolved: string;
-    try { resolved = fs.realpathSync.native(file); }
-    catch (error) {
-      if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
-      const parent = path.dirname(file);
-      if (parent === file) throw error;
-      let link: fs.Stats | undefined;
-      try { link = fs.lstatSync(file, { throwIfNoEntry: false }); }
-      catch (failure) { if ((failure as NodeJS.ErrnoException).code !== 'ENOTDIR') throw failure; }
-      resolved = link?.isSymbolicLink() ? physicalPath(path.resolve(parent, fs.readlinkSync(file)))
-        : path.join(physicalPath(parent), path.basename(file));
-    }
-    physical.set(file, resolved);
-    return resolved;
-  };
+  const physicalPath = (file: string) => physicalWatchPath(file, physical);
+
   try {
     const observe: CompilerInputObserver = (file, kind) => {
       const absolute = path.resolve(file);
@@ -144,14 +129,18 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
   return targets;
 }
 
-export function compilerWatchMatches(paths: CompilerWatchPaths, changed: string, event: string): boolean {
-  if (event !== 'rename') {
+/** One matcher per subscription: replacements include ancestors, membership includes immediate children. */
+export function createCompilerWatchMatcher(paths: CompilerWatchPaths): (changed: string, event: string) => boolean {
+  const ancestors = new Set<string>();
+  for (const file of paths.keys()) {
+    for (let parent = path.dirname(file); !ancestors.has(parent); parent = path.dirname(parent)) {
+      ancestors.add(parent);
+      if (parent === path.dirname(parent)) break;
+    }
+  }
+  return (changed, event) => {
     const kind = paths.get(changed);
-    return kind !== undefined && kind !== 'directory';
-  }
-  for (const [file, kind] of paths) {
-    if (file === changed || file.startsWith(`${changed}${path.sep}`)) return true;
-    if (kind === 'entries' && path.dirname(changed) === file) return true;
-  }
-  return false;
+    if (event !== 'rename') return kind !== undefined && kind !== 'directory';
+    return kind !== undefined || ancestors.has(changed) || paths.get(path.dirname(changed)) === 'entries';
+  };
 }

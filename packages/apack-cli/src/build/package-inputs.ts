@@ -28,9 +28,9 @@ function packageFilesHash(root: string, targets: readonly string[], owners: Read
   const hash = createHash('sha256');
   const ancestors = new Set<string>();
   const files = new Set<string>();
-  function walk(file: string): void {
+  function walk(file: string, entry?: fs.Dirent): void {
     observe?.(file, 'file');
-    const stat = fs.statSync(file, { throwIfNoEntry: false });
+    const stat = entry && !entry.isSymbolicLink() ? entry : fs.statSync(file, { throwIfNoEntry: false });
     if (!stat) return;
     if (stat.isFile()) { files.add(path.relative(root, file).split(path.sep).join('/')); return; }
     if (!stat.isDirectory()) throw new Error(`Unsupported package input: ${file}`);
@@ -39,9 +39,9 @@ function packageFilesHash(root: string, targets: readonly string[], owners: Read
     if (ancestors.has(real)) throw new Error(`Cyclic package input: ${file}`);
     ancestors.add(real);
     observe?.(file, 'entries');
-    for (const name of fs.readdirSync(file).sort()) {
-      if (['node_modules', '.git', '.temp', '.apack', '.cache'].includes(name)) continue;
-      walk(path.join(file, name));
+    for (const child of fs.readdirSync(file, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+      if (['node_modules', '.git', '.temp', '.apack', '.cache'].includes(child.name)) continue;
+      walk(path.join(file, child.name), child);
     }
     ancestors.delete(real);
   }

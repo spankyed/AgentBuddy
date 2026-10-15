@@ -1,0 +1,154 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import { readPackBuild } from '@apackdev/host/packs';
+import { callCli } from '../_support/pack-builds.ts';
+import { vueRuntimePack } from '../_support/frontend-pack.ts';
+import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { filesUnder } from '../../src/build/phase-cache.ts';
+import { bundlePackFE } from '../../src/build/fe-bundler.ts';
+
+let root: string | undefined;
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
+
+function consumer() {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-resources-'));
+  return vueRuntimePack(root);
+}
+
+function output(pack: string, extension: string): string {
+  const directory = path.join(pack, 'dist/runtime');
+  return filesUnder(directory).filter(file => file.endsWith(extension))
+    .map(file => fs.readFileSync(path.join(directory, file), 'utf8')).join('\n');
+}
+
+it('rebuilds Vue styles after only an external stylesheet changes', async () => {
+  const { pack } = consumer();
+  const stylesheet = path.join(root!, 'outside.css');
+  fs.writeFileSync(stylesheet, '.outside { color: #123456; }');
+  const canvas = path.join(pack, 'src/canvas.vue');
+  fs.appendFileSync(canvas, '<style src="../../outside.css"></style>');
+  const first = await callCli(pack, 'build');
+  expect(first.code, first.output).toBe(0);
+  const css = path.join(pack, 'dist/runtime/fe.css');
+  expect(fs.readFileSync(css, 'utf8')).toContain('#123456');
+  fs.writeFileSync(stylesheet, '.outside { color: #654321; }');
+  const second = await callCli(pack, 'build');
+  expect(second.code, second.output).toBe(0);
+  expect(fs.readFileSync(css, 'utf8')).toContain('#654321');
+  expect(fs.readFileSync(css, 'utf8')).not.toContain('#123456');
+});
+
+it.each(['css-import', 'css-url', 'template'] as const)('compiles changed external %s resources with unchanged authored sources', async kind => {
+  const { pack } = consumer();
+  const resource = path.join(root!, kind === 'css-import' ? 'theme.css' : 'image.svg');
+  const before = kind === 'css-import' ? '.theme { color: #123456; }'
+    : '<svg xmlns="http://www.w3.org/2000/svg"><text>BEFORE</text></svg>';
+  const after = kind === 'css-import' ? '.theme { color: #654321; }'
+    : '<svg xmlns="http://www.w3.org/2000/svg"><text>AFTERX</text></svg>';
+  fs.writeFileSync(resource, before);
+  const canvas = path.join(pack, 'src/canvas.vue');
+  if (kind === 'template') fs.writeFileSync(canvas, '<template><img src="../../image.svg?no-inline" /></template>');
+  else {
+    const stylesheet = path.join(root!, 'outside.css');
+    fs.writeFileSync(stylesheet, kind === 'css-import' ? '@import "./theme.css";'
+      : '.image { background: url("./image.svg?no-inline"); }');
+    fs.appendFileSync(canvas, '<style src="../../outside.css"></style>');
+  }
+  const compile = async () => {
+    const outputDir = path.join(pack, 'dist/runtime');
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: canvas });
+    expect(result.success, result.error).toBe(true);
+  };
+  await compile();
+  expect(output(pack, kind === 'css-import' ? '.css' : '.svg')).toContain(kind === 'css-import' ? '#123456' : 'BEFORE');
+  fs.writeFileSync(resource, after);
+  await compile();
+  expect(output(pack, kind === 'css-import' ? '.css' : '.svg')).toContain(kind === 'css-import' ? '#654321' : 'AFTERX');
+  expect(output(pack, kind === 'css-import' ? '.css' : '.svg')).not.toContain(kind === 'css-import' ? '#123456' : 'BEFORE');
+});
+
+it('watches CSS dependencies and recovers a missing nested stylesheet while retaining the accepted build', async () => {
+  const { pack } = consumer();
+  const stylesheet = path.join(root!, 'outside.css');
+  const leaf = path.join(root!, 'theme.css');
+  fs.writeFileSync(stylesheet, '@import "./theme.css";');
+  fs.writeFileSync(leaf, '.theme { color: #123456; }');
+  fs.appendFileSync(path.join(pack, 'src/canvas.vue'), '<style src="../../outside.css"></style>');
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let watcher: { close(): Promise<void> } | undefined;
+  let publications = 0;
+  const css = () => fs.readFileSync(path.join(pack, 'dist/runtime/fe.css'), 'utf8');
+  try {
+    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(root!, 'profile') },
+      onBuilt: async () => { publications++; } });
+    const replacement = path.join(root!, 'replacement.css');
+    fs.writeFileSync(replacement, '.theme { color: #654321; }');
+    fs.renameSync(replacement, leaf);
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(css()).toContain('#654321');
+    const accepted = readPackBuild(path.join(pack, 'dist')).revision;
+    const count = publications;
+    fs.writeFileSync(stylesheet, '@import "./future/theme.css";');
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
+    expect(publications).toBe(count);
+    expect(readPackBuild(path.join(pack, 'dist')).revision).toBe(accepted);
+    fs.mkdirSync(path.join(root!, 'future'));
+    fs.writeFileSync(path.join(root!, 'future/theme.css'), '.theme { color: #abcdef; }');
+    await vi.waitFor(() => expect(publications).toBeGreaterThan(count), { timeout: 20_000 });
+    expect(css()).toContain('#abcdef');
+  } finally { await watcher?.close(); }
+});
+
+it.each(['css-url', 'template'] as const)('watches an external %s asset in a separate directory', async kind => {
+  if (kind === 'template') vi.stubEnv('APACK_NO_BUILD_READS', '1');
+  const { pack } = consumer();
+  const assets = path.join(root!, 'assets');
+  fs.mkdirSync(assets);
+  const asset = path.join(assets, 'image.svg');
+  fs.writeFileSync(asset, '<svg xmlns="http://www.w3.org/2000/svg"><text>BEFORE</text></svg>');
+  const canvas = path.join(pack, 'src/canvas.vue');
+  if (kind === 'template') fs.writeFileSync(canvas, '<template><img src="../../assets/image.svg?no-inline" /></template>');
+  else {
+    fs.mkdirSync(path.join(root!, 'styles'));
+    fs.writeFileSync(path.join(root!, 'styles/main.css'), '.image { background: url("../assets/image.svg?no-inline"); }');
+    fs.appendFileSync(canvas, '<style src="../../styles/main.css"></style>');
+  }
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let watcher: { close(): Promise<void> } | undefined;
+  let publications = 0;
+  try {
+    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(root!, 'profile') },
+      onBuilt: async () => { publications++; } });
+    expect(output(pack, '.svg')).toContain('BEFORE');
+    if (kind === 'template') expect(fs.existsSync(path.join(pack, '.apack/reads.json'))).toBe(false);
+    fs.writeFileSync(asset, '<svg xmlns="http://www.w3.org/2000/svg"><text>AFTERX</text></svg>');
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(output(pack, '.svg')).toContain('AFTERX');
+    expect(output(pack, '.svg')).not.toContain('BEFORE');
+  } finally { await watcher?.close(); }
+});
+
+it('watches initially empty external Tailwind content directories', async () => {
+  const { pack } = consumer();
+  const content = path.join(root!, 'content');
+  fs.mkdirSync(content);
+  fs.writeFileSync(path.join(pack, 'tailwind.config.js'), `export default { content: [${JSON.stringify(`${content}/**/*.html`)}] };`);
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let watcher: { close(): Promise<void> } | undefined;
+  let publications = 0;
+  try {
+    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(root!, 'profile') },
+      onBuilt: async () => { publications++; } });
+    expect(output(pack, '.css')).not.toContain('.text-orange-500');
+    fs.mkdirSync(path.join(content, 'nested'));
+    fs.writeFileSync(path.join(content, 'nested/page.html'), '<div class="text-orange-500" />');
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(output(pack, '.css')).toContain('.text-orange-500');
+  } finally { await watcher?.close(); }
+});

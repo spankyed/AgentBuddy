@@ -535,7 +535,7 @@ const PACKAGE_BUILD_INPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((uni
 const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.outputs.map(relative)))].sort();
 
 /**
- * What a *consumer* of the built packages reads: the outputs less the staged publish trees.
+ * What a consumer reads: built outputs and package resolution metadata, excluding staged publish trees.
  *
  * `publish/` is a copy of what `files` names plus a derived manifest (`stagePublishTree`), written so a
  * tarball ships no `src/` — and **only `packages:check` opens one**, running `publint --strict` and `attw`
@@ -554,7 +554,10 @@ const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((un
  * than a key nobody looks at. The narrowing stops here deliberately — `dep-files.ts` records why the same
  * move over a package's `dist` is a judgement this one is not.
  */
-const PACKAGE_BUILD_READS = PACKAGE_BUILD_OUTPUTS.filter((out) => !out.endsWith(`/${PUBLISH_TREE}`));
+const PACKAGE_BUILD_READS = [...new Set([
+  ...PACKAGE_BUILD_OUTPUTS.filter(out => !out.endsWith(`/${PUBLISH_TREE}`)),
+  ...PACKAGE_BUILD_INPUTS.filter(input => input.endsWith('/package.json')),
+])].sort();
 
 /** What `build` writes: the app that `needsApp` steps read */
 export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/main/dist', 'packages/preload/dist'];

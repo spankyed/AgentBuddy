@@ -9,8 +9,8 @@
  * declaring too little.
  *
  * Every bundler here already computes this set and threw it away. esbuild's `metafile.inputs` is the dep
- * file outright; Rollup's `bundle.watchFiles` is the declaration program's file list; Vite's module graph
- * is the same thing for the frontend bundle. So this records what they say rather than inferring anything,
+ * file outright; Rollup's `bundle.watchFiles` is the declaration program's file list; Vite's watch files
+ * include the frontend's modules, styles and asset dependencies. So this records what they say rather than inferring anything,
  * and the phases that have no bundler to ask — codegen, the tsx-loaded content compilation, the feature
  * settings load, the static pack rules — are absent rather than guessed at.
  *

@@ -53,7 +53,7 @@ describe('staged DSL definitions', () => {
       try {
         await build(['--skip-generate']);
         expect(log.mock.calls.flat().join('\n')).toContain('dsl defs: unchanged, reused');
-        expect(log.mock.calls.flat().join('\n')).toContain('fe: unchanged, reused');
+        expect(log.mock.calls.flat().join('\n')).toContain('fe: dist/runtime/fe.js');
       } finally { log.mockRestore(); }
       expect(readPackBuild(dir).revision).toBe(current.revision);
       const manifestFile = path.join(root, 'apack.json');

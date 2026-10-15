@@ -4,7 +4,10 @@ import { runPackBuild } from './build-process.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from './pack-inputs.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
-import { compilerWatchPaths, compilerWatchTargets, compilerWatchMatches, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
+import { compilerWatchPaths, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
+import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';
+import type { BuildWatchInputs } from './build-watch-inputs.ts';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 
 const DEBOUNCE_MS = 300;
 
@@ -66,22 +69,37 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
   const packId = readValidManifest(root).id;
   let closed = false;
+  let stopping: Promise<void> | undefined;
   let ready = false;
   let pending = false;
   let lastChange = '';
   let compilerPaths: CompilerWatchPaths = new Map();
+  let matchesCompilerInput = createCompilerWatchMatcher(compilerPaths);
   let compilerSignature: string | undefined;
   let authoredSignature: string | undefined;
+  let frontendSignature: string | undefined;
+  const dataDirectory = options.place?.userDataDir ?? (options.place ? resolveAppEnvironment(options.place).userDataDir : undefined);
+  const frontend = createFrontendWatcher(root, dataDirectory,
+    file => request(path.relative(root, file)));
   const publish = async (): Promise<boolean> => {
     const compiler = refreshInputs();
     const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
-    if (compiler.signature === compilerSignature && authored === authoredSignature) return false;
+    const beforeFrontend = frontend.snapshot();
+    if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature) return false;
     compilerSignature = compiler.signature;
     authoredSignature = authored;
+    frontendSignature = beforeFrontend.hash;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
-    await runPackBuild(root);
+    let reported: { inputs: BuildWatchInputs; snapshot: FrontendInputSnapshot } | undefined;
+    await runPackBuild(root, async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; });
+    if (closed) return false;
+    const accepted = reported?.inputs.successful ? reported.inputs : { files: [], directories: [], successful: true };
+    await frontend.accept(accepted);
+    if (closed) return false;
+    const frontendChanged = !beforeFrontend.current() || (reported && !reported.snapshot.current());
+    frontendSignature = frontendChanged ? beforeFrontend.hash : reported?.snapshot.hash ?? frontend.snapshot().hash;
     const after = refreshInputs(true);
-    if (after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
+    if (frontendChanged || after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
       request('inputs changed during the build');
     }
     return true;
@@ -110,7 +128,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   // Keep the root subscribed while replacing link watches, including during failed builds.
   const watcher = fs.watch(root, { recursive: true }, (event, filename) => {
     if (!filename || isPackInputPath(filename)) request(filename ?? 'authored inputs');
-    else if (compilerWatchMatches(compilerPaths, path.resolve(root, filename), event)) request(filename);
+    else if (matchesCompilerInput(path.resolve(root, filename), event)) request(filename);
   });
   let links: fs.FSWatcher[] = [];
   function refreshInputs(replace = false) {
@@ -127,8 +145,9 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
         }));
       }
       for (const [directory, target] of compilerWatchTargets(paths, root)) {
+        const matches = createCompilerWatchMatcher(target.paths);
         next.push(fs.watch(directory, { recursive: target.recursive }, (event, filename) => {
-          if (!filename || compilerWatchMatches(target.paths, path.resolve(directory, filename), event)) {
+          if (!filename || matches(path.resolve(directory, filename), event)) {
             request(path.relative(root, path.resolve(directory, filename ?? '')));
           }
         }));
@@ -140,15 +159,22 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     for (const watch of links) watch.close();
     links = next;
     compilerPaths = paths;
+    matchesCompilerInput = createCompilerWatchMatcher(paths);
     return { ...compiler, authored };
   }
-  const close = () => { closed = true; watcher.close(); for (const watch of links) watch.close(); return runs.close(); };
+  const close = () => {
+    if (!stopping) {
+      closed = true; watcher.close(); for (const watch of links) watch.close();
+      stopping = Promise.all([frontend.close(), runs.close()]).then(() => {});
+    }
+    return stopping;
+  };
   try {
     await publish();
     options.onFirstBuild?.();
     ready = true;
     if (pending) runs.request();
-    console.log('[watch] Watching authored and TypeScript inputs; each successful build publishes verified dist/');
+    console.log('[watch] Watching build inputs; each successful build publishes verified dist/');
     return { close };
   } catch (error) {
     await close();

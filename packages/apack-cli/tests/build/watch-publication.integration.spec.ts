@@ -132,16 +132,12 @@ it.skipIf(!built)('publishes source and manifest edits together and retains the 
   });
 }, 60_000);
 
-it.skipIf(!built)('reloads linked manifests after atomic replacement, retargeting and invalid edits', async () => {
+it.skipIf(!built)('follows retargeted manifest links through refusal, repair and atomic replacement', async () => {
   await withWatchedPack(async ({ root, hooks, shared, registry, errors, state }) => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
     // Only external data changes below: a root-only watcher cannot observe them.
-    const changed = { ...manifest, features: { notes: { description: 'Atomic manifest replacement.' } } };
-    fs.writeFileSync(path.join(hooks, 'replacement.json'), JSON.stringify(changed));
-    fs.renameSync(path.join(hooks, 'replacement.json'), path.join(hooks, 'manifest.json'));
-    await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Atomic manifest replacement.'), { timeout: 20_000 });
+    const changed = { ...manifest, features: { notes: { description: 'Retargeted manifest.' } } };
     const beforeRetarget = state.publications;
-    changed.features.notes.description = 'Retargeted manifest.';
     errors.mockClear();
     fs.writeFileSync(path.join(hooks, 'retargeted.json'), '{');
     fs.unlinkSync(path.join(shared, 'manifest.json'));
@@ -152,7 +148,8 @@ it.skipIf(!built)('reloads linked manifests after atomic replacement, retargetin
     await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Retargeted manifest.'), { timeout: 20_000 });
     expect(state.publications).toBeGreaterThan(beforeRetarget);
     changed.features.notes.description = 'Edited retargeted manifest.';
-    fs.writeFileSync(path.join(hooks, 'retargeted.json'), JSON.stringify(changed));
+    fs.writeFileSync(path.join(hooks, 'replacement.json'), JSON.stringify(changed));
+    fs.renameSync(path.join(hooks, 'replacement.json'), path.join(hooks, 'retargeted.json'));
     await vi.waitFor(() => expect(registry.catalog.get('watched-pack')?.snapshot.manifest.features?.notes.description).toBe('Edited retargeted manifest.'), { timeout: 20_000 });
   });
 }, 60_000);

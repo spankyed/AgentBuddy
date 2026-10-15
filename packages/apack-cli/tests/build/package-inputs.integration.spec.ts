@@ -8,55 +8,21 @@ import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-bu
 import { assertGeneratedCurrent } from '../../src/commands/generate-entries.ts';
 import { dependencyTypes } from '../../src/commands/generate.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { runtimePack, vueRuntimePack } from '../_support/frontend-pack.ts';
+import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
+import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 
 let root: string | undefined;
 afterEach(() => { vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
 
 function runtimeConsumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
-  const modules = path.join(root, 'node_modules');
-  fs.mkdirSync(modules);
-  for (const name of ['@apackdev', 'xstate']) {
-    fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', name), path.join(modules, name), 'dir');
-  }
-  const library = path.join(modules, 'borrowed');
-  fs.mkdirSync(library);
-  fs.writeFileSync(path.join(library, 'package.json'), JSON.stringify({ name: 'borrowed', version: '1.0.0',
-    type: 'module', exports: { '.': { types: './index.d.ts', default: './index.js' } } }));
-  fs.writeFileSync(path.join(library, 'index.d.ts'), 'export declare const marker: string;');
-  fs.writeFileSync(path.join(library, 'index.js'), "export { marker } from './helper.js';");
-  const helper = path.join(library, 'helper.js');
-  fs.writeFileSync(helper, "export const marker = 'BEFORE';");
-  const pack = preparePack(root, 'runtime-consumer', {
-    'apack.json': JSON.stringify({ id: 'runtime-consumer', name: 'Runtime Consumer', version: '1.0.0',
-      features: { view: { description: 'Imported runtime value.', plugin: { label: 'View', state: 'src/plugin.ts' } } } }),
-    'package.json': packageJson('runtime-consumer'), 'tsconfig.json': tsconfig,
-    'src/plugin.ts': "import { createMachine } from 'xstate'; import { marker } from 'borrowed'; export default createMachine({ context: { marker } });",
-  }, modules);
-  return { pack, helper, frontend: path.join(pack, 'dist/runtime/fe.js') };
+  return runtimePack(root);
 }
 
 function vueRuntimeConsumer(kind: 'inline' | 'external' | 'linked' = 'inline') {
-  const consumer = runtimeConsumer();
-  const { pack } = consumer;
-  fs.writeFileSync(path.join(pack, 'src/plugin.ts'), "import { createMachine } from 'xstate'; export default createMachine({});");
-  const script = kind === 'external' ? '<script src="../../outside.ts" lang="ts"></script>'
-    : '<script setup lang="ts">import { marker } from "borrowed";</script>';
-  if (kind === 'external') fs.writeFileSync(path.join(root!, 'outside.ts'), "import { marker } from 'borrowed'; export default { data: () => ({ marker }) };");
-  const canvas = path.join(pack, 'src/canvas.vue');
-  if (kind === 'linked') {
-    const component = path.join(root!, 'canvas.vue');
-    consumer.helper = path.join(root!, 'outside-value.ts');
-    fs.writeFileSync(consumer.helper, "export const marker = 'BEFORE';");
-    fs.writeFileSync(component, '<script setup lang="ts">import { marker } from "./outside-value.ts";</script><template><div>{{ marker }}</div></template>');
-    fs.symlinkSync(component, path.join(pack, 'src/linked.vue'));
-    fs.writeFileSync(canvas, '<script setup lang="ts">import Linked from "./linked.vue";</script><template><Linked /></template>');
-  } else fs.writeFileSync(canvas, `${script}<template><div>{{ marker }}</div></template>`);
-  const manifestFile = path.join(pack, 'apack.json');
-  const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-  manifest.features.view.plugin.canvas = 'src/canvas.vue';
-  fs.writeFileSync(manifestFile, JSON.stringify(manifest));
-  return consumer;
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
+  return vueRuntimePack(root, kind);
 }
 
 it('rebuilds the frontend when an undeclared imported package changes behind unchanged types', async () => {
@@ -72,14 +38,19 @@ it('rebuilds the frontend when an undeclared imported package changes behind unc
   expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
 });
 
-it.each(['inline', 'external', 'linked'] as const)('rebuilds a Vue canvas after an outside input changes (%s script)', async kind => {
+it.each(['inline', 'external', 'linked'] as const)('invalidates compiler inputs and recompiles a Vue-only import (%s script)', async kind => {
   const { pack, helper, frontend } = vueRuntimeConsumer(kind);
-  const first = await callCli(pack, 'build');
-  expect(first.code, first.output).toBe(0);
+  const inputs = captureCompilationInputs(pack);
+  const compile = async () => {
+    const result = await bundlePackFE({ packDir: pack, entryPoint: path.join(pack, 'src/canvas.vue'),
+      outputDir: path.dirname(frontend) });
+    expect(result.success, result.error).toBe(true);
+  };
+  await compile();
   expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
   fs.writeFileSync(helper, "export const marker = 'AFTERX';");
-  const second = await callCli(pack, 'build');
-  expect(second.code, second.output).toBe(0);
+  expect(() => inputs.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+  await compile();
   expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
   expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
 });

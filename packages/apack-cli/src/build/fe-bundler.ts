@@ -6,6 +6,7 @@ import type { InlineConfig, Plugin as VitePlugin } from 'vite';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@apackdev/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import type { BuildWatchInputs } from './build-watch-inputs.ts';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -393,21 +394,22 @@ export interface BundleFEOptions {
   release?: boolean;
   /** Where this bundle reports the files it read, for the build's record of its inputs */
   recordReads?: RecordReads;
+  /** Live subscriptions for the worker's parent, independent of optional diagnostic recording. */
+  onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
 }
 
-/**
- * Reports the module graph this bundle resolved — Rollup's own answer to what it read, which is the same
- * thing esbuild's `metafile.inputs` is for the backend bundles.
- *
- * Its own plugin rather than a hook on `packExternalsPlugin`, because it shares nothing with that plugin's
- * subject: what is external here is exactly what is *not* read, and the two would only ever be edited
- * apart. `buildEnd` is where the graph is complete and nothing has been written yet.
+/** Current compiler watch files include stylesheet and asset dependencies as well as modules.
+ * Diagnostics and live worker subscriptions consume the same observations before publication.
  */
-function recordReadsPlugin(record: RecordReads, version: string): VitePlugin {
+function inputReportPlugin(options: BundleFEOptions, directories: Set<string>, version: string): VitePlugin {
   return {
-    name: 'record-reads',
-    buildEnd() {
-      record({ bundler: 'vite', version, files: this.getModuleIds() });
+    name: 'report-build-inputs',
+    async buildEnd(error) {
+      const files = this.getWatchFiles();
+      options.recordReads?.({ bundler: 'vite', version, files });
+      if (options.onInputs) await options.onInputs({ files: [...new Set(files.filter(file => !file.includes('\0'))
+        .map(file => path.resolve(options.packDir, fs.existsSync(file) ? file : file.replace(/[?#].*$/, ''))))],
+        directories: [...directories], successful: !error });
     },
   };
 }
@@ -543,6 +545,17 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   // Inject @tailwind utilities so Tailwind generates classes found in templates. Vite's module ids
   // are real paths (a pack under a symlinked dir, like macOS's /var, has others)
   const entryFile = fs.realpathSync(path.resolve(packDir, entryPoint));
+  const directories = new Set<string>();
+  if (options.onInputs) postcssPlugins.push({
+    postcssPlugin: 'apack-watch-inputs',
+    OnceExit(_root: unknown, { result }: { result: { opts: { from?: string }; messages: Record<string, unknown>[] } }) {
+      for (const message of result.messages) {
+        if (message.type === 'dir-dependency' && typeof message.dir === 'string') {
+          directories.add(path.resolve(path.dirname(result.opts.from ?? entryFile), message.dir));
+        }
+      }
+    },
+  });
   const tailwindInjectPlugin: VitePlugin = {
     name: 'tailwind-inject',
     resolveId(id) { if (id === 'virtual:tailwind-utils.css') return '\0virtual:tailwind-utils.css'; },
@@ -574,7 +587,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         ...(definitionsDir ? [stagedDslDefinitionsPlugin(packDir, definitionsDir)] : []),
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
-        ...(recordReads ? [recordReadsPlugin(recordReads, vite.version)] : []),
+        ...((recordReads || options.onInputs) ? [inputReportPlugin(options, directories, vite.version)] : []),
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
       ],

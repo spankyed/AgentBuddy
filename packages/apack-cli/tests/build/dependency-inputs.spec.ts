@@ -7,7 +7,7 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE } from '@
 import { cacheDependency, readDependencyBuild, sealPackBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { assertDependencyInputsCurrent, dependencyInputsHash } from '../../src/build/dependency-inputs.ts';
-import { dslInputsHash, feInputsHash, typesInputsHash } from '../../src/build/phase-cache.ts';
+import { dslInputsHash, typesInputsHash } from '../../src/build/phase-cache.ts';
 import { dependencyTypes } from '../../src/commands/generate.ts';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries.ts';
 import { bundlePackTypes } from '../../src/build/types-bundler.ts';
@@ -40,7 +40,6 @@ it('moves every cached phase for a same-version helper change with identical sna
   expect(second.get('dep-pack')!.snapshot).toEqual(first.get('dep-pack')!.snapshot);
   expect(dependencyInputsHash(second)).not.toBe(dependencyInputsHash(first));
   for (const hash of [files => typesInputsHash(pack.directory, files, compilation),
-    files => feInputsHash(pack.directory, { release: false }, [], files, compilation),
     files => dslInputsHash(pack.directory, [], files, compilation)] satisfies Array<(files: typeof first) => string>) {
     expect(hash(second)).not.toBe(hash(first));
   }
