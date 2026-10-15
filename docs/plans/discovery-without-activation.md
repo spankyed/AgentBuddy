@@ -2533,3 +2533,20 @@ Then execute checkpoint 3's live palette/style/default/layout reader migration, 
 readiness for executable components/callbacks and removing permanent active-registry caches. Full trigger/
 build metadata, all other contribution kinds, source execution/freshness, editor readiness, navigation,
 boundaries and all Phase 6 workstreams remain required. Deferred activation/security/storage stays deferred.
+
+
+### Frontend step checkpoint 2A outcome (2026-10-15)
+
+`cda9fa00e` implements the authored contract above: inline frontend data, checked icon/component/layout
+bindings, explicit step type/custom-helper modules and removal of frontend facet factories and directory
+inference. All 15 declarations preserve previous static fields/loading modes/layout slots; all seven
+baseline EARS/content files and the default-pack facade report are unchanged. Actual source-free external
+inspection followed by supported host admission, lazy component/layout execution and unload passes.
+Three guard mutations fail as intended and exact source is restored. Strict checkpoint and committed-source
+strict validation pass; the owning goal records counts, runs and the corrected test-boundary failure.
+
+Proceed to **2B**, not palette migration: declare/admit native steps and project them through the common
+catalog/window inventory with source/installed ownership, captured metadata, eligibility and revision
+semantics. Close unchecked native frontend admission before consumers depend on this projection. Then
+execute checkpoint 3's live readers/cache removal. Full trigger/build metadata and every other remaining
+goal workstream stay required; no phase is complete or archived here.

@@ -4753,3 +4753,53 @@ This closes step-discovery checkpoint 1 only. Native step declarations, frontend
 and live catalog readers remain required in checkpoints 2–3. Every other discovery/freshness, editor/
 provider, navigation, failure-boundary and all three Phase 6 requirements remain active. Final strict
 `--all` on committed source and the requirement-by-requirement completion audit remain outstanding.
+
+
+### Declarative frontend step checkpoint (2026-10-15)
+
+Source `cda9fa00e` completes step checkpoint **2A** in the
+[discovery plan](../plans/discovery-without-activation.md#frontend-step-declaration-design-2026-10-15).
+Step `fe` now declares presentation, icon/component targets and loading modes, static layout flags and
+named calculated-layout functions. Generated bindings share component grammar with feature plugins;
+frontend admission checks metadata, slot membership and callable layouts without invoking them.
+
+All 15 authored frontend step modules and both frontend scaffold templates are removed. Fire/Switch
+calculations live in typed layout exports. `StepFEFacet.loadComponents` and its host execution path are
+gone; atomic refusal/incumbent-resource tests now use supported designation collisions. Step `types`
+and `dsl.helpers` explicitly name their modules. There is no executable-directory inference, conventional
+file probing or `dsl.custom`. Shared type modules enter the generated union/barrel once. Schemas, API
+reports, module readers, CLI scaffolds/inspection, fixtures and public docs agree.
+
+Evidence:
+
+- A TypeScript AST comparison against the previous committed modules confirms all 15 declarations retain
+  every static field, component slot/loading mode and layout slot (`/private/tmp/apack-step-parity.mjs`).
+  All seven baseline generated EARS/content files remain byte-identical after final validation. The
+  default-pack facade report also remains unchanged; no EARS type widening or added shapes.
+- Real scaffold/dependency builds pass. The extended external editor fixture builds explicit step types,
+  helpers, lazy form and layout, copies the build and deletes authored sources, then inspects it before
+  importing executable code. Separately, the supported host frontend loader admits that built registration,
+  its calculated layout/lazy form work, and unload removes it. Poisoned-build CLI inspection remains covered.
+  Actual Fire/Switch layout checks pass in the default-pack suite.
+- Three mutations bypassing presentation admission, callable-layout checks and component-export checks
+  fail the intended assertions; exact source was restored. Logs:
+  `/private/tmp/apack-step-mutation-{host-presentation,layout-callable,component-export}.log`.
+- The first strict run caught a CLI test importing a private host source file. Fixed the test to exercise
+  the supported loader/registry instead; all 17 spec-placement checks and the real external test then pass.
+- `npm run chain -- --strict --cores 1` passes in 624.9s, reusing 16 unchanged accepted steps:
+  `node_modules/.cache/apack-chain/runs/2026-10-15T12-20-13Z-37971`,
+  `/private/tmp/apack-step-presentation-validated-strict.log`. Host: 395 files/4,712 tests; integration:
+  57 files/739 tests, including facade/completion checks; default pack: 846 tests, existing one file/two
+  tests skipped. External-pack app/replacement/restart, smoke and packaged authoring/app checks pass.
+  No deadline changes. Reused API/package/default-build/facade checks passed in the preceding run
+  `2026-10-15T12-12-40Z-29346`, whose sole host-test failure was the corrected private import.
+- On committed source, `npm run chain -- --strict` passes in 1.1s (29/30 cached):
+  `node_modules/.cache/apack-chain/runs/2026-10-15T12-31-28Z-70329`,
+  `/private/tmp/apack-step-presentation-committed-strict.log`. Unrelated staged issue work is untouched.
+
+Next is required checkpoint **2B**: native step declarations/admission and common native/installed/source
+catalog/window projections, including ownership, captured metadata and the unchecked native frontend
+composition path. Only then migrate palette/style/default/layout readers and retire permanent active-only
+caches in checkpoint 3. Full trigger/build metadata, remaining contribution kinds/assets, exact compiler/
+frozen execution/freshness, cold editor readiness, native lifecycle, navigation, frontend boundaries and
+all three Phase 6 workstreams remain required. This is not phase/goal completion or the final strict `--all`.

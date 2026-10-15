@@ -73,7 +73,7 @@ the settings plan, as that goal already specifies.
 
 | Item | Decision and destination |
 |---|---|
-| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; native/frontend step metadata, live readers and remaining kinds/assets stay required |
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step admission/catalog projections, live readers and remaining kinds/assets stay required |
 | Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 still owns final documentation/schema coverage |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | M1 implemented in `2fff8bb76`: merge declarations on owning features or `data.entities`, explicit null for untyped, one projection, preserved generated EARS and all readers |
@@ -676,3 +676,17 @@ frontend boundaries and all three Phase 6 workstreams. Nothing is archived or ex
 cycle bounds and authored-output exclusions without hiding authored-source retargeting. The goal records failing baselines, focused/type checks
 and an actual Tailwind CLI rebuild. Glob/worker/dynamic closure, frozen execution, bulk strict validation
 and all remaining discovery/navigation/frontend/Phase 6 work remain required; this is not phase completion.
+
+
+### Declarative frontend step checkpoint (2026-10-15)
+
+`cda9fa00e` completes discovery step checkpoint 2A: authored editor metadata and explicit bindings,
+step type/custom-helper modules, checked installed frontend admission, migrated scaffolds/docs/reports,
+and removal of component factories and directory inference. Strict validation passes, including the full
+739-test integration suite, real external/source-free authoring/admission/unload and isolated app checks;
+committed-source strict validation also passes. The owning goal records source, parity, mutations and runs.
+
+Required next: native step declaration/admission and common catalog/window parity (2B), then live
+palette/style/default/layout readers and cache removal (3). All other discovery/static-content, frozen
+execution/freshness, navigation, boundaries and Phase 6 requirements remain active. This checkpoint does
+not complete discovery or replace the final committed-source strict `--all` requirement.
