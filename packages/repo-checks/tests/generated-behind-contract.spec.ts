@@ -44,8 +44,7 @@ const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugi
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
  * a module the fixture does not emit is a module this check never looks at — so the four conditional ones are
- * bought deliberately: `repositories` by a declared repository, `step-types` by a step whose folder has a
- * `types.ts`, `steps-build` by any declared step, `dsl-types-fe` by a `monaco` DSL target with globals.
+ * bought deliberately: `repositories` by a declared repository, `step-types` by a step with a declared types module, `steps-build` by any declared step, `dsl-types-fe` by a `monaco` DSL target with globals.
  *
  * The contracts are plain declared types with no imports, which is all codegen reads them as — the temp dir has no
  * `node_modules` for an import to resolve against.
@@ -72,7 +71,7 @@ function fixture(): PackManifest {
       },
     },
     extensions: {
-      steps: { tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      steps: { tick: { node: { label: 'Tick' }, types: 'src/extensions/steps/tick/types.ts', kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
       dsl: { action: { entry: 'src/defs/action.ts', prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
     },
   };

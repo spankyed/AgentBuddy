@@ -117,7 +117,10 @@ describe('apack pack add step in a pack without steps', () => {
         kind: 'step',
         node: { label: 'Ping', defaultLabel: 'Ping' },
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
-        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+        types: 'src/extensions/steps/ping/types.ts',
+        fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
+          connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/ping/form.vue', load: 'lazy' } } },
       },
     });
     expect(fs.existsSync(path.join(bare, 'src/extensions/steps/ping/build.ts'))).toBe(true);
@@ -146,7 +149,10 @@ describe('apack pack add step in a pack without steps', () => {
       kind: 'trigger',
       node: { label: 'Heartbeat', defaultLabel: 'On heartbeat', defaults: { source: 'change me' } },
       trigger: { facet: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerBuild' },
-      fe: 'src/extensions/steps/heartbeat/fe.ts#heartbeatTriggerFE',
+      types: 'src/extensions/steps/heartbeat/types.ts',
+        fe: { colorKey: 'blue', nodeConfig: { icon: 'Radio',
+          connectionRules: { inputs: 0, outputs: -1 }, category: 'trigger', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/heartbeat/form.vue', load: 'lazy' } } },
     });
     // Its own template, so no StepBuildFacet is written for it
     expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/trigger.ts'))).toBe(true);

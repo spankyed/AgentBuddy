@@ -286,15 +286,15 @@ that names no directory under `src/`. The reference is
 Step definitions in `src/extensions/steps/`. Each step directory contains:
 
 - `build.ts` — build facet: `export const <name>StepBuild` (or `<name>TriggerBuild` for schedule and listener) with `build: { compile, validate, getLabel, decompile }` or a trigger facet, and no FE or runtime imports
-- `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
+- `apack.json` `fe` — inline presentation, explicit lazy component targets and calculated layout bindings
 - `types.ts` — step-specific types (the `DSL…Node` interface a flow helper is generated from)
 - `form.vue` — optional editor form component
 - `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
 A new step is one directory and one `apack.json` entry under `extensions.steps`, keyed by its type.
 The entry holds inline `node: { label, defaultLabel?, defaults? }` data for both processes; no node-data export is needed. `build.ts` exports
-its `StepBuildFacet` (a trigger's exports its `TriggerFacet`), `fe.ts` its `StepFEFacet`, `runtime.ts` the
-handler the entry names. There are no barrels — codegen sends each facet where it is used, and writes
+its `StepBuildFacet` (a trigger's exports its `TriggerFacet`), and `runtime.ts` the handler the entry names.
+`types` and `dsl.helpers` explicitly declare their modules; no neighboring files are inferred. There are no barrels — codegen sends each facet where it is used, and writes
 `src/__generated__/steps-build.ts`, bundled to `dist/build/steps.build.mjs`, which packs depending on
 default-setup use to validate their flows.
 
@@ -357,7 +357,7 @@ them — but `kind` is the manifest's and not the folder's: `actions` and `toggl
 
 ## Extensions
 
-- **Tiptap plugins** (`src/extensions/tiptap/index.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Carried by `pack-entry-fe.ts`'s registration.
+- **Tiptap plugins** (`apack.json` `extensions.tiptapPlugins`) — reference suggestions, slash commands and command viewer decoration. The stored reference node belongs to the native UI pack; default-setup contributes providers and popups. Carried by `pack-entry-fe.ts`'s registration.
 - **Help articles** (`src/extensions/help/`) — Markdown contributed through `apack.json` `extensions.help.path` and shown in Settings → Help.
 - **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `help/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
 - **References** (`__generated__/references.ts`) — aggregates reference types, categories and item providers from the threads, library and notes features, for the tiptap reference system: which of each feature's things can be linked to from an editor, and how to render and open a link.

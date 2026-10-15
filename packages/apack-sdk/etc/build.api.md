@@ -837,7 +837,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 facet: string;
                 register?: string | undefined;
             }>>;
-            fe: z.ZodOptional<z.ZodString>;
+            fe: z.ZodOptional<z.ZodLazy<z.ZodType<StepFrontendDeclaration, z.ZodTypeDef, StepFrontendDeclaration>>>;
+            types: z.ZodOptional<z.ZodString>;
             runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
                 handler: z.ZodOptional<z.ZodString>;
                 sync: z.ZodOptional<z.ZodLiteral<true>>;
@@ -872,15 +873,15 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             dsl: z.ZodOptional<z.ZodObject<{
                 primaryField: z.ZodOptional<z.ZodString>;
                 defaultLabel: z.ZodOptional<z.ZodString>;
-                custom: z.ZodOptional<z.ZodLiteral<true>>;
+                helpers: z.ZodOptional<z.ZodString>;
             }, "strict", z.ZodTypeAny, {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             }, {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             node: {
@@ -888,13 +889,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -903,9 +905,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }, {
             node: {
@@ -913,13 +915,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -928,9 +931,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }>, {
             node: {
@@ -938,13 +941,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -953,9 +957,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }, {
             node: {
@@ -963,13 +967,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -978,9 +983,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }>>>;
         artifacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
@@ -1052,13 +1057,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1067,9 +1073,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1109,13 +1115,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1124,9 +1131,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1498,13 +1505,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1513,9 +1521,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1641,13 +1649,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1656,9 +1665,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1798,13 +1807,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1813,9 +1823,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1941,13 +1951,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -1956,9 +1967,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -2098,13 +2109,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 defaults?: Record<string, unknown> | undefined;
                 defaultLabel?: string | undefined;
             };
+            types?: string | undefined;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
             } | undefined;
             kind?: "step" | "trigger" | undefined;
             build?: string | undefined;
-            fe?: string | undefined;
+            fe?: StepFrontendDeclaration | undefined;
             runtime?: {
                 isAsync?: true | undefined;
                 handler?: string | undefined;
@@ -2113,9 +2125,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 spawnsSubflow?: true | undefined;
             } | undefined;
             dsl?: {
-                custom?: true | undefined;
                 defaultLabel?: string | undefined;
                 primaryField?: string | undefined;
+                helpers?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -2946,15 +2958,15 @@ export type StepDSLMeta = z.infer<typeof StepDSLMetaSchema>;
 export const StepDSLMetaSchema: z.ZodObject<{
     primaryField: z.ZodOptional<z.ZodString>;
     defaultLabel: z.ZodOptional<z.ZodString>;
-    custom: z.ZodOptional<z.ZodLiteral<true>>;
+    helpers: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    custom?: true | undefined;
     defaultLabel?: string | undefined;
     primaryField?: string | undefined;
+    helpers?: string | undefined;
 }, {
-    custom?: true | undefined;
     defaultLabel?: string | undefined;
     primaryField?: string | undefined;
+    helpers?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -2987,7 +2999,8 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         facet: string;
         register?: string | undefined;
     }>>;
-    fe: z.ZodOptional<z.ZodString>;
+    fe: z.ZodOptional<z.ZodLazy<z.ZodType<StepFrontendDeclaration, z.ZodTypeDef, StepFrontendDeclaration>>>;
+    types: z.ZodOptional<z.ZodString>;
     runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
         handler: z.ZodOptional<z.ZodString>;
         sync: z.ZodOptional<z.ZodLiteral<true>>;
@@ -3022,15 +3035,15 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     dsl: z.ZodOptional<z.ZodObject<{
         primaryField: z.ZodOptional<z.ZodString>;
         defaultLabel: z.ZodOptional<z.ZodString>;
-        custom: z.ZodOptional<z.ZodLiteral<true>>;
+        helpers: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     }, {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     node: {
@@ -3038,13 +3051,14 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaults?: Record<string, unknown> | undefined;
         defaultLabel?: string | undefined;
     };
+    types?: string | undefined;
     trigger?: {
         facet: string;
         register?: string | undefined;
     } | undefined;
     kind?: "step" | "trigger" | undefined;
     build?: string | undefined;
-    fe?: string | undefined;
+    fe?: StepFrontendDeclaration | undefined;
     runtime?: {
         isAsync?: true | undefined;
         handler?: string | undefined;
@@ -3053,9 +3067,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     } | undefined;
 }, {
     node: {
@@ -3063,13 +3077,14 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaults?: Record<string, unknown> | undefined;
         defaultLabel?: string | undefined;
     };
+    types?: string | undefined;
     trigger?: {
         facet: string;
         register?: string | undefined;
     } | undefined;
     kind?: "step" | "trigger" | undefined;
     build?: string | undefined;
-    fe?: string | undefined;
+    fe?: StepFrontendDeclaration | undefined;
     runtime?: {
         isAsync?: true | undefined;
         handler?: string | undefined;
@@ -3078,9 +3093,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     } | undefined;
 }>, {
     node: {
@@ -3088,13 +3103,14 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaults?: Record<string, unknown> | undefined;
         defaultLabel?: string | undefined;
     };
+    types?: string | undefined;
     trigger?: {
         facet: string;
         register?: string | undefined;
     } | undefined;
     kind?: "step" | "trigger" | undefined;
     build?: string | undefined;
-    fe?: string | undefined;
+    fe?: StepFrontendDeclaration | undefined;
     runtime?: {
         isAsync?: true | undefined;
         handler?: string | undefined;
@@ -3103,9 +3119,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     } | undefined;
 }, {
     node: {
@@ -3113,13 +3129,14 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         defaults?: Record<string, unknown> | undefined;
         defaultLabel?: string | undefined;
     };
+    types?: string | undefined;
     trigger?: {
         facet: string;
         register?: string | undefined;
     } | undefined;
     kind?: "step" | "trigger" | undefined;
     build?: string | undefined;
-    fe?: string | undefined;
+    fe?: StepFrontendDeclaration | undefined;
     runtime?: {
         isAsync?: true | undefined;
         handler?: string | undefined;
@@ -3128,9 +3145,9 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     } | undefined;
     dsl?: {
-        custom?: true | undefined;
         defaultLabel?: string | undefined;
         primaryField?: string | undefined;
+        helpers?: string | undefined;
     } | undefined;
 }>;
 

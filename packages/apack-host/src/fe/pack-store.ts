@@ -288,13 +288,6 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
         const candidate = capture({ ...definition, id }, identity);
         const next = new Map(accepted);
         next.set(id, candidate);
-        buildTables(next.values());
-        // Only the candidate's loaders execute; rebuilding lookup tables never reruns pack code.
-        candidate.steps = candidate.steps.map(([type, step]) => {
-          const fe = step.fe;
-          return fe?.loadComponents && !fe.components
-            ? [type, { ...step, fe: { ...fe, components: fe.loadComponents() } }] : [type, step];
-        });
         const projected = buildTables(next.values());
         binding.bind(candidate.bindSettings);
         return prepareChange(id, next, projected, binding, candidate.addressed.map(({ plugin }) => plugin));

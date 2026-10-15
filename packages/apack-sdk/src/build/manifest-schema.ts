@@ -15,6 +15,7 @@ import type { PackMigrations } from '../framework/pack-registration.ts';
 import type { ReferenceDeclarations } from '../framework/reference-declaration.ts';
 import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
 import type { FrontendDeclaration, TiptapPluginDeclaration } from '../framework/frontend-declaration.ts';
+import type { StepFrontendDeclaration, StepLayoutDeclaration } from '../framework/step-frontend-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
 
@@ -142,9 +143,9 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
 }));
 
 export const StepDSLMetaSchema = z.object({
-  primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
-  defaultLabel: z.string().describe('Fallback label when primaryField is empty.').optional(),
-  custom: z.literal(true).describe('Marks the step as a custom (non-built-in) type.').optional(),
+  primaryField: z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be a field identifier').describe('The field whose value becomes the step label in the flow editor.').optional(),
+  defaultLabel: z.string().describe('Default label argument for the generated label-only helper.').optional(),
+  helpers: ModulePathSchema.describe('Pack-root-relative module whose custom flow helpers are re-exported.').optional(),
 }).strict();
 
 /**
@@ -187,7 +188,8 @@ export const StepEntrySchema = z.object({
   }).strict().describe('Node labels and initial values, available without importing step code. Both generated registrations carry this data.'),
   build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
   trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),
-  fe: ExportTargetSchema.describe('"path#exportName" of its StepFEFacet: what the flow editor draws and the form it opens.').optional(),
+  fe: z.lazy(() => StepFrontendSchema).describe('Static editor presentation and explicit component/layout bindings.').optional(),
+  types: ModulePathSchema.describe('Type-only module declaring this step’s node and DSL types. No conventional file is inferred.').optional(),
   runtime: StepRuntimeSchema.describe('What the brain runs, and the flags it reads before running it.').optional(),
   dsl: StepDSLMetaSchema.describe('DSL configuration for flow-helper generation.').optional(),
 }).strict().superRefine((entry, ctx) => {
@@ -361,11 +363,38 @@ function checkReferenceClaims(features: Record<string, { references?: ReferenceD
 }
 
 const ReferenceNameSchema = z.string().regex(/^[a-z][a-z0-9_-]*$/, 'Must be a lowercase reference name');
-const ReferenceIconSchema = z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]);
+const IconSchema = z.union([z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must name a lucide-vue-next export'), ComponentModuleSchema]);
+const StepLayoutShape = {
+  getHeight: ExportTargetSchema.describe('Named function calculating node height from the node and layout context.').optional(),
+  getPorts: ExportTargetSchema.describe('Named function calculating ports from the node and layout context.').optional(),
+  hasInput: z.boolean().describe('Whether this layout has an input port.').optional(),
+  usesExitCount: z.boolean().describe('Whether layout calculations consume the track exit count.').optional(),
+} satisfies Record<keyof StepLayoutDeclaration, z.ZodTypeAny>;
+const StepNodeConfigShape = {
+  icon: IconSchema.describe('Lucide export name or declared custom icon component.'),
+  connectionRules: z.object({
+    inputs: z.number().int().min(-1).describe('Maximum incoming connections; -1 means unlimited.'),
+    outputs: z.number().int().min(-1).describe('Maximum outgoing connections; -1 means unlimited.'),
+  }).strict().describe('Static connection limits for this node type.'),
+  category: z.enum(['trigger', 'action', 'logic', 'data', 'ai']).describe('Palette category for this node type.'),
+  isImplemented: z.boolean().describe('Whether the palette offers this node for creation; only true enables it.').optional(),
+  isDisabled: z.boolean().describe('Disable this palette entry.').optional(),
+} satisfies Record<keyof StepFrontendDeclaration['nodeConfig'], z.ZodTypeAny>;
+const StepFrontendShape = {
+  nodeConfig: z.object(StepNodeConfigShape).strict().describe('Palette and connection metadata, independent of component activation.'),
+  colorKey: z.string().min(1).describe('Editor color token; unknown tokens use the editor’s neutral color.').optional(),
+  components: z.object({
+    node: ComponentTargetSchema.describe('Custom node component; omission uses the generic node.').optional(),
+    form: ComponentTargetSchema.describe('Node configuration form component.').optional(),
+  }).strict().describe('Named component slots and their loading modes.').optional(),
+  layout: z.object(StepLayoutShape).strict().describe('Static layout flags and executable calculation targets.').optional(),
+  handlePrefix: z.string().min(1).describe('Prefix for indexed output handles, such as branch-0.').optional(),
+} satisfies Record<keyof StepFrontendDeclaration, z.ZodTypeAny>;
+const StepFrontendSchema: z.ZodType<StepFrontendDeclaration> = z.object(StepFrontendShape).strict();
 const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
   types: z.record(ReferenceNameSchema, z.object({
     category: ReferenceNameSchema.describe('Category ID grouping this reference type in the picker.'),
-    icon: ReferenceIconSchema.describe('Lucide icon export name or a declared component module for this reference type.'),
+    icon: IconSchema.describe('Lucide icon export name or a declared component module for this reference type.'),
     svgElements: z.array(z.union([
       z.tuple([z.literal('path'), z.object({ d: z.string().describe('SVG path geometry.') }).strict()]),
       z.tuple([z.literal('rect'), z.record(z.string())]),
@@ -376,7 +405,7 @@ const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
   categories: z.record(ReferenceNameSchema, z.object({
     label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')
       .describe('Visible category label in the reference picker.'),
-    icon: ReferenceIconSchema.describe('Lucide icon export name or a declared component module for this category.'),
+    icon: IconSchema.describe('Lucide icon export name or a declared component module for this category.'),
     useItems: ExportTargetSchema.describe('Named reactive item-provider export; queries execute when the picker requests items.'),
   }).strict()).describe('Reference picker category IDs and their declared item providers.'),
 }).strict();
@@ -563,7 +592,7 @@ const ExtensionsSchema = z.object({
     .describe('Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings.').optional(),
   help: z.object({ path: z.string().min(1).describe('Pack-root-relative directory of Markdown help articles compiled during the pack build.') }).strict()
     .describe('Markdown help articles compiled into the snapshot for inspection without loading pack code.').optional(),
-  steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
+  steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
   commands: extensionPoint(

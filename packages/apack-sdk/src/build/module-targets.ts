@@ -1,6 +1,7 @@
 import { _packEntities } from '../framework/data-declaration.ts';
 import { _pluginTargets } from '../framework/plugin-declaration.ts';
 import { _referenceTargets } from '../framework/reference-declaration.ts';
+import { _stepFrontendTargets } from '../framework/step-frontend-declaration.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
 import { _parseModulePath, _parseModuleReference } from '../framework/module-reference.ts';
 import { MIGRATION_LINES } from './manifest-schema.ts';
@@ -50,8 +51,14 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
     const prefix = ['extensions', 'steps', name];
     for (const [field, target] of [
       ['build', entry.build], ['trigger.facet', entry.trigger?.facet],
-      ['trigger.register', entry.trigger?.register], ['runtime.handler', entry.runtime?.handler], ['fe', entry.fe],
+      ['trigger.register', entry.trigger?.register], ['runtime.handler', entry.runtime?.handler],
     ] as const) add([...prefix, ...field.split('.')], target);
+    add([...prefix, 'types'], entry.types, 'types', 'module', `Step "${name}": types`);
+    if (entry.dsl?.helpers !== undefined) targets.push({ path: [...prefix, 'dsl', 'helpers'], target: entry.dsl.helpers,
+      kind: 'script', reference: 'module', label: `Step "${name}": dsl.helpers` });
+    for (const [field, target, kind] of entry.fe ? _stepFrontendTargets(entry.fe) : []) {
+      add([...prefix, 'fe', ...field.split('.')], target, kind, kind === 'component' ? 'default' : 'named');
+    }
   }
   for (const [name, entry] of Object.entries(manifest.extensions?.blocks ?? {})) {
     add(['extensions', 'blocks', name, 'be'], entry.be);

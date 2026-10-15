@@ -850,9 +850,197 @@
                 "description": "For a trigger: its TriggerFacet and the function that starts it."
               },
               "fe": {
+                "type": "object",
+                "properties": {
+                  "nodeConfig": {
+                    "type": "object",
+                    "properties": {
+                      "icon": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Za-z0-9]*$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Lucide export name or declared custom icon component."
+                      },
+                      "connectionRules": {
+                        "type": "object",
+                        "properties": {
+                          "inputs": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "description": "Maximum incoming connections; -1 means unlimited."
+                          },
+                          "outputs": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "description": "Maximum outgoing connections; -1 means unlimited."
+                          }
+                        },
+                        "required": [
+                          "inputs",
+                          "outputs"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Static connection limits for this node type."
+                      },
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "trigger",
+                          "action",
+                          "logic",
+                          "data",
+                          "ai"
+                        ],
+                        "description": "Palette category for this node type."
+                      },
+                      "isImplemented": {
+                        "type": "boolean",
+                        "description": "Whether the palette offers this node for creation; only true enables it."
+                      },
+                      "isDisabled": {
+                        "type": "boolean",
+                        "description": "Disable this palette entry."
+                      }
+                    },
+                    "required": [
+                      "icon",
+                      "connectionRules",
+                      "category"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Palette and connection metadata, independent of component activation."
+                  },
+                  "colorKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Editor color token; unknown tokens use the editor’s neutral color."
+                  },
+                  "components": {
+                    "type": "object",
+                    "properties": {
+                      "node": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Custom node component; omission uses the generic node."
+                      },
+                      "form": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Node configuration form component."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Named component slots and their loading modes."
+                  },
+                  "layout": {
+                    "type": "object",
+                    "properties": {
+                      "getHeight": {
+                        "type": "string",
+                        "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                        "description": "Named function calculating node height from the node and layout context."
+                      },
+                      "getPorts": {
+                        "type": "string",
+                        "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                        "description": "Named function calculating ports from the node and layout context."
+                      },
+                      "hasInput": {
+                        "type": "boolean",
+                        "description": "Whether this layout has an input port."
+                      },
+                      "usesExitCount": {
+                        "type": "boolean",
+                        "description": "Whether layout calculations consume the track exit count."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Static layout flags and executable calculation targets."
+                  },
+                  "handlePrefix": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Prefix for indexed output handles, such as branch-0."
+                  }
+                },
+                "required": [
+                  "nodeConfig"
+                ],
+                "additionalProperties": false,
+                "description": "Static editor presentation and explicit component/layout bindings."
+              },
+              "types": {
                 "type": "string",
-                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                "description": "\"path#exportName\" of its StepFEFacet: what the flow editor draws and the form it opens."
+                "pattern": "^[^#]+$",
+                "description": "Type-only module declaring this step’s node and DSL types. No conventional file is inferred."
               },
               "runtime": {
                 "type": "object",
@@ -891,16 +1079,17 @@
                 "properties": {
                   "primaryField": {
                     "type": "string",
+                    "pattern": "^[A-Za-z_$][\\w$]*$",
                     "description": "The field whose value becomes the step label in the flow editor."
                   },
                   "defaultLabel": {
                     "type": "string",
-                    "description": "Fallback label when primaryField is empty."
+                    "description": "Default label argument for the generated label-only helper."
                   },
-                  "custom": {
-                    "type": "boolean",
-                    "const": true,
-                    "description": "Marks the step as a custom (non-built-in) type."
+                  "helpers": {
+                    "type": "string",
+                    "pattern": "^[^#]+$",
+                    "description": "Pack-root-relative module whose custom flow helpers are re-exported."
                   }
                 },
                 "additionalProperties": false,
@@ -915,7 +1104,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "description": "Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live. The type is the key, so a pack cannot declare one twice."
+          "description": "Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings. The type is the key, so a pack cannot declare one twice."
         },
         "artifacts": {
           "type": "object",

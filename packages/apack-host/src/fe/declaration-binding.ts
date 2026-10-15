@@ -1,5 +1,5 @@
 import type { PackManifest } from '@apackdev/sdk/build';
-import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations } from '@apackdev/sdk/framework';
+import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations, StepFrontendDeclaration } from '@apackdev/sdk/framework';
 import type { PackFERegistration, PackFEFeature, PluginDefinition, TiptapPlugin } from '@apackdev/sdk/fe';
 import { isPlainObject, hasOwn } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys } from '../packs/binding-shape.ts';
@@ -49,6 +49,30 @@ function pluginBindingProblem(declaration: PluginDeclaration, plugin: unknown): 
     || !sameKeys(fallback, ['label', 'toggle', 'isShown']) || fallback.label !== declaration.fallbackPanel.label
     || !sameKeys(fallback.toggle, ['type']) || (fallback.toggle as Record<string, unknown>).type !== declaration.fallbackPanel.toggle.type
     || typeof fallback.isShown !== 'function') return problem('fallbackPanel');
+}
+
+/** Bindings supply components and callable layouts; all editor metadata must match the declaration. */
+function stepFrontendProblem(declaration: StepFrontendDeclaration, actual: unknown): string | undefined {
+  if (!sameKeys(actual, Object.keys(declaration))) return 'fe';
+  const facet = actual as Record<string, unknown>;
+  for (const field of ['colorKey', 'handlePrefix'] as const) if (facet[field] !== declaration[field]) return `fe.${field}`;
+  if (!sameKeys(facet.nodeConfig, Object.keys(declaration.nodeConfig))) return 'fe.nodeConfig';
+  const config = facet.nodeConfig as Record<string, unknown>;
+  if (!isComponent(config.icon)) return 'fe.nodeConfig.icon';
+  for (const [key, value] of Object.entries(declaration.nodeConfig)) {
+    if (key !== 'icon' && !isEqual(config[key], value)) return `fe.nodeConfig.${key}`;
+  }
+  if (declaration.components !== undefined) {
+    if (!sameKeys(facet.components, Object.keys(declaration.components))
+      || Object.values(facet.components as Record<string, unknown>).some(value => !isComponent(value))) return 'fe.components';
+  }
+  if (declaration.layout !== undefined) {
+    if (!sameKeys(facet.layout, Object.keys(declaration.layout))) return 'fe.layout';
+    const layout = facet.layout as Record<string, unknown>;
+    for (const [key, value] of Object.entries(declaration.layout)) {
+      if (typeof value === 'string' ? typeof layout[key] !== 'function' : layout[key] !== value) return `fe.layout.${key}`;
+    }
+  }
 }
 
 /** Validate the complete reference facet without calling navigation, providers or components. */
@@ -121,6 +145,10 @@ export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'exte
     if ((step.kind ?? 'step') !== (entry.kind ?? 'step')) return problem(`steps.${type}.kind`);
     if (!isEqual(step.node, entry.node)) return problem(`steps.${type}.node`);
     if ((step.fe !== undefined) !== !!entry.fe || (entry.fe && !isPlainObject(step.fe))) return problem(`steps.${type}.fe`);
+    if (entry.fe) {
+      const mismatch = stepFrontendProblem(entry.fe, step.fe);
+      if (mismatch) return problem(`steps.${type}.${mismatch}`);
+    }
     for (const facet of ['build', 'runtime', 'trigger']) if (step[facet] !== undefined) return problem(`steps.${type}.${facet}`);
   }
   const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(extensions?.artifacts ?? {}));

@@ -519,6 +519,40 @@ export interface SettingsValidator {
 }
 
 // @public
+export interface StepFrontendDeclaration {
+    // (undocumented)
+    colorKey?: string;
+    // (undocumented)
+    components?: {
+        node?: ComponentTarget;
+        form?: ComponentTarget;
+    };
+    // (undocumented)
+    handlePrefix?: string;
+    // (undocumented)
+    layout?: StepLayoutDeclaration;
+    // (undocumented)
+    nodeConfig: Omit<StepNodeConfig, 'icon'> & {
+        icon: NonNullable<PluginDeclaration['icon']>;
+    };
+}
+
+// @internal
+export function _stepFrontendTargets(frontend: StepFrontendDeclaration): [string, string, 'component' | 'script'][];
+
+// @public
+export interface StepLayoutDeclaration {
+    // (undocumented)
+    getHeight?: string;
+    // (undocumented)
+    getPorts?: string;
+    // (undocumented)
+    hasInput?: boolean;
+    // (undocumented)
+    usesExitCount?: boolean;
+}
+
+// @public
 export const SYSTEM_EVENT_TYPES: readonly ["SEND_STATE", "CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
 
 // @public

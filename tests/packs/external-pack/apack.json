@@ -144,13 +144,25 @@
           }
         },
         "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
-        "fe": "src/extensions/steps/stamp/fe.ts#stampStepFE",
+        "fe": {
+          "colorKey": "purple",
+          "nodeConfig": {
+            "icon": "Stamp",
+            "connectionRules": {
+              "inputs": 1,
+              "outputs": 1
+            },
+            "category": "action",
+            "isImplemented": true
+          }
+        },
         "runtime": {
           "handler": "src/extensions/steps/stamp/runtime.ts#handler"
         },
         "dsl": {
           "primaryField": "note"
-        }
+        },
+        "types": "src/extensions/steps/stamp/types.ts"
       },
       "pulse": {
         "kind": "trigger",
@@ -164,7 +176,18 @@
         "trigger": {
           "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
         },
-        "fe": "src/extensions/steps/pulse/fe.ts#pulseTriggerFE"
+        "fe": {
+          "colorKey": "blue",
+          "nodeConfig": {
+            "icon": "Radio",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            },
+            "category": "trigger",
+            "isImplemented": true
+          }
+        }
       }
     },
     "artifacts": {

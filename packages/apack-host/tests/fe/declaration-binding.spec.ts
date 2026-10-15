@@ -7,7 +7,7 @@ import { frontendBindingProblem } from '../../src/fe/declaration-binding.ts';
 
 function fixture() {
   const component = { render: vi.fn() };
-  const loadComponents = vi.fn();
+  const getHeight = vi.fn(() => 60);
   const bindSettings = vi.fn();
   const editorExtension = Extension.create({ name: 'example' });
   const configure = vi.spyOn(editorExtension, 'configure');
@@ -16,7 +16,7 @@ function fixture() {
     features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
       backend: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts' } }, form: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
-      steps: { note: { node: { label: 'Note' }, fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: { label: 'Trigger' } } },
+      steps: { note: { node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: 'File', category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/form.vue' }, layout: { hasInput: true, getHeight: 'src/layout.ts#getHeight' } } }, trigger: { kind: 'trigger', node: { label: 'Trigger' } } },
       artifacts: { text: { icon: 'File', fe: 'src/text.vue' } }, blocks: { note: { kind: 'input', fe: 'src/block.vue' } },
       appExtensions: { toolbar: 'src/toolbar.vue' }, tiptapPlugins: { tools: {
         extensions: { example: 'src/editor.ts#Example' }, popups: { suggestions: 'src/editor.vue' },
@@ -25,23 +25,23 @@ function fixture() {
   expect(ManifestSchema.safeParse(manifest).success).toBe(true);
   const registration = { id: manifest.id, bindSettings,
     features: { notes: { plugin: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
-    settingsForms: { preferences: component }, steps: [{ type: 'note', node: { label: 'Note' }, fe: { loadComponents } }, { type: 'trigger', kind: 'trigger', node: { label: 'Trigger' } }],
+    settingsForms: { preferences: component }, steps: [{ type: 'note', node: { label: 'Note' }, fe: { colorKey: 'blue', nodeConfig: { icon: component, category: 'data', connectionRules: { inputs: 1, outputs: 1 } }, components: { form: component }, layout: { hasInput: true, getHeight } } }, { type: 'trigger', kind: 'trigger', node: { label: 'Trigger' } }],
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
     appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
       popups: { suggestions: component }, isSuggestionActive } },
     dslTypes: { notes: { prefix: 'n', schema: 'declare interface Foo {}', globals: { foo: 'Foo' } } },
   };
-  return { manifest, registration, component, loadComponents, bindSettings, configure, isSuggestionActive };
+  return { manifest, registration, component, getHeight, bindSettings, configure, isSuggestionActive };
 }
 
 describe('frontend declaration binding', () => {
   it('accepts the frontend facet without executing component or settings factories', () => {
-    const { manifest, registration, component, loadComponents, bindSettings, configure, isSuggestionActive } = fixture();
+    const { manifest, registration, component, getHeight, bindSettings, configure, isSuggestionActive } = fixture();
     expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
     expect(configure).not.toHaveBeenCalled();
     expect(isSuggestionActive).not.toHaveBeenCalled();
     expect(component.render).not.toHaveBeenCalled();
-    expect(loadComponents).not.toHaveBeenCalled();
+    expect(getHeight).not.toHaveBeenCalled();
     expect(bindSettings).not.toHaveBeenCalled();
   });
 
@@ -175,4 +175,29 @@ it('captures editor membership while preserving executable extension objects', (
   expect(registry.tiptapPlugins()[0].binding.extensions!.example).toBe(extension);
   expect(Object.isFrozen(registry.tiptapPlugins()[0].binding.extensions)).toBe(true);
   expect(Object.isFrozen(extension)).toBe(false);
+});
+
+it('checks step presentation, component membership and callable layouts without invoking bindings', () => {
+  const { manifest, registration, component, getHeight } = fixture();
+  const step = registration.steps[0].fe!;
+  const changes: [string, unknown, string][] = [
+    ['colorKey', 'red', 'fe.colorKey'],
+    ['nodeConfig', { ...step.nodeConfig, category: 'logic' }, 'fe.nodeConfig.category'],
+    ['nodeConfig', { ...step.nodeConfig, icon: 'File' }, 'fe.nodeConfig.icon'],
+    ['nodeConfig', { ...step.nodeConfig, connectionRules: { inputs: 0, outputs: 1 } }, 'fe.nodeConfig.connectionRules'],
+    ['components', {}, 'fe.components'],
+    ['components', { form: 'src/form.vue' }, 'fe.components'],
+    ['components', { form: component, node: component }, 'fe.components'],
+    ['layout', { hasInput: false, getHeight }, 'fe.layout.hasInput'],
+    ['layout', { hasInput: true, getHeight: 'src/layout.ts#getHeight' }, 'fe.layout.getHeight'],
+    ['layout', { hasInput: true, getHeight, getPorts: vi.fn() }, 'fe.layout'],
+  ];
+  for (const [key, value, path] of changes) {
+    expect(frontendBindingProblem(manifest, { ...registration, steps: [
+      { ...registration.steps[0], fe: { ...step, [key]: value } }, registration.steps[1],
+    ] }), key).toContain(`steps.note.${path}`);
+  }
+  expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
+  expect(component.render).not.toHaveBeenCalled();
+  expect(getHeight).not.toHaveBeenCalled();
 });

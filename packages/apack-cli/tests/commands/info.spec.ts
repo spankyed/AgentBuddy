@@ -50,7 +50,7 @@ const index = { version: 1, packId: manifest.id, entries: [
 describe('read-only pack inspection', () => {
   it('reads node defaults and step bindings from an installed build without authored modules', async () => {
     const steps = { memo: { node: { label: 'Memo', defaultLabel: 'Write a memo', defaults: { tags: ['draft'], pinned: false } },
-      build: 'src/unavailable.ts#build', fe: 'src/unavailable.ts#frontend' } };
+      build: 'src/unavailable.ts#build', fe: { nodeConfig: { icon: 'File', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/unavailable.vue' }, layout: { getHeight: 'src/unavailable.ts#getHeight' } } } };
     const declaration: PackManifest = { ...manifest, extensions: { steps } };
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
     writeBuild(root, declaration, index);

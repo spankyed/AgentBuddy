@@ -44,7 +44,6 @@ export async function addStep(args: string[], root: string) {
   // the step template's `StepBuildFacet` is a pack that does not typecheck.
   const facetFile = isTrigger ? 'trigger' : 'build';
   const facetExport = isTrigger ? `${camel}TriggerBuild` : `${camel}StepBuild`;
-  const feExport = isTrigger ? `${camel}TriggerFE` : `${camel}StepFE`;
 
   const created: string[] = [];
   // Each branch names its templates literally, which is how `scaffold-templates.spec.ts` sees that a
@@ -53,13 +52,11 @@ export async function addStep(args: string[], root: string) {
   const files: [string, string][] = isTrigger
     ? [
       [path.join(stepDir, 'trigger.ts'), renderTemplate('pack/src/extensions/steps/step/trigger.ts', { TYPE: type, CAMEL: camel, LABEL: toLabel(type) })],
-      [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/trigger-fe.ts', { CAMEL: camel })],
       [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ]
     : [
       [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, CAMEL: camel, PASCAL: pascal, LABEL: toLabel(type) })],
-      [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/fe.ts', { CAMEL: camel })],
       [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ];
@@ -76,7 +73,17 @@ export async function addStep(args: string[], root: string) {
     ...(isTrigger
       ? { trigger: { facet: `${dir}/${facetFile}.ts#${facetExport}` } }
       : { build: `${dir}/${facetFile}.ts#${facetExport}` }),
-    fe: `${dir}/fe.ts#${feExport}`,
+    types: `${dir}/types.ts`,
+    fe: {
+      colorKey: isTrigger ? 'blue' : 'indigo',
+      nodeConfig: {
+        icon: isTrigger ? 'Radio' : 'Box',
+        connectionRules: { inputs: isTrigger ? 0 : -1, outputs: -1 },
+        category: isTrigger ? 'trigger' : 'logic',
+        isImplemented: true,
+      },
+      components: { form: { entry: `${dir}/form.vue`, load: 'lazy' } },
+    },
   });
   writeManifest(root, manifest);
 

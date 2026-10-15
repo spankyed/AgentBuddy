@@ -22,3 +22,4 @@ export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDecla
 
 export { LIFECYCLE_HOOK_NAMES, type PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
+export { _stepFrontendTargets, type StepFrontendDeclaration, type StepLayoutDeclaration } from './step-frontend-declaration.ts';

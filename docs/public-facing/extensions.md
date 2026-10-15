@@ -24,7 +24,12 @@ Declare initial values once in `apack.json`:
   "extensions": {
     "steps": {
       "my-step": {
-        "node": { "label": "My Step", "defaults": { "enabled": true } },
+        "node": {
+          "label": "My Step",
+          "defaults": {
+            "enabled": true
+          }
+        },
         "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild"
       }
     }
@@ -47,7 +52,7 @@ Creates:
 ```
 src/extensions/steps/my-step/
   build.ts      # myStepStepBuild: its StepBuildFacet (no FE or runtime imports)
-  fe.ts         # myStepStepFE: its StepFEFacet — node config, form component
+  layout.ts     # optional calculated layout function exports
   types.ts      # DSL and compiled node types
   form.vue      # Step configuration form
 ```
@@ -146,39 +151,37 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 `trigger.facet` names the eager half, which `build.ts` exports, and `trigger.register` names the function
 whose module is loaded when the trigger is first registered.
 
-### Frontend facet (fe.ts)
+### Frontend declaration
 
-```typescript
-import type { StepFEFacet } from '@apackdev/sdk/steps';
-import { defineAsyncComponent } from 'vue';
-import { Box } from 'lucide-vue-next';
+`extensions.steps.<type>.fe` contains presentation data and explicit bindings. Discovery can read it
+without importing components or layout code. Codegen assembles the checked `StepFEFacet` at build time.
 
-export const myStepStepFE: StepFEFacet = {
-  loadComponents: () => ({
-    form: defineAsyncComponent(() => import('./form.vue')),
-  }),
-  nodeConfig: {
-    label: 'My Step',
-    icon: Box,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-700/20',
-    hoverBgColor: 'group-hover:bg-indigo-700/30',
-    connectionRules: { inputs: -1, outputs: -1 },
-    category: 'logic',
-    isImplemented: true,
+```json
+{
+  "nodeConfig": {
+    "icon": "Box",
+    "isImplemented": true,
+    "connectionRules": { "inputs": -1, "outputs": -1 },
+    "category": "logic"
   },
-};
+  "colorKey": "indigo",
+  "components": { "form": { "entry": "src/extensions/steps/my-step/form.vue", "load": "lazy" } },
+  "layout": { "hasInput": true, "getHeight": "src/extensions/steps/my-step/layout.ts#getHeight" }
+}
 ```
 
 | Field | Description |
 |---|---|
-| `nodeConfig` | Palette and node appearance (below) |
-| `loadComponents?` | `() => ({ node?, form? })`, called once on the frontend to fill `components` |
-| `components?` | `{ node?, form? }`. `node` replaces the default canvas node (trigger nodes always use the trigger node); `form` replaces the default form |
-| `defaults?` | Fields copied into a new node of this type |
+| `nodeConfig` | Palette category, icon, connection rules and availability flags (below) |
+| `components?` | Optional `node` and `form` targets: a component path or `{ entry, load?: "lazy" }`. A script component may name `path#export`; Vue SFCs use their default export. `node` replaces the default canvas node; `form` replaces the default form |
 | `colorKey?` | Node style color: `purple`, `blue`, `amber`, `cyan`, `orange`, `emerald`, `indigo`, `neutral`, `red` or `yellow` |
-| `handlePrefix?` | Multi-output steps: new outgoing handles are `<prefix>-0`, `<prefix>-1`, … (`'branch'` pairs with `sourceHandle: 'branch-N'`) |
-| `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
+| `handlePrefix?` | Multi-output steps: outgoing handles are `<prefix>-0`, `<prefix>-1`, … |
+| `layout?` | Inline `hasInput`/`usesExitCount` flags and named `getHeight`/`getPorts` function references. Functions receive `(node, { exitCount })`; omitted layout uses one input and one output |
+
+All paths are pack-root-relative. An icon is a Lucide export name or a component target object.
+Components and layout functions are validated without invoking them. Layout exports use
+`StepLayoutDescriptor` from `@apackdev/sdk/steps` for their callback types. Labels and initial node
+fields belong to the separate inline `node` declaration, shared by frontend and backend.
 
 The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@apackdev/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
@@ -186,12 +189,7 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 
 | Field | Type | Description |
 |---|---|---|
-| `label` | `string` | Display name in the node palette |
-| `defaultLabel` | `string` | Label for new instances (falls back to `label`) |
-| `icon` | `Component` | Lucide Vue component |
-| `color` | `string` | Tailwind text color class |
-| `bgColor` | `string` | Tailwind background class |
-| `hoverBgColor` | `string` | Tailwind hover background class |
+| `icon` | `string` or component target object | Lucide export name or explicit component binding |
 | `connectionRules` | `{ inputs, outputs }` | Max connections (-1 = unlimited) |
 | `category` | `'trigger' \| 'action' \| 'logic' \| 'data' \| 'ai'` | Palette category |
 | `isImplemented` | `boolean` | Palette items not implemented are disabled |
@@ -225,9 +223,35 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
     "steps": {
       "my-step": {
         "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
-        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
-        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
-        "dsl": { "primaryField": "action" }
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-step/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "runtime": {
+          "handler": "src/extensions/steps/my-step/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "action"
+        },
+        "node": {
+          "label": "My Step"
+        },
+        "types": "src/extensions/steps/my-step/types.ts"
       },
       "my-trigger": {
         "kind": "trigger",
@@ -235,7 +259,28 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
           "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
-        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+        "fe": {
+          "nodeConfig": {
+            "icon": "Radio",
+            "isImplemented": true,
+            "category": "trigger",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            }
+          },
+          "colorKey": "blue",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-trigger/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "node": {
+          "label": "My Trigger"
+        },
+        "types": "src/extensions/steps/my-trigger/types.ts"
       }
     }
   }
@@ -247,7 +292,9 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
 | `kind` | `step` (the default) or `trigger` |
 | `build` | `"path#exportName"` of its `StepBuildFacet`. A trigger declares `trigger` instead |
 | `trigger` | For a trigger: `{ facet, register? }` — its `TriggerFacet`, and the function that starts it |
-| `fe` | `"path#exportName"` of its `StepFEFacet` |
+| `node` | Inline labels and initial JSON node fields |
+| `fe` | Inline frontend declaration (above) |
+| `types` | Explicit module declaring node and DSL types |
 | `runtime` | `{ handler?, isAsync?, waits?, spawnsSubflow? }` |
 | `dsl` | DSL configuration for flow-helper generation (below) |
 
@@ -257,8 +304,8 @@ Codegen sends each facet where it is used, so no barrel keeps them in step with 
 module a *dependent* pack's build loads to validate its flows with your step code. A dependency's step types
 are loaded that way too, and a type this pack and a dependency both define fails the build.
 
-A step's directory is the dirname of the first facet it names: `types.ts` and, for `dsl.custom`,
-`helpers.ts` are read from there.
+Step `types` and `dsl.helpers` explicitly name pack-root-relative modules. No contribution is inferred
+from neighboring files or the directory of another facet.
 
 ### Flow helpers
 
@@ -269,8 +316,8 @@ A step's directory is the dirname of the first facet it names: `types.ts` and, f
 | none | No helper |
 | `{}` | `ping(label?)` (type `ping`) |
 | `{ defaultLabel: 'Kill Flow' }` | `kill(label = 'Kill Flow')` |
-| `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the step's `types.ts`; `generate-entries` fails when there is none |
-| `{ custom: true }` | Re-exports everything from `<path>/helpers.ts` |
+| `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the declared `types` module; `generate-entries` fails when there is none |
+| `{ helpers: "src/helpers.ts" }` | Re-exports the custom helpers from that module |
 
 A `kind: 'trigger'` entry whose declared facet module contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
 

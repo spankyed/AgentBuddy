@@ -7,7 +7,7 @@ import { generateSettingsTypes } from './settings-types.ts';
 import { _declarationRevision } from './declaration-revision.ts';
 import { readFileSync, existsSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { dirname, extname, join, relative, resolve } from 'path';
+import { extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackDependencySnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { MIGRATION_LINES, StepEntrySchema } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -19,7 +19,7 @@ import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
-import { _pluginTargets, type ComponentTarget } from '../framework/plugin-declaration.ts';
+import type { ComponentTarget } from '../framework/plugin-declaration.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
@@ -231,7 +231,8 @@ interface StepDeclaration {
   kind?: 'step' | 'trigger';
   dsl?: StepEntry['dsl'];
   entry: StepEntry;
-  path?: string;
+  types?: string;
+  helpers?: string;
 }
 
 /**
@@ -366,6 +367,7 @@ export async function generatePackFiles(
   opts: GenerateEntriesOptions,
 ): Promise<Record<string, string>> {
   const root = opts.packRoot;
+  for (const entry of Object.values(manifest.extensions?.steps ?? {})) StepEntrySchema.parse(entry);
   const moduleTargets = _packModuleTargets(manifest).map(entry => ({ ...entry, source: _moduleTargetSource(entry) }));
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackDependencySnapshot>();
   const depIds = [...depSnapshots.keys()];
@@ -670,6 +672,66 @@ export async function generatePackFiles(
     return { imports: [line], member: `${facet}: ${expr}` };
   }
 
+  /** Shared component binding grammar for feature plugins and step presentation. */
+  function frontendBindings(prefix: string, owner: string) {
+    const imports: string[] = [];
+    let nextBinding = 0;
+    function reference(target: string, label = owner) {
+      const parsed = _parseModuleReference(target, label, 'default');
+      if (parsed.source.endsWith('.vue')) {
+        if (parsed.exportName !== 'default') throw new Error(`${label}: Vue components use their default export`);
+        if (!findSourceModule(root, parsed.source, ['.vue'], label)) throw new Error(`${label}: no component found at ${parsed.source}`);
+      } else {
+        const file = sourceFileOf(parsed.source, label);
+        if (!file) throw new Error(`${label}: no module found at ${parsed.source}`);
+        if (!exportOf(file, parsed.exportName)?.value) throw new Error(`${label}: ${parsed.source} doesn't export ${parsed.exportName} as a value`);
+      }
+      return parsed;
+    }
+    function target(value: string, field?: string): string {
+      const { source, exportName } = reference(value, field ? `${owner}.${field}` : owner);
+      const binding = `${prefix}_${nextBinding++}`;
+      const from = JSON.stringify(toImportPath(root, source));
+      imports.push(exportName === 'default' ? `import ${binding} from ${from};`
+        : `import { ${exportName} as ${binding} } from ${from};`);
+      return binding;
+    }
+    function component(value: ComponentTarget): string {
+      if (typeof value === 'string' || value.load !== 'lazy') return target(typeof value === 'string' ? value : value.entry);
+      const { source, exportName } = reference(value.entry);
+      imports.push("import { defineAsyncComponent } from 'vue';");
+      return `defineAsyncComponent(() => import(${JSON.stringify(toImportPath(root, source))}).then(module => module.${exportName}))`;
+    }
+    function icon(value: NonNullable<StepEntry['fe']>['nodeConfig']['icon']): string {
+      if (typeof value !== 'string') return component(value);
+      const binding = `${prefix}_icon`;
+      imports.push(`import { ${value} as ${binding} } from 'lucide-vue-next';`);
+      return binding;
+    }
+    function callable(value: string): string {
+      const { value: kind } = valueExport(owner, value);
+      if (kind !== 'function') throw new Error(`${owner}: expected an exported function`);
+      return target(value);
+    }
+    return { imports, target, component, icon, callable };
+  }
+
+  function stepFrontend(step: StepDeclaration): FacetEmission | null {
+    const declaration = step.entry.fe;
+    if (!declaration) return null;
+    const binding = frontendBindings(facetLocal(step.type, 'fe'), `Step "${step.type}": fe`);
+    const { icon, ...config } = declaration.nodeConfig;
+    const parts = [`nodeConfig: { ...${JSON.stringify(config)}, icon: ${binding.icon(icon)} }`];
+    for (const key of ['colorKey', 'handlePrefix'] as const) {
+      if (declaration[key] !== undefined) parts.push(`${key}: ${JSON.stringify(declaration[key])}`);
+    }
+    if (declaration.components !== undefined) parts.push(`components: { ${Object.entries(declaration.components)
+      .map(([key, value]) => `${key}: ${binding.component(value)}`).join(', ')} }`);
+    if (declaration.layout !== undefined) parts.push(`layout: { ${Object.entries(declaration.layout)
+      .map(([key, value]) => `${key}: ${typeof value === 'string' ? binding.callable(value) : JSON.stringify(value)}`).join(', ')} }`);
+    return { imports: binding.imports, member: `fe: { ${parts.join(', ')} }` };
+  }
+
   /**
    * How each facet is emitted. The table above says *which* target carries a facet; this says *how* it is
    * written, and is the one place a facet's emission lives. A facet absent from the entry emits nothing.
@@ -677,7 +739,7 @@ export async function generatePackFiles(
   const FACET_EMITTERS: Record<StepFacetName, (step: StepDeclaration, target: FacetTarget) => FacetEmission | null> = {
     node: (step) => ({ imports: [], member: `node: JSON.parse(${JSON.stringify(JSON.stringify(step.entry.node))})` }),
     build: (step) => (step.entry.build ? importedFacet(step, 'build', step.entry.build) : null),
-    fe: (step) => (step.entry.fe ? importedFacet(step, 'fe', step.entry.fe) : null),
+    fe: (step) => stepFrontend(step),
 
     trigger: (step, target) => {
       const trigger = step.entry.trigger;
@@ -847,45 +909,17 @@ ${items.join('\n')}
   }
 
 
-  /**
-   * The steps this pack declares, each with the directory its modules sit in. A step's `types.ts` and
-   * `helpers.ts` are read from there, because they sit beside the facets rather than being declared — the
-   * step's directory is one fact and the manifest states it once, as the path to a facet.
-   */
+  /** Step type and helper modules are explicit declarations, independent of executable facet locations. */
   const stepDefinitions: StepDeclaration[] = Object.entries(manifest.extensions?.steps ?? {}).map(([type, entry]) => {
-    StepEntrySchema.parse(entry);
-    return { type, kind: entry.kind, dsl: entry.dsl, entry, path: stepDir(type, entry) };
-  });
-
-  /**
-   * The directory a step's modules sit in, from the facets it names — and a refusal when they disagree.
-   *
-   * Three of the readers below (`stepNodeTypes`, `generateStepTypes`, `emitStepHelper`) go looking for a
-   * `types.ts` or a `helpers.ts` there, and two of them are `existsSync`-filtered: a wrong answer drops the
-   * step's node types out of `PackShapes` and says nothing. So this refuses rather than guesses. It takes
-   * the first facet's directory and holds every other facet to it, because "the step's directory" is only
-   * a fact while they agree; a step that genuinely wants its facets apart declares what it needs beside
-   * each one instead of having a directory inferred for it.
-   */
-  function stepDir(type: string, entry: StepEntry): string | undefined {
-    const facets: Array<[string, string | undefined]> = [
-      ['build', entry.build],
-      ['trigger.facet', entry.trigger?.facet],
-      ['runtime.handler', entry.runtime?.handler],
-      ['fe', entry.fe],
-    ];
-    const dirs = facets
-      .filter((pair): pair is [string, string] => pair[1] !== undefined)
-      .map(([name, target]) => [name, dirname(_parseModuleReference(target, 'Module reference', 'default').source)] as const);
-    if (dirs.length === 0) return undefined;
-    const [, first] = dirs[0]!;
-    const elsewhere = dirs.filter(([, dir]) => dir !== first);
-    if (elsewhere.length) {
-      const where = [dirs[0]!, ...elsewhere].map(([name, dir]) => `${name} in ${dir}`).join(', ');
-      throw new Error(`Step "${type}" spreads its facets across directories (${where}); its types.ts and helpers.ts are read from one`);
+    const types = entry.types === undefined ? undefined : resolveTypeModule(root, entry.types, `Step "${type}": types`);
+    let helpers: string | undefined;
+    if (entry.dsl?.helpers !== undefined) {
+      const file = sourceFileOf(entry.dsl.helpers, `Step "${type}": dsl.helpers`);
+      if (!file) throw new Error(`Step "${type}": no helpers module found at ${entry.dsl.helpers}`);
+      helpers = relative(root, file).split('\\').join('/');
     }
-    return first;
-  }
+    return { type, kind: entry.kind, dsl: entry.dsl, entry, types, helpers };
+  });
 
   // ── Backend entry ──────────────────────────────────────────────
 
@@ -1004,42 +1038,12 @@ ${contractCheck}`;
 
     const pluginImports: string[] = [];
     const pluginDefinitions: string[] = [];
-    let lazyComponents = false;
     for (const feature of pluginFeatures) {
       const plugin = feature.plugin!;
-      let nextBinding = 0;
-      for (const [field, reference] of _pluginTargets(plugin)) {
-        const label = `features.${feature.id}.plugin.${field}`;
-        const { source, exportName: exported } = _parseModuleReference(reference, label, 'default');
-        if (source!.endsWith('.vue')) {
-          if (!findSourceModule(root, source, ['.vue'], label)) throw new Error(`${label}: no component found at ${source}`);
-          if (exported !== 'default') throw new Error(`${label}: Vue components use their default export`);
-        } else {
-          const file = sourceFileOf(source, label);
-          if (!file) throw new Error(`${label}: no module found at ${source}`);
-          if (!exportOf(file, exported)?.value) throw new Error(`${label}: ${source} doesn't export ${exported} as a value`);
-        }
-      }
-      const target = (reference: string): string => {
-        const { source, exportName: exported } = _parseModuleReference(reference, 'Component reference', 'default');
-        const binding = `${pluginBinding(feature.id)}_${nextBinding++}`;
-        const from = JSON.stringify(toImportPath(root, source!));
-        pluginImports.push(exported === 'default' ? `import ${binding} from ${from};`
-          : `import { ${exported} as ${binding} } from ${from};`);
-        return binding;
-      };
-      const component = (reference: ComponentTarget): string => {
-        if (typeof reference === 'string' || reference.load !== 'lazy') return target(typeof reference === 'string' ? reference : reference.entry);
-        lazyComponents = true;
-        const { source, exportName: exported } = _parseModuleReference(reference.entry, 'Component reference', 'default');
-        return `defineAsyncComponent(() => import(${JSON.stringify(toImportPath(root, source!))}).then(module => module.${exported}))`;
-      };
+      const binding = frontendBindings(pluginBinding(feature.id), `features.${feature.id}.plugin`);
+      const { target, component } = binding;
       const properties = [`label: ${JSON.stringify(plugin.label)}`, `state: ${target(plugin.state)}`];
-      if (typeof plugin.icon === 'string') {
-        const binding = `${pluginBinding(feature.id)}_icon`;
-        pluginImports.push(`import { ${plugin.icon} as ${binding} } from 'lucide-vue-next';`);
-        properties.push(`icon: ${binding}`);
-      } else if (plugin.icon) properties.push(`icon: ${component(plugin.icon)}`);
+      if (plugin.icon) properties.push(`icon: ${binding.icon(plugin.icon)}`);
       if (plugin.canvas !== undefined) {
         const canvas = plugin.canvas;
         properties.push(`canvas: ${typeof canvas === 'object' && 'routes' in canvas
@@ -1048,10 +1052,10 @@ ${contractCheck}`;
       }
       for (const field of ['panel', 'chat'] as const) if (plugin[field]) properties.push(`${field}: ${component(plugin[field])}`);
       for (const field of ['isPinned', 'hotkeys', 'options'] as const) if (plugin[field] !== undefined) properties.push(`${field}: ${JSON.stringify(plugin[field])}`);
-      if (plugin.fallbackPanel) properties.push(`fallbackPanel: { label: ${JSON.stringify(plugin.fallbackPanel.label)}, toggle: ${JSON.stringify(plugin.fallbackPanel.toggle)}, isShown: ${target(plugin.fallbackPanel.isShown)} }`);
+      if (plugin.fallbackPanel) properties.push(`fallbackPanel: { label: ${JSON.stringify(plugin.fallbackPanel.label)}, toggle: ${JSON.stringify(plugin.fallbackPanel.toggle)}, isShown: ${target(plugin.fallbackPanel.isShown, 'fallbackPanel.isShown')} }`);
+      pluginImports.push(...binding.imports);
       pluginDefinitions.push(`const ${pluginBinding(feature.id)} = { ${properties.join(', ')} } satisfies PluginDefinition;`);
     }
-    if (lazyComponents) pluginImports.push("import { defineAsyncComponent } from 'vue';");
     // The feature whose plugin claims it, and no fallback: `features` is a map, so "the pack's first" would
     // be whatever key order JSON tooling left behind. A pack claiming none has no default plugin, which the
     // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
@@ -1121,9 +1125,7 @@ ${contractCheck}`;
     return `${HEADER}
 import type { PackFERegistration${pluginFeatures.length ? ', PluginDefinition' : ''} } from '@apackdev/sdk/fe';
 import { bindSettings } from './settings-fe.ts';
-${pluginImports.join('\n')}
-${formImports.join('\n')}
-${extraImports.join('\n')}
+${[...new Set([...pluginImports, ...formImports, ...extraImports])].join('\n')}
 ${pluginDefinitions.join('\n')}
 
 export default {
@@ -1571,15 +1573,12 @@ ${entries}
 `;
   }
 
-  /** Runtime node entities of this pack's steps: each step's types.ts `interface XNode extends NodeBase` */
+  /** Step node shapes come only from the explicitly declared type modules. */
   function stepNodeTypes(): Array<{ name: string; importPath: string }> {
-    return stepDefinitions
-      .filter((step): step is StepDeclaration & { path: string } => step.path !== undefined)
-      .map(step => ({ step, file: join(root, step.path, 'types.ts') }))
-      .filter(({ file }) => existsSync(file))
-      .flatMap(({ step, file }) =>
-        [...readFileSync(file, 'utf-8').matchAll(/export\s+interface\s+(\w+)\s+extends\s+NodeBase\b/g)]
-          .map(m => ({ name: m[1], importPath: toImportPath(root, step.path + '/types') })));
+    const sources = [...new Set(stepDefinitions.flatMap(step => step.types === undefined ? [] : [step.types]))];
+    return sources.flatMap(source =>
+      [...readFileSync(join(root, source), 'utf-8').matchAll(/export\s+interface\s+(\w+)\s+extends\s+NodeBase\b/g)]
+        .map(m => ({ name: m[1], importPath: toImportPath(root, source) })));
   }
 
   function generateTypes(): string {
@@ -1785,8 +1784,8 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
     }
     const imports: string[] = [];
     const featureBindings: string[] = [];
-    let nextBinding = 0;
     let lazyComponents = false;
+    let nextBinding = 0;
     const bind = (label: string, reference: string, callable: boolean, lazy = false): string => {
       const { source, exportName: exported } = _parseModuleReference(reference, label, 'default');
       if (source!.endsWith('.vue')) {
@@ -1974,25 +1973,21 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     const dsl = step.dsl;
     const name = toCamelCase(step.type);
 
-    if (!step.path && (dsl.custom || dsl.primaryField)) {
-      throw new Error(`Step "${step.type}": DSL types/helpers need an executable facet's module directory`);
-    }
-
-    if (dsl.custom) {
-      return { imports: [], reExport: `export * from '${toImportPath(root, step.path + '/helpers')}';` };
+    if (step.helpers !== undefined) {
+      return { imports: [], reExport: `export * from '${toImportPath(root, step.helpers)}';` };
     }
 
     if (dsl.primaryField) {
-      const typesFile = join(root, step.path!, 'types.ts');
-      const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
+      if (step.types === undefined) throw new Error(`Step "${step.type}": dsl.primaryField requires a declared types module`);
+      const content = readFileSync(join(root, step.types), 'utf-8');
       const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
       if (!dslMatch) {
-        throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.path}/types.ts`);
+        throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.types}`);
       }
       const dslTypeName = dslMatch[1];
       return {
         name,
-        imports: [`import type { ${dslTypeName} } from '${toImportPath(root, step.path + '/types')}';`],
+        imports: [`import type { ${dslTypeName} } from '${toImportPath(root, step.types)}';`],
         // Omit would drop the node's fields: DSLNodeBase's index signature makes keyof every string
         helper: `export function ${name}(${dsl.primaryField}: string, opts?: { [K in keyof ${dslTypeName} as K extends 'type' | '${dsl.primaryField}' ? never : K]: ${dslTypeName}[K] }): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
       };
@@ -2002,7 +1997,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
       return {
         name,
         imports: [],
-        helper: `export function ${name}(label: string = '${dsl.defaultLabel}'): DSLStepNode {\n  return { type: '${step.type}', label };\n}`,
+        helper: `export function ${name}(label: string = ${JSON.stringify(dsl.defaultLabel)}): DSLStepNode {\n  return { type: '${step.type}', label };\n}`,
       };
     }
 
@@ -2083,12 +2078,8 @@ export type { ImportMode } from '@apackdev/sdk/utils';
 
   function generateStepTypes(): string {
     if (!stepDefinitions.length) return '';
-    // By directory rather than by step: two steps may sit in one, and `export type *` twice from the same
-    // module is a duplicate-export error rather than a harmless repeat
-    const dirs = [...new Set(stepDefinitions.flatMap(step => step.path === undefined ? [] : [step.path]))];
-    const reExports = dirs
-      .filter(dir => existsSync(join(root, dir, 'types.ts')))
-      .map(dir => `export type * from '${toImportPath(root, dir + '/types')}';`);
+    const sources = [...new Set(stepDefinitions.flatMap(step => step.types === undefined ? [] : [step.types]))];
+    const reExports = sources.map(source => `export type * from '${toImportPath(root, source)}';`);
     if (!reExports.length) return '';
     return `${HEADER}\n${reExports.join('\n')}\n`;
   }

@@ -1,16 +1,10 @@
-// A pack's frontend registration runs the pack's own code — a step's `loadComponents` — so it can throw
-// partway. What that must not do is leave the registry holding half a pack: nothing records what got in,
-// so nothing can take it back out, and a step left broken by one pack would throw again for every pack
-// registered after it.
 import { describe, expect, it } from 'vitest';
 import type { PackFERegistration, PluginDefinition } from '@apackdev/sdk/fe';
 import type { StepDefinition } from '@apackdev/sdk/steps';
 import { createFePackRegistry } from '../../src/fe/index.ts';
 
 const plugin = (label: string) => ({ label, icon: 'x', state: {}, canvas: {} } as unknown as PluginDefinition);
-/** A step whose components the pack fails to load, as a pack with a bad frontend bundle would have */
-const unloadable = (type: string): StepDefinition =>
-  ({ type, kind: 'step', fe: { loadComponents: () => { throw new Error(`${type} components are broken`); } } } as unknown as StepDefinition);
+const step = (type: string): StepDefinition => ({ type, kind: 'step', node: { label: type } });
 const registration = (id: string, r: Partial<PackFERegistration>) => ({ id, ...r }) as PackFERegistration;
 
 describe('a plugin', () => {
@@ -36,9 +30,9 @@ describe('a plugin', () => {
 describe('a frontend registration that throws partway', () => {
   it('leaves the registry as it found it', () => {
     const registry = createFePackRegistry();
-    registry.registerPackFE(registration('neighbour-pack', { features: { neighbour: { plugin: plugin('neighbour') } } }));
+    registry.registerPackFE(registration('neighbour-pack', { features: { neighbour: { plugin: plugin('neighbour'), designation: 'occupied' } } }));
 
-    expect(() => registry.registerPackFE(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost') } }, artifacts: [{ type: 'ghost-view' }], steps: [unloadable('ghost-step')] }))).toThrow('ghost-step components are broken');
+    expect(() => registry.registerPackFE(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost'), designation: 'occupied' } }, artifacts: [{ type: 'ghost-view' }], steps: [step('ghost-step')] }))).toThrow(/Designation collision/);
 
     expect(registry.getRegisteredPlugins().map((p) => p.id), 'its plugin stayed in the list').toEqual(['neighbour-pack/neighbour']);
     expect(registry.step('ghost-step'), 'its step stayed registered').toBeUndefined();
@@ -48,15 +42,15 @@ describe('a frontend registration that throws partway', () => {
 
   it("doesn't make its failure the next pack's", () => {
     const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration('broken-pack', { steps: [unloadable('theirs')] }))).toThrow();
+    expect(() => registry.registerPackFE(registration('broken-pack', { steps: [step('theirs')], features: { first: { designation: 'duplicate' }, second: { designation: 'duplicate' } } }))).toThrow();
 
-    expect(() => registry.registerPackFE(registration('later-pack', { features: { mine: { plugin: plugin('mine') } }, steps: [{ type: 'mine', kind: 'step' } as StepDefinition] }))).not.toThrow();
+    expect(() => registry.registerPackFE(registration('later-pack', { features: { mine: { plugin: plugin('mine') } }, steps: [step('mine')] }))).not.toThrow();
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['later-pack/mine']);
   });
 
   it('gives back the default plugin it had taken', () => {
     const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true } }, steps: [unloadable('boom')] }))).toThrow();
+    expect(() => registry.registerPackFE(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true, designation: 'duplicate' }, second: { designation: 'duplicate' } }, steps: [step('boom')] }))).toThrow();
 
     expect(registry.defaultPlugin(), 'it kept the default plugin slot').toBeUndefined();
   });

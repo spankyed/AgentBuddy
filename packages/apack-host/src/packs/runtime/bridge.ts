@@ -45,14 +45,9 @@ export function getHostProvidedPackages(): readonly string[] {
  * Every specifier a pack's backend bundle leaves external, resolved from here.
  *
  * `hostPackages` is a resolution rather than a bridged module, so the question it answers is only "may a
- * backend require this", and for anything the host provides the answer is yes — the packages `SHARED_DEPS`
- * targets at `fe` included. A pack's backend bundle carries its steps' frontend facets, so
- * `src/extensions/steps/<type>/fe.ts` puts a top-level `require("vue")` in one, which the backend never calls into
- * and must still resolve. The host is the only place it can come from: an installed pack has no
- * `node_modules` (`stagePack` copies `dist/{runtime,build,types}` and nothing else). A checkout's workspace
- * one sits above the pack and answers anyway, which is what hides a gap here until a pack is installed —
- * `@apackdev/cli`'s `tests/build/pack-externals.spec.ts` is what closes it, holding this against the externals
- * a pack bundle is built with.
+ * backend require this", and for anything the host provides the answer is yes. An installed pack has no
+ * `node_modules`: the host resolves external imports from its own dependencies. The CLI's
+ * `tests/build/pack-externals.spec.ts` checks these against the pack bundler's external dependencies.
  *
  * This is not `getSharedBeDeps()` widened: that list is the modules a backend shares an *instance* of, which
  * `@apackdev/testing`'s dependency runtime imports eagerly, and a frontend package belongs in neither.

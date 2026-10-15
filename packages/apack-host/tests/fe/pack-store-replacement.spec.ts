@@ -43,15 +43,14 @@ describe('prepared frontend replacement', () => {
     expect(notified).not.toHaveBeenCalled();
   });
 
-  it('refuses a component loader failure without touching incumbent resources or authored facets', () => {
+  it('refuses an ownership collision without touching incumbent resources or authored facets', () => {
     const packs = createFePackRegistry();
     const old = binding();
     packs.registerPackFE(registration('Old', old.hook), old.transport);
     const next = binding();
-    const loader = vi.fn(() => { throw new Error('broken component'); });
-    const step = { type: 'broken', fe: { loadComponents: loader } } as unknown as StepDefinition;
-    expect(() => packs.replacePackFE({ ...registration('New', next.hook), steps: [step] }, next.transport)).toThrow('broken component');
-    expect(loader).toHaveBeenCalledOnce();
+    const step: StepDefinition = { type: 'taken', node: { label: 'Taken' } };
+    packs.registerPackFE({ id: 'neighbour', features: { occupied: { designation: 'reserved' } } });
+    expect(() => packs.replacePackFE({ ...registration('New', next.hook), features: { code: { designation: 'reserved' } }, steps: [step] }, next.transport)).toThrow(/Designation collision/);
     expect(next.hook).not.toHaveBeenCalled();
     expect(old.cleanup).not.toHaveBeenCalled();
     expect(old.port.get(target)).toEqual({ limit: 1 });

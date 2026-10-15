@@ -237,7 +237,10 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
         kind: 'step',
         node: { label: 'Ping', defaultLabel: 'Ping' },
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
-        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+        types: 'src/extensions/steps/ping/types.ts',
+        fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
+          connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/ping/form.vue', load: 'lazy' } } },
       },
     });
 

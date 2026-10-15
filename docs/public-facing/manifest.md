@@ -302,20 +302,69 @@ Flow step types are declared under `extensions.steps`, keyed by type.
   "extensions": {
     "steps": {
       "my-step": {
-        "node": { "label": "My Step", "defaultLabel": "Run my step" },
+        "node": {
+          "label": "My Step",
+          "defaultLabel": "Run my step"
+        },
         "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
-        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
-        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
-        "dsl": { "primaryField": "action" }
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-step/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "runtime": {
+          "handler": "src/extensions/steps/my-step/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "action"
+        },
+        "types": "src/extensions/steps/my-step/types.ts"
       },
       "my-trigger": {
         "kind": "trigger",
-        "node": { "label": "My Trigger", "defaults": { "source": "change me" } },
+        "node": {
+          "label": "My Trigger",
+          "defaults": {
+            "source": "change me"
+          }
+        },
         "trigger": {
           "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
-        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+        "fe": {
+          "nodeConfig": {
+            "icon": "Radio",
+            "isImplemented": true,
+            "category": "trigger",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            }
+          },
+          "colorKey": "blue",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-trigger/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "types": "src/extensions/steps/my-trigger/types.ts"
       }
     }
   }
@@ -327,9 +376,8 @@ Codegen sends each facet where it is used, so no barrel keeps them in step with 
 to `src/__generated__/steps-build.ts`, which `apack pack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code.
 
-A step's executable directory is the dirname of its declared code facets: its `types.ts` and, for `dsl.custom`, its
-`helpers.ts` are read from there. A step declaring only node data has no executable directory; the
-generator does not search the pack root for these files.
+Step `types` and `dsl.helpers` name pack-root-relative modules explicitly. No files are inferred from
+facet directories; build, layout, form and type modules may live in different directories.
 
 ### StepEntry fields
 
@@ -339,17 +387,18 @@ generator does not search the pack root for these files.
 | `node` | `{ label, defaultLabel?, defaults? }` | Required inline data: canvas label, optional palette label and initial JSON fields; readable without importing modules |
 | `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
 | `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
-| `fe` | `string` | `"path#exportName"` of its `StepFEFacet`: what the flow editor draws and the form it opens |
+| `fe` | `StepFrontendDeclaration` | Inline presentation, component targets and layout function references; see [frontend declaration](extensions.md#frontend-declaration) |
+| `types` | `string` | Explicit pack-root-relative module declaring the step’s node and DSL types |
 | `runtime` | `{ handler?, sync?, isAsync?, waits?, spawnsSubflow? }` | What the brain runs, and the flags it reads before running it. `handler` is loaded on the step's first run unless `sync`; see [Steps](extensions.md#runtime-facet) |
-| `dsl` | `{ primaryField?, defaultLabel?, custom? }` | Generates a flow helper for the step, named after the type (`keep_alive` → `keepAlive`). Without `dsl`, the step gets no helper |
+| `dsl` | `{ primaryField?, defaultLabel?, helpers? }` | Generates a flow helper for the step, named after the type (`keep_alive` → `keepAlive`). Without `dsl`, the step gets no helper |
 
 A step's `dsl` fields:
 
 | Field | Helper |
 |---|---|
-| `primaryField` | `name(<primaryField>: string, opts?)`, with the other fields of the `export interface DSL…Node` in the step's `types.ts` (required) as options |
+| `primaryField` | `name(<primaryField>: string, opts?)`, with the other fields of the `export interface DSL…Node` in the declared `types` module (required) as options |
 | `defaultLabel` | `name(label = defaultLabel)` |
-| `custom: true` | No generated helper: re-exports the step's own `helpers` module |
+| `helpers` | Explicit pack-root-relative module whose custom helpers are re-exported |
 | `{}` | `name(label?)` |
 
 ## Lifecycle configuration
@@ -612,17 +661,20 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
   "license": "MIT",
-
   "dependencies": {
     "default-setup": "*"
   },
-
   "features": {
     "bookmarks": {
       "description": "Save and organize bookmarks.",
-      "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+      "entities": {
+        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes"
+      },
       "settings": {
-        "schema": { "type": "object", "additionalProperties": false },
+        "schema": {
+          "type": "object",
+          "additionalProperties": false
+        },
         "defaults": {}
       },
       "system": {
@@ -637,16 +689,35 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
       "services": {}
     }
   },
-
   "extensions": {
     "steps": {
       "bookmark-check": {
         "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
-        "fe": "src/extensions/steps/bookmark-check/fe.ts#bookmarkCheckStepFE"
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/bookmark-check/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "node": {
+          "label": "My Step"
+        },
+        "types": "src/extensions/steps/bookmark-check/types.ts"
       }
     }
   },
-
   "lifecycle": {
     "sources": {
       "actions": "src/content/actions",

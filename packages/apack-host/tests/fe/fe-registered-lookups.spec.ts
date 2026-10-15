@@ -37,7 +37,7 @@ function remove(packId: string): Plugin[] {
 const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
 // A frontend registration carries `node` beside `fe`: the label and the field defaults are what both
 // halves read, so codegen emits that facet into this registration and the backend's alike
-const noteStepFE = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: {}, loadComponents: () => ({ node: 'NoteNode', form: 'NoteForm' }) } } as unknown as StepDefinition;
+const noteStepFE = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: {}, components: { node: 'NoteNode', form: 'NoteForm' } } } as unknown as StepDefinition;
 const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
 const choice = { type: 'choice', fe: { component: 'Choice' } };
 const mentions: TiptapPlugin = { extensions: {} };

@@ -264,24 +264,22 @@ describe('generated registrations', () => {
 describe('generated step registrations', () => {
   const stepPack = () => {
     write('src/steps/llm/build.ts', 'export const llmStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const llmStepNode = { label: \'LLM\' };\n');
-    write('src/steps/llm/fe.ts', 'export const llmStepFE = { nodeConfig: {} };\n');
     write('src/steps/llm/runtime.ts', 'export function handler() {}\n');
     write('src/steps/cron/build.ts', 'export const cronTrigger = { trackField: \'schedule\', compile: () => ({}), decompile: () => ({}) };\nexport const cronTriggerNode = { label: \'Cron\' };\n');
-    write('src/steps/cron/fe.ts', 'export const cronTriggerFE = { nodeConfig: {} };\n');
     write('src/steps/cron/runtime.ts', 'export function register() {}\n');
     return {
       steps: {
         llm: {
           node: { label: 'LLM' },
           build: 'src/steps/llm/build.ts#llmStepBuild',
-          fe: 'src/steps/llm/fe.ts#llmStepFE',
+          fe: { colorKey: 'indigo', nodeConfig: { icon: 'Sparkles', category: 'ai' as const, connectionRules: { inputs: 1, outputs: 1 } } },
           runtime: { handler: 'src/steps/llm/runtime.ts#handler', isAsync: true },
         },
         cron: {
           kind: 'trigger',
           node: { label: 'Cron' },
           trigger: { facet: 'src/steps/cron/build.ts#cronTrigger', register: 'src/steps/cron/runtime.ts#register' },
-          fe: 'src/steps/cron/fe.ts#cronTriggerFE',
+          fe: { colorKey: 'cyan', nodeConfig: { icon: 'Clock', category: 'trigger' as const, connectionRules: { inputs: 0, outputs: -1 } } },
         },
       },
     };
@@ -306,7 +304,10 @@ describe('generated step registrations', () => {
     expect(build).not.toContain('Node');
 
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("  steps: [\n    { type: 'llm', node: JSON.parse(\"{\\\"label\\\":\\\"LLM\\\"}\"), fe: __step_llm_fe },\n    { type: 'cron', kind: 'trigger', node: JSON.parse(\"{\\\"label\\\":\\\"Cron\\\"}\"), fe: __step_cron_fe },\n  ],");
+    expect(fe).toContain("icon: __step_llm_fe_icon");
+    expect(fe).toContain('"category":"ai"');
+    expect(fe).toContain("icon: __step_cron_fe_icon");
+    expect(fe).toContain('"category":"trigger"');
     expect(fe).not.toContain('runtime');
     expect(fe).not.toContain('StepBuild');
   });
@@ -367,24 +368,22 @@ describe('generated step registrations', () => {
     await expect(generate({ steps: { llm: { node: { label: 'LLM' }, build: 'src/steps/llm/build.ts#llmStepBuild' } } })).rejects.toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
   });
 
-  /**
-   * A step's `types.ts` and `helpers.ts` are read from the directory its facets sit in, and two of the three
-   * readers are `existsSync`-filtered — so a directory guessed wrong drops the step's node types out of the
-   * pack's shapes and says nothing. These are the two ways it could be guessed wrong.
-   */
-  it('refuse a step whose facets sit in different directories, naming the step and where they are', async () => {
-    write('src/steps/split/build.ts', 'export const splitStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const splitStepNode = { label: \'Split\' };\n');
-    write('src/steps/elsewhere/fe.ts', 'export const splitStepFE = { nodeConfig: {} };\n');
-
-    await expect(generate({
-      steps: {
-        split: {
-          node: { label: 'Split' },
-          build: 'src/steps/split/build.ts#splitStepBuild',
-          fe: 'src/steps/elsewhere/fe.ts#splitStepFE',
-        },
-      },
-    })).rejects.toThrow(/Step "split" spreads its facets across directories \(build in src\/steps\/split, fe in src\/steps\/elsewhere\)/);
+  it('keeps types and helpers explicit when presentation and build modules live elsewhere', async () => {
+    write('src/compiler/build.ts', 'export const build = {};');
+    write('src/views/Form.vue', '<template><div /></template>');
+    write('src/model/declared.ts', "export interface SplitNode extends NodeBase { type: 'split' }");
+    write('src/dsl/helpers.ts', 'export const choose = () => ({});');
+    const files = await generate({ steps: { split: {
+      node: { label: 'Split' }, build: 'src/compiler/build.ts#build', types: 'src/model/declared.ts',
+      dsl: { helpers: 'src/dsl/helpers.ts' },
+      fe: { nodeConfig: { icon: 'Split', category: 'logic', connectionRules: { inputs: 1, outputs: -1 } },
+        components: { form: { entry: 'src/views/Form.vue', load: 'lazy' } } },
+    } } });
+    expect(files['src/__generated__/step-types.ts']).toContain("export type * from '../model/declared.ts'");
+    expect(files['src/__generated__/types.ts']).toContain('SplitNode');
+    expect(files['src/__generated__/flow-helpers.ts']).toContain("export * from '../dsl/helpers.ts'");
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defineAsyncComponent');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('../views/Form.vue');
   });
 
   it('refuses missing node data before looking for conventional modules', async () => {
@@ -521,4 +520,45 @@ it('generates routed and lazy panes, named state, custom icons and fallback pred
   await expect(generate({ features: [{ id: 'notes', plugin: { label: 'Notes', state: 'src/state.ts#machine',
     fallbackPanel: { label: 'Inspect', toggle: { type: 'INSPECT' }, isShown: 'src/predicate.ts#visible' } } }] }))
     .rejects.toThrow('features.notes.plugin.fallbackPanel.isShown');
+});
+
+it('checks step component exports and callable layouts without executing their modules', async () => {
+  write('src/presentation.ts', 'throw new Error("Must not execute"); export const Form = {}; export interface TypeOnly {} export function getHeight() { return 70; }');
+  const step = { node: { label: 'Memo' }, fe: {
+    nodeConfig: { icon: 'Box', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } },
+    components: { form: { entry: 'src/presentation.ts#Form', load: 'lazy' as const } },
+    layout: { hasInput: false, getHeight: 'src/presentation.ts#getHeight' },
+  } };
+  const files = await generate({ steps: { memo: step } });
+  expect(files['src/__generated__/pack-entry-fe.ts']).toContain('module.Form');
+  expect(files['src/__generated__/pack-entry-fe.ts']).toContain('hasInput: false');
+  for (const field of ['Missing', 'TypeOnly']) {
+    await expect(generate({ steps: { memo: { ...step, fe: { ...step.fe,
+      components: { form: `src/presentation.ts#${field}` },
+    } } } })).rejects.toThrow(`doesn't export ${field} as a value`);
+  }
+  await expect(generate({ steps: { memo: { ...step, fe: { ...step.fe,
+    layout: { getHeight: 'src/presentation.ts#Form' },
+  } } } })).rejects.toThrow('expected an exported function');
+  write('src/Form.vue', '<template><div /></template>');
+  await expect(generate({ steps: { memo: { ...step, fe: { ...step.fe,
+    components: { form: 'src/Form.vue#Named' },
+  } } } })).rejects.toThrow('Vue components use their default export');
+});
+
+it('includes a shared declared type module once and refuses missing explicit type/helper sources', async () => {
+  write('src/model.ts', "export interface FirstNode extends NodeBase { nodeType: 'first' }\nexport interface SecondNode extends NodeBase { nodeType: 'second' }");
+  const files = await generate({ steps: {
+    first: { node: { label: 'First' }, types: 'src/model.ts' },
+    second: { node: { label: 'Second' }, types: 'src/model.ts' },
+  } });
+  expect(files['src/__generated__/step-types.ts'].match(/export type \*/g)).toHaveLength(1);
+  expect(files['src/__generated__/types.ts'].match(/import type \{ FirstNode \}/g)).toHaveLength(1);
+  expect(files['src/__generated__/types.ts']).toContain('FirstNode | SecondNode');
+  await expect(generate({ steps: { first: { node: { label: 'First' }, types: 'src/missing.ts' } } }))
+    .rejects.toThrow('no TypeScript module found');
+  await expect(generate({ steps: { first: { node: { label: 'First' }, dsl: { helpers: 'src/missing.ts' } } } }))
+    .rejects.toThrow('no helpers module found');
+  await expect(generate({ steps: { first: { node: { label: 'First' }, dsl: { primaryField: 'title' } } } }))
+    .rejects.toThrow('requires a declared types module');
 });

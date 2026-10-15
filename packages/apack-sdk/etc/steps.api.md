@@ -175,10 +175,6 @@ export interface StepFEFacet {
     };
     handlePrefix?: string;
     layout?: StepLayoutDescriptor;
-    loadComponents?: () => {
-        node?: unknown;
-        form?: unknown;
-    };
     // (undocumented)
     nodeConfig: StepNodeConfig;
 }

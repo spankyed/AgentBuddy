@@ -243,10 +243,8 @@ export interface StepLayoutDescriptor {
 export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
-  /** Vue component refs: the renderer's pack store (`@apackdev/host/fe`) fills them from `loadComponents` when the pack registers. */
+  /** Component bindings generated from the declared slots and their loading modes. */
   components?: { node?: unknown; form?: unknown };
-  /** Lazy factory that returns Vue components. Runs in FE context only. */
-  loadComponents?: () => { node?: unknown; form?: unknown };
   /** Custom ELK layout descriptor (height/ports). Omit → default single-input single-output. */
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */

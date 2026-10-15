@@ -2442,8 +2442,8 @@ Implement these dependent checkpoints:
    scaffold/template, source reader, fixture and public/schema/API contract; remove the redundant node
    exports outright. The StepDefinition runtime node data contract remains. Inspect useful node data
    without authored modules or activation. A metadata-only step has no executable directory; do not
-   invent a module path to find optional conventional types/helpers. Explicit executable facet paths
-   continue to locate those files where applicable. No aliases or source-format conversion.
+   invent a module path to find types/helpers. Checkpoint 2 replaces the remaining executable-directory
+   inference with explicit `types` and `dsl.helpers` module declarations. No aliases or conversion.
 2. Declare the frontend's static step metadata and component/layout bindings, sharing checked schemas
    with native declarations. Keep calculated layout callbacks executable and expose their availability,
    not predicted results. Preserve component loading metadata and module-reference semantics. Complete

@@ -42,8 +42,8 @@ const baseManifest: PackManifest = {
     steps: {
       // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
       // for a custom helper, its `helpers.ts` are read from
-      pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
-      choose: { node: { label: 'Choose' }, build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
+      pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } },
+      choose: { node: { label: 'Choose' }, build: 'src/steps/choose/build.ts#chooseStepBuild', types: 'src/steps/choose/types.ts', dsl: { helpers: 'src/steps/choose/helpers.ts' } },
       tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
     },
   },
