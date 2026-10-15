@@ -2379,3 +2379,18 @@ This closes the selected open-editor update checkpoint, not the whole editor/dis
 checks do not prove arbitrary cold custom-node documents without their implementations; retain that
 provider/readiness audit with remaining static DSL/Monaco/palette discovery and consumer migration.
 Every remaining source freshness, navigation, frontend boundary and Phase 6 requirement stays active.
+
+### Integration deadline scope correction
+
+The temporary 60s feedback cap is applied to the entire integration pool in both the chain and direct
+runner. Individual integration tests and hooks already have independent 60s bounds. Recent strict
+runs show multiple healthy build/watch cases completing before the aggregate is killed at 62s, with
+no assertion failure; the aggregate cap therefore prevents the required gate from completing rather
+than detecting the earlier worker-close bug (which is fixed and regression-tested).
+
+Remove the named-step override and its helper/message/test scaffolding. Both aggregate callers use
+the existing `suite` ceiling (300s), while test/hook bounds remain 60s and focused `quick` checks
+remain 60s. This is a correction to which operation the limit governs, not a new timeout class or
+measured-cost multiplier. Run existing timeout/graph checks, then the real strict chain; investigate
+any actual assertion failure or stall instead of increasing limits again. This supersedes the earlier
+pool-wide cap instruction after the observed interference; no required validation is waived.
