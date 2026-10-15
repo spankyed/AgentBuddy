@@ -76,7 +76,8 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
-| `fe` | `object` | Frontend contributions; see [Frontend configuration](#frontend-configuration) |
+| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
+| `appExtensions` | `Record<string, string>` | Named app extension components; see [Editor and app extensions](#editor-and-app-extensions) |
 
 **A setting that only changes what `apack pack build` produces is not one of these**: it goes in `build`, which
 holds `opaqueDeps` and `bundleUi`. `extensions` is what the pack gives the app, and a packaging choice gives

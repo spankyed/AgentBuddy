@@ -301,11 +301,11 @@ mutations. Generated EARS and compiled content remain byte-identical to the pres
 | 15: naming/release discipline | Completed naming baseline retained; current version/range parser and build documentation distinguish contract/version concepts. Implemented maintenance. | Frontend container/facade naming remains explicitly assigned below. |
 | 16: no compatibility | Current source search finds no entityShapes/settingsSections/typesEntry/boot-key/sidecar readers or moved-key hint inventory; strict current validation and migrated fixtures remain. Implemented rule, continuously enforced. | Every later contract move migrates all callers/readers outright. |
 | 17: checks/build | `checks.allow` shares SDK policy with CLI rules; sidecar removed; real CLI allowance/refusal coverage and existing build options preserved. Implemented. | Maintain scaffold/schema/guidance agreement. |
-| Naming: extensions.fe | Resolved to direct extensions.tiptapPlugins and extensions.appExtensions, with no frontend wrapper. Required work, not an exclusion. | Migrate during remaining editor/frontend contribution discovery, including schema, consumers, fixtures and docs; no alias. |
+| Naming: extensions.fe | Direct extensions.tiptapPlugins and extensions.appExtensions landed in `e40d157f9`, including schema, codegen, native declarations, catalog/CLI readers, fixtures and docs; no frontend wrapper or alias. | Preserve checked member identities and module-free discovery through remaining editor/provider work. |
 | Naming: hostVersion | Resolved and retained as one nonempty npm host range; separate from SDK/build tool dependencies and build stamps. Implemented. | Keep one field, with no engines wrapper. |
 
 Original phases 1/3/4/5/6/7 now have their M1–M6 source checkpoints and validation evidence. Phase 2's
-remaining contribution kinds, the direct editor/app contribution declarations, facade naming/capability checks, static
+remaining contribution kinds, editor/provider consumers, facade capability checks, static
 content edges and meaningful CLI inventories continue in full discovery. These are unfinished required
 work, not exclusions justified by a smaller discovery prerequisite. Do not archive this plan while its
 additional consolidated requirements remain unfinished. Final strict `--all` on committed source and
