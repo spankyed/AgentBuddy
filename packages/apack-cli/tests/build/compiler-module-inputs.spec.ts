@@ -98,3 +98,69 @@ it('discovers scoped package owners through workspace links without loading thei
   fs.symlinkSync(library, path.join(pack, 'node_modules/@scope/library'), 'dir');
   expect(readCompilerModuleInputs(pack).packageDirectories).toContain(fs.realpathSync(library));
 });
+
+it.each(['', 'setup', 'lang="ts"', 'setup lang="tsx"'])('follows imports in Vue script %s without evaluating them', attributes => {
+  const { write, hash } = fixture();
+  write('pack/src/index.ts', 'export {};');
+  write('pack/src/canvas.vue', `<script ${attributes}>import { value } from 'contract'; throw new Error('never activate');</script>`);
+  write('contract.d.ts', 'export declare const value: string;');
+  const before = hash();
+  write('contract.d.ts', 'export declare const value: number;');
+  expect(hash()).not.toBe(before);
+  write('contract.d.ts', 'export declare const value: string;');
+  expect(hash()).toBe(before);
+});
+
+it('follows external Vue script sources and both inline script blocks', () => {
+  const { write, hash } = fixture();
+  write('pack/src/index.ts', 'export {};');
+  write('pack/src/external.vue', '<script src="../../external.ts" lang="ts"></script>');
+  const missing = hash();
+  write('external.ts', "export { value } from './contract';");
+  expect(hash()).not.toBe(missing);
+  write('contract.d.ts', 'export declare const value: string;');
+  const external = hash();
+  write('contract.d.ts', 'export declare const value: number;');
+  expect(hash()).not.toBe(external);
+  write('pack/src/inline.vue', `<script lang="ts">import '../../first.ts';</script>
+<script setup lang="ts">import '../../second.ts';</script>`);
+  write('first.ts', 'export const first = 1;');
+  write('second.ts', 'export const second = 2;');
+  const before = hash();
+  write('first.ts', 'export const first = 3;');
+  expect(hash()).not.toBe(before);
+  write('first.ts', 'export const first = 1;');
+  expect(hash()).toBe(before);
+  write('second.ts', 'export const second = 4;');
+  expect(hash()).not.toBe(before);
+});
+
+it('resolves a linked Vue component relative to its physical directory', () => {
+  const { pack, write, hash } = fixture();
+  write('pack/src/index.ts', 'export {};');
+  write('shared/canvas.vue', '<script setup lang="ts">import { value } from "./value.ts";</script>');
+  write('shared/value.ts', 'export const value = 1;');
+  fs.symlinkSync(path.join(pack, '../shared/canvas.vue'), path.join(pack, 'src/canvas.vue'));
+  const before = hash();
+  write('shared/value.ts', 'export const value = 2;');
+  expect(hash()).not.toBe(before);
+});
+
+it('excludes generated imports reached through physical Vue script paths', () => {
+  const { write, hash } = fixture();
+  write('pack/src/index.ts', 'export {};');
+  write('pack/src/canvas.vue', '<script setup lang="ts">import { value } from "./__generated__/types.ts";</script>');
+  const before = hash();
+  write('pack/src/__generated__/types.ts', 'export const value = 1;');
+  expect(hash()).toBe(before);
+});
+
+it('keeps Vue input identity independent of checkout location', () => {
+  const a = fixture(), b = fixture();
+  for (const { write } of [a, b]) {
+    write('pack/src/index.ts', 'export {};');
+    write('pack/src/canvas.vue', '<script setup lang="ts">import { value } from "../../contract.d.ts";</script>');
+    write('contract.d.ts', 'export declare const value: string;');
+  }
+  expect(a.hash()).toBe(b.hash());
+});

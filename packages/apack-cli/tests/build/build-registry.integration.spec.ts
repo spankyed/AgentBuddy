@@ -1,4 +1,4 @@
-// apack pack build passes build definitions directly to the compiler; it never registers them in the
+// Real pack builds pass definitions directly to the compiler; they never register them in the
 // runtime registry the process has bound (an app's or a test's).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
