@@ -46,6 +46,12 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
   expect(second.code, second.output).toBe(0);
   expect(fs.readFileSync(entry, 'utf8')).toContain('AFTERX');
   expect(fs.readFileSync(path.join(pack, 'tsconfig.json'))).toEqual(authoredConfig);
+  // The alias/configuration stays fixed: imported bytes are an independent compiler input.
+  fs.writeFileSync(path.join(root, 'after.d.ts'), contract('EDITED'));
+  expect(() => assertGeneratedCurrent(pack, manifest, dependencyTypes(new Map()))).toThrow('inputs changed');
+  const edited = await callCli(pack, 'generate-entries');
+  expect(edited.code, edited.output).toBe(0);
+  expect(fs.readFileSync(entry, 'utf8')).toContain('EDITED');
   const accepted = fs.readFileSync(entry);
   fs.writeFileSync(parent, '{malformed');
   const refused = await callCli(pack, 'generate-entries');
