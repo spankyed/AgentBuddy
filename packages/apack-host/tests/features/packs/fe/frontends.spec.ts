@@ -186,7 +186,7 @@ describe("a pack's frontend", () => {
     expect(failed.imported).toEqual([`${url}/runtime/fe.js`]);
   });
 
-  it('refuses installed delivery without an accepted artifact before importing or adding styles', async () => {
+  it('refuses installed delivery without an accepted build before importing or adding styles', async () => {
     const { io, imported, styles } = fakeIO();
     const { registry, registered } = fakeRegistry();
     await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
@@ -199,12 +199,12 @@ describe("a pack's frontend", () => {
   it('refuses a failed stylesheet before registering the frontend or granting settings access', async () => {
     const registration = { id: 'ext', declarationRevision: 'current', features: {}, bindSettings: vi.fn() };
     const { io } = fakeIO({ [`pack://ext/builds/${buildRevision}/runtime/fe.js`]: registration });
-    io.styles.prepare = vi.fn(() => ({ ready: Promise.reject(new Error('Rejected artifact styles')), commit: vi.fn(), dispose: vi.fn() }));
+    io.styles.prepare = vi.fn(() => ({ ready: Promise.reject(new Error('Rejected build styles')), commit: vi.fn(), dispose: vi.fn() }));
     io.settingsForPack = vi.fn();
     const { registry, registered } = fakeRegistry();
     await expect(createPackFrontends(io, registry).load({ runtimeRevision: 'runtime', manifest: declaration('ext'), id: 'ext', name: 'Ext', version: '1.0.0',
       declarationRevision: 'current', buildRevision, feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css',
-    })).rejects.toThrow('Rejected artifact styles');
+    })).rejects.toThrow('Rejected build styles');
     expect(registered).toEqual([]);
     expect(io.settingsForPack).not.toHaveBeenCalled();
   });

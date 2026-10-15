@@ -22,11 +22,11 @@ An upstream tap provides an installation path under our account. It does not res
 
 - Package names, imports, manifests, lockfile, templates, CI and docs use `@apackdev`.
 - Changesets versions the five public packages as one fixed group.
-- The build produces publishable trees and the consumer tests install their packed artifacts.
+- The build produces publishable trees and the consumer tests install their package tarballs.
 - The CLI and testing bundles inline required private host code. `@apackdev/host` stays private.
 - The built-in pack no longer runs codegen during dependency installation. Clean installation followed
   by package building and explicit codegen was verified in an isolated checkout.
-- Publishing documentation points to staged artifacts rather than workspace directories.
+- Publishing documentation points to staged packages rather than workspace directories.
 - PR #237 is merged. The repository check chain passed for these changes.
 - The local `../homebrew-apack` Git repository is scaffolded with a README, MIT license, activation
   checklist, inactive `templates/apack.rb`, and CI that installs/tests the formula once activated.
@@ -46,9 +46,9 @@ These checks establish the current baseline; rerun them against the code and too
 
 ## 1. Prepare and verify npm publication
 
-Publish these artifacts through the existing package publisher:
+Publish these packages through the existing package publisher:
 
-| Package | Artifact directory | Purpose |
+| Package | Staging directory | Purpose |
 |---|---|---|
 | `@apackdev/ears` | `packages/apack-ears/publish` | Store engine used by the SDK |
 | `@apackdev/sdk` | `packages/apack-sdk/publish` | Pack API; depends on ears |

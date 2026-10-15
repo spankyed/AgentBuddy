@@ -41,7 +41,7 @@ export interface PackFrontendIO {
   styles: PackFrontendStyles;
   /** The packs this window serves from source, preferred over `pack://`; none in a built app */
   devFrontends?: DevPackFrontends;
-  /** Supplies authority for the accepted backend declarations/artifact, never a claimed sender label. */
+  /** Supplies authority for the accepted backend declarations/build, never a claimed sender label. */
   settingsForPack?: (pack: LoadedPackEntry) => Promise<FrontendSettingsBinding>;
 }
 
