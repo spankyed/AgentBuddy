@@ -2114,3 +2114,20 @@ child; private input reporting is enabled only for observed builds. Actual start
 watcher refusal/repair checks pass, and a mutation back to in-process compilation fails the regression.
 This does not prove direct-command bootstrap identity, long-lived frontend compiler identity or frozen
 reads/publication. Those remain part of the full compiler-consumer and freshness acceptance gate.
+
+### Direct build bootstrap correction
+
+`buildCommand` still imports compiler modules before refreshing linked packages. Move actual command
+compilation to a private worker entry selected by the existing native bootstrap over an owned IPC
+channel. The public command validates flags and delegates; `runPackBuild` refreshes before spawning.
+Initial development and watched builds use that same entry directly, avoiding recursive public-command
+dispatch and the duplicate child-side refresh. Preserve public build flags, generation/refusal and
+atomic publication behavior; leave release orchestration unchanged. The worker terminates on lost
+parent IPC and disconnects after completion. Ship the private entry in the bundled CLI; source mode
+uses the existing source bootstrap. No public worker command, compatibility route or new manifest key.
+
+Acceptance: real direct/source and copied-package builds honor flags; changed same-version compiler
+chunks invalidate skipped generation; watched builds retain compiler reports and refusal recovery;
+startup/cancellation checks remain valid. Verify worker packaging and parent-channel lifetime, and
+typecheck/lint changed code. This establishes the command's fresh-process boundary, not immutable
+filesystem inputs or long-lived frontend compiler identity. Keep those and the final strict gate open.
