@@ -23,6 +23,7 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
   const data = dataDirectory ? [...new Set([path.resolve(dataDirectory), physicalWatchPath(path.resolve(dataDirectory))])] : [];
   const files = new Set<string>();
   const directories = new Set<string>();
+  let linkedInputs = new Set<string>();
   const active = new Set<Subscription>();
   let current: Subscription[] = [];
   let namespace = 0;
@@ -40,18 +41,27 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
     }
     return selected;
   };
-  const signature = (selected: ReadonlySet<string>, contentDirectories: ReadonlySet<string>) => {
-    const hash = createHash('sha256').update(String(namespace));
-    for (const file of [...selected].sort()) {
-      hash.update(JSON.stringify(file));
-      try { hash.update(fs.realpathSync.native(file)).update(fs.readFileSync(file)); }
-      catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
-    }
+  const directoryInputs = (contentDirectories: ReadonlySet<string>) => {
+    const hash = createHash('sha256');
+    const links = new Set<string>();
+    const visited = new Set<string>();
     const visit = (directory: string) => {
+      const physical = physicalWatchPath(directory);
+      if (excluded(physical) || visited.has(physical)) return;
+      visited.add(physical);
+      hash.update(JSON.stringify([directory, physical]));
       for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
         const file = path.join(directory, entry.name);
         if (excluded(file)) continue;
-        hash.update(JSON.stringify([file, entry.isDirectory(), entry.isSymbolicLink() ? fs.readlinkSync(file) : null]));
+        if (entry.isSymbolicLink()) {
+          const target = physicalWatchPath(file);
+          if (excluded(target)) continue;
+          links.add(target);
+          hash.update(JSON.stringify([file, fs.readlinkSync(file), target]));
+          if (fs.statSync(file, { throwIfNoEntry: false })?.isDirectory()) visit(target);
+          continue;
+        }
+        hash.update(JSON.stringify([file, entry.isDirectory()]));
         if (entry.isDirectory()) visit(file);
       }
     };
@@ -59,19 +69,40 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
       hash.update(JSON.stringify(directory));
       try { visit(directory); } catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
     }
-    return hash.digest('hex');
+    return { hash: hash.digest('hex'), links };
+  };
+  const signature = (selected: ReadonlySet<string>, contentDirectories: ReadonlySet<string>) => {
+    const hash = createHash('sha256').update(String(namespace));
+    for (const file of [...selected].sort()) {
+      hash.update(JSON.stringify(file));
+      try { hash.update(fs.realpathSync.native(file)).update(fs.readFileSync(file)); }
+      catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
+    }
+    return hash.update(directoryInputs(contentDirectories).hash).digest('hex');
   };
   const snapshot = (selected = new Set(files)): FrontendInputSnapshot => {
     const contentDirectories = new Set(directories);
     const hash = signature(selected, contentDirectories);
     return { hash, current: () => signature(selected, contentDirectories) === hash };
   };
-  const ignored = (file: string) => excluded(file) || (![...files].some(input => file === input || inside(file, input))
-    && ![...directories].some(root => inside(root, file) || inside(file, root))
-    && (data.some(root => inside(root, file)) || file.split(/[\\/]/).includes('.git')));
+  const ignored = (file: string) => {
+    if (excluded(file)) return true;
+    try { if (excluded(physicalWatchPath(file))) return true; }
+    catch { /* Broken links remain observable so their repair can trigger a build. */ }
+    return ![...files].some(input => file === input || inside(file, input))
+      && ![...directories, ...linkedInputs].some(root => inside(root, file) || inside(file, root))
+      && (data.some(root => inside(root, file)) || file.split(/[\\/]/).includes('.git'));
+  };
   const notify = (file: string) => {
     if (closed || ignored(file)) return;
-    if (!files.has(file)) namespace++;
+    let directoryLink = false;
+    try {
+      directoryLink = [...directories, ...linkedInputs].some(root => inside(root, file))
+        && (fs.lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink() ?? false);
+    }
+    catch { /* An unreadable path still invalidates unknown namespace inputs. */ }
+    // Link topology is in the directory signature; target metadata alone need not change inputs.
+    if (!files.has(file) && !directoryLink) namespace++;
     const hash = signature(files, directories);
     if (hash === notified) return;
     notified = hash;
@@ -83,7 +114,8 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
   };
   async function subscribe() {
     if (closed) return;
-    const anchors = [...new Set([...files].map(file => path.dirname(file)).concat([...directories]))].map(existingDirectory);
+    linkedInputs = directoryInputs(directories).links;
+    const anchors = [...new Set([...files].map(file => path.dirname(file)).concat([...directories, ...linkedInputs]))].map(existingDirectory);
     const roots = [...new Set(anchors.map(directory => physicalWatchPath(directory)))].sort((a, b) => a.length - b.length);
     const selected = roots.filter((candidate, index) => !roots.slice(0, index).some(parent => inside(parent, candidate)));
     const guards = new Set<string>();

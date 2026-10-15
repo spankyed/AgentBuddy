@@ -71,6 +71,59 @@ it('accepts only the private worker message shape and absolute input paths', () 
   expect(readBuildWatchInputs({ ...message, directories: [42] })).toBeUndefined();
 });
 
+it.each(['outside', 'profile/content'])('observes new content beneath a nested directory link into %s', async target => {
+  const { temporary, watcher, firstChange, write } = fixture();
+  const directory = path.join(temporary, 'content');
+  const destination = path.join(temporary, target);
+  fs.mkdirSync(directory);
+  fs.mkdirSync(destination, { recursive: true });
+  fs.symlinkSync(destination, path.join(directory, 'linked'), 'dir');
+  await watcher.observe({ files: [], directories: [directory], successful: true });
+  const before = watcher.snapshot();
+  write(`${target}/nested/page.html`, '<div />');
+  await _byDeadline(firstChange, 'content created beneath the nested directory link');
+  expect(before.current()).toBe(false);
+});
+
+it('observes repair beneath a dangling nested directory link', async () => {
+  const { temporary, watcher, firstChange, write } = fixture();
+  const directory = path.join(temporary, 'content');
+  fs.mkdirSync(directory);
+  fs.symlinkSync(path.join(temporary, 'future'), path.join(directory, 'linked'), 'dir');
+  await watcher.observe({ files: [], directories: [directory], successful: true });
+  const before = watcher.snapshot();
+  write('future/nested/page.html', '<div />');
+  await _byDeadline(firstChange, 'repair beneath a dangling content directory link');
+  expect(before.current()).toBe(false);
+});
+
+it('bounds cyclic directory links and excludes linked authored outputs from input snapshots', async () => {
+  const { root, temporary, watcher, firstChange, write } = fixture();
+  const directory = path.join(temporary, 'content');
+  fs.mkdirSync(directory);
+  fs.symlinkSync(directory, path.join(directory, 'loop'), 'dir');
+  fs.symlinkSync(root, path.join(directory, 'owned'), 'dir');
+  const file = write('style.css', 'before');
+  await watcher.observe({ files: [file], directories: [directory], successful: true });
+  const before = watcher.snapshot();
+  write('pack/dist/runtime/fe.css', 'output');
+  expect(before.current()).toBe(true);
+  write('style.css', 'after');
+  await _byDeadline(firstChange, 'the resource edit beside cyclic and excluded directory links');
+  expect(before.current()).toBe(false);
+});
+
+it('observes a missing stylesheet repaired by creating a symlink', async () => {
+  const { temporary, watcher, firstChange, write } = fixture();
+  const stylesheet = write('styles/main.css', '@import "./future.css";');
+  const target = write('outside/theme.css', '.theme {}');
+  await watcher.observe({ files: [stylesheet], directories: [], successful: false });
+  const before = watcher.snapshot();
+  fs.symlinkSync(target, path.join(temporary, 'styles/future.css'));
+  await _byDeadline(firstChange, 'a stylesheet candidate repaired with a symlink');
+  expect(before.current()).toBe(false);
+});
+
 it('rebuilds when a compiler-reported content directory link is retargeted', async () => {
   const { temporary, watcher, firstChange, write } = fixture();
   const original = path.dirname(write('sources/original/page.html', '<div />'));

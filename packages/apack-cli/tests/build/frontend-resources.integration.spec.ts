@@ -133,10 +133,13 @@ it.each(['css-url', 'template'] as const)('watches an external %s asset in a sep
   } finally { await watcher?.close(); }
 });
 
-it('watches initially empty external Tailwind content directories', async () => {
+it('watches initially empty external Tailwind content through nested directory links', async () => {
   const { pack } = consumer();
   const content = path.join(root!, 'content');
+  const sources = path.join(root!, 'sources');
   fs.mkdirSync(content);
+  fs.mkdirSync(sources);
+  fs.symlinkSync(sources, path.join(content, 'linked'), 'dir');
   fs.writeFileSync(path.join(pack, 'tailwind.config.js'), `export default { content: [${JSON.stringify(`${content}/**/*.html`)}] };`);
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   let watcher: { close(): Promise<void> } | undefined;
@@ -145,8 +148,8 @@ it('watches initially empty external Tailwind content directories', async () => 
     watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(root!, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(output(pack, '.css')).not.toContain('.text-orange-500');
-    fs.mkdirSync(path.join(content, 'nested'));
-    fs.writeFileSync(path.join(content, 'nested/page.html'), '<div class="text-orange-500" />');
+    fs.mkdirSync(path.join(sources, 'nested'));
+    fs.writeFileSync(path.join(sources, 'nested/page.html'), '<div class="text-orange-500" />');
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(output(pack, '.css')).toContain('.text-orange-500');
