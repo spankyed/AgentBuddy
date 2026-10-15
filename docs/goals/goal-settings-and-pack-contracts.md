@@ -4399,3 +4399,46 @@ template/asset and dynamic/runtime inputs, exact compiler consumers, coherent fr
 publication, scope cost and manual-build/drive freshness. All unfinished discovery/native/static-content,
 navigation, frontend boundaries, Phase 6 API consumption/provenance/replacement, lifecycle observations
 and final committed-source strict --all plus requirement audit remain required. Nothing is archived.
+
+### Frontend compiler authority source checkpoint (2026-10-15)
+
+Source `7c97e8553` removes unsound frontend reuse and reports current Vite resources/directory
+inputs to ready subscriptions over private worker IPC. It preserves failed-build repair scopes and
+logical directory links, indexes rename-event matching, avoids redundant package metadata reads
+and includes package manifests in repository build dependencies. The user's integration feedback
+limit is 60s, shared by the outer chain and direct pool runner with accurate timeout reporting.
+
+Focused evidence:
+- Committed-source validation passes 98 checks across five package/watcher/cache/deadline suites in
+  1.55s: `/private/tmp/apack-frontend-checkpoint-committed-unit.log`.
+- Package/watcher checks pass 30 cases; cache checks passed 20 cases. CLI/script typechecking passes.
+  Logs: `/private/tmp/apack-package-walk-fix.log`,
+  `/private/tmp/apack-frontend-matcher-unit.log`,
+  `/private/tmp/apack-frontend-final-{cli,script}-types.log`.
+- All eight frontend resource cases pass; they cover external CSS/imports/URLs, template assets,
+  live watching without diagnostic records, missing-target recovery and initially empty content dirs:
+  `/private/tmp/apack-frontend-authority-resources-layered.log`.
+- All eight package input cases pass; Vue-only imports now require the compiler frame to refuse
+  after an outside helper changes, alongside actual Vite output. Disabling Vue script discovery fails
+  all three invalidation assertions; exact source was restored:
+  `/private/tmp/apack-vue-inputs-layered{,-mutation}.log`.
+- Both publication cases retain source/manifest coalescing, refused-source retention, external-only
+  link retargeting, repair and atomic replacement: `/private/tmp/apack-watch-publication-atomic-target.log`.
+- After the package-walker fix, a real CLI CSS watch/refusal/recovery case passes in 26.7s under the
+  60s bound: `/private/tmp/apack-frontend-checkpoint-watch.log`.
+- Old/new package walkers produce the identical fingerprint over 12,661 files / 204.6 MiB:
+  `/private/tmp/apack-package-walk-compare.log`. This is not an end-to-end performance guarantee.
+
+Full strict validation remains unresolved. The latest completed attempt
+(`/private/tmp/apack-frontend-layered-strict.log`, run `2026-10-15T06-48-57Z-62393`) exceeds the
+aggregate integration deadline without a logged assertion failure; uncompleted tests are unverified.
+Earlier strict timeout attempts and the three-worker diagnostic are not acceptance evidence.
+Focused passes justify this reviewable source checkpoint, not phase or goal completion. Do not
+repeat blind bulk retries, attribute the failure solely to machine load, or waive the final gate.
+
+Continue nested-symlink/glob/worker/dynamic input closure, exact compiler consumers and coherent
+frozen execution/publication, then manual-build/drive freshness. Retain all remaining discovery/native/
+static-content, navigation, frontend boundaries, all three Phase 6 workstreams, lifecycle observations
+and final committed-source strict --all plus the full requirement audit. EARS and six compiled content
+files remain byte-identical; no release metadata, public API/schema or compatibility changes. Nothing
+is archived, and the unrelated staged issue remains excluded from this work's commits.

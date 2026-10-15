@@ -2044,3 +2044,32 @@ Styles, template assets and other runtime/dynamic inputs still need their own co
 script projection is neither a Vue component typechecker nor an immutable execution environment.
 Retain exact compiler-consumer alignment, frozen execution/publication, scope cost, manual-build/drive
 freshness and every remaining contribution/native/static-content and downstream goal requirement.
+
+### Frontend compiler authority checkpoint (2026-10-15)
+
+Source `7c97e8553` removes frontend output reuse: an actual two-build regression retained stale CSS
+when only an external Vue stylesheet changed. Vite runs once per build; facade and DSL reuse remain.
+The current compiler reports watch files and PostCSS directory dependencies over private worker IPC,
+independently of optional diagnostic records. Ready subscriptions retain incumbent/partial scopes
+through refusal and replace them after success. Logical and physical directory identities preserve
+link-retargeting detection. Authored outputs and unrelated profile activity are excluded.
+
+Rename events use a subscription-scoped ancestor index, and package traversal uses directory-entry
+file types rather than repeating metadata reads. Package fingerprints remain byte-identical; no input
+scope is narrowed or cached across builds. Vue input cases now prove compiler-frame invalidation as
+well as real Vite output; disabling script discovery fails all three invalidation assertions. Full CLI
+watch/publication, atomic replacement, refusal retention and external-file recovery coverage remain.
+
+The owning goal records focused, mutation, type and real CLI evidence. The source checkpoint is
+reviewable, but bulk strict validation is unresolved: the last completed run exceeded the aggregate
+integration deadline without a logged assertion failure. It is not a full acceptance pass. The user
+requested a 60s feedback cap shared by the chain and direct integration runner; do not repeat long
+whole-suite retries to diagnose a local failure or silently treat the cap as an assertion failure.
+Resolve the bulk gate before final committed-source strict --all and completion.
+
+Next prove nested directory symlinks, initially empty external import.meta.glob roots and worker/
+dynamic graphs, exact compiler-consumer alignment and coherent frozen execution/publication.
+The current directory watcher does not follow nested directory symlinks; getWatchFiles() does not
+expose Vite's glob matcher metadata. Retain manual-build/drive freshness and every remaining
+contribution/native/static-content, navigation, frontend boundary and Phase 6 requirement. Nothing
+is archived or excluded by this checkpoint.

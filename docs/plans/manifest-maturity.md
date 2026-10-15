@@ -658,3 +658,14 @@ Continue style/template/asset and dynamic/runtime input closure, exact compiler 
 frozen execution/publication, scope cost and manual-build/drive freshness. All remaining discovery,
 native/static-content, navigation, frontend boundaries, Phase 6 API consumption/provenance/replacement
 and final completion audit remain active. This completes script traversal only.
+
+### Frontend compiler authority source checkpoint (2026-10-15)
+
+`7c97e8553` replaces unsound frontend reuse with actual compilation and private current-compiler
+resource/directory reports for ready watch subscriptions. Repair scopes, directory-link identities,
+rename matching and package traversal are covered; the user's shared integration feedback cap is 60s.
+The goal records real CLI behavior, mutation evidence, type checks and 98 passing committed-source
+checks. Aggregate strict integration validation remains unresolved and is required before completion;
+this source checkpoint is not phase acceptance. Continue the remaining input/frozen-execution and
+manual-build/drive work, every remaining discovery/native/static-content requirement, navigation,
+frontend boundaries and all three Phase 6 workstreams. Nothing is archived or excluded.
