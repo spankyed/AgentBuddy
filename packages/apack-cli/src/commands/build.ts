@@ -24,6 +24,7 @@ import { BUILD_INPUTS_IPC_ENV, reportBuildWatchInputs } from '../build/build-wat
 import { generatedDeclarationProblems } from '../build/generated-declarations.ts';
 import { packInputsHash } from '../build/pack-inputs.ts';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
+import { runPackBuild } from '../build/build-process.ts';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -60,32 +61,23 @@ export function buildStagingDir(root: string): string {
 }
 
 /**
- * `apack pack build` as the user runs it. A pack compiles against the @apackdev packages' dist, and when that
- * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
- * `apack pack test` and `apack pack dev` do (the doors are listed in packages/apack-testing/CLAUDE.md).
- *
- * It sits here rather than in the internal `build()` so command entry checks linked packages before
- * compiling against them. The watcher also checks before spawning each fresh CLI process, so a child
- * loads the current compiler bundle rather than one the freshness check just replaced.
- *
- * `npm run dev` depends on this one. The dev launcher builds the pack the app ships with `apack
- * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
- * in the dev launcher is the fix if this ever stops ensuring.
+ * Public builds refresh linked packages before a fresh worker loads compiler modules.
+ * Development startup and watched builds use the same runner without recursive command dispatch.
  */
 export async function buildCommand(args: string[]): Promise<void> {
   const unknown = args.filter(arg => !['--watch', '--skip-generate', '--skip-fe', '--release'].includes(arg));
   if (unknown.length) throw new Error(`Unknown build option: ${unknown.join(', ')}. Use apack pack build --help.`);
   const root = findPackRoot(process.cwd());
-  ensureCheckoutPackages(root);
   if (args.includes('--watch')) {
     if (args.length !== 1) throw new Error('--watch cannot be combined with other build flags');
+    ensureCheckoutPackages(root);
     const { watchPackBuild } = await import('../build/watch.ts');
     // `npm run dev` forks this and boots the API against the runtime it writes, so it waits to be told the
     // first bundle landed. `process.send` is absent for anyone who ran the command themselves
     await watchPackBuild(root, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
     return;
   }
-  await build(args);
+  await runPackBuild(root, { args });
 }
 
 export async function build(args: string[], root = findPackRoot(process.cwd())) {

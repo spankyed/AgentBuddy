@@ -25,9 +25,13 @@ if (handoff) {
   // source itself: register the CLI's own tsx instead of relying on a `tsx` binary on PATH.
   const { register } = await import('tsx/esm/api');
   register();
-  // Published packages run the compiled bundle
-  const bundle = new URL('../dist/cli.js', import.meta.url);
-  if (!existsSync(bundle)) {
+  // The compiler worker shares bootstrap/resolution, but never dispatches another public build.
+  const worker = process.env.APACK_BUILD_WORKER === '1';
+  if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
+  const entry = worker ? 'build-worker' : 'cli';
+  const bundle = new URL(`../dist/${entry}.js`, import.meta.url);
+  const bundled = existsSync(new URL('../dist/cli.js', import.meta.url));
+  if (!bundled) {
     // In a checkout, workspace @apackdev/* packages resolve to their source. Registered after tsx,
     // so it runs first and tsx resolves with the added condition. Only this process, and only the
     // CLI's own code: a pack is compiled and run against those packages' dist, so the children this
@@ -40,5 +44,5 @@ if (handoff) {
     const { assertSourceResolution } = await import('@apackdev/host/build/source-resolution');
     assertSourceResolution((specifier) => fileURLToPath(import.meta.resolve(specifier)), 'The apack CLI');
   }
-  await import(existsSync(bundle) ? bundle.href : '../src/index.ts');
+  await import(bundled ? bundle.href : worker ? '../src/build/build-worker.ts' : '../src/index.ts');
 }

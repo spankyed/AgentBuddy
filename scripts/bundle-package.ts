@@ -36,7 +36,7 @@ interface BundleConfig {
 
 const CONFIGS: Record<string, BundleConfig> = {
   '@apackdev/cli': {
-    entries: { cli: 'src/index.ts' },
+    entries: { cli: 'src/index.ts', 'build-worker': 'src/build/build-worker.ts' },
     copy: ['bin/apack.mjs', 'templates'],
     manifest: { bin: { apack: 'bin/apack.mjs' } },
   },
