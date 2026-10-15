@@ -50,6 +50,13 @@ export interface CodeExplorerContext {
   pendingEditorMode: Map<string, 'richText' | 'plainText'>
 }
 
+function emptyTreeState(): CodeExplorerContext {
+  return {
+    rootFiles: [], expandedDirs: new Set(), dirContents: {}, loadingDirs: new Set(),
+    selectedPaths: [], revealPath: null, pendingEditorMode: new Map(),
+  }
+}
+
 // Quick open types
 export interface QuickOpenResult {
   path: string
@@ -288,12 +295,14 @@ export const explorerState = setup({
       updateParentState(self, { error: ev.message, isLoading: false })
     },
 
-    handleCodeConnected: ({ event, self }) => {
+    handleCodeConnected: assign(({ event, self }) => {
       const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } }
+      updateParentState(self, { baseDirectory: ev.data.baseDirectory })
       if (ev.data.baseDirectory) {
-        self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.data.baseDirectory })
+        sendToSystem('code', { type: 'explorer.LIST_FILES', path: ev.data.baseDirectory })
       }
-    },
+      return emptyTreeState()
+    }),
 
     openFile: assign(({ event, context }) => {
       const ev = event as { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText' }
@@ -328,15 +337,7 @@ export const explorerState = setup({
       })
 
       // Reset tree state
-      return {
-        rootFiles: [] as FileInfo[],
-        expandedDirs: new Set<string>(),
-        dirContents: {} as Record<string, FileInfo[]>,
-        loadingDirs: new Set<string>(),
-        selectedPaths: [] as string[],
-        revealPath: null as string | null,
-        pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
-      }
+      return emptyTreeState()
     }),
 
     refreshTree: assign(({ context, self }) => {
@@ -561,15 +562,7 @@ export const explorerState = setup({
 }).createMachine({
   id: 'explorer',
   initial: 'idle',
-  context: {
-    rootFiles: [],
-    expandedDirs: new Set<string>(),
-    dirContents: {},
-    loadingDirs: new Set<string>(),
-    selectedPaths: [],
-    revealPath: null,
-    pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
-  },
+  context: emptyTreeState,
   states: {
     idle: {
       on: {
