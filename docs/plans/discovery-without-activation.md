@@ -2245,3 +2245,37 @@ extension group changes still need an explicit state-preserving strategy. Resolv
 pending edits, selection/history, removed nodes and popup/provider disposal; do not pretend a fresh
 editor instance or static metadata alone proves that behavior. Other discovery/freshness, navigation,
 boundaries, dependency/API/replacement work and the aggregate strict gate remain required.
+
+
+### Native reference schema ownership checkpoint (2026-10-15)
+
+Source `f8c6b2262` moves `ReferenceNode` and its behavior tests into `@apackdev/ui`. The native host
+catalog declares `tiptapPlugins.references.extensions.reference`; the renderer supplies its binding
+before loading external frontends. Backend discovery imports no UI implementation. Default-setup
+now contributes `referenceSuggestion`, which installs its existing suggestion plugin alongside the
+host-owned node. The URI/node/attribute identities, Markdown/HTML behavior, metadata-driven icon
+refresh and eligible navigation are preserved; navigation callbacks still belong to Phase 4's migration.
+No alias, fallback schema, new feature or duplicate registry was introduced.
+
+Seventy-five focused catalog/binding/UI/native renderer checks pass in 6.82s
+(`/private/tmp/apack-native-reference-regressions.log`). Nine default-pack suggestion/provider tests
+pass in 2.75s (`/private/tmp/apack-native-reference-suggestion.log`), including suggestion activation
+and dismissal. Removing both native declaration and binding makes the actual renderer test fail on
+its missing reference pill; exact source is restored and passes
+(`/private/tmp/apack-native-reference-{mutant,restored}.log`). The built Electron app passes with
+default-setup disabled: it renders a saved reference and preserves JSON/HTML/Markdown targets, using
+the app's actual shared UI module and native registration
+(`/private/tmp/apack-native-reference-electron-final.log`, 3.9s). The first browser assertion ran before
+Tiptap's deferred view attachment; the test now waits for its DOM through Playwright. E2E typechecking
+and final whole-repo lint pass. The UI export map/report are regenerated and reviewed; all seven
+baseline generated EARS/content files remain byte-identical.
+
+Strict checkpoint evidence: `node_modules/.cache/apack-chain/runs/2026-10-15T09-20-06Z-30733`,
+`/private/tmp/apack-native-reference-strict-final.log`. Type/API/schema/export/facade/specifier/tier
+checks, default-pack/runtime builds, external-pack contract and packaged-authoring checks pass or
+retain valid cached results. The aggregate integration pool again exceeds its 60s deadline; it has
+no completed assertion failure in captured output, and remaining scheduled app checks are not proved
+by that interrupted gate. This is not a green full chain or phase completion. The aggregate gate,
+final committed-source strict `--all`, live editor recomposition, remaining discovery/source freshness,
+entity navigation, frontend boundaries and all Phase 6 workstreams remain required. Nothing is
+excluded or archived.
