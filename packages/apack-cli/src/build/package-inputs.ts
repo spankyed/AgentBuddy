@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import type { CompilerInputObserver } from './compiler-configuration.ts';
 
 export interface PackageInputOwner {
   readonly id: string;
@@ -10,30 +11,34 @@ export interface PackageInputOwner {
 }
 
 /** Resolve package ownership without executing an entry or requiring package.json to be exported. */
-function dependencyDirectory(owner: string, name: string): string | undefined {
+function dependencyDirectory(owner: string, name: string, observe?: CompilerInputObserver): string | undefined {
   if (!/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(name) || name.split('/').some(part => part === '.' || part === '..')) {
     throw new Error(`Invalid npm dependency name: ${name}`);
   }
   for (const directory of createRequire(path.join(owner, 'package.json')).resolve.paths(name) ?? []) {
     const candidate = path.join(directory, name);
+    observe?.(path.join(candidate, 'package.json'), 'file');
     if (fs.statSync(path.join(candidate, 'package.json'), { throwIfNoEntry: false })?.isFile()) {
       return fs.realpathSync(candidate);
     }
   }
 }
 
-function packageFilesHash(root: string, targets: readonly string[]): string {
+function packageFilesHash(root: string, targets: readonly string[], owners: ReadonlyMap<string, boolean>, observe?: CompilerInputObserver): string {
   const hash = createHash('sha256');
   const ancestors = new Set<string>();
   const files = new Set<string>();
   function walk(file: string): void {
+    observe?.(file, 'file');
     const stat = fs.statSync(file, { throwIfNoEntry: false });
     if (!stat) return;
     if (stat.isFile()) { files.add(path.relative(root, file).split(path.sep).join('/')); return; }
     if (!stat.isDirectory()) throw new Error(`Unsupported package input: ${file}`);
     const real = fs.realpathSync(file);
+    if (owners.has(real)) return;
     if (ancestors.has(real)) throw new Error(`Cyclic package input: ${file}`);
     ancestors.add(real);
+    observe?.(file, 'entries');
     for (const name of fs.readdirSync(file).sort()) {
       if (['node_modules', '.git', '.temp', '.apack', '.cache'].includes(name)) continue;
       walk(path.join(file, name));
@@ -73,8 +78,8 @@ function packageTargets(manifest: Record<string, unknown>): string[] {
   return [...targets].sort();
 }
 
-/** Complete declared dependency scopes and resolution edges; diagnostic read logs are not inputs. */
-export function packageInputsHash(owners: readonly PackageInputOwner[]): string {
+/** Declared and compiler-discovered package scopes, including their transitive resolution edges. */
+export function packageInputsHash(owners: readonly PackageInputOwner[], discovered: readonly string[] = [], observe?: CompilerInputObserver): string {
   const seen = new Map<string, number>();
   const rootDevelopment = new Map<string, boolean>();
   for (const owner of owners) {
@@ -89,9 +94,10 @@ export function packageInputsHash(owners: readonly PackageInputOwner[]): string 
     const index = nodes.length;
     seen.set(root, index);
     const file = path.join(root, 'package.json');
+    observe?.(file, 'file');
     const metadata = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
     const manifest = metadata ? JSON.parse(metadata) : {};
-    const node = { metadata, ...(contents && { files: packageFilesHash(root, packageTargets(manifest)) }),
+    const node = { metadata, ...(contents && { files: packageFilesHash(root, packageTargets(manifest), rootDevelopment, observe) }),
       dependencies: {} as Record<string, number | null> };
     nodes.push(node);
     return index;
@@ -106,7 +112,7 @@ export function packageInputsHash(owners: readonly PackageInputOwner[]): string 
     const names = Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies,
       ...manifest.optionalDependencies, ...(development && manifest.devDependencies) }).sort();
     for (const name of names) {
-      const dependency = dependencyDirectory(directory, name);
+      const dependency = dependencyDirectory(directory, name, observe);
       if (!dependency) { node.dependencies[name] = null; continue; }
       const child = register(dependency, true);
       node.dependencies[name] = child;
@@ -117,5 +123,10 @@ export function packageInputsHash(owners: readonly PackageInputOwner[]): string 
   // accidentally include their build output in their own input key.
   const roots = owners.map(owner => ({ id: owner.id, node: register(owner.directory, false) }));
   owners.forEach((owner, index) => populate(owner.directory, roots[index]!.node, owner.development ?? false));
-  return createHash('sha256').update(JSON.stringify({ roots, nodes })).digest('hex');
+  const imported = discovered.map(directory => {
+    const index = register(directory, true);
+    populate(directory, index, false);
+    return index;
+  });
+  return createHash('sha256').update(JSON.stringify({ roots, imported, nodes })).digest('hex');
 }

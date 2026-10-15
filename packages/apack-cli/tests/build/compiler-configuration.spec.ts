@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import ts from 'typescript';
-import { compilerModuleInputsHash } from '../../src/build/compiler-module-inputs.ts';
+import { readCompilerModuleInputs } from '../../src/build/compiler-module-inputs.ts';
 import { readPackCompilerConfiguration } from '../../src/build/compiler-configuration.ts';
 
 const roots: string[] = [];
@@ -40,9 +40,9 @@ it('resolves external relative inheritance, including arrays and JSON comments',
   expect(configuration.options.target).toBe(ts.ScriptTarget.ES2022);
   expect(configuration.options.moduleResolution).toBe(ts.ModuleResolutionKind.Bundler);
   expect([...configuration.files.keys()].map(file => path.basename(file))).toEqual(expect.arrayContaining(['tsconfig.json', 'one.json', 'two.json']));
-  const before = compilerModuleInputsHash(pack);
+  const before = readCompilerModuleInputs(pack).hash;
   write('one.json', { compilerOptions: { strict: false, target: 'ES2022' } });
-  expect(compilerModuleInputsHash(pack)).not.toBe(before);
+  expect(readCompilerModuleInputs(pack).hash).not.toBe(before);
 });
 
 it('captures package-based inherited configuration without importing its entry', () => {
@@ -51,10 +51,10 @@ it('captures package-based inherited configuration without importing its entry',
   write('pack/node_modules/config-package/package.json', { name: 'config-package', version: '1.0.0' });
   write('pack/node_modules/config-package/index.js', 'throw new Error("No activation");');
   write('pack/node_modules/config-package/base.json', { compilerOptions: { strict: true } });
-  const before = compilerModuleInputsHash(pack);
+  const before = readCompilerModuleInputs(pack).hash;
   expect(readPackCompilerConfiguration(pack)!.options.strict).toBe(true);
   write('pack/node_modules/config-package/base.json', { compilerOptions: { strict: false } });
-  expect(compilerModuleInputsHash(pack)).not.toBe(before);
+  expect(readCompilerModuleInputs(pack).hash).not.toBe(before);
 });
 
 it('is independent of checkout location and touches', () => {
@@ -64,7 +64,7 @@ it('is independent of checkout location and touches', () => {
     write('pack/tsconfig.json', { extends: '../base.json' });
   }
   fs.utimesSync(path.join(second.root, 'base.json'), new Date(), new Date(Date.now() + 60_000));
-  expect(compilerModuleInputsHash(first.pack)).toBe(compilerModuleInputsHash(second.pack));
+  expect(readCompilerModuleInputs(first.pack).hash).toBe(readCompilerModuleInputs(second.pack).hash);
 });
 
 it('reports circular inheritance and invalid options instead of empty defaults', () => {

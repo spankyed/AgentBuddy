@@ -114,3 +114,25 @@ it('rejects workspace source and file declarations escaping their package owner'
   pack.manifest('node_modules/compiler', { name: 'compiler', exports: { '@apackdev/source': './../outside.js' } });
   expect(pack.hash).toThrow('escape its owner');
 });
+
+it('includes discovered undeclared packages and their transitive dependencies', () => {
+  const pack = tree();
+  pack.manifest('.', { name: 'consumer' });
+  const library = path.join(pack.root, 'node_modules/compiler');
+  const hash = () => packageInputsHash([{ id: 'pack', directory: pack.root }], [library]);
+  const before = hash();
+  pack.write('node_modules/helper/index.js', 'changed undeclared transitive helper');
+  expect(hash()).not.toBe(before);
+});
+
+it('excludes consuming owners nested inside a discovered package scope', () => {
+  const pack = tree();
+  const consumer = path.join(pack.root, 'consumer');
+  pack.manifest('consumer', { name: 'nested-consumer' });
+  const hash = () => packageInputsHash([{ id: 'pack', directory: consumer }], [pack.root]);
+  const before = hash();
+  pack.write('consumer/dist/runtime/index.js', 'new output');
+  expect(hash()).toBe(before);
+  pack.write('library.js', 'actual library input');
+  expect(hash()).not.toBe(before);
+});

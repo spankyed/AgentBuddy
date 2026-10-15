@@ -7,9 +7,66 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
 import { assertGeneratedCurrent } from '../../src/commands/generate-entries.ts';
 import { dependencyTypes } from '../../src/commands/generate.ts';
+import { startPackBuildWatcher } from '../../src/build/watch.ts';
 
 let root: string | undefined;
 afterEach(() => { vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
+
+function runtimeConsumer() {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
+  const modules = path.join(root, 'node_modules');
+  fs.mkdirSync(modules);
+  for (const name of ['@apackdev', 'xstate']) {
+    fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', name), path.join(modules, name), 'dir');
+  }
+  const library = path.join(modules, 'borrowed');
+  fs.mkdirSync(library);
+  fs.writeFileSync(path.join(library, 'package.json'), JSON.stringify({ name: 'borrowed', version: '1.0.0',
+    type: 'module', exports: { '.': { types: './index.d.ts', default: './index.js' } } }));
+  fs.writeFileSync(path.join(library, 'index.d.ts'), 'export declare const marker: string;');
+  fs.writeFileSync(path.join(library, 'index.js'), "export { marker } from './helper.js';");
+  const helper = path.join(library, 'helper.js');
+  fs.writeFileSync(helper, "export const marker = 'BEFORE';");
+  const pack = preparePack(root, 'runtime-consumer', {
+    'apack.json': JSON.stringify({ id: 'runtime-consumer', name: 'Runtime Consumer', version: '1.0.0',
+      features: { view: { description: 'Imported runtime value.', plugin: { label: 'View', state: 'src/plugin.ts' } } } }),
+    'package.json': packageJson('runtime-consumer'), 'tsconfig.json': tsconfig,
+    'src/plugin.ts': "import { createMachine } from 'xstate'; import { marker } from 'borrowed'; export default createMachine({ context: { marker } });",
+  }, modules);
+  return { pack, helper, frontend: path.join(pack, 'dist/runtime/fe.js') };
+}
+
+it('rebuilds the frontend when an undeclared imported package changes behind unchanged types', async () => {
+  const { pack, helper, frontend } = runtimeConsumer();
+  const first = await callCli(pack, 'build');
+  expect(first.code, first.output).toBe(0);
+  expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
+  fs.writeFileSync(helper, "export const marker = 'AFTERX';");
+  const second = await callCli(pack, 'build');
+  expect(second.code, second.output).toBe(0);
+  expect(second.output).not.toContain('fe: unchanged, reused');
+  expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
+  expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
+});
+
+it('automatically rebuilds an undeclared package runtime without a type or authored edit', async () => {
+  const { pack, helper, frontend } = runtimeConsumer();
+  let watcher: { close(): Promise<void> } | undefined;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let publications = 0;
+  try {
+    watcher = await startPackBuildWatcher(pack, {
+      place: { env: 'test', userDataDir: path.join(root!, 'profile') },
+      onBuilt: async () => { publications++; },
+    });
+    expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
+    fs.writeFileSync(helper, "export const marker = 'AFTERX';");
+    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    expect(errors.mock.calls).toEqual([]);
+    expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
+    expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
+  } finally { await watcher?.close(); }
+});
 
 async function consumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-installed-types-'));

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { compilerModuleInputsHash } from '../../src/build/compiler-module-inputs.ts';
+import { readCompilerModuleInputs } from '../../src/build/compiler-module-inputs.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -22,7 +22,7 @@ function fixture() {
     baseUrl: '..', paths: { contract: ['contract.d.ts'] },
   } }));
   write('pack/src/index.ts', "export type { Value } from 'contract';");
-  return { pack, write, hash: () => compilerModuleInputsHash(pack) };
+  return { pack, write, hash: () => readCompilerModuleInputs(pack).hash };
 }
 
 it('tracks outside transitive imports, unresolved targets becoming available and removals', () => {
@@ -85,4 +85,16 @@ it('is independent of checkout location and modification times', () => {
   expect(a.hash()).toBe(b.hash());
   fs.utimesSync(path.join(a.pack, '../contract.d.ts'), new Date(1), new Date(1));
   expect(a.hash()).toBe(b.hash());
+});
+
+it('discovers scoped package owners through workspace links without loading their executable entries', () => {
+  const { pack, write } = fixture();
+  write('pack/src/index.ts', "export type { Value } from '@scope/library';");
+  write('library/package.json', JSON.stringify({ name: '@scope/library', types: './index.d.ts' }));
+  write('library/index.d.ts', 'export type Value = string;');
+  write('library/index.js', "throw new Error('must not activate');");
+  fs.mkdirSync(path.join(pack, 'node_modules/@scope'), { recursive: true });
+  const library = path.join(pack, '../library');
+  fs.symlinkSync(library, path.join(pack, 'node_modules/@scope/library'), 'dir');
+  expect(readCompilerModuleInputs(pack).packageDirectories).toContain(fs.realpathSync(library));
 });

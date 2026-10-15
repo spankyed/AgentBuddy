@@ -113,3 +113,28 @@ it('shares package scopes on native recursive platforms and uses selected leaf d
   expect(linux.get(path.join(library, 'nested'))?.paths.has(path.join(library, 'nested/types.d.ts'))).toBe(true);
   expect(linux.has(path.join(pack, 'src'))).toBe(false);
 });
+
+it('watches package runtime bytes, directory membership and missing transitive dependencies behind unchanged types', () => {
+  const { root, pack } = fixture();
+  const library = path.join(fs.realpathSync(root), 'node_modules/library');
+  fs.mkdirSync(library, { recursive: true });
+  fs.writeFileSync(path.join(pack, 'src/index.ts'), "import { value } from 'library'; export { value };");
+  fs.writeFileSync(path.join(library, 'package.json'), JSON.stringify({ name: 'library', types: 'index.d.ts', optionalDependencies: { helper: '*' } }));
+  fs.writeFileSync(path.join(library, 'index.d.ts'), 'export declare const value: string;');
+  const runtime = path.join(library, 'runtime.js');
+  fs.writeFileSync(runtime, 'before');
+  const before = compilerWatchPaths(pack);
+  expect(before.complete).toBe(true);
+  expect(compilerWatchMatches(before.paths, runtime, 'change')).toBe(true);
+  expect(compilerWatchMatches(before.paths, path.join(library, 'new-file.js'), 'rename')).toBe(true);
+  fs.writeFileSync(runtime, 'after');
+  expect(compilerWatchPaths(pack).signature).not.toBe(before.signature);
+  fs.writeFileSync(runtime, 'before');
+  expect(compilerWatchPaths(pack).signature).toBe(before.signature);
+  const helper = path.join(fs.realpathSync(root), 'node_modules/helper');
+  expect(compilerWatchMatches(before.paths, helper, 'rename')).toBe(true);
+  fs.mkdirSync(helper);
+  fs.writeFileSync(path.join(helper, 'package.json'), '{"name":"helper"}');
+  fs.writeFileSync(path.join(helper, 'index.js'), 'helper');
+  expect(compilerWatchPaths(pack).signature).not.toBe(before.signature);
+});

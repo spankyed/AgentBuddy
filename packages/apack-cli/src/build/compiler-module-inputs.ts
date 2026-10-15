@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
@@ -5,7 +6,7 @@ import { readPackCompilerConfiguration, type CompilerInputObserver } from './com
 import { isPackInputPath, packInputFiles } from './pack-inputs.ts';
 
 /** Resolve type inputs afresh, including imports outside the pack and undeclared npm packages. */
-export function compilerModuleInputsHash(root: string, observe?: CompilerInputObserver): string {
+export function readCompilerModuleInputs(root: string, observe?: CompilerInputObserver): { hash: string; packageDirectories: string[] } {
   const configuration = readPackCompilerConfiguration(root, observe);
   const options = {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
@@ -15,6 +16,18 @@ export function compilerModuleInputsHash(root: string, observe?: CompilerInputOb
   const rootNames = packInputFiles(root, { modulesOnly: true })
     .filter(file => /\.[cm]?[jt]sx?$/.test(file)).map(file => path.join(root, file));
   const files = new Map(configuration?.files);
+  const packages = new Set<string>();
+  const packageCandidates = new Set<string>();
+  const packageOf = (file: string) => {
+    const parts = path.resolve(file).split(path.sep);
+    const modules = parts.lastIndexOf('node_modules');
+    if (modules < 0 || !parts[modules + 1]) return;
+    const directory = parts.slice(0, modules + (parts[modules + 1]!.startsWith('@') ? 3 : 2)).join(path.sep);
+    if (packageCandidates.has(directory)) return;
+    packageCandidates.add(directory);
+    if (fs.statSync(directory, { throwIfNoEntry: false })?.isDirectory()) packages.add(fs.realpathSync(directory));
+  };
+  for (const file of files.keys()) packageOf(file);
   const host = ts.createCompilerHost(options);
   // Generated imports are outputs of this calculation, not inputs to its next invocation.
   const excluded = (file: string) => {
@@ -27,7 +40,7 @@ export function compilerModuleInputsHash(root: string, observe?: CompilerInputOb
     if (excluded(file)) return undefined;
     observe?.(file, 'file');
     const text = readFile(file);
-    if (text !== undefined) files.set(path.resolve(file), text);
+    if (text !== undefined) { files.set(path.resolve(file), text); packageOf(file); }
     return text;
   };
   host.fileExists = file => {
@@ -49,10 +62,13 @@ export function compilerModuleInputsHash(root: string, observe?: CompilerInputOb
   for (const source of program.getSourceFiles()) {
     observe?.(source.fileName, 'file');
     files.set(path.resolve(source.fileName), source.text);
+    packageOf(source.fileName);
   }
   const hash = createHash('sha256');
   for (const [file, text] of [...files].map(([file, text]) =>
     [path.relative(root, file).split(path.sep).join('/'), text] as const)
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify([file, text]));
-  return hash.digest('hex');
+  const realRoot = fs.realpathSync(root);
+  const relative = (directory: string) => path.relative(realRoot, directory).split(path.sep).join('/');
+  return { hash: hash.digest('hex'), packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0) };
 }

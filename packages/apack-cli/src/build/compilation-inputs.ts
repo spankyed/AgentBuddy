@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
 import { packageInputsHash } from './package-inputs.ts';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
-import { compilerModuleInputsHash } from './compiler-module-inputs.ts';
+import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -27,11 +27,14 @@ export interface CompilationInputs {
 /** One live-byte scope per build, shared by phases; recomputed at publication, never cached across builds. */
 export function captureCompilationInputs(packRoot: string): CompilationInputs {
   const cliRoot = cliPackageDirectory();
-  const current = () => createHash('sha256').update(buildToolHash()).update(packageInputsHash([
-    { id: 'cli', directory: cliRoot }, { id: 'pack', directory: packRoot, development: true },
-  ])).update(compilerModuleInputsHash(packRoot))
-    .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
-    .digest('hex');
+  const current = () => {
+    const modules = readCompilerModuleInputs(packRoot);
+    return createHash('sha256').update(buildToolHash()).update(packageInputsHash([
+      { id: 'cli', directory: cliRoot }, { id: 'pack', directory: packRoot, development: true },
+    ], modules.packageDirectories)).update(modules.hash)
+      .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
+      .digest('hex');
+  };
   const hash = current();
   return { hash, assertCurrent() {
     if (current() !== hash) throw new Error('Compiler or installed package inputs changed; retry before publishing');

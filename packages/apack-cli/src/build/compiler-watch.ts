@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { compilerModuleInputsHash } from './compiler-module-inputs.ts';
-import type { CompilerInputKind } from './compiler-configuration.ts';
+import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
+import { packageInputsHash } from './package-inputs.ts';
+import type { CompilerInputKind, CompilerInputObserver } from './compiler-configuration.ts';
 
 export type CompilerWatchPaths = ReadonlyMap<string, CompilerInputKind>;
 const priority = { directory: 0, file: 1, entries: 2 };
@@ -49,7 +50,7 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
     return resolved;
   };
   try {
-    const hash = compilerModuleInputsHash(root, (file, kind) => {
+    const observe: CompilerInputObserver = (file, kind) => {
       const absolute = path.resolve(file);
       const relative = path.relative(root, absolute);
       // The authored root already has a recursive watcher with output exclusions.
@@ -57,8 +58,10 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
       if (inside && !relative.split(path.sep).includes('node_modules')) return;
       addPath(paths, absolute, kind);
       addPath(paths, physicalPath(absolute), kind);
-    });
-    return { paths, complete: true, signature: `valid:${hash}` };
+    };
+    const modules = readCompilerModuleInputs(root, observe);
+    const packages = packageInputsHash([{ id: 'pack', directory: root, development: true }], modules.packageDirectories, observe);
+    return { paths, complete: true, signature: `valid:${modules.hash}:${packages}` };
   } catch {
     // The normal CLI build reports the refusal. Keep partial probes and the previous subscriptions for repair.
     const hash = createHash('sha256');
@@ -87,7 +90,7 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
     const modules = parts.indexOf('node_modules');
     if (modules >= 0) {
       const root = parts.slice(0, modules + 1).join(path.sep);
-      if (isDirectory(root)) { roots.add(root); roots.add(fs.realpathSync(root)); }
+      if (!roots.has(root) && isDirectory(root)) { roots.add(root); roots.add(fs.realpathSync(root)); }
     }
     if (path.basename(file) !== 'package.json') continue;
     try {
@@ -104,12 +107,20 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
     && !authoredRoots.some(root => root === scope || root.startsWith(`${scope}${path.sep}`)))
     .sort((a, b) => a.length - b.length);
   const targets = new Map<string, CompilerWatchTarget>();
+  const scopeFor = new Map<string, string | undefined>();
   const add = (directory: string, file: string, kind: CompilerInputKind) => {
-    const scope = scopes.find(root => directory === root || directory.startsWith(`${root}${path.sep}`));
+    if (!scopeFor.has(directory)) scopeFor.set(directory, scopes.find(root => directory === root || directory.startsWith(`${root}${path.sep}`)));
+    const scope = scopeFor.get(directory);
     const anchor = scope ?? directory;
     const target = targets.get(anchor) ?? { paths: new Map<string, CompilerInputKind>(), recursive: scope !== undefined };
     addPath(target.paths, file, kind);
     targets.set(anchor, target);
+  };
+  const guarded = new Set<string>();
+  const directories = new Map<string, boolean>();
+  const directoryExists = (directory: string) => {
+    if (!directories.has(directory)) directories.set(directory, isDirectory(directory));
+    return directories.get(directory)!;
   };
   for (const [file, kind] of paths) {
     if (authoredRoots.some(root => {
@@ -117,26 +128,30 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
       return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
     })) continue;
     let directory = path.dirname(file);
-    while (!isDirectory(directory)) {
+    while (!directoryExists(directory)) {
       const parent = path.dirname(directory);
       if (parent === directory) throw new Error(`No existing directory for compiler input ${file}`);
       directory = parent;
     }
     add(directory, file, kind);
     // A watch stays on its old inode after replacement; subscribe to each ancestor's own replacement too.
-    for (let child = directory; path.dirname(child) !== child; child = path.dirname(child)) {
+    for (let child = directory; path.dirname(child) !== child && !guarded.has(child); child = path.dirname(child)) {
+      guarded.add(child);
       add(path.dirname(child), child, 'directory');
     }
-    if (kind === 'entries' && isDirectory(file)) add(file, file, kind);
+    if (kind === 'entries' && directoryExists(file)) add(file, file, kind);
   }
   return targets;
 }
 
 export function compilerWatchMatches(paths: CompilerWatchPaths, changed: string, event: string): boolean {
+  if (event !== 'rename') {
+    const kind = paths.get(changed);
+    return kind !== undefined && kind !== 'directory';
+  }
   for (const [file, kind] of paths) {
-    if (file === changed && (kind !== 'directory' || event === 'rename')) return true;
-    if (event === 'rename' && file.startsWith(`${changed}${path.sep}`)) return true;
-    if (kind === 'entries' && event === 'rename' && path.dirname(changed) === file) return true;
+    if (file === changed || file.startsWith(`${changed}${path.sep}`)) return true;
+    if (kind === 'entries' && path.dirname(changed) === file) return true;
   }
   return false;
 }
