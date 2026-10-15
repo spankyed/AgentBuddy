@@ -8,6 +8,7 @@ import { vueRuntimePack } from '../_support/frontend-pack.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { filesUnder } from '../../src/build/phase-cache.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
+import { createFrontendWatcher } from '../../src/build/frontend-watch.ts';
 
 let root: string | undefined;
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
@@ -22,6 +23,49 @@ function output(pack: string, extension: string): string {
   return filesUnder(directory).filter(file => file.endsWith(extension))
     .map(file => fs.readFileSync(path.join(directory, file), 'utf8')).join('\n');
 }
+
+it.each([
+  ['import.meta.glob("../../pages/**/*.js", { eager: true })', 'pages'],
+  ['import.meta.glob([`../../pages/**/*.js`, "!../../pages/excluded/**"], { eager: true })', 'pages'],
+  ['import.meta.glob("./**/*.js", { eager: true, base: "../../pages" })', 'pages'],
+  ['import.meta.glob("#pages/**/*.js", { eager: true })', 'pages'],
+])('watches an initially empty external glob: %s', async (expression, location) => {
+  const { pack } = consumer();
+  const packageFile = path.join(pack, 'package.json');
+  const manifest = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+  manifest.imports = { ...manifest.imports, '#pages/*': './pages/*' };
+  fs.writeFileSync(packageFile, JSON.stringify(manifest));
+  const directory = path.join(root!, location);
+  fs.mkdirSync(directory);
+  fs.symlinkSync(directory, path.join(pack, 'pages'), 'dir');
+  const entryPoint = path.join(pack, expression.includes('#pages') ? 'canvas.vue' : 'src/canvas.vue');
+  fs.writeFileSync(entryPoint, `<script setup>const pages = ${expression};</script><template><div>{{ pages }}</div></template>`);
+  const changed = vi.fn();
+  const watcher = createFrontendWatcher(pack, undefined, changed);
+  let reported: readonly string[] = [];
+  const compile = () => bundlePackFE({ packDir: pack, entryPoint, outputDir: path.join(pack, 'dist/runtime'),
+    onInputs: inputs => { reported = inputs.directories; return watcher.observe(inputs).then(() => {}); } });
+  try {
+    const first = await compile();
+    expect(first.success, first.error).toBe(true);
+    const before = watcher.snapshot();
+    const nested = path.join(directory, 'nested');
+    fs.mkdirSync(nested);
+    const page = path.join(nested, 'new.js');
+    fs.writeFileSync(page, 'export const marker = "NEW_GLOB_PAGE";');
+    await vi.waitFor(() => expect(changed, JSON.stringify(reported)).toHaveBeenCalled(), { timeout: 2_000 });
+    expect(before.current()).toBe(false);
+    const second = await compile();
+    expect(second.success, second.error).toBe(true);
+    expect(output(pack, '.js')).toContain('NEW_GLOB_PAGE');
+    changed.mockClear();
+    fs.unlinkSync(page);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalled(), { timeout: 2_000 });
+    const third = await compile();
+    expect(third.success, third.error).toBe(true);
+    expect(output(pack, '.js')).not.toContain('NEW_GLOB_PAGE');
+  } finally { await watcher.close(); }
+});
 
 it('rebuilds Vue styles after only an external stylesheet changes', async () => {
   const { pack } = consumer();

@@ -7,6 +7,7 @@ import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeMod
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
+import { globWatchPlugin } from './glob-watch.ts';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -590,6 +591,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         ...((recordReads || options.onInputs) ? [inputReportPlugin(options, directories, vite.version)] : []),
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
+        ...(options.onInputs ? [globWatchPlugin(packDir, directories)] : []),
       ],
       css: {
         postcss: { plugins: postcssPlugins },
