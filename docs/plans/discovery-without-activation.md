@@ -2479,3 +2479,57 @@ then migrate palette/style/default/layout discovery readers and remove permanent
 Calculated layout and actual compiler/runtime/provider calls stay executable. This does not close step
 or full discovery, source execution/freshness, native lifecycle, editor readiness, navigation, boundaries
 or any Phase 6 workstream. Nothing is archived or excluded.
+
+
+### Frontend step declaration design (2026-10-15)
+
+The current 15 authored frontend step modules contain data, Vue/icon imports, lazy component factories,
+and two calculated layouts. Replace their opaque `fe: "path#export"` target with a data object:
+
+```json
+{
+  "node": { "label": "Example" },
+  "types": "src/extensions/steps/example/types.ts",
+  "fe": {
+    "nodeConfig": {
+      "icon": "Box",
+      "category": "logic",
+      "connectionRules": { "inputs": 1, "outputs": 1 }
+    },
+    "colorKey": "indigo",
+    "components": { "form": { "entry": "src/extensions/steps/example/form.vue", "load": "lazy" } },
+    "layout": { "hasInput": true, "getHeight": "src/extensions/steps/example/layout.ts#getHeight" }
+  }
+}
+```
+
+Keep the meaningful `nodeConfig`, component-slot and layout groups. Icons/component loading use the
+existing component-target grammar; component and function targets stay pack-root-relative. Layout
+callbacks remain code and get checked named exports, not computed JSON results. Preserve all existing
+flags, connection counts (including -1 for unlimited), colors, prefixes and loading modes.
+
+Deleting the frontend modules removes the last useful directory anchor for frontend-only steps. State
+step type modules explicitly in `types`, and custom flow-helper modules in `dsl.helpers` (a whole-module
+export-star contribution). Remove `dsl.custom`, executable-directory inference and all three conventional
+file probes. No dummy executable facet to locate types, no extra type aliases/shapes, no dual reads.
+Migrate every pack, fixture, scaffold, source/module/freshness reader and public schema/API/doc in the
+same checkpoint. Preserve generated EARS and compiled content bytes. A typed helper missing its declared
+source is an error, never an empty union or invented typing.
+
+Execute checkpoint 2 in two source checkpoints, before any palette consumer migration:
+
+- **2A:** authored frontend data and binding generation, explicit type/helper sources, checked installed
+  frontend bindings, and removal of `StepFEFacet.loadComponents` plus its host execution path. Components
+  are bound directly, with declared lazy wrappers. Retire factory-only tests; retain atomic refusal and
+  incumbent-resource coverage through real ownership/binding failures. Exercise a real external build,
+  source-free inspection, declared callback/component failures, layouts and default/runtime parity.
+- **2B:** native step declaration/admission and shared catalog/window projections across native, installed
+  and source owners. Audit and close the current unchecked native frontend composition path; test-only
+  fixture composition may extract authored test data before binding, never synthesize production discovery
+  from activation. Preserve explicit ownership/collision rules, data capture, eligibility and revisions.
+  This work remains required in this goal; 2A does not claim native/full step discovery is complete.
+
+Then execute checkpoint 3's live palette/style/default/layout reader migration, including ownership and
+readiness for executable components/callbacks and removing permanent active-registry caches. Full trigger/
+build metadata, all other contribution kinds, source execution/freshness, editor readiness, navigation,
+boundaries and all Phase 6 workstreams remain required. Deferred activation/security/storage stays deferred.
