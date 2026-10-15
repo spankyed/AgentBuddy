@@ -115,7 +115,7 @@ describe('apack pack add step in a pack without steps', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
-        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
+        node: { label: 'Ping', defaultLabel: 'Ping' },
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
         fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
       },
@@ -144,7 +144,7 @@ describe('apack pack add step in a pack without steps', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(triggerPack, 'apack.json'), 'utf-8'));
     expect(manifest.extensions.steps.heartbeat).toEqual({
       kind: 'trigger',
-      node: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerNode',
+      node: { label: 'Heartbeat', defaultLabel: 'On heartbeat', defaults: { source: 'change me' } },
       trigger: { facet: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerBuild' },
       fe: 'src/extensions/steps/heartbeat/fe.ts#heartbeatTriggerFE',
     });

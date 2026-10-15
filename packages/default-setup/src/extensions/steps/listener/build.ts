@@ -1,4 +1,4 @@
-import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { TriggerFacet } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 
 /** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
@@ -24,11 +24,4 @@ export const listenerTriggerBuild: TriggerFacet = {
   },
   persistent: false,
   queryFields: ['eventType', 'scope'],
-};
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const listenerTriggerNode: StepNodeFacet = {
-  label: 'Listener',
-  defaultLabel: 'On event',
-  defaults: { scope: 'global', eventType: '' },
 };

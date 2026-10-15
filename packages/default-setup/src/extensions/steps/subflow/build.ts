@@ -1,4 +1,4 @@
-import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
@@ -65,10 +65,3 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
 
 /** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const flowStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const flowStepNode: StepNodeFacet = {
-  label: 'Flow',
-  defaultLabel: 'Handle flow',
-  defaults: { propagateCtx: true },
-};

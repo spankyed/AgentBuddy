@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { dirname, extname, join, relative, resolve } from 'path';
 import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackDependencySnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
-import { MIGRATION_LINES } from './manifest-schema.ts';
+import { MIGRATION_LINES, StepEntrySchema } from './manifest-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './content/items.ts';
@@ -231,7 +231,7 @@ interface StepDeclaration {
   kind?: 'step' | 'trigger';
   dsl?: StepEntry['dsl'];
   entry: StepEntry;
-  path: string;
+  path?: string;
 }
 
 /**
@@ -675,7 +675,7 @@ export async function generatePackFiles(
    * written, and is the one place a facet's emission lives. A facet absent from the entry emits nothing.
    */
   const FACET_EMITTERS: Record<StepFacetName, (step: StepDeclaration, target: FacetTarget) => FacetEmission | null> = {
-    node: (step) => (step.entry.node ? importedFacet(step, 'node', step.entry.node) : null),
+    node: (step) => ({ imports: [], member: `node: JSON.parse(${JSON.stringify(JSON.stringify(step.entry.node))})` }),
     build: (step) => (step.entry.build ? importedFacet(step, 'build', step.entry.build) : null),
     fe: (step) => (step.entry.fe ? importedFacet(step, 'fe', step.entry.fe) : null),
 
@@ -852,13 +852,10 @@ ${items.join('\n')}
    * `helpers.ts` are read from there, because they sit beside the facets rather than being declared — the
    * step's directory is one fact and the manifest states it once, as the path to a facet.
    */
-  const stepDefinitions: StepDeclaration[] = Object.entries(manifest.extensions?.steps ?? {}).map(([type, entry]) => ({
-    type,
-    kind: entry.kind,
-    dsl: entry.dsl,
-    entry,
-    path: stepDir(type, entry),
-  }));
+  const stepDefinitions: StepDeclaration[] = Object.entries(manifest.extensions?.steps ?? {}).map(([type, entry]) => {
+    StepEntrySchema.parse(entry);
+    return { type, kind: entry.kind, dsl: entry.dsl, entry, path: stepDir(type, entry) };
+  });
 
   /**
    * The directory a step's modules sit in, from the facets it names — and a refusal when they disagree.
@@ -870,20 +867,17 @@ ${items.join('\n')}
    * a fact while they agree; a step that genuinely wants its facets apart declares what it needs beside
    * each one instead of having a directory inferred for it.
    */
-  function stepDir(type: string, entry: StepEntry): string {
+  function stepDir(type: string, entry: StepEntry): string | undefined {
     const facets: Array<[string, string | undefined]> = [
       ['build', entry.build],
       ['trigger.facet', entry.trigger?.facet],
-      ['node', entry.node],
       ['runtime.handler', entry.runtime?.handler],
       ['fe', entry.fe],
     ];
     const dirs = facets
       .filter((pair): pair is [string, string] => pair[1] !== undefined)
       .map(([name, target]) => [name, dirname(_parseModuleReference(target, 'Module reference', 'default').source)] as const);
-    if (dirs.length === 0) {
-      throw new Error(`Step "${type}" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has`);
-    }
+    if (dirs.length === 0) return undefined;
     const [, first] = dirs[0]!;
     const elsewhere = dirs.filter(([, dir]) => dir !== first);
     if (elsewhere.length) {
@@ -1580,6 +1574,7 @@ ${entries}
   /** Runtime node entities of this pack's steps: each step's types.ts `interface XNode extends NodeBase` */
   function stepNodeTypes(): Array<{ name: string; importPath: string }> {
     return stepDefinitions
+      .filter((step): step is StepDeclaration & { path: string } => step.path !== undefined)
       .map(step => ({ step, file: join(root, step.path, 'types.ts') }))
       .filter(({ file }) => existsSync(file))
       .flatMap(({ step, file }) =>
@@ -1979,12 +1974,16 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     const dsl = step.dsl;
     const name = toCamelCase(step.type);
 
+    if (!step.path && (dsl.custom || dsl.primaryField)) {
+      throw new Error(`Step "${step.type}": DSL types/helpers need an executable facet's module directory`);
+    }
+
     if (dsl.custom) {
       return { imports: [], reExport: `export * from '${toImportPath(root, step.path + '/helpers')}';` };
     }
 
     if (dsl.primaryField) {
-      const typesFile = join(root, step.path, 'types.ts');
+      const typesFile = join(root, step.path!, 'types.ts');
       const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
       const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
       if (!dslMatch) {
@@ -2086,7 +2085,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     if (!stepDefinitions.length) return '';
     // By directory rather than by step: two steps may sit in one, and `export type *` twice from the same
     // module is a duplicate-export error rather than a harmless repeat
-    const dirs = [...new Set(stepDefinitions.map(step => step.path))];
+    const dirs = [...new Set(stepDefinitions.flatMap(step => step.path === undefined ? [] : [step.path]))];
     const reExports = dirs
       .filter(dir => existsSync(join(root, dir, 'types.ts')))
       .map(dir => `export type * from '${toImportPath(root, dir + '/types')}';`);

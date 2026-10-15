@@ -5,9 +5,11 @@ import { repository } from '#generated/repository.ts';
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 import { handler } from '#extensions/steps/llm/runtime.ts';
 import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
-import { llmStepNode } from '#extensions/steps/llm/build.ts';
+import { registration } from '#generated/pack-entry.ts';
 import { validate } from '#extensions/steps/llm/build.ts';
 import { availableModels } from '@apackdev/sdk/models';
+
+const llmStepNode = registration.steps!.find(step => step.type === 'llm')!.node!;
 
 function run(nodeAttributes: Record<string, unknown>) {
   const sent: Array<{ type: string; result?: { text?: string }; error?: { message?: string } }> = [];

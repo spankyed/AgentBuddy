@@ -83,7 +83,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     const step = steps.get(type)!;
     if ((step.kind === undefined ? 'step' : step.kind) !== (declaration.kind ?? 'step')) return problem(`steps.${type}.kind`);
     if (step.fe !== undefined) return problem(`steps.${type}.fe`);
-    for (const facet of ['node', 'build', 'trigger'] as const) {
+    if (!isDeepStrictEqual(step.node, declaration.node)) return problem(`steps.${type}.node`);
+    for (const facet of ['build', 'trigger'] as const) {
       if ((step[facet] !== undefined) !== (declaration[facet] !== undefined)) return problem(`steps.${type}.${facet}`);
       if (step[facet] !== undefined && (!step[facet] || typeof step[facet] !== 'object' || Array.isArray(step[facet]))) return problem(`steps.${type}.${facet}`);
     }

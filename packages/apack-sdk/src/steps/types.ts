@@ -208,11 +208,9 @@ export interface StepRuntimeFacet {
 
 /**
  * What a node of this step type is, as against how it is drawn: how it is labelled and what fields it
- * starts with. **Both processes read it** — the backend writes it onto a new entity
- * (`stepRegistry.createNodeDefaults`, reached from `flowRepository.createNode`) and the renderer applies it
- * to the node it draws optimistically — so a pack declares it in a module neither Vue nor lucide reaches,
- * and codegen emits it into both registrations. The frontend facet beside it holds the icon and the
- * components, which is why it cannot hold this.
+ * starts with. Declared inline at `extensions.steps.<type>.node`; codegen carries the same data into both
+ * registrations. The backend writes it onto a new entity (`stepRegistry.createNodeDefaults`, reached from
+ * `flowRepository.createNode`) and the renderer applies it to the node it draws optimistically.
  */
 export interface StepNodeFacet {
   /** The label a new node starts with, and what the canvas shows */

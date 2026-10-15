@@ -1,7 +1,7 @@
 // A trigger owns a DSL *track* rather than a node in one, so its build-time facet is a `TriggerFacet`.
 // Its track field is `pulse`, which is neither `event` nor `schedule` — the two the shipped pack declares —
 // so this is what holds the generated track builder to working for a field the SDK cannot know in advance.
-import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { TriggerFacet } from '@apackdev/sdk/steps';
 import { EARS } from '#generated/ears.ts';
 
 export const pulseTriggerBuild: TriggerFacet = {
@@ -35,10 +35,4 @@ export const pulseTriggerBuild: TriggerFacet = {
     }
     return { valid: true, errors: [] };
   },
-};
-
-export const pulseTriggerNode: StepNodeFacet = {
-  label: 'Pulse',
-  defaultLabel: 'On pulse',
-  defaults: { interval: '5m' },
 };

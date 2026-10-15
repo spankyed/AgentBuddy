@@ -3,6 +3,7 @@ import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations } fro
 import type { PackFERegistration, PackFEFeature, PluginDefinition, TiptapPlugin } from '@apackdev/sdk/fe';
 import { isPlainObject, hasOwn } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys } from '../packs/binding-shape.ts';
+import { isEqual } from '../features/settings/document.ts';
 
 const REGISTRATION_KEYS = {
   id: true, declarationRevision: true, bindSettings: true, features: true, settingsForms: true,
@@ -118,9 +119,8 @@ export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'exte
   for (const [type, entry] of stepDeclarations) {
     const step = steps.get(type)!;
     if ((step.kind ?? 'step') !== (entry.kind ?? 'step')) return problem(`steps.${type}.kind`);
-    for (const facet of ['node', 'fe'] as const) {
-      if ((step[facet] !== undefined) !== !!entry[facet] || (entry[facet] && !isPlainObject(step[facet]))) return problem(`steps.${type}.${facet}`);
-    }
+    if (!isEqual(step.node, entry.node)) return problem(`steps.${type}.node`);
+    if ((step.fe !== undefined) !== !!entry.fe || (entry.fe && !isPlainObject(step.fe))) return problem(`steps.${type}.fe`);
     for (const facet of ['build', 'runtime', 'trigger']) if (step[facet] !== undefined) return problem(`steps.${type}.${facet}`);
   }
   const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(extensions?.artifacts ?? {}));

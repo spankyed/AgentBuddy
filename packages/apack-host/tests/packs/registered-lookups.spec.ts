@@ -59,6 +59,14 @@ const tickTrigger: StepDefinition = {
 };
 
 describe('steps', () => {
+  it('creates independent nested defaults without changing the declared baseline', () => {
+    const conditions = [{ label: 'Else' }];
+    add({ id: 'branch-pack', steps: [{ type: 'branch', node: { label: 'Branch', defaults: { conditions } } }] });
+    const first = stepRegistry.createNodeDefaults('branch');
+    (first.conditions as { label: string }[])[0].label = 'Edited';
+    expect(conditions).toEqual([{ label: 'Else' }]);
+    expect(stepRegistry.createNodeDefaults('branch')).toEqual({ nodeType: 'branch', label: 'Branch', conditions: [{ label: 'Else' }] });
+  });
   it("are found once their pack registers, and gone once it unregisters", () => {
     add({ id: 'note-pack', steps: [noteStep, tickTrigger] });
 

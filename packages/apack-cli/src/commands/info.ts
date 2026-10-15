@@ -50,7 +50,7 @@ export async function inspectPack(root: string) {
     declared: {
       features: Object.entries(manifest.features ?? {}).map(([id, feature]) => ({ id, description: feature.description,
         ...(feature.plugin && { label: feature.plugin.label }) })),
-      steps: Object.keys(manifest.extensions?.steps ?? {}),
+      steps: Object.entries(manifest.extensions?.steps ?? {}).map(([type, declaration]) => ({ type, ...declaration })),
       services: Object.keys(manifest.extensions?.services ?? {}),
       appExtensions: Object.keys(manifest.extensions?.appExtensions ?? {}),
       tiptapPlugins: Object.entries(manifest.extensions?.tiptapPlugins ?? {}).map(([id, plugin]) => ({ id,
@@ -70,7 +70,8 @@ export async function info(args: string[]) {
   console.log(`Pack: ${report.id} (${report.name})\nVersion: ${report.version}\nHost: ${report.hostVersion ?? 'unrestricted'}\nRoot: ${report.root}`);
   console.log(`\nDeclared features (${report.declared.features.length}):`);
   for (const feature of report.declared.features) console.log(`  ${feature.id}${feature.label ? ` — ${feature.label}` : ''}: ${feature.description}`);
-  for (const kind of ['steps', 'services'] as const) console.log(`Declared ${kind}: ${report.declared[kind].join(', ') || '(none)'}`);
+  console.log(`Declared steps: ${report.declared.steps.map(step => `${step.type} — ${step.node.defaultLabel ?? step.node.label}`).join(', ') || '(none)'}`);
+  console.log(`Declared services: ${report.declared.services.join(', ') || '(none)'}`);
   console.log(`\nBuild: ${report.build.status}${report.build.revision ? `; revision ${report.build.revision}` : ''}`);
   if (report.build.problem) console.log(`  ${report.build.problem}`);
   if (report.build.content) {

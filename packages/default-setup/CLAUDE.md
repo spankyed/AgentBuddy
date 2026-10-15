@@ -286,13 +286,13 @@ that names no directory under `src/`. The reference is
 Step definitions in `src/extensions/steps/`. Each step directory contains:
 
 - `build.ts` — build facet: `export const <name>StepBuild` (or `<name>TriggerBuild` for schedule and listener) with `build: { compile, validate, getLabel, decompile }` or a trigger facet, and no FE or runtime imports
-- `index.ts` — `StepDefinition` spreading the build facet and adding runtime and FE config
 - `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
 - `types.ts` — step-specific types (the `DSL…Node` interface a flow helper is generated from)
 - `form.vue` — optional editor form component
 - `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
-A new step is one directory and one `apack.json` entry under `extensions.steps`, keyed by its type: `build.ts` exports
+A new step is one directory and one `apack.json` entry under `extensions.steps`, keyed by its type.
+The entry holds inline `node: { label, defaultLabel?, defaults? }` data for both processes; no node-data export is needed. `build.ts` exports
 its `StepBuildFacet` (a trigger's exports its `TriggerFacet`), `fe.ts` its `StepFEFacet`, `runtime.ts` the
 handler the entry names. There are no barrels — codegen sends each facet where it is used, and writes
 `src/__generated__/steps-build.ts`, bundled to `dist/build/steps.build.mjs`, which packs depending on

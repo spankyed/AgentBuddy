@@ -48,6 +48,18 @@ const index = { version: 1, packId: manifest.id, entries: [
 ] };
 
 describe('read-only pack inspection', () => {
+  it('reads node defaults and step bindings from an installed build without authored modules', async () => {
+    const steps = { memo: { node: { label: 'Memo', defaultLabel: 'Write a memo', defaults: { tags: ['draft'], pinned: false } },
+      build: 'src/unavailable.ts#build', fe: 'src/unavailable.ts#frontend' } };
+    const declaration: PackManifest = { ...manifest, extensions: { steps } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
+    writeBuild(root, declaration, index);
+    const report = await inspectPack(root);
+    expect(report.declared.steps).toEqual([{ type: 'memo', ...steps.memo }]);
+    expect(report.build.status).toBe('verified');
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('lists frontend member identities without requiring authored modules or activating the build', async () => {
     const declaration: PackManifest = { ...manifest, extensions: {
       appExtensions: { welcome: 'src/unavailable.vue' }, tiptapPlugins: { suggestions: {

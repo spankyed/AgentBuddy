@@ -36,20 +36,20 @@ function writePack(name: string, files: Record<string, string>): string {
   return dir;
 }
 
-const baseManifest = {
+const baseManifest: PackManifest = {
   id: 'base-pack', name: 'Base', version: '1.0.0',
   extensions: {
     steps: {
       // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
       // for a custom helper, its `helpers.ts` are read from
-      pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
-      choose: { build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
-      tick: { kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
+      pour: { node: { label: 'Pour' }, build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
+      choose: { node: { label: 'Choose' }, build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
+      tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
     },
   },
-} as unknown as PackManifest;
+};
 
-const appManifest = { id: 'app-pack', name: 'App', version: '1.0.0', dependencies: { 'base-pack': '*' } } as unknown as PackManifest;
+const appManifest: PackManifest = { id: 'app-pack', name: 'App', version: '1.0.0', dependencies: { 'base-pack': '*' } };
 
 const CONSUMER = `
 import { choose, entry, every, pour } from './__generated__/flow-helpers.ts';

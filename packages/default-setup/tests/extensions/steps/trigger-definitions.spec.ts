@@ -3,8 +3,7 @@ import { testPacks } from '@apackdev/sdk/testing';
 import { steps as buildSteps } from '#generated/steps-build.ts';
 import { listenerTriggerFE } from '#extensions/steps/listener/fe.ts';
 import { scheduleTriggerFE } from '#extensions/steps/schedule/fe.ts';
-import { listenerTriggerNode } from '#extensions/steps/listener/build.ts';
-import { scheduleTriggerNode } from '#extensions/steps/schedule/build.ts';
+import { registration } from '#generated/pack-entry.ts';
 
 // Each facet is read from the module that declares it. No definition is composed here: a step's facets go
 // to different registrations — `build` and `node` to the backend's, `fe` and `node` to the frontend's — and
@@ -12,6 +11,8 @@ import { scheduleTriggerNode } from '#extensions/steps/schedule/build.ts';
 // against. The registry block below reads what the pack really registered instead.
 const listenerTrigger = buildSteps.find(s => s.type === 'listener')!;
 const scheduleTrigger = buildSteps.find(s => s.type === 'schedule')!;
+const listenerTriggerNode = registration.steps!.find(step => step.type === 'listener')!.node!;
+const scheduleTriggerNode = registration.steps!.find(step => step.type === 'schedule')!.node!;
 
 // Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
 const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);

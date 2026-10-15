@@ -44,7 +44,6 @@ export async function addStep(args: string[], root: string) {
   // the step template's `StepBuildFacet` is a pack that does not typecheck.
   const facetFile = isTrigger ? 'trigger' : 'build';
   const facetExport = isTrigger ? `${camel}TriggerBuild` : `${camel}StepBuild`;
-  const nodeExport = isTrigger ? `${camel}TriggerNode` : `${camel}StepNode`;
   const feExport = isTrigger ? `${camel}TriggerFE` : `${camel}StepFE`;
 
   const created: string[] = [];
@@ -69,8 +68,11 @@ export async function addStep(args: string[], root: string) {
   const manifest = readManifest(root);
   addStepToManifest(manifest, type, {
     kind: isTrigger ? 'trigger' : 'step',
-    // Both halves read `node`, so it sits beside the build-time facet where no Vue import reaches it
-    node: `${dir}/${facetFile}.ts#${nodeExport}`,
+    node: {
+      label: toLabel(type),
+      defaultLabel: isTrigger ? `On ${type}` : toLabel(type),
+      ...(isTrigger && { defaults: { source: 'change me' } }),
+    },
     ...(isTrigger
       ? { trigger: { facet: `${dir}/${facetFile}.ts#${facetExport}` } }
       : { build: `${dir}/${facetFile}.ts#${facetExport}` }),

@@ -136,7 +136,13 @@
     },
     "steps": {
       "stamp": {
-        "node": "src/extensions/steps/stamp/build.ts#stampStepNode",
+        "node": {
+          "label": "Stamp",
+          "defaultLabel": "Stamp a memo",
+          "defaults": {
+            "note": "stamped"
+          }
+        },
         "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
         "fe": "src/extensions/steps/stamp/fe.ts#stampStepFE",
         "runtime": {
@@ -148,7 +154,13 @@
       },
       "pulse": {
         "kind": "trigger",
-        "node": "src/extensions/steps/pulse/trigger.ts#pulseTriggerNode",
+        "node": {
+          "label": "Pulse",
+          "defaultLabel": "On pulse",
+          "defaults": {
+            "interval": "5m"
+          }
+        },
         "trigger": {
           "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
         },

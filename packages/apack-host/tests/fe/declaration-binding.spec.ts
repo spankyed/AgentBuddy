@@ -16,7 +16,7 @@ function fixture() {
     features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Notes', state: 'src/plugin.ts', default: true }, designation: 'notes' },
       backend: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts' } }, form: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/form.vue' } } },
     extensions: { settings: { preferences: { schema: { type: 'object' }, defaults: {}, form: 'src/preferences.vue' } },
-      steps: { note: { node: 'src/node.ts#node', fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: 'src/trigger.ts#node' } },
+      steps: { note: { node: { label: 'Note' }, fe: 'src/step.ts#fe' }, trigger: { kind: 'trigger', node: { label: 'Trigger' } } },
       artifacts: { text: { icon: 'File', fe: 'src/text.vue' } }, blocks: { note: { kind: 'input', fe: 'src/block.vue' } },
       appExtensions: { toolbar: 'src/toolbar.vue' }, tiptapPlugins: { tools: {
         extensions: { example: 'src/editor.ts#Example' }, popups: { suggestions: 'src/editor.vue' },
@@ -25,7 +25,7 @@ function fixture() {
   expect(ManifestSchema.safeParse(manifest).success).toBe(true);
   const registration = { id: manifest.id, bindSettings,
     features: { notes: { plugin: { label: 'Notes', state: createMachine({}) }, designation: 'notes', default: true }, form: { settingsForm: component } },
-    settingsForms: { preferences: component }, steps: [{ type: 'note', node: {}, fe: { loadComponents } }, { type: 'trigger', kind: 'trigger', node: {} }],
+    settingsForms: { preferences: component }, steps: [{ type: 'note', node: { label: 'Note' }, fe: { loadComponents } }, { type: 'trigger', kind: 'trigger', node: { label: 'Trigger' } }],
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
     appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
       popups: { suggestions: component }, isSuggestionActive } },
@@ -60,6 +60,8 @@ describe('frontend declaration binding', () => {
     ['duplicate step', (r: Record<string, unknown>) => { r.steps = [{ type: 'note' }, { type: 'note' }]; }, 'steps'],
     ['undeclared runtime facet', (r: Record<string, unknown>) => { (r.steps as Record<string, unknown>[])[0].runtime = {}; }, 'runtime'],
     ['missing node facet', (r: Record<string, unknown>) => { delete (r.steps as Record<string, unknown>[])[0].node; }, 'node'],
+    ['changed node label', (r: Record<string, unknown>) => { (r.steps as Record<string, unknown>[])[0].node = { label: 'Different' }; }, 'node'],
+    ['changed node defaults', (r: Record<string, unknown>) => { (r.steps as Record<string, unknown>[])[0].node = { label: 'Note', defaults: { foreign: true } }; }, 'node'],
     ['missing frontend facet', (r: Record<string, unknown>) => { delete (r.steps as Record<string, unknown>[])[0].fe; }, '.fe'],
     ['changed step kind', (r: Record<string, unknown>) => { (r.steps as Record<string, unknown>[])[0].kind = 'trigger'; }, 'kind'],
     ['foreign artifact', (r: Record<string, unknown>) => { r.artifacts = [{ type: 'foreign' }]; }, 'artifacts'],

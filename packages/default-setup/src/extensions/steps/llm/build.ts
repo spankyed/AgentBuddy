@@ -1,10 +1,9 @@
 // The LLM step's DSL surface is provisional — see the note on DSLLLMNode in ./types.ts before building
 // on it: the helper has no call site in this repo, so its shape has never been exercised by an author.
-import type { StepBuildFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepBuildFacet } from '@apackdev/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
-import { DEFAULT_MODEL } from './model.ts';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 import { isModelId } from '@apackdev/sdk/models';
 
@@ -81,10 +80,3 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
 
 /** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const llmStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'promptTemplateId', targetEntity: 'Prompt' } };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const llmStepNode: StepNodeFacet = {
-  label: 'LLM',
-  defaultLabel: 'Generate text',
-  defaults: { model: DEFAULT_MODEL, maxTokens: 1000 },
-};

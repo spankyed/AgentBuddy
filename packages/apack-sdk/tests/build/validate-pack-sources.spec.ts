@@ -47,8 +47,8 @@ describe('validatePackSources', () => {
       migrations: { app: { '1.0.0': { description: 'Initialize', up: 'src/hooks#up' } }, pack: { '1.0.0': { description: 'Initialize', up: 'src/hooks#up' } } },
       extensions: {
         services: { queries: 'src/hooks#queries' },
-        steps: { test: { node: 'src/hooks#node', build: 'src/hooks#build', fe: 'src/hooks#fe', runtime: { handler: 'src/hooks#handler' } },
-          signal: { kind: 'trigger', node: 'src/hooks#node', trigger: { facet: 'src/hooks#facet', register: 'src/hooks#register' } } },
+        steps: { test: { node: { label: 'Example' }, build: 'src/hooks#build', fe: 'src/hooks#fe', runtime: { handler: 'src/hooks#handler' } },
+          signal: { kind: 'trigger', node: { label: 'Example' }, trigger: { facet: 'src/hooks#facet', register: 'src/hooks#register' } } },
         blocks: { text: { be: 'src/hooks#block', fe: 'src/view.vue' } },
         artifacts: { text: { icon: 'File', fe: 'src/view.vue' } },
         dsl: { test: { entry: 'src/types', targets: ['monaco'] } },
@@ -67,9 +67,9 @@ describe('validatePackSources', () => {
     expect(report.status).toBe('invalid');
     expect(report.diagnostics.map(issue => issue.path)).toEqual([
       ['extensions', 'services', 'queries'],
-      ['extensions', 'steps', 'test', 'node'], ['extensions', 'steps', 'test', 'build'],
+      ['extensions', 'steps', 'test', 'build'],
       ['extensions', 'steps', 'test', 'runtime', 'handler'], ['extensions', 'steps', 'test', 'fe'],
-      ['extensions', 'steps', 'signal', 'node'], ['extensions', 'steps', 'signal', 'trigger', 'facet'], ['extensions', 'steps', 'signal', 'trigger', 'register'],
+      ['extensions', 'steps', 'signal', 'trigger', 'facet'], ['extensions', 'steps', 'signal', 'trigger', 'register'],
       ['extensions', 'blocks', 'text', 'be'], ['extensions', 'blocks', 'text', 'fe'], ['extensions', 'artifacts', 'text', 'fe'],
       ['extensions', 'dsl', 'test', 'entry'], ['extensions', 'tiptapPlugins', 'editor', 'extensions', 'example'],
       ['extensions', 'tiptapPlugins', 'editor', 'popups', 'extra'], ['extensions', 'tiptapPlugins', 'editor', 'isSuggestionActive'],

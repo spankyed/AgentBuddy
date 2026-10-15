@@ -813,7 +813,19 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         }>>;
         steps: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
             kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
-            node: z.ZodString;
+            node: z.ZodObject<{
+                label: z.ZodString;
+                defaultLabel: z.ZodOptional<z.ZodString>;
+                defaults: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnknown>, Record<string, unknown>, Record<string, unknown>>>;
+            }, "strict", z.ZodTypeAny, {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            }, {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            }>;
             build: z.ZodOptional<z.ZodString>;
             trigger: z.ZodOptional<z.ZodObject<{
                 facet: z.ZodString;
@@ -863,15 +875,19 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
                 custom: z.ZodOptional<z.ZodLiteral<true>>;
             }, "strict", z.ZodTypeAny, {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             }, {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -888,11 +904,15 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -909,11 +929,15 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }>, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -930,11 +954,15 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -951,8 +979,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }>>>;
         artifacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
@@ -1019,7 +1047,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1036,8 +1068,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1072,7 +1104,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1089,8 +1125,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1457,7 +1493,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1474,8 +1514,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1596,7 +1636,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1613,8 +1657,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1749,7 +1793,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1766,8 +1814,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -1888,7 +1936,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1905,8 +1957,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -2041,7 +2093,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             path: string;
         } | undefined;
         steps?: Record<string, {
-            node: string;
+            node: {
+                label: string;
+                defaults?: Record<string, unknown> | undefined;
+                defaultLabel?: string | undefined;
+            };
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -2058,8 +2114,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 custom?: true | undefined;
-                primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                primaryField?: string | undefined;
             } | undefined;
         }> | undefined;
         dsl?: Record<string, {
@@ -2893,12 +2949,12 @@ export const StepDSLMetaSchema: z.ZodObject<{
     custom: z.ZodOptional<z.ZodLiteral<true>>;
 }, "strict", z.ZodTypeAny, {
     custom?: true | undefined;
-    primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    primaryField?: string | undefined;
 }, {
     custom?: true | undefined;
-    primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    primaryField?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -2907,7 +2963,19 @@ export type StepEntry = z.infer<typeof StepEntrySchema>;
 // @public
 export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
-    node: z.ZodString;
+    node: z.ZodObject<{
+        label: z.ZodString;
+        defaultLabel: z.ZodOptional<z.ZodString>;
+        defaults: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnknown>, Record<string, unknown>, Record<string, unknown>>>;
+    }, "strict", z.ZodTypeAny, {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    }, {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    }>;
     build: z.ZodOptional<z.ZodString>;
     trigger: z.ZodOptional<z.ZodObject<{
         facet: z.ZodString;
@@ -2957,15 +3025,19 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         custom: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     }, {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
-    node: string;
+    node: {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    };
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -2982,11 +3054,15 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     } | undefined;
 }, {
-    node: string;
+    node: {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    };
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -3003,11 +3079,15 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     } | undefined;
 }>, {
-    node: string;
+    node: {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    };
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -3024,11 +3104,15 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     } | undefined;
 }, {
-    node: string;
+    node: {
+        label: string;
+        defaults?: Record<string, unknown> | undefined;
+        defaultLabel?: string | undefined;
+    };
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -3045,8 +3129,8 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         custom?: true | undefined;
-        primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        primaryField?: string | undefined;
     } | undefined;
 }>;
 

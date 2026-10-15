@@ -20,8 +20,8 @@ it('refreshes flow modules loaded through ordinary imports on the next watched b
     packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
       id: 'watched-flow', name: 'Watched flow', features: {},
       extensions: { steps: {
-        listener: { kind: 'trigger', node: 'src/listener.ts#node', trigger: { facet: 'src/listener.ts#trigger' } },
-        note: { node: 'src/note.ts#node', build: 'src/note.ts#build' },
+        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { facet: 'src/listener.ts#trigger' } },
+        note: { node: { label: 'Note' }, build: 'src/note.ts#build' },
       } },
       content: { sources: { flows: 'src/content/flows' } },
     }, files: {

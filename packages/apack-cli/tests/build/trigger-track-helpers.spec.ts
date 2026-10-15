@@ -21,11 +21,11 @@ describe('generated trigger track builders', () => {
     const stepDir = path.join(tmp, 'src', 'extensions', 'steps', 'tick');
     fs.mkdirSync(stepDir, { recursive: true });
     fs.writeFileSync(path.join(stepDir, 'build.ts'), "export const tickTrigger = { trackField: 'every' };\n");
-    fs.writeFileSync(path.join(stepDir, 'legacy.ts'), "export const old = { trackField: 'whenever' };\n");
-    const manifest = {
+    fs.writeFileSync(path.join(stepDir, 'unrelated.ts'), "export const other = { trackField: 'whenever' };\n");
+    const manifest: PackManifest = {
       id: 'ticks', name: 'Ticks', version: '1.0.0',
-      extensions: { steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } } },
-    } as unknown as PackManifest;
+      extensions: { steps: { tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } } },
+    };
 
     const files = await generatePackFiles(manifest, { packRoot: tmp });
     const helpers = Object.entries(files).find(([file]) => file.endsWith('flow-helpers.ts'))?.[1] ?? '';

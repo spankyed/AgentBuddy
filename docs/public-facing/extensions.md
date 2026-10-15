@@ -9,6 +9,7 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 | Field | Type | Description |
 |---|---|---|
 | `type` | `string` | Node type id (`node.nodeType`) and DSL `type` |
+| `node` | `StepNodeFacet` | Inline manifest labels/defaults emitted into both registrations |
 | `kind` | `'step' \| 'trigger'` | Omitted means `'step'`. Trigger nodes start tracks and never run as steps |
 | `build` | `StepBuildFacet` | Compile/validate/decompile DSL nodes |
 | `runtime` | `StepRuntimeFacet` | Execute the step |
@@ -16,11 +17,29 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 | `trigger` | `TriggerFacet` | For `kind: 'trigger'` |
 | `dsl` | `StepDSLMeta` | Same shape as the manifest entry's `dsl`; codegen reads the manifest's (see [Flow helpers](#flow-helpers)) |
 
+Declare initial values once in `apack.json`:
+
+```json
+{
+  "extensions": {
+    "steps": {
+      "my-step": {
+        "node": { "label": "My Step", "defaults": { "enabled": true } },
+        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild"
+      }
+    }
+  }
+}
+```
+
+`node.defaults` contains JSON data and must satisfy the step's validation. New nodes receive independent
+copies, so editing a nested field does not change the next node's baseline. No node-data export is needed.
+
 ### Scaffolding
 
 ```bash
 apack pack add step my-step
-apack pack add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
+apack pack add step my-trigger --trigger   # scaffolds a TriggerFacet and inline initial node values
 ```
 
 Creates:

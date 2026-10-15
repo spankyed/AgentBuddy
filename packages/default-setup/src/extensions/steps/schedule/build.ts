@@ -1,4 +1,4 @@
-import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { TriggerFacet } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { Cron } from 'croner';
 
@@ -53,11 +53,4 @@ export const scheduleTriggerBuild: TriggerFacet = {
   queryFields: ['cronExpression'],
   validateTrack,
   validate,
-};
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const scheduleTriggerNode: StepNodeFacet = {
-  label: 'Schedule',
-  defaultLabel: 'On schedule',
-  defaults: { cronExpression: '0 * * * *' },
 };

@@ -9,7 +9,7 @@ import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
-import { _compileSettingsDefinition, _SettingsDefaultsError } from '../framework/settings-validation.ts';
+import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProblems } from '../framework/settings-validation.ts';
 import type { SettingsDefinition } from '../framework/settings-definition.ts';
 import type { PackMigrations } from '../framework/pack-registration.ts';
 import type { ReferenceDeclarations } from '../framework/reference-declaration.ts';
@@ -174,20 +174,17 @@ const StepTriggerSchema = z.object({
   register: ExportTargetSchema.describe('"path#exportName" of the function that starts the trigger. Loaded when it is first registered.').optional(),
 }).strict();
 
-/**
- * One step type: its facets, each named where its code is. A step's `build` facet is what a dependent
- * pack's `apack pack build` validates flows with, its `fe` facet is what the flow editor draws, and its
- * `runtime` is what the brain runs — so the three go to three different places and none of them is a
- * barrel the author keeps in step with the others.
- *
- * `node` is the exception and the one facet that is **required**: it says what a node of the type is
- * rather than what any one process does with it, so both registrations carry it and every step has one.
- * It is required because it was not: the label and the field defaults lived in `fe`, which the backend
- * cannot import, so every node the app created was missing them and nothing said so.
- */
+/** Node data is shared; executable facets go only to the processes that use them. */
 export const StepEntrySchema = z.object({
   kind: z.enum(['step', 'trigger']).describe('Whether this is a regular step or a trigger. "step" is the default.').optional(),
-  node: ExportTargetSchema.describe('"path#exportName" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too.'),
+  node: z.object({
+    label: z.string().regex(/\S/, 'Node label must not be blank').describe('Label a new node starts with, also shown on its canvas.'),
+    defaultLabel: z.string().describe('Palette label when different from the node label.').optional(),
+    defaults: z.record(z.unknown()).superRefine((defaults, ctx) => {
+      for (const problem of _settingsJsonProblems(defaults)) ctx.addIssue({ code: 'custom', path: [...problem.path],
+        message: 'Node defaults must be finite, acyclic JSON data' });
+    }).describe('Initial JSON node fields; these must satisfy the step or trigger validation.').optional(),
+  }).strict().describe('Node labels and initial values, available without importing step code. Both generated registrations carry this data.'),
   build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
   trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),
   fe: ExportTargetSchema.describe('"path#exportName" of its StepFEFacet: what the flow editor draws and the form it opens.').optional(),

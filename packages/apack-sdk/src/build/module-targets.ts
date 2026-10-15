@@ -49,7 +49,7 @@ export function _packModuleTargets(manifest: Partial<PackManifest>): ModuleTarge
   for (const [name, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
     const prefix = ['extensions', 'steps', name];
     for (const [field, target] of [
-      ['node', entry.node], ['build', entry.build], ['trigger.facet', entry.trigger?.facet],
+      ['build', entry.build], ['trigger.facet', entry.trigger?.facet],
       ['trigger.register', entry.trigger?.register], ['runtime.handler', entry.runtime?.handler], ['fe', entry.fe],
     ] as const) add([...prefix, ...field.split('.')], target);
   }

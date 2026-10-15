@@ -83,12 +83,12 @@ describe('pack doctor static validation', () => {
 
   it.each(['doctor', 'validate'])('pack %s reports missing declared files even with unresolved dependencies', (command) => {
     const dir = fixture({ dependencies: { unavailable: 'file:./missing-dependency' },
-      extensions: { steps: { example: { node: 'src/missing#node' } } },
+      extensions: { steps: { example: { node: { label: 'Example' }, build: 'src/missing#build' } } },
       migrations: { pack: { '1.0.0': { description: 'Initialize', up: 'src/missing#up' } } },
     });
     const result = run(process.execPath, [CLI, 'pack', command], dir);
     expect(result.code, result.output).toBe(1);
-    expect(result.output).toContain('extensions.steps.example.node');
+    expect(result.output).toContain('extensions.steps.example.build');
     expect(result.output).toContain('migrations.pack.1.0.0.up');
     expect(result.output).toContain('src/missing');
     expect(fs.existsSync(path.join(dir, 'src/__generated__'))).toBe(false);

@@ -84,6 +84,6 @@ export const stepRegistry: StepRegistry = {
   createNodeDefaults(nodeType: string): Record<string, unknown> {
     const node = step(nodeType)?.node;
     if (!node) return { nodeType };
-    return { nodeType, label: node.label, ...node.defaults };
+    return { nodeType, label: node.label, ...structuredClone(node.defaults) };
   },
 };

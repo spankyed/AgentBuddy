@@ -40,8 +40,8 @@ function pack(stepInFlow: string): string {
     // Declared here, which is what makes the generated module below the pack's own steps
     extensions: {
       steps: {
-        listener: { kind: 'trigger', node: 'src/steps/listener/build.ts#listenerNode', trigger: { facet: 'src/steps/listener/build.ts#listenerTrigger' } },
-        note: { node: 'src/steps/note/build.ts#noteNode', build: 'src/steps/note/build.ts#noteBuild' },
+        listener: { kind: 'trigger', node: { label: 'Listener' }, trigger: { facet: 'src/steps/listener/build.ts#listenerTrigger' } },
+        note: { node: { label: 'Note' }, build: 'src/steps/note/build.ts#noteBuild' },
       },
     },
     content: { sources: { flows: 'src/content/flows' } },

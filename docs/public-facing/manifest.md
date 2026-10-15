@@ -302,6 +302,7 @@ Flow step types are declared under `extensions.steps`, keyed by type.
   "extensions": {
     "steps": {
       "my-step": {
+        "node": { "label": "My Step", "defaultLabel": "Run my step" },
         "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
         "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
         "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
@@ -309,6 +310,7 @@ Flow step types are declared under `extensions.steps`, keyed by type.
       },
       "my-trigger": {
         "kind": "trigger",
+        "node": { "label": "My Trigger", "defaults": { "source": "change me" } },
         "trigger": {
           "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
@@ -325,15 +327,16 @@ Codegen sends each facet where it is used, so no barrel keeps them in step with 
 to `src/__generated__/steps-build.ts`, which `apack pack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code.
 
-A step's directory is the dirname of the first facet it names: its `types.ts` and, for `dsl.custom`, its
-`helpers.ts` are read from there.
+A step's executable directory is the dirname of its declared code facets: its `types.ts` and, for `dsl.custom`, its
+`helpers.ts` are read from there. A step declaring only node data has no executable directory; the
+generator does not search the pack root for these files.
 
 ### StepEntry fields
 
 | Field | Type | Description |
 |---|---|---|
 | `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger. `step` is the default |
-| `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists the supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
+| `node` | `{ label, defaultLabel?, defaults? }` | Required inline data: canvas label, optional palette label and initial JSON fields; readable without importing modules |
 | `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
 | `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
 | `fe` | `string` | `"path#exportName"` of its `StepFEFacet`: what the flow editor draws and the form it opens |

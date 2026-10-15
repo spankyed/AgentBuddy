@@ -6,6 +6,18 @@ import { parseManifest } from '../../src/build/validate.ts';
 import { ALLOWABLE_PACK_CHECKS } from '../../src/build/pack-checks.ts';
 
 describe('parseManifest', () => {
+  it('validates inline node labels and JSON defaults without a code target', () => {
+    const pack = { id: 'nodes', name: 'Nodes', version: '1.0.0' };
+    const parse = (node: unknown) => parseManifest({ ...pack, extensions: { steps: { memo: { node } } } });
+    expect(parse({ label: 'Memo', defaults: { tags: ['draft'], ready: false, nested: { value: null } } }).status).toBe('valid');
+    for (const node of [{}, { label: ' ' }, { label: 'Memo', extra: true },
+      { label: 'Memo', defaults: { value: undefined } }, { label: 'Memo', defaults: { value: Infinity } },
+      { label: 'Memo', defaults: { value() {} } }]) {
+      const result = parse(node);
+      expect(result.status).toBe('invalid');
+      expect(result.diagnostics[0].path.slice(0, 4)).toEqual(['extensions', 'steps', 'memo', 'node']);
+    }
+  });
   it('documents and enforces the same inline check allowances', () => {
     const schema = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf8'));
     expect(schema.properties.checks.properties.allow.items.enum).toEqual([...ALLOWABLE_PACK_CHECKS]);

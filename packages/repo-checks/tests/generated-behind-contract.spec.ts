@@ -38,8 +38,8 @@ function write(file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
-const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'];
-const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'];
+const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'] as const;
+const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'] as const;
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
@@ -57,6 +57,7 @@ function fixture(): PackManifest {
   write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
+  write('src/defs/action.ts', 'export interface NoteDTO { text: string }');
   write('src/extensions/steps/tick/build.ts', "export const tickTrigger = { trackField: 'every' };\n");
   return {
     id: 'demo-pack',
@@ -64,16 +65,17 @@ function fixture(): PackManifest {
     version: '1.0.0',
     features: {
       memos: {
+        description: 'Manage memos.',
         system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
         plugin: { label: 'Fixture', state: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
         repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
       },
     },
     extensions: {
-      steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
-      dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+      steps: { tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      dsl: { action: { entry: 'src/defs/action.ts', prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
     },
-  } as unknown as PackManifest;
+  };
 }
 
 /** The generated modules, by the basename the rule classifies them under */

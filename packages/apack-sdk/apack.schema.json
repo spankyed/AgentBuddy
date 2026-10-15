@@ -801,9 +801,28 @@
                 "description": "Whether this is a regular step or a trigger. \"step\" is the default."
               },
               "node": {
-                "type": "string",
-                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                "description": "\"path#exportName\" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too."
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "Label a new node starts with, also shown on its canvas."
+                  },
+                  "defaultLabel": {
+                    "type": "string",
+                    "description": "Palette label when different from the node label."
+                  },
+                  "defaults": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "description": "Initial JSON node fields; these must satisfy the step or trigger validation."
+                  }
+                },
+                "required": [
+                  "label"
+                ],
+                "additionalProperties": false,
+                "description": "Node labels and initial values, available without importing step code. Both generated registrations carry this data."
               },
               "build": {
                 "type": "string",

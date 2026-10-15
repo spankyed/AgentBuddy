@@ -235,7 +235,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
-        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
+        node: { label: 'Ping', defaultLabel: 'Ping' },
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
         fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
       },
