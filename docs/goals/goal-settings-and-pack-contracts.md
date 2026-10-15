@@ -4645,3 +4645,39 @@ pass. The aggregate integration pool is killed at its existing 60s limit, with n
 failure in its captured output. This remains a failed full checkpoint gate; it is not waived or a
 phase-completion claim. Final committed-source strict `--all`, editor recomposition/unavailable
 content handling, every remaining discovery/freshness kind and all downstream phases stay required.
+
+
+### Live editor composition checkpoint (2026-10-15)
+
+Source `8863043a6` replaces the editor's one-time binding snapshot with scoped accepted-change
+subscription and generation-checked composition. Qualified extension identity determines replacement;
+unrelated commits and popup/predicate-only changes preserve the editor/history. Popup lifetimes have
+qualified keys. Replacement retires old views/providers first, then restores pending JSON, selection,
+stored marks and focus. Exact document/mark round-trips refuse silent attribute/node loss. An
+unavailable schema retains pending data without emitting a save; compatible re-enablement restores
+it, and explicit document/entity changes replace suspended state. Actual extension replacement resets
+opaque undo/plugin state, as selected above. Failed cleanup is logged and view/listener cleanup is
+attempted without preventing a usable replacement. No private Tiptap managers or history internals.
+
+Twenty-seven focused UI/reference/lifetime checks pass in 3.69s
+(`/private/tmp/apack-live-editor-verified-unit.log`), covering rapid generations, unmount/subscription
+retirement, popup/predicate replacement, focus/selection/pending formatting, history boundaries,
+sub-document notifications, unavailable nodes, schema attribute loss and throwing cleanup. Removing
+the document integrity guards makes the data-loss regression fail; exact source is restored and all
+nine lifetime cases pass (`/private/tmp/apack-live-editor-{mutant,restored}.log`). Two built Electron
+checks pass in 6.6s (`/private/tmp/apack-live-editor-electron-provider.log`): native-only references and
+an already-open unsaved slash-command/reference draft while the installed default pack is enabled
+and disabled through the real loader. Document, selection and save count remain unchanged.
+
+Strict evidence: `node_modules/.cache/apack-chain/runs/2026-10-15T09-47-54Z-48208`,
+`/private/tmp/apack-live-editor-strict.log`. Type/API/schema/export/facade/lint/specifier/tier checks,
+pack/runtime builds, smoke, external-pack contract and packaged authoring pass. Public report
+regeneration produces no contract change; all seven baseline EARS/content files stay byte-identical.
+Final renderer/E2E typechecks and whole-repo lint also pass after the added focused tests. The aggregate
+integration pool still hits its 60s override; the full gate remains failed, not waived. Final strict
+`--all` on committed source is still required.
+
+This closes the selected open-editor update checkpoint, not the whole editor/discovery phase. These
+checks do not prove arbitrary cold custom-node documents without their implementations; retain that
+provider/readiness audit with remaining static DSL/Monaco/palette discovery and consumer migration.
+Every remaining source freshness, navigation, frontend boundary and Phase 6 requirement stays active.
