@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
 import { packageInputsHash } from './package-inputs.ts';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
-import { compilerConfigurationHash } from './compiler-configuration.ts';
 import { compilerModuleInputsHash } from './compiler-module-inputs.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
@@ -30,7 +29,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   const cliRoot = cliPackageDirectory();
   const current = () => createHash('sha256').update(buildToolHash()).update(packageInputsHash([
     { id: 'cli', directory: cliRoot }, { id: 'pack', directory: packRoot, development: true },
-  ])).update(compilerConfigurationHash(packRoot)).update(compilerModuleInputsHash(packRoot))
+  ])).update(compilerModuleInputsHash(packRoot))
     .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
     .digest('hex');
   const hash = current();

@@ -150,8 +150,10 @@ does not execute them. Discovery and executable bindings are separate contracts.
 Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
-modules outside `src/`, JSON schemas, assets and help. Generated, build, dependency and Git trees are
-excluded. Linked authored data is watched through atomic replacement and retargeting; executable
+modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
+build, dependency and Git trees. Compiler configuration, resolved TypeScript files and unresolved
+lookup candidates are watched separately, including outside the pack; repairing a missing target
+can rebuild without another authored edit. Linked authored data is watched through atomic replacement and retargeting; executable
 module references still must remain physically inside the pack. It publishes through the same staged
 build in a fresh CLI process before requesting development-host reload, so changed flow, step and
 compiler modules cannot reuse the previous build's module cache;

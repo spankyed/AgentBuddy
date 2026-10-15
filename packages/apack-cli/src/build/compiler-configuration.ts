@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import ts from 'typescript';
 
 export interface PackCompilerConfiguration {
@@ -8,19 +7,26 @@ export interface PackCompilerConfiguration {
   readonly files: ReadonlyMap<string, string>;
 }
 
+export type CompilerInputKind = 'file' | 'directory' | 'entries';
+export type CompilerInputObserver = (file: string, kind: CompilerInputKind) => void;
+
 /** Resolve current configuration inheritance before compiling or hashing; never infer defaults from errors. */
-export function readPackCompilerConfiguration(root: string): PackCompilerConfiguration | undefined {
+export function readPackCompilerConfiguration(root: string, observe?: CompilerInputObserver): PackCompilerConfiguration | undefined {
   const config = path.join(root, 'tsconfig.json');
+  observe?.(config, 'file');
   if (!fs.existsSync(config)) return undefined;
   const files = new Map<string, string>();
   const diagnostics: ts.Diagnostic[] = [];
   const parsed = ts.getParsedCommandLineOfConfigFile(config, {}, {
     ...ts.sys,
     readFile(file) {
+      observe?.(file, 'file');
       const text = ts.sys.readFile(file);
       if (text !== undefined) files.set(path.resolve(file), text);
       return text;
     },
+    fileExists(file) { observe?.(file, 'file'); return ts.sys.fileExists(file); },
+    directoryExists(directory) { observe?.(directory, 'directory'); return ts.sys.directoryExists(directory); },
     onUnRecoverableConfigFileDiagnostic: diagnostic => diagnostics.push(diagnostic),
   });
   diagnostics.push(...(parsed?.errors ?? []));
@@ -29,16 +35,4 @@ export function readPackCompilerConfiguration(root: string): PackCompilerConfigu
   if (errors.length || !parsed) throw new Error(`tsconfig.json could not be read: ${errors.map(diagnostic =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')).join('; ') || 'TypeScript returned no configuration'}`);
   return { options: parsed.options, files };
-}
-
-/** Include inherited/local/package configs even when they live outside the authored pack root. */
-export function compilerConfigurationHash(root: string): string {
-  const configuration = readPackCompilerConfiguration(root);
-  const hash = createHash('sha256');
-  if (!configuration) return hash.update('no tsconfig').digest('hex');
-  const files = [...configuration.files].map(([file, text]) => [path.relative(root, file).split(path.sep).join('/'), text] as const);
-  for (const [file, text] of files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-    hash.update(JSON.stringify([file, text]));
-  }
-  return hash.digest('hex');
 }

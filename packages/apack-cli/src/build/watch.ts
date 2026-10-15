@@ -2,8 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { runPackBuild } from './build-process.ts';
 import { readValidManifest } from '../utils.ts';
-import { isPackInputPath, packInputWatchTargets } from './pack-inputs.ts';
+import { isPackInputPath, packInputWatchTargets, packInputsHash } from './pack-inputs.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
+import { compilerWatchPaths, compilerWatchTargets, compilerWatchMatches, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
 
 const DEBOUNCE_MS = 300;
 
@@ -68,16 +69,28 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let ready = false;
   let pending = false;
   let lastChange = '';
-  const publish = async () => {
-    refreshLinks();
+  let compilerPaths: CompilerWatchPaths = new Map();
+  let compilerSignature: string | undefined;
+  let authoredSignature: string | undefined;
+  const publish = async (): Promise<boolean> => {
+    const compiler = refreshInputs();
+    const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
+    if (compiler.signature === compilerSignature && authored === authoredSignature) return false;
+    compilerSignature = compiler.signature;
+    authoredSignature = authored;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     await runPackBuild(root);
+    const after = refreshInputs(true);
+    if (after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
+      request('inputs changed during the build');
+    }
+    return true;
   };
   const runs = coalescingRunner(async () => {
     if (closed) return;
     const changed = lastChange;
     try {
-      await publish();
+      if (!await publish()) return;
       if (closed) return;
       await options.onBuilt?.();
       if (closed) return;
@@ -89,21 +102,35 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     }
   });
   const request = (relative: string) => {
-    if (closed || !isPackInputPath(relative)) return;
+    if (closed) return;
     lastChange = relative;
     if (ready) runs.request();
     else pending = true;
   };
   // Keep the root subscribed while replacing link watches, including during failed builds.
-  const watcher = fs.watch(root, { recursive: true }, (_event, filename) => request(filename ?? 'authored inputs'));
+  const watcher = fs.watch(root, { recursive: true }, (event, filename) => {
+    if (!filename || isPackInputPath(filename)) request(filename ?? 'authored inputs');
+    else if (compilerWatchMatches(compilerPaths, path.resolve(root, filename), event)) request(filename);
+  });
   let links: fs.FSWatcher[] = [];
-  function refreshLinks(): void {
+  function refreshInputs(replace = false) {
     const next: fs.FSWatcher[] = [];
+    const compiler = compilerWatchPaths(root);
+    const paths = replace && compiler.complete ? compiler.paths : mergeCompilerWatchPaths(compilerPaths, compiler.paths);
+    const authored = packInputWatchTargets(root);
     try {
-      for (const target of packInputWatchTargets(root).slice(1)) {
+      for (const target of authored.slice(1)) {
         next.push(fs.watch(target.directory, { recursive: true }, (_event, filename) => {
           if (target.child && filename && filename !== target.child) return;
-          request(target.child ? target.relative : path.join(target.relative, filename ?? ''));
+          const relative = target.child ? target.relative : path.join(target.relative, filename ?? '');
+          if (isPackInputPath(relative)) request(relative);
+        }));
+      }
+      for (const [directory, target] of compilerWatchTargets(paths, root)) {
+        next.push(fs.watch(directory, { recursive: target.recursive }, (event, filename) => {
+          if (!filename || compilerWatchMatches(target.paths, path.resolve(directory, filename), event)) {
+            request(path.relative(root, path.resolve(directory, filename ?? '')));
+          }
         }));
       }
     } catch (error) {
@@ -112,6 +139,8 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     }
     for (const watch of links) watch.close();
     links = next;
+    compilerPaths = paths;
+    return { ...compiler, authored };
   }
   const close = () => { closed = true; watcher.close(); for (const watch of links) watch.close(); return runs.close(); };
   try {
@@ -119,7 +148,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     options.onFirstBuild?.();
     ready = true;
     if (pending) runs.request();
-    console.log('[watch] Watching authored pack inputs; each successful build publishes verified dist/');
+    console.log('[watch] Watching authored and TypeScript inputs; each successful build publishes verified dist/');
     return { close };
   } catch (error) {
     await close();
