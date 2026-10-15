@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { ManifestSchema } from '../src/build/manifest-schema.ts';
+import { ManifestSchema } from '../src/framework/declaration-schema.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../src/types/sdk-entities.ts';
 
 const jsonSchema = zodToJsonSchema(ManifestSchema, {
@@ -33,7 +33,7 @@ Object.assign(data.relations, {
 Object.assign(jsonSchema, {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   $id: 'https://apack.dev/schemas/apack.json',
-  $comment: 'Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run schema:update',
+  $comment: 'Auto-generated from framework/declaration-schema.ts — do not edit by hand. Run: npm run schema:update',
   title: 'apack Pack Manifest',
   description: 'Configuration manifest for an apack pack. Declares metadata, features, entities, services, extensions, content, and build-time codegen inputs.',
 });

@@ -2,7 +2,7 @@ import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } fr
 import { _packModuleTargets, _moduleTargetSource } from './module-targets.ts';
 import { resolveTypeModule } from './type-module.ts';
 import * as fs from 'node:fs';
-import { ManifestSchema } from './manifest-schema.ts';
+import { ManifestSchema } from '../framework/declaration-schema.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
 import { packValidation, type PackDiagnostic, type PackValidation } from './diagnostics.ts';
 

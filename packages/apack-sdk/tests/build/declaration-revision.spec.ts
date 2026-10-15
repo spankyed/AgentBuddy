@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { _declarationRevision } from '../../src/build/declaration-revision.ts';
-import { ManifestSchema } from '../../src/build/manifest-schema.ts';
+import { ManifestSchema } from '../../src/framework/declaration-schema.ts';
 import type { PackManifest } from '../../src/build/manifest.ts';
 
 const manifest: PackManifest = {

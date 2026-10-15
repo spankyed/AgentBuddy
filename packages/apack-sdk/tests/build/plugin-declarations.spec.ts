@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManifestSchema } from '../../src/build/manifest-schema.ts';
+import { ManifestSchema } from '../../src/framework/declaration-schema.ts';
 import { _pluginTargets, type PluginDeclaration } from '../../src/framework/plugin-declaration.ts';
 
 const parse = (plugin: unknown) => ManifestSchema.safeParse({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features: { notes: { description: 'Feature declaration fixture.', plugin } } });

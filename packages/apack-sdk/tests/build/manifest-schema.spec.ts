@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/build/manifest-schema.ts';
+import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/framework/declaration-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
-import { ALLOWABLE_PACK_CHECKS } from '../../src/build/pack-checks.ts';
+import { ALLOWABLE_PACK_CHECKS } from '../../src/framework/pack-checks.ts';
 
 describe('parseManifest', () => {
   it('validates inline node labels and JSON defaults without a code target', () => {
@@ -415,7 +415,7 @@ function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
 }
 
 it('preserves opaque JSON default keys across authored and native declaration decoding', async () => {
-  const { ManifestSchema } = await import('../../src/build/manifest-schema.ts');
+  const { ManifestSchema } = await import('../../src/framework/declaration-schema.ts');
   const defaults = JSON.parse('{"__proto__":{"retained":true},"constructor":"value","nested":{"value":1}}');
   const settings = { schema: { type: 'object' }, defaults };
   const source = { id: 'data-pack', name: 'Data', version: '1.0.0', extensions: {

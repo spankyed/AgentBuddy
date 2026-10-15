@@ -1,7 +1,7 @@
-import type { PackLifecycleDeclaration } from '../framework/lifecycle-declaration.ts';
-export { LIFECYCLE_HOOK_NAMES } from '../framework/lifecycle-declaration.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from '../framework/data-declaration.ts';
-import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from '../framework/module-reference.ts';
+import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
+export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from './data-declaration.ts';
+import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from './module-reference.ts';
 import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
 import { PackChecksSchema } from './pack-checks.ts';
@@ -9,13 +9,13 @@ import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
-import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProblems } from '../framework/settings-validation.ts';
-import type { SettingsDefinition } from '../framework/settings-definition.ts';
-import type { PackMigrations } from '../framework/pack-registration.ts';
-import type { ReferenceDeclarations } from '../framework/reference-declaration.ts';
-import type { PluginDeclaration } from '../framework/plugin-declaration.ts';
-import type { FrontendDeclaration, TiptapPluginDeclaration } from '../framework/frontend-declaration.ts';
-import type { StepFrontendDeclaration, StepLayoutDeclaration } from '../framework/step-frontend-declaration.ts';
+import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProblems } from './settings-validation.ts';
+import type { SettingsDefinition } from './settings-definition.ts';
+import type { PackMigrations } from './pack-registration.ts';
+import type { ReferenceDeclarations } from './reference-declaration.ts';
+import type { PluginDeclaration } from './plugin-declaration.ts';
+import type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
+import type { StepFrontendDeclaration, StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
 export { FEATURE_ID_PATTERN };
 
@@ -135,15 +135,14 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
+  artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
+  blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
+  dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
-  features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.object({
-    description: FeatureDescriptionSchema,
-    entities: EntitiesSchema.optional(),
-    settings: SettingsDefinitionSchema.optional(),
-    plugin: z.lazy(() => PluginSchema).optional(),
-    references: z.lazy(() => ReferencesSchema).optional(),
-  }).strict()).optional(),
+  features: z.record(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
+    description: true, entities: true, designation: true, settings: true, plugin: true, references: true,
+  }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);

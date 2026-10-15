@@ -7,8 +7,8 @@ import { packBuildRevision, shippedPackRevision, type PackIntegrity } from './la
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
 import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
-import { parseSnapshot, ManifestSchema, _NativePackDeclarationSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
-import { _compileSettingsDefinition, _settingsJsonProblems, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
+import { parseSnapshot, ManifestSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
+import { _compileSettingsDefinition, _settingsJsonProblems, _nativePackDeclarationProblem, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
 import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
@@ -217,8 +217,8 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       if (jsonProblems.length) throw new Error(`Invalid native declarations: ${jsonProblems.map(problem => `${problem.path.join('.')}: declarations must contain finite, acyclic JSON data properties`).join('; ')}`);
       const accepted = immutable(declarations);
       for (const declaration of accepted) {
-        const result = _NativePackDeclarationSchema.safeParse(declaration);
-        if (!result.success) throw new Error(`Invalid native declarations: ${result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
+        const problem = _nativePackDeclarationProblem(declaration);
+        if (problem) throw new Error(`Invalid native declarations: ${problem}`);
       }
       publish({ native: accepted });
     },

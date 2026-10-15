@@ -184,11 +184,18 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 // @public
 export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
     // (undocumented)
+    artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
+    // (undocumented)
+    blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
+    // (undocumented)
     dependencies?: Record<string, string>;
+    // (undocumented)
+    dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
     // (undocumented)
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null>;
+        designation?: string;
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;
         references?: ReferenceDeclarations;
@@ -200,8 +207,11 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     settings?: Record<string, SettingsDefinition>;
     // (undocumented)
-    steps?: Record<string, StepEntry>;
+    steps?: Record<string, z.infer<typeof StepEntrySchema>>;
 }
+
+// @internal
+export function _nativePackDeclarationProblem(declaration: unknown): string | undefined;
 
 // @public
 export function onPackCatalogChanged(listener: () => void): () => void;

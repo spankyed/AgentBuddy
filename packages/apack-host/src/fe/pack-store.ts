@@ -12,7 +12,7 @@ import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
 import { createLogger } from '@apackdev/sdk/logger';
-import type { NativePackDeclaration } from '@apackdev/sdk/framework';
+import { _nativePackDeclarationProblem, type NativePackDeclaration } from '@apackdev/sdk/framework';
 import { captureFrontendBindings } from './binding-snapshot.ts';
 import { frontendBindingProblem } from './declaration-binding.ts';
 
@@ -206,7 +206,11 @@ function buildTables(packs: Iterable<FrontendContributions>) {
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
 export function createFePackRegistry(options: { nativeDeclarations?: readonly NativePackDeclaration[] } = {}): FePackRegistry {
-  const native = new Map((options.nativeDeclarations ?? []).map(declaration => [declaration.id, structuredClone(declaration)]));
+  const native = new Map((options.nativeDeclarations ?? []).map(declaration => {
+    const problem = _nativePackDeclarationProblem(declaration);
+    if (problem) throw new Error(`Invalid native declarations: ${problem}`);
+    return [declaration.id, structuredClone(declaration)];
+  }));
   if (native.size !== (options.nativeDeclarations ?? []).length) throw new Error('Duplicate native frontend declaration owner');
   const logger = createLogger('pack-frontends');
   let accepted = new Map<string, FrontendContributions>();
@@ -276,7 +280,7 @@ export function createFePackRegistry(options: { nativeDeclarations?: readonly Na
     const declaration = native.get(registration.id);
     if (declaration) {
       const problem = frontendBindingProblem({ id: declaration.id, features: declaration.features,
-        extensions: { settings: declaration.settings, steps: declaration.steps, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
+        extensions: { settings: declaration.settings, steps: declaration.steps, artifacts: declaration.artifacts, blocks: declaration.blocks, dsl: declaration.dsl, tiptapPlugins: declaration.tiptapPlugins, appExtensions: declaration.appExtensions } }, registration);
       if (problem) throw new Error(problem);
     }
     const binding = createFrontendSettingsBinding(settings);

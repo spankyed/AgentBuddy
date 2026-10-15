@@ -1,3 +1,14 @@
+import { _NativePackDeclarationSchema } from './declaration-schema.ts';
+import { _settingsJsonProblems } from './settings-validation.ts';
+
+/** @internal Validate native composition data before copying it or touching executable bindings. */
+export function _nativePackDeclarationProblem(declaration: unknown): string | undefined {
+  const problems = _settingsJsonProblems(declaration);
+  if (problems.length) return problems.map(problem => `${problem.path.join('.')}: declarations must contain finite, acyclic JSON data properties`).join('; ');
+  const result = _NativePackDeclarationSchema.safeParse(declaration);
+  if (!result.success) return result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ');
+}
+
 /** @internal Check a runtime binding against host-validated declarations before registering it. */
 export function _packDeclarationProblem(expected: { id: string; declarationRevision: string }, binding: unknown): string | undefined {
   if (!binding || typeof binding !== 'object') return `Pack "${expected.id}" does not export a registration`;

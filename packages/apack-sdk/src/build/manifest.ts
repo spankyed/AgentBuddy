@@ -5,11 +5,9 @@ import { resolveName } from '../ids/refs.ts';
 import type {
   ManifestSchema, FeatureEntrySchema, LifecycleConfigSchema, MigrationDeclarationSchema, ContentSourceSchema, ContentFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
-} from './manifest-schema.ts';
+} from '../framework/declaration-schema.ts';
 
-// Types derived from the canonical Zod schema in manifest-schema.ts.
-// The schema is the single source of truth; these re-exports preserve
-// the existing import surface so no consumer code needs to change.
+// Types derive from the shared authored/native declaration grammar.
 
 export type PackManifest = z.infer<typeof ManifestSchema>;
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;

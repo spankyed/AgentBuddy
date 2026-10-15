@@ -4,7 +4,7 @@ import { _referenceTargets } from '../framework/reference-declaration.ts';
 import { _stepFrontendTargets } from '../framework/step-frontend-declaration.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
 import { _parseModulePath, _parseModuleReference } from '../framework/module-reference.ts';
-import { MIGRATION_LINES } from './manifest-schema.ts';
+import { MIGRATION_LINES } from '../framework/declaration-schema.ts';
 
 interface ModuleTarget {
   path: string[];

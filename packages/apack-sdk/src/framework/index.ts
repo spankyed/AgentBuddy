@@ -8,7 +8,7 @@ export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, typ
 export { getSettingsCatalog, type SettingsCatalog } from './pack-settings.ts';
 export { getPackCommands, type PackCommand } from './pack-commands.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
-export { _packDeclarationProblem } from './declaration-binding.ts';
+export { _packDeclarationProblem, _nativePackDeclarationProblem } from './declaration-binding.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';
 export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';
 

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { PackFERegistration } from '@apackdev/sdk/fe';
 import { createMachine } from 'xstate';
 import { Extension } from '@tiptap/core';
 import { ManifestSchema, type PackManifest } from '@apackdev/sdk/build';
@@ -30,7 +31,7 @@ function fixture() {
     appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
       popups: { suggestions: component }, isSuggestionActive } },
     dslTypes: { notes: { prefix: 'n', schema: 'declare interface Foo {}', globals: { foo: 'Foo' } } },
-  };
+  } satisfies PackFERegistration;
   return { manifest, registration, component, getHeight, bindSettings, configure, isSuggestionActive };
 }
 
@@ -234,4 +235,32 @@ it('checks admitted native steps and owns their data while preserving executable
   expect(packs.step('memo')).toBe(accepted);
   expect(render).not.toHaveBeenCalled();
   expect(getHeight).not.toHaveBeenCalled();
+});
+
+
+it('admits declared native artifacts, blocks, DSL globals and feature designations', () => {
+  const { manifest, registration, component } = fixture();
+  const packs = createFePackRegistry({ nativeDeclarations: [{
+    id: manifest.id,
+    features: { notes: manifest.features!.notes, form: manifest.features!.form },
+    ...manifest.extensions,
+  }] });
+  const bindings = { ...registration, bindSettings: undefined };
+  packs.registerPackFE(bindings);
+  expect(packs.designation('notes')).toBe('notes-pack/notes');
+  expect(packs.artifact('text')?.fe?.component).toBe(component);
+  expect(packs.block('note')?.fe?.component).toBe(component);
+  expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
+  expect(() => packs.replacePackFE({ ...bindings, dslTypes: { notes: {
+    prefix: 'n', schema: '', globals: { foo: 'Wrong' },
+  } } })).toThrow('dslTypes.notes.globals.foo');
+  expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
+});
+
+it('checks native declaration data before copying it or reading declarative accessors', () => {
+  const declaration = { id: 'native' };
+  const read = vi.fn(() => ({}));
+  Object.defineProperty(declaration, 'blocks', { get: read, enumerable: true });
+  expect(() => createFePackRegistry({ nativeDeclarations: [declaration] })).toThrow('JSON data properties');
+  expect(read).not.toHaveBeenCalled();
 });

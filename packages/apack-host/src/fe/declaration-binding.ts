@@ -1,3 +1,4 @@
+import type { DeclarationData } from '@apackdev/sdk/framework';
 import type { PackManifest } from '@apackdev/sdk/build';
 import type { PluginDeclaration, SettingsDefinition, ReferenceDeclarations, StepFrontendDeclaration } from '@apackdev/sdk/framework';
 import type { PackFERegistration, PackFEFeature, PluginDefinition, TiptapPlugin } from '@apackdev/sdk/fe';
@@ -105,7 +106,7 @@ function referenceBindingProblem(declaration: ReferenceDeclarations, actual: unk
 }
 
 /** Check declared identities before registering components, resolving factories or granting settings access. */
-export function frontendBindingProblem(manifest: Pick<PackManifest, 'id' | 'extensions'> & {
+export function frontendBindingProblem(manifest: DeclarationData<Pick<PackManifest, 'id' | 'extensions'>> & {
   features?: Record<string, { plugin?: PluginDeclaration; designation?: string; settings?: SettingsDefinition; references?: ReferenceDeclarations }>;
 }, registration: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" frontend ${path} does not match its accepted declarations`;

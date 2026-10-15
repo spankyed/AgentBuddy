@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ManifestSchema, _NativePackDeclarationSchema } from '../../../src/build/manifest-schema.ts';
+import { ManifestSchema, _NativePackDeclarationSchema } from '../../../src/framework/declaration-schema.ts';
 import { _buildProvenance } from '../../../src/build/manifest.ts';
 import { setupPackFixture, generate, dependency, manifest, write } from './_support/pack.ts';
 

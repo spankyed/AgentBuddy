@@ -80,14 +80,14 @@ export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN, _NativePackDeclarationSchema,
   LifecycleConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema, MigrationDeclarationSchema, MigrationsSchema, MIGRATION_LINES, LIFECYCLE_HOOK_NAMES, MIGRATION_TARGET_PATTERN,
-} from './manifest-schema.ts';
-export type { MigrationLine } from './manifest-schema.ts';
+} from '../framework/declaration-schema.ts';
+export type { MigrationLine } from '../framework/declaration-schema.ts';
 
 // FE bundler — not re-exported here (uses import.meta which some
 // consumer tsconfigs reject). Import directly from './fe-bundler'.
 
 export { _packEntities, _packEntityTypes, _packRelationTypes, type PackDataDeclarations, type _PackEntityDeclaration } from '../framework/data-declaration.ts';
 
-export { ALLOWABLE_PACK_CHECKS, PackChecksSchema } from './pack-checks.ts';
+export { ALLOWABLE_PACK_CHECKS, PackChecksSchema } from '../framework/pack-checks.ts';
 
-export { parsePackDependency, type PackDependencySource } from './dependency-source.ts';
+export { parsePackDependency, type PackDependencySource } from '../framework/dependency-source.ts';

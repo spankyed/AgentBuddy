@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ManifestSchema } from './manifest-schema.ts';
+import { ManifestSchema } from '../framework/declaration-schema.ts';
 import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type PackDependencySnapshot, type ProvenanceKind } from './manifest.ts';
 import { packValidation, type PackValidation } from './diagnostics.ts';
 import { _declarationRevision } from './declaration-revision.ts';

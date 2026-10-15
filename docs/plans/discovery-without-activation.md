@@ -2635,3 +2635,23 @@ map. Do not infer its authority/origin from that delivery choice. Preserve valid
 access, capture-before-check semantics, stale prepared-candidate checks and accepted owner/revision data
 needed to match catalog rows to executable components. All other goal work and deferred-work decisions
 remain intact; 2B.1 does not close 2B or discovery.
+
+#### Browser-safe native admission foundation (2B.2)
+
+The current canonical Zod grammar is pure, but its build-directory placement hides that fact and the
+`/build` barrel loads Node tooling. Move that grammar and its pure dependency/check-policy parsers into
+`framework`, retaining the existing public build exports for their build consumers. Native artifact,
+block, DSL and feature-designation fields use the same constituent schemas and inferred types as authored
+manifests. Expose a small native-declaration problem checker through `/framework`, including JSON purity
+before decoding/copying. The host catalog and frontend admission must use that checker; browser bundling
+proves it reaches no Node tooling or authored pack modules. This is a foundation checkpoint within 2B.2,
+not closure of its mandatory registration-authority and binding-identity work.
+
+The subsequent mandatory-admission change also owns the capture gap: current frontend snapshots copy
+references, editor groups and steps, but retain mutable plugin metadata/routes, artifact/block facet
+containers, DSL globals and form/extension slot maps. Capture those containers before comparison while
+preserving actual machine/component/function identities. Route maps need accepted declaration context;
+a component object must not be guessed to be a route map. Validate in the loader before allocating settings,
+and make registry preparation retire provisional host settings on every failure, including declaration or
+capture refusal. Tests must mutate each accepted container and prove both retained lookup behavior and
+candidate cleanup. This closes the gap rather than merely adding a required argument to unchecked state.

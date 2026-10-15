@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { _packRelationTypes } from '../../src/framework/data-declaration.ts';
-import { ManifestSchema, _NativePackDeclarationSchema } from '../../src/build/manifest-schema.ts';
+import { ManifestSchema, _NativePackDeclarationSchema } from '../../src/framework/declaration-schema.ts';
 
 const pack = { id: 'relation-pack', name: 'Relations', version: '1.0.0' };
 

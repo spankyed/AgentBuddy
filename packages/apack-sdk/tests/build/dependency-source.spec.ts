@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { _validPackVersion, _validPackRange, parsePackDependency } from '../../src/build/dependency-source.ts';
-import { _NativePackDeclarationSchema } from '../../src/build/manifest-schema.ts';
+import { _validPackVersion, _validPackRange, parsePackDependency } from '../../src/framework/dependency-source.ts';
+import { _NativePackDeclarationSchema } from '../../src/framework/declaration-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
 
 describe('pack versions and dependency sources', () => {

@@ -2534,6 +2534,48 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }>>>>;
+    artifacts: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        icon: z.ZodString;
+        fe: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        icon: string;
+        fe?: string | undefined;
+    }, {
+        icon: string;
+        fe?: string | undefined;
+    }>>>>;
+    blocks: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        kind: z.ZodOptional<z.ZodEnum<["display", "input"]>>;
+        fe: z.ZodOptional<z.ZodString>;
+        be: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }>>>>;
+    dsl: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        entry: z.ZodString;
+        targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
+        prefix: z.ZodOptional<z.ZodString>;
+        globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strict", z.ZodTypeAny, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }>>>>;
     tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         extensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         popups: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -2548,9 +2590,10 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         isSuggestionActive?: string | undefined;
     }>>>>;
     appExtensions: z.ZodLazy<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>>;
-    features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+    features: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodLazy<z.ZodObject<Pick<{
         description: z.ZodString;
         entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNullable<z.ZodString>>>;
+        designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodEffects<z.ZodObject<{
             schema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
             defaults: z.ZodEffects<z.ZodEffects<z.ZodType<Record<string, unknown>, z.ZodTypeDef, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>, Record<string, unknown>, Record<string, unknown>>;
@@ -2580,11 +2623,38 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             description?: string | undefined;
             access?: "owner" | "shared" | undefined;
         }, unknown>>;
-        plugin: z.ZodOptional<z.ZodLazy<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>>;
-        references: z.ZodOptional<z.ZodLazy<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>>;
-    }, "strict", z.ZodTypeAny, {
+        types: z.ZodOptional<z.ZodString>;
+        system: z.ZodOptional<z.ZodObject<{
+            entry: z.ZodString;
+            contract: z.ZodOptional<z.ZodString>;
+            events: z.ZodOptional<z.ZodObject<{
+                incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            }, "strict", z.ZodTypeAny, {
+                incoming?: string[] | undefined;
+            }, {
+                incoming?: string[] | undefined;
+            }>>;
+        }, "strict", z.ZodTypeAny, {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        }, {
+            entry: string;
+            contract?: string | undefined;
+            events?: {
+                incoming?: string[] | undefined;
+            } | undefined;
+        }>>;
+        plugin: z.ZodOptional<z.ZodType<PluginDeclaration, z.ZodTypeDef, PluginDeclaration>>;
+        services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        references: z.ZodOptional<z.ZodType<ReferenceDeclarations, z.ZodTypeDef, ReferenceDeclarations>>;
+    }, "entities" | "description" | "designation" | "settings" | "plugin" | "references">, "strict", z.ZodTypeAny, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -2598,10 +2668,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     }, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
-    }>>>;
+    }>>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
     data?: {
@@ -2612,6 +2683,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -2658,6 +2730,22 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }> | undefined;
+    dsl?: Record<string, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }> | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2678,6 +2766,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
@@ -2710,6 +2799,22 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }> | undefined;
+    dsl?: Record<string, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }> | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2730,6 +2835,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -2776,6 +2882,22 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }> | undefined;
+    dsl?: Record<string, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }> | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2796,6 +2918,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
         references?: ReferenceDeclarations | undefined;
@@ -2828,6 +2951,22 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             helpers?: string | undefined;
         } | undefined;
     }> | undefined;
+    dsl?: Record<string, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }> | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2848,6 +2987,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        designation?: string | undefined;
         settings?: {
             schema: Record<string, unknown>;
             defaults: Record<string, unknown>;
@@ -2893,6 +3033,22 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
+    }> | undefined;
+    dsl?: Record<string, {
+        entry: string;
+        targets: "monaco"[];
+        prefix?: string | undefined;
+        globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
+    }> | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
     }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
