@@ -4531,3 +4531,23 @@ worker refusal/repair watcher still passes in 25.17s (`/private/tmp/apack-dev-fr
 This closes the initial development-build cache boundary only. Direct-command bootstrap identity,
 long-lived frontend compiler identity, coherent frozen reads/publication, remaining dynamic inputs,
 manual-build/drive freshness, the aggregate strict gate and every other goal requirement remain open.
+
+### Shared private compiler entry checkpoint (2026-10-15)
+
+Source `1a1895529` routes public `pack build`, initial pack development and watched builds through one
+private compiler entry after refreshing linked packages. The native bootstrap selects it over an
+owned IPC channel in source and copied-package layouts. Flags reach the compiler unchanged; workers
+call `build()` directly without recursive command dispatch or another package refresh. Workers stop
+on parent loss and disconnect on completion. Release orchestration and public command shape stay unchanged.
+Four source/copied-package/lifetime cases pass in 14.68s (`/private/tmp/apack-direct-worker-verified.log`),
+including same-version helper-chunk refusal and regeneration. A public in-process compiler mutation
+fails with the poisoned supervisor compiler (`/private/tmp/apack-direct-worker-mutant.log`), and exact
+source is restored. Seventy-eight focused checks, CLI/tooling typechecking and changed-file correctness
+lint pass (`/private/tmp/apack-direct-worker-{unit,types,script-types,lint}.log`). Startup/cancellation
+and real watched worker failure/repair pass in 24.19s (`/private/tmp/apack-direct-worker-dev-watch.log`).
+Earlier lifetime attempts hit the 60s cap waiting for `close`. An isolated Node reproduction proved
+parent-initiated IPC disconnect omits `close` despite process exit and ended streams; the test now
+asserts those actual lifetime conditions with two-second bounds. The discarded process-group draft
+is absent. This completes the post-refresh process boundary, not immutable compiler/source reads.
+Long-lived frontend identity, coherent frozen execution/publication, remaining input closure,
+manual-build/drive freshness, the aggregate strict gate and all other goal scope remain required.

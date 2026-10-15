@@ -2117,7 +2117,7 @@ reads/publication. Those remain part of the full compiler-consumer and freshness
 
 ### Direct build bootstrap correction
 
-`buildCommand` still imports compiler modules before refreshing linked packages. Move actual command
+The audit found `buildCommand` imported compiler modules before refreshing linked packages. Move actual command
 compilation to a private worker entry selected by the existing native bootstrap over an owned IPC
 channel. The public command validates flags and delegates; `runPackBuild` refreshes before spawning.
 Initial development and watched builds use that same entry directly, avoiding recursive public-command
@@ -2131,3 +2131,11 @@ chunks invalidate skipped generation; watched builds retain compiler reports and
 startup/cancellation checks remain valid. Verify worker packaging and parent-channel lifetime, and
 typecheck/lint changed code. This establishes the command's fresh-process boundary, not immutable
 filesystem inputs or long-lived frontend compiler identity. Keep those and the final strict gate open.
+
+Implemented in `1a1895529`. Four source/copied-package and worker-lifetime cases pass in 14.68s;
+78 focused checks and both CLI/tooling typechecks pass. Startup/cancellation and real watched worker
+error/repair pass in 24.19s. A mutation back to in-process public compilation fails the regression.
+The goal owns the logs. The lifetime test observes process exit plus ended output streams: an isolated
+Node reproduction showed parent-initiated IPC disconnect can omit `close` even when both streams
+end. No process-group machinery is needed. Frozen reads, long-lived frontend compiler identity,
+remaining input closure, manual-build/drive freshness and the aggregate strict gate remain open.

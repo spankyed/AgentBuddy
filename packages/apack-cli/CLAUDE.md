@@ -70,6 +70,12 @@ Packaged channels come from `build-manifest.json`, never a release tag or execut
 
 ## Build pipeline (`commands/build.ts`)
 
+Public builds, initial pack development and watched builds use `build/build-process.ts`: refresh linked
+packages, then load the compiler in a fresh child. The existing `bin/apack.mjs` bootstrap selects the
+private `build-worker` entry only with its worker handoff and parent IPC channel. That entry calls
+`build()` directly, avoiding recursive command dispatch; it is shipped beside `cli.js`. Internal compiler
+tests call `build()` in-process; process-boundary tests exercise the real bootstrap and runner.
+
 1. `parseManifest`; then `buildStagingDir` (`.apack/build/`), where every phase below writes. `dist/` is
    left alone until the end, when the staged tree is renamed over it (`replaceDir`), so a reader finds the previous
    build whole or this one whole — every reader of a pack's output reads a missing output as *not built*,
